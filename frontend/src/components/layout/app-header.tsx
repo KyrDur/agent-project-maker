@@ -1,0 +1,16 @@
+'use client'
+
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import { BreadcrumbNav } from '@/components/layout/breadcrumb-nav'
+import { AssistantSideChatTrigger } from '@/components/agent/assistant-side-chat-trigger'
+
+export function AppHeader() {
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/70 bg-[var(--moldy-surface-raised)] px-4 backdrop-blur">
+      {/* Mobile only: sidebar trigger (desktop uses sidebar's built-in toggle) */}
+      <SidebarTrigger className="md:hidden cursor-pointer" />
+      <BreadcrumbNav />
+      <AssistantSideChatTrigger />
+    </header>
+  )
+}

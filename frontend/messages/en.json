@@ -1,0 +1,4586 @@
+{
+  "metadata": {
+    "title": "Moldy - AI Agent Builder",
+    "description": "Create, chat with, and schedule AI agents."
+  },
+  "auth": {
+    "login": {
+      "title": "Log in",
+      "formTitle": "Log in to your account",
+      "subtitle": "Enter your account details.",
+      "email": "Email",
+      "password": "Password",
+      "rememberMe": "Stay signed in",
+      "rememberMeTooltip": "You currently stay signed in by default.",
+      "forgotPassword": "Forgot password",
+      "submit": "Log in",
+      "submitting": "Logging in...",
+      "googleButton": "Log in with Google",
+      "googleComingSoon": "Coming soon in Phase 2",
+      "or": "or",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign up",
+      "expiredNotice": "Please log in",
+      "emailPlaceholder": "you@example.com",
+      "benefits": {
+        "title": "AI agents without writing code",
+        "item1": "No-code builder",
+        "item2": "LangGraph runtime",
+        "item3": "Conversational agent creation"
+      }
+    },
+    "register": {
+      "title": "Sign up",
+      "formTitle": "Create a new account",
+      "subtitle": "Create your Moldy account.",
+      "name": "Display name",
+      "namePlaceholder": "Chester",
+      "nameHelp": "You do not need to enter your legal name.",
+      "email": "Email",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordConfirm": "Confirm password",
+      "terms": "I agree to the Terms of Service and Privacy Policy (required).",
+      "submit": "Create account",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "mismatch": "Passwords do not match",
+      "termsRequired": "You must accept the terms.",
+      "strength": {
+        "label": "Password strength",
+        "tooShort": "Password must be at least 8 characters.",
+        "weak": "Weak",
+        "medium": "Medium",
+        "strong": "Strong",
+        "veryStrong": "Very strong"
+      }
+    },
+    "hero": {
+      "brand": "Moldy",
+      "category": "AI Agent Builder",
+      "copyright": "© 2026 Moldy contributors",
+      "socialProof": "<strong>200+ teams</strong> are building agents with Moldy",
+      "loginTitleLine1": "Welcome",
+      "loginTitleLine2": "back 👋",
+      "registerTitleLine1": "Your first agent,",
+      "registerTitleLine2": "shall we build it together?",
+      "loginSubtitle": "Continue building your agents or start a new idea.",
+      "registerSubtitle": "Ready-to-use templates and tools are waiting for you.",
+      "features": {
+        "noCode": "No-code agents built through conversation",
+        "branching": "LangGraph branching and time travel",
+        "security": "Encrypted API keys and safe tool calls"
+      }
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "errors": {
+      "invalidCredentials": "Email or password is incorrect.",
+      "emailTaken": "This email is already in use.",
+      "accountLocked": "Your account is temporarily locked. Try again in 15 minutes.",
+      "accountInactive": "This account is inactive. Contact an administrator.",
+      "rateLimit": "Please try again in a moment.",
+      "network": "Check your network connection.",
+      "serverError": "Please try again in a moment. If the problem persists, contact an administrator.",
+      "sessionExpired": "Session expired",
+      "sessionExpiredDesc": "Please log in again.",
+      "invalidEmail": "Enter a valid email address.",
+      "passwordRequired": "Enter your password.",
+      "nameRequired": "Enter a display name."
+    },
+    "onboarding": {
+      "title": "Welcome to Moldy",
+      "subtitle": "You're almost ready to build AI agents.",
+      "body": "Register an LLM API key to create AI agents.",
+      "providers": "Register one of the following.",
+      "providerList": {
+        "openai": "OpenAI API Key",
+        "anthropic": "Anthropic API Key",
+        "google": "Google AI Studio API Key"
+      },
+      "encryptedNote": "Keys are encrypted at rest and visible only to you.",
+      "later": "Later",
+      "register": "Register now",
+      "superUserToast": "Registered as a Super User",
+      "superUserToastDesc": "You can manage system credentials."
+    },
+    "userMenu": {
+      "settings": "Settings",
+      "profile": "Profile settings",
+      "credentials": "Manage API keys",
+      "logout": "Log out",
+      "adminBadge": "Admin",
+      "avatarLabel": "{name} profile icon",
+      "avatarFallback": "User",
+      "profileComingSoon": "Profile settings are coming soon."
+    }
+  },
+  "common": {
+    "save": "Save",
+    "create": "Create",
+    "cancel": "Cancel",
+    "add": "Add",
+    "remove": "Remove",
+    "delete": "Delete",
+    "register": "Register",
+    "description": "Description",
+    "name": "Name",
+    "required": "*",
+    "confirm": "Confirm",
+    "close": "Close",
+    "done": "Done",
+    "yesterday": "Yesterday",
+    "dataTable": {
+      "searchPlaceholder": "Search...",
+      "emptyDefault": "No items found",
+      "selectAll": "Select all rows",
+      "selectRow": "Select row",
+      "allFilter": "All {label}",
+      "pagination": "Page {page} of {totalPages} · {count} items",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "relativeTime": {
+      "justNow": "Just now",
+      "secondsAgo": "{count} seconds ago",
+      "minutesAgo": "{count} minutes ago",
+      "hoursAgo": "{count} hours ago",
+      "daysAgo": "{count} days ago"
+    },
+    "validation": {
+      "required": "{field} is required",
+      "minLength": "Must be at least {min} characters",
+      "maxLength": "Must be at most {max} characters",
+      "invalidFormat": "Invalid format",
+      "number": "Enter a number",
+      "min": "Minimum value is {min}",
+      "max": "Maximum value is {max}",
+      "invalidJson": "Invalid JSON format"
+    },
+    "errorState": {
+      "title": "Something went wrong",
+      "retry": "Retry"
+    },
+    "status": {
+      "active": "Active",
+      "connected": "Connected",
+      "auth_needed": "Auth required",
+      "expired": "Expired",
+      "disabled": "Inactive",
+      "error": "Error",
+      "unreachable": "Unreachable",
+      "unknown": "Unknown",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "unhealthy": "Unhealthy"
+    },
+    "comingSoon": {
+      "default": "This feature is coming soon.",
+      "fileAttach": "File attachments are coming soon.",
+      "trash": "Trash is coming soon."
+    },
+    "detailDialog": {
+      "loading": "Loading {entity}...",
+      "failed": "Failed to load {entity}"
+    },
+    "deleteConfirm": {
+      "title": "Delete this {entity}?",
+      "confirm": "Confirm deletion"
+    },
+    "a11y": {
+      "close": "Close",
+      "sidebar": "Sidebar",
+      "mobileSidebarDescription": "Show mobile sidebar.",
+      "toggleSidebar": "Toggle sidebar",
+      "resizeSidebar": "Resize sidebar",
+      "collapsedPanel": "Collapsed",
+      "resetPanelWidth": "Reset panel width",
+      "breadcrumb": "Breadcrumb",
+      "skipToMain": "Skip to main content"
+    }
+  },
+  "sidebar": {
+    "brand": "Moldy",
+    "nav": {
+      "home": "Home",
+      "connectors": "Connectors",
+      "tools": "Tools",
+      "mcpServers": "MCP Servers",
+      "models": "Models",
+      "artifacts": "Files",
+      "credentials": "Credentials",
+      "systemCredentials": "System Credentials",
+      "systemLlm": "System LLM Settings",
+      "skills": "Skills",
+      "schedules": "Schedules",
+      "usage": "Usage",
+      "templates": "Agent Templates",
+      "marketplace": "Marketplace",
+      "marketplaceExplore": "Explore",
+      "moderation": "Moderation"
+    },
+    "section": {
+      "capabilities": "Capabilities",
+      "resources": "Resources"
+    },
+    "tooltip": {
+      "capabilities": "Tools, MCP servers, and skills",
+      "connectors": "Connect external systems",
+      "skills": "Knowledge and execution packages",
+      "marketplace": "Share agents, tools, and skills"
+    },
+    "newAgent": "New Agent",
+    "recentAgents": "Recent Agents",
+    "agents": {
+      "title": "Agents",
+      "newChat": "New chat",
+      "newConversation": "New conversation",
+      "newChatForAgent": "New chat with {name}",
+      "searchToggle": "Search agents",
+      "expandAgent": "Expand agent",
+      "collapseAgent": "Collapse agent",
+      "searchPlaceholder": "Search agents or conversations",
+      "searchResults": "Search results",
+      "loadMore": "Load more",
+      "collapse": "Collapse",
+      "menu": {
+        "label": "Navigator options",
+        "organization": "Organization",
+        "agentSort": "Agent sort",
+        "sessionSort": "Conversation sort",
+        "singleExpandedAgent": "Expand one agent at a time"
+      },
+      "mode": {
+        "agentGrouped": "By agent",
+        "recentAgents": "Recent agents",
+        "recentSessions": "Recent conversations"
+      },
+      "sort": {
+        "recent": "Recently used",
+        "created": "Created",
+        "updated": "Updated"
+      },
+      "session": {
+        "fallbackTitle": "New conversation",
+        "menu": "Conversation menu",
+        "scheduleActivity": "Updated by a scheduled run",
+        "status": {
+          "running": "Generating answer",
+          "actionRequired": "User action required"
+        }
+      },
+      "conversationActions": {
+        "menu": {
+          "rename": "Rename",
+          "share": "Share",
+          "export": "Export",
+          "pin": "Pin",
+          "unpin": "Unpin",
+          "delete": "Delete"
+        },
+        "renameDialog": {
+          "title": "Rename conversation",
+          "placeholder": "Conversation title",
+          "save": "Save"
+        },
+        "deleteDialog": {
+          "title": "Delete this conversation?",
+          "description": "This action cannot be undone. All messages in the conversation will be deleted."
+        }
+      },
+      "empty": {
+        "agents": "No agents yet",
+        "sessions": "No conversations yet",
+        "search": "No results"
+      },
+      "quickSwitcher": {
+        "title": "Quick switch",
+        "description": "Search agents and conversations to jump directly.",
+        "placeholder": "Search",
+        "agents": "Agents",
+        "sessions": "Conversations",
+        "emptyAgents": "No matching agents",
+        "emptySessions": "No matching conversations",
+        "fallbackTitle": "New conversation"
+      }
+    },
+    "user": {
+      "name": "Suhwa",
+      "email": "suhwa@moldy.ai"
+    },
+    "theme": {
+      "light": "Light mode",
+      "dark": "Dark mode",
+      "system": "System"
+    },
+    "language": {
+      "label": "Language",
+      "ko": "Korean",
+      "en": "English"
+    },
+    "settings": "Settings",
+    "logout": "Log out",
+    "logoutMessage": "Logged out",
+    "toggleSidebar": "Open or close sidebar"
+  },
+  "artifacts": {
+    "title": "Files",
+    "description": "Search and reopen files generated by your agents.",
+    "listTitle": "Generated files",
+    "previewTitle": "Preview",
+    "recentTitle": "Recent files",
+    "loading": "Loading files...",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more...",
+    "empty": "No files match these filters.",
+    "count": "{count} files",
+    "download": "Download",
+    "favorite": "Favorite",
+    "unfavorite": "Remove favorite",
+    "filters": {
+      "search": "Search files",
+      "searchPlaceholder": "Search by filename or path",
+      "conversation": "Conversation ID",
+      "conversationPlaceholder": "Conversation ID",
+      "agent": "Agent",
+      "allAgents": "All agents",
+      "kind": "File type",
+      "allKinds": "All types",
+      "favorite": "Favorite",
+      "allFiles": "All files",
+      "favoritesOnly": "Favorites only"
+    },
+    "stats": {
+      "total": "Total",
+      "size": "Size",
+      "favorite": "Favorites",
+      "recent": "Last 7 days"
+    }
+  },
+  "dashboard": {
+    "greeting": "Hello! 👋",
+    "subtitle": "Create AI agents to automate recurring work.",
+    "greetingMorning": "Good morning",
+    "greetingAfternoon": "Good afternoon",
+    "greetingEvening": "Good evening",
+    "greetingNight": "Working late tonight",
+    "greetingLate": "Great work today",
+    "greetingName": "Hi, {name} 👋",
+    "subtitleWithCount": "Create AI agents to automate recurring work. You currently have {count} agents.",
+    "recommended": "Recommended",
+    "startCta": "Get started",
+    "userFallback": "User",
+    "newAgent": "New Agent",
+    "quickAction": {
+      "conversational": {
+        "label": "Build by Chat",
+        "description": "Configure an agent through conversation with AI."
+      },
+      "manual": {
+        "label": "Build Manually",
+        "description": "Set prompts, models, and tools yourself."
+      },
+      "template": {
+        "label": "Use a Template",
+        "description": "Start quickly from a ready-made template."
+      }
+    },
+    "myAgents": "My Agents",
+    "searchPlaceholder": "Search agents...",
+    "sort": {
+      "latest": "Newest",
+      "name": "Name",
+      "favorite": "Favorite",
+      "favoriteFirst": "Favorites first"
+    },
+    "noSearchResults": "No search results.",
+    "empty": {
+      "title": "Create your first agent",
+      "description": "Choose how you want to start from the cards above."
+    },
+    "usageSummary": {
+      "title": "Usage this month",
+      "totalTokens": "Total tokens: ",
+      "estimatedCost": "Estimated cost: "
+    },
+    "tip": "Tip: Templates help you get started faster."
+  },
+  "agent": {
+    "context": {
+      "trigger": "Agent information",
+      "loading": "Agent",
+      "noDescription": "No description.",
+      "model": "Model",
+      "tools": "Tools",
+      "skills": "Skills",
+      "unknown": "Unset",
+      "newChat": "New chat",
+      "settings": "Settings"
+    },
+    "new": {
+      "pageTitle": "Create New Agent",
+      "backToHome": "Back to Home",
+      "hero": {
+        "title": "What do you want to build?",
+        "subtitle": "Describe it in natural language, and Moldy will suggest tools, models, and triggers step by step."
+      },
+      "chatPlaceholder": "Example: Search for news about my tracked keywords every morning at 8 and send it to Slack.",
+      "startButtonAria": "Start creating an agent",
+      "altDivider": "Start another way",
+      "examples": {
+        "heading": "Try one of these",
+        "items": [
+          {
+            "emoji": "📰",
+            "label": "Daily morning news brief for tracked keywords",
+            "text": "Every morning at 8, search for AI and semiconductor news and summarize the highlights in three lines."
+          },
+          {
+            "emoji": "👀",
+            "label": "Automatic GitHub PR review",
+            "text": "When a new PR is opened, review the diff and comment on convention issues, possible bugs, and missing tests."
+          },
+          {
+            "emoji": "📊",
+            "label": "Competitor price monitoring",
+            "text": "Crawl competitor product pages once a day and notify Slack when prices change."
+          },
+          {
+            "emoji": "✉️",
+            "label": "Customer inquiry classification",
+            "text": "Classify incoming email as refund, technical, or general inquiries, and draft replies for refunds."
+          },
+          {
+            "emoji": "📝",
+            "label": "Meeting notes to action items",
+            "text": "Turn meeting notes into key decisions and action items with owners and due dates."
+          },
+          {
+            "emoji": "🍜",
+            "label": "Nearby restaurant curation",
+            "text": "Recommend highly rated restaurants near me by category, including hours and distance."
+          }
+        ]
+      },
+      "manual": {
+        "title": "Build Manually",
+        "description": "Configure prompts, models, and tools manually"
+      },
+      "template": {
+        "title": "Use a Template",
+        "description": "Start from a ready-made template"
+      }
+    },
+    "template": {
+      "pageTitle": "Start from a Template",
+      "subtitle": "Choose a proven template and create your first agent in 30 seconds.",
+      "category": {
+        "ariaLabel": "Template category",
+        "all": "All",
+        "productivityValue": "Productivity",
+        "communicationValue": "Communication",
+        "dataValue": "Data",
+        "productivity": "Productivity",
+        "communication": "Communication",
+        "data": "Data"
+      },
+      "search": {
+        "placeholder": "Search by template name, description, or tool...",
+        "ariaLabel": "Search templates"
+      },
+      "gallery": {
+        "count": "{count} templates"
+      },
+      "sort": {
+        "newest": "Newest",
+        "name": "Name",
+        "ariaLabelNewest": "Currently sorted by newest. Click to sort by name.",
+        "ariaLabelName": "Currently sorted by name. Click to sort by newest."
+      },
+      "tools": "Tools: {toolNames}",
+      "toolsMore": "+{count}",
+      "startCta": "Start",
+      "createFromTemplate": "Create from this template",
+      "blueprints": {
+        "title": "Installed Agent Blueprints",
+        "description": "Use agents installed from the marketplace as reusable templates.",
+        "badge": "Blueprint",
+        "create": "Create from this blueprint",
+        "createdCount": "{count} created"
+      },
+      "legacy": {
+        "title": "Default Templates",
+        "description": "Quick-start templates that were already available in Moldy."
+      },
+      "emptyCategory": "No templates in this category.",
+      "noSearchResults": {
+        "title": "No templates match \"{query}\"",
+        "subtitle": "Try another keyword or build one through conversation."
+      },
+      "bottomCta": {
+        "title": "Can't find the right template?",
+        "subtitle": "Build one through conversation or configure it from scratch.",
+        "action": "Build by Chat"
+      }
+    },
+    "creation": {
+      "header": "Create Agent",
+      "progress": "Build progress",
+      "phase1": {
+        "label": "Project setup",
+        "description": "Prepare build environment"
+      },
+      "phase2": {
+        "label": "Intent analysis",
+        "description": "Analyze request in depth"
+      },
+      "phase3": {
+        "label": "Tool recommendations",
+        "description": "Select the best tools"
+      },
+      "phase4": {
+        "label": "Middleware recommendations",
+        "description": "Configure reliability layers"
+      },
+      "phase5": {
+        "label": "Prompt generation",
+        "description": "Write system prompt"
+      },
+      "phase6": {
+        "label": "Save configuration",
+        "description": "Create final configuration"
+      },
+      "phase7": {
+        "label": "Build agent",
+        "description": "Instantiate agent"
+      },
+      "status": {
+        "completed": "Done",
+        "active": "In progress",
+        "warning": "Warning",
+        "pending": "Pending",
+        "failed": "Failed"
+      },
+      "initialQuestion": "What kind of agent do you want to build?",
+      "initialPlaceholder": "Example: \"An agent that summarizes Hancom news every day\"",
+      "startButton": "Start build",
+      "building": "Building your agent...",
+      "buildingPhase": "Phase {phase}: {label}",
+      "subAgentWorking": "{name} subagent is working...",
+      "intentTitle": "Intent analysis result",
+      "intentDescription": "Agent description",
+      "intentUseCases": "Use cases",
+      "intentCapabilities": "Required capabilities",
+      "toolRecommendation": "Tool Recommendation",
+      "middlewareRecommendation": "Middleware Recommendation",
+      "toolReason": "Reason",
+      "configComplete": "Agent configuration complete",
+      "draftName": "Name",
+      "draftNameKo": "Korean name",
+      "draftDescription": "Description",
+      "draftModel": "Models",
+      "draftTaskType": "Primary task",
+      "includedTools": "Included tools ({count})",
+      "includedMiddlewares": "Included middleware ({count})",
+      "viewSystemPrompt": "View system prompt",
+      "createAgent": "Create agent",
+      "error": {
+        "sessionFailed": "Could not start the build session. Please try again.",
+        "buildFailed": "An error occurred during build: {message}",
+        "generic": "An error occurred. Please try again."
+      },
+      "cancelButton": "Cancel",
+      "resetButton": "Start over",
+      "cancelConfirm": "Cancel agent creation?",
+      "cancelDescription": "Current progress will not be saved.",
+      "userRequestLabel": "Request:"
+    },
+    "conversational": {
+      "welcomeTitle": "Create an Agent with Natural Language",
+      "welcomeDescription": "Describe the agent you want in natural language. We'll build it together in eight steps: intent analysis, tool recommendations, middleware, system prompt, and image generation.",
+      "example": "Example: \"Create an agent that searches the web\" or \"Create an agent that sends stock prices every morning at 9.\"",
+      "back": "Go back",
+      "sessionLabel": "Session #{id}",
+      "builderModelLabel": "Conversational Agent Builder · GPT-4 Turbo",
+      "builderAgentSubtitle": "Agent Builder",
+      "builderAgentName": "Agent Builder",
+      "breadcrumb": {
+        "create": "Create Agent",
+        "conversational": "Build by Chat"
+      }
+    },
+    "card": {
+      "status": {
+        "active": "Active",
+        "error": "Error",
+        "inactive": "Inactive"
+      },
+      "favoriteRemove": "Remove from favorites",
+      "favoriteAdd": "Favorite",
+      "visualSettings": "Visual Settings",
+      "settings": "Settings",
+      "publish": "Publish to marketplace",
+      "modelLabel": "Model:",
+      "createdAt": "Created {date}",
+      "lastUsed": "Used {time}",
+      "neverUsed": "Not used yet",
+      "noModel": "No model connected",
+      "noDescription": "No description",
+      "fallbackTitle": "{count} fallback models configured"
+    },
+    "detail": {
+      "loadFailed": "Failed to load conversations."
+    },
+    "settings": {
+      "back": "Back",
+      "unsavedWarning": "You have unsaved changes. Are you sure you want to leave?",
+      "title": "Agent Settings: {name}",
+      "defaultName": "New Agent",
+      "name": "Name",
+      "description": "Description",
+      "descriptionPlaceholder": "Short description of this agent",
+      "systemPrompt": "System Prompt",
+      "tabs": {
+        "basic": "Basic Info",
+        "model": "Models",
+        "tools": "Tools & Skills",
+        "triggers": "Triggers",
+        "assistant": "AI Assistant",
+        "form": "Form",
+        "visual": "Visual",
+        "fix": "Fix Agent",
+        "test": "Test",
+        "opener": "Opener",
+        "schedule": "Schedules",
+        "settings": "Settings",
+        "api": "API"
+      },
+      "namePlaceholder": "Agent name",
+      "instruction": "Instructions",
+      "instructionPlaceholder": "Enter agent instructions",
+      "instructionFullscreen": "Fullscreen",
+      "characterCount": "{count} characters",
+      "identity": {
+        "title": "Credential Usage",
+        "description": "Choose whose credentials this agent uses at runtime.",
+        "perUser": {
+          "title": "Per user",
+          "description": "Chat runs use each caller's credentials."
+        },
+        "fixed": {
+          "title": "Agent fixed",
+          "description": "Scheduled runs use the owner's credentials."
+        }
+      },
+      "apiPanel": {
+        "copied": "Copied",
+        "deployedToast": "Agent deployed",
+        "description": "External Agent API deployment",
+        "status": {
+          "deployed": "deployed",
+          "notDeployed": "not deployed"
+        },
+        "publicId": "Public id",
+        "blockingEndpoint": "Blocking endpoint",
+        "streamingEndpoint": "Streaming endpoint",
+        "copy": "Copy",
+        "limits": "Limits",
+        "limitsDescription": "Rate and token quotas are being prepared.",
+        "planned": "planned",
+        "deployDescription": "Deploy this agent before issuing scoped API keys or calling it from external systems.",
+        "deployAgent": "Deploy agent",
+        "ineligibleReasons": {
+          "fixedIdentityRequired": "API deployment requires agent-fixed credential usage."
+        },
+        "keysTitle": "Keys that can call this agent",
+        "keyStatus": {
+          "revoked": "revoked",
+          "active": "active"
+        },
+        "emptyKeys": "Create a key from Settings > Agent API after deployment."
+      },
+      "memory": {
+        "title": "Memory policy",
+        "description": "Choose a stricter memory policy for this agent.",
+        "loading": "Loading memory policy.",
+        "writePolicy": "Conversation writes",
+        "scopePolicy": "Allowed scopes",
+        "triggerPolicy": "Trigger writes",
+        "save": "Save",
+        "writePolicyOptions": {
+          "inherit": "Inherit global policy",
+          "off": "Do not save",
+          "ask": "Ask before saving",
+          "auto": "Save automatically"
+        },
+        "scopeOptions": {
+          "inherit": "Inherit global scopes",
+          "agent_only": "This agent only",
+          "user_and_agent": "User + agent"
+        },
+        "triggerOptions": {
+          "inherit": "Inherit global policy",
+          "off": "Do not save from triggers",
+          "auto": "Auto-save from triggers"
+        },
+        "toast": {
+          "saved": "Agent memory policy saved.",
+          "saveFailed": "Could not save agent memory policy."
+        }
+      },
+      "subAgents": {
+        "title": "Subagents",
+        "description": "Add other agents as collaborators.",
+        "manageTitle": "Manage subagents",
+        "manageDescription": "Add or remove subagents this agent can delegate work to.",
+        "currentLabel": "Current subagents",
+        "availableLabel": "Available agents",
+        "searchPlaceholder": "Search agents...",
+        "searchEmpty": "No search results",
+        "addAction": "Add",
+        "empty": "No other agents available",
+        "emptyHint": "Create an agent from {link} first.",
+        "dashboardLink": "Dashboard",
+        "placeholder": "No subagents added",
+        "remove": "Remove"
+      },
+      "toolsSkills": {
+        "title": "Tools & Skills",
+        "addLabel": "Add",
+        "toolsTab": "Tools",
+        "skillsTab": "Skills",
+        "toolsCount": "{n} tools",
+        "mcpCount": "{n} MCP tools",
+        "skillsCount": "{n} skills",
+        "noSkills": "No skills registered. Add one from {link}.",
+        "skillsLink": "Skill Management",
+        "empty": "No items yet.",
+        "dialogTitle": "Dialog Title"
+      },
+      "modelConfig": "Model Settings",
+      "modelDialogTitle": "Model Settings",
+      "addTool": "Tools",
+      "addMiddleware": "Middleware",
+      "toolsEmpty": "No tools connected",
+      "middlewaresEmpty": "No middleware connected",
+      "addToolDialogTitle": "Add tool",
+      "addMiddlewareDialogTitle": "Add middleware",
+      "selectedCount": "{count} selected",
+      "openerTitle": "Opener",
+      "openerDescription": "Opener Description",
+      "openerCounter": "{count}/{max}",
+      "openerAdd": "Add",
+      "openerAddDialogTitle": "Opener Add Dialog Title",
+      "openerPlaceholder": "Opener Placeholder",
+      "openerEmpty": "Opener Empty",
+      "openerMaxReached": "You can add up to {max} openers.",
+      "openerEdit": "Edit",
+      "openerSave": "Save",
+      "openerCancelEdit": "Opener Cancel Edit",
+      "openerDelete": "Delete",
+      "createModeLocked": "Create Mode Locked",
+      "imageRemove": "Image Remove",
+      "model": "Models",
+      "modelPlaceholder": "Select model",
+      "modelParams": "Model Params",
+      "temperatureLabel": "Temperature",
+      "topPLabel": "Top P",
+      "maxTokensLabel": "Max Tokens",
+      "temperature": {
+        "accurate": "Accurate",
+        "creative": "Creative"
+      },
+      "resetToDefault": "Reset To Default",
+      "tools": "Tools",
+      "noTools": "No tools registered. Add one from {link}.",
+      "toolsLink": "Tools Link",
+      "skills": "Skills",
+      "noSkills": "No skills registered. Add one from {link}.",
+      "skillsLink": "Skill Management",
+      "middlewares": "Middleware",
+      "noMiddlewares": "No Middlewares",
+      "middlewaresLoading": "Middlewares Loading",
+      "trigger": {
+        "title": "Trigger",
+        "active": "Active",
+        "paused": "Pause",
+        "completed": "Done",
+        "error": "Error",
+        "interval": "Every {minutes} minutes",
+        "oneTime": "Run once",
+        "resultConversation": "Result conversation",
+        "resultPending": "Result Pending",
+        "lastRun": "Last run: {date}",
+        "runCount": "{count} runs",
+        "pause": "Pause",
+        "resume": "Resume",
+        "edit": "Edit",
+        "delete": "Delete",
+        "deleteConfirm": "Delete Confirm",
+        "intervalLabel": "Interval Label",
+        "messageLabel": "Message Label",
+        "messagePlaceholder": "Message Placeholder",
+        "addButton": "Add Button",
+        "addNew": "Add New"
+      },
+      "testWarning": "Test Warning",
+      "manageModels": "Manage Models",
+      "image": {
+        "generate": "Generate",
+        "regenerate": "Regenerate",
+        "generating": "Generating",
+        "success": "Success",
+        "failed": "Failed"
+      },
+      "runtimePolicy": {
+        "advancedTitle": "Advanced runtime settings",
+        "title": "Runtime behavior",
+        "description": "Choose how the agent should work when a conversation starts.",
+        "modeLabel": "Runtime behavior mode",
+        "recommended": "Use recommended settings",
+        "custom": "Customize",
+        "sourceRecommended": "Recommended settings",
+        "sourceCustom": "Custom settings",
+        "todo": {
+          "title": "Task list",
+          "description": "Keep work steps visible in the conversation.",
+          "label": "Use task list"
+        },
+        "filesystem": {
+          "title": "File work",
+          "description": "Choose the agent's file-work scope during a conversation.",
+          "inspect": "Review only",
+          "artifactWrite": "Create artifacts"
+        },
+        "summarization": {
+          "title": "Long conversation context",
+          "description": "Keep useful context available as a conversation grows.",
+          "auto": "Automatic",
+          "balanced": "Balanced",
+          "unavailable": "Balanced mode needs context-length information for the selected model.",
+          "invalidCurrent": "The current choice is unavailable for this model. Change the model or switch to automatic."
+        },
+        "notice": {
+          "existingAgent": "This does not affect conversations that have already run. The updated setting applies to conversations that have not run yet and to new conversations.",
+          "newAgent": "The setting applies to new conversations."
+        }
+      },
+      "loadUnavailable": "The agent could not be found or you do not have permission to access it.",
+      "modelsUnavailable": "We could not load model information. Please try again shortly.",
+      "save": "Save",
+      "deleteAgent": "Delete Agent",
+      "deleteDialog": {
+        "title": "Delete Dialog",
+        "description": "This agent and its conversations will be deleted. This cannot be undone."
+      },
+      "toast": {
+        "saved": "Saved successfully.",
+        "saveFailed": "Operation failed.",
+        "deleteFailed": "Operation failed."
+      }
+    },
+    "visualSettings": {
+      "nodes": {
+        "agent": "Agent",
+        "channels": "Channels",
+        "subagents": "Sub-agents",
+        "toolbox": "Toolbox",
+        "skills": "Skills",
+        "middlewares": "Middlewares",
+        "schedule": "Schedule"
+      },
+      "editDialog": {
+        "title": "Edit Dialog",
+        "done": "Done",
+        "searchModels": "Search Models"
+      },
+      "channels": {
+        "count": "{count} channels",
+        "hint": "Configure where this agent can communicate.",
+        "setIdentity": "Set Identity"
+      },
+      "subagents": {
+        "empty": "No items yet.",
+        "remove": "Remove"
+      },
+      "comingSoon": "Coming soon",
+      "toolbox": {
+        "add": "Add",
+        "mcp": "MCP",
+        "empty": "No tools connected",
+        "remove": "Remove"
+      },
+      "skills": {
+        "add": "Add",
+        "create": "Create",
+        "empty": "No skills connected",
+        "remove": "Remove"
+      },
+      "middlewares": {
+        "add": "Add",
+        "empty": "No middleware connected",
+        "remove": "Remove"
+      },
+      "addToolsDialog": {
+        "title": "Add Tools Dialog",
+        "description": "Choose tools this agent can use.",
+        "searchPlaceholder": "Search Placeholder",
+        "noResults": "No Results",
+        "manageTools": "Manage Tools",
+        "selectToPreview": "Select To Preview",
+        "parameters": "Parameters",
+        "add": "Add",
+        "addCount": "Add {count}"
+      },
+      "addSkillsDialog": {
+        "title": "Add Skills Dialog",
+        "description": "Choose skills this agent can use.",
+        "searchPlaceholder": "Search Placeholder",
+        "noResults": "No Results",
+        "manageSkills": "Skill Management",
+        "selectToPreview": "Select To Preview",
+        "content": "Content",
+        "add": "Add",
+        "addCount": "Add {count}"
+      },
+      "addMiddlewaresDialog": {
+        "title": "Add middleware",
+        "description": "Choose middleware for this agent.",
+        "searchPlaceholder": "Search Placeholder",
+        "noResults": "No Results",
+        "selectedEmpty": "Selected Empty",
+        "current": "Current ({count})",
+        "available": "Available",
+        "empty": "No items yet.",
+        "remove": "Remove",
+        "removeNamed": "Remove {name}",
+        "selectToPreview": "Select To Preview",
+        "configSchema": "Config Schema",
+        "providerOnly": "{provider} only",
+        "add": "Add",
+        "addNamed": "Add {name}",
+        "addCount": "Add {count}",
+        "categories": {
+          "all": "All",
+          "context": "Context",
+          "planning": "Planning",
+          "safety": "Safety",
+          "reliability": "Reliability",
+          "provider": "Provider"
+        }
+      },
+      "toolsSkillsDialog": {
+        "mode": {
+          "all": {
+            "title": "All",
+            "description": "Browse both tools and skills."
+          },
+          "tools": {
+            "title": "Add tool",
+            "description": "Browse available tools."
+          },
+          "skills": {
+            "title": "Add skill",
+            "description": "Browse available skills."
+          }
+        },
+        "current": "Current ({count})",
+        "selectedEmpty": "Selected Empty",
+        "catalogEmpty": "Catalog Empty",
+        "toolsEmpty": "Tools Empty",
+        "mcpEmpty": "MCP Empty",
+        "skillsEmpty": "Skills Empty",
+        "noResults": "No search results.",
+        "tabs": {
+          "catalog": "Catalog",
+          "tools": "My Tools",
+          "mcp": "MCP",
+          "skills": "Skills"
+        },
+        "kind": {
+          "tool": "Tools",
+          "mcp": "MCP",
+          "skill": "Skills",
+          "catalog": "Catalog"
+        },
+        "remove": "Remove",
+        "removeNamed": "Remove {name}",
+        "create": "Create",
+        "createNamed": "Create {name}",
+        "search": "Search",
+        "add": "Add",
+        "addNamed": "Add {name}"
+      },
+      "toolbar": {
+        "hideChat": "Hide Chat",
+        "undo": "Undo",
+        "redo": "Redo"
+      },
+      "defaultName": "New Agent",
+      "canvas": {
+        "hint": "Drag nodes to shape your agent visually."
+      },
+      "toast": {
+        "saved": "Saved successfully.",
+        "saveFailed": "Operation failed.",
+        "deleteFailed": "Operation failed."
+      }
+    },
+    "suggestion": {
+      "polite": "Polite",
+      "concise": "Concise",
+      "cost": "Cost",
+      "addSearch": "Add Search",
+      "addTavily": "Add Tavily",
+      "addTodo": "Add Todo",
+      "compactPrompt": "Compact Prompt"
+    },
+    "fix": {
+      "triggerButton": "Trigger Button",
+      "title": "Fix Agent",
+      "description": "Ask the fix agent to inspect and improve this agent.",
+      "emptyState": "Empty State",
+      "badge": {
+        "preview": "Preview",
+        "applied": "Applied"
+      },
+      "inputPlaceholder": "Input Placeholder",
+      "toast": {
+        "applied": "Changes applied",
+        "failed": "Operation failed."
+      },
+      "error": {
+        "generic": "An error occurred. Please try again."
+      }
+    },
+    "assistant": {
+      "title": "AI Assistant",
+      "description": "Use chat to modify this agent configuration.",
+      "emptyState": "Empty State",
+      "fixHeroTitle": "Fix {agentName}",
+      "fixHeroTitleNew": "Fix Hero Title New",
+      "fixHeroSubtitle": "Fix Hero Subtitle",
+      "inputPlaceholder": "Input Placeholder",
+      "send": "Send",
+      "toast": {
+        "applied": "Changes applied",
+        "failed": "Operation failed."
+      },
+      "error": {
+        "generic": "An error occurred. Please try again."
+      }
+    },
+    "schedule": {
+      "title": "Schedules",
+      "description": "Create automated runs for this agent.",
+      "types": {
+        "minutes": "Minute interval",
+        "oneTime": "One Time",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "advanced": "Advanced"
+      },
+      "labels": {
+        "name": "Schedule name",
+        "every": "Every",
+        "minutes": "minutes",
+        "days": "Days",
+        "dayOfMonth": "Monthly",
+        "time": "Time",
+        "scheduledAt": "Scheduled At",
+        "cron": "Cron",
+        "prompt": "Prompt (optional)",
+        "maxRuns": "Max runs",
+        "autoPause": "Stop after failures",
+        "endAt": "End time",
+        "resultPolicy": "Result Policy",
+        "conversation": "Conversation",
+        "maxRunsValue": "Max Runs Value",
+        "autoPauseValue": "Auto Pause Value"
+      },
+      "placeholders": {
+        "name": "Name",
+        "cron": "0 9 * * 1-5",
+        "prompt": "Prompt",
+        "conversationId": "Conversation ID",
+        "conversation": "Select conversation"
+      },
+      "cronFormat": "Cron Format",
+      "promptDefault": "Default: \"Cron trigger fired.\"",
+      "create": "Create",
+      "update": "Edit schedule",
+      "cancel": "Cancel",
+      "noSchedules": "No Schedules",
+      "add": "Add",
+      "unreadCount": "{count} unread",
+      "resultStorage": {
+        "title": "Result storage",
+        "description": "Choose where scheduled run results are saved.",
+        "scheduleThread": "Schedule Thread",
+        "newPerRun": "New Per Run",
+        "selectedConversation": "Save to existing conversation",
+        "noConversations": "No Conversations",
+        "untitledConversation": "Untitled Conversation"
+      },
+      "limits": {
+        "unlimited": "Unlimited",
+        "limited": "Limited",
+        "disabled": "Disabled",
+        "enabled": "Enabled",
+        "maxRunsLimited": "Max Runs Limited",
+        "maxRunsUnlimited": "Max Runs Unlimited",
+        "autoPauseEnabled": "Auto Pause Enabled",
+        "autoPauseDisabled": "Auto Pause Disabled"
+      },
+      "everyNMin": "Every {mins} minutes",
+      "atTimeDays": "{time}, {days}",
+      "atTimeDay": "{day} at {time}",
+      "atTimeEveryDay": "Every day at {time}",
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
+    }
+  },
+  "scheduleCenter": {
+    "eyebrow": "Eyebrow",
+    "title": "Schedules",
+    "description": "View and manage scheduled agent runs across your workspace.",
+    "listTitle": "List Title",
+    "searchPlaceholder": "Search Placeholder",
+    "agentFallback": "Agent Fallback",
+    "none": "None",
+    "notYet": "Not Yet",
+    "resultConversationFallback": "Result conversation",
+    "reset": "Reset",
+    "badges": {
+      "active": "{count} active",
+      "unread": "{count} unread"
+    },
+    "format": {
+      "interval": "Every {minutes} minutes",
+      "oneTime": "Run once",
+      "cron": "Cron"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Pause",
+      "completed": "Done",
+      "error": "Error"
+    },
+    "filters": {
+      "status": "Status",
+      "allStatus": "All Status",
+      "agent": "Agent",
+      "allAgents": "All Agents"
+    },
+    "columns": {
+      "schedule": "Schedules",
+      "agent": "Agent",
+      "frequency": "Frequency",
+      "status": "Status",
+      "nextRun": "Next run",
+      "lastRun": "Last run",
+      "result": "Result",
+      "actions": "Actions"
+    },
+    "actions": {
+      "runNow": "Run now",
+      "pause": "Pause",
+      "resume": "Resume",
+      "edit": "Edit",
+      "history": "Run history",
+      "delete": "Delete"
+    },
+    "empty": {
+      "filtered": "Filtered",
+      "description": "Schedules you create from agent settings will appear here."
+    },
+    "history": {
+      "title": "Run history",
+      "runNow": "Run now",
+      "scheduled": "Scheduled",
+      "openConversation": "Open Conversation",
+      "empty": "No items yet."
+    },
+    "delete": {
+      "title": "Delete",
+      "description": "This schedule will stop running. Existing conversations and run history will remain.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    }
+  },
+  "conversationExport": {
+    "title": "Export conversation",
+    "description": "Save this conversation to a file.",
+    "loading": "Loading messages...",
+    "error": "Failed to load messages. Please try again.",
+    "empty": "No messages to export.",
+    "hint": "Exporting {count} messages.",
+    "formatMarkdown": "Markdown (.md)",
+    "formatJson": "JSON (.json)",
+    "exportedAt": "Exported at",
+    "toolCalls": "Tool calls",
+    "attachments": "Attachments",
+    "role": {
+      "user": "User",
+      "assistant": "Assistant",
+      "tool": "Tool"
+    },
+    "toast": {
+      "exported": "Conversation exported"
+    }
+  },
+  "share": {
+    "title": "Share conversation",
+    "description": "Anyone with the link can view this conversation read-only.",
+    "loading": "Loading…",
+    "linkLabel": "Share link",
+    "copyLink": "Copy link",
+    "copy": "Copy",
+    "copied": "Copied",
+    "sharedHint": "Anyone with the link can read this conversation without signing in. The published snapshot stays fixed even if new messages or edits are added later.",
+    "privateHint": "This conversation is still private. Create a share link to let anyone view it read-only.",
+    "revoke": "Disable sharing",
+    "create": "Create share link",
+    "toast": {
+      "copied": "Share link copied.",
+      "copyFailed": "Failed to copy the link.",
+      "created": "Share link created.",
+      "createFailed": "Failed to create the share link.",
+      "revoked": "Sharing disabled.",
+      "revokeFailed": "Failed to disable sharing."
+    }
+  },
+  "chat": {
+    "defaultAgentName": "Default Agent Name",
+    "emptyState": {
+      "canDo": "What this agent can do",
+      "commandDiscovery": "Browse commands",
+      "moreCapabilities": "+{count} more"
+    },
+    "search": {
+      "placeholder": "Search in conversation",
+      "count": "{position}/{total}",
+      "previous": "Previous match",
+      "next": "Next match",
+      "close": "Close search"
+    },
+    "commands": {
+      "ariaLabel": "Chat commands",
+      "unavailable": "Unavailable in this conversation",
+      "unknown": "Unknown command",
+      "argumentsNotSupported": "This command does not accept arguments",
+      "search": { "label": "/search", "description": "Search this conversation" },
+      "export": { "label": "/export", "description": "Open the export chooser" },
+      "files": { "label": "/files", "description": "Open conversation files" },
+      "attach": { "label": "/attach", "description": "Choose a file to attach" },
+      "new": { "label": "/new", "description": "Start a new conversation" },
+      "retry": { "label": "/retry", "description": "Retry the last failed run" },
+      "compact": { "label": "/compact", "description": "Compact conversation context" },
+      "stop": { "label": "/stop", "description": "Stop the run and pause its queue" },
+      "help": { "label": "/help", "description": "Show available commands" }
+    },
+    "sideChat": {
+      "userMessage": "Your message",
+      "assistantMessage": "Agent response",
+      "sourceMessage": "Source message",
+      "title": "Side chat",
+      "selectShorter": "This answer is long. Select the excerpt you want to bring into the main chat.",
+      "selectionActions": "Ask about selected text",
+      "addToChat": "Add to chat",
+      "explain": "Explain more",
+      "askSide": "Ask in side chat",
+      "explainPrompt": "Please explain the selected text in more detail.",
+      "emptyDescription": "Explore part of the conversation separately. Only your selection is shared, keeping the main conversation on track.",
+      "storageNotice": "A separate conversation with the same agent. Stored on the server; closing does not delete it. Save to keep it in your conversation list.",
+      "quoteNumber": "Note {number}",
+      "removeQuote": "Remove note {number}",
+      "sourceConversation": "Source conversation",
+      "comment": "Your comment",
+      "commentPlaceholder": "What would you like to ask about this part?",
+      "viewSource": "View source",
+      "saveComment": "Apply",
+      "loading": "Preparing your side chat",
+      "loadFailed": "Couldn't open the side chat. Your selection is still available.",
+      "retry": "Try again",
+      "close": "Close side chat",
+      "saveConversation": "Save to conversations",
+      "saved": "Saved to your conversations",
+      "saveFailed": "Couldn't save. Please try again.",
+      "quotedContext": "Referenced conversation",
+      "quotedExcerpt": "Selected text"
+    },
+    "resourceContext": {
+      "ariaLabel": "Add context",
+      "limit": "You can add up to 8 references.",
+      "remove": "Remove {label}",
+      "file": "File",
+      "artifact": "Artifact",
+      "skill": "Skill",
+      "conversation": "Conversation"
+    },
+    "toolGroup": {
+      "count": "{count} calls",
+      "sourceCount": "{count} sources",
+      "labels": {
+        "webSearch": "Web search",
+        "naverBlog": "Naver blog",
+        "naverNews": "Naver news",
+        "naverImage": "Naver images",
+        "naverShop": "Naver shopping",
+        "naverLocal": "Naver local",
+        "googleSearch": "Google search",
+        "googleNews": "Google news",
+        "googleImage": "Google images",
+        "readFile": "Read file",
+        "writeFile": "Write file",
+        "editFile": "Edit file"
+      }
+    },
+    "memory": {
+      "title": "Memory",
+      "proposed": "Save proposed",
+      "saved": "Saved",
+      "rejected": "Not saved",
+      "running": "Checking memory...",
+      "approve": "Save",
+      "reject": "Reject",
+      "edit": "Edit",
+      "cancelEdit": "Cancel edit",
+      "editAndApprove": "Edit and save",
+      "reason": "Reason",
+      "rejectedReason": "Rejection reason",
+      "proposalDescription": "The agent proposed remembering this.",
+      "savedDescription": "Saved to memory.",
+      "rejectedDescription": "This was not saved to memory.",
+      "missingProposal": "Memory proposal details are unavailable.",
+      "contentLabel": "Memory content",
+      "approveToast": "Memory saved.",
+      "rejectToast": "Memory rejected.",
+      "actionFailed": "Memory action failed.",
+      "proposedToast": "A memory proposal arrived.",
+      "savedToast": "Memory saved.",
+      "rejectedToast": "Memory was rejected.",
+      "deletedToast": "Memory deleted."
+    },
+    "traceDebugger": {
+      "title": "Trace details",
+      "openLogs": "Open logs",
+      "backToList": "Back to list",
+      "refresh": "Refresh",
+      "emptyRows": "No trace rows.",
+      "conversationTraces": "Conversation traces",
+      "spanDetails": "Span details",
+      "spanSummary": "{traceCount} traces · {spanCount} spans",
+      "selectSpanPlaceholder": "Select a span to see the details.",
+      "runInfo": "Run info",
+      "statusFailed": "Includes failures",
+      "statusSuccess": "Success",
+      "traceCount": "Trace count",
+      "startedAt": "Started at",
+      "completedAt": "Completed at",
+      "totalDuration": "Total duration",
+      "totalTokens": "Tokens used",
+      "filters": "Filters",
+      "total": "Total",
+      "llm": "LLM",
+      "tools": "Tools",
+      "errors": "Errors",
+      "privacy": "Privacy",
+      "secrets": "Secrets",
+      "emptyFilterItems": "No detected filter items."
+    },
+    "approval": {
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "editApproved": "Edit Approved",
+      "rejectReasonLabel": "Rejection reason",
+      "rejectReasonPlaceholder": "Reject Reason Placeholder",
+      "editArgsPlaceholder": "Edit Args Placeholder",
+      "approve": "Approve",
+      "reject": "Reject",
+      "editAndApprove": "Edit And Approve",
+      "showArgs": "Show Args",
+      "hideArgs": "Hide Args",
+      "pending": "Pending",
+      "toolCall": "Tool Call",
+      "processing": "Processing",
+      "preparing": "Preparing",
+      "approvalRequired": "Tool Use Approval Required",
+      "invalidJson": "Invalid Json",
+      "resumeFailed": "Could not send the approval response. Try again.",
+      "rejectConfirm": "Reject Confirm",
+      "args": "Args",
+      "argsCount": "{count} arguments",
+      "edit": "Edit",
+      "expiresIn": "Expires In",
+      "autoRejected": "Auto Rejected",
+      "expired": "Expired",
+      "respond": "Respond",
+      "respondPlaceholder": "Respond Placeholder",
+      "allActionsCompleted": "All Actions Completed",
+      "confirmAll": "Confirm All",
+      "actionN": "Action {index} of {total}",
+      "lockedSecretHint": "Secret values cannot be edited",
+      "invalidFieldValue": "Invalid value format",
+      "pendingCount": "{count} pending approvals",
+      "approveAll": "Approve all",
+      "allowForSession": "Allow for the rest of this session"
+    },
+    "userInput": {
+      "placeholder": "Placeholder",
+      "sending": "Sending",
+      "sent": "Sent",
+      "send": "Send",
+      "waitingInput": "Waiting Input",
+      "completed": "Completed",
+      "preparing": "Preparing",
+      "inputRequired": "Input Required",
+      "confirm": "Confirm",
+      "expiresIn": "Expires In",
+      "expired": "Expired",
+      "autoSkipped": "Auto Skipped",
+      "stepStatus": "Step {current} of {total}",
+      "back": "Back",
+      "next": "Next",
+      "complete": "Complete",
+      "clear": "Clear",
+      "customAnswer": "Custom answer",
+      "customAnswerPlaceholder": "Type your own answer…",
+      "selectionRange": "Select {min} to {max}",
+      "confirmSelection": "Confirm ({count})",
+      "resumeFailed": "Could not send the response. Try again."
+    },
+    "clarifying": {
+      "directInput": "Direct Input",
+      "expiresIn": "Expires In",
+      "expired": "Expired"
+    },
+    "page": {
+      "settings": "Settings",
+      "newConversation": "New Conversation",
+      "emptyState": "Empty State",
+      "error": "Error",
+      "canceling": "Canceling",
+      "canceled": "Canceled",
+      "runFailed": "The request couldn't be completed. Please try again.",
+      "interruptStateLost": "Interrupt State Lost",
+      "conversationList": "Conversation List",
+      "artifacts": "Files panel",
+      "traceDebugger": "Trace debugger",
+      "menu": "Menu"
+    },
+    "input": {
+      "placeholder": "Placeholder",
+      "sendButton": "Send Button",
+      "scrollToBottom": "Scroll to bottom",
+      "attachComingSoon": "Attach Coming Soon",
+      "templateComingSoon": "Template Coming Soon",
+      "sessionCost": "Session cost",
+      "dictation": {
+        "start": "Start voice input",
+        "stop": "Stop voice input",
+        "listening": "Listening",
+        "unsupported": "Voice input is not supported in this browser.",
+        "failed": "Voice input could not start. Check microphone permission and your browser state, then try again."
+      }
+    },
+    "queue": {
+      "title": "Queued messages",
+      "paused": "The queue is paused after stopping the response.",
+      "resume": "Resume queue",
+      "edit": "Edit queued message",
+      "save": "Save",
+      "cancelEdit": "Cancel editing",
+      "remove": "Remove queued message",
+      "steer": "Stop the current response and run this next",
+      "steerAction": "Steer",
+      "steerNew": "Stop the current response and send now",
+      "sendNow": "Send now",
+      "cancelSteer": "Cancel immediate send",
+      "moreActions": "More queued message actions",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "sending": "Saving to the server",
+      "queued": "Saved in the server queue",
+      "applied": "Started a new response",
+      "failed": "The queue action failed",
+      "restore": "Restore draft"
+    },
+    "tokenUsage": {
+      "title": "Token Usage",
+      "total": "Total",
+      "input": "Input",
+      "output": "Output",
+      "cacheCreation": "Cache Creation",
+      "cacheRead": "Cache Read",
+      "cost": "Cost",
+      "toggleAria": "Toggle Aria",
+      "tokensPerSecond": "{value} tok/s",
+      "ttft": "First token {value}"
+    },
+    "contextWindow": {
+      "label": "Context usage",
+      "percentAria": "Context {percent}% used",
+      "disabledAria": "Context limit unknown",
+      "disabledShort": "no limit",
+      "disabled": "This model has no configured context window (context_window), so usage can't be shown.",
+      "compactHint": "Context is nearly full. Consider starting a new conversation or compacting."
+    },
+    "message": {
+      "toolResult": "Tool Result",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyLabel": "Copy Label",
+      "tokens": "Tokens",
+      "edit": "Edit",
+      "editSave": "Save",
+      "editCancel": "Cancel",
+      "regenerate": "Regenerate",
+      "pinSummary": "Pin as conversation summary",
+      "unpinSummary": "Unpin conversation summary",
+      "retry": "Retry",
+      "feedbackUp": "Feedback Up",
+      "feedbackDown": "Feedback Down",
+      "attach": "Attach",
+      "attachmentTooLarge": "Attachment Too Large",
+      "attachmentRejected": "Attachment Rejected",
+      "attachmentUploading": "Attachment Uploading",
+      "attachmentRemove": "Attachment Remove",
+      "stop": "Stop",
+      "artifacts": {
+        "openLabel": "Open {name} file"
+      }
+    },
+    "pinnedSummary": {
+      "heading": "Pinned conversation summary",
+      "unpin": "Unpin conversation summary",
+      "statusChanged": "Source message changed",
+      "statusDeleted": "Source message deleted",
+      "statusOtherBranch": "Message is on another conversation branch"
+    },
+    "markdown": {
+      "copy": "Copy",
+      "copied": "Copied",
+      "imageLoadFailed": "Image Load Failed",
+      "imagePreview": "Image Preview",
+      "moreLines": "{count} more lines"
+    },
+    "mermaid": {
+      "renderFailed": "Render Failed"
+    },
+    "toolUi": {
+      "subAgent": {
+        "fallbackName": "Sub-agent",
+        "invocation": "Sub-agent call",
+        "openDetails": "Open sub-agent details",
+        "messageCount": "{count} messages",
+        "toolCount": "{count} tools",
+        "waiting": "Sub-agent output will appear here as it streams."
+      }
+    },
+    "builderApproval": {
+      "placeholder": "Placeholder",
+      "shortPlaceholder": "Short Placeholder",
+      "placeholderWithExample": "Placeholder With Example",
+      "approvedStatus": "Approved Status",
+      "revisionStatus": "Revision Status",
+      "requestRevision": "Request Revision",
+      "approve": "Approve",
+      "finalApprove": "Final Approve",
+      "writeFeedback": "Write Feedback",
+      "closeFeedback": "Close Feedback",
+      "reviewRequiredPrefix": "Review Required Prefix",
+      "reviewRequired": "Review Required",
+      "promptRevisionFallback": "Prompt Revision Fallback",
+      "systemPrompt": "System Prompt",
+      "promptFeedbackPlaceholder": "Prompt Feedback Placeholder",
+      "approveAndContinue": "Approve And Continue",
+      "draftTools": "{count} draft tools",
+      "draftMiddlewares": "{count} draft middleware",
+      "draftPreviewTitle": "Draft Preview Title",
+      "finalConfirmTitle": "Final Confirm Title",
+      "finalApproveLabel": "Final Approve Label"
+    },
+    "imageGeneration": {
+      "disabled": "Disabled",
+      "skip": "Skip",
+      "generate": "Generate",
+      "choiceTitle": "Choice Title",
+      "reviewRequired": "Review Required",
+      "autoPrompt": "Auto Prompt",
+      "agentImageAlt": "Agent Image Alt",
+      "noImage": "No Image",
+      "regeneratePrompt": "Regenerate Prompt",
+      "confirm": "Confirm",
+      "regenerate": "Regenerate",
+      "previewTitle": "Preview Title"
+    },
+    "intentSummary": {
+      "title": "Intent Summary",
+      "clarifyingTitle": "Clarifying Title",
+      "agentName": "Agent name",
+      "description": "Description",
+      "confidence": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      }
+    },
+    "phaseTimeline": {
+      "title": "Phase Timeline",
+      "progress": "{done}/{total} complete",
+      "phaseLabel": "Phase {phaseId}: {status}",
+      "phaseNameFallback": "Phase {phaseId}",
+      "completedLabel": "Done",
+      "startedLabel": "Start",
+      "names": {
+        "1": "Project setup",
+        "2": "User intent analysis",
+        "3": "Tool recommendations",
+        "4": "Middleware recommendations",
+        "5": "System prompt writing",
+        "6": "Agent image generation",
+        "7": "Save agent settings",
+        "8": "Build agent"
+      },
+      "status": {
+        "completed": "Done",
+        "in_progress": "In progress",
+        "pending": "Pending"
+      }
+    },
+    "recommendation": {
+      "recommended": "Recommended",
+      "reason": "Reason",
+      "feedbackPlaceholder": "Feedback Placeholder",
+      "approved": "Approved",
+      "approve": "Approve",
+      "approveAndContinue": "Approve And Continue",
+      "requestRevision": "Request Revision",
+      "writeFeedback": "Write Feedback",
+      "closeFeedback": "Close Feedback",
+      "middlewareTitle": "Middleware recommendations",
+      "toolTitle": "Tool recommendations",
+      "empty": "No items yet."
+    },
+    "toolCall": {
+      "calling": "Calling",
+      "completed": "Done",
+      "parameters": "Parameters",
+      "results": "Results",
+      "serializeFailed": "Serialize Failed",
+      "search": {
+        "defaultTitle": "Default Title",
+        "running": "Running",
+        "count": "{count} results",
+        "answer": "Answer",
+        "price": "From ₩{price}",
+        "thumbnailAlt": "Search result thumbnail"
+      },
+      "skillExecution": {
+        "fallbackTitle": "Skill run",
+        "running": "Running…",
+        "completed": "Done",
+        "files": "{count} files",
+        "command": "Command",
+        "outputFiles": "Output files"
+      },
+      "plan": {
+        "title": "Plan",
+        "completed": "Done",
+        "inProgress": "In progress",
+        "pending": "Pending",
+        "loading": "Loading"
+      },
+      "file": {
+        "read": "Read",
+        "write": "Write",
+        "edit": "Edit",
+        "permissionDenied": "This file operation was blocked by the current runtime behavior settings."
+      },
+      "expandToPanel": "Expand to panel"
+    },
+    "files": {
+      "attachedBadge": "Attached",
+      "generatedBadge": "Generated",
+      "attachedSection": "Files you sent",
+      "generatedSection": "Generated files",
+      "jumpToMessage": "Go to message",
+      "notInLoaded": "Earlier message",
+      "openPanel": "Files"
+    },
+    "rightRail": {
+      "closePanel": "Close panel",
+      "resizePanel": "Resize files panel",
+      "collapsedPanel": "Files panel collapsed",
+      "outline": "Outline",
+      "messageOutline": "Message outline",
+      "noHeadings": "No headings detected in this message.",
+      "agent": "Agent",
+      "input": "Input",
+      "output": "Output",
+      "subagentPending": "Sub-agent execution detail will appear here as it streams.",
+      "noResult": "No result.",
+      "arguments": "Arguments",
+      "result": "Result",
+      "status": {
+        "running": "Running",
+        "complete": "Complete",
+        "incomplete": "Incomplete"
+      },
+      "artifacts": {
+        "title": "Files",
+        "loading": "Loading files...",
+        "emptyPanel": "No files have been generated in this conversation yet.",
+        "emptySelection": "Select a file to preview.",
+        "listTitle": "Files",
+        "listDescription": "{count} generated files.",
+        "backToList": "File list",
+        "runLabel": "Run {run}",
+        "download": "Download",
+        "downloadAll": "Download all",
+        "downloadOriginal": "Download original",
+        "favorite": "Favorite",
+        "unfavorite": "Remove favorite",
+        "previewMode": "Preview",
+        "codeMode": "Code",
+        "copyContents": "Copy",
+        "copied": "Copied",
+        "openMenu": "Open file menu",
+        "refreshPreview": "Refresh preview",
+        "sourceUnavailable": "This file cannot be opened in code view.",
+        "imagePreview": "Image preview",
+        "pdfPreviewTitle": "{name} PDF preview",
+        "htmlPreviewTitle": "{name} HTML preview",
+        "fallbackTitle": "Preview is not available for this file",
+        "fallbackBody": "Download the file to inspect it.",
+        "truncated": "Only part of this large file is shown.",
+        "empty": "No content.",
+        "code": "code",
+        "data": {
+          "tableSummary": "{rows} rows · {columns} columns",
+          "tableTruncated": "Showing the first {rows} rows.",
+          "columnFallback": "Column {number}",
+          "emptyTable": "No rows to display.",
+          "parseError": "Could not parse this file structure."
+        },
+        "documentPreview": {
+          "loading": "Loading document",
+          "errorTitle": "Preview unavailable",
+          "downloadInstead": "Download",
+          "page": "{current} / {total}",
+          "zoomIn": "Zoom in",
+          "zoomOut": "Zoom out",
+          "previousPage": "Previous page",
+          "nextPage": "Next page",
+          "sheet": "Sheet",
+          "slide": "Slide",
+          "truncatedGrid": "Large sheet preview shows the first {rows} rows and {columns} columns"
+        },
+        "kinds": {
+          "image": "Image",
+          "video": "Video",
+          "audio": "Audio",
+          "pdf": "PDF",
+          "markdown": "Markdown",
+          "html": "HTML",
+          "code": "Code",
+          "document": "Document",
+          "data": "Data",
+          "cad": "CAD",
+          "other": "Other"
+        }
+      }
+    },
+    "streaming": {
+      "thinking": "Thinking"
+    },
+    "reconnect": {
+      "reconnecting": "Reconnecting",
+      "failed": "Failed",
+      "stale": "Stale",
+      "credentialRequiredAction": "Credential required: {message}"
+    },
+    "activity": {
+      "thinking": "Thinking through it",
+      "planning": "Planning",
+      "tool": "Running {name}",
+      "subagent": "{name} is working",
+      "artifact": "Preparing files",
+      "memory": "Updating memory",
+      "compaction": "Compacting earlier messages…",
+      "interrupt": "Waiting for approval",
+      "checkpoint": "Saving checkpoint",
+      "responding": "Writing response",
+      "reconnecting": "Reconnecting stream",
+      "done": "Done",
+      "error": "Something went wrong",
+      "summaryAria": "Run summary",
+      "elapsedUnknown": "Time unavailable",
+      "durationSeconds": "{count}s",
+      "durationMinutesSeconds": "{minutes}m {seconds}s",
+      "toolTotal": "Total tools {count}",
+      "subagentTotal": "Total sub-agents {count}",
+      "rootTools": "Main tools",
+      "descendantTools": "Descendant tools",
+      "rootSubagents": "Main sub-agents",
+      "descendantSubagents": "Descendant sub-agents",
+      "showDetails": "Show activity",
+      "hideDetails": "Hide activity",
+      "history": "Activity history",
+      "truncated": "Some earlier activity was omitted.",
+      "activityElapsed": "At {value}"
+    },
+    "compaction": {
+      "summary": "Older messages were summarized to free up context"
+    },
+    "subagents": {
+      "progress": "{completed}/{total} sub-agents done",
+      "progressLabel": "Sub-agent progress",
+      "running": "{count} running",
+      "failed": "{count} failed"
+    },
+    "teamStrip": {
+      "title": "Team",
+      "chipLabel": "Open {name} details",
+      "runningMeta": "{count} working",
+      "doneMeta": "{done}/{total} done"
+    },
+    "memoryRecall": {
+      "title": "Memory recall",
+      "count": "{count} used",
+      "scopeUser": "User",
+      "scopeAgent": "Agent",
+      "hiddenContent": "Content hidden"
+    },
+    "followup": {
+      "hint": "→ to fill",
+      "acceptLabel": "Fill suggestion: {text}",
+      "toggleOn": "Enable follow-up suggestions",
+      "toggleOff": "Disable follow-up suggestions"
+    },
+    "deepAgentsState": {
+      "tasks": {
+        "title": "Task plan",
+        "progress": "{done}/{total} done",
+        "current": "In progress: {item}"
+      },
+      "files": {
+        "title": "Files",
+        "count": "{count} files",
+        "editDisabledRunning": "Files cannot be edited while the run is active",
+        "editDisabledUnsupported": "This file cannot be edited directly in the panel yet",
+        "kinds": {
+          "markdown": "Markdown",
+          "code": "Code",
+          "plainText": "Text",
+          "file": "File"
+        },
+        "actions": {
+          "openPreview": "Open {name} preview",
+          "copy": "Copy {name}",
+          "download": "Download {name}",
+          "edit": "Edit {name}",
+          "save": "Save {name}"
+        }
+      },
+      "status": {
+        "completed": "Done",
+        "in_progress": "In progress",
+        "pending": "Pending"
+      }
+    },
+    "reasoning": {
+      "title": "Reasoning summary",
+      "running": "Summarizing",
+      "ready": "Ready"
+    },
+    "loading": {
+      "witty": {
+        "0": "One moment, booting up my brain...",
+        "1": "Thinking very hard...",
+        "2": "Crafting an answer...",
+        "3": "Connecting the synapses...",
+        "4": "Taking a sip of coffee...",
+        "5": "Choosing the best answer...",
+        "6": "Working through it...",
+        "7": "Firing up the neurons...",
+        "8": "Waiting for inspiration...",
+        "9": "Diving into the knowledge sea...",
+        "10": "Polishing the answer...",
+        "11": "Charging creativity...",
+        "12": "The GPU is warming up...",
+        "13": "Working on the best response...",
+        "14": "Checking the logic circuits...",
+        "15": "Combining ideas...",
+        "16": "Cooking the data...",
+        "17": "Hold on, a good idea just arrived...",
+        "18": "Assembling sentences...",
+        "19": "Turning the gears of wisdom...",
+        "20": "Focus mode ON",
+        "21": "Checking answer quality...",
+        "22": "Putting care into every word...",
+        "23": "Doing my best...",
+        "24": "Almost there...",
+        "25": "Casting a tiny spell...",
+        "26": "Drawing from the well of inspiration..."
+      }
+    },
+    "conversationList": {
+      "title": "Conversation List",
+      "label": "Label",
+      "trash": "Trash",
+      "newConversation": "New Conversation",
+      "fallbackTitle": "Fallback Title",
+      "empty": "No items yet.",
+      "searchPlaceholder": "Search Placeholder",
+      "searchEmpty": "Search Empty",
+      "loadMore": "Load more",
+      "loadingMore": "Loading...",
+      "editAgent": "Edit Agent",
+      "close": "Close",
+      "pinned": "Favorite",
+      "recent": "Recent",
+      "menu": {
+        "rename": "Rename",
+        "share": "Share",
+        "pin": "Pin",
+        "unpin": "Unpin",
+        "delete": "Delete"
+      },
+      "renameDialog": {
+        "title": "Rename Dialog",
+        "placeholder": "Placeholder",
+        "save": "Save"
+      },
+      "deleteDialog": {
+        "title": "Delete Dialog",
+        "description": "This conversation will be deleted. This cannot be undone."
+      }
+    },
+    "branch": {
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "tool": {
+    "page": {
+      "title": "Tools",
+      "description": "Manage tools agents can use, including built-ins, custom tools, and MCP tools.",
+      "viewMode": "View Mode",
+      "count": "{count} tools",
+      "tabs": {
+        "catalog": "Catalog",
+        "manage": "Manage",
+        "installed": "Installed"
+      },
+      "columns": {
+        "name": "Name",
+        "type": "Type",
+        "credential": "Credentials",
+        "status": "Status",
+        "lastUsed": "Last Used"
+      },
+      "addTool": "Add tool",
+      "filter": {
+        "all": "All",
+        "builtin": "Built-in",
+        "prebuilt": "Pre-built",
+        "custom": "Custom",
+        "mcp": "MCP"
+      },
+      "section": {
+        "builtin": "Builtin",
+        "prebuilt": "Prebuilt",
+        "mcp": "MCP Servers",
+        "custom": "Custom"
+      },
+      "badge": {
+        "builtin": "Built-in",
+        "prebuilt": "Pre-built",
+        "mcp": "MCP",
+        "custom": "Custom"
+      },
+      "prebuilt": {
+        "notConfigured": "Not Configured",
+        "configured": "Configured",
+        "setKey": "Set Key",
+        "changeKey": "Change Key"
+      },
+      "searchPlaceholder": "Search Placeholder",
+      "tagLabel": "Tag Label",
+      "resetFilter": "Reset Filter",
+      "agentCount": "Used by {count} agents",
+      "deleteButton": "Delete",
+      "deleteConfirm": "Delete Confirm",
+      "systemTool": "System Tool",
+      "noSearchResults": "No search results.",
+      "noFilterResults": "No Filter Results",
+      "noResultsForQuery": "No results for \"{query}\"",
+      "resetFilters": "Reset Filters",
+      "empty": {
+        "title": "Empty",
+        "description": "Create or connect a tool to make it available to agents.",
+        "action": "Action",
+        "filtered": "Filtered"
+      },
+      "toast": {
+        "deleteFailed": "Operation failed."
+      },
+      "detail": {
+        "agentUsage": "Used by {count} agents",
+        "systemTool": "System Tool",
+        "authMethod": "Auth Method",
+        "parameters": "Parameters",
+        "paramName": "Name",
+        "paramType": "Param Type",
+        "paramDescription": "Description"
+      }
+    },
+    "addDialog": {
+      "title": "Add tool",
+      "description": "Choose the kind of tool you want to add.",
+      "tab": {
+        "mcp": "MCP Servers",
+        "custom": "Custom"
+      },
+      "mcp": {
+        "serverName": "Server Name",
+        "serverNamePlaceholder": "Google Workspace MCP",
+        "serverUrl": "Server URL",
+        "serverUrlPlaceholder": "https://mcp.example.com",
+        "authNoticeV1": "Auth Notice V1",
+        "headerName": "Header Name",
+        "credentialField": "Credential Field",
+        "credentialFieldPlaceholder": "Credential Field Placeholder",
+        "authHint": "Auth Hint",
+        "submit": "Submit",
+        "connectionFailed": "Connection failed: {detail}",
+        "discoverFailed": "Tool discovery failed: {detail}",
+        "discoverSuccess": "Discovered {created} new tools ({existing} existing kept)."
+      },
+      "auth": {
+        "label": "Label",
+        "none": "None",
+        "apiKey": "API Key",
+        "oauth": "OAuth",
+        "bearer": "Bearer",
+        "apiKeyPlaceholder": "sk-xxxxxxxxxxxx",
+        "keyName": "Key Name",
+        "keyValue": "Key Value"
+      },
+      "custom": {
+        "name": "Name",
+        "namePlaceholder": "Name Placeholder",
+        "description": "Description",
+        "descriptionPlaceholder": "Description Placeholder",
+        "apiUrl": "API URL",
+        "apiUrlPlaceholder": "https://api.example.com/weather",
+        "httpMethod": "Http Method",
+        "params": "Params",
+        "paramsPlaceholder": "'{ \"type\": \"object\", \"properties\": '{ \"city\": '{ \"type\": \"string\" '}' '}' '}'",
+        "auth": "Auth",
+        "connectionHint": "Connection Hint",
+        "credentialRequired": "Credential Required",
+        "connectionConflict": "Connection Conflict",
+        "connectionFailed": "Connection Failed",
+        "toolFailed": "Tool Failed"
+      }
+    },
+    "authDialog": {
+      "title": "Auth Dialog",
+      "description": "Select the credential this tool should use.",
+      "provider": {
+        "naver": "Naver",
+        "googleSearch": "Google Search",
+        "googleChat": "Google Chat",
+        "googleWorkspace": "Google Workspace"
+      },
+      "configured": "Configured",
+      "legacyUnavailable": "Legacy Unavailable"
+    },
+    "customAuth": {
+      "title": "Custom Auth",
+      "description": "Configure authentication for this custom tool.",
+      "configured": "Configured",
+      "setKey": "Set Key",
+      "changeKey": "Change Key",
+      "toolSyncFailed": "Tool Sync Failed"
+    },
+    "catalog": {
+      "categoriesLabel": "Categories Label",
+      "categories": {
+        "all": "All",
+        "general": "General",
+        "search": "Search",
+        "productivity": "Productivity",
+        "communication": "Communication",
+        "automation": "Automation"
+      },
+      "searchPlaceholder": "Search Placeholder",
+      "count": "{count} tools",
+      "empty": {
+        "title": "Empty",
+        "description": "No tools match the current filters."
+      },
+      "requiresCredential": "Requires Credential",
+      "selectAction": "Select",
+      "manageAction": "Manage"
+    },
+    "mcpServer": {
+      "toolCount": "{count} tools",
+      "authNotSet": "Auth Not Set",
+      "menu": {
+        "auth": "Auth",
+        "authNotSupported": "Auth Not Supported",
+        "delete": "Delete"
+      },
+      "delete": {
+        "title": "Delete",
+        "warning": "{count} tools from this server will be disconnected.",
+        "blockedByUsage": "Blocked By Usage"
+      },
+      "auth": {
+        "title": "Auth",
+        "description": "Select credentials for this MCP server.",
+        "configured": "Configured"
+      },
+      "toast": {
+        "saveFailed": "Operation failed.",
+        "deleteFailed": "Operation failed."
+      }
+    },
+    "createDialog": {
+      "toast": {
+        "created": "Created",
+        "saveFailed": "Operation failed."
+      },
+      "title": "Create Dialog",
+      "name": "Name",
+      "description": "Description",
+      "optional": "Optional",
+      "credential": "Credentials",
+      "submit": "Submit"
+    },
+    "detailDialog": {
+      "toast": {
+        "credentialUpdated": "Credential Updated",
+        "updateFailed": "Operation failed.",
+        "deleted": "Deleted",
+        "deleteFailed": "Operation failed."
+      },
+      "loading": "Loading",
+      "credential": "Credentials",
+      "delete": "Delete",
+      "entity": "Tools"
+    },
+    "runPanel": {
+      "invalidJson": "Invalid Json",
+      "ranIn": "Ran in {duration}",
+      "failed": "Failed",
+      "runtimeArgs": "Runtime Args",
+      "run": "Run"
+    }
+  },
+  "mcp": {
+    "page": {
+      "title": "MCP Servers",
+      "description": "Connect MCP servers and import their tools into Moldy.",
+      "count": "{count}",
+      "toolCount": "{count} tools",
+      "tabs": {
+        "label": "MCP server status",
+        "all": "All",
+        "connected": "Connected",
+        "auth_needed": "Auth needed",
+        "unreachable": "Offline",
+        "disabled": "Disabled",
+        "unknown": "Unknown"
+      },
+      "columns": {
+        "name": "Name",
+        "transport": "Transport",
+        "tools": "Tools",
+        "status": "Status",
+        "lastResponse": "Last Response"
+      },
+      "actions": {
+        "checkNow": "Check Now",
+        "checkNowFor": "Check {name} now",
+        "import": "Import",
+        "export": "Export",
+        "new": "New",
+        "publish": "Publish",
+        "manage": "Manage"
+      },
+      "empty": {
+        "title": "Empty",
+        "description": "Add an MCP server to discover external tools.",
+        "action": "Action",
+        "filtered": "Filtered"
+      },
+      "searchPlaceholder": "Search servers",
+      "relative": {
+        "secondsAgo": "{count} seconds ago",
+        "minutesAgo": "{count} minutes ago",
+        "hoursAgo": "{count} hours ago",
+        "daysAgo": "{count} days ago"
+      },
+      "toast": {
+        "exported": "Exported {count} servers",
+        "exportFailed": "Operation failed.",
+        "healthCheckFailed": "Operation failed."
+      }
+    },
+    "detail": {
+      "toast": {
+        "connected": "Connected and found {count} tools",
+        "connectionFailed": "Operation failed.",
+        "testFailed": "Operation failed.",
+        "importedTools": "Imported {count} tools",
+        "discoveryFailed": "Operation failed.",
+        "deleted": "Deleted",
+        "deleteFailed": "Operation failed.",
+        "credentialUpdated": "Credential Updated",
+        "updateFailed": "Operation failed.",
+        "healthCheckFailed": "Operation failed."
+      },
+      "loading": "Loading",
+      "system": "System",
+      "test": "Test",
+      "refreshTools": "Refresh Tools",
+      "endpoint": "Endpoint",
+      "credential": "Credentials",
+      "importedTools": "{count} imported tools",
+      "delete": "Delete",
+      "serverEntity": "Server Entity",
+      "health": "Health",
+      "checkNow": "Check Now"
+    },
+    "toolTable": {
+      "empty": "No items yet.",
+      "columns": {
+        "tool": "Tools",
+        "description": "Description",
+        "schema": "Schema"
+      },
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "disabled": "Inactive",
+      "stale": "Stale",
+      "lastSeen": "Last seen {date}",
+      "neverSeen": "Never Seen"
+    },
+    "importDialog": {
+      "title": "Import Dialog",
+      "description": "Review discovered tools before importing them.",
+      "jsonPayload": "JSON payload",
+      "uploadJson": "Upload Json",
+      "overwrite": "Overwrite",
+      "submit": "Submit",
+      "readFileFailed": "Read File Failed",
+      "importFailed": "Import Failed",
+      "summary": "{created} created, {updated} updated, {skipped} skipped",
+      "summaryWithErrors": "{created} created, {updated} updated, {skipped} skipped, {errors} errors",
+      "ready": "{count} ready",
+      "more": "{count} more",
+      "created": "{count} created",
+      "updated": "{count} updated",
+      "skipped": "{count} skipped",
+      "errors": "{count} errors",
+      "parseErrors": {
+        "invalidJson": "Invalid JSON format",
+        "missingServers": "Missing Servers",
+        "serversMustBeMap": "Servers Must Be Map",
+        "serversEmpty": "Servers Empty"
+      }
+    },
+    "wizard": {
+      "toast": {
+        "required": "Required",
+        "probeFailed": "Operation failed.",
+        "importFailedAfterSave": "Operation failed.",
+        "added": "Added",
+        "addFailed": "Operation failed."
+      },
+      "title": "Wizard",
+      "description": "Add a server, verify the connection, and choose tools to enable.",
+      "tabs": {
+        "basics": "Basics",
+        "auth": "Auth",
+        "tools": "Tools"
+      },
+      "actions": {
+        "continueAuth": "Continue Auth",
+        "back": "Previous",
+        "continueTools": "Continue Tools",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "probe": {
+        "needed": "Needed",
+        "pending": "Pending",
+        "ok": "Connection succeeded. {count} tools found.",
+        "failed": "Failed"
+      },
+      "registry": {
+        "title": "Registry",
+        "clear": "Clear",
+        "empty": "No items yet."
+      },
+      "manual": {
+        "override": "Override",
+        "manual": "Manual",
+        "name": "Name",
+        "description": "Description",
+        "transport": "Transport",
+        "transportOptions": {
+          "stdio": "stdio",
+          "sse": "SSE",
+          "streamable_http": "Streamable HTTP"
+        },
+        "command": "Command",
+        "commandPlaceholder": "npx",
+        "args": "Args",
+        "argsPlaceholder": "-y @modelcontextprotocol/server-github",
+        "add": "Add",
+        "argsHint": "Args Hint",
+        "envVars": "Env Vars",
+        "url": "URL",
+        "urlPlaceholder": "https://example.com/mcp",
+        "headers": "Headers",
+        "removeArg": "Remove {arg}",
+        "removeRow": "Remove Row",
+        "addRow": "Add Row"
+      },
+      "auth": {
+        "credential": "Credentials",
+        "createOAuthCredential": "Create OAuth Credential",
+        "connectOAuth": "Authenticate in Browser",
+        "oauthConnected": "OAuth authentication completed.",
+        "oauthWaiting": "Waiting for browser authentication.",
+        "oauthPopupTitle": "Moldy OAuth",
+        "oauthSelectFirst": "Select an OAuth credential first.",
+        "oauthPopupBlocked": "Browser popup was blocked. Allow popups and try again.",
+        "oauthStartFailed": "Could not start OAuth authentication.",
+        "interpolation": "Interpolation",
+        "interpolationBody": "Interpolation Body",
+        "interpolationSuffix": "Interpolation Suffix",
+        "filtered": "Filtered by {type}",
+        "test": "Test",
+        "connected": "{count} credentials connected"
+      },
+      "tools": {
+        "discovering": "Discovering",
+        "probeFailed": "Probe Failed",
+        "retry": "Retry",
+        "empty": "No items yet.",
+        "discovered": "{total} tools discovered",
+        "reprobe": "Reprobe",
+        "params": "{count} params"
+      }
+    },
+    "detailDialog": {
+      "loading": "Loading",
+      "unsupported": "Unsupported",
+      "close": "Close",
+      "save": "Save",
+      "saved": "Saved",
+      "saveFailed": "Save failed",
+      "deleted": "Deleted",
+      "deleteFailed": "Delete failed",
+      "deleteSkill": "Delete Skill",
+      "skillEntity": "Skills",
+      "packageEntity": "Package Entity",
+      "fileEntity": "File Entity",
+      "loadFailed": "Failed to load: {message}",
+      "discardConfirm": "Discard changes to {path}?",
+      "fileSaved": "Saved {path}",
+      "fileDeleted": "Deleted {path}",
+      "pathRequired": "Path Required",
+      "fileExists": "File Exists",
+      "fileCreated": "Created {path}",
+      "createFailed": "Create Failed",
+      "files": "Files",
+      "addFile": "Add File",
+      "add": "Add",
+      "newPathPlaceholder": "path/to/new-file.md",
+      "create": "Create",
+      "cancel": "Cancel",
+      "unsavedCount": "{count} unsaved",
+      "usedBy": "Used by {count}",
+      "exportPackage": "Export .skill",
+      "saveFile": "Save File",
+      "pickFile": "Pick File",
+      "unsaved": "Unsaved",
+      "deleteFile": "Delete File",
+      "protected": "Protected",
+      "openOriginal": "Open Original",
+      "openPdf": "Open Pdf",
+      "binaryFile": "Binary File",
+      "binaryUnavailable": "Binary Unavailable",
+      "download": "Download",
+      "improveByChat": "Improve by chat",
+      "credentialsEmpty": "This skill does not require credentials.",
+      "tabs": {
+        "content": "Content",
+        "credentials": "Credentials",
+        "evaluation": "Evaluation",
+        "history": "History",
+        "metadata": "Metadata"
+      },
+      "evaluation": {
+        "emptyTitle": "No evaluation set yet",
+        "emptyDescription": "When the builder or Evaluation tab creates criteria, you can rerun them here.",
+        "caseCount": "{count} cases"
+      },
+      "history": {
+        "empty": "History starts from the current version.",
+        "revision": "Revision {number}",
+        "files": "{count} files"
+      },
+      "metadata": {
+        "name": "Name",
+        "description": "Description",
+        "version": "Version"
+      },
+      "credentialBindingsTitle": "Credential bindings",
+      "credentialBindingsDescription": "Choose the credential this skill should use when it runs. Changes apply from the next run.",
+      "credentialPlaceholder": "Select a credential",
+      "requiredCredential": "Required",
+      "optionalCredential": "Optional",
+      "credentialUpdated": "Skill credential updated.",
+      "credentialCleared": "Skill credential disconnected.",
+      "credentialUpdateFailed": "Failed to update credential."
+    }
+  },
+  "systemCredentials": {
+    "title": "System Credentials",
+    "description": "Manage operator-owned credentials available to system resources.",
+    "add": "Add",
+    "loading": "Loading",
+    "confirmDelete": "Delete {name}?",
+    "fieldCount": "{count} fields",
+    "deleteNamed": "Delete {name}",
+    "operatorOnly": {
+      "title": "Operator Only",
+      "description": "Only super users can manage system credentials."
+    },
+    "empty": {
+      "title": "Empty",
+      "description": "No system credentials have been registered yet."
+    },
+    "toast": {
+      "deleted": "Deleted",
+      "deleteFailed": "Operation failed."
+    }
+  },
+  "systemLlm": {
+    "title": "System LLM",
+    "description": "Configure the default LLMs used by system workflows.",
+    "loading": "Loading",
+    "configured": "Configured",
+    "notConfigured": "Not Configured",
+    "credential": "Credentials",
+    "model": "Models",
+    "systemCredential": "System Credentials",
+    "none": "None",
+    "selectCredential": "Select Credential",
+    "selectModel": "Select model",
+    "emptyCredentials": "Empty Credentials",
+    "loadModels": "Load Models",
+    "selectCredentialFirst": "Select Credential First",
+    "modelLoadFailed": "Model Load Failed",
+    "noModels": "No Models",
+    "provider": "Provider",
+    "baseUrl": "Base URL",
+    "saving": "Saving",
+    "save": "Save",
+    "operatorOnly": {
+      "title": "Operator Only",
+      "description": "Only super users can manage system LLM settings."
+    },
+    "roles": {
+      "text_primary": {
+        "label": "Label",
+        "description": "Primary model for text generation."
+      },
+      "text_fallback": {
+        "label": "Label",
+        "description": "Fallback model used when primary text generation fails."
+      },
+      "image": {
+        "label": "Label",
+        "description": "Model used for image generation."
+      }
+    },
+    "toast": {
+      "loadModelsFailed": "Operation failed.",
+      "saved": "Saved successfully.",
+      "saveFailed": "Operation failed."
+    }
+  },
+  "skill": {
+    "pageTitle": "Skill Management",
+    "title": "Skills",
+    "description": "Create and manage reusable instructions and executable skill packages.",
+    "new": "Build by chat",
+    "count": "{count}",
+    "agentsCount": "{count, plural, one {# agent} other {# agents}}",
+    "searchPlaceholder": "Search skills",
+    "viewMode": {
+      "label": "Label",
+      "table": "Table",
+      "grid": "Grid"
+    },
+    "columns": {
+      "skill": "Skills",
+      "kind": "Kind",
+      "origin": "Origin",
+      "marketplace": "Marketplace",
+      "agents": "Agents",
+      "updatedAt": "Updated At",
+      "status": "Status",
+      "evaluation": "Evaluation"
+    },
+    "filters": {
+      "kind": "Kind"
+    },
+    "actions": {
+      "publish": "Publish"
+    },
+    "typeFilter": {
+      "all": "All",
+      "text": "Text",
+      "package": "Package"
+    },
+    "stateFilter": {
+      "label": "Skill state filter",
+      "all": "All states",
+      "needs_credentials": "Credentials needed",
+      "needs_rerun": "Rerun needed",
+      "evaluation_failed": "Evaluation failed",
+      "published": "Published",
+      "local_draft": "Local/draft"
+    },
+    "deleteConfirm": "Delete Confirm",
+    "addSkill": "Add skill",
+    "dialogTitle": {
+      "new": "New",
+      "edit": "Edit"
+    },
+    "dialogDescription": "Dialog Description",
+    "form": {
+      "name": "Name",
+      "namePlaceholder": "Name Placeholder",
+      "description": "Description",
+      "descriptionPlaceholder": "Description Placeholder",
+      "content": "Content",
+      "contentPlaceholder": "Content Placeholder"
+    },
+    "firstSkill": "Build first skill by chat",
+    "modified": "Modified {date}",
+    "empty": {
+      "title": "Empty",
+      "description": "Add a skill to give agents reusable knowledge or workflows.",
+      "filtered": "Filtered"
+    },
+    "uploadSkill": "Upload Skill",
+    "packageBadge": "Package Badge",
+    "hasScripts": "Has Scripts",
+    "readOnly": "Read Only",
+    "toast": {
+      "created": "Created",
+      "createFailed": "Operation failed.",
+      "updated": "Updated",
+      "updateFailed": "Operation failed.",
+      "deleted": "Deleted",
+      "deleteFailed": "Operation failed.",
+      "uploaded": "Uploaded",
+      "uploadFailed": "Operation failed."
+    },
+    "createDialog": {
+      "title": "New Skill",
+      "description": "Build a high-quality package skill by chat, or add a text skill or package directly.",
+      "tabs": {
+        "chat": "Build by chat",
+        "text": "Text",
+        "package": "Package",
+        "scratch": "Start over"
+      },
+      "chat": {
+        "description": "Describe the skill goal, example inputs, and expected output in natural language. The dedicated builder will draft files and show validation in the next step.",
+        "request": "Request",
+        "placeholder": "Example: Create a skill that turns meeting notes into a table of owners, tasks, and due dates.",
+        "required": "Enter a request first.",
+        "submit": "Start chat"
+      },
+      "text": {
+        "name": "Name",
+        "slug": "Slug",
+        "slugPlaceholder": "Slug Placeholder",
+        "description": "Description",
+        "content": "Content",
+        "required": "Required",
+        "created": "Created",
+        "saveFailed": "Save failed"
+      },
+      "package": {
+        "description": "Upload a packaged skill archive.",
+        "uploaded": "Uploaded",
+        "uploadFailed": "Upload Failed",
+        "submit": "Submit"
+      },
+      "scratch": {
+        "description": "Start with an empty text skill.",
+        "name": "Name",
+        "namePlaceholder": "my-helpful-skill",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Description Placeholder",
+        "zipFailed": "Zip Failed",
+        "created": "Created",
+        "failed": "Failed",
+        "submit": "Submit"
+      }
+    },
+    "health": {
+      "ready": "Verified",
+      "needs_evaluation": "Not evaluated",
+      "needs_rerun": "Rerun needed",
+      "needs_credentials": "Credentials needed",
+      "evaluation_running": "Evaluation running",
+      "evaluation_failed": "Evaluation failed",
+      "low_confidence": "Low pass rate"
+    },
+    "evaluationSummary": {
+      "passRate": "Eval {rate}%",
+      "status": {
+        "queued": "Evaluation queued",
+        "running": "Evaluation running",
+        "grading": "Grading",
+        "completed": "Evaluation complete",
+        "failed": "Evaluation failed",
+        "cancelled": "Evaluation cancelled",
+        "missing": "Not evaluated",
+        "stale": "Rerun needed",
+        "partial": "Partial evaluation",
+        "passed": "Evaluation passed"
+      }
+    },
+    "compatibility": {
+      "title": "Portable compatibility",
+      "empty": "No compatibility result yet.",
+      "targetCount": "{count} targets",
+      "noIssues": "No compatibility issues recorded.",
+      "target": {
+        "openaiCodex": "OpenAI/Codex",
+        "claudeCode": "Claude Code",
+        "vercelAgentSkills": "Vercel Agent Skills"
+      },
+      "status": {
+        "pass": "Pass",
+        "warning": "Warning",
+        "error": "Error",
+        "unknown": "Unknown"
+      }
+    },
+    "detailDialog": {
+      "save": "Save",
+      "saved": "Saved",
+      "saveFailed": "Save failed",
+      "deleted": "Deleted",
+      "deleteFailed": "Delete failed",
+      "deleteSkill": "Delete Skill",
+      "fileEntity": "File Entity",
+      "loadFailed": "Failed to load: {message}",
+      "discardConfirm": "Discard changes to {path}?",
+      "fileSaved": "Saved {path}",
+      "fileDeleted": "Deleted {path}",
+      "pathRequired": "Path Required",
+      "fileExists": "File Exists",
+      "fileCreated": "Created {path}",
+      "createFailed": "Create Failed",
+      "files": "Files",
+      "addFile": "Add File",
+      "add": "Add",
+      "newPathPlaceholder": "path/to/new-file.md",
+      "create": "Create",
+      "cancel": "Cancel",
+      "unsavedCount": "{count} unsaved",
+      "usedBy": "{bytes}b · v{version} · used by {count}",
+      "exportPackage": "Export .skill",
+      "saveFile": "Save File",
+      "pickFile": "Pick File",
+      "unsaved": "Unsaved",
+      "deleteFile": "Delete File",
+      "protected": "Protected",
+      "openOriginal": "Open Original",
+      "openPdf": "Open Pdf",
+      "binaryFile": "Binary File",
+      "binaryUnavailable": "Binary Unavailable",
+      "download": "Download",
+      "credentialsEmpty": "This skill does not require credentials.",
+      "evaluation": {
+        "emptyTitle": "No evaluation set yet",
+        "emptyDescription": "When the builder or Evaluation tab creates criteria, you can rerun them here.",
+        "caseCount": "{count} cases",
+        "runAgain": "Run again",
+        "runAgainPending": "Running…",
+        "runAgainFor": "Run {name} evaluation again",
+        "estimatePending": "Checking…",
+        "estimateTitle": "Confirm evaluation run",
+        "estimateDescription": "Run {name} again against the current skill content.",
+        "estimateCaseCount": "Cases",
+        "estimateModelCalls": "Model calls",
+        "estimateDuration": "Estimated time",
+        "estimateTimeout": "Timeout",
+        "estimateCost": "Estimated cost",
+        "estimateBaseline": "Baseline comparison",
+        "estimateBaselineHint": "Also runs each case without the skill to measure the improvement. Turn off for fewer model calls per case — faster and cheaper.",
+        "estimateSeconds": "{count}s",
+        "estimateCancel": "Cancel",
+        "estimateConfirm": "Run evaluation",
+        "cancelRun": "Cancel evaluation",
+        "cancelPending": "Cancelling…",
+        "cancelRunFor": "Cancel {name} evaluation",
+        "connectCredentials": "Connect credentials",
+        "connectCredentialsFor": "Connect credentials for {name}",
+        "selectSet": "Select {name} evaluation set",
+        "runHistoryTitle": "Run history",
+        "noRunHistory": "No run history yet.",
+        "viewRun": "View run {id}",
+        "detailTitle": "Selected run detail",
+        "noRunDetail": "Select a run to see detailed results.",
+        "staleRun": "Rerun needed",
+        "metric": {
+          "passRate": "Pass rate {rate}%",
+          "triggerAccuracy": "Trigger accuracy {rate}%",
+          "averageDuration": "Average {seconds}s",
+          "tokenDelta": "Tokens {count}"
+        },
+        "caseResultsTitle": "Case results",
+        "noCaseResults": "No case results recorded.",
+        "errorTitle": "Failure reason",
+        "caseTitle": "Case {number}",
+        "status": {
+          "queued": "Evaluation queued",
+          "running": "Evaluation running",
+          "grading": "Grading",
+          "completed": "Evaluation complete",
+          "failed": "Evaluation failed",
+          "cancelled": "Evaluation cancelled"
+        },
+        "abBenchmark": {
+          "title": "A/B benchmark (with vs without skill)",
+          "measured": "Measured",
+          "estimated": "Estimated",
+          "baselineSkipped": "Baseline arm skipped",
+          "withSkill": "With skill",
+          "withoutSkill": "Without skill",
+          "passRateDelta": "Pass-rate delta {rate}",
+          "tokenDelta": "Token delta {count}",
+          "durationDelta": "Latency delta {count}ms"
+        },
+        "usage": {
+          "title": "Usage & cost",
+          "window": "Last {days} days",
+          "tokens": "Tokens",
+          "cost": "Cost",
+          "costUnknown": "No pricing",
+          "evaluationRuns": "Evaluation runs",
+          "executions": "Chat executions",
+          "unpricedHint": "{count} events had no pricing and are excluded from cost."
+        },
+        "usageLine": {
+          "title": "Measured usage for this run",
+          "modelCalls": "{count} model calls",
+          "tokens": "{count} tokens",
+          "tokensUnknown": "Tokens unknown",
+          "cost": "{value} cost",
+          "costUnknown": "No pricing for cost"
+        },
+        "feedback": {
+          "title": "Was this skill helpful?",
+          "displayOnly": "Display only — never affects pass rate",
+          "rateUp": "Helpful",
+          "rateDown": "Not helpful",
+          "commentOpen": "Add comment",
+          "commentClose": "Close comment",
+          "commentPlaceholder": "Tell us what worked or what fell short",
+          "commentHint": "The comment is saved together with your rating."
+        },
+        "caseFeedback": {
+          "prompt": "Agree with the verdict?",
+          "agree": "Agree with case {number} verdict",
+          "disagree": "Disagree with case {number} verdict",
+          "commentOpen": "Comment",
+          "commentClose": "Close",
+          "commentPlaceholder": "Share your take on this verdict"
+        },
+        "versionStats": {
+          "title": "Pass rate by version",
+          "hint": "Latest pass rate of completed evaluation runs grouped by skill version.",
+          "runCount": "{count} runs"
+        },
+        "estimateCostUnpriced": "No pricing",
+        "estimateRunnerModel": "Runner model"
+      },
+      "history": {
+        "empty": "History starts from the current version.",
+        "revision": "Revision {number}",
+        "current": "Current",
+        "selected": "Selected",
+        "view": "View",
+        "viewRevision": "View revision {number}",
+        "detailTitle": "Revision {number} detail",
+        "noDetail": "Select a revision to see its details.",
+        "contentHash": "Content hash",
+        "fileCount": "Files",
+        "files": "{count} files",
+        "changelog": "Changelog",
+        "changedFiles": "Changed files",
+        "evaluationSnapshot": "Evaluation snapshot",
+        "noItems": "No items recorded.",
+        "notRecorded": "Not recorded yet.",
+        "rollback": "Roll back to this version",
+        "rollbackFor": "Roll back to revision {number}",
+        "rollbackPending": "Rolling back…",
+        "rollbackCurrentDisabled": "The current version cannot be rolled back.",
+        "rollbackTitle": "Roll back to revision {number}?",
+        "rollbackDescription": "Rolling back preserves the current content as a new history entry.",
+        "rollbackConfirm": "Roll back",
+        "operation": {
+          "create": "Created",
+          "manual_metadata_update": "Metadata edited",
+          "manual_content_update": "Content edited",
+          "manual_file_update": "File edited",
+          "builder_create": "Builder created",
+          "builder_improvement": "Builder improvement",
+          "rollback": "Rollback"
+        },
+        "passRate": "Pass {rate}%"
+      },
+      "metadata": {
+        "name": "Name",
+        "description": "Description",
+        "version": "Version"
+      },
+      "credentialBindingsTitle": "Credential bindings",
+      "credentialBindingsDescription": "Choose the credential this skill should use when it runs. Changes apply from the next run.",
+      "credentialPlaceholder": "Select a credential",
+      "requiredCredential": "Required",
+      "optionalCredential": "Optional",
+      "missingRequiredCredentials": "{count} required credentials missing",
+      "allRequiredCredentialsBound": "All required credentials are connected",
+      "credentialConnected": "Connected",
+      "credentialMissing": "Not connected",
+      "credentialUpdated": "Skill credential updated.",
+      "credentialCleared": "Skill credential disconnected.",
+      "credentialUpdateFailed": "Failed to update credential."
+    },
+    "builderChat": {
+      "title": "Skill Builder",
+      "backToSkills": "Back to skills",
+      "modeCreate": "New skill",
+      "modeImprove": "Improve",
+      "emptyTitle": "Build a skill through conversation",
+      "emptyHint": "Describe the skill you want and the agent will edit the draft files incrementally. Attach example files to try the draft before saving.",
+      "sessionUnavailableTitle": "Builder session unavailable",
+      "sessionUnavailableHint": "The session expired or its conversation was cleaned up. Start a new builder session from the skills page.",
+      "railTitle": "Draft status",
+      "filesTitle": "Draft files",
+      "filesEmpty": "No draft files yet.",
+      "changedCount": "{count} changed",
+      "completedTitle": "Skill saved",
+      "openSkill": "Open skill",
+      "startFailed": "Failed to start the builder session.",
+      "status": {
+        "active": "Active",
+        "collecting": "Collecting",
+        "drafting": "Drafting",
+        "review": "Review",
+        "confirming": "Confirming",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "abandoned": "Abandoned"
+      },
+      "improveDefaultRequest": "I want to improve this existing skill.",
+      "helperCreate": "Chat fills in the package and validation as you go",
+      "helperImprove": "The conversation updates SKILL.md and the eval set in real time",
+      "viewSource": "View source",
+      "closeSource": "View status",
+      "sourceTitle": "Draft source",
+      "sourceBack": "Back to status",
+      "railSubtitleCreate": "New skill draft · fills in as you chat",
+      "railSubtitleImprove": "Source v{version} · re-validated live as you chat",
+      "railSubtitleImproveNoVersion": "Source skill · re-validated live as you chat",
+      "tryHint": "Try with an example — “Test it on this example”",
+      "tryHintPrefill": "Test the draft on this example: ",
+      "headPill": {
+        "pending": "In review",
+        "pass": "Passing",
+        "warn": "{count} warnings",
+        "error": "{count} errors"
+      },
+      "tone": {
+        "pending": "Not validated",
+        "pass": "Pass",
+        "good": "Good",
+        "warn": "Warning",
+        "error": "Error"
+      },
+      "statusRow": {
+        "frontmatter": "Portable frontmatter",
+        "moldyMetadata": "Standard / Moldy field separation",
+        "trigger": "Description trigger clarity",
+        "secrets": "Secret scan",
+        "runtimeCompat": "Runtime compatibility",
+        "credentials": "Credentials required",
+        "sandbox": "Sandbox execution",
+        "evaluation": "Evaluation",
+        "other": "Other checks ({count})"
+      },
+      "statusValue": {
+        "none": "None",
+        "credentialCount": "{count} required",
+        "scriptsPresent": "Has scripts",
+        "noScripts": "No scripts",
+        "evalsReady": "Cases ready",
+        "evalsPending": "Not evaluated"
+      }
+    },
+    "studio": {
+      "tabsAria": "Skill studio views",
+      "tabs": {
+        "list": "List",
+        "builder": "Builder",
+        "evaluation": "Evaluation",
+        "versions": "Versions",
+        "source": "Source",
+        "settings": "Settings"
+      },
+      "contextBar": {
+        "currentSkill": "Working on",
+        "newDraft": "New skill draft",
+        "passRate": "Pass rate",
+        "passRateValue": "{percent}%",
+        "connectedAgents": "Connected agents",
+        "switchSkill": "Switch to another skill",
+        "noOtherSkills": "No other skills",
+        "improve": "Improve via chat"
+      },
+      "skillUnavailableTitle": "Skill not found",
+      "skillUnavailableHint": "This skill was deleted or you don't have access to it.",
+      "backToList": "Back to skills",
+      "builderIndex": {
+        "title": "Skill Builder",
+        "hint": "Sessions where you built or improved skills via chat.",
+        "scopedHint": "Builder sessions for {name}.",
+        "startCreate": "Create via chat",
+        "improveSkill": "Improve {name}",
+        "emptyTitle": "No builder sessions yet",
+        "emptyHint": "Start a chat to build a skill and sessions will appear here.",
+        "updatedAt": "Updated {time}"
+      },
+      "settings": {
+        "metadataTitle": "Metadata",
+        "credentialsTitle": "Credential bindings",
+        "actionsTitle": "Publish · Export · Delete",
+        "deleteHint": "Connected to {count} agents — deleting also removes those links.",
+        "deleteTitle": "Delete {name}",
+        "deleteDescription": "This also removes links from {count} connected agents and cannot be undone."
+      },
+      "list": {
+        "uploadPackage": "Upload package",
+        "selectedCount": "{count} selected",
+        "deleteSelected": "Delete",
+        "clearSelection": "Clear selection",
+        "bulkDeleteTitle": "Delete {count, plural, one {# skill} other {# skills}}",
+        "bulkDeleteDescription": "{names} — this cannot be undone.",
+        "bulkDeleteDescriptionConnected": "{names} — this also removes links from {connected, plural, one {# connected agent} other {# connected agents}} and cannot be undone.",
+        "deleteSuccess": "Deleted {count, plural, one {# skill} other {# skills}}",
+        "deletePartialFailure": "Failed to delete: {names}",
+        "rowImprove": "Edit",
+        "rowImproveAria": "Improve {name} via chat",
+        "rowEvaluation": "Evaluate",
+        "rowVersions": "Versions",
+        "rowMenuAria": "More actions for {name}",
+        "rowViewSource": "View source",
+        "rowExport": "Export .skill",
+        "rowDelete": "Delete",
+        "affectedAgents": "Affected agents: {names}",
+        "moreNames": "and {count, plural, one {# more} other {# more}}",
+        "affectedAgentsLoading": "Checking affected agents…",
+        "affectedAgentsError": "Could not load the affected agents — only the link count is shown."
+      },
+      "versions": {
+        "diffTitle": "SKILL.md diff",
+        "initialRevision": "Initial revision",
+        "prunedPlaceholder": "This snapshot was pruned — contents are unavailable.",
+        "diffUnavailable": "Cannot read SKILL.md for this revision.",
+        "parentUnavailable": "The previous revision snapshot is unavailable for comparison.",
+        "noChanges": "No SKILL.md changes",
+        "viewRevisionSource": "View source at this version",
+        "revisionSourceLabel": "Revision {number} source",
+        "revisionSourceLoading": "Loading revision…",
+        "readOnly": "Read-only",
+        "backToVersions": "Back to versions",
+        "backToCurrent": "View current version",
+        "revisionFilesAria": "Revision file list",
+        "binaryFile": "Binary",
+        "noTextFiles": "No text files to display.",
+        "fileUnavailable": "Cannot read this file.",
+        "diffTooLarge": "The change is too large to render as a diff — use the source view.",
+        "revisionSourceError": "Could not load this revision. Check that the link is valid."
+      }
+    }
+  },
+  "marketplace": {
+    "card": {
+      "resource": {
+        "skill": "Skill",
+        "agent": "Agent",
+        "mcp": "MCP"
+      },
+      "owner": {
+        "system": "System",
+        "community": "Community"
+      },
+      "cta": {
+        "install": "Install",
+        "open": "Open",
+        "setup": "Setup",
+        "update": "Update",
+        "review_update": "Review update",
+        "view_details": "View details",
+        "manage": "Manage",
+        "disabled": "Disabled"
+      }
+    },
+    "badges": {
+      "publication": {
+        "not_published": "Not published",
+        "draft": "Draft",
+        "published_private": "Private",
+        "published_restricted": "Restricted",
+        "published_public_listed": "Public · listed",
+        "published_public_unlisted": "Public · pending listing",
+        "published_unlisted": "Link only",
+        "disabled": "Disabled"
+      },
+      "credential": {
+        "none": "No credentials",
+        "optional": "Credentials optional",
+        "required": "Credentials required",
+        "hosted_proxy": "Hosted proxy",
+        "manual_login": "Manual login"
+      },
+      "origin": {
+        "created_by_me": "Created by me",
+        "imported_by_me": "Imported by me",
+        "built_in_k_skill": "Built-in · k-skill",
+        "shared_with_me": "Shared with me",
+        "sharedBy": "Shared by {name}",
+        "community": "Community",
+        "system_seed": "System"
+      }
+    },
+    "catalog": {
+      "title": "Marketplace",
+      "description": "Browse agents, tools, and skills shared through the marketplace.",
+      "categoriesLabel": "Marketplace categories",
+      "count": "{count} items",
+      "tabs": {
+        "all": "All",
+        "skills": "Skills",
+        "agents": "Agents",
+        "mcp": "MCP",
+        "installed": "Installed"
+      },
+      "empty": {
+        "title": "No items match your filters",
+        "description": "Try clearing the filters or syncing the k-skill catalog (admin)."
+      },
+      "comingSoon": {
+        "title": "Coming soon",
+        "agents": "The agent marketplace is planned for Phase 3.",
+        "mcp": "The MCP marketplace is planned for Phase 2."
+      }
+    },
+    "moderation": {
+      "title": "Marketplace moderation",
+      "description": "Review marketplace submissions and publication status.",
+      "back": "Back to marketplace",
+      "loading": "Loading…",
+      "queueTitle": "Pending items",
+      "syncTitle": "k-skill sync status",
+      "denied": {
+        "title": "Operators only",
+        "description": "You do not have permission to access moderation."
+      },
+      "queueEmpty": {
+        "title": "No items waiting for review",
+        "description": "All publicly published items have been approved."
+      },
+      "actions": {
+        "review": "Review",
+        "approve": "Approve",
+        "disable": "Disable"
+      },
+      "sync": {
+        "count": "Item count:",
+        "lastUpdated": "Last updated:",
+        "command": "uv run python -m app.scripts.sync_k_skill --ref main",
+        "cliOnly": "Sync can only be run from the CLI."
+      },
+      "toast": {
+        "disabled": "Item disabled",
+        "disableFailed": "Failed to disable the item.",
+        "approved": "Published to the catalog",
+        "approveFailed": "Failed to approve the item."
+      }
+    },
+    "detail": {
+      "back": "Back to marketplace",
+      "saving": "Saving…",
+      "error": {
+        "notFound": "Item not found",
+        "loadFailed": "Failed to load the item",
+        "description": "The marketplace item could not be loaded."
+      },
+      "versions": {
+        "title": "Versions",
+        "emptyTitle": "No published versions yet",
+        "emptyDescription": "You can publish the first version from the skill detail page.",
+        "latest": "Latest"
+      },
+      "executionProfile": {
+        "title": "Execution Profile",
+        "empty": "No execution profile registered.",
+        "supportLevel": {
+          "one_click": "One-click install",
+          "ready_python": "Python ready",
+          "proxy_http": "Proxy required",
+          "node_package": "Node required",
+          "browser_or_local": "Browser/local required",
+          "manual_only": "Manual setup",
+          "disabled": "Not supported"
+        },
+        "labels": {
+          "support_level": "Support level",
+          "runners": "Runners",
+          "requires_network": "Requires network",
+          "requires_python": "Requires Python",
+          "requires_node": "Requires Node",
+          "requires_browser": "Requires browser",
+          "requires_local_app": "Requires local app",
+          "requires_manual_login": "Requires manual login",
+          "stdio_risk": "stdio risk",
+          "timeout_seconds": "Timeout",
+          "tool_dependencies": "Hosted tools",
+          "notes": "Notes"
+        },
+        "boolean": {
+          "required": "Required",
+          "notRequired": "Not required"
+        },
+        "none": "None"
+      },
+      "management": {
+        "admin": "Operator controls",
+        "owner": "Owner controls",
+        "visibility": "Visibility:",
+        "help": "<private>Unpublish</private>: only you can see the item and new installs by other users are blocked. <disabled>Disable</disabled>: an operator block — new installs by other users are permanently blocked. In both cases, already-installed copies are not affected."
+      },
+      "visibility": {
+        "private": "Private",
+        "restricted": "Restricted",
+        "public": "Public",
+        "unlisted": "Unlisted"
+      },
+      "actions": {
+        "unpublish": "Unpublish",
+        "unpublishing": "Unpublishing",
+        "enable": "Enable",
+        "enabling": "Enabling",
+        "disable": "Disable",
+        "disabling": "Disabling"
+      },
+      "acl": {
+        "title": "Shared with (restricted)",
+        "empty": "No users have been shared yet. Adding users currently requires calling the ACL endpoint directly (a wizard is planned for a later slice).",
+        "revoke": "Revoke",
+        "lastTargetHint": "To remove the last target, change the visibility to another value first."
+      },
+      "toast": {
+        "requestFailed": "Request failed.",
+        "disabled": "Item disabled",
+        "disableFailed": "Failed to disable the item.",
+        "enabled": "Re-enabled — catalog exposure depends on the visibility and listing settings.",
+        "enableFailed": "Failed to re-enable the item.",
+        "alreadyPrivate": "The item is already private.",
+        "unpublished": "Unpublished — hidden from the catalog. Already-installed copies are not affected.",
+        "unpublishFailed": "Failed to unpublish the item.",
+        "aclRevoked": "Sharing revoked",
+        "aclRevokeFailed": "Failed to revoke sharing.",
+        "lastAclRequired": "A restricted item cannot drop its last ACL target. Change the visibility first.",
+        "visibilityFailed": "Failed to change visibility.",
+        "aclRequired": "Switching to restricted requires at least one shared user. Add a target and try again."
+      },
+      "visibilitySuccess": {
+        "private": "Switched to private. The item is no longer shown in the catalog.",
+        "public": "Switched to public. Catalog listing is pending super_user approval.",
+        "unlisted": "Switched to unlisted (link only).",
+        "restricted": "Switched to restricted. Add ACL targets."
+      }
+    },
+    "filters": {
+      "searchPlaceholder": "Search the marketplace…",
+      "sourceFilter": "Source filter",
+      "sourcePlaceholder": "Source",
+      "allSources": "All sources",
+      "supportFilter": "Support filter",
+      "supportPlaceholder": "Support",
+      "allSupport": "All support levels",
+      "installStateFilter": "Install state filter",
+      "installStatePlaceholder": "Install state",
+      "allInstallStates": "All states",
+      "pendingOnly": "Show pending items",
+      "reset": "Reset",
+      "support": {
+        "oneClick": "One-click install",
+        "readyPython": "Python ready",
+        "proxyHttp": "Proxy required",
+        "nodePackage": "Node required",
+        "browserOrLocal": "Browser/local required",
+        "manualOnly": "Manual setup",
+        "disabled": "Not supported"
+      },
+      "source": {
+        "user": "User",
+        "kSkill": "k-skill",
+        "import": "Import",
+        "systemSeed": "System"
+      },
+      "installState": {
+        "active": "Active",
+        "needsSetup": "Needs setup",
+        "disabled": "Disabled"
+      }
+    },
+    "installation": {
+      "active": "Installed",
+      "needsSetup": "Needs setup",
+      "disabled": "Disabled",
+      "uninstalled": "Not installed",
+      "updateAvailable": "Update available",
+      "dirty": "Modified"
+    },
+    "installWizard": {
+      "title": "Install {name}",
+      "steps": {
+        "review": "Review",
+        "credentials": "Credentials",
+        "confirm": "Confirm",
+        "done": "Done"
+      },
+      "actions": {
+        "close": "Close",
+        "cancel": "Cancel",
+        "back": "Previous",
+        "install": "Install",
+        "installing": "Installing",
+        "next": "Next",
+        "retry": "Retry"
+      },
+      "toast": {
+        "installed": "Installed {name}.",
+        "installedNeedsSetup": "Installed {name}. Finish setup before using it."
+      },
+      "review": {
+        "resourceType": "Resource type:",
+        "latestVersion": "Latest version:",
+        "supportLevel": "Support level:",
+        "hostedTools": "Includes hosted tools:",
+        "customName": "Custom name (optional)"
+      },
+      "credentialHelp": "Connect credentials required by this marketplace resource. Optional items can be skipped. Missing required credentials leave the installation in <code>needs_setup</code>.",
+      "loadingVersion": "Loading version details…",
+      "optional": "(optional)",
+      "type": "Type:",
+      "loadingCredentials": "Loading credentials…",
+      "selectCredential": "Select a credential…",
+      "skip": "Set up later (needs setup)",
+      "missingType": "No credential of type <type></type> exists yet.",
+      "createCredential": "Create one on the Credentials page →",
+      "requiredMissing": "If you skip this, the install will be marked <code>needs_setup</code>.",
+      "confirm": {
+        "intro": "This will:",
+        "create": {
+          "skill": "Create a skill owned by you (origin: imported_by_me)",
+          "agent": "Add it to your agent blueprints",
+          "mcp": "Add it to your MCP servers"
+        },
+        "copy": {
+          "skill": "Copy package files into the data directory",
+          "agent": "Copy agent configuration and dependency metadata into a blueprint",
+          "mcp": "Copy MCP server connection settings and tool snapshot"
+        },
+        "bind": "Bind {count} credential(s):",
+        "needsSetup": "Marked as needs_setup — missing required credentials: {keys}",
+        "name": "Name:",
+        "version": "Version:"
+      },
+      "done": {
+        "title": "{name} installed",
+        "description": {
+          "skill": "Open the skill or attach it to an agent when you are ready.",
+          "agent": "Choose this blueprint from the agent template screen to create a new agent.",
+          "mcp": "Open the MCP server list to review settings and attach it to agents."
+        },
+        "open": {
+          "skill": "Open skill",
+          "agent": "Open blueprint",
+          "mcp": "Open MCP server"
+        }
+      },
+      "errors": {
+        "notFound": "This item could not be found or you do not have access.",
+        "disabled": "This item has been disabled.",
+        "credentialMismatch": "The selected credential does not match the requirement. Choose a different one.",
+        "credentialRequired": "A required credential is missing.",
+        "loadVersion": "Could not load version details. Retry to set up its credentials.",
+        "failed": "Installation failed.",
+        "network": "A network error occurred. Please try again."
+      }
+    },
+    "publishWizard": {
+      "title": "Publish {name}",
+      "description": "Publish this resource to the marketplace.",
+      "steps": {
+        "review": "Review",
+        "metadata": "Metadata",
+        "visibility": "Visibility",
+        "confirm": "Confirm"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "back": "Previous",
+        "publish": "Publish",
+        "publishing": "Publishing",
+        "next": "Next"
+      },
+      "toast": {
+        "published": "Published to the marketplace"
+      },
+      "reviewHint": "A secret scan runs automatically before publishing. If any files are blocked, come back to step 1, remove them, and try again.",
+      "review": {
+        "skill": "Skill",
+        "agent": "Agent Blueprint",
+        "mcp": "MCP Server"
+      },
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "icon": "Icon",
+        "releaseNotes": "Release Notes",
+        "visibility": "Visibility",
+        "acl": "Shared user IDs (comma-separated)"
+      },
+      "visibility": {
+        "private": "Private",
+        "restricted": "Restricted",
+        "public": "Public",
+        "unlisted": "Unlisted"
+      },
+      "aclHint": "Phase 1: a user lookup picker is coming in a later slice. For now, enter user UUIDs directly.",
+      "publicHint": "Even after publishing publicly, catalog search exposure requires operator approval.",
+      "confirmIntro": "This will:",
+      "confirmCreateItem": "Create a marketplace item",
+      "confirmCreateVersion": "Create a new version snapshot",
+      "visibilityLabel": "Visibility:",
+      "aclSummary": "Visible to {count} selected users or groups.",
+      "errors": {
+        "aclRequired": "Restricted publishing requires at least one shared user.",
+        "aclInvalid": "Some user IDs are not valid. Enter UUIDs in 8-4-4-4-12 format.",
+        "network": "A network error occurred."
+      }
+    },
+    "updateStrategy": {
+      "title": "Update {name}",
+      "ariaLabel": "Update strategy",
+      "toast": {
+        "updated": "Updated {name}.",
+        "installedNewCopy": "Installed a new copy of {name}."
+      },
+      "latestVersion": "Latest version:",
+      "actions": {
+        "cancel": "Cancel",
+        "updating": "Updating",
+        "confirm": "Confirm"
+      },
+      "dirtyWarning": "⚠ In a dirty state this option permanently deletes your direct edits.",
+      "strategies": {
+        "overwrite": {
+          "label": "Overwrite my edits",
+          "description": "Overwrite the installed copy with the latest version and discard your direct edits. In a dirty state this loses data."
+        },
+        "install_new_copy": {
+          "label": "Install as a new copy",
+          "description": "Keep the current install and add the latest version as a separate new skill row. You will need to manage both copies."
+        },
+        "keep_current": {
+          "label": "Keep current install",
+          "description": "Do not apply the update. The install stays unchanged until the next update-available state appears."
+        }
+      },
+      "errors": {
+        "dirty": "This install is dirty. Explicitly choose overwrite or install_new_copy.",
+        "disabled": "The source marketplace item has been disabled.",
+        "failed": "Update failed.",
+        "network": "A network error occurred. Please try again."
+      },
+      "description": {
+        "dirty": "This install has direct edits. You must explicitly choose an update strategy.",
+        "default": "Update to the latest marketplace version."
+      }
+    }
+  },
+  "provider": {
+    "pageTitle": "Page title",
+    "addProvider": "Add Provider",
+    "editProvider": "Edit Provider",
+    "dialogDescription": {
+      "new": "New",
+      "edit": "Edit"
+    },
+    "providerType": "Provider Type",
+    "types": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "google": "Google (Gemini)",
+      "openrouter": "OpenRouter",
+      "openai_compatible": "OpenAI Compatible (Ollama, vLLM)"
+    },
+    "name": "Name",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "testConnection": "Test Connection",
+    "registerAndTest": "Register And Test",
+    "testing": "Testing",
+    "testSuccess": "Test Success",
+    "testFailed": "Test Failed",
+    "connected": "Connected",
+    "noKey": "No Key",
+    "setupApiKey": "Setup API Key",
+    "modelCount": "{count} models",
+    "deleteConfirm": "Delete Confirm",
+    "deleteLabel": "Delete {name}",
+    "createSuccess": "Create Success",
+    "createError": "Create Error",
+    "updateError": "Update Error",
+    "empty": {
+      "title": "Empty",
+      "description": "Add a provider to register and test models."
+    }
+  },
+  "model": {
+    "pageTitle": "Page title",
+    "addModel": "Add Model",
+    "dialogTitle": {
+      "new": "New",
+      "edit": "Edit"
+    },
+    "dialogDescription": {
+      "new": "New",
+      "edit": "Edit"
+    },
+    "provider": "Provider",
+    "providerPlaceholder": "Provider Placeholder",
+    "sourceBadge": {
+      "manual": "Manual",
+      "catalog": "Catalog",
+      "manualTooltip": "Manual Tooltip",
+      "catalogTooltip": "Catalog source: {source}",
+      "source": {
+        "openrouter": "OpenRouter",
+        "litellm": "LiteLLM",
+        "manual": "Manual"
+      }
+    },
+    "providers": {
+      "openai": "OpenAI",
+      "anthropic": "Anthropic",
+      "google": "Google",
+      "openrouter": "OpenRouter",
+      "openai_compatible": "Custom",
+      "custom": "Custom"
+    },
+    "modelName": "Model Name",
+    "displayName": "Display Name",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "defaultBadge": "Default Badge",
+    "setDefault": "Set Default",
+    "alreadyDefault": "Already Default",
+    "editLabel": "Edit {name}",
+    "deleteLabel": "Delete {name}",
+    "contextWindow": "Context Window",
+    "inputModalities": "Input Modalities",
+    "outputModalities": "Output Modalities",
+    "discoverModels": "Discover Models",
+    "discovering": "Discovering",
+    "discoverEmpty": "Discover Empty",
+    "selectModels": "Select Models",
+    "registerSelected": "Register {count} selected",
+    "allProviders": "All Providers",
+    "searchModels": "Search Models",
+    "deleteConfirm": "Delete Confirm",
+    "discoverError": "Discover Error",
+    "alreadyRegistered": "Already Registered",
+    "manualAdd": "Manual Add",
+    "selectProvider": "Select Provider",
+    "stepProvider": "Step Provider",
+    "stepDiscover": "Select model",
+    "stepRegister": "Register",
+    "empty": {
+      "title": "Empty",
+      "description": "Add a model to make it available to agents."
+    },
+    "tab": {
+      "providers": "Providers",
+      "models": "Models"
+    },
+    "modelDetail": "Model Detail",
+    "maxInputTokens": "Max Input Tokens",
+    "maxOutputTokens": "Max Output Tokens",
+    "inputCost": "Input Cost",
+    "outputCost": "Output Cost",
+    "perMillionTokens": "Per Million Tokens",
+    "capabilities": "Capabilities",
+    "vision": "Vision",
+    "functionCalling": "Function Calling",
+    "reasoning": "Reasoning",
+    "modalities": "Modalities",
+    "visibleToUsers": "Visible To Users",
+    "allCapabilities": "All Capabilities",
+    "agentCount": "Used by {count} agents",
+    "cannotDeleteInUse": "Cannot Delete In Use",
+    "deleteProviderWarning": "{count} models from this provider will be affected.",
+    "catalog": {
+      "title": "Models",
+      "description": "Discover models from connected providers and register them.",
+      "new": "New",
+      "hiddenBadge": "Hidden Badge",
+      "searchPlaceholder": "Search Placeholder",
+      "columns": {
+        "model": "Models",
+        "price": "Price",
+        "context": "Context",
+        "benchmarks": "Benchmarks",
+        "source": "Source",
+        "status": "Status",
+        "agents": "Agents"
+      },
+      "actions": {
+        "checkNow": "Check Now",
+        "checkNowFor": "Check {name} now",
+        "test": "Test",
+        "testFor": "Test {name}",
+        "testSelected": "Test Selected"
+      },
+      "filters": {
+        "hasBenchmark": "Has Benchmark",
+        "showHidden": "Show Hidden"
+      },
+      "health": {
+        "healthy": "Healthy",
+        "degraded": "Degraded",
+        "unhealthy": "Unhealthy",
+        "unknown": "Unknown"
+      },
+      "empty": {
+        "title": "Empty",
+        "description": "No catalog models found.",
+        "filtered": "Filtered"
+      },
+      "toast": {
+        "noCredential": "No Credential",
+        "healthCheckFailed": "Operation failed."
+      }
+    },
+    "relativeTime": {
+      "secondsAgo": "{count} seconds ago",
+      "minutesAgo": "{count} minutes ago",
+      "hoursAgo": "{count} hours ago",
+      "daysAgo": "{count} days ago"
+    },
+    "connectionTest": {
+      "costBanner": "Cost Banner",
+      "metrics": {
+        "latency": "Latency",
+        "tokens": "Tokens",
+        "cost": "Cost"
+      },
+      "idle": "Idle",
+      "testNow": "Test Now",
+      "testingPrefix": "Testing Prefix",
+      "testingSuffix": "...",
+      "thisModel": "This Model",
+      "success": "Success",
+      "successWithModel": "Connection succeeded with {model}.",
+      "response": "Response: {response}",
+      "hideDetails": "Hide Details",
+      "showDetails": "Show Details",
+      "retry": "Retry",
+      "unknownError": "Unknown Error",
+      "copied": "Copied",
+      "copy": "Copy",
+      "errorKind": {
+        "auth": "Auth",
+        "not_found": "Not found",
+        "rate_limit": "Rate limit",
+        "timeout": "Timeout",
+        "other": "Error"
+      },
+      "tabs": {
+        "request": "Request",
+        "response": "Response",
+        "curl": "Curl"
+      },
+      "empty": {
+        "request": "Request",
+        "response": "Response",
+        "curl": "Curl"
+      }
+    },
+    "addDialog": {
+      "title": "Add Dialog",
+      "description": "Register a model and configure pricing and capabilities.",
+      "tabs": {
+        "discover": "Discover",
+        "custom": "Custom"
+      },
+      "customHint": "Custom Hint",
+      "toast": {
+        "added": "Added",
+        "saveFailed": "Operation failed."
+      },
+      "fields": {
+        "provider": "Provider",
+        "modelId": "Model ID",
+        "displayName": "Display Name",
+        "baseUrl": "Base URL",
+        "inputPrice": "Input Price",
+        "outputPrice": "Output Price",
+        "contextWindow": "Context Window",
+        "testCredential": "Test Credential"
+      },
+      "providers": {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+        "openrouter": "OpenRouter",
+        "openai_compatible": "Openai compatible",
+        "azure_openai": "Azure OpenAI",
+        "other": "Other"
+      },
+      "placeholders": {
+        "modelId": "gpt-5-preview",
+        "displayName": "Display Name",
+        "baseUrl": "https://api.example.com/v1",
+        "selectCredential": "Select Credential"
+      },
+      "actions": {
+        "hideTest": "Hide Test",
+        "test": "Test",
+        "save": "Save"
+      }
+    },
+    "discoverPanel": {
+      "toast": {
+        "discoveryFailed": "Operation failed.",
+        "saved": "Saved successfully.",
+        "saveFailed": "Operation failed."
+      },
+      "llmCredential": "LLM Credential",
+      "noCredential": "No Credential",
+      "selectCredential": "Select Credential",
+      "discover": "Discover",
+      "emptyCredential": "Empty Credential",
+      "emptyResults": "Empty Results",
+      "searchPlaceholder": "Search Placeholder",
+      "toggleAll": "Toggle All",
+      "selectModel": "Select {name}",
+      "testModel": "Test {name}",
+      "alreadyRegistered": "Already Registered",
+      "test": "Test",
+      "inputPrice": "Input price: {price}",
+      "outputPrice": "Output price: {price}",
+      "context": "{count} context",
+      "selectedSummary": "{selected} selected of {shown} shown",
+      "saveSelected": "Save Selected"
+    },
+    "editDialog": {
+      "toast": {
+        "updated": "Updated",
+        "deleted": "Deleted",
+        "saveFailed": "Operation failed.",
+        "deleteFailed": "Operation failed.",
+        "deleteInUse": "Delete In Use",
+        "noCredential": "No Credential",
+        "healthCheckFailed": "Operation failed."
+      },
+      "tabs": {
+        "info": "Info",
+        "health": "Health"
+      },
+      "customIdBenchmarkHint": "Custom ID Benchmark Hint",
+      "testHint": "Test Hint",
+      "testConnection": "Test Connection",
+      "hideTest": "Hide Test",
+      "selectCredential": "Select Credential",
+      "fields": {
+        "displayName": "Display Name",
+        "inputPrice": "Input Price",
+        "outputPrice": "Output Price",
+        "contextWindow": "Context Window",
+        "maxOutputTokens": "Max Output Tokens",
+        "vision": "Vision",
+        "functionCalling": "Function Calling",
+        "reasoning": "Reasoning",
+        "setDefault": "Set Default"
+      },
+      "usage": "Used by {count} agents",
+      "delete": "Delete",
+      "deleteConfirm": "Delete Confirm",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "save": "Save",
+      "health": {
+        "latestProbe": "Latest Probe",
+        "empty": "No items yet.",
+        "checkNow": "Check Now"
+      }
+    },
+    "testDialog": {
+      "title": "Test Dialog",
+      "bulkTitle": "Test {count} models",
+      "bulkDescription": "Bulk Description",
+      "llmCredential": "LLM Credential",
+      "noCredential": "No Credential",
+      "selectCredential": "Select Credential",
+      "emptyCredential": "Empty Credential",
+      "progress": "{completed}/{total} complete",
+      "success": "{count} succeeded",
+      "failed": "{count} failed"
+    },
+    "rankings": {
+      "noData": "No Data",
+      "info": "Info {label}",
+      "title": "Rankings",
+      "summaryInfo": "Summary Info",
+      "tooltip": "Tooltip",
+      "emptyHint": "Empty Hint",
+      "badgeTitle": "{label}: {value}",
+      "items": {
+        "lmarena": {
+          "label": "LMArena",
+          "short": "LMArena",
+          "tooltip": "Tooltip"
+        },
+        "livebench": {
+          "label": "LiveBench",
+          "short": "LiveBench",
+          "tooltip": "Tooltip"
+        },
+        "aa_index": {
+          "label": "AA Index",
+          "short": "AA",
+          "tooltip": "Tooltip"
+        }
+      }
+    },
+    "select": {
+      "customHint": "Custom Hint",
+      "providerPlaceholder": "provider",
+      "providerLabel": "Provider Label",
+      "modelPlaceholder": "model id",
+      "modelLabel": "Model Label",
+      "test": "Test",
+      "fromList": "From List",
+      "selectCredential": "Select Credential",
+      "testFailed": "Test Failed",
+      "useCustom": "Use Custom",
+      "custom": "Custom"
+    }
+  },
+  "shared": {
+    "validation": {
+      "required": "{field} is required.",
+      "minLength": "Enter at least {min} characters.",
+      "maxLength": "Enter no more than {max} characters.",
+      "invalidFormat": "Invalid Format",
+      "number": "Number",
+      "min": "Must be at least {min}.",
+      "max": "Must be at most {max}.",
+      "invalidJson": "Invalid Json"
+    },
+    "healthHistory": {
+      "loadFailed": "Load failed",
+      "empty": "No items yet.",
+      "noLatency": "No Latency",
+      "latencyTitle": "Latency Title",
+      "summary": "Min {min} · Max {max} · {count} probes",
+      "chartLabel": "Chart Label",
+      "statusTimeline": "Status Timeline",
+      "oldestNewest": "Oldest Newest",
+      "pointTitle": "{relative} · {status} · {latency}ms",
+      "probeAt": "{status} probe at {checkedAt}",
+      "latencyValue": "Latency: {value}ms",
+      "noMessage": "No Message",
+      "relative": {
+        "seconds": "{count} seconds ago",
+        "minutes": "{count} minutes ago",
+        "hours": "{count} hours ago",
+        "days": "{count} days ago"
+      },
+      "status": {
+        "healthy": "Healthy",
+        "degraded": "Degraded",
+        "unhealthy": "Unhealthy",
+        "unknown": "Unknown"
+      }
+    }
+  },
+  "sharedConversation": {
+    "brand": "Moldy",
+    "headerCta": "Header CTA",
+    "eyebrow": "Eyebrow",
+    "history": "History",
+    "empty": "No items yet.",
+    "titleFallback": "Title Fallback",
+    "readingTime": {
+      "underOneMinute": "Under One Minute",
+      "minutes": "About {minutes} min read"
+    },
+    "footer": {
+      "title": "Footer",
+      "description": "Build and share no-code agents with tools and skills in Moldy.",
+      "cta": "CTA",
+      "messageCount": "{count} messages",
+      "madeWith": "Made With"
+    },
+    "error": {
+      "title": "Error",
+      "description": "The link may have expired or sharing may have been disabled. Ask the author for a new link.",
+      "home": "Home"
+    }
+  },
+  "appSettings": {
+    "title": "App Settings",
+    "description": "Manage your account and Moldy preferences.",
+    "navLabel": "Settings menu",
+    "nav": {
+      "account": "Account",
+      "api": "API",
+      "backToApp": "Back to App",
+      "profile": "Profile",
+      "memory": "Memory",
+      "security": "Security",
+      "appearance": "Appearance & Language",
+      "agentApi": "Agent API",
+      "audit": "Activity Log",
+      "resources": "Resources",
+      "artifacts": "Files",
+      "credentials": "Credentials",
+      "models": "Models",
+      "schedules": "Schedules",
+      "usage": "Usage",
+      "admin": "Admin",
+      "marketplaceAdmin": "Marketplace Admin",
+      "systemCredentials": "System Credentials",
+      "systemLlm": "System LLM Settings",
+      "adminAudit": "All Activity"
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Choose how Moldy and your agents display and address you.",
+      "profileSettings": "Profile settings",
+      "profileSettingsDescription": "You can change your display name and profile icon anytime.",
+      "accountInfo": "Account information",
+      "accountInfoDescription": "This information comes from your Moldy login session.",
+      "name": "Name",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "e.g. Chester",
+      "displayNameHelp": "You do not need to enter your legal name. Agents use this for natural address.",
+      "avatarTitle": "Profile icon",
+      "avatarDescription": "Shown in chat and the lower-left user menu.",
+      "avatarInitials": "Icon letters",
+      "avatarInitialsPlaceholder": "e.g. C",
+      "avatarAuto": "Auto",
+      "avatarInitialsMode": "Use letters",
+      "avatarColor": "Icon color",
+      "avatarModeLabel": "Icon mode",
+      "avatarImageMode": "Image",
+      "avatarLetterMode": "Letters",
+      "uploadImage": "Upload image",
+      "deleteImage": "Delete image",
+      "save": "Save",
+      "saved": "Profile saved.",
+      "imageUploaded": "Profile image saved.",
+      "imageDeleted": "Profile image deleted.",
+      "colors": {
+        "mint": "Mint",
+        "sky": "Sky",
+        "violet": "Violet",
+        "amber": "Amber",
+        "rose": "Rose",
+        "slate": "Slate"
+      },
+      "email": "Email",
+      "joinedAt": "Joined",
+      "lastLoginAt": "Last login",
+      "never": "No record",
+      "loading": "Loading profile.",
+      "adminBadge": "Admin"
+    },
+    "memory": {
+      "title": "Memory",
+      "description": "Manage the long-term memory your agents can read from and write to during conversations.",
+      "loading": "Loading memory settings.",
+      "scope": {
+        "user": "User",
+        "agent": "Agent"
+      },
+      "scopeFilter": {
+        "all": "All",
+        "user": "User",
+        "agent": "Agent"
+      },
+      "writePolicy": {
+        "off": "Do not save",
+        "ask": "Ask before saving",
+        "auto": "Save automatically"
+      },
+      "allowedScopes": {
+        "user": "User",
+        "agent": "Agent",
+        "both": "User + agent"
+      },
+      "triggerPolicy": {
+        "off": "Do not save from triggers",
+        "auto": "Auto-save from triggers"
+      },
+      "policy": {
+        "title": "Global memory policy",
+        "description": "Choose the default read and write behavior for every agent.",
+        "enabledBadge": "Enabled",
+        "disabledBadge": "Disabled",
+        "memoryEnabled": "Enable memory",
+        "memoryEnabledHelp": "When off, agents cannot read memory or save new records.",
+        "memoryReadEnabled": "Use memory in responses",
+        "memoryReadEnabledHelp": "When on, active memory is included in the runtime prompt.",
+        "writePolicy": "Conversation writes",
+        "writePolicyHelp": "Decide what happens when an agent discovers something worth remembering.",
+        "allowedScopes": "Allowed scopes",
+        "allowedScopesHelp": "Choose whether user-wide and agent-specific memory can be stored.",
+        "triggerPolicy": "Trigger writes",
+        "triggerPolicyHelp": "Allow or block memory writes during scheduled trigger runs.",
+        "save": "Save policy"
+      },
+      "create": {
+        "title": "Add memory",
+        "description": "Save important preferences or agent knowledge without waiting for a conversation.",
+        "scope": "Scope",
+        "agent": "Agent",
+        "agentDisabled": "User memory",
+        "agentHelp": "This memory is used only when chatting with the selected agent.",
+        "userHelp": "This memory is used as a user preference across all agents.",
+        "content": "New memory content",
+        "contentPlaceholder": "e.g. I prefer meetings after 3 PM.",
+        "reason": "Reason",
+        "reasonPlaceholder": "Optional",
+        "submit": "Add memory"
+      },
+      "list": {
+        "title": "Recorded memories",
+        "description": "Search, edit, or delete saved memory records.",
+        "scopeFilter": "Memory scope filter",
+        "searchLabel": "Search memory",
+        "searchPlaceholder": "Search content or reason",
+        "loading": "Loading memories.",
+        "emptyTitle": "No memories saved",
+        "emptyDescription": "Approved chat memories or manually added records appear here.",
+        "updatedAt": "Updated {date}",
+        "reasonPlaceholder": "Reason",
+        "editContent": "Edit memory content",
+        "editReason": "Edit reason",
+        "edit": "Edit memory",
+        "save": "Save memory",
+        "cancel": "Cancel edit",
+        "delete": "Delete memory",
+        "memoryEntity": "memory"
+      },
+      "toast": {
+        "settingsSaved": "Memory policy saved.",
+        "settingsFailed": "Could not save memory policy.",
+        "created": "Memory added.",
+        "createFailed": "Could not add memory.",
+        "updated": "Memory saved.",
+        "updateFailed": "Could not update memory.",
+        "deleted": "Memory deleted.",
+        "deleteFailed": "Could not delete memory."
+      }
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage account security settings.",
+      "placeholder": {
+        "title": "Security settings coming soon",
+        "description": "Password changes and session management are coming soon.",
+        "detail": "Moldy currently uses session-based authentication. Detailed security controls will be added in a later step."
+      }
+    },
+    "appearance": {
+      "title": "Appearance & Language",
+      "description": "Adjust theme and display language.",
+      "theme": {
+        "title": "Theme",
+        "description": "Choose the brightness mode for the app.",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "language": {
+        "title": "Language",
+        "description": "Choose the display language for Moldy.",
+        "ko": "Korean",
+        "en": "English"
+      }
+    },
+    "agentApi": {
+      "title": "Agent API",
+      "description": "Deploy agents, issue server-side API keys, and call Moldy from external systems.",
+      "actions": {
+        "createKey": "API key",
+        "deploy": "Deploy",
+        "copy": "Copy",
+        "copyEndpoint": "Copy endpoint",
+        "revokeKey": "Revoke API key"
+      },
+      "toasts": {
+        "copied": "{label} copied",
+        "deployed": "Agent deployed",
+        "revoked": "API key revoked"
+      },
+      "metrics": {
+        "deployments": "Deployments",
+        "apiKeys": "API keys",
+        "baseUrl": "Base URL",
+        "limits": "Limits",
+        "planned": "planned",
+        "limitsHelper": "Rate and token quotas are being prepared."
+      },
+      "deployments": {
+        "title": "Deployment candidates",
+        "description": "Only fixed-identity agents can be deployed to external APIs.",
+        "empty": "Create an agent before deploying an API endpoint.",
+        "status": {
+          "deployed": "deployed",
+          "ready": "ready",
+          "blocked": "blocked"
+        },
+        "ineligibleReasons": {
+          "fixedIdentityRequired": "API deployment requires agent-fixed credential usage."
+        }
+      },
+      "keys": {
+        "title": "API keys",
+        "description": "Keys are shown once and should only be used from server-side code.",
+        "allDeployments": "All deployed agents",
+        "empty": "Deploy an agent, then create an API key.",
+        "status": {
+          "revoked": "revoked",
+          "active": "active"
+        }
+      },
+      "examples": {
+        "title": "Call examples",
+        "blocking": "Blocking run",
+        "streaming": "Streaming run",
+        "endpoint": "Endpoint"
+      },
+      "createDialog": {
+        "defaultName": "Production key",
+        "title": "Create API key",
+        "description": "Generate a server-side key and limit which deployed agents it can call.",
+        "name": "Name",
+        "expiresInDays": "Expires in days",
+        "noExpiry": "No expiry",
+        "scopes": "Scopes",
+        "agentAccess": "Agent access",
+        "allDeployments": "All deployed agents",
+        "emptyDeployments": "Deploy an agent before creating a scoped key.",
+        "cancel": "Cancel",
+        "create": "Create"
+      },
+      "createdDialog": {
+        "copied": "API key copied",
+        "title": "API key created",
+        "description": "This key is shown once. Store it securely on your server.",
+        "secretKey": "Secret key",
+        "copyAria": "Copy API key",
+        "done": "Done"
+      }
+    },
+    "audit": {
+      "title": "My Activity Log",
+      "description": "Review changes, executions, failures, and denials tied to your account.",
+      "adminTitle": "All Activity",
+      "adminDescription": "Review audit events across every user in chronological order.",
+      "loading": "Loading activity.",
+      "refresh": "Refresh",
+      "events": "Events",
+      "empty": "No records match these filters.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading...",
+      "metrics": {
+        "loaded": "Loaded",
+        "success": "Succeeded",
+        "failure": "Failed",
+        "denied": "Denied"
+      },
+      "filters": {
+        "title": "Filters",
+        "action": "Action",
+        "target": "Target",
+        "outcome": "Outcome",
+        "requestId": "Request ID",
+        "runId": "Run ID",
+        "actionPlaceholder": "e.g. agent.create, tool.run",
+        "requestPlaceholder": "Trace by request ID",
+        "runPlaceholder": "Trace by run ID",
+        "allTargets": "All targets",
+        "allOutcomes": "All outcomes",
+        "apply": "Apply filters",
+        "reset": "Reset"
+      },
+      "outcomes": {
+        "success": "Success",
+        "failure": "Failure",
+        "denied": "Denied",
+        "skipped": "Skipped"
+      },
+      "detail": {
+        "empty": "Select a record to inspect details.",
+        "outcome": "Outcome",
+        "actor": "Actor",
+        "target": "Target",
+        "requestId": "Request",
+        "runId": "Run",
+        "traceId": "Trace",
+        "reason": "Reason",
+        "ip": "IP",
+        "metadata": "Metadata",
+        "none": "None"
+      }
+    }
+  },
+  "nav": {
+    "agents": "Agents",
+    "tools": "Tools",
+    "models": "Models",
+    "schedules": "Schedules",
+    "usage": "Usage",
+    "settings": "Settings",
+    "security": "Security",
+    "appearance": "Appearance & Language",
+    "agentApi": "Agent API",
+    "marketplaceAdmin": "Marketplace Admin",
+    "adminAudit": "All Activity",
+    "systemCredentials": "System Credentials",
+    "systemLlm": "System LLM Settings",
+    "skills": "Skills",
+    "create": "Create",
+    "createAgent": "Create Agent",
+    "conversations": "Conversations",
+    "visualSettings": "Visual Settings",
+    "conversational": "Build by Chat",
+    "manual": "Build Manually",
+    "template": "Template",
+    "skillEvaluation": "Evaluation",
+    "skillVersions": "Versions",
+    "skillSource": "Source",
+    "skillBuilder": "Builder"
+  },
+  "connections": {
+    "pageTitle": "Page title",
+    "pageDescription": "Page Description",
+    "bindingDialog": {
+      "title": "Binding Dialog",
+      "description": "Select the credential this PREBUILT tool should use.",
+      "configured": "Configured",
+      "custom": {
+        "title": "Custom",
+        "description": "Select the credential this custom tool should use.",
+        "bridgeOverrideWarning": "Bridge Override Warning"
+      },
+      "mcp": {
+        "title": "MCP",
+        "description": "Select the credential this MCP server should use.",
+        "sharedCredentialWarning": "Shared Credential Warning"
+      },
+      "toast": {
+        "saved": "Saved successfully.",
+        "savedSharedCredential": "Saved Shared Credential",
+        "saveFailed": "Operation failed.",
+        "conflictRetry": "Conflict Retry"
+      }
+    },
+    "prebuiltSection": {
+      "title": "Prebuilt Section",
+      "description": "Set one default credential per provider for system tools such as Naver and Google.",
+      "providerLabel": "Provider",
+      "empty": "No items yet.",
+      "addButton": "Add Button",
+      "isDefaultBadge": "Is Default Badge",
+      "providerAll": "All"
+    },
+    "providerName": {
+      "naver": "Naver",
+      "googleSearch": "Google Search",
+      "googleChat": "Google Chat",
+      "googleWorkspace": "Google Workspace"
+    },
+    "sections": {
+      "prebuilt": {
+        "title": "Prebuilt",
+        "description": "Manage API keys for system tools such as Naver and Google.",
+        "addButton": "Add Button",
+        "providerEmpty": "No {provider} connections yet."
+      },
+      "custom": {
+        "title": "Custom",
+        "description": "Manage API keys that custom tools can reuse.",
+        "addButton": "Add Button",
+        "empty": "No items yet."
+      },
+      "mcp": {
+        "title": "MCP",
+        "description": "Connect MCP servers to import additional tools. Add new servers from the Tools page.",
+        "empty": "No items yet."
+      }
+    },
+    "card": {
+      "credentialUnbound": "Credential Unbound",
+      "usedByTools": "Used by {count} tools",
+      "noUsage": "No Usage",
+      "isDefaultBadge": "Is Default Badge",
+      "statusActive": "Active",
+      "statusDisabled": "Inactive",
+      "openDetail": "Open Detail"
+    },
+    "detail": {
+      "sectionOverview": "Section Overview",
+      "sectionCredential": "Credential",
+      "sectionUsage": "Section Usage",
+      "sectionDanger": "Section Danger",
+      "type": "Type",
+      "provider": "Provider",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "credentialName": "Name",
+      "credentialUnbound": "Credential Unbound",
+      "changeCredential": "Change Credential",
+      "editCredential": "Edit Credential",
+      "toggleToDisabled": "Toggle To Disabled",
+      "toggleToActive": "Toggle To Active",
+      "disabledWarning": "Disabled Warning",
+      "deleteButton": "Delete Button",
+      "deleteButtonHint": "Delete Button Hint",
+      "deleteBlockedByUsage": "Delete Blocked By Usage",
+      "defaultPrebuiltWarning": "Default Prebuilt Warning",
+      "noToolsInUse": "No Tools In Use",
+      "mcpRebindHint": "MCP Rebind Hint",
+      "discoverTools": "Discover Tools",
+      "discoverHint": "Discover Hint",
+      "discoverSuccess": "Discovered {created} new tools ({existing} existing kept).",
+      "discoverFailed": "Tool discovery failed: {detail}"
+    },
+    "statusToast": {
+      "changed": "Changed",
+      "changeFailed": "Change Failed",
+      "deleted": "Deleted",
+      "deleteFailed": "Delete failed"
+    },
+    "addNew": "Add New",
+    "editTitle": "Edit Title",
+    "provider": "Provider",
+    "providerPlaceholder": "Provider Placeholder",
+    "name": "Name",
+    "namePlaceholder": "Name Placeholder",
+    "type": "Type",
+    "typeApiKey": "API Key",
+    "typeOauth2": "OAuth2",
+    "status": {
+      "configured": "Configured",
+      "notConfigured": "Not Configured"
+    },
+    "usage": "Used by {count} tools",
+    "noUsage": "No Usage",
+    "deleteConfirm": "Delete Confirm",
+    "deleteDescription": "Delete Description",
+    "empty": {
+      "title": "Empty",
+      "description": "Register API keys or auth details to reuse them in tools."
+    },
+    "toast": {
+      "created": "Created",
+      "createFailed": "Operation failed.",
+      "updated": "Updated",
+      "updateFailed": "Operation failed.",
+      "deleted": "Deleted",
+      "deleteFailed": "Operation failed."
+    },
+    "form": {
+      "secretHint": "Secret Hint"
+    },
+    "credentialSelect": {
+      "label": "Label",
+      "placeholder": "Placeholder",
+      "directInput": "Direct Input",
+      "none": "None",
+      "createNew": "Create New",
+      "noCredentials": "No Credentials",
+      "manageConnections": "Manage Connections"
+    }
+  },
+  "credentials": {
+    "page": {
+      "title": "Credentials",
+      "description": "Manage API keys and OAuth grants used by tools and MCP servers.",
+      "new": "New",
+      "count": "{count}",
+      "fieldCount": "{count} fields",
+      "shared": "Shared",
+      "tabs": {
+        "label": "Credential status",
+        "all": "All",
+        "active": "Active",
+        "auth_needed": "Auth needed",
+        "expired": "Expired",
+        "disabled": "Disabled",
+        "unknown": "Unknown"
+      },
+      "providerLabels": {
+        "anthropic": "Anthropic",
+        "azure_openai": "Azure OpenAI",
+        "coupang_partners": "Coupang Partners",
+        "dart_api": "DART Open API",
+        "foresttrip_account": "Forest Trip Account",
+        "google_genai": "Google Generative AI",
+        "google_search": "Google Custom Search",
+        "google_workspace_oauth2": "Google Workspace OAuth2",
+        "http_api_key": "HTTP API Key",
+        "http_basic": "HTTP Basic Auth",
+        "http_bearer": "HTTP Bearer Token",
+        "kipris_plus_api": "KIPRIS Plus API",
+        "ktx_account": "KTX Account",
+        "mcp_oauth2": "MCP OAuth2 Client",
+        "naver_search": "Naver Search",
+        "odsay_api": "ODsay API",
+        "openai": "OpenAI",
+        "openai_compatible": "OpenAI Compatible Endpoint",
+        "openrouter": "OpenRouter",
+        "srt_account": "SRT Account"
+      },
+      "categories": {
+        "account": "Account",
+        "api": "API",
+        "general": "General",
+        "http": "HTTP",
+        "llm": "LLM",
+        "mcp": "MCP",
+        "oauth": "OAuth",
+        "search": "Search",
+        "system": "System"
+      },
+      "columns": {
+        "name": "Name",
+        "type": "Type",
+        "status": "Status",
+        "lastUsed": "Last Used",
+        "lastTested": "Last Tested"
+      },
+      "filters": {
+        "type": "Type",
+        "status": "Status"
+      },
+      "statuses": {
+        "active": "Active",
+        "authNeeded": "Auth required",
+        "expired": "Expired",
+        "disabled": "Inactive"
+      },
+      "actions": {
+        "manage": "Manage"
+      },
+      "empty": {
+        "title": "Empty",
+        "description": "Add API keys or OAuth grants so tools can authenticate.",
+        "action": "Action",
+        "filtered": "Filtered"
+      },
+      "searchPlaceholder": "Search credentials"
+    },
+    "create": {
+      "toast": {
+        "saved": "Saved successfully.",
+        "saveFailed": "Operation failed."
+      },
+      "title": "Create",
+      "titleWithType": "New {type} credential",
+      "description": {
+        "form": "Form",
+        "catalog": "Catalog"
+      },
+      "searchPlaceholder": "Search Placeholder",
+      "emptyDefinitions": "Empty Definitions",
+      "back": "Back",
+      "name": "Name",
+      "namePlaceholder": "Name Placeholder",
+      "save": "Save"
+    },
+    "detail": {
+      "toast": {
+        "statusChanged": "Credential status changed to {status}.",
+        "updateFailed": "Operation failed.",
+        "deleted": "Deleted",
+        "deleteFailed": "Operation failed.",
+        "oauthStartFailed": "Operation failed."
+      },
+      "loading": "Loading",
+      "enable": "Enable",
+      "disable": "Disable",
+      "reauthorize": "Reauthorize",
+      "delete": "Delete",
+      "rows": {
+        "id": "ID",
+        "keyId": "Key ID",
+        "created": "Created",
+        "lastUsed": "Last Used",
+        "lastTested": "Last Tested",
+        "storedFields": "Stored Fields"
+      },
+      "audit": {
+        "title": "Audit",
+        "empty": "No items yet."
+      },
+      "entity": "Credentials"
+    },
+    "picker": {
+      "placeholder": "Select a credential",
+      "none": "Do not use"
+    },
+    "testButton": {
+      "label": "Test",
+      "succeeded": "Succeeded",
+      "failed": "Failed"
+    }
+  },
+  "usage": {
+    "pageTitle": "Usage",
+    "subtitle": "Review token usage and costs by period.",
+    "totalTokens": "Total tokens",
+    "estimatedCost": "Estimated cost",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "perAgent": "Usage by agent",
+    "period": {
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days",
+      "all": "All time",
+      "custom": "Custom"
+    },
+    "table": {
+      "agent": "Agent",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "date": "Date",
+      "target": "Target",
+      "tokensIn": "Input",
+      "tokensOut": "Output",
+      "requests": "Requests"
+    },
+    "empty": {
+      "title": "No usage yet.",
+      "description": "Token usage appears here after agents run."
+    },
+    "summary": {
+      "monthCost": "Cost this month",
+      "monthTokens": "Tokens this month",
+      "monthRequests": "Requests this month",
+      "avgCostPerRequest": "Average cost/request"
+    },
+    "filters": {
+      "range": "Range",
+      "metric": "Metric",
+      "kind": "Target",
+      "kindUser": "User",
+      "kindAgent": "Agent",
+      "kindModel": "Model",
+      "groupBy": "Group",
+      "groupByDate": "Date",
+      "groupByTarget": "Target",
+      "from": "From",
+      "to": "To"
+    },
+    "metric": {
+      "cost": "Cost",
+      "tokens": "Tokens",
+      "requests": "Requests"
+    },
+    "charts": {
+      "empty": "No data yet. Run an agent to populate this chart.",
+      "barMetric": {
+        "cost": "Cost by target (USD)",
+        "tokens": "Tokens by target",
+        "requests": "Requests by target"
+      },
+      "lineMetric": {
+        "cost": "Cost (USD)",
+        "tokens": "Tokens (in + out)",
+        "requests": "Requests"
+      }
+    },
+    "downloadCsv": "Download CSV",
+    "tableTitle": "Raw data",
+    "fallback": {
+      "sectionTitle": "Fallback models",
+      "sectionHint": "Tried in order when the primary model fails.",
+      "addButton": "Add fallback",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove",
+      "duplicateWarning": "This model is already included as the primary model or another fallback.",
+      "limitHint": "You can add up to {max}.",
+      "savedToast": "Fallback models saved.",
+      "saveFailedToast": "Failed to save fallback models.",
+      "badge": "Fallback +{count}"
+    }
+  }
+}

@@ -1,0 +1,493 @@
+import type {
+  Agent,
+  AgentSummary,
+  Model,
+  Tool,
+  Template,
+  Conversation,
+  ConversationListEnvelope,
+  ConversationWithAgent,
+  ConversationWithAgentListEnvelope,
+  Message,
+  AgentTrigger,
+  TriggerRun,
+  TriggerSummary,
+  UsageSummary,
+  Credential,
+  BuilderSession,
+  BuilderDraftConfig,
+} from '@/lib/types'
+import type { MarketplaceItem, MarketplaceItemsPage } from '@/lib/types/marketplace'
+
+// ── Agent ──────────────────────────────────────────────────────────
+
+export const mockAgent: Agent = {
+  id: 'agent-1',
+  runtime_name: 'test-agent',
+  identity_mode: 'fixed',
+  name: 'Test Agent',
+  description: 'A test agent',
+  system_prompt: 'You are a helpful assistant.',
+  model: { id: 'model-1', display_name: 'GPT-4o' },
+  tools: [{ id: 'tool-1', name: 'Web Search' }],
+  mcp_tools: [],
+  skills: [],
+  sub_agents: [],
+  status: 'active',
+  is_favorite: false,
+  model_params: null,
+  middleware_configs: [],
+  template_id: null,
+  image_url: null,
+  opener_questions: null,
+  unread_count: 0,
+  runtime_policy: null,
+  runtime_policy_effective: {
+    version: 1,
+    filesystem: { mode: 'inspect' },
+    todo: { enabled: true },
+    summarization: { mode: 'auto' },
+  },
+  runtime_policy_source: 'legacy_compat',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockAgentList: Agent[] = [
+  mockAgent,
+  {
+    ...mockAgent,
+    id: 'agent-2',
+    name: 'Second Agent',
+    description: 'Another test agent',
+  },
+]
+
+export const mockAgentSummaryList: AgentSummary[] = [
+  {
+    id: 'agent-1',
+    name: 'Test Agent',
+    description: 'A test agent',
+    status: 'active',
+    is_favorite: false,
+    image_url: null,
+    model_display_name: 'GPT-4o',
+    tool_count: 1,
+    fallback_count: 0,
+    unread_count: 0,
+    last_used_at: '2026-01-02T00:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'agent-2',
+    name: 'Second Agent',
+    description: 'Another test agent',
+    status: 'active',
+    is_favorite: false,
+    image_url: null,
+    model_display_name: 'GPT-4o',
+    tool_count: 1,
+    fallback_count: 0,
+    unread_count: 0,
+    last_used_at: null,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+]
+
+// ── Model ──────────────────────────────────────────────────────────
+
+export const mockModel: Model = {
+  id: 'model-1',
+  provider: 'openai',
+  model_name: 'gpt-4o',
+  display_name: 'GPT-4o',
+  base_url: null,
+  is_default: true,
+  is_visible: true,
+  cost_per_input_token: 0.0025,
+  cost_per_output_token: 0.01,
+  context_window: null,
+  max_output_tokens: null,
+  input_modalities: null,
+  output_modalities: null,
+  supports_vision: null,
+  supports_function_calling: null,
+  supports_reasoning: null,
+  source: 'manual',
+  default_credential_id: null,
+  agent_count: 0,
+  rankings: null,
+  created_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockModelList: Model[] = [
+  mockModel,
+  {
+    ...mockModel,
+    id: 'model-2',
+    provider: 'anthropic',
+    model_name: 'claude-sonnet-4-20250514',
+    display_name: 'Claude Sonnet 4',
+    is_default: false,
+  },
+]
+
+// ── Tool ───────────────────────────────────────────────────────────
+
+export const mockTool: Tool = {
+  id: 'tool-1',
+  user_id: null,
+  definition_key: 'web_search',
+  name: 'Web Search',
+  description: 'Search the web using DuckDuckGo',
+  parameters: {},
+  credential_id: null,
+  enabled: true,
+  last_used_at: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockToolList: Tool[] = [
+  mockTool,
+  {
+    ...mockTool,
+    id: 'tool-2',
+    user_id: 'user-1',
+    definition_key: 'custom_http',
+    name: 'My Custom API',
+    description: 'A custom tool',
+    parameters: { api_url: 'https://example.com/api', http_method: 'POST' },
+  },
+]
+
+// ── Credential ─────────────────────────────────────────────────────
+
+export const mockCredential: Credential = {
+  id: 'cred-1',
+  user_id: 'user-1',
+  definition_key: 'custom_api_key',
+  name: 'My API Key',
+  field_keys: ['api_key'],
+  is_shared: false,
+  status: 'active',
+  key_id: 'key-1',
+  last_used_at: null,
+  last_tested_at: null,
+  last_test_result: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockCredentialList: Credential[] = [
+  mockCredential,
+  {
+    ...mockCredential,
+    id: 'cred-2',
+    name: 'MCP Bearer',
+    field_keys: ['api_key'],
+  },
+]
+
+// ── Template ───────────────────────────────────────────────────────
+
+export const mockTemplate: Template = {
+  id: 'template-1',
+  name: 'Research Assistant',
+  description: 'An agent that helps with research',
+  category: 'productivity',
+  system_prompt: 'You are a research assistant.',
+  recommended_tools: ['Web Search'],
+  recommended_skill_slugs: null,
+  recommended_model_id: 'model-1',
+  usage_example: 'Find the latest news about AI',
+  created_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockTemplateList: Template[] = [
+  mockTemplate,
+  {
+    ...mockTemplate,
+    id: 'template-2',
+    name: 'Writing Helper',
+    category: 'creative',
+    description: 'Helps with writing tasks',
+  },
+]
+
+// ── Conversation & Message ─────────────────────────────────────────
+
+export const mockConversation: Conversation = {
+  id: 'conv-1',
+  agent_id: 'agent-1',
+  title: 'Test Conversation',
+  is_pinned: false,
+  unread_count: 0,
+  last_read_at: null,
+  last_unread_at: null,
+  last_activity_source: 'user',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  active_run: null,
+}
+
+export const mockConversationList: Conversation[] = [
+  mockConversation,
+  {
+    ...mockConversation,
+    id: 'conv-2',
+    title: 'Second Conversation',
+  },
+]
+
+export const mockConversationPage: ConversationListEnvelope = {
+  items: mockConversationList,
+  next_cursor: 'cursor-next',
+  has_more: true,
+}
+
+export const mockConversationWithAgent: ConversationWithAgent = {
+  ...mockConversation,
+  agent: {
+    id: 'agent-1',
+    name: 'Test Agent',
+    image_url: null,
+  },
+}
+
+export const mockGlobalConversationPage: ConversationWithAgentListEnvelope = {
+  items: [
+    mockConversationWithAgent,
+    {
+      ...mockConversationWithAgent,
+      id: 'conv-2',
+      agent_id: 'agent-2',
+      title: 'Second Conversation',
+      agent: {
+        id: 'agent-2',
+        name: 'Second Agent',
+        image_url: null,
+      },
+    },
+  ],
+  next_cursor: 'global-cursor-next',
+  has_more: true,
+}
+
+export const mockMessage: Message = {
+  id: 'msg-1',
+  conversation_id: 'conv-1',
+  role: 'user',
+  content: 'Hello, how are you?',
+  tool_calls: null,
+  tool_call_id: null,
+  created_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockMessageList: Message[] = [
+  mockMessage,
+  {
+    id: 'msg-2',
+    conversation_id: 'conv-1',
+    role: 'assistant',
+    content: "I'm doing great! How can I help?",
+    tool_calls: null,
+    tool_call_id: null,
+    created_at: '2026-01-01T00:00:01Z',
+  },
+]
+
+// ── Trigger ────────────────────────────────────────────────────────
+
+export const mockTrigger: AgentTrigger = {
+  id: 'trigger-1',
+  agent_id: 'agent-1',
+  name: 'Hourly update',
+  trigger_type: 'interval',
+  schedule_config: { interval_minutes: 60 },
+  input_message: 'Check for updates',
+  timezone: 'Asia/Seoul',
+  conversation_policy: 'schedule_thread',
+  schedule_conversation_id: null,
+  target_conversation_id: null,
+  status: 'active',
+  last_run_at: null,
+  next_run_at: '2026-01-01T01:00:00Z',
+  last_status: null,
+  last_error: null,
+  run_count: 0,
+  failure_count: 0,
+  max_runs: null,
+  end_at: null,
+  auto_pause_after_failures: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+export const mockTriggerList: AgentTrigger[] = [
+  mockTrigger,
+  {
+    ...mockTrigger,
+    id: 'trigger-2',
+    name: 'Good morning report',
+    trigger_type: 'cron',
+    schedule_config: { cron_expression: '0 9 * * *' },
+    input_message: 'Good morning report',
+    status: 'paused',
+  },
+]
+
+export const mockTriggerRun: TriggerRun = {
+  id: 'run-1',
+  trigger_id: 'trigger-1',
+  agent_id: 'agent-1',
+  user_id: 'user-1',
+  conversation_id: 'conv-1',
+  status: 'success',
+  source: 'scheduled',
+  input_message: 'Check for updates',
+  error_message: null,
+  output_preview: 'Done',
+  duration_ms: 10000,
+  thread_id: 'conv-1',
+  checkpoint_id: null,
+  trace_id: null,
+  started_at: '2026-01-01T01:00:00Z',
+  finished_at: '2026-01-01T01:00:10Z',
+  created_at: '2026-01-01T01:00:00Z',
+}
+
+export const mockTriggerSummary: TriggerSummary = {
+  total_unread: 0,
+  active_count: 1,
+}
+
+// ── Usage ──────────────────────────────────────────────────────────
+
+export const mockUsageSummary: UsageSummary = {
+  period: '7d',
+  total_tokens: 150000,
+  prompt_tokens: 100000,
+  completion_tokens: 50000,
+  estimated_cost_usd: 1.25,
+  by_agent: [
+    {
+      agent_id: 'agent-1',
+      agent_name: 'Test Agent',
+      total_tokens: 100000,
+      estimated_cost: 0.85,
+    },
+    {
+      agent_id: 'agent-2',
+      agent_name: 'Second Agent',
+      total_tokens: 50000,
+      estimated_cost: 0.4,
+    },
+  ],
+}
+
+// ── Builder v2 ────────────────────────────────────────────────────
+
+export const mockBuilderDraftConfig: BuilderDraftConfig = {
+  name: 'News Agent',
+  name_ko: '뉴스 에이전트',
+  description: 'Summarizes daily news',
+  system_prompt: 'You are a news summarizer.',
+  tools: ['Web Search', 'Web Scraper'],
+  middlewares: [],
+  model_name: 'gpt-4o',
+  primary_task_type: 'research',
+  use_cases: ['Daily news digest'],
+}
+
+export const mockBuilderSession: BuilderSession = {
+  id: 'builder-session-1',
+  status: 'preview',
+  current_phase: 7,
+  user_request: '뉴스 요약 에이전트',
+  intent: {
+    agent_name: 'News Agent',
+    agent_name_ko: '뉴스 에이전트',
+    agent_description: 'Summarizes daily news',
+    primary_task_type: 'research',
+    tool_preferences: 'web search',
+    output_style: 'summary',
+    response_tone: 'formal',
+    use_cases: ['Daily news digest'],
+    constraints: [],
+    required_capabilities: ['web_search'],
+  },
+  tools_result: [
+    { tool_name: 'Web Search', description: 'Search the web', reason: 'Required for news' },
+  ],
+  middlewares_result: [],
+  system_prompt: 'You are a news summarizer.',
+  draft_config: mockBuilderDraftConfig,
+  agent_id: null,
+  error_message: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+// ── Marketplace ───────────────────────────────────────────────────
+
+export const mockMarketplaceItem: MarketplaceItem = {
+  id: 'item-1',
+  resource_type: 'skill',
+  name: '이미지 생성',
+  slug: 'image-generation',
+  description: '이미지를 생성합니다.',
+  visibility: 'public',
+  status: 'published',
+  is_system: false,
+  is_listed: true,
+  tags: [],
+  categories: [],
+  locale: 'ko-KR',
+  created_at: '2026-05-01T00:00:00Z',
+  updated_at: '2026-05-02T00:00:00Z',
+  latest_version: {
+    id: 'version-1',
+    version_label: '0.1.0',
+    version_number: 1,
+    content_hash: 'abc123',
+    created_at: '2026-05-02T00:00:00Z',
+  },
+  credential_summary: {
+    status: 'none',
+    required_count: 0,
+    optional_count: 0,
+    missing_required_count: 0,
+  },
+  execution_profile: { support_level: 'ready_python' },
+  origin_summary: null,
+  publication_summary: {
+    state: 'not_published',
+    is_listed: true,
+    shared_user_count: 0,
+  },
+  installation: {
+    installed: false,
+    update_available: false,
+    dirty: false,
+  },
+}
+
+export const mockMarketplaceItemsPage: MarketplaceItemsPage = {
+  items: [
+    mockMarketplaceItem,
+    {
+      ...mockMarketplaceItem,
+      id: 'item-2',
+      name: '문서 요약',
+      slug: 'document-summary',
+    },
+  ],
+  limit: 24,
+  offset: 0,
+  total: 2,
+  has_more: false,
+  next_offset: null,
+}

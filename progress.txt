@@ -1,0 +1,367 @@
+# progress.txt — Marketplace Resources Phase 1
+
+## Session Context
+- 시작: 2026-05-18
+- 브랜치: worktree-marketplace-resources (worktree 격리)
+- 소스 문서: docs/marketplace-resources-prd.md v0.2, docs/marketplace-resources-spec.md v0.1
+- 이전 세션 산출물: ADR-016 멀티유저 인증 완료 (m22~m39), Cipher V2, super_user 분리 — main에 머지됨
+
+## 핵심 결정사항 (PRD/Spec 확정)
+- 마켓플레이스 범위: Agent / MCP / Skill (Tool 비목표)
+- Phase 1: Skill marketplace + selected-skill mount + credential env injection + k-skill importer
+- Alembic: m40~m43 슬라이스별
+- Agent-Skill override: `agent_skills.config` JSON
+- Runtime mount: per-thread `copytree` (symlink 거부 — 쓰기 risk)
+- k-skill: GitHub `NomaDamas/k-skill` clone (super_user CLI만)
+- Public publish: `is_listed=False`로 시작, super_user 토글
+- 비인가 접근: 404 통일 (enumeration oracle 방지)
+- Visibility: private/restricted/public/unlisted/system
+- Credential: Cipher V2 재사용 + 신규 8개 definition
+
+## Codebase Patterns (검증된 사실)
+- FastAPI + SQLAlchemy(async) + Alembic, 모든 DB 접근 async
+- 모든 mutation 라우터: `Depends(get_current_user)` + `Depends(verify_csrf)` 필수
+- super_user 전용: `Depends(require_super_user)` 추가
+- 시스템 리소스 패턴: `is_system=True` + `user_id IS NULL`, CHECK constraint
+- enumeration oracle 방지: 존재 없음 vs 권한 없음 응답 통일 (둘 다 404), 분기는 서버 로그에만
+- credentials 인터폴레이션: `={{ $credentials.x }}` (interpolation.py:resolve_deep, MCP env_vars/headers)
+- field_keys 캐시 (ADR-007): credential list API에서 N+1 회피, 키 이름만 JSON
+- Cipher V2 (ADR-009): HKDF-SHA256 + AES-256-GCM, multi-key rotation, info=`moldy-encryption-v1`
+- credential 등록 패턴: definitions/__init__.py가 import time에 자동 register
+- 기존 Alembic 최신: m39 (system credential dedup). 다음은 m40
+- Skill 모델: kind(text|package), storage_path, content_hash, version, package_metadata, used_by_count
+- AgentSkillLink는 (agent_id, skill_id) PK만 — config 컬럼 없음 (m42에서 추가)
+- executor.py:113-195 `_create_skill_execute_tool`: env={PATH, PYTHONPATH, HOME, SKILL_OUTPUT_DIR, OUTPUTS_DIR} — credential 미주입 (Slice E에서 패치)
+- executor.py:544-548: `FilesystemBackend(_DATA_DIR, virtual_mode=True)` + `skills=["/skills/"]` broad mount (Slice E에서 per-thread root로)
+- AgentConfig.user_id 필수 (ADR-016)
+- ENV → system credential bootstrap (`seed/bootstrap_from_env.py`)
+- 기존 **13개** credential definitions (실측 2026-05-18 베조스 OI-1): anthropic, openai, google_genai, azure_openai, openrouter, openai_compatible, google_search, naver_search, google_workspace_oauth2, http_bearer, http_basic, http_api_key, mcp_oauth2. PRD §6 표 + ADR-017 (피차이 작성)에 "14개"라 적혀있다면 정정 필요. Phase 1에 신규 8개 추가 → 총 21개.
+
+## Gotchas (사전 식별)
+- `skills.user_id`는 NOT NULL (FK CASCADE). marketplace item owner는 nullable (system은 owner_user_id NULL)
+- m41에서 `origin_kind NOT NULL DEFAULT 'created_by_me'` 추가 후, package skill을 `imported_by_me`로 backfill 필수 (UPDATE)
+- m40 circular FK (items.latest_version_id → versions.id): items 먼저 생성 → versions → ALTER 순서로
+- packager.py에 secret_scan 부재. publish + import 양쪽에서 호출 필요
+- per-thread runtime root는 conversation 종료 시 cleanup + startup에서 stale GC. LangGraph thread_id 사용 (checkpoint 키와 동일)
+- redaction은 mapped env var 값 + sensitive key 패턴(password/api_key/secret/token/access_key/refresh_token) 둘 다
+- credential 환경변수 주입은 mapped env var만 (다른 env에는 미주입)
+- `coupang_partners`는 optional credential — 설치 막지 않음
+- k-skill importer: CLI 전용, web UI 노출 안 함. super_user 전용
+- k-skill `K_SKILL_REQUIREMENT_MAP`은 curated source of truth, regex hint는 review만
+- 기존 system credential (ENV bootstrap)은 marketplace에 노출 안 함 — `/api/system-credentials` 유지
+
+## 파일 경계 (팀원별)
+- 피차이: docs/design-docs/adr-017-marketplace-resources.md (신규), docs/ARCHITECTURE.md (marketplace 섹션)
+- 젠슨: backend/app/marketplace/** (신규 폴더), backend/app/models/marketplace.py (신규), backend/app/routers/marketplace.py (신규), backend/app/credentials/definitions/{srt_account,ktx_account,foresttrip_account,kipris_plus_api,dart_api,odsay_api,coupang_partners,k_skill_proxy}.py (신규), backend/alembic/versions/m40~m43_*.py (신규), backend/app/agent_runtime/executor.py (Slice E 패치), backend/app/skills/{packager,service}.py (secret_scan integration), backend/app/scripts/sync_k_skill.py (신규), backend/app/config.py (k_skill_* settings), backend/app/models/skill.py (컬럼 확장), backend/app/models/agent_skill.py (config 컬럼)
+- 팀쿡: docs/design-docs/marketplace-ui-spec.md (신규)
+- 저커버그: frontend/src/app/marketplace/** (신규), frontend/src/lib/api/marketplace.ts (신규), frontend/src/lib/hooks/useMarketplace*.ts (신규), frontend/src/components/marketplace/** (신규), frontend/src/app/skills/page.tsx (badge 추가), frontend/src/app/mcp-servers/page.tsx (badge 추가)
+- 베조스: backend/tests/test_marketplace_*.py, backend/tests/test_runtime_isolation.py, backend/tests/test_credential_injection.py, backend/tests/test_redaction.py, backend/tests/test_secret_scan.py, backend/tests/test_k_skill_importer.py, tasks/deletion-analysis.md, tasks/lessons.md, docs/QUALITY_SCORE.md
+
+## API 계약 (백 → 프 인터페이스)
+
+### Catalog
+- `GET /api/marketplace/items?resource_type=skill&q=&visibility=&category=&installed=&install_state=&support_level=&source_kind=&is_listed=`
+- `GET /api/marketplace/items/{item_id}` → MarketplaceItemOut
+- `GET /api/marketplace/items/{item_id}/versions`
+- `GET /api/marketplace/versions/{version_id}`
+
+### Install
+- `POST /api/marketplace/items/{item_id}/install` body: `{version_id?, name_override?, credential_bindings?, install_missing_credentials, install_mode}`
+- `POST /api/marketplace/installations/{installation_id}/update` body: `{strategy}` (overwrite/install_new_copy/keep_current)
+- `DELETE /api/marketplace/installations/{installation_id}`
+
+### Publish / Manage
+- `POST /api/marketplace/items/from-skill/{skill_id}` body: `PublishSkillIn`
+- `POST /api/marketplace/items/{item_id}/versions/from-skill/{skill_id}` body: `{release_notes?}`
+- `PATCH /api/marketplace/items/{item_id}` (metadata 수정만)
+- `POST /api/marketplace/items/{item_id}/acl` body: `{user_ids: [], permission: 'install'}`
+- `DELETE /api/marketplace/items/{item_id}/acl/{user_id}`
+- `POST /api/marketplace/items/{item_id}/disable`
+- `GET /api/marketplace/publication-status`
+
+### Admin (super_user)
+- `POST /api/marketplace/admin/items/{item_id}/listed`
+- `POST /api/marketplace/admin/items/{item_id}/disable`
+- `POST /api/marketplace/admin/k-skill/sync` (status 조회만, 실행은 CLI)
+- `GET /api/marketplace/admin/moderation` (is_listed=False && visibility='public')
+
+### Skill Credential Bindings
+- `GET /api/skills/{skill_id}/credential-requirements`
+- `GET /api/skills/{skill_id}/credential-bindings`
+- `PUT /api/skills/{skill_id}/credential-bindings/{requirement_key}` body: `{credential_id}`
+- `DELETE /api/skills/{skill_id}/credential-bindings/{requirement_key}`
+
+### 에러 코드 (Spec §10.7)
+- `marketplace_item_not_found` 404, `marketplace_version_not_found` 404
+- `marketplace_install_forbidden` 404 (enumeration 방지)
+- `marketplace_manage_forbidden` 403, `marketplace_item_disabled` 409
+- `marketplace_invalid_visibility` 400, `marketplace_acl_required` 400
+- `marketplace_invalid_package` 400, `marketplace_secret_detected` 400
+- `marketplace_credential_required` 409, `marketplace_credential_mismatch` 400
+- `marketplace_dirty_installation` 409
+
+## 실패 교훈
+- (없음 — 세션 시작)
+
+## Codebase Patterns (젠슨 M2 Slice A, 2026-05-18)
+- Alembic 마이그레이션 SQLite 호환: `sa.Uuid()` 사용 (PG/SQLite 둘 다 호환). `op.create_index(..., postgresql_where=...)`는 PG에서만 partial index 생성; SQLite 테스트는 ORM이 `Base.metadata.create_all` 경로라 영향 없음.
+- 순환 FK (`marketplace_items.latest_version_id` ↔ `marketplace_versions.id`): m40에서 (1) items create(FK 없이) → (2) versions create → (3) ALTER ADD FK. ORM은 `mapped_column(ForeignKey(..., use_alter=True, name=...))` + `relationship(..., post_update=True)`. `use_alter=True` 없이는 SQLite create_all에서 SAWarning("Can't sort tables for DROP")이 나오므로 ORM 쪽에도 use_alter 명시 필요.
+- 예약어 `metadata`: 컬럼명은 `metadata`로 두되 attribute는 `metadata_json: Mapped[dict | None] = mapped_column("metadata", JSON, ...)` 패턴으로 분리.
+- ruff UP037: `from __future__ import annotations` 사용 시 forward ref 모두 unquoted. 이미 자동 fix됨 — TYPE_CHECKING import도 unquoted로 변환 가능.
+- SQLAlchemy 2.0 `selectinload(MarketplaceItem.latest_version)` 사용 시, latest_version_id가 NULL이면 lazy fallback도 필요 (None 체크 후 db.get).
+- 라우터 mount 검증: `uv run python -c "from app.main import create_app; app = create_app(); [r.path for r in app.routes if 'marketplace' in r.path]"` — import error 없으면 mount 성공.
+- SkillResponse origin/publication embed: ORM → Pydantic 변환 후 추가 필드 `response.origin_summary = ...` 등 직접 할당. `model_config = {"from_attributes": True}`는 ORM 필드만 매핑하고 우리 모듈 필드는 그대로 둠.
+- 첫 단계 Alembic verify는 PostgreSQL 필요 (이미 `natural-mold-postgres-1` Up). docker 미실행 시 `docker-compose up -d postgres`.
+- `_serialize_skill` 헬퍼 위치: router 모듈 안, `router = APIRouter(...)` 선언 이후. ruff isort 가끔 router 선언을 import 블록 뒤로 이동시키니 함수 정의 전에 router 선언이 오게 명시적으로 유지.
+
+## Gotchas (젠슨 추가)
+- m41 backfill: `kind='text'` → `source_kind='user'`, `kind='package'` → `source_kind='import'`, `kind='package'` 추가로 `origin_kind='imported_by_me'`로 UPDATE. 베조스 OI 그대로 반영.
+- m39 downgrade는 `NotImplementedError` raise (data migration). m40~m43은 모두 reversible — verify 단계에서 `alembic downgrade -4` 호출하면 m39까지 정상 도달.
+- M2 Slice A는 인증 라우터를 모두 `Depends(get_current_user)`로 막아 401을 일관되게 반환. 미존재/비인가 분기는 모두 404 `MARKETPLACE_ITEM_NOT_FOUND`로 통일 — 분기는 logger.info에만.
+- SkillResponse에 추가된 3개 필드(origin/publication/installation)는 모두 `Optional` (None 가능)로 정의. 기존 클라이언트는 그대로 동작하지만 새 클라이언트는 필드 사용 가능.
+
+## Bezos Test Patterns (M2 Slice A 회귀, 2026-05-19)
+- 기본 `client` fixture는 super_user 강제. 일반 사용자 시나리오는 `_client_for_user(CurrentUser)` 헬퍼로 별도 app + dependency_overrides 구성 필요 (패턴은 `tests/test_marketplace_access.py:_client_for_user`).
+- enumeration oracle 검증: 비공개 item과 존재하지 않는 item이 같은 JSON 응답을 반환해야 함. `assert r_hidden.json() == r_missing.json()`로 envelope shape 동등성까지 확인 (status code만 보면 응답 키 차이로 oracle이 생길 수 있음).
+- 접근 술어(`marketplace.access`) 단위 테스트는 ORM 인스턴스를 메모리에서 직접 구성 (`item.acl_entries = [...]`) — DB 왕복 불필요. 라우터 통합 테스트는 실제 DB seed + ASGI client.
+- m41 backfill SQL은 동일 statement를 SQLite create_all 스키마에서도 실행 가능 — 별도 alembic 통합 테스트 없이도 backfill 의미를 가드할 수 있음 (`tests/test_skills_regression.py::test_m41_backfill_marks_package_skills_imported_by_me`).
+- 공개 catalog 검색 노출 게이트는 **filter mechanic**(`?is_listed=true`)으로만 강제됨. 기본 `GET /items` 자체는 모든 visible 항목 노출. 프론트엔드가 catalog 뷰에서 `is_listed=true`를 보내는 책임. 향후 서버사이드 기본값 변경 시 `tests/test_marketplace_listing.py` 두 테스트 동시 업데이트. **[M2.5 update 2026-05-19]** 젠슨 정정 후 default `GET /items`은 owner+system+(public+listed)+restricted-ACL만 노출. `visibility=unlisted`은 list 항상 제외 + detail은 직접 ID 접근 허용. `?is_listed=true`는 explicit narrow (visibility scope과 AND). `?is_listed=false`는 moderation 큐 — super_user에게 미승인 public 노출, 일반 사용자에게는 자기 소유 unlisted까지만.
+
+## Bezos Test Patterns (M2.5 listing 정정, 2026-05-19)
+- 기본 `GET /items` default 동작이 Spec §10.1 일치: 일반 사용자는 owner+system+listed-public+restricted-ACL만, super_user는 전체.
+- `?is_listed=true`와 default는 **다른 결과** — explicit filter는 visibility scope와 intersect하므로 owner items 중 is_listed=False인 것이 빠짐. test에서 둘을 동일하게 가정하면 fail.
+- `?is_listed=false` 결과 set 크기는 user role 의존: super_user는 모든 미승인 public, regular user는 자기 owned 미승인만 (owner clause 우회).
+- `visibility=unlisted` 필터를 명시해도 list 응답에 포함되지 않음 — service `_base_catalog_query`의 visibility_clauses에 unlisted가 없기 때문. detail 접근은 `can_view_item` 통과로 별개 경로.
+- access test는 predicate(`can_view_item`)/detail(`GET /items/{id}`) 레이어에만 의존하므로 list 동작 변경 영향 없음. predicate가 `unlisted+published`를 True로 반환하는 것은 detail-link sharing 의도와 정합.
+- Agent 생성자는 `slug`/`tools_config`/`assistant_enabled` 인자 받지 않음. 테스트에서 Agent 직접 생성 시 `id/user_id/name/description/system_prompt/model_id`만 사용.
+
+## Bezos Gotchas (M1-S1 deletion analysis, 2026-05-18)
+- credential definitions 실측 **13개** (anthropic, openai, google_genai, azure_openai, openrouter, openai_compatible, google_search, naver_search, google_workspace_oauth2, http_bearer, http_basic, http_api_key, mcp_oauth2). progress.txt L38·L70 + PRD §6 표는 14개라 표기 — 합의 필요 (OI-1, 사티아/피차이 확인 대기).
+- secret_scan `sk-` 패턴은 반드시 word boundary 적용 (`\bsk-[A-Za-z0-9]{20,}\b`). 그렇지 않으면 정상 docstring/예제의 `sk-example`도 차단되어 사용자 false-positive 발생.
+- `_create_skill_execute_tool` 호출처는 `executor.py:551` 단 한 곳. Slice E에서 시그니처 확장(runtime_root, credential_env) 시 인자 폭증 방지 위해 `SkillToolContext` dataclass 권장.
+- `AgentSkillLink`는 별도 파일 아니라 `app/models/skill.py:25-40`에 정의됨. m42 작업 시 같은 파일 수정.
+- m41 backfill에서 package kind skill은 반드시 `origin_kind='imported_by_me'`로 UPDATE 필요 (default 'created_by_me'만 두면 잘못 마킹).
+- 진짜 dead code 없음 — `legacy` 단어 6곳(executor.py:238/311/488/614, skills/runtime.py:3, skills/service.py:3) 모두 historical context 주석. 삭제 금지.
+- `_create_skill_execute_tool` 호출하는 테스트 0개 (`grep _create_skill_execute_tool backend/tests/` → 0 hits). Slice E 패치 시 신규 test 작성 필요.
+
+## Architecture Decisions (피차이 — M1-S0/S2, 2026-05-18)
+- ADR-017 발행 (Status: Proposed). 7가지 핵심 결정(D-01~D-07) + 정책 결정(D-08~D-14) 합쳐 14개 결정표 + 8개 거절안 + 8개 ADR과의 관계표. `docs/design-docs/adr-017-marketplace-resources.md`
+- ARCHITECTURE.md에 "Marketplace Resources (ADR-017, Phase 1 — Skill)" 섹션 추가. 데이터 모델 매핑 + 관계 그래프 + Slice A~G 흐름 + Runtime mount Before/After 비교표 + API surface + 의존성 방향.
+- 모듈 계약서 발행: `docs/design-docs/marketplace-module-contracts.md`. 11개 모듈 책임/임포트 방향 + 6개 ORM 시그니처 + 9개 Pydantic 스키마 계약. 젠슨 구현 진입점.
+- 베조스 OI-1(credential 13 vs 14) 확인: 실측 13개 — ADR-017/ARCHITECTURE/contracts 모두 "14개 + 1 unknown" 식 표현은 안 했고 PRD/spec 명단(13개)만 인용. 사티아 결재 시 PRD §1 표 정정만 별도 PR로.
+
+## Codebase Patterns (피차이 추가)
+- ORM 임포트 헤더 표준화: `Mapped` + `mapped_column` + `PG_UUID(as_uuid=True)` + `relationship` (SA 2.0 declarative). ADR-016 패턴과 동일.
+- Circular FK 해결책: `marketplace_items.latest_version_id` ↔ `marketplace_versions.id`는 m40 안에서 (1) items FK 없이 생성 (2) versions 생성 (3) ALTER TABLE ADD CONSTRAINT. ORM은 `relationship(..., post_update=True)`.
+- Partial UNIQUE INDEX 패턴: PostgreSQL `WHERE` 절을 `Index(..., postgresql_where=text("..."))`로 표현. system slug + owner slug 두 개.
+- `metadata`는 SQLAlchemy 예약어 — 컬럼명은 `metadata`로 두되 attribute는 `metadata_json` 권장.
+- `ON DELETE RESTRICT` 두 곳: `marketplace_installations.version_id`, `skill_credential_bindings.credential_id`. 나머지는 CASCADE 또는 SET NULL.
+- 모듈 임포트 단방향 규칙: schemas/access/secret_scan/redaction은 leaf. service들은 cross-import 금지. agent_runtime은 redaction + credential_requirements만 import.
+
+## Gotchas (피차이 추가)
+- `__init__.py`는 빈 파일 유지 — barrel export 금지 (CLAUDE.md 규칙). schemas.py 등 직접 import.
+- Pydantic v2 `model_config = ConfigDict(from_attributes=True)`로 ORM → 응답 변환.
+- `PublishSkillIn`은 `@model_validator(mode='after')`로 `visibility='restricted'` AND `acl_user_ids=[]` 거부 (`marketplace_acl_required`).
+- `ResourceOriginSummaryOut.kind` derivation은 6개 조건의 우선순위가 중요 — is_system 먼저, origin_user_id vs current_user, 그 다음 source_marketplace_item_id 유무로 created vs imported.
+- `ResourcePublicationSummaryOut.state`는 (status × visibility × is_listed) decision table — service에 단일 함수로 가둘 것.
+- `routers/skills` list 응답에 summary 임베드 시 N+1 회피 — `origin_service.bulk_derive_*` 단일 query 필수.
+
+## Codebase Patterns (젠슨 M3 Slice D, 2026-05-19)
+- credential definition 추가는 `app/credentials/definitions/<key>.py` 신규 + `definitions/__init__.py`에 import + for-loop tuple에 추가 + `__all__` 갱신 4 스텝. 21개 총원 (13 baseline + 8 marketplace).
+- `CredentialDefinition`은 `key`(고유), `display_name`, `category`, `properties: list[FieldDef]`만 있으면 등록 가능. `authenticate`/`test`는 선택 — marketplace용 8개는 모두 인터폴레이션/connectivity test 없는 raw 저장만.
+- `FieldKind.PASSWORD` + `type_options={"password": True}`는 frontend mask hint. 일반 STRING(`username`/`access_key`/`base_url`)은 평문 입력 UI.
+- `optional credential` 의미는 두 층에 있음: (a) `FieldDef.required=False` — 필드 자체 선택, (b) skill 요구사항 `CredentialRequirement.required=False` — 바인딩 자체 선택. `coupang_partners`는 (a)는 둘 다 required, (b)에서 `required=False`로 publish됨 — 정의 자체는 두 필드 다 필수.
+- `validate_binding`은 5개 거부 룰을 한 함수에 모음: 소유권→requirement_key→credential 존재+소유→system 거부→definition_key 일치. 순서 중요 — enumeration safety를 위해 ownership을 가장 먼저.
+- `Cross-user credential`은 `CREDENTIAL_NOT_FOUND` 404로 collapse (다른 user의 cred 존재 여부 leak 방지). `system credential` + `definition_key mismatch` + `unknown requirement_key`는 422 `MARKETPLACE_CREDENTIAL_MISMATCH` (사용자 본인의 의도 오류 — 구체적 사유 노출 OK).
+- DELETE 바인딩은 idempotent 204 — 존재 여부와 무관 (rules/security.md, enumeration channel 방지). `await db.commit()`는 행 삭제 시에만 호출.
+- 테스트 fixture에서 `client` fixture를 쓰면 super_user 강제 + CSRF 우회. `db: AsyncSession` fixture로 직접 ORM 행 생성. `TEST_USER_ID` 유저는 별도 `_make_test_user(db)` 헬퍼로 생성 (skill/credential의 FK 만족).
+- `installation.status` derivation: DB의 `install_status='active'`이고 `missing_required_keys`가 비어있지 않으면 응답에서 `'needs_setup'`로 승급. `disabled`/`uninstalled`는 명시적 상태이므로 유지.
+
+## Gotchas (젠슨 추가)
+- `ValidationError`(`marketplace_credential_mismatch`)는 422가 아니라 ValidationError 베이스가 status=422를 강제 — 422 응답 코드 + `MARKETPLACE_CREDENTIAL_MISMATCH` 코드를 동시 검증.
+- `cred.user_id is None`(system credential)을 `user_id != user.id`와 동일하게 거부할 때, 메시지 순서 주의: 시스템 credential은 `marketplace_credential_mismatch`로 명시적 사유, 일반 cross-user는 404 silent collapse.
+- `Skill.credential_requirements`는 JSON 컬럼이므로 list/dict이 아닌 경우 `parse_requirements`가 빈 리스트 반환. malformed entry는 silently skip — 라우터에서 500 발생 방지.
+- needs_setup 승급 로직은 origin_service 내부에 inline `_UserLike` stub 사용 — `missing_required_keys`가 user.id만 읽는다는 사실에 의존. 향후 user 객체 시그니처 확장 시 stub 갱신 필요.
+
+## Codebase Patterns (젠슨 M2.5 + M4 Slice B, 2026-05-19)
+- M2.5 listing 정정: `_base_catalog_query`에 `public_listed_only: bool` 인자. catalog list는 default `True` — public 경로에 `is_listed=True` AND 절 추가. `unlisted` visibility는 list에서 항상 제외 (Spec §7 "direct-link only"). detail(`get_item`)은 `can_view_item` 통과 시 unlisted ID 직접 접근 허용. `filters.is_listed`가 explicit이면 `public_listed_only=False`로 게이트 해제, `_apply_filters`에 위임.
+- 파일 경계 우회 패턴: install_service가 skill_service.py를 modify 못 함 — `_skill_root` 등 헬퍼를 import하지 않고 `Path(settings.skill_storage_dir) / str(skill_id)` 로컬 재구현. `_slugify`도 동일 (regex inline). 시그널: 같은 로직 중복은 의도된 boundary.
+- Install 트랜잭션 패턴: `temp_dir = target.with_suffix(".install.tmp")` → copytree → DB rows 삽입 → `tmp.rename(target)`. 실패 시 best-effort `shutil.rmtree(tmp)` + db.rollback. routers가 commit 책임.
+- `_payload_skill_kind(version)`: version.payload 안의 `{"kind": "text"|"package"}` 키로 결정. default `"package"` (safe-superset). storage_path는 text면 `target/SKILL.md` 파일, package면 `target` 디렉토리.
+- `install_mode` 분기 (Spec §10.3):
+  - `reuse_or_update` (default): 기존 installation 있으면 그대로 반환 (idempotent)
+  - `new_copy`: 항상 신규 — 동일 item을 여러 번 설치 가능
+  - `overwrite_existing`: 기존 skill row + 파일 삭제 후 재설치
+- `update_installation`: dirty 시 strategy 강제. `overwrite`는 install_new_copy를 호출 후 installation row의 `installed_skill_id`만 새 row로 reparent + 중복 row 삭제. URL/외부 참조 유지.
+- DELETE installation: default soft (status='uninstalled'), `?delete_resource=true` 시 cascade (skill row + 파일 cleanup).
+- ASYNC240 룰: async fn 안에서 `Path.exists()`/`is_file()`/`mkdir()` 등 호출 금지 — `asyncio.to_thread`로 래핑. fix 헬퍼: `_probe_path(p)` → `(exists, is_file)` 단일 stat 반환, `_rmtree_skill_storage(p)` → text(file)/package(dir) 분기 후 rmtree.
+- `_derive_origin(item, user)` 매핑 (Spec §7.5):
+  - is_system + 'k-skill' → built_in_k_skill
+  - is_system + 'system_seed' → system_seed
+  - !owner + restricted → shared_with_me
+  - !owner + public → community
+  - 그 외 (owner 본인 포함) → imported_by_me
+
+## Gotchas (젠슨 M4 추가)
+- `_resolve_version`: version_id가 명시되었는데 다른 item에 속하면 `marketplace_version_not_found`. latest_version_id가 NULL이면 (아직 publish 안 됨) `marketplace_version_not_found`. **404 collapse 유지** — `marketplace_item_not_found`로 통일하지 않음 (version 자체가 분명히 발견되지 않는 경우는 별도 코드 OK).
+- `install_item`에서 `resource_type != 'skill'`은 `marketplace_item_not_found` 404로 (Slice B는 skill만). 향후 agent/mcp 슬라이스에서 확장.
+- `name_override`는 `body.name_override or payload.get("name") or item.name` 우선순위. payload.name이 SKILL.md frontmatter에서 오므로 user가 명시한 슬러그가 가장 우선.
+- `install_missing_credentials="reject"` 옵션은 hard 에러 (`marketplace_credential_required` 409). default `"needs_setup"`은 soft (installation_status='needs_setup').
+- `update_installation`이 `overwrite`로 호출되면 내부적으로 `install_new_copy` 경로를 거친 후 installation row reparent — 중간에 만들어지는 임시 installation row는 마지막에 db.delete으로 정리. 정리 안 하면 `(user, item) → installation` 1:N 가정이 무너짐.
+
+## Codebase Patterns (젠슨 M5 Slice E, 2026-05-19)
+- 보안 critical 패턴: sync 빌드 + async resolve 분리. `build_skill_runtime_context(cfg, *, data_dir)` (sync, copytree만) + `resolve_runtime_credentials(ctx, *, db, cfg)` (async, DB+decrypt+mutate ctx). 베조스 sync 테스트와 동시 호환.
+- 두 ResolvedCredential 데이터클래스: `credential_requirements.ResolvedCredentialEntry` (leaf module — DB+cipher) → adapter → `skill_runtime.ResolvedCredential` (executor-facing). 단방향 import 유지.
+- env_map 방향 (Spec/사티아 brief 기준): `{credential_field_name: env_var_name}`. 예: `{"username": "SRT_USERNAME", "password": "SRT_PASSWORD"}`. 따라서 `for field, env_name in rc.env_map.items(): env[env_name] = rc.decrypted[field]`.
+- Override priority (Spec §8.4): `agent_skills.config.credential_bindings[key]` > `SkillCredentialBinding` row > missing → required면 fail-fast `marketplace_credential_required`. `scope='system_dependency' | 'manual'`은 Slice E 범위 밖.
+- 4겹 보안 게이트: (1) 미선택 slug — descriptor lookup 실패 → reject. (2) 경로 traversal — `Path(input).name`으로 슬러그만 추출, `descriptor.runtime_storage_path.resolve()` + `is_relative_to(runtime_root)`. (3) 파일격리 — `copytree(symlinks=False)` 원본 쓰기 차단. (4) cleanup — mtime 기반 10분 interval / 1시간 retention.
+- `build_skills_prompt`은 `/skills/<slug>/` 하드코딩 — executor에서 결과 텍스트에 `.replace("/skills/", f"/runtime/{thread_id}/skills/")` in-place rewrite. prompt.py public API 안 바꿈.
+- Cipher V2 decrypt 경로: `credential_service.decrypt_with_external` (codebase 단일 진입점, __external__ ref expansion 포함). 실패 시 silent missing — required면 마지막에 묶어서 raise.
+- redact_credential_values: 값 길이 정렬 (긴 것 먼저) 후 `text.replace(value, f"<redacted:<env_var>>")`. 5자 이상만 — 너무 짧으면 `id=x` 같은 정상 출력도 마스킹돼서 false-positive 폭증.
+- redact_keys: `password|api_key|secret|token|access_key|refresh_token|client_secret|private_key` 패턴. 사이드카 key→`<redacted>` 치환만 (값 검사 X — 구조적 마스킹). dict/list/tuple recursive.
+- streaming.py:TOOL_CALL_START parameters에 `redact_keys` 적용 (defense-in-depth) — 일반 도구도 auth 인자 받을 수 있어서.
+
+## Gotchas (젠슨 M5 추가)
+- 베조스가 Stage 2에서 expect sync — Stage 3에서 async로 만들면 깨짐. **항상 sync 빌드 + async resolve 분리 패턴 유지**. 향후 Stage refactor 시 cf 위반 주의.
+- `descriptor.credential_bindings`은 default `field(default_factory=dict)` — Stage 1/2에서 비어있어도 동작. Stage 3에서 채워짐. 비어있으면 env injection 루프 no-op.
+- `skill_runtime`은 `credential_requirements`를 lazy import (함수 안에서) — cold start 시 cipher import 회피 + 순환 의존 방지.
+- `cleanup_stale_runtime_roots`는 sync — APScheduler가 직접 호출 가능 (lambda 직렬화 불가 회피). `evict_expired_brokers` 패턴 따름.
+- `tests/test_executor.py:test_execute_stream_passes_skills_and_memory`의 `skills == ["/skills/"]` 어설션이 Slice E로 깨짐 → `["/runtime/t-1/skills/"]`로 정정. 이건 Bezos 영역(test 파일)이지만 Spec §9 변경 영향이 명확하고 어설션 값만 1줄 수정이라 처리.
+- streaming.py tool_call result는 redact 안 함 (already redacted by execute_in_skill before return). tool_call_start params만 heuristic redact_keys. result 더 redact 하려면 thread-level injected_env가 streaming에도 도달해야 하는데 큰 리팩토링 필요. 현재로는 execute_in_skill 단계가 source of truth.
+
+## Codebase Patterns (젠슨 M6 Slice C + Task#15, 2026-05-19)
+- secret_scan word boundary on `sk-` (Bezos OI-4): `\bsk-[A-Za-z0-9_\-]{20,}\b` — `sk-example`/`sk-foo` placeholder는 통과, 진짜 20+자 OpenAI key만 차단. False-positive 폭증 방지.
+- secret_scan content scan은 256KB cap + binary extension skip — multi-GB 패키지가 reader OOM 안 일으킴.
+- secret_scan `_iter_files`은 symlink 명시 skip — packager가 이미 reject하지만 defense-in-depth.
+- secret_scan findings dedup: `(path, pattern)` 키로. 같은 파일에 같은 패턴 중복 매치는 1번만 보고, 다른 패턴은 별개로 (사용자에게 *왜* 차단됐는지 표시).
+- Publish flow content-hash dedup: 동일 skill 재publish 시 기존 version 재사용 — 파일 시스템 + DB row 중복 회피. `tmp_target.rename(target)` 원자 이동 패턴.
+- Publish flow는 `tmp_target = snapshot_target.with_suffix(".publish.tmp")` 경유. secret_scan fail 시 tmp만 cleanup, 기존 storage 안 건드림.
+- Marketplace immutable version storage는 `data/skills/_marketplace_versions/<version_id>/`로 격리 — user-owned `data/skills/<skill_id>/`와 분리. 사용자 스킬 삭제가 installed version에 cascade 안 됨 (Spec §6.4).
+- 라우터에서 `db.refresh(item)` 후 `project_item` 호출 시 lazy relationship (latest_version, acl_entries) 접근하면 `MissingGreenlet` 에러. 해결: `catalog_service.get_item`을 통해 재조회 (selectinload 적용됨).
+- `_create_acl`: 기존 ACL 전체 wipe 후 새 set으로 교체. CASCADE FK가 dropped recipients 정리.
+- `publish_new_version` 라우터는 `PublishSkillIn` 풀 바디 합성 (기존 item.visibility/name/acl 등 + body.release_notes). 사용자는 item_id + release_notes만 보내고 서버가 나머지 채움.
+- ACL 삭제 시 restricted item의 마지막 ACL row 제거하려 하면 `marketplace_acl_required` 거부 — 사용자가 visibility 먼저 바꿔야 함.
+
+## Gotchas (젠슨 M6 추가)
+- `routers/skills.py:upload`의 secret_scan 호출은 db.commit() 전. fail이면 `skill_service.delete_skill(skill)` + `db.rollback()`. 부분적 row가 남지 않음.
+- `marketplace_acl_required`는 args 없는 시그니처. 다른 marketplace_* error는 detail str 받음.
+- 베조스가 `tests/test_skills_api_regression.py`의 `test_legacy_upload_package_should_set_imported_by_me`를 `xfail(strict=True)`로 pin. Task #15 fix 후 strict 해제 작업이 베조스에게 인계됨 — 그 전에는 이 테스트 1건이 XPASS-strict로 실패 표시 (정상).
+- Publish service의 visibility 전환 (restricted → public 등): 기존 ACL 전체 wipe. 의도된 동작 — restricted 일 때만 ACL 의미 있음.
+- Publish item_id가 명시되면 visibility / description / tags만 body에서 받아도 OK (name/slug 보존). item_id 없으면 모두 body 사용 (신규 생성).
+
+## Codebase Patterns (젠슨 M7 Slice F, 2026-05-19)
+- k-skill importer 분리 패턴: pure-function discovery/validation/hashing → DB-aware `import_skill` → orchestrator `run_sync`. 테스트가 각 레벨에서 독립 실행 가능.
+- Discovery: `repo_dir.rglob("SKILL.md")` 후 부모가 excluded dir 안에 있는지 component-wise 검사. `docs/sub-skill/SKILL.md`는 자동 제외 (Spec §5.3 mirror).
+- Validation 룰 2개: SKILL.md 존재 + frontmatter `name == 디렉토리명`. mismatch는 silent skip (FAILED_VALIDATION 액션).
+- Canonical content hash: sorted relative path + NUL + bytes — `publish_service`와 동일 알고리즘이라 publish/import dedup 통일.
+- execution_profile 추론: requirements.txt/pyproject.toml → ready_python, package.json → node_package, proxy.toml → proxy_http, 없음 → manual_only.
+- Single-skill failure isolation: `import_skill` 내부에서 모든 예외를 `ImportAction.FAILED_*`로 변환. `run_sync`도 outer `try/except`로 unhandled exception을 result row로 변환 (Spec §5.10).
+- Curated requirement map (`k_skill_requirements.py`) 분리: regex 자동 추측 X, 검증된 매핑만. `REGEX_HINTS`는 review-only — 새 upstream skill 발견 시 hints만 로그.
+- k-skill item은 `is_system=True / owner_user_id=NULL / visibility='system' / is_listed=True / source_kind='k-skill'`. 사용자가 build_skills_prompt에서 즉시 발견 가능.
+- Dry-run: `_copy_to_storage(dry_run=True)`는 size 측정만, copytree skip. `run_sync(dry_run=True)`는 마지막에 caller가 db.rollback() — report.dry_run=True로 마킹.
+- Admin endpoint `POST /api/marketplace/admin/k-skill/sync`은 sync 실행 X. status 조회만 (k-skill items count + last updated). 실제 sync는 super_user CLI만.
+
+## Gotchas (젠슨 M7 추가)
+- ASYNC240은 async 함수 안의 `Path.exists()`/`mkdir()`/`rglob()`도 잡음. `_copy_to_storage`를 sync로 두고 caller가 `asyncio.to_thread`로 래핑. `_resolve_path` 같은 작은 sync helper 패턴 일관성 유지.
+- `discover_skills`는 `sorted` 사용해 report 재현성 보장 — operator가 같은 ref로 두 번 돌리면 결과 row 순서 동일.
+- `keep_deprecated=True` (default): upstream에서 사라진 skill은 `deprecated` 마킹 안 함 (legacy compat). `--no-keep-deprecated` 명시 시만 deprecated 마킹 + is_listed=False.
+- `only=` 필터 사용 시 deprecation pass 자동 skip — 부분 sync가 나머지 세상을 deprecated 마킹하면 안 됨.
+- CLI exit codes: 0=ran (per-skill failure는 report.failed 카운터), 1=git/setup 실패 (skill 1개도 못 시작), 2=invalid args (argparse).
+- `ensure_upstream_checkout`은 system `git`을 subprocess로 호출. libgit2 의존 안 함. macOS/Linux 모두 동작.
+- Storage layout: `data/marketplace/k-skill/<version_id>/` 하위에 copytree. user-owned `data/skills/`와 분리되어 사용자 삭제 cascade 영향 없음 (Spec §6.4 immutability).
+- 신규 upstream skill (curated map에 없음) → `requirements_for(name)`이 `[]` 반환. credential 없는 skill로 등록됨 + 로그 경고 + hints 기록 → operator 다음 release에서 매핑 추가.
+
+## UI Patterns (팀쿡 M8a, 2026-05-18)
+- 신규 컴포넌트 16개 (모두 `frontend/src/components/marketplace/`): `MarketplaceCard`, `MarketplaceFilterBar`, `OriginBadge`, `PublicationBadge`, `CredentialSummaryChip`, `SupportLevelChip`, `InstallationStatusChip`, `InstallWizard`, `UpdateDialog`, `PublishWizard`, `SharedUsersDialog`, `CredentialRequirementRow`, `UpdateAvailableBanner`, `VersionsTable`, `CredentialRequirementList`, `MarketplaceSourceLink`. 시각적 토큰은 모두 ADR-010 (`bg-primary/15`, `bg-status-{success,info,warn,danger,accent}/10` 등) — raw emerald/violet/amber/sky/red 금지.
+- 카드 CTA 우선순위 8단계 (disabled → manual → not_installed → needs_setup → dirty+update → update → installed → installed_disabled). `installation` 슬롯의 5필드(installed/status/update_available/dirty + item.status)로 결정.
+- DialogShell 토큰: InstallWizard `size="lg" height="fixed"` + Sidebar(4-step), PublishWizard `size="xl" height="tall"` + Sidebar(5-step), UpdateDialog `size="md" height="auto"`, SharedUsersDialog `size="md"`. 모두 `<DialogShell>` (raw `<DialogContent>` 금지).
+- Badge 시각 명세 (38가지 variant): OriginBadge 6 kind + PublicationBadge 8 state + CredentialSummaryChip 5 status + SupportLevelChip 6 level + InstallationStatusChip 4 status (× update_available × dirty 조합). 모두 색 + 라벨 + lucide 아이콘 3중 인코딩 (WCAG 2.1 AA — 색 단독 의미 전달 금지).
+- 페이지 6개: `/marketplace` (4 tabs: All/Skills/Agents(coming)/MCP(coming)/Installed), `/marketplace/[item-id]`, `/marketplace/installed`, `/marketplace/admin/moderation` (super_user only), `/skills` (Origin/Marketplace 컬럼 추가), `/mcp-servers` (Phase 2 reserved 컬럼).
+- 에러 코드 12개 → UI 분기 매트릭스 (spec §5.3). 핵심: `item_not_found`/`install_forbidden`은 동일 메시지 + redirect (enumeration oracle). `secret_detected`는 publish wizard Step 1로 복귀 + findings 강조. `credential_required`는 wizard Step 2 직진. `dirty_installation`은 UpdateDialog 3-strategy radio 강제.
+- 카드 CTA 라벨 한국화 보류 — Phase 1 사용자 인터뷰 후 결정. 현재 spec은 영문 라벨 + 안내 텍스트만 한국어 (기존 패턴 일관).
+- N+1 회피: catalog GET 응답에 `origin_summary`, `publication_summary`, `credential_summary`, `installation`, `execution_profile`, `latest_version`이 모두 embed돼서 카드별 추가 호출 0개. 백엔드 origin_service.bulk_derive_* 보장(피차이/젠슨 합의).
+- 구현 슬라이스 10개 (U1~U10): U1(badges) → U2(/skills 컬럼) → U3(catalog read-only) → U4(InstallWizard) → U5(detail) → U6(Update+Uninstall) → U7(PublishWizard) → U8(SharedUsers ACL) → U9(moderation) → U10(/mcp-servers 컬럼). 각 슬라이스 독립 완결 — 백엔드 변경 없음.
+
+## Zuckerberg M8b Slice G — Frontend Marketplace UI (2026-05-19)
+- 새 파일 (모두 minimal skeleton, build/lint PASS):
+  - `frontend/src/lib/types/marketplace.ts` — 백엔드 `app/marketplace/schemas.py` 1:1 미러. `MarketplaceItem`, `InstallationSummary`, `PublishSkillBody`, `CredentialRequirement`, `MarketplaceListFilters` 등 27개 type.
+  - `frontend/src/lib/api/marketplace.ts` — `marketplaceApi` + `skillCredentialApi` 두 객체. catalog list/detail/versions, install/update/uninstall, publish/version/ACL/patch/disable, k-skill admin status, moderation queue (`?is_listed=false&visibility=public`로 reuse), credential bindings GET/PUT/DELETE.
+  - `frontend/src/lib/hooks/use-marketplace.ts` — 14개 TanStack Query/Mutation hook. invalidation은 `['marketplace','items']`/`['skills']` 합쳐서 broad invalidate.
+  - `frontend/src/components/marketplace/badges/{origin,publication,credential,support,installation}-badge.tsx` — 5개 badge. ADR-010 토큰만 사용 (raw color X).
+  - `frontend/src/components/marketplace/marketplace-card.tsx` — 카드 + `derivePrimaryCta` 8-priority 매핑 (disabled/manual/install/setup/review_update/update/open/disabled-installed).
+  - `frontend/src/components/marketplace/marketplace-filter-bar.tsx` — search + source/support/install_state Select + super_user Show-pending toggle.
+  - `frontend/src/components/marketplace/install-wizard.tsx` — 3~4 step (review/credentials/confirm/done), needs_setup일 때 initial step jump (useState lazy init, useEffect setState 안티패턴 회피 — key remount).
+  - `frontend/src/components/marketplace/publish-wizard.tsx` — 5 step (review/metadata/visibility/confirm/done), `marketplace_secret_detected`/`acl_required` 분기로 단계 복귀.
+- 페이지 3개 추가:
+  - `/marketplace` — 4 tab (All/Skills/Installed 활성, Agents/MCP coming-soon).
+  - `/marketplace/[item-id]` — hero + Versions card + Execution profile card + Owner/Moderation row.
+  - `/marketplace/admin/moderation` — super_user guard + Pending 큐 + k-skill sync status.
+- 기존 파일 보강:
+  - `frontend/src/lib/types/skill.ts` — `origin_summary`/`publication_summary`/`installation` optional 필드 추가.
+  - `frontend/src/app/skills/page.tsx` — Origin/Marketplace 컬럼 추가, row에 Publish 액션, PublishWizard 통합.
+  - `frontend/src/components/layout/app-sidebar.tsx` — Marketplace 메뉴 항목 + super_user only Moderation 하위 항목.
+- 검증: `pnpm install` → `pnpm lint` 0 error → `pnpm build` 성공 (전체 23 route 빌드, 3개가 marketplace).
+- 의도적 TODO (다음 슬라이스에서 채워야 함):
+  - InstallWizard credentials step: 현재 "needs_setup으로 설치하고 나중에 binding" 안내만. `useSkillCredentialRequirements` + `useSkillCredentialBindings` 통합 + Combobox UI 미구현. 백엔드 contract는 client에서 호출 가능 (api 함수 완비).
+  - PublishWizard files step에 SkillPackageTree 미통합, credential_requirements 입력 UI 미구현, ACL은 user-id 직접 입력 (user search Combobox 없음).
+  - UpdateDialog / SharedUsersDialog / VersionsTable / CredentialRequirementList / UpdateAvailableBanner / MarketplaceSourceLink: 미구현 — 카드/페이지에서 inline 처리.
+  - 모바일 Sheet collapse 미구현 (FilterBar는 가로 wrap만).
+  - Skills 페이지 credential 컬럼은 placeholder `—`. SkillResponse에 credential_summary 추가 PR 대기 또는 별도 fetch 필요.
+- Gotchas:
+  - base-ui Select onValueChange 타입은 `(value: string | null) => void` — `?? undefined` coerce 필요.
+  - eslint rule `react-hooks/set-state-in-effect`: prop 기반 state init은 useEffect 금지, 반드시 useState lazy init + key remount 패턴.
+  - `cn()` + 반응형 prefix grouping 함정 — base가 `sm:max-w-sm` 갖고 있으면 override는 `sm:max-w-none` 명시 필요 (frontend/AGENTS.md).
+  - Catalog page는 'use client' — Next.js 16 App Router에서 TanStack Query 쓰는 컴포넌트는 client only.
+  - `database_url_sync`는 `database_url`에서 파생되지 않는 별도 설정 (config.py). checkpointer가 이걸 쓰므로 E2E throwaway DB 사용 시 `DATABASE_URL`과 `DATABASE_URL_SYNC` 둘 다 오버라이드해야 한다 — 하나만 바꾸면 백엔드가 PoolTimeout으로 기동 실패.
+  - checkpointer의 psycopg AsyncConnectionPool은 min/max 미지정 → 고정 4 커넥션. 동시 슬로우 런 4개 이상이면 envelope 조회/agent DELETE까지 줄 서서 백엔드 전체가 직렬화됨 (page.goto 58s+ hang). repeat-each E2E 스트레스 실패는 origin/main 대조 실험으로 pre-existing 인프라 한계 확정 — 제품 버그 아님.
+
+
+## ⚠️ 반복 실패 감지 [2026-06-11T22:39:04]
+- 도구: unknown
+- 에러: no error info
+- 조치: 다른 접근 방식 시도 필요
+
+## ⚠️ 반복 실패 감지 [2026-06-11T22:45:37]
+- 도구: unknown
+- 에러: no error info
+- 조치: 다른 접근 방식 시도 필요
+
+## 리뷰 패턴 기록 [2026-06-12 chat-navigator 3차 리뷰]
+- 경계값 수정에는 경계값 테스트: `shortcutIndex <= 9` 같은 상한을 추가하면 회귀 테스트에 반드시 경계 밖 케이스(10)를 포함할 것 — 뮤테이션 검증에서 상한 삭제가 테스트를 통과해버림.
+- jsdom 한계 2종: `isContentEditable`은 항상 undefined, `checkVisibility`는 미구현(typeof 가드로 fallback) — 이 분기들은 단위 테스트로 검증 불가, E2E에서 커버해야 함.
+- 인덱스 drop 정당화 주석에는 영향받는 실제 쿼리 함수명을 명시하면 다음 리뷰어가 grep으로 재검증 가능 (m61 사례).
+
+## 리뷰 패턴 기록 [2026-06-12 chat-navigator 4차 리뷰]
+- 주석/문서/docstring에 함수명·심볼을 적을 때는 반드시 grep으로 실존을 확인한다.
+  요약·기억에 의존해 적은 이름은 오기 위험이 있고(예: list_agents_with_last_used →
+  실제는 list_agents), grep 불가능한 이름은 "추적 가능성"이라는 기록 목적 자체를 훼손한다.
+
+## ⚠️ 반복 실패 감지 [2026-06-12T01:17:06]
+- 도구: unknown
+- 에러: no error info
+- 조치: 다른 접근 방식 시도 필요
+
+## E2E 격리 DB + colima 포트 포워딩 gotcha (2026-06-12)
+- 이 머신의 docker는 Docker Desktop이 아니라 **colima**다. 새로 publish한 컨테이너
+  포트가 macOS 호스트로 포워딩되지 않을 수 있다 (VM 내부는 정상인데 호스트 nc만 실패).
+  - 진단: `colima ssh -- bash -c 'echo > /dev/tcp/127.0.0.1/<PORT>'` 가 성공하는데
+    호스트 `nc -z localhost <PORT>` 가 실패하면 colima 포워더 누락이다.
+  - 복구: `colima ssh-config > /tmp/cfg && ssh -F /tmp/cfg -f -N -L <PORT>:127.0.0.1:<PORT> colima`
+  - 정리: 포워딩은 colima의 SSH ControlMaster(mux)에 등록되므로 클라이언트 프로세스를
+    죽여도 리스너가 남는다. `ssh -O cancel -L <PORT>:127.0.0.1:<PORT> -S ~/.colima/_lima/colima/ssh.sock lima-colima`
+- live E2E용 격리 DB 레시피 (공유 DB에 alembic 금지 제약의 안전한 우회):
+  1. `docker run -d --name moldy-e2e-pg -e POSTGRES_USER=moldy -e POSTGRES_PASSWORD=moldy -e POSTGRES_DB=moldy -p 5433:5432 postgres:16`
+  2. worktree `backend/.env` 에 throwaway secrets 작성 (DATABASE_URL 5433,
+     ENCRYPTION_KEY/JWT_SECRET 은 `openssl rand -hex 32`)
+  3. `cd backend && uv run alembic upgrade head` (downgrade 왕복으로 신규 마이그레이션 대칭성도 검증 가능)
+  4. `cd frontend && E2E_FRONTEND_PORT=3100 E2E_BACKEND_PORT=8101 pnpm playwright test e2e/smoke.spec.ts`
+     (3000/8001/5432 는 다른 체크아웃·프로젝트가 점유 — reuseExistingServer 함정 방지용 대체 포트)
+  5. 정리: `docker rm -f moldy-e2e-pg` + worktree `backend/.env` 삭제 + ssh 포워딩 cancel
+- smoke.spec.ts 는 정기 스위트다. UI 구조 변경(사이드바 통합 등) 시 smoke 실패는
+  "회귀 vs 낡은 단언"을 소스에서 판별한 뒤 테스트를 갱신한다. dropdown menuitem 은
+  portal 렌더라 main 스코프가 아닌 page 레벨에서 찾는다.
+- 사이드바/루트 레이아웃 컴포넌트는 ROOT_MESSAGE_NAMESPACES(appSettings, auth,
+  common, metadata, nav, sidebar)만 클라이언트에서 쓸 수 있다
+  (src/i18n/scoped-messages.tsx). chat.* 같은 페이지 스코프 네임스페이스를 참조하면
+  런타임 IntlError — vitest 는 ko.json 전체를 주입하므로 못 잡고, E2E 의
+  console-error 단언만 잡는다. 사이드바에 새 copy 추가 시 sidebar.* 아래에 둘 것.

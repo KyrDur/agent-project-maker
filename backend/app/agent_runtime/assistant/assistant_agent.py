@@ -1,0 +1,101 @@
+"""Assistant v2 에이전트 — build_agent + 35개 도구 바인딩.
+
+assistant/prompt.md를 시스템 프롬프트로 로드하고,
+read/write/clarify 도구를 바인딩한다.
+"""
+
+from __future__ import annotations
+
+import functools
+import logging
+import uuid
+from pathlib import Path
+from typing import Any
+
+from langchain_core.language_models import BaseChatModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agent_runtime.assistant.tools.clarify_tools import build_clarify_tools
+from app.agent_runtime.assistant.tools.read_tools import build_read_tools
+from app.agent_runtime.assistant.tools.write_tools import build_write_tools
+from app.agent_runtime.checkpointer import get_checkpointer
+from app.agent_runtime.model_factory import create_chat_model
+from app.agent_runtime.runtime_component_builder import build_agent
+from app.agent_runtime.runtime_policy import ASSISTANT_RUNTIME_POLICY
+from app.services.system_credential_resolver import resolve_system_model
+
+logger = logging.getLogger(__name__)
+
+# Assistant 시스템 프롬프트 파일 경로
+# __file__ = backend/app/agent_runtime/assistant/assistant_agent.py
+# .parent = assistant/ (prompt.md와 같은 디렉토리)
+_PROMPT_PATH = Path(__file__).resolve().parent / "prompt.md"
+
+
+@functools.cache
+def _load_system_prompt() -> str:
+    """Assistant 시스템 프롬프트를 파일에서 로드한다 (캐시됨)."""
+    try:
+        return _PROMPT_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        logger.warning("Assistant prompt file not found: %s, using fallback", _PROMPT_PATH)
+        return (
+            "You are Moldy Agent Assistant, an AI that modifies existing "
+            "agent configurations. Always VERIFY before MODIFY."
+        )
+
+
+def _assistant_write_interrupt_on(write_tools: list[Any]) -> dict[str, Any]:
+    return {
+        tool.name: {"allowed_decisions": ["approve", "edit", "reject"]}
+        for tool in write_tools
+        if isinstance(getattr(tool, "name", None), str) and tool.name
+    }
+
+
+async def build_assistant_agent(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+    user_id: uuid.UUID,
+    thread_id: str,
+) -> Any:
+    """Assistant 에이전트를 생성한다.
+
+    Args:
+        db: DB 세션 (도구가 DB에 직접 접근)
+        agent_id: 대상 에이전트 ID
+        user_id: 사용자 ID
+        thread_id: 대화 스레드 ID (checkpointer용)
+
+    Returns:
+        CompiledStateGraph — build_agent의 반환값
+    """
+    # ADR-019: the assistant text model is the operator-selected ``text_primary``
+    # role. Raises ``SystemModelNotConfiguredError`` if unset (surfaced by the
+    # caller) — no silent ``.env`` fallback.
+    resolved = await resolve_system_model(db, "text_primary")
+    model: BaseChatModel = create_chat_model(
+        resolved.provider,
+        resolved.model_name,
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
+    )
+
+    # 도구 35개 = 16 read + 18 write + 1 clarify
+    read_tools = build_read_tools(db, agent_id, user_id)
+    write_tools = build_write_tools(db, agent_id, user_id)
+    clarify_tools = build_clarify_tools()
+    tools = read_tools + write_tools + clarify_tools
+
+    system_prompt = _load_system_prompt()
+
+    return build_agent(
+        model=model,
+        tools=tools,  # type: ignore[arg-type]  # StructuredTool은 BaseTool 호환 (langchain runtime 동작 OK)
+        system_prompt=system_prompt,
+        middleware=[],
+        interrupt_on=_assistant_write_interrupt_on(write_tools),
+        checkpointer=get_checkpointer(),
+        name=f"assistant_{str(agent_id)[:8]}",
+        runtime_policy=ASSISTANT_RUNTIME_POLICY,
+    )

@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# Python tools
+.ruff_cache/
+.mypy_cache/
+
+# uv
+.uv/
+
+# Node
+node_modules/
+.next/
+out/
+package-lock.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Credentials/Secrets
+token.json
+credentials.json
+*.key
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage/
+
+# Build
+build/
+
+# Alembic
+*.pyc
+
+# Logs
+*.log
+logs/
+
+# Editor backups
+*~
+
+# Runtime data (conversations, skills, uploads)
+backend/data/
+backend/data.bak*/
+# worktree에서 backend가 root cwd로 실행될 때 생기는 동일 데이터 경로
+/data/
+
+# DeepAgent / Codex / Playwright workspaces
+workspace/
+.codex/
+.omo/
+.playwright-mcp/
+
+# Local E2E screenshots/videos/traces/raw captures.
+# Use output/e2e-captures/<YYYYMMDD>-<feature>/.
+output/
+frontend/e2e-demo/
+frontend/playwright.demo.config.ts
+frontend/scripts/render-demo-videos.mjs
+backend/app/seed/system_skill_packages/*/data/
+
+# Redis dump (M-MCP2)
+dump.rdb
+
+# Redesign drafts (디자인 시안용 로컬 폴더)
+redesign/
+
+# Pixel Office drafts and renderer spike (local-only for now)
+/docs/design-docs/pixel-office-spike/
+
+# Claude — 전체 ignore (이미 트래킹된 .claude/skills/ 등은 영향 없음)
+.claude/
+
+# Model catalog — 6시간마다 cron으로 자동 갱신되는 산출물 + 외부 소스 raw 스냅샷.
+# curated/, providers.json, schema.json 같은 사람이 편집하는 파일은 추적 유지.
+backend/app/data/model_catalog/catalog.json
+backend/app/data/model_catalog/fetch_metadata.json
+backend/app/data/model_catalog/sources/

@@ -1,0 +1,308 @@
+import { http, HttpResponse } from 'msw'
+import {
+  mockAgentList,
+  mockAgentSummaryList,
+  mockAgent,
+  mockModelList,
+  mockModel,
+  mockToolList,
+  mockTool,
+  mockTemplateList,
+  mockTemplate,
+  mockConversationList,
+  mockConversationPage,
+  mockGlobalConversationPage,
+  mockConversation,
+  mockMessageList,
+  mockTriggerList,
+  mockTrigger,
+  mockTriggerRun,
+  mockTriggerSummary,
+  mockUsageSummary,
+  mockBuilderSession,
+  mockCredentialList,
+  mockCredential,
+  mockMarketplaceItemsPage,
+} from './fixtures'
+
+const API_BASE = 'http://localhost:8001'
+
+export const handlers = [
+  // ── Agents ─────────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/agents`, () => {
+    return HttpResponse.json(mockAgentList)
+  }),
+
+  http.get(`${API_BASE}/api/agents/summary`, () => {
+    return HttpResponse.json(mockAgentSummaryList)
+  }),
+
+  http.get(`${API_BASE}/api/agents/:id`, ({ params }) => {
+    if (params.id === 'not-found') {
+      return HttpResponse.json({ detail: 'Agent not found' }, { status: 404 })
+    }
+    return HttpResponse.json({ ...mockAgent, id: params.id })
+  }),
+
+  http.post(`${API_BASE}/api/agents`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockAgent,
+      id: 'agent-new',
+      name: body.name,
+      description: body.description ?? null,
+      system_prompt: body.system_prompt,
+    })
+  }),
+
+  http.put(`${API_BASE}/api/agents/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockAgent,
+      id: params.id,
+      ...body,
+    })
+  }),
+
+  http.delete(`${API_BASE}/api/agents/:id`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ── Models ─────────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/models`, () => {
+    return HttpResponse.json(mockModelList)
+  }),
+
+  http.post(`${API_BASE}/api/models`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockModel,
+      id: 'model-new',
+      provider: body.provider,
+      model_name: body.model_name,
+      display_name: body.display_name,
+    })
+  }),
+
+  http.delete(`${API_BASE}/api/models/:id`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ── Tools ──────────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/tools`, () => {
+    return HttpResponse.json(mockToolList)
+  }),
+
+  // ``POST /api/tools`` (이전 ``/api/tools/custom``)로 통합. definition_key 기반.
+  http.post(`${API_BASE}/api/tools`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockTool,
+      id: 'tool-new',
+      definition_key: body.definition_key,
+      name: body.name,
+      parameters: body.parameters,
+    })
+  }),
+
+  http.patch(`${API_BASE}/api/tools/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockTool,
+      id: params.id,
+      ...body,
+    })
+  }),
+
+  http.delete(`${API_BASE}/api/tools/:id`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ── Credentials ────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/credentials`, () => {
+    return HttpResponse.json(mockCredentialList)
+  }),
+
+  http.get(`${API_BASE}/api/credentials/:id`, ({ params }) => {
+    return HttpResponse.json({ ...mockCredential, id: params.id })
+  }),
+
+  http.post(`${API_BASE}/api/credentials`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json(
+      { ...mockCredential, id: 'cred-new', ...body, has_data: true },
+      { status: 201 },
+    )
+  }),
+
+  http.patch(`${API_BASE}/api/credentials/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ ...mockCredential, id: params.id, ...body })
+  }),
+
+  http.delete(`${API_BASE}/api/credentials/:id`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ── Templates ──────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/templates`, () => {
+    return HttpResponse.json(mockTemplateList)
+  }),
+
+  http.get(`${API_BASE}/api/templates/:id`, ({ params }) => {
+    return HttpResponse.json({ ...mockTemplate, id: params.id })
+  }),
+
+  // ── Agent Blueprints ──────────────────────────────────────────
+  http.get(`${API_BASE}/api/agent-blueprints`, () => {
+    return HttpResponse.json([])
+  }),
+
+  // ── Conversations ──────────────────────────────────────────────
+  http.get(`${API_BASE}/api/agents/:agentId/conversations`, () => {
+    return HttpResponse.json(mockConversationList)
+  }),
+
+  http.get(`${API_BASE}/api/agents/:agentId/conversations/page`, () => {
+    return HttpResponse.json(mockConversationPage)
+  }),
+
+  http.get(`${API_BASE}/api/conversations/page`, () => {
+    return HttpResponse.json(mockGlobalConversationPage)
+  }),
+
+  http.get(`${API_BASE}/api/conversations/:id`, ({ params }) => {
+    const found = mockGlobalConversationPage.items.find((item) => item.id === params.id)
+    return found
+      ? HttpResponse.json(found)
+      : HttpResponse.json({ detail: 'Conversation not found' }, { status: 404 })
+  }),
+
+  http.post(`${API_BASE}/api/agents/:agentId/conversations`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockConversation,
+      id: 'conv-new',
+      agent_id: params.agentId,
+      title: body.title ?? null,
+    })
+  }),
+
+  http.get(`${API_BASE}/api/conversations/:id/messages`, () => {
+    // ``conversationsApi.messages``는 MessagesEnvelope를 받아 ``messages``만
+    // 반환하므로 mock도 envelope 형태로 맞춰 transform 경로까지 검증되게 한다.
+    return HttpResponse.json({
+      messages: mockMessageList,
+      active_tip_message_id: null,
+      active_checkpoint_id: null,
+    })
+  }),
+
+  http.post(`${API_BASE}/api/conversations/:id/read`, ({ params }) => {
+    const conversation = mockConversationList.find((c) => c.id === params.id)
+    return HttpResponse.json({
+      ...(conversation ?? mockConversationList[0]),
+      unread_count: 0,
+      last_read_at: '2026-01-01T01:00:00Z',
+    })
+  }),
+
+  // ── Triggers ───────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/triggers`, () => {
+    return HttpResponse.json(mockTriggerList)
+  }),
+
+  http.get(`${API_BASE}/api/triggers/summary`, () => {
+    return HttpResponse.json(mockTriggerSummary)
+  }),
+
+  http.patch(`${API_BASE}/api/triggers/:triggerId`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockTrigger,
+      id: params.triggerId,
+      ...body,
+    })
+  }),
+
+  http.delete(`${API_BASE}/api/triggers/:triggerId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post(`${API_BASE}/api/triggers/:triggerId/run-now`, ({ params }) => {
+    return HttpResponse.json({
+      ...mockTriggerRun,
+      trigger_id: params.triggerId,
+    })
+  }),
+
+  http.get(`${API_BASE}/api/triggers/:triggerId/runs`, ({ params }) => {
+    return HttpResponse.json([{ ...mockTriggerRun, trigger_id: params.triggerId }])
+  }),
+
+  http.get(`${API_BASE}/api/agents/:agentId/triggers`, () => {
+    return HttpResponse.json(mockTriggerList)
+  }),
+
+  http.post(`${API_BASE}/api/agents/:agentId/triggers`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockTrigger,
+      id: 'trigger-new',
+      agent_id: params.agentId,
+      trigger_type: body.trigger_type,
+      schedule_config: body.schedule_config,
+      input_message: body.input_message,
+    })
+  }),
+
+  http.put(`${API_BASE}/api/agents/:agentId/triggers/:triggerId`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockTrigger,
+      id: params.triggerId,
+      agent_id: params.agentId,
+      ...body,
+    })
+  }),
+
+  http.delete(`${API_BASE}/api/agents/:agentId/triggers/:triggerId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // ── Usage ──────────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/agents/:agentId/usage`, () => {
+    return HttpResponse.json({ total_tokens: 100000, estimated_cost: 0.85 })
+  }),
+
+  http.get(`${API_BASE}/api/usage/summary`, () => {
+    return HttpResponse.json(mockUsageSummary)
+  }),
+
+  // ── Marketplace ─────────────────────────────────────────────────
+  http.get(`${API_BASE}/api/marketplace/items/page`, () => {
+    return HttpResponse.json(mockMarketplaceItemsPage)
+  }),
+
+  http.get(`${API_BASE}/api/marketplace/items`, () => {
+    return HttpResponse.json(mockMarketplaceItemsPage.items)
+  }),
+
+  // ── Builder v2 ──────────────────────────────────────────────────
+  http.post(`${API_BASE}/api/builder`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      ...mockBuilderSession,
+      status: 'building',
+      user_request: body.user_request,
+    })
+  }),
+
+  http.get(`${API_BASE}/api/builder/:id`, ({ params }) => {
+    return HttpResponse.json({ ...mockBuilderSession, id: params.id })
+  }),
+
+  http.post(`${API_BASE}/api/builder/:id/confirm`, () => {
+    return HttpResponse.json({ ...mockAgent, id: 'agent-from-builder' })
+  }),
+]

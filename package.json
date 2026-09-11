@@ -1,0 +1,38 @@
+{
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "prepare": "husky",
+    "check": "pnpm run check:be && pnpm run check:fe",
+    "check:be": "cd backend && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest -q",
+    "check:fe": "cd frontend && pnpm lint && pnpm format:check && pnpm test --run",
+    "check:e2e": "cd frontend && pnpm test:e2e"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1"
+  },
+  "pnpm": {
+    "ignoredOptionalDependencies": [
+      "@img/sharp-*",
+      "@img/sharp-libvips-*",
+      "sharp"
+    ]
+  },
+  "lint-staged": {
+    "backend/**/*.py": [
+      "uv run --directory backend ruff check --fix",
+      "uv run --directory backend ruff format"
+    ],
+    "frontend/src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "frontend/node_modules/.bin/eslint --config frontend/eslint.config.mjs --fix"
+    ],
+    "frontend/**/*.{ts,tsx}": [
+      "pnpm --dir frontend lint:i18n",
+      "pnpm --dir frontend lint:type-safety",
+      "pnpm --dir frontend lint:e2e-hygiene"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+
+# Pre-push gate — backend pytest + frontend vitest must both be green before
+# code leaves the laptop. Without this, frontend test debt accumulates silently
+# (47 commits between two "일괄 수정" rounds shipped 67 failing tests in the
+# past — see HANDOFF for the analysis). pnpm lint + pnpm build do NOT catch
+# rendering regressions.
+#
+# 우회가 정말 필요한 경우 ``git push --no-verify`` (예: WIP 브랜치 push) — 단,
+# main으로 머지되는 PR 브랜치에서는 절대 우회 금지.
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+GIT_LOCAL_ENV_VARS="$(git rev-parse --local-env-vars)"
+# Git emits one trusted variable name per line; word splitting is intentional.
+unset $GIT_LOCAL_ENV_VARS
+
+PYTEST_BASETEMP="$(mktemp -d "${TMPDIR:-/tmp}/moldy-pre-push-pytest.XXXXXX")"
+cleanup_pytest_basetemp() {
+  rm -rf -- "$PYTEST_BASETEMP"
+}
+trap cleanup_pytest_basetemp EXIT
+
+echo "▶ backend pytest"
+cd "$ROOT/backend"
+uv run --locked --extra dev pytest tests/ -q --tb=line "--basetemp=$PYTEST_BASETEMP"
+
+echo ""
+echo "▶ frontend vitest"
+cd "$ROOT/frontend"
+# pnpm 9.15+ treats `--run` as a pnpm option unless it follows `--`; without the
+# separator the gate dies with "Unknown option: 'run'" before vitest even starts.
+pnpm test -- --run --reporter=dot
+
+echo ""
+echo "✓ pre-push gate passed"

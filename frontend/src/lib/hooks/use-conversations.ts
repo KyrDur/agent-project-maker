@@ -1,0 +1,310 @@
+'use client'
+
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+  type QueryClient,
+} from '@tanstack/react-query'
+import { conversationsApi } from '@/lib/api/conversations'
+import { conversationPagesContainActiveRun } from '@/lib/chat-runs/status'
+import { agentQueryKeys } from '@/lib/query-keys/agents'
+import type {
+  Conversation,
+  ConversationAgentBrief,
+  ConversationListEnvelope,
+  ConversationPageParams,
+  ConversationUpdateRequest,
+  ConversationWithAgent,
+  ConversationWithAgentListEnvelope,
+} from '@/lib/types'
+import { triggerKeys } from './use-triggers'
+
+interface ConversationPagesOptions {
+  readonly enabled?: boolean
+}
+
+function normalizeConversationPageParams(
+  params: Omit<ConversationPageParams, 'cursor'> = {},
+): Omit<ConversationPageParams, 'cursor'> {
+  return {
+    limit: params.limit ?? 30,
+    q: params.q?.trim() || undefined,
+    sort: params.sort ?? 'updated',
+  }
+}
+
+export const conversationKeys = {
+  list: (agentId: string) => ['agents', agentId, 'conversations'] as const,
+  agentPagesRoot: (agentId: string) => ['agents', agentId, 'conversations', 'page'] as const,
+  pages: (agentId: string, params: Omit<ConversationPageParams, 'cursor'>) =>
+    ['agents', agentId, 'conversations', 'page', params] as const,
+  globalPagesRoot: ['conversations', 'page'] as const,
+  globalPages: (params: Omit<ConversationPageParams, 'cursor'>) =>
+    ['conversations', 'page', params] as const,
+  detail: (conversationId: string) => ['conversations', conversationId, 'detail'] as const,
+  messages: (conversationId: string) => ['conversations', conversationId, 'messages'] as const,
+  files: (conversationId: string | null | undefined) =>
+    ['conversations', conversationId ?? 'none', 'files'] as const,
+  debugTraces: (conversationId: string) =>
+    ['conversations', conversationId, 'debug-traces'] as const,
+  debugTraceDetail: (conversationId: string, traceId: string) =>
+    ['conversations', conversationId, 'debug-traces', traceId] as const,
+}
+
+/** 대화 내비게이터(사이드바/퀵스위처/대화 목록) 캐시를 무효화한다.
+ *  prefix 매칭 특성상 ``list(agentId)``가 page 쿼리까지 포섭하며,
+ *  ``['agents']`` 같은 광역 무효화는 무관한 쿼리 refetch를 유발하므로 금지. */
+export function invalidateConversationNavigators(
+  queryClient: QueryClient,
+  agentId?: string | null,
+  conversationId?: string | null,
+): void {
+  if (agentId) {
+    queryClient.invalidateQueries({ queryKey: conversationKeys.list(agentId) })
+  }
+  if (conversationId) {
+    queryClient.invalidateQueries({ queryKey: conversationKeys.detail(conversationId) })
+  }
+  queryClient.invalidateQueries({ queryKey: conversationKeys.globalPagesRoot })
+  queryClient.invalidateQueries({ queryKey: agentQueryKeys.summary })
+}
+
+function mergeConversationRow(current: Conversation | undefined, next: Conversation): Conversation {
+  return current ? { ...current, ...next } : next
+}
+
+// M1 — 순수 캐시 upsert 헬퍼는 단위 테스트 대상이라 export한다.
+export function upsertConversationList(
+  rows: readonly Conversation[] | undefined,
+  conversation: Conversation,
+): Conversation[] | undefined {
+  if (!rows) return rows
+  const existing = rows.find((row) => row.id === conversation.id)
+  const merged = mergeConversationRow(existing, conversation)
+  return [merged, ...rows.filter((row) => row.id !== conversation.id)]
+}
+
+export function upsertConversationPages(
+  data: InfiniteData<ConversationListEnvelope> | undefined,
+  conversation: Conversation,
+): InfiniteData<ConversationListEnvelope> | undefined {
+  if (!data) return data
+  return {
+    ...data,
+    pages: data.pages.map((page, index) => {
+      const existing = page.items.find((row) => row.id === conversation.id)
+      const rowsWithoutConversation = page.items.filter((row) => row.id !== conversation.id)
+      if (index !== 0) return { ...page, items: rowsWithoutConversation }
+      return {
+        ...page,
+        items: [mergeConversationRow(existing, conversation), ...rowsWithoutConversation],
+      }
+    }),
+  }
+}
+
+export function upsertGlobalConversationPages(
+  data: InfiniteData<ConversationWithAgentListEnvelope> | undefined,
+  conversation: ConversationWithAgent,
+): InfiniteData<ConversationWithAgentListEnvelope> | undefined {
+  if (!data) return data
+  return {
+    ...data,
+    pages: data.pages.map((page, index) => {
+      const existing = page.items.find((row) => row.id === conversation.id)
+      const rowsWithoutConversation = page.items.filter((row) => row.id !== conversation.id)
+      if (index !== 0) return { ...page, items: rowsWithoutConversation }
+      return {
+        ...page,
+        // `...conversation`이 모든 필드(agent 포함)를 덮으므로 existing은 빈
+        // 객체 fallback이면 충분하다.
+        items: [{ ...(existing ?? {}), ...conversation }, ...rowsWithoutConversation],
+      }
+    }),
+  }
+}
+
+export function upsertConversationNavigatorCache(
+  queryClient: QueryClient,
+  conversation: Conversation,
+  agent?: ConversationAgentBrief | null,
+): void {
+  queryClient.setQueryData<Conversation[]>(
+    conversationKeys.list(conversation.agent_id),
+    (current) => upsertConversationList(current, conversation),
+  )
+  queryClient.setQueriesData<InfiniteData<ConversationListEnvelope>>(
+    { queryKey: conversationKeys.agentPagesRoot(conversation.agent_id) },
+    (current) => upsertConversationPages(current, conversation),
+  )
+  if (!agent) return
+  queryClient.setQueriesData<InfiniteData<ConversationWithAgentListEnvelope>>(
+    { queryKey: conversationKeys.globalPagesRoot },
+    (current) => upsertGlobalConversationPages(current, { ...conversation, agent }),
+  )
+}
+
+export function useConversations(agentId: string) {
+  return useQuery({
+    queryKey: conversationKeys.list(agentId),
+    queryFn: () => conversationsApi.list(agentId),
+    enabled: !!agentId,
+  })
+}
+
+export function useConversationPages(
+  agentId: string,
+  params: Omit<ConversationPageParams, 'cursor'> = {},
+  options: ConversationPagesOptions = {},
+) {
+  const pageParams = normalizeConversationPageParams(params)
+  return useInfiniteQuery({
+    queryKey: conversationKeys.pages(agentId, pageParams),
+    queryFn: ({ pageParam }) =>
+      conversationsApi.page(agentId, {
+        ...pageParams,
+        cursor: pageParam,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.next_cursor ?? undefined,
+    enabled: (options.enabled ?? true) && !!agentId,
+    refetchInterval: (query) =>
+      conversationPagesContainActiveRun(query.state.data?.pages) ? 1000 : false,
+  })
+}
+
+export function useGlobalConversationPages(
+  params: Omit<ConversationPageParams, 'cursor'> = {},
+  options: ConversationPagesOptions = {},
+) {
+  const pageParams = normalizeConversationPageParams(params)
+  return useInfiniteQuery({
+    queryKey: conversationKeys.globalPages(pageParams),
+    queryFn: ({ pageParam }) =>
+      conversationsApi.globalPage({
+        ...pageParams,
+        cursor: pageParam,
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.next_cursor ?? undefined,
+    enabled: options.enabled ?? true,
+    // 백그라운드 run이 보이는 동안 navigator도 1초 폴링으로 상태를 따라간다
+    refetchInterval: (query) =>
+      conversationPagesContainActiveRun(query.state.data?.pages) ? 1000 : false,
+  })
+}
+
+/** Detail query contract shared by consumers that need to prefill navigator cache. */
+export function conversationDetailQueryOptions(conversationId: string) {
+  return {
+    queryKey: conversationKeys.detail(conversationId),
+    queryFn: () => conversationsApi.get(conversationId),
+  }
+}
+
+export function useConversationDetail(conversationId: string, enabled = true) {
+  const query = conversationDetailQueryOptions(conversationId)
+  return useQuery({
+    ...query,
+    enabled: enabled && !!conversationId && conversationId !== 'new',
+  })
+}
+
+export function useMessages(conversationId: string, enabled = true) {
+  return useQuery({
+    queryKey: conversationKeys.messages(conversationId),
+    // envelope 전체 fetch + select로 ``Message[]``만 노출 — caller 호환을
+    // 유지하면서 ``useMessagesEnvelope``과 cache를 공유한다.
+    queryFn: () => conversationsApi.messagesEnvelope(conversationId),
+    select: (env) => env.messages,
+    enabled: enabled && !!conversationId,
+    refetchOnWindowFocus: false,
+  })
+}
+
+/** W7-4 — Composer 토큰 바의 cost 표시를 위해 envelope 전체에 접근하는 hook.
+ *  ``useMessages``와 동일한 queryKey/queryFn을 공유해 추가 fetch 비용 없음. */
+export function useMessagesEnvelope(conversationId: string, enabled = true) {
+  return useQuery({
+    queryKey: conversationKeys.messages(conversationId),
+    queryFn: () => conversationsApi.messagesEnvelope(conversationId),
+    enabled: enabled && !!conversationId,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useConversationDebugTraces(conversationId: string, enabled = true) {
+  return useQuery({
+    queryKey: conversationKeys.debugTraces(conversationId),
+    queryFn: () => conversationsApi.debugTraces(conversationId),
+    enabled: enabled && !!conversationId,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useConversationDebugTraceDetail(
+  conversationId: string,
+  traceId: string | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: conversationKeys.debugTraceDetail(conversationId, traceId ?? 'none'),
+    queryFn: () => conversationsApi.debugTraceDetail(conversationId, traceId ?? ''),
+    enabled: enabled && !!conversationId && !!traceId,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useCreateConversation(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (title?: string) => conversationsApi.create(agentId, title),
+    onSuccess: () => invalidateConversationNavigators(qc, agentId),
+  })
+}
+
+export function useUpdateConversation(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ConversationUpdateRequest }) =>
+      conversationsApi.update(id, data),
+    onSuccess: (_updated, variables) => invalidateConversationNavigators(qc, agentId, variables.id),
+  })
+}
+
+export function useDeleteConversation(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => conversationsApi.delete(id),
+    onSuccess: () => invalidateConversationNavigators(qc, agentId),
+  })
+}
+
+export function useMarkConversationRead(agentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (conversationId: string) => conversationsApi.markRead(conversationId),
+    onSuccess: (conversation) => {
+      qc.setQueryData<Conversation[]>(conversationKeys.list(agentId), (current) =>
+        current?.map((item) => (item.id === conversation.id ? { ...item, ...conversation } : item)),
+      )
+      qc.invalidateQueries({ queryKey: conversationKeys.list(agentId), refetchType: 'inactive' })
+      invalidateConversationNavigators(qc, agentId, conversation.id)
+      qc.invalidateQueries({ queryKey: triggerKeys.all })
+      qc.invalidateQueries({ queryKey: triggerKeys.summary })
+    },
+  })
+}
+
+/**
+ * Follow-up 고스트 제안 1개 생성 (런 종료 시 1회 호출). 생성 불가 시
+ * suggestion=null — 고스트를 숨기면 된다.
+ */
+export function useFollowupSuggestionMutation() {
+  return useMutation({
+    mutationFn: (conversationId: string) => conversationsApi.followupSuggestion(conversationId),
+  })
+}

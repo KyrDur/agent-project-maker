@@ -1,0 +1,391 @@
+'use client'
+
+import { useState } from 'react'
+import type { ToolCallMessagePartProps } from '@assistant-ui/react'
+import { useTranslations } from 'next-intl'
+import {
+  CopyIcon,
+  CheckIcon,
+  FileIcon,
+  FileEditIcon,
+  FilePlusIcon,
+  type LucideIcon,
+} from 'lucide-react'
+import { CollapsiblePill, pillStatusFromAssistantUi, type PillStatus } from './collapsible-pill'
+
+// ──────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────
+
+interface ReadFileArgs {
+  file_path?: string
+  path?: string
+}
+
+interface WriteFileArgs {
+  file_path?: string
+  path?: string
+  content?: string
+}
+
+interface EditFileArgs {
+  file_path?: string
+  path?: string
+  old_string?: string
+  new_string?: string
+}
+
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+
+function extractFilename(path?: string): string {
+  if (!path) return 'file'
+  const segments = path.split('/')
+  return segments[segments.length - 1] ?? 'file'
+}
+
+function guessLanguage(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  const map: Record<string, string> = {
+    ts: 'typescript',
+    tsx: 'typescript',
+    js: 'javascript',
+    jsx: 'javascript',
+    py: 'python',
+    rs: 'rust',
+    go: 'go',
+    java: 'java',
+    json: 'json',
+    yaml: 'yaml',
+    yml: 'yaml',
+    md: 'markdown',
+    css: 'css',
+    html: 'html',
+    sql: 'sql',
+    sh: 'bash',
+    toml: 'toml',
+  }
+  return ext ? (map[ext] ?? ext) : 'text'
+}
+
+export function shouldFileToolDefaultExpand({
+  label,
+  status,
+  hasPreview,
+}: {
+  label: string
+  status: PillStatus
+  hasPreview: boolean
+}): boolean {
+  if (label === 'Read') return status === 'error' && hasPreview
+  return status !== 'loading' && hasPreview
+}
+
+const FILESYSTEM_PERMISSION_DENIED_RESULT = 'Error: filesystem permission denied'
+
+export function isFilesystemPermissionDenied(result: unknown): boolean {
+  return result === FILESYSTEM_PERMISSION_DENIED_RESULT
+}
+
+export function isWriteFileUnavailable(result: unknown): boolean {
+  if (typeof result !== 'string') return false
+  const normalized = result.toLowerCase()
+  return (
+    normalized.includes('write_file is not a valid tool') ||
+    normalized.includes('unknown tool: write_file') ||
+    normalized.includes('write_file is unavailable')
+  )
+}
+
+// ──────────────────────────────────────────────
+// CodeBlock — 코드 미리보기 (Shiki 없이 기본 스타일)
+// ──────────────────────────────────────────────
+
+function CodeBlock({
+  code,
+  filename,
+  maxLines = 20,
+}: {
+  code: string
+  filename: string
+  maxLines?: number
+}) {
+  const t = useTranslations('chat.markdown')
+  const [copied, setCopied] = useState(false)
+  const lines = code.split('\n')
+  const truncated = lines.length > maxLines
+  const visibleLines = truncated ? lines.slice(0, maxLines) : lines
+  const lang = guessLanguage(filename)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="moldy-code-panel moldy-ui-caption">
+      {/* File header */}
+      <div className="moldy-code-header flex items-center justify-between px-3 py-1.5">
+        <span className="moldy-code-muted font-mono">{filename}</span>
+        <div className="flex items-center gap-2">
+          <span className="moldy-code-muted moldy-ui-micro">{lang}</span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="moldy-code-copy"
+            aria-label={copied ? t('copied') : t('copy')}
+            title={copied ? t('copied') : t('copy')}
+          >
+            {copied ? (
+              <CheckIcon className="size-3 text-status-success" />
+            ) : (
+              <CopyIcon className="size-3" />
+            )}
+          </button>
+        </div>
+      </div>
+      {/* Code */}
+      <div className="overflow-x-auto p-3">
+        <pre className="moldy-code-text font-mono leading-relaxed">
+          {visibleLines.map((line, i) => (
+            <div key={i} className="flex">
+              <span className="moldy-code-line-number mr-4 inline-block w-8 select-none text-right">
+                {i + 1}
+              </span>
+              <span className="flex-1">{line || ' '}</span>
+            </div>
+          ))}
+          {truncated && (
+            <div className="moldy-code-muted mt-1 text-center">
+              … {t('moreLines', { count: lines.length - maxLines })}
+            </div>
+          )}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
+// DiffBlock — edit_file 전용 diff 표시
+// ──────────────────────────────────────────────
+
+function DiffBlock({
+  oldStr,
+  newStr,
+  filename,
+}: {
+  oldStr: string
+  newStr: string
+  filename: string
+}) {
+  return (
+    <div className="moldy-code-panel moldy-ui-caption">
+      <div className="moldy-code-header px-3 py-1.5">
+        <span className="moldy-code-muted font-mono">{filename}</span>
+      </div>
+      <div className="overflow-x-auto p-3 font-mono leading-relaxed">
+        {oldStr.split('\n').map((line, i) => (
+          <div key={`old-${i}`} className="bg-status-danger/15 text-status-danger">
+            <span className="mr-2 select-none opacity-60">-</span>
+            {line || ' '}
+          </div>
+        ))}
+        {newStr.split('\n').map((line, i) => (
+          <div key={`new-${i}`} className="bg-status-success/15 text-status-success">
+            <span className="mr-2 select-none opacity-60">+</span>
+            {line || ' '}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────
+// FileToolPill — Read/Write/Edit 공통 래퍼. leadingIcon으로 file 종류
+// (Read/Write/Edit)을 시각적으로도 구분 (textual label과 함께 빠른 스캔성 확보).
+// ──────────────────────────────────────────────
+
+function FileToolPill({
+  icon,
+  label,
+  filePath,
+  status,
+  children,
+}: {
+  icon: LucideIcon
+  label: string
+  filePath?: string
+  status: PillStatus
+  children?: React.ReactNode
+}) {
+  return (
+    <CollapsiblePill
+      kind="tool"
+      leadingIcon={icon}
+      status={status}
+      title={label}
+      meta={extractFilename(filePath)}
+      defaultExpanded={shouldFileToolDefaultExpand({
+        label,
+        status,
+        hasPreview: Boolean(children),
+      })}
+    >
+      {children}
+    </CollapsiblePill>
+  )
+}
+
+// ──────────────────────────────────────────────
+// ReadFileToolUI
+// ──────────────────────────────────────────────
+
+export function ReadFileToolUI({
+  args,
+  result,
+  status,
+}: ToolCallMessagePartProps<ReadFileArgs, unknown>) {
+  return (
+    <ReadFileToolView args={args} result={result} statusType={status.type} />
+  )
+}
+
+function ReadFileToolView({
+  args,
+  result,
+  statusType,
+}: {
+  args: ReadFileArgs
+  result: unknown
+  statusType: string
+}) {
+  const t = useTranslations('chat.toolCall.file')
+  const filePath = args?.file_path ?? args?.path
+  const filename = extractFilename(filePath)
+  const content = typeof result === 'string' ? result : null
+  const permissionDenied = isFilesystemPermissionDenied(result)
+
+  return (
+    <FileToolPill
+      icon={FileIcon}
+      label={t('read')}
+      filePath={filePath}
+      status={permissionDenied ? 'error' : pillStatusFromAssistantUi(statusType)}
+    >
+      {permissionDenied ? (
+        <p
+          className="moldy-status-surface moldy-status-warn p-2 moldy-ui-caption"
+          data-testid="filesystem-permission-denied"
+        >
+          {t('permissionDenied')}
+        </p>
+      ) : (
+        content && <CodeBlock code={content} filename={filename} />
+      )}
+    </FileToolPill>
+  )
+}
+
+// ──────────────────────────────────────────────
+// WriteFileToolUI
+// ──────────────────────────────────────────────
+
+export function WriteFileToolUI({
+  args,
+  result,
+  status,
+}: ToolCallMessagePartProps<WriteFileArgs, unknown>) {
+  return (
+    <WriteFileToolView args={args} result={result} statusType={status.type} />
+  )
+}
+
+function WriteFileToolView({
+  args,
+  result,
+  statusType,
+}: {
+  args: WriteFileArgs
+  result: unknown
+  statusType: string
+}) {
+  const t = useTranslations('chat.toolCall.file')
+  const filePath = args?.file_path ?? args?.path
+  const filename = extractFilename(filePath)
+  const permissionDenied = isFilesystemPermissionDenied(result) || isWriteFileUnavailable(result)
+
+  return (
+    <FileToolPill
+      icon={FilePlusIcon}
+      label={t('write')}
+      filePath={filePath}
+      status={permissionDenied ? 'error' : pillStatusFromAssistantUi(statusType)}
+    >
+      {permissionDenied ? (
+        <p
+          className="moldy-status-surface moldy-status-warn p-2 moldy-ui-caption"
+          data-testid="filesystem-write-denied"
+        >
+          {t('permissionDenied')}
+        </p>
+      ) : args?.content ? (
+        <CodeBlock code={args.content} filename={filename} />
+      ) : null}
+    </FileToolPill>
+  )
+}
+
+// ──────────────────────────────────────────────
+// EditFileToolUI
+// ──────────────────────────────────────────────
+
+export function EditFileToolUI({
+  args,
+  result,
+  status,
+}: ToolCallMessagePartProps<EditFileArgs, unknown>) {
+  return (
+    <EditFileToolView args={args} result={result} statusType={status.type} />
+  )
+}
+
+function EditFileToolView({
+  args,
+  result,
+  statusType,
+}: {
+  args: EditFileArgs
+  result: unknown
+  statusType: string
+}) {
+  const t = useTranslations('chat.toolCall.file')
+  const filePath = args?.file_path ?? args?.path
+  const filename = extractFilename(filePath)
+  const oldString = args?.old_string
+  const newString = args?.new_string
+  const permissionDenied = isFilesystemPermissionDenied(result)
+
+  return (
+    <FileToolPill
+      icon={FileEditIcon}
+      label={t('edit')}
+      filePath={filePath}
+      status={permissionDenied ? 'error' : pillStatusFromAssistantUi(statusType)}
+    >
+      {permissionDenied ? (
+        <p
+          className="moldy-status-surface moldy-status-warn p-2 moldy-ui-caption"
+          data-testid="filesystem-edit-denied"
+        >
+          {t('permissionDenied')}
+        </p>
+      ) : typeof oldString === 'string' && typeof newString === 'string' ? (
+        <DiffBlock oldStr={oldString} newStr={newString} filename={filename} />
+      ) : null}
+    </FileToolPill>
+  )
+}

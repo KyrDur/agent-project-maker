@@ -1,0 +1,826 @@
+import type { ArtifactSummary } from './artifact'
+import type { RuntimePolicyV1 } from './runtime-policy'
+
+// Re-exports for greenfield domain types. Legacy types (Connection, Provider,
+// CredentialFieldDef, etc.) were removed alongside the routers they mirrored.
+
+export * from './credential'
+export * from './tool'
+export * from './mcp'
+export * from './skill'
+export * from './skill-builder'
+export * from './skill-evaluation'
+export * from './skill-revision'
+export * from './model'
+export * from './health'
+export * from './usage'
+export * from './memory'
+export * from './agent-api'
+export * from './audit'
+export * from './artifact'
+export * from './runtime-policy'
+
+// ---------- Agent ---------------------------------------------------------
+
+export type AgentIdentityMode = 'fixed' | 'per_user'
+
+export interface AgentBrief {
+  id: string
+  name: string
+  description?: string | null
+  image_url?: string | null
+}
+
+export interface ModelBrief {
+  id: string
+  display_name: string
+  /** 컨텍스트 창 한도(토큰). null이면 한도 미설정(게이지 비활성). */
+  context_window?: number | null
+}
+
+export interface McpToolBrief {
+  id: string
+  name: string
+  server_id: string
+  server_name?: string | null
+}
+
+export interface ToolBrief {
+  id: string
+  name: string
+  /** 도구 registry 정의의 icon_id. 채팅 도구 pill 아이콘 해석에 쓴다. */
+  icon_id?: string | null
+}
+
+export interface SkillBrief {
+  id: string
+  name: string
+  slug?: string
+  kind?: 'text' | 'package'
+  description?: string | null
+}
+
+export interface ModelParams {
+  temperature?: number
+  top_p?: number
+  max_tokens?: number
+}
+
+export interface MiddlewareConfigEntry {
+  type: string
+  params: Record<string, unknown>
+}
+
+export interface Agent {
+  id: string
+  runtime_name: string
+  identity_mode: AgentIdentityMode
+  name: string
+  description: string | null
+  system_prompt: string
+  // Nullable to mirror the backend graceful response — agents whose
+  // model_id FK target was deleted out from under them still serialize
+  // (rather than crashing the whole list). UI surfaces "no model bound"
+  // and prompts re-binding instead of throwing on agent.model.x access.
+  model: ModelBrief | null
+  tools: ToolBrief[]
+  mcp_tools: McpToolBrief[]
+  skills: SkillBrief[]
+  sub_agents: AgentBrief[]
+  status: string
+  is_favorite: boolean
+  model_params: ModelParams | null
+  middleware_configs: MiddlewareConfigEntry[]
+  template_id: string | null
+  created_at: string
+  updated_at: string
+  /** Most recent conversation activity (max(conv.updated_at)). Set by the
+   * list endpoint only — single-row responses leave this null. Sidebar uses
+   * this with a fallback to ``updated_at`` so chatting floats agents up. */
+  last_used_at?: string | null
+  image_url: string | null
+  opener_questions: string[] | null
+  llm_credential_id?: string | null
+  unread_count: number
+  /**
+   * M10 — fallback model UUIDs tried in order when the primary model fails.
+   * Backend column is `agents.model_fallback_list` (Postgres ARRAY of UUID).
+   */
+  model_fallback_ids?: string[] | null
+  /** Stored portable policy; null is the legacy compatibility state. */
+  runtime_policy: RuntimePolicyV1 | null
+  /** Server-resolved policy for display only; never include it in writes. */
+  runtime_policy_effective: RuntimePolicyV1
+  /** Provenance of the stored/effective agent policy; never include it in writes. */
+  runtime_policy_source: 'legacy_compat' | 'stored'
+}
+
+export interface AgentSummary {
+  id: string
+  name: string
+  description: string | null
+  status: string
+  is_favorite: boolean
+  image_url: string | null
+  model_display_name: string | null
+  tool_count: number
+  fallback_count: number
+  created_at: string
+  updated_at: string
+  last_used_at?: string | null
+  unread_count: number
+}
+
+export interface AgentCreateRequest {
+  name: string
+  description?: string
+  system_prompt: string
+  model_id: string
+  identity_mode?: AgentIdentityMode
+  tool_ids?: string[]
+  mcp_tool_ids?: string[]
+  skill_ids?: string[]
+  sub_agent_ids?: string[]
+  template_id?: string
+  model_params?: ModelParams
+  middleware_configs?: MiddlewareConfigEntry[]
+  opener_questions?: string[]
+  llm_credential_id?: string | null
+  model_fallback_ids?: string[] | null
+  runtime_policy?: RuntimePolicyV1 | null
+}
+
+export interface AgentUpdateRequest {
+  name?: string
+  description?: string
+  system_prompt?: string
+  model_id?: string
+  identity_mode?: AgentIdentityMode
+  tool_ids?: string[]
+  mcp_tool_ids?: string[]
+  skill_ids?: string[]
+  sub_agent_ids?: string[]
+  is_favorite?: boolean
+  model_params?: ModelParams
+  middleware_configs?: MiddlewareConfigEntry[]
+  opener_questions?: string[]
+  llm_credential_id?: string | null
+  model_fallback_ids?: string[] | null
+  runtime_policy?: RuntimePolicyV1 | null
+}
+
+// ---------- Template ------------------------------------------------------
+
+export interface Template {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  system_prompt: string
+  recommended_tools: string[] | null
+  recommended_skill_slugs: string[] | null
+  recommended_model_id: string | null
+  usage_example: string | null
+  created_at: string
+}
+
+// ---------- Conversation / Messages ---------------------------------------
+
+export type ConversationSort = 'updated' | 'created'
+export type AgentSort = 'recent' | 'created'
+export type NavigatorMode = 'agent_grouped' | 'recent_agents' | 'recent_sessions'
+
+export type ConversationRunStatus =
+  | 'queued'
+  | 'running'
+  | 'interrupted'
+  | 'canceling'
+  | 'canceled'
+  | 'completed'
+  | 'failed'
+  | 'stale'
+
+export interface ConversationRunActivityMetric {
+  kind: string
+  namespace: string[]
+  call_id: string | null
+  name: string | null
+  elapsed_ms: number | null
+}
+
+export interface ConversationRunMetrics {
+  terminal_state: string | null
+  elapsed_ms: number | null
+  ttft_ms: number | null
+  generation_ms: number | null
+  tokens_per_second: number | null
+  prompt_tokens: number | null
+  completion_tokens: number | null
+  cache_creation_tokens: number | null
+  cache_read_tokens: number | null
+  estimated_cost: number | null
+  usage_complete: boolean
+  root_tool_calls: number | null
+  descendant_tool_calls: number | null
+  root_subagent_calls: number | null
+  descendant_subagent_calls: number | null
+  activity_json: ConversationRunActivityMetric[]
+  activity_truncated: boolean
+}
+
+export interface ConversationRun {
+  id: string
+  conversation_id: string
+  agent_id: string
+  parent_run_id: string | null
+  status: ConversationRunStatus
+  source: string
+  worker_instance_id: string | null
+  interrupt_id: string | null
+  last_event_id: string | null
+  input_preview: string | null
+  error_code: string | null
+  error_message: string | null
+  cancel_requested_at: string | null
+  started_at: string | null
+  heartbeat_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+  metrics: ConversationRunMetrics | null
+}
+
+export interface Conversation {
+  id: string
+  agent_id: string
+  title: string | null
+  is_pinned: boolean
+  unread_count: number
+  last_read_at: string | null
+  last_unread_at: string | null
+  last_activity_source: string
+  created_at: string
+  updated_at: string
+  active_run?: ConversationRun | null
+}
+
+export interface ConversationListEnvelope {
+  items: Conversation[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
+export interface ConversationAgentBrief {
+  id: string
+  name: string
+  image_url: string | null
+}
+
+export interface ConversationWithAgent extends Conversation {
+  agent: ConversationAgentBrief
+}
+
+export interface ConversationWithAgentListEnvelope {
+  items: ConversationWithAgent[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
+export interface ConversationPageParams {
+  limit?: number
+  cursor?: string | null
+  q?: string | null
+  sort?: ConversationSort
+}
+
+export interface ConversationUpdateRequest {
+  title?: string
+  is_pinned?: boolean
+}
+
+export interface ToolCallInfo {
+  id?: string
+  name: string
+  args: Record<string, unknown>
+}
+
+export interface MessageFeedbackBrief {
+  rating: 'up' | 'down'
+}
+
+export interface MessageAttachmentBrief {
+  id: string
+  filename: string
+  mime_type: string
+  size_bytes: number
+  url: string
+}
+
+/**
+ * 대화 파일 목록(`GET /api/conversations/{id}/files`)의 단일 항목.
+ * `generated`(에이전트 산출물)와 `attached`(사용자가 보낸 첨부)를 한 형태로 합친다.
+ * 백엔드 `FileItem` 스키마와 1:1 대응.
+ */
+export interface FileItem {
+  source: 'generated' | 'attached'
+  id: string
+  name: string
+  mime_type: string
+  extension?: string | null
+  kind?: string | null
+  size_bytes?: number | null
+  preview_url: string
+  download_url: string
+  /** 생성: assistant 메시지 id / 첨부: user 메시지 id. 대화로 이동 앵커. */
+  message_id?: string | null
+  created_at: string
+  editable: boolean
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  tool_calls: ToolCallInfo[] | null
+  tool_call_id: string | null
+  created_at: string
+  feedback?: MessageFeedbackBrief | null
+  attachments?: MessageAttachmentBrief[] | null
+  artifacts?: ArtifactSummary[] | null
+  /**
+   * M-CHAT1b — parent message id in the LangGraph branch tree.
+   * `null` for the very first message. Used to build assistant-ui's
+   * `messageRepository` so the BranchPicker auto-detects siblings.
+   */
+  parent_id?: string | null
+  /** LangGraph checkpoint id this message was first emitted from. Sent back
+   * via `/switch-branch` when the user picks a sibling. */
+  branch_checkpoint_id?: string | null
+  /** Sibling message ids (same role, same parent). The active message id is
+   * always included. Empty/length-1 when this message has no siblings. */
+  siblings?: string[]
+  /** Per-sibling checkpoint ids — same order as ``siblings``. Frontend posts
+   * the chosen sibling's checkpoint_id to ``/switch-branch`` to flip the
+   * active branch. */
+  sibling_checkpoint_ids?: string[]
+  /** M-CHAT1b HOTFIX2 — 0-based position of *this* (active) message inside
+   * ``siblings``. Backend sorts siblings oldest→newest by checkpoint id, so
+   * BranchPicker just renders ``<branch_index+1 / branch_total>`` directly
+   * instead of indexOf'ing the active id. ``null`` for messages with no
+   * siblings. */
+  branch_index?: number | null
+  branch_total?: number | null
+  /** W7 — assistant 메시지 끝(``message_end``)에서 채워지는 토큰 사용량.
+   * 4종 분리: input/output 외에 cache_creation/cache_read까지. 메시지 푸터의
+   * hover 팝오버가 직접 참조한다. 백엔드가 발행하지 않거나 user/tool 메시지
+   * 인 경우 ``null``. */
+  usage?: TokenUsageBreakdown | null
+}
+
+/** W7 — 메시지별 토큰 사용량 4종 분해 (+ 스트리밍 timing). */
+export interface TokenUsageBreakdown {
+  prompt_tokens: number
+  completion_tokens: number
+  cache_creation_tokens: number
+  cache_read_tokens: number
+  estimated_cost?: number
+  /** 스트리밍 timing (live-only, 새로고침 후 undefined). 첫 토큰까지(ms). */
+  ttft_ms?: number
+  /** 총 생성 시간(ms). */
+  generation_ms?: number
+  /** 출력 토큰/초. */
+  tokens_per_second?: number
+}
+
+/**
+ * Envelope returned by `GET /api/conversations/:id/messages` post-M-CHAT1b.
+ * Wraps the message list with branch/active-tip metadata.
+ */
+export interface MessagesEnvelope {
+  messages: Message[]
+  active_run?: ConversationRun | null
+  /** 최신 run (상태 무관). active_run 은 terminal run 을 보고하지 않으므로
+   * 마지막 turn 의 canceled/canceling 여부는 이 필드로만 알 수 있다.
+   * "중단됨" notice 의 durable 렌더 근거. */
+  latest_run?: ConversationRun | null
+  active_tip_message_id?: string | null
+  active_checkpoint_id?: string | null
+  /** W7-4 — conversation 누적 비용 (USD). ``token_usages`` 테이블 합산. 메시지
+   * 단위로 cost를 채울 수 없는 fetch 경로(model_id 없음)에서 Composer 토큰 바
+   * 가 cost를 표시할 수 있게 envelope에 발행. */
+  total_estimated_cost?: number
+}
+
+export interface DebugTraceSummary {
+  trace_id: string
+  provider: string
+  name: string
+  status: string
+  source: string | null
+  started_at: string
+  completed_at: string | null
+  duration_ms: number | null
+  total_tokens: number | null
+  moldy_run_id: string
+  langfuse_url: string | null
+  fallback: boolean
+  fallback_reason: string | null
+}
+
+export interface DebugTraceSpan {
+  id: string
+  parent_id: string | null
+  name: string
+  kind: string
+  status: string
+  started_at: string | null
+  ended_at: string | null
+  duration_ms: number | null
+  input: unknown
+  output: unknown
+  metadata: Record<string, unknown>
+}
+
+export interface DebugTraceListResponse {
+  conversation_id: string
+  langfuse_enabled: boolean
+  traces: DebugTraceSummary[]
+  fallback_reason: string | null
+}
+
+export interface DebugTraceDetailResponse {
+  conversation_id: string
+  trace: DebugTraceSummary
+  spans: DebugTraceSpan[]
+  raw: Record<string, unknown>[] | Record<string, unknown> | null
+  fallback_reason: string | null
+}
+
+export interface MessageFeedbackRow {
+  id: string
+  message_id: string
+  conversation_id: string
+  rating: 'up' | 'down'
+  comment: string | null
+  created_at: string
+}
+
+export interface UploadResponse {
+  id: string
+  filename: string
+  mime_type: string
+  size_bytes: number
+  url: string
+  created_at: string
+}
+
+// ---------- SSE -----------------------------------------------------------
+
+export type SSEEventType =
+  | 'message_start'
+  | 'content_delta'
+  | 'tool_call_start'
+  | 'tool_call_result'
+  | 'file_event'
+  | 'memory_proposed'
+  | 'memory_saved'
+  | 'memory_rejected'
+  | 'memory_deleted'
+  | 'message_end'
+  | 'error'
+  | 'interrupt'
+  | 'stale'
+
+// ── HiTL — interrupt wire (LangChain HumanInTheLoopMiddleware 표준) ──────
+
+/** `HITLRequest.action_requests[i]` 한 항목. */
+export interface ActionRequest {
+  name: string
+  args: Record<string, unknown>
+  description?: string
+}
+
+export type DecisionType = 'approve' | 'edit' | 'reject' | 'respond'
+
+/** `HITLRequest.review_configs[i]` — 도구별 허용 결정 화이트리스트. */
+export interface ReviewConfig {
+  action_name: string
+  allowed_decisions: DecisionType[]
+  /**
+   * 스킬 빌더 챗 AD-4 — 승인 카드에 "이 세션에서 계속 허용" 옵션을 노출할지.
+   * 백엔드 wire 계층이 주입한다 (requires_network 드래프트/이미 동의된 도구는
+   * 미주입). langchain ReviewConfig에는 없는 Moldy 확장 필드.
+   */
+  session_consent_eligible?: boolean
+}
+
+/** SSE `interrupt` event payload — `HITLRequest` + correlation `interrupt_id`. */
+export interface StandardInterruptPayload {
+  interrupt_id: string
+  namespace?: string[]
+  action_requests: ActionRequest[]
+  review_configs: ReviewConfig[]
+}
+
+export type InterruptPayload = StandardInterruptPayload
+
+/** Resume 송신용 단일 결정. LangChain `HITLResponse.decisions[i]`와 1:1. */
+export interface Decision {
+  type: DecisionType
+  /**
+   * type='edit' 시 필수: 수정된 tool_call. `name`은 optional — 백엔드가
+   * pending action을 positional index로 매칭해 권위적으로 채우므로, 프론트는
+   * 도구 이름을 모를 때 생략하고 args만 보낼 수 있다.
+   */
+  edited_action?: { name?: string; args: Record<string, unknown> }
+  /** type='respond' 시 필수, type='reject' 시 선택. */
+  message?: string
+  /**
+   * 스킬 빌더 챗 AD-4 — "이 세션에서 계속 허용" 동의. type='approve'에만 의미.
+   * 백엔드 커맨드 핸들러가 세션에 기록한 뒤 이 키를 벗겨 표준 approve만
+   * 미들웨어로 내려보낸다 (비표준 decision 필드는 langchain 검증을 깨뜨림).
+   */
+  scope?: 'session'
+}
+
+/** POST `/conversations/:id/messages/resume` 표준 body. */
+export interface ResumeDecisionsRequest {
+  decisions: Decision[]
+}
+
+// W3-out M3 — backend 가 broker 손실 (in-flight turn 중 backend 가 죽어 GET
+// resume 이 DB replay 만 받은 케이스) 을 client 에 알리는 marker. ``reason``
+// = ``broker_lost`` (events 에 last_event_id 있음) 또는 ``broker_lost_no_id``
+// (events 자체가 빈 채로 status='streaming' row 만 있음 — NPE 회피용 구분).
+export interface StalePayload {
+  // broker_lost(_no_id) — in-flight turn 중 broker 가 사라져 DB replay 로 degrade.
+  // run_worker_lost — active run 인데 로컬 worker 가 없고 heartbeat 도 stale.
+  // broker_gap — 재연결 시 last_event_id 가 ring buffer 에서 evict 되어
+  //   누락 구간이 있을 수 있다는 신호 (buffer 잔여분은 이어서 replay 됨).
+  reason: 'broker_lost' | 'broker_lost_no_id' | 'run_worker_lost' | 'broker_gap'
+  last_event_id: string | null
+}
+
+// ``id``: 백엔드가 발행하는 SSE id (``{msg_id}-{seq}`` 형식). caller side에서
+// dedup/stale 폐기에 사용한다. 모든 variant에 공통으로 optional.
+export type SSEEvent = { id?: string } & (
+  | { event: 'message_start'; data: { id: string; role: string } }
+  | { event: 'content_delta'; data: { delta?: string; content?: string } }
+  | {
+      event: 'tool_call_start'
+      data: { tool_call_id?: string; tool_name: string; parameters: Record<string, unknown> }
+    }
+  | {
+      event: 'tool_call_result'
+      data: { tool_call_id?: string; tool_name: string; result: string }
+    }
+  | { event: 'file_event'; data: import('./artifact').FileEventPayload }
+  | { event: 'memory_proposed'; data: import('./memory').MemoryEventPayload }
+  | { event: 'memory_saved'; data: import('./memory').MemoryEventPayload }
+  | { event: 'memory_rejected'; data: import('./memory').MemoryEventPayload }
+  | { event: 'memory_deleted'; data: import('./memory').MemoryEventPayload }
+  | {
+      event: 'message_end'
+      data: {
+        content: string
+        // W7 — usage 4종(input/output/cache_creation/cache_read) + 선택적 비용.
+        // 비어 있을 수 있어 모든 필드 optional로 둔다.
+        usage: Partial<TokenUsageBreakdown> & Record<string, number>
+        status?: 'completed' | 'failed' | 'canceled'
+      }
+    }
+  | { event: 'error'; data: { message: string; code?: string } }
+  | { event: 'interrupt'; data: InterruptPayload }
+  | { event: 'stale'; data: StalePayload }
+)
+
+export interface UserInputOption {
+  id?: string
+  label: string
+  description?: string
+  disabled?: boolean
+}
+
+export interface UserInputQuestion {
+  id?: string
+  label?: string
+  question?: string
+  type: 'single_select' | 'multi_select' | 'text'
+  options?: UserInputOption[]
+  required?: boolean
+}
+
+// ---------- Usage ---------------------------------------------------------
+
+export interface UsageSummary {
+  period: string
+  total_tokens: number
+  prompt_tokens: number
+  completion_tokens: number
+  estimated_cost_usd: number
+  by_agent: AgentUsageRow[]
+}
+
+export interface AgentUsageRow {
+  agent_id: string
+  agent_name: string
+  total_tokens: number
+  estimated_cost: number
+}
+
+// ---------- Builder / Assistant -------------------------------------------
+
+export interface BuilderSession {
+  id: string
+  status: 'building' | 'streaming' | 'preview' | 'confirming' | 'completed' | 'failed'
+  current_phase: number
+  user_request: string
+  intent: BuilderIntent | null
+  tools_result: BuilderToolRecommendation[] | null
+  middlewares_result: BuilderMiddlewareRecommendation[] | null
+  system_prompt: string | null
+  draft_config: BuilderDraftConfig | null
+  agent_id: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BuilderIntent {
+  agent_name: string
+  agent_name_ko: string
+  agent_description: string
+  primary_task_type: string
+  tool_preferences: string
+  output_style: string
+  response_tone: string
+  use_cases: string[]
+  constraints: string[]
+  required_capabilities: string[]
+}
+
+export interface BuilderToolRecommendation {
+  tool_name: string
+  description: string
+  reason: string
+}
+
+export interface BuilderMiddlewareRecommendation {
+  middleware_name: string
+  description: string
+  reason: string
+}
+
+export interface BuilderDraftConfig {
+  name: string
+  name_ko: string
+  description: string
+  system_prompt: string
+  tools: string[]
+  middlewares: string[]
+  model_name: string
+  primary_task_type: string
+  use_cases: string[]
+}
+
+export type BuilderSSEEventType =
+  | 'phase_progress'
+  | 'sub_agent_start'
+  | 'sub_agent_end'
+  | 'build_preview'
+  | 'build_failed'
+  | 'error'
+  | 'info'
+  | 'stream_end'
+
+export type BuilderSSEEvent =
+  | {
+      event: 'phase_progress'
+      data: {
+        phase: number
+        status: 'started' | 'completed' | 'failed' | 'warning'
+        message?: string
+      }
+    }
+  | { event: 'sub_agent_start'; data: { phase: number; agent_name: string } }
+  | { event: 'sub_agent_end'; data: { phase: number; result_summary: string } }
+  | { event: 'build_preview'; data: { draft_config: BuilderDraftConfig } }
+  | { event: 'build_failed'; data: { message: string } }
+  | { event: 'error'; data: { phase: number; message: string; recoverable: boolean } }
+  | { event: 'info'; data: Record<string, unknown> }
+  | { event: 'stream_end'; data: Record<string, unknown> }
+
+export interface AssistantToolCallResult {
+  tool_name: string
+  success: boolean
+  summary: string
+}
+
+// ---------- Trigger -------------------------------------------------------
+
+export interface AgentTrigger {
+  id: string
+  agent_id: string
+  name: string
+  trigger_type: 'interval' | 'cron' | 'one_time'
+  schedule_config: { interval_minutes?: number; cron_expression?: string; scheduled_at?: string }
+  input_message: string
+  timezone: string
+  conversation_policy: string
+  schedule_conversation_id: string | null
+  target_conversation_id: string | null
+  status: 'active' | 'paused' | 'completed' | 'error'
+  last_run_at: string | null
+  next_run_at: string | null
+  last_status: 'running' | 'success' | 'failed' | 'skipped' | null
+  last_error: string | null
+  run_count: number
+  failure_count: number
+  max_runs: number | null
+  end_at: string | null
+  auto_pause_after_failures: number | null
+  created_at: string
+  updated_at: string
+  agent_name?: string | null
+  schedule_conversation_title?: string | null
+  schedule_conversation_unread_count?: number
+}
+
+export interface TriggerCreateRequest {
+  name?: string
+  trigger_type: 'interval' | 'cron' | 'one_time'
+  schedule_config: Record<string, unknown>
+  input_message: string
+  timezone?: string
+  conversation_policy?: string
+  target_conversation_id?: string | null
+  max_runs?: number | null
+  end_at?: string | null
+  auto_pause_after_failures?: number | null
+}
+
+export interface TriggerUpdateRequest {
+  name?: string
+  trigger_type?: AgentTrigger['trigger_type']
+  schedule_config?: Record<string, unknown>
+  input_message?: string
+  timezone?: string
+  conversation_policy?: string
+  target_conversation_id?: string | null
+  status?: AgentTrigger['status']
+  max_runs?: number | null
+  end_at?: string | null
+  auto_pause_after_failures?: number | null
+}
+
+export interface TriggerRun {
+  id: string
+  trigger_id: string
+  agent_id: string
+  user_id: string
+  conversation_id: string | null
+  status: 'running' | 'success' | 'failed' | 'skipped'
+  source: 'scheduled' | 'run_now'
+  input_message: string
+  error_message: string | null
+  output_preview: string | null
+  duration_ms: number | null
+  thread_id: string | null
+  checkpoint_id: string | null
+  trace_id: string | null
+  started_at: string
+  finished_at: string | null
+  created_at: string
+}
+
+export interface TriggerSummary {
+  total_unread: number
+  active_count: number
+}
+
+// ---------- Legacy aliases (transitional — kept so existing visual-settings
+// components continue to compile until they migrate to domain-specific types) ---
+
+import type { ToolInstance } from './tool'
+
+/**
+ * @deprecated Use `ToolInstance` from `@/lib/types/tool` directly.
+ */
+export type Tool = ToolInstance
+
+// `Model` is now exported from `./model` (M7 catalog overhaul). The legacy
+// alias to `ModelCatalogEntry` was removed since the canonical type lives in
+// `./model.ts` and is already re-exported above.
+
+// ---------- Middleware (catalog item from /api/middlewares) ----------------
+
+export interface MiddlewareRegistryItem {
+  type: string
+  name: string
+  display_name: string
+  description: string
+  category: 'context' | 'planning' | 'safety' | 'reliability' | 'provider' | string
+  config_schema: Record<string, unknown>
+  provider_specific: string | null
+}

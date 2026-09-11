@@ -1,0 +1,427 @@
+import { describe, expect, it, vi } from 'vitest'
+import type { Decision, StandardInterruptPayload } from '@/lib/types'
+import {
+  createHiTLDecisionCoordinator,
+  mergeInterruptToolCalls,
+  standardInterruptToToolCalls,
+} from '../standard-interrupt'
+
+describe('standardInterruptToToolCalls', () => {
+  it('maps ask_user respond-only action into the ask_user tool UI args', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-ask',
+      action_requests: [
+        {
+          name: 'ask_user',
+          args: { question: '어느 쪽?', options: ['A', 'B'] },
+        },
+      ],
+      review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
+    }
+
+    expect(standardInterruptToToolCalls(payload)).toEqual([
+      {
+        id: 'intr-ask:0',
+        name: 'ask_user',
+        args: {
+          question: '어느 쪽?',
+          options: ['A', 'B'],
+          approval_id: 'intr-ask:0',
+          allowed_decisions: ['respond'],
+          hitl_interrupt_id: 'intr-ask',
+          hitl_action_index: 0,
+          hitl_total_actions: 1,
+        },
+      },
+    ])
+  })
+
+  it('preserves extended ask_user args for question_flow mode', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-flow',
+      action_requests: [
+        {
+          name: 'ask_user',
+          args: {
+            mode: 'question_flow',
+            title: '에이전트 설정 확인',
+            questions: [
+              {
+                id: 'tone',
+                label: '답변 톤',
+                type: 'single_select',
+                options: [{ id: 'concise', label: '간결하게' }],
+                required: true,
+              },
+            ],
+          },
+        },
+      ],
+      review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
+    }
+
+    expect(standardInterruptToToolCalls(payload)[0]?.args).toMatchObject({
+      mode: 'question_flow',
+      title: '에이전트 설정 확인',
+      questions: payload.action_requests[0]?.args.questions,
+      hitl_interrupt_id: 'intr-flow',
+    })
+  })
+
+  it('maps approval actions into synthetic request_approval tool UI args', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-approval',
+      action_requests: [
+        {
+          name: 'send_email',
+          args: { to: 'a@example.com', subject: 'Hello' },
+          description: 'Send the prepared email',
+        },
+      ],
+      review_configs: [
+        { action_name: 'send_email', allowed_decisions: ['approve', 'edit', 'reject'] },
+      ],
+    }
+
+    expect(standardInterruptToToolCalls(payload)).toEqual([
+      {
+        id: 'intr-approval:0',
+        name: 'request_approval',
+        args: {
+          tool_name: 'send_email',
+          tool_args: { to: 'a@example.com', subject: 'Hello' },
+          description: 'Send the prepared email',
+          approval_id: 'intr-approval:0',
+          allowed_decisions: ['approve', 'edit', 'reject'],
+          hitl_interrupt_id: 'intr-approval',
+          hitl_action_index: 0,
+          hitl_total_actions: 1,
+        },
+      },
+    ])
+  })
+
+  it('redacts sensitive approval args without redacting token usage metrics', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-secret',
+      action_requests: [
+        {
+          name: 'execute_in_skill',
+          args: {
+            api_key: 'SECRET_VALUE',
+            nested: { refresh_token: 'REFRESH_SECRET', query: 'safe' },
+            usage_metadata: { input_tokens: 30, output_tokens: 12, total_tokens: 42 },
+          },
+        },
+      ],
+      review_configs: [
+        { action_name: 'execute_in_skill', allowed_decisions: ['approve', 'edit', 'reject'] },
+      ],
+    }
+
+    expect(standardInterruptToToolCalls(payload)[0]?.args.tool_args).toEqual({
+      api_key: '<redacted>',
+      nested: { refresh_token: '<redacted>', query: 'safe' },
+      usage_metadata: { input_tokens: 30, output_tokens: 12, total_tokens: 42 },
+    })
+  })
+
+  it('preserves action order and indexes for multi-action interrupts', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-multi',
+      action_requests: [
+        { name: 'ask_user', args: { question: '계속할까요?' } },
+        { name: 'delete_record', args: { id: 7 } },
+      ],
+      review_configs: [
+        { action_name: 'ask_user', allowed_decisions: ['respond'] },
+        { action_name: 'delete_record', allowed_decisions: ['approve', 'reject'] },
+      ],
+    }
+
+    const calls = standardInterruptToToolCalls(payload)
+
+    expect(calls.map((call) => call.id)).toEqual(['intr-multi:0', 'intr-multi:1'])
+    expect(calls.map((call) => call.name)).toEqual(['ask_user', 'request_approval'])
+    expect(calls.map((call) => call.args.hitl_action_index)).toEqual([0, 1])
+  })
+
+  it('replaces a pending write_file call with its approval card', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-file',
+      action_requests: [
+        {
+          name: 'write_file',
+          args: { file_path: '/runtime/today_diary.md', content: '# Today' },
+          description: 'Tool execution requires approval',
+        },
+      ],
+      review_configs: [{ action_name: 'write_file', allowed_decisions: ['approve', 'reject'] }],
+    }
+
+    const calls = mergeInterruptToolCalls(
+      [{ id: 'toolu-1', name: 'write_file', args: { file_path: '/runtime/today_diary.md' } }],
+      payload,
+    )
+
+    expect(calls).toEqual([
+      {
+        id: 'toolu-1',
+        name: 'request_approval',
+        args: {
+          tool_name: 'write_file',
+          tool_args: { file_path: '/runtime/today_diary.md', content: '# Today' },
+          description: 'Tool execution requires approval',
+          approval_id: 'toolu-1',
+          allowed_decisions: ['approve', 'reject'],
+          hitl_interrupt_id: 'intr-file',
+          hitl_action_index: 0,
+          hitl_total_actions: 1,
+        },
+      },
+    ])
+  })
+
+  it('replaces an empty streamed write_file call when interrupt carries the real args', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-file-empty',
+      action_requests: [
+        {
+          name: 'write_file',
+          args: { file_path: '/runtime/today_diary.md', content: '# Today' },
+        },
+      ],
+      review_configs: [{ action_name: 'write_file', allowed_decisions: ['approve', 'reject'] }],
+    }
+
+    const calls = mergeInterruptToolCalls(
+      [{ id: 'toolu-1', name: 'write_file', args: {} }],
+      payload,
+    )
+
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.name).toBe('request_approval')
+    expect(calls[0]?.args.tool_args).toEqual({
+      file_path: '/runtime/today_diary.md',
+      content: '# Today',
+    })
+  })
+
+  it('matches raw pending tool args against redacted approval args', () => {
+    const payload: StandardInterruptPayload = {
+      interrupt_id: 'intr-tool-secret',
+      action_requests: [
+        {
+          name: 'execute_in_skill',
+          args: { skill_directory: '/skills/docx-document', api_key: 'SECRET_VALUE' },
+          description: 'Tool execution requires approval',
+        },
+      ],
+      review_configs: [
+        { action_name: 'execute_in_skill', allowed_decisions: ['approve', 'reject'] },
+      ],
+    }
+
+    const calls = mergeInterruptToolCalls(
+      [
+        {
+          id: 'call-secret',
+          name: 'execute_in_skill',
+          args: { skill_directory: '/skills/docx-document', api_key: 'SECRET_VALUE' },
+        },
+      ],
+      payload,
+    )
+
+    expect(calls).toEqual([
+      {
+        id: 'call-secret',
+        name: 'request_approval',
+        args: {
+          tool_name: 'execute_in_skill',
+          tool_args: { skill_directory: '/skills/docx-document', api_key: '<redacted>' },
+          description: 'Tool execution requires approval',
+          approval_id: 'call-secret',
+          allowed_decisions: ['approve', 'reject'],
+          hitl_interrupt_id: 'intr-tool-secret',
+          hitl_action_index: 0,
+          hitl_total_actions: 1,
+        },
+      },
+    ])
+  })
+})
+
+describe('createHiTLDecisionCoordinator', () => {
+  it('resumes once all decisions are collected in original action order', async () => {
+    const resume = vi.fn<
+      (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
+    >(async () => {})
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 2,
+      interruptId: 'intr-multi',
+      resume,
+    })
+
+    let earlyDecisionSettled = false
+    const earlyDecision = coordinator.registerDecision(
+      1,
+      { type: 'reject', message: '아니요' },
+      '거부',
+    )
+    void earlyDecision.then(
+      () => {
+        earlyDecisionSettled = true
+      },
+      () => {
+        earlyDecisionSettled = true
+      },
+    )
+    await Promise.resolve()
+    expect(resume).not.toHaveBeenCalled()
+    expect(earlyDecisionSettled).toBe(false)
+
+    const finalDecision = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    await Promise.all([earlyDecision, finalDecision])
+
+    expect(resume).toHaveBeenCalledTimes(1)
+    expect(resume).toHaveBeenCalledWith(
+      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
+      '승인 | 거부',
+      'intr-multi',
+    )
+  })
+
+  it('retries the complete ordered batch after the final resume fails', async () => {
+    const resume = vi
+      .fn<
+        (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
+      >()
+      .mockRejectedValueOnce(new Error('stale interrupt'))
+      .mockResolvedValueOnce(undefined)
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 2,
+      interruptId: 'intr-retry',
+      resume,
+    })
+
+    const firstAttempt = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const finalAttempt = coordinator.registerDecision(
+      1,
+      { type: 'reject', message: '아니요' },
+      '거부',
+    )
+    await expect(Promise.all([firstAttempt, finalAttempt])).rejects.toThrow('stale interrupt')
+
+    const retryFirst = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const retryFinal = coordinator.registerDecision(
+      1,
+      { type: 'reject', message: '아니요' },
+      '거부',
+    )
+    await Promise.all([retryFirst, retryFinal])
+
+    expect(resume).toHaveBeenNthCalledWith(
+      1,
+      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
+      '승인 | 거부',
+      'intr-retry',
+    )
+    expect(resume).toHaveBeenNthCalledWith(
+      2,
+      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
+      '승인 | 거부',
+      'intr-retry',
+    )
+    expect(resume).toHaveBeenCalledTimes(2)
+  })
+
+  it('shares one in-flight final resume between simultaneous calls', async () => {
+    let resolveResume: (() => void) | undefined
+    const resume = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveResume = resolve
+        }),
+    )
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 1,
+      interruptId: 'intr-concurrent',
+      resume,
+    })
+
+    const first = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const second = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+
+    await vi.waitFor(() => {
+      expect(resume).toHaveBeenCalledTimes(1)
+    })
+    resolveResume?.()
+    await Promise.all([first, second])
+
+    await coordinator.registerDecision(0, { type: 'approve' }, '승인')
+
+    expect(resume).toHaveBeenCalledWith([{ type: 'approve' }], '승인', 'intr-concurrent')
+    expect(resume).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the first decision for a duplicate action index before dispatch', async () => {
+    const resume = vi.fn<
+      (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
+    >(async () => {})
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 2,
+      interruptId: 'intr-duplicate',
+      resume,
+    })
+
+    const first = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const conflicting = coordinator.registerDecision(0, { type: 'reject', message: '거부' }, '거부')
+    const final = coordinator.registerDecision(1, { type: 'approve' }, '승인')
+    await Promise.all([first, conflicting, final])
+
+    expect(resume).toHaveBeenCalledWith(
+      [{ type: 'approve' }, { type: 'approve' }],
+      '승인 | 승인',
+      'intr-duplicate',
+    )
+  })
+
+  it('rejects an invalid action index without sending a partial decision array', async () => {
+    const resume = vi.fn<
+      (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
+    >(async () => {})
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 2,
+      interruptId: 'intr-invalid-index',
+      resume,
+    })
+
+    await expect(coordinator.registerDecision(2, { type: 'approve' }, '승인')).rejects.toThrow(
+      RangeError,
+    )
+    expect(resume).not.toHaveBeenCalled()
+  })
+
+  it('rejects an incomplete batch when its coordinator is cancelled', async () => {
+    const resume = vi.fn<
+      (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
+    >(async () => {})
+    const coordinator = createHiTLDecisionCoordinator({
+      totalActions: 2,
+      interruptId: 'intr-replaced',
+      resume,
+    })
+    const reason = new DOMException('Pending HiTL decisions were replaced', 'AbortError')
+    const pending = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const pendingRejection = expect(pending).rejects.toBe(reason)
+
+    coordinator.cancel(reason)
+
+    await pendingRejection
+    await expect(
+      coordinator.registerDecision(1, { type: 'reject', message: '거부' }, '거부'),
+    ).rejects.toBe(reason)
+    expect(resume).not.toHaveBeenCalled()
+  })
+})
