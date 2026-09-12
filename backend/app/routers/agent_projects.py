@@ -13,6 +13,7 @@ from app.schemas.agent_project import (
     AgentProjectResponse,
     AgentProjectVersionResponse,
     AgentProjectVersionSummary,
+    EvalGenerationRequest,
     EvalRunCreate,
     EvalRunResponse,
     EvalSetResponse,
@@ -178,3 +179,27 @@ async def get_eval_run(
     user: CurrentUser = Depends(get_current_user),
 ):
     return await evaluation.get_run(db, agent_id, user.id, run_id)
+
+
+@router.post("/eval-spec/generate")
+async def generate_eval_spec(
+    agent_id: uuid.UUID,
+    body: EvalGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_semantic import generate
+
+    return await generate(db, agent_id, user.id, body.version_id)
+
+
+@router.post("/eval-sets/generate", response_model=EvalSetResponse, status_code=201)
+async def generate_eval_set(
+    agent_id: uuid.UUID,
+    body: EvalGenerationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_semantic import generate
+
+    return await generate(db, agent_id, user.id, body.version_id, cases=True)

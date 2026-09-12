@@ -53,3 +53,21 @@ export function useProjectComparison(agentId: string, left: string, right: strin
     enabled: !!left && !!right && left !== right,
   })
 }
+
+export function useProjectGeneration(agentId: string) {
+  const cache = useQueryClient()
+  const project = useQuery({
+    queryKey: agentProjectKeys.project(agentId),
+    queryFn: () => agentProjectApi.get(agentId),
+    refetchOnMount: false,
+  })
+  const plan = useMutation({
+    mutationFn: (versionId: string) => agentProjectApi.generateSpec(agentId, versionId),
+    onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
+  })
+  const cases = useMutation({
+    mutationFn: (versionId: string) => agentProjectApi.generateCases(agentId, versionId),
+    onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
+  })
+  return { project, plan, cases }
+}

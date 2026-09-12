@@ -7,7 +7,7 @@ export interface AgentProject {
   builder_session_id: string | null
   title: string
   requirements_json: JsonObject | null
-  eval_spec_json: JsonObject | null
+  eval_spec_json: EvaluationSpec | null
   report_json: JsonObject | null
   created_at: string
   updated_at: string
@@ -44,9 +44,11 @@ export interface EvaluationCase {
     required_tools: string[]
     forbidden_tools: string[]
     handoff?: string | null
+    format_rule?: 'json_object' | 'json_array' | null
   }
   tags: string[]
   enabled: boolean
+  mock_tool_data?: Record<string, { description?: string; result?: unknown; error?: string | null }>
 }
 
 export interface EvaluationSet {
@@ -68,6 +70,8 @@ export interface EvaluationResult {
   tool_calls: { name: string }[]
   assertions: { kind: string; target?: string; passed: boolean }[]
   error: string | null
+  metric_scores?: Record<string, { score: number; passed: boolean; reason: string; method: string }>
+  limitations?: string[]
   latency_ms: number
 }
 
@@ -77,6 +81,7 @@ export interface EvaluationMetrics {
   failed?: number
   errored?: number
   pass_rate?: number
+  metric_scores?: Record<string, { score: number; evaluated_cases: number }>
 }
 
 export interface EvaluationRun {
@@ -104,4 +109,12 @@ export interface VersionComparison {
   }[]
   evaluations: ({ run_id: string; dataset_hash: string; metrics: EvaluationMetrics } | null)[]
   same_dataset: boolean
+}
+
+export interface EvaluationSpec {
+  version_id: string
+  metrics: { name: string; type: string; weight: number; criteria: string }[]
+  categories: string[]
+  case_count: number
+  pass_threshold: number
 }

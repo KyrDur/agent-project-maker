@@ -13,19 +13,40 @@ import type {
   EvaluationMetrics,
 } from '../_lib/agent-project-types'
 import { ProjectSelect } from './project-select'
+import { ProjectEvalPlan } from './project-eval-plan'
 import { ProjectCaseEditor } from './project-case-editor'
 
 export function ProjectMetrics({ metrics }: { metrics: EvaluationMetrics | null }) {
   const t = useTranslations('agentProject')
   return metrics ? (
-    <p>
-      {t('metrics', {
-        total: metrics.total,
-        passed: metrics.passed ?? 0,
-        failed: metrics.failed ?? 0,
-        errored: metrics.errored ?? 0,
-      })}
-    </p>
+    <div>
+      <p>
+        {t('metrics', {
+          total: metrics.total,
+          passed: metrics.passed ?? 0,
+          failed: metrics.failed ?? 0,
+          errored: metrics.errored ?? 0,
+        })}
+      </p>
+      {metrics.pass_rate != null && (
+        <p>{t('passRate', { value: Math.round(metrics.pass_rate * 100) })}</p>
+      )}
+      {!!Object.keys(metrics.metric_scores ?? {}).length && (
+        <>
+          <h4 className="font-medium">{t('metricScores')}</h4>
+          <ul>
+            {Object.entries(metrics.metric_scores ?? {}).map(([name, value]) => (
+              <li key={name}>
+                {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}:{' '}
+                {t('scorePercent', { value: Math.round(value.score * 100) })}
+                {' · '}
+                {t('scoredCases', { count: value.evaluated_cases })}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   ) : (
     <p>{t('notRun')}</p>
   )
@@ -75,8 +96,25 @@ export function ProjectEvaluation({
   const errorText = (code: string) =>
     t.has(`executionErrors.${code}`) ? t(`executionErrors.${code}`) : t('executionFailed')
   return (
-    <SettingsSectionCard title={t('evaluation')} description={t('structuralOnly')}>
-      <p className="mb-4 text-sm text-muted-foreground">{t('executionScope')}</p>
+    <SettingsSectionCard title={t('evaluation')} description={t('semanticDescription')}>
+      <p className="mb-4 text-sm text-muted-foreground">{t('mockScope')}</p>
+      <ProjectSelect
+        label={t('evaluationVersion')}
+        value={selectedVersion}
+        options={versions.map((version) => ({
+          value: version.id,
+          label: t('version', { number: version.version_number }),
+        }))}
+        onChange={setVersionId}
+      />
+      <ProjectEvalPlan
+        agentId={agentId}
+        versionId={selectedVersion}
+        onGenerated={(id) => {
+          setDatasetId(id)
+          setEditing(null)
+        }}
+      />
       {sets.isError ? (
         <ErrorState onRetry={() => void sets.refetch()} />
       ) : sets.isPending ? (
@@ -169,15 +207,6 @@ export function ProjectEvaluation({
         </>
       )}
       <div className="my-5 space-y-3">
-        <ProjectSelect
-          label={t('evaluationVersion')}
-          value={selectedVersion}
-          options={versions.map((version) => ({
-            value: version.id,
-            label: t('version', { number: version.version_number }),
-          }))}
-          onChange={setVersionId}
-        />
         <Button
           onClick={submit}
           disabled={
@@ -213,41 +242,70 @@ export function ProjectEvaluation({
                   <p role="status">{t(`runStatuses.${run.status}`)}</p>
                   <ProjectMetrics metrics={run.metrics_json} />
                   {run.error && <p role="alert">{errorText(run.error)}</p>}
+                  {run.results_json?.some((result) => result.status !== 'passed') && (
+                    <h4 className="font-medium">
+                      {t('failedCases', {
+                        count: run.results_json.filter((result) => result.status !== 'passed')
+                          .length,
+                      })}
+                    </h4>
+                  )}
                   <ul className="space-y-4">
-                    {run.results_json?.map((result) => (
-                      <li key={result.case_id} className="space-y-2">
-                        <h4 className="font-medium">
-                          {result.name} · {t(`caseStatuses.${result.status}`)}
-                        </h4>
-                        <p className="whitespace-pre-wrap">
-                          {t('caseInput')}: {result.input}
-                        </p>
-                        <p className="whitespace-pre-wrap">
-                          {t('output')}: {result.output}
-                        </p>
-                        {result.expected?.answer && (
-                          <p>
-                            {t('expectedBehavior')}: {result.expected.answer}
+                    {run.results_json
+                      ?.toSorted(
+                        (a, b) => Number(a.status === 'passed') - Number(b.status === 'passed'),
+                      )
+                      .map((result) => (
+                        <li key={result.case_id} className="space-y-2">
+                          <h4 className="font-medium">
+                            {result.name} · {t(`caseStatuses.${result.status}`)}
+                          </h4>
+                          <p className="whitespace-pre-wrap">
+                            {t('caseInput')}: {result.input}
                           </p>
-                        )}
-                        <p>{t('latency', { ms: result.latency_ms })}</p>
-                        {!!result.tool_calls.length && (
-                          <p>
-                            {t('toolCalls')}:{' '}
-                            {result.tool_calls.map((call) => call.name).join(', ')}
+                          <p className="whitespace-pre-wrap">
+                            {t('output')}: {result.output}
                           </p>
-                        )}
-                        <ul>
-                          {result.assertions.map((assertion, index) => (
-                            <li key={index}>
-                              {t(`assertions.${assertion.kind}`)} {assertion.target} ·{' '}
-                              {assertion.passed ? t('checkPassed') : t('checkFailed')}
-                            </li>
+                          {result.expected?.answer && (
+                            <p>
+                              {t('expectedBehavior')}: {result.expected.answer}
+                            </p>
+                          )}
+                          <p>{t('latency', { ms: result.latency_ms })}</p>
+                          {!!result.tool_calls.length && (
+                            <p>
+                              {t('toolCalls')}:{' '}
+                              {result.tool_calls.map((call) => call.name).join(', ')}
+                            </p>
+                          )}
+                          <ul>
+                            {result.assertions.map((assertion, index) => (
+                              <li key={index}>
+                                {t(`assertions.${assertion.kind}`)} {assertion.target} ·{' '}
+                                {assertion.passed ? t('checkPassed') : t('checkFailed')}
+                              </li>
+                            ))}
+                          </ul>
+                          {result.metric_scores && (
+                            <ul>
+                              {Object.entries(result.metric_scores).map(([name, score]) => (
+                                <li key={name}>
+                                  {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}:{' '}
+                                  {t('scorePercent', { value: Math.round(score.score * 100) })}
+                                  {' · '}
+                                  {score.method === 'deterministic'
+                                    ? t('deterministicReason')
+                                    : score.reason}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {result.limitations?.map((code) => (
+                            <p key={code}>{errorText(code)}</p>
                           ))}
-                        </ul>
-                        {result.error && <p role="alert">{errorText(result.error)}</p>}
-                      </li>
-                    ))}
+                          {result.error && <p role="alert">{errorText(result.error)}</p>}
+                        </li>
+                      ))}
                   </ul>
                 </div>
               </details>

@@ -61,7 +61,8 @@
       "exact_answer": "정확한 답변 일치",
       "required_tool": "필수 도구",
       "forbidden_tool": "금지 도구",
-      "handoff": "기대 위임"
+      "handoff": "기대 위임",
+      "format_compliance": "형식 준수"
     },
     "executionErrors": {
       "snapshot_invalid": "스냅샷이 불완전합니다.",
@@ -71,9 +72,16 @@
       "snapshot_credential_unavailable": "참조한 자격 증명을 사용할 수 없거나 소유자가 다릅니다.",
       "evaluation_requires_approval": "승인이 필요한 실행이어서 중단했습니다.",
       "evaluation_execution_failed": "실행에 실패했습니다. 자격 증명 보호를 위해 제공자 오류 내용은 표시하지 않습니다.",
-      "evaluation_timeout": "케이스 실행 시간이 30초를 초과했습니다.",
+      "evaluation_timeout": "실행 또는 평가가 제한 시간을 초과했습니다.",
       "evaluation_case_errors": "실행하지 못한 케이스가 있습니다.",
-      "evaluation_worker_expired": "제한 시간 안에 평가가 완료되지 않았습니다. 새 평가를 시작하세요."
+      "evaluation_worker_expired": "제한 시간 안에 평가가 완료되지 않았습니다. 새 평가를 시작하세요.",
+      "evaluation_mock_missing": "필수 또는 호출된 도구의 모의 데이터가 없습니다.",
+      "evaluation_mock_definition_invalid": "모의 도구 정의가 유효하지 않습니다.",
+      "evaluation_judge_invalid": "평가 모델의 점수 JSON이 유효하지 않습니다.",
+      "evaluation_model_failed": "사용자 모델 호출에 실패했습니다.",
+      "evaluation_format_rule_missing": "출력 형식 검사 규칙이 없습니다.",
+      "historical_skill_execution_unavailable": "과거 Skill 패키지 실행은 지원되지 않습니다.",
+      "historical_skill_content_unavailable": "이 버전에는 Skill 본문이 없습니다. 최신 Skill로 대체하지 않았습니다."
     },
     "compareVersions": "버전 비교",
     "needTwoVersions": "설정을 비교하려면 두 번째 버전을 만드세요.",
@@ -126,7 +134,49 @@
       "candidate": "후보",
       "accepted": "승인됨",
       "rejected": "거부됨"
-    }
+    },
+    "generatePlan": "평가 계획 생성",
+    "generating": "생성 중…",
+    "evalPlan": "평가 계획",
+    "planCount": "테스트 케이스 {count}개",
+    "passThreshold": "각 지표 통과 기준: {value}%",
+    "metricWeight": "가중치 {value}%",
+    "scenarioCategories": "시나리오 유형",
+    "planVersionMismatch": "선택한 버전으로 평가 계획을 생성하세요.",
+    "generateCases": "테스트 케이스 20개 생성",
+    "generationFailed": "생성에 실패했습니다. 모델 자격증명을 확인하고 다시 시도하세요.",
+    "metricScores": "지표 점수",
+    "passRate": "통과율 {value}%",
+    "scorePercent": "{value}%",
+    "scoredCases": "평가된 케이스 {count}개",
+    "semanticDescription": "평가 계획이 있으면 의미 평가와 구조 검사를 함께 실행합니다.",
+    "mockScope": "외부 도구는 고정된 모의 데이터만 사용합니다. 실제 외부 데이터에는 접근하지 않습니다.",
+    "deterministicReason": "도구 사용 또는 출력 형식 검사 결과",
+    "semanticExpected": "평가 계획이 있으면 평가 모델이 기대 동작과 실제 결과를 비교합니다.",
+    "formatRule": "출력 형식 규칙",
+    "noFormatRule": "없음",
+    "jsonObject": "JSON 객체",
+    "jsonArray": "JSON 배열",
+    "contextJson": "대화 맥락 (JSON)",
+    "mockData": "모의 도구 데이터 (JSON)",
+    "mockDataHelp": "도구 이름별 description, result, error를 입력하세요. 필수 도구의 데이터가 없으면 실패합니다.",
+    "invalidCaseJson": "맥락은 메시지 배열, 모의 데이터는 도구별 객체여야 합니다.",
+    "metricNames": {
+      "task_completion": "작업 완료",
+      "tool_correctness": "도구 사용 정확도",
+      "groundedness": "근거 충실도",
+      "format_compliance": "형식 준수",
+      "business_quality": "업무 품질"
+    },
+    "scenarios": {
+      "normal": "일반",
+      "missing_information": "정보 부족",
+      "ambiguous": "모호한 요청",
+      "tool_failure": "도구 실패",
+      "edge_case": "경계 사례",
+      "hallucination": "환각"
+    },
+    "failedCases": "실패한 케이스: {count}개"
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

@@ -61,7 +61,8 @@
       "exact_answer": "Exact answer",
       "required_tool": "Required tool",
       "forbidden_tool": "Forbidden tool",
-      "handoff": "Expected handoff"
+      "handoff": "Expected handoff",
+      "format_compliance": "Format Compliance"
     },
     "executionErrors": {
       "snapshot_invalid": "The snapshot is incomplete.",
@@ -71,9 +72,16 @@
       "snapshot_credential_unavailable": "A referenced credential is unavailable or not owned by you.",
       "evaluation_requires_approval": "Execution requires approval and was stopped.",
       "evaluation_execution_failed": "Execution failed. Provider error details are withheld to protect credentials.",
-      "evaluation_timeout": "The case exceeded the 30-second limit.",
+      "evaluation_timeout": "Execution or grading exceeded its time limit.",
       "evaluation_case_errors": "One or more cases could not execute.",
-      "evaluation_worker_expired": "The evaluation worker did not finish within its lease. Start a new run."
+      "evaluation_worker_expired": "The evaluation worker did not finish within its lease. Start a new run.",
+      "evaluation_mock_missing": "A required or called tool has no mock data.",
+      "evaluation_mock_definition_invalid": "Mock tool definitions are invalid.",
+      "evaluation_judge_invalid": "The judge returned invalid score JSON.",
+      "evaluation_model_failed": "The user-owned model call failed.",
+      "evaluation_format_rule_missing": "The deterministic format metric requires a rule.",
+      "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
+      "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -126,7 +134,49 @@
       "candidate": "Candidate",
       "accepted": "Accepted",
       "rejected": "Rejected"
-    }
+    },
+    "generatePlan": "Generate Eval Plan",
+    "generating": "Generating…",
+    "evalPlan": "Evaluation plan",
+    "planCount": "{count} Test Cases",
+    "passThreshold": "Per-metric pass threshold: {value}%",
+    "metricWeight": "Weight {value}%",
+    "scenarioCategories": "Scenario categories",
+    "planVersionMismatch": "Generate a plan for the selected version.",
+    "generateCases": "Generate 20 Test Cases",
+    "generationFailed": "Generation failed. Check model credentials and retry.",
+    "metricScores": "Metric Scores",
+    "passRate": "Pass rate {value}%",
+    "scorePercent": "{value}%",
+    "scoredCases": "{count} scored cases",
+    "semanticDescription": "Run semantic grading and structural checks when an evaluation plan is available.",
+    "mockScope": "External tools use frozen mock data only. Real external data is never accessed.",
+    "deterministicReason": "Tool-use or output-format assertion result",
+    "semanticExpected": "With an evaluation plan, the judge compares expected behavior with the actual result.",
+    "formatRule": "Output format rule",
+    "noFormatRule": "None",
+    "jsonObject": "JSON object",
+    "jsonArray": "JSON array",
+    "contextJson": "Conversation context (JSON)",
+    "mockData": "Mock tool data (JSON)",
+    "mockDataHelp": "Map tool names to description, result and error. Missing required mock data fails explicitly.",
+    "invalidCaseJson": "Context must be a message array; mock data must map tool names to objects.",
+    "metricNames": {
+      "task_completion": "Task Completion",
+      "tool_correctness": "Tool Correctness",
+      "groundedness": "Groundedness",
+      "format_compliance": "Format Compliance",
+      "business_quality": "Business Quality"
+    },
+    "scenarios": {
+      "normal": "Normal",
+      "missing_information": "Missing information",
+      "ambiguous": "Ambiguous",
+      "tool_failure": "Tool failure",
+      "edge_case": "Edge case",
+      "hallucination": "Hallucination"
+    },
+    "failedCases": "Failed Cases: {count}"
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

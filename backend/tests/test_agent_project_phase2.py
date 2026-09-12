@@ -265,9 +265,6 @@ async def test_concurrent_version_and_run_submission(tmp_path):
 @pytest.mark.parametrize(
     "field",
     [
-        "tool_links",
-        "skill_links",
-        "mcp_tool_links",
         "sub_agent_links",
         "middleware_configs",
         "model_fallback_list",
@@ -504,7 +501,7 @@ async def test_stale_run_reconciliation_is_not_a_get_mutation(db, setup_project)
     version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
     request = EvalRunCreate(request_id=uuid.uuid4(), version_id=version.id, eval_set_id=cases.id)
     row = await evaluation.create_run(db, agent.id, TEST_USER_ID, request)
-    row.created_at = utcnow() - timedelta(minutes=16)
+    row.created_at = utcnow() - timedelta(minutes=46)
     await db.commit()
     assert (await evaluation.get_run(db, agent.id, TEST_USER_ID, row.id)).status == "pending"
     retried = await evaluation.create_run(db, agent.id, TEST_USER_ID, request)

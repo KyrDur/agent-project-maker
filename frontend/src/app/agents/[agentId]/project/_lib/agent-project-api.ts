@@ -4,6 +4,7 @@ import type {
   AgentProjectVersion,
   AgentProjectVersionSummary,
   EvaluationCase,
+  EvaluationSpec,
   EvaluationSet,
   EvaluationRun,
   VersionComparison,
@@ -13,6 +14,16 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  generateSpec: (agentId: string, versionId: string) =>
+    apiFetch<EvaluationSpec>(`${projectPath(agentId)}/eval-spec/generate`, {
+      method: 'POST',
+      body: JSON.stringify({ version_id: versionId }),
+    }),
+  generateCases: (agentId: string, versionId: string) =>
+    apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/generate`, {
+      method: 'POST',
+      body: JSON.stringify({ version_id: versionId }),
+    }),
   get: (agentId: string) => apiFetch<AgentProject | null>(projectPath(agentId)),
   create: (agentId: string) =>
     apiFetch<AgentProject>(`${projectPath(agentId)}/create`, { method: 'POST' }),
@@ -31,15 +42,18 @@ export const agentProjectApi = {
       method: data.id ? 'PUT' : 'POST',
       body: JSON.stringify({
         name: data.name,
-        cases: data.cases.map(({ id, name, input, context, expected, tags, enabled }) => ({
-          id,
-          name,
-          input,
-          context,
-          expected,
-          tags,
-          enabled,
-        })),
+        cases: data.cases.map(
+          ({ id, name, input, context, expected, tags, enabled, mock_tool_data }) => ({
+            id,
+            name,
+            input,
+            context,
+            expected,
+            tags,
+            enabled,
+            mock_tool_data,
+          }),
+        ),
       }),
     }),
   runs: (agentId: string) => apiFetch<EvaluationRun[]>(`${projectPath(agentId)}/eval-runs`),

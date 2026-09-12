@@ -48,6 +48,8 @@ async def write_set(
     user_id: uuid.UUID,
     body: EvalSetWrite,
     set_id: uuid.UUID | None = None,
+    *,
+    rubric: dict[str, Any] | None = None,
 ) -> AgentProjectEvalSet:
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
@@ -71,6 +73,8 @@ async def write_set(
             updated_at=now,
         )
         cases.append(projects.snapshot_value(data))
+    if rubric is not None:
+        row.rubric_json = deepcopy(rubric)
     row.name, row.cases_json = projects.snapshot_value(body.name), cases
     db.add(row)
     await db.commit()
@@ -123,6 +127,9 @@ async def create_run(
             cases.append(projects.snapshot_value(case.model_dump(mode="json")))
     if not cases or len(cases) > 20:
         raise error("evaluation_requires_enabled_cases")
+    from app.services.agent_project_semantic import frozen_plan
+
+    plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
     row = AgentProjectEvalRun(
         project_id=project.id,
         version_id=version.id,
@@ -133,6 +140,7 @@ async def create_run(
         dataset_hash=canonical_json_hash(cases),
         metrics_json={"total": len(cases)},
         results_json=[],
+        comparison_json=plan,
     )
     db.add(row)
     await db.commit()
@@ -148,7 +156,7 @@ async def expire_runs(db: AsyncSession, project_id: uuid.UUID) -> None:
         .where(
             AgentProjectEvalRun.project_id == project_id,
             AgentProjectEvalRun.status.in_(["pending", "running"]),
-            AgentProjectEvalRun.created_at < utcnow() - timedelta(minutes=15),
+            AgentProjectEvalRun.created_at < utcnow() - timedelta(minutes=45),
         )
         .values(status="failed", error="evaluation_worker_expired", completed_at=utcnow())
     )
@@ -208,6 +216,12 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
                 "passed": expected["handoff"] in evidence.get("handoffs", []),
             }
         )
+    from app.services.agent_project_semantic import format_check
+
+    if expected.get("format_rule"):
+        checks.append(
+            {"kind": "format_compliance", "passed": format_check(case, evidence.get("output", ""))}
+        )
     return checks
 
 
@@ -231,6 +245,9 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
         row = await db.get(AgentProjectEvalRun, run_id)
         if row is None:
             return
+        from app.services.agent_project_semantic import grade_case, metric_summary
+
+        plan = deepcopy(row.comparison_json)
         results: list[dict[str, Any]] = []
         try:
             version = await projects.get_version(db, agent_id, user_id, row.version_id)
@@ -251,6 +268,9 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     "tool_calls": [],
                     "assertions": [],
                     "error": None,
+                    "execution_status": "failed",
+                    "metric_scores": {},
+                    "judge_reasons": {},
                 }
                 try:
                     async with asyncio.timeout(30):
@@ -258,16 +278,32 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     checks = score_case(case, evidence)
                     result.update(
                         evidence,
+                        execution_status="completed",
                         assertions=checks,
                         status="passed" if all(c["passed"] for c in checks) else "failed",
                     )
+                    if plan:
+                        async with asyncio.timeout(95):
+                            result.update(
+                                await grade_case(
+                                    db, snapshot, user_id, case, evidence, checks, plan
+                                )
+                            )
                 except SnapshotExecutionUnavailable as exc:
+                    result.update(exc.evidence)
                     result.update(status="errored", error=str(exc))
                 except TimeoutError:
                     result.update(status="errored", error="evaluation_timeout")
                 except Exception:
                     # Provider exceptions may contain secrets; never persist or log them.
                     result.update(status="errored", error="evaluation_execution_failed")
+                result.update(
+                    passed=result["status"] == "passed",
+                    actual_output=result["output"],
+                    called_tools=result["tool_calls"],
+                    deterministic_assertions=result["assertions"],
+                    error_code=result["error"],
+                )
                 result["latency_ms"] = round((perf_counter() - start) * 1000)
                 results.append(projects.snapshot_value(result))
                 row.results_json = list(results)
@@ -280,7 +316,8 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "failed": len(results) - passed - errored,
                 "errored": errored,
                 "pass_rate": passed / len(results),
-                "scoring": "structural_v1",
+                "scoring": "semantic_v1" if plan else "structural_v1",
+                "metric_scores": metric_summary(results),
             }
             row.pass_rate = passed / len(results)
             row.status = "failed" if errored else "completed"
