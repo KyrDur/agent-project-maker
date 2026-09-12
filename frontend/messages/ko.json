@@ -176,7 +176,54 @@
       "edge_case": "경계 사례",
       "hallucination": "환각"
     },
-    "failedCases": "실패한 케이스: {count}개"
+    "failedCases": "실패한 케이스: {count}개",
+    "badCases": "문제 사례",
+    "analyzeBadCases": "문제 사례 분석",
+    "optimizationPlan": "최적화 계획",
+    "affectedCases": "케이스 {count}개",
+    "optimizeAgent": "에이전트 최적화",
+    "optimizing": "분석 및 회귀 평가 중…",
+    "optimizationFailed": "최적화를 완료하지 못했습니다. 실행 증거와 모델 상태를 확인하세요.",
+    "bestVersion": "최적 버전",
+    "bestNotLive": "최적 버전은 프로젝트 평가 결과입니다. 실제 에이전트 설정은 변경되지 않습니다.",
+    "optimizationPolicy": "최대 2회 최적화합니다. 통과율 증가 또는 동일 통과율에서 의미 지표 5%p 향상이 필요합니다. 지표가 2%p 넘게 하락하면 거절합니다. 회귀는 최대 5%이며 도구·근거·형식 지표의 신규 실패는 허용하지 않습니다.",
+    "viewChanges": "변경 내용 보기",
+    "beforeChange": "변경 전",
+    "afterChange": "변경 후",
+    "regressionRates": "{before}% → {after}%",
+    "causeCategories": {
+      "instruction_issue": "지침 문제",
+      "skill_issue": "스킬 문제",
+      "tool_selection_issue": "도구 선택 문제",
+      "tool_description_issue": "도구 설명 문제",
+      "output_issue": "출력 문제",
+      "external_unfixable": "외부·실행 오류"
+    },
+    "optimizationStops": {
+      "all_cases_pass": "모든 케이스가 통과하여 중지했습니다.",
+      "no_fixable_cases": "수정 가능한 문제 사례가 없습니다.",
+      "no_supported_changes": "안전하게 적용할 수 있는 변경이 없습니다.",
+      "candidate_not_improved": "후보가 개선되지 않아 중지했습니다. 이전 최적 버전을 유지합니다.",
+      "two_round_limit": "최대 두 번의 최적화를 완료했습니다.",
+      "optimization_failed": "최적화 실행을 완료하지 못했습니다."
+    },
+    "regressionCounts": {
+      "fixed_cases": "개선 {count}개",
+      "regressed_cases": "회귀 {count}개",
+      "still_failing_cases": "계속 실패 {count}개",
+      "still_passing_cases": "계속 통과 {count}개"
+    },
+    "decisionReasons": {
+      "incomplete_quality_evidence": "실행 오류 또는 불완전한 품질 증거",
+      "too_many_regressions": "허용 범위를 초과한 회귀",
+      "protected_metric_regression": "보호 지표에 신규 실패 발생",
+      "metric_drop": "허용 범위를 초과한 지표 하락",
+      "no_improvement": "의미 있는 개선 없음",
+      "worse_than_parent": "부모 버전보다 낮은 통과율",
+      "pass_rate_improved": "통과율 향상",
+      "semantic_metrics_improved": "동일 통과율에서 의미 지표 향상"
+    },
+    "deferredSkillChange": "과거 스킬 본문이 없어 제안된 스킬 변경을 보류했습니다. 현재 스킬은 변경하지 않았습니다."
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

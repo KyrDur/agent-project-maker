@@ -343,18 +343,56 @@ async def create_version(
         return VersionCreated(
             outcome="unchanged", version=AgentProjectVersionResponse.model_validate(latest)
         )
-    version = AgentProjectVersion(
-        project_id=project.id,
-        version_number=latest.version_number + 1 if latest else 1,
-        parent_version_id=latest.id if latest else None,
-        status="candidate",
-        snapshot_json=snapshot,
-        config_hash=digest,
+    version = await append_snapshot_version(
+        db,
+        project,
+        snapshot,
+        parent_id=latest.id if latest else None,
         request_id=body.request_id,
-        change_summary=snapshot_value(body.change_summary),
+        summary=body.change_summary,
     )
-    db.add(version)
     await db.commit()
     return VersionCreated(
         outcome="created", version=AgentProjectVersionResponse.model_validate(version)
     )
+
+
+async def append_snapshot_version(
+    db: AsyncSession,
+    project: AgentProject,
+    snapshot: dict[str, Any],
+    *,
+    parent_id: uuid.UUID | None,
+    request_id: uuid.UUID,
+    summary: str | None,
+) -> AgentProjectVersion:
+    """Caller holds the project write lock; never read or update a live Agent."""
+    prior = await db.scalar(
+        select(AgentProjectVersion).where(
+            AgentProjectVersion.project_id == project.id,
+            AgentProjectVersion.request_id == request_id,
+        )
+    )
+    if prior is not None:
+        return prior
+    latest = await db.scalar(
+        select(AgentProjectVersion)
+        .where(
+            AgentProjectVersion.project_id == project.id,
+        )
+        .order_by(AgentProjectVersion.version_number.desc())
+        .limit(1)
+    )
+    version = AgentProjectVersion(
+        project_id=project.id,
+        version_number=latest.version_number + 1 if latest else 1,
+        parent_version_id=parent_id,
+        status="candidate",
+        snapshot_json=snapshot,
+        config_hash=canonical_json_hash(snapshot),
+        request_id=request_id,
+        change_summary=snapshot_value(summary),
+    )
+    db.add(version)
+    await db.flush()
+    return version

@@ -14,6 +14,7 @@ import type {
 } from '../_lib/agent-project-types'
 import { ProjectSelect } from './project-select'
 import { ProjectEvalPlan } from './project-eval-plan'
+import { ProjectOptimization } from './project-optimization'
 import { ProjectCaseEditor } from './project-case-editor'
 
 export function ProjectMetrics({ metrics }: { metrics: EvaluationMetrics | null }) {
@@ -241,6 +242,10 @@ export function ProjectEvaluation({
                 <div className="mt-3 space-y-3">
                   <p role="status">{t(`runStatuses.${run.status}`)}</p>
                   <ProjectMetrics metrics={run.metrics_json} />
+                  {['completed', 'failed'].includes(run.status) &&
+                    run.comparison_json?.eval_spec && (
+                      <ProjectOptimization agentId={agentId} run={run} versions={versions} />
+                    )}
                   {run.error && <p role="alert">{errorText(run.error)}</p>}
                   {run.results_json?.some((result) => result.status !== 'passed') && (
                     <h4 className="font-medium">

@@ -131,6 +131,7 @@ class EvalRunResponse(BaseModel):
     results_json: list[dict[str, Any]] | None
     pass_rate: float | None
     comparison_json: dict[str, Any] | None = None
+    bad_cases_json: list[dict[str, Any]] | None = None
 
 
 class EvalGenerationRequest(BaseModel):

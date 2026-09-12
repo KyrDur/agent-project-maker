@@ -65,7 +65,11 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
             <p role="status">{t('loading')}</p>
           ) : (
             <>
-              <ProjectVersions agentId={agentId} versions={versions.data} />
+              <ProjectVersions
+                agentId={agentId}
+                versions={versions.data}
+                bestVersionId={project.data.report_json?.optimization?.best_version_id}
+              />
               <ProjectEvaluation agentId={agentId} versions={versions.data} />
               <ProjectComparison agentId={agentId} versions={versions.data} />
             </>

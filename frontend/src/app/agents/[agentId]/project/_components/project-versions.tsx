@@ -12,9 +12,11 @@ import { useProjectVersions } from '../_hooks/use-project-evaluation'
 export function ProjectVersions({
   agentId,
   versions,
+  bestVersionId,
 }: {
   agentId: string
   versions: AgentProjectVersionSummary[]
+  bestVersionId?: string
 }) {
   const t = useTranslations('agentProject')
   const locale = useLocale()
@@ -38,6 +40,7 @@ export function ProjectVersions({
         </Button>
       }
     >
+      {bestVersionId && <p className="mb-4">{t('bestNotLive')}</p>}
       {create.isError && <ErrorState onRetry={submit} />}
       {create.data && <p role="status">{t(`outcomes.${create.data.outcome}`)}</p>}
       <ul className="space-y-4">
@@ -46,6 +49,7 @@ export function ProjectVersions({
             <Button variant="outline" onClick={() => setSelected(version.id)}>
               {t('version', { number: version.version_number })}
             </Button>
+            {bestVersionId === version.id && <p className="font-medium">{t('bestVersion')}</p>}
             <p className="text-sm text-muted-foreground">
               {version.status === 'original'
                 ? t('originalSnapshot')

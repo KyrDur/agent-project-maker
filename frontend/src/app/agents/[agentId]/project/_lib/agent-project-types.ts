@@ -8,7 +8,7 @@ export interface AgentProject {
   title: string
   requirements_json: JsonObject | null
   eval_spec_json: EvaluationSpec | null
-  report_json: JsonObject | null
+  report_json: (JsonObject & { optimization?: OptimizationState }) | null
   created_at: string
   updated_at: string
 }
@@ -96,6 +96,13 @@ export interface EvaluationRun {
   error: string | null
   metrics_json: EvaluationMetrics | null
   results_json: EvaluationResult[] | null
+  bad_cases_json?: BadCase[] | null
+  comparison_json?: {
+    eval_spec?: EvaluationSpec
+    analysis?: { groups: OptimizationGroup[] }
+    deferred_changes?: { limitation: string; content: string }[]
+    optimization?: OptimizationState
+  } | null
 }
 
 export interface VersionComparison {
@@ -117,4 +124,45 @@ export interface EvaluationSpec {
   categories: string[]
   case_count: number
   pass_threshold: number
+}
+
+export interface BadCase {
+  case_id: string
+  category: string
+  root_cause: string
+  evidence: string[]
+  recommended_target: string
+  suggested_fix: string
+  observations: { reference: string; value: unknown }[]
+}
+export interface OptimizationGroup {
+  category: string
+  case_ids: string[]
+  root_cause: string
+  target: string
+  proposed_change: string
+}
+export interface RegressionComparison {
+  fixed_cases: string[]
+  regressed_cases: string[]
+  still_failing_cases: string[]
+  still_passing_cases: string[]
+  pass_rate: { before: number; after: number; delta: number }
+  metrics: Record<string, { before: number | null; after: number | null; delta: number | null }>
+  decision: 'accepted' | 'rejected'
+  reasons: string[]
+}
+export interface OptimizationState {
+  state?: 'pending' | 'running' | 'completed' | 'failed'
+  root_run_id: string
+  best_version_id?: string
+  best_run_id?: string
+  stop_reason?: string | null
+  rounds?: {
+    version_id: string
+    parent_version_id: string
+    run_id: string
+    decision: string
+    comparison?: RegressionComparison
+  }[]
 }

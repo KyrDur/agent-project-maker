@@ -5,6 +5,9 @@ import type {
   AgentProjectVersionSummary,
   EvaluationCase,
   EvaluationSpec,
+  BadCase,
+  OptimizationGroup,
+  OptimizationState,
   EvaluationSet,
   EvaluationRun,
   VersionComparison,
@@ -14,6 +17,16 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  analyze: (agentId: string, runId: string) =>
+    apiFetch<{ bad_cases: BadCase[]; groups: OptimizationGroup[] }>(
+      `${projectPath(agentId)}/eval-runs/${runId}/analyze`,
+      { method: 'POST' },
+    ),
+  optimize: (agentId: string, runId: string, requestId: string) =>
+    apiFetch<OptimizationState>(`${projectPath(agentId)}/eval-runs/${runId}/optimize`, {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId }),
+    }),
   generateSpec: (agentId: string, versionId: string) =>
     apiFetch<EvaluationSpec>(`${projectPath(agentId)}/eval-spec/generate`, {
       method: 'POST',

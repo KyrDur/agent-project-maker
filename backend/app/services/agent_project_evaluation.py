@@ -130,17 +130,38 @@ async def create_run(
     from app.services.agent_project_semantic import frozen_plan
 
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
+    return await insert_frozen_run(
+        db,
+        project.id,
+        version.id,
+        dataset.id,
+        body.request_id,
+        cases,
+        plan,
+    )
+
+
+async def insert_frozen_run(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    version_id: uuid.UUID,
+    eval_set_id: uuid.UUID,
+    request_id: uuid.UUID,
+    cases: list[dict[str, Any]],
+    plan: dict[str, Any] | None,
+) -> AgentProjectEvalRun:
+    """Shared insertion boundary; caller owns scope checks and project write lock."""
     row = AgentProjectEvalRun(
-        project_id=project.id,
-        version_id=version.id,
-        eval_set_id=dataset.id,
-        request_id=body.request_id,
+        project_id=project_id,
+        version_id=version_id,
+        eval_set_id=eval_set_id,
+        request_id=request_id,
         status="pending",
         cases_snapshot_json=deepcopy(cases),
         dataset_hash=canonical_json_hash(cases),
         metrics_json={"total": len(cases)},
         results_json=[],
-        comparison_json=plan,
+        comparison_json=deepcopy(plan),
     )
     db.add(row)
     await db.commit()

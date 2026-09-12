@@ -176,7 +176,54 @@
       "edge_case": "Edge case",
       "hallucination": "Hallucination"
     },
-    "failedCases": "Failed Cases: {count}"
+    "failedCases": "Failed Cases: {count}",
+    "badCases": "Bad Cases",
+    "analyzeBadCases": "Analyze Bad Cases",
+    "optimizationPlan": "Optimization Plan",
+    "affectedCases": "{count} cases",
+    "optimizeAgent": "Optimize Agent",
+    "optimizing": "Analyzing and running regression evaluation…",
+    "optimizationFailed": "Optimization could not finish. Review run evidence and model availability.",
+    "bestVersion": "Best Version",
+    "bestNotLive": "Best Version is a project evaluation result. Live Agent settings remain unchanged.",
+    "optimizationPolicy": "At most two rounds. Require higher pass rate, or equal pass rate with a 5-point semantic gain. Reject metric drops over 2 points. Allow up to 5% case regressions, with no new tool, groundedness or format failures.",
+    "viewChanges": "View Changes",
+    "beforeChange": "Before",
+    "afterChange": "After",
+    "regressionRates": "{before}% → {after}%",
+    "causeCategories": {
+      "instruction_issue": "Instruction Issues",
+      "skill_issue": "Skill Issues",
+      "tool_selection_issue": "Tool Selection",
+      "tool_description_issue": "Tool Description",
+      "output_issue": "Output Issues",
+      "external_unfixable": "External / Infrastructure"
+    },
+    "optimizationStops": {
+      "all_cases_pass": "Stopped: all cases pass.",
+      "no_fixable_cases": "No fixable bad cases remain.",
+      "no_supported_changes": "No safely supported changes are available.",
+      "candidate_not_improved": "Stopped: candidate did not improve. The prior best version is retained.",
+      "two_round_limit": "Stopped after two optimization rounds.",
+      "optimization_failed": "Optimization execution did not finish."
+    },
+    "regressionCounts": {
+      "fixed_cases": "Fixed: {count}",
+      "regressed_cases": "Regressed: {count}",
+      "still_failing_cases": "Still failing: {count}",
+      "still_passing_cases": "Still passing: {count}"
+    },
+    "decisionReasons": {
+      "incomplete_quality_evidence": "Execution errors or incomplete quality evidence",
+      "too_many_regressions": "Too many regressed cases",
+      "protected_metric_regression": "New failure in a protected metric",
+      "metric_drop": "Metric drop exceeds the allowed limit",
+      "no_improvement": "No meaningful improvement",
+      "worse_than_parent": "Pass rate is worse than parent",
+      "pass_rate_improved": "Pass rate improved",
+      "semantic_metrics_improved": "Semantic metrics improved at equal pass rate"
+    },
+    "deferredSkillChange": "The suggested Skill change was deferred because no frozen historical text is available. The current Skill was not changed."
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { agentProjectApi } from '../_lib/agent-project-api'
 
@@ -18,12 +19,23 @@ export function useAgentProject(agentId: string) {
   const project = useQuery({
     queryKey: agentProjectKeys.project(agentId),
     queryFn: () => agentProjectApi.get(agentId),
+    refetchInterval: (query) =>
+      ['pending', 'running'].includes(query.state.data?.report_json?.optimization?.state ?? '')
+        ? 1500
+        : false,
   })
   const versions = useQuery({
     queryKey: agentProjectKeys.versions(agentId),
     queryFn: () => agentProjectApi.versions(agentId),
     enabled: !!project.data,
   })
+  const optimization = project.data?.report_json?.optimization
+  useEffect(() => {
+    if (optimization) {
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.versions(agentId) })
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.runs(agentId) })
+    }
+  }, [optimization, agentId, queryClient])
   const create = useMutation({
     mutationFn: () => agentProjectApi.create(agentId),
     onSuccess: (data) => {

@@ -46,8 +46,8 @@ def mock_tools(config: dict[str, Any], case: dict[str, Any]) -> tuple[list[Any],
         tools.append(
             StructuredTool(
                 name=name,
-                description=(behavior or {}).get("description")
-                or definition.get("description")
+                description=definition.get("description")
+                or (behavior or {}).get("description")
                 or f"Frozen evaluation mock for {name}",
                 args_schema=definition.get("input_schema")
                 or {

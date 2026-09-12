@@ -21,6 +21,7 @@ from app.schemas.agent_project import (
     VersionCreate,
     VersionCreated,
 )
+from app.schemas.agent_project_optimization import OptimizeRequest
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_service as service
 
@@ -74,7 +75,10 @@ async def list_versions(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    return await service.list_versions(db, agent_id, user.id)
+    from app.services.agent_project_optimization import version_responses
+
+    rows = await service.list_versions(db, agent_id, user.id)
+    return await version_responses(db, agent_id, user.id, rows)
 
 
 @router.get("/versions/{version_id}", response_model=AgentProjectVersionResponse)
@@ -84,7 +88,10 @@ async def get_version(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    return await service.get_version(db, agent_id, user.id, version_id)
+    from app.services.agent_project_optimization import version_responses
+
+    row = await service.get_version(db, agent_id, user.id, version_id)
+    return (await version_responses(db, agent_id, user.id, [row]))[0]
 
 
 @router.post("/versions", response_model=VersionCreated)
@@ -203,3 +210,34 @@ async def generate_eval_set(
     from app.services.agent_project_semantic import generate
 
     return await generate(db, agent_id, user.id, body.version_id, cases=True)
+
+
+@router.post("/eval-runs/{run_id}/analyze")
+async def analyze_eval_run(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_optimization import analyze
+
+    return await analyze(db, agent_id, user.id, run_id)
+
+
+@router.post("/eval-runs/{run_id}/optimize", status_code=202)
+async def optimize_eval_run(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: OptimizeRequest,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_optimization import execute_optimization, start
+
+    state, schedule = await start(db, agent_id, user.id, run_id, body.request_id)
+    if schedule:
+        background.add_task(
+            execute_optimization, agent_id, user.id, uuid.UUID(state["root_run_id"])
+        )
+    return state

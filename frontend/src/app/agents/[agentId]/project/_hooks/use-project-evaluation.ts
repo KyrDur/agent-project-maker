@@ -29,7 +29,12 @@ export function useProjectEvaluation(agentId: string) {
     queryKey: agentProjectKeys.runs(agentId),
     queryFn: () => agentProjectApi.runs(agentId),
     refetchInterval: (query) =>
-      query.state.data?.some((run) => run.status === 'pending' || run.status === 'running')
+      query.state.data?.some(
+        (run) =>
+          run.status === 'pending' ||
+          run.status === 'running' ||
+          ['pending', 'running'].includes(run.comparison_json?.optimization?.state ?? ''),
+      )
         ? 1500
         : false,
   })
@@ -70,4 +75,18 @@ export function useProjectGeneration(agentId: string) {
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
   })
   return { project, plan, cases }
+}
+
+export function useProjectOptimization(agentId: string, runId: string) {
+  const cache = useQueryClient()
+  const refresh = () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) })
+  const analyze = useMutation({
+    mutationFn: () => agentProjectApi.analyze(agentId, runId),
+    onSuccess: refresh,
+  })
+  const optimize = useMutation({
+    mutationFn: (requestId: string) => agentProjectApi.optimize(agentId, runId, requestId),
+    onSuccess: refresh,
+  })
+  return { analyze, optimize }
 }
