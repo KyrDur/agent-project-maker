@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeftIcon,
@@ -59,6 +60,7 @@ export default function AgentSettingsPage({ params }: { params: Promise<{ agentI
   const { agentId } = use(params)
   const router = useRouter()
   const t = useTranslations('agent.settings')
+  const projectT = useTranslations('agentProject')
   const tc = useTranslations('common')
   const {
     data: agent,
@@ -233,6 +235,9 @@ export default function AgentSettingsPage({ params }: { params: Promise<{ agentI
           />
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button variant="outline" render={<Link href={`/agents/${agentId}/project`} />}>
+            {projectT('openProject')}
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
