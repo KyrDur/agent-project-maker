@@ -30,6 +30,7 @@ package-lock.json
 !.env.example
 !.env.sample
 !.env.template
+!.env.production.example
 
 # Credentials/Secrets
 token.json

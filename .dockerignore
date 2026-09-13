@@ -70,3 +70,12 @@ scripts/
 backend/data/
 *.tar.gz
 dump.rdb
+
+# Generated release/demo/test output must not enter production build layers.
+output/
+test-results/
+playwright-report/
+frontend/test-results/
+frontend/playwright-report/
+frontend/e2e-demo/
+*.tsbuildinfo
