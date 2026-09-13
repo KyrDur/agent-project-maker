@@ -223,7 +223,44 @@
       "pass_rate_improved": "Pass rate improved",
       "semantic_metrics_improved": "Semantic metrics improved at equal pass rate"
     },
-    "deferredSkillChange": "The suggested Skill change was deferred because no frozen historical text is available. The current Skill was not changed."
+    "deferredSkillChange": "The suggested Skill change was deferred because no frozen historical text is available. The current Skill was not changed.",
+    "portfolio": {
+      "title": "Results / Portfolio",
+      "loading": "Loading project evidence…",
+      "error": "Could not complete this project action.",
+      "unavailable": "Unavailable",
+      "percent": "{value}%",
+      "best": "Best Version: {version}",
+      "evaluation": "Evaluation: {passed} / {total}",
+      "improvement": "Controlled evaluation: {before} → {after}",
+      "metric": "Score: {score} · {count} evaluated cases",
+      "journey": "Version journey",
+      "version": "V{version}",
+      "bestLabel": "Best",
+      "liveNotice": "Try Live Agent opens the existing chat and its trace view. Live configuration equivalence is unverified; Project Best Version is not automatically deployed.",
+      "tryLive": "Try Live Agent",
+      "viewReport": "View / hide report",
+      "refresh": "Regenerate report",
+      "download": "Download Project",
+      "style": "Resume style",
+      "styles": {
+        "ai_product": "AI Product Manager",
+        "product": "Product Manager",
+        "engineering": "AI / Agent Engineering"
+      },
+      "generateResume": "Generate / regenerate resume",
+      "copy": "Copy bullets",
+      "copied": "Copied.",
+      "copyFailed": "Copy failed. Select and copy the text manually.",
+      "shareNotice": "Share creates a fixed, sanitized case study. Review the report first. Raw cases, tool outputs and instruction text are excluded. Revoke and create again to publish updated evidence.",
+      "share": "Create / get share link",
+      "revoke": "Revoke share",
+      "openShare": "Open public case study",
+      "copyLink": "Copy share link",
+      "revoked": "Share revoked.",
+      "publicTitle": "Agent Project Case Study",
+      "shareUnavailable": "This project share is unavailable or has been revoked."
+    }
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

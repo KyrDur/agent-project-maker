@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { agentProjectApi } from '../_lib/agent-project-api'
 
 export const agentProjectKeys = {
+  report: (agentId: string) => ['agent-project', agentId, 'portfolio-report'] as const,
   project: (agentId: string) => ['agent-project', agentId] as const,
   versions: (agentId: string) => [...agentProjectKeys.project(agentId), 'versions'] as const,
   version: (agentId: string, id: string) => [...agentProjectKeys.versions(agentId), id] as const,

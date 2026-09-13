@@ -42,6 +42,7 @@ const item = {
 
 beforeEach(() =>
   server.use(
+    http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
     http.get(path, () => HttpResponse.json({ id: 'p1', title: 'Example', eval_spec_json: null })),
     http.get(`${path}/versions`, () => HttpResponse.json([version])),
     http.get(`${path}/eval-sets`, () => HttpResponse.json([])),

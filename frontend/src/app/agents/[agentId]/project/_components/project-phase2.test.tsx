@@ -48,6 +48,7 @@ const run = {
 
 beforeEach(() => {
   server.use(
+    http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
     http.get(path, () => HttpResponse.json({ id: 'p1', title: 'Example Agent' })),
     http.get(`${path}/versions`, () => HttpResponse.json([v1])),
     http.get(`${path}/eval-sets`, () => HttpResponse.json([])),

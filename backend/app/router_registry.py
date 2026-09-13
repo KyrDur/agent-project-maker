@@ -48,6 +48,7 @@ def include_app_routers(app: FastAPI) -> None:
     app.include_router(auth.router)
     app.include_router(agent_blueprints.router)
     app.include_router(agent_projects.router)
+    app.include_router(agent_projects.public_router)
     app.include_router(agent_api.router)
     app.include_router(agent_runtime_api.router)
     app.include_router(agents.router)

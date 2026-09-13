@@ -223,7 +223,44 @@
       "pass_rate_improved": "통과율 향상",
       "semantic_metrics_improved": "동일 통과율에서 의미 지표 향상"
     },
-    "deferredSkillChange": "과거 스킬 본문이 없어 제안된 스킬 변경을 보류했습니다. 현재 스킬은 변경하지 않았습니다."
+    "deferredSkillChange": "과거 스킬 본문이 없어 제안된 스킬 변경을 보류했습니다. 현재 스킬은 변경하지 않았습니다.",
+    "portfolio": {
+      "title": "결과 / 포트폴리오",
+      "loading": "프로젝트 근거를 불러오는 중…",
+      "error": "프로젝트 작업을 완료하지 못했어요.",
+      "unavailable": "확인할 수 없음",
+      "percent": "{value}%",
+      "best": "최적 버전: {version}",
+      "evaluation": "평가: {passed} / {total}",
+      "improvement": "통제된 평가: {before} → {after}",
+      "metric": "점수: {score} · 평가 사례 {count}개",
+      "journey": "버전 변경 이력",
+      "version": "V{version}",
+      "bestLabel": "최적",
+      "liveNotice": "실제 Agent 체험은 기존 채팅과 실행 추적 화면을 열어요. 실제 설정과 프로젝트 최적 버전의 일치 여부는 확인되지 않았으며, 최적 버전은 자동 배포되지 않아요.",
+      "tryLive": "실제 Agent 체험",
+      "viewReport": "보고서 보기 / 접기",
+      "refresh": "보고서 다시 생성",
+      "download": "프로젝트 다운로드",
+      "style": "이력서 스타일",
+      "styles": {
+        "ai_product": "AI 프로덕트 매니저",
+        "product": "프로덕트 매니저",
+        "engineering": "AI / Agent 엔지니어링"
+      },
+      "generateResume": "이력서 문구 생성 / 다시 생성",
+      "copy": "문구 복사",
+      "copied": "복사했어요.",
+      "copyFailed": "복사하지 못했어요. 텍스트를 선택해 직접 복사해 주세요.",
+      "shareNotice": "공유 링크에는 정제된 사례 연구의 고정 사본이 표시돼요. 먼저 보고서를 확인해 주세요. 원본 사례, 도구 출력, 지침 본문은 제외돼요. 최신 근거를 공유하려면 기존 링크를 해제하고 다시 생성하세요.",
+      "share": "공유 링크 생성 / 확인",
+      "revoke": "공유 해제",
+      "openShare": "공개 사례 연구 열기",
+      "copyLink": "공유 링크 복사",
+      "revoked": "공유를 해제했어요.",
+      "publicTitle": "Agent 프로젝트 사례 연구",
+      "shareUnavailable": "공유가 해제되었거나 프로젝트를 찾을 수 없어요."
+    }
   },
   "metadata": {
     "title": "Moldy - AI Agent Builder",

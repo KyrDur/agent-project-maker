@@ -166,3 +166,38 @@ export interface OptimizationState {
     comparison?: RegressionComparison
   }[]
 }
+export interface PortfolioReport {
+  evidence_hash: string
+  markdown: string
+  sections: { title: string; body: string }[]
+  evidence: {
+    project: { name: string; goal: string }
+    results: {
+      best_version: number | null
+      baseline: PortfolioEvaluation | null
+      best: PortfolioEvaluation | null
+      metric_deltas: Record<string, number>
+    }
+    versions: {
+      version: number
+      best: boolean
+      decision: string
+      evaluation: PortfolioEvaluation | null
+    }[]
+    limitations: string[]
+  }
+}
+
+export interface PortfolioEvaluation {
+  pass_rate: number | null
+  passed: number | null
+  total: number | null
+  metrics: Record<string, { score: number; evaluated_cases: number }>
+}
+
+export type ResumeStyle = 'ai_product' | 'product' | 'engineering'
+export interface PortfolioResume {
+  style: ResumeStyle
+  bullets: string[]
+  evidence_hash: string
+}

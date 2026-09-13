@@ -20,6 +20,7 @@ const create = vi.fn()
 beforeEach(() => {
   create.mockReset()
   server.use(
+    http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
     http.get(path, () => HttpResponse.json(null)),
     http.post(`${path}/create`, () => {
       create()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,8 +22,21 @@ from app.schemas.agent_project import (
     VersionCreated,
 )
 from app.schemas.agent_project_optimization import OptimizeRequest
+from app.schemas.agent_project_portfolio import ResumeRequest
 from app.services import agent_project_evaluation as evaluation
+from app.services import agent_project_portfolio as portfolio
 from app.services import agent_project_service as service
+
+public_router = APIRouter(tags=["agent-project-shares"])
+
+
+@public_router.get("/api/project-shares/{project_id}/{token}")
+async def read_project_share(
+    project_id: uuid.UUID, token: str, response: Response, db: AsyncSession = Depends(get_db)
+):
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return await portfolio.public_share(db, project_id, token)
 
 
 class ProjectRoute(APIRoute):
@@ -241,3 +254,67 @@ async def optimize_eval_run(
             execute_optimization, agent_id, user.id, uuid.UUID(state["root_run_id"])
         )
     return state
+
+
+@router.get("/report")
+async def get_report(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.report(db, agent_id, user.id)
+
+
+@router.post("/report/generate")
+async def generate_report(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.report(db, agent_id, user.id, save=True)
+
+
+@router.post("/resume/generate")
+async def generate_resume(
+    agent_id: uuid.UUID,
+    body: ResumeRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.resume(db, agent_id, user.id, body.style)
+
+
+@router.post("/share")
+async def create_project_share(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.share(db, agent_id, user.id)
+
+
+@router.delete("/share")
+async def revoke_project_share(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.share(db, agent_id, user.id, revoke=True)
+
+
+@router.get("/export")
+async def export_project(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_portfolio_export import export_zip
+
+    return Response(
+        await export_zip(db, agent_id, user.id),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="agent-project.zip"',
+            "Cache-Control": "no-store",
+        },
+    )

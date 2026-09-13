@@ -1,5 +1,8 @@
-import { apiFetch } from '@/lib/api/client'
+import { apiFetch, API_BASE } from '@/lib/api/client'
 import type {
+  PortfolioReport,
+  PortfolioResume,
+  ResumeStyle,
   AgentProject,
   AgentProjectVersion,
   AgentProjectVersionSummary,
@@ -17,6 +20,20 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  report: (agentId: string, generate = false) =>
+    apiFetch<PortfolioReport>(`${projectPath(agentId)}/report${generate ? '/generate' : ''}`, {
+      method: generate ? 'POST' : 'GET',
+    }),
+  resume: (agentId: string, style: ResumeStyle) =>
+    apiFetch<PortfolioResume>(`${projectPath(agentId)}/resume/generate`, {
+      method: 'POST',
+      body: JSON.stringify({ style }),
+    }),
+  share: (agentId: string, revoke = false) =>
+    apiFetch<{ path: string | null }>(`${projectPath(agentId)}/share`, {
+      method: revoke ? 'DELETE' : 'POST',
+    }),
+  exportUrl: (agentId: string) => `${API_BASE}${projectPath(agentId)}/export`,
   analyze: (agentId: string, runId: string) =>
     apiFetch<{ bad_cases: BadCase[]; groups: OptimizationGroup[] }>(
       `${projectPath(agentId)}/eval-runs/${runId}/analyze`,

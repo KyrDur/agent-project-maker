@@ -10,6 +10,7 @@ import { useAgentProject } from '../_hooks/use-agent-project'
 import { ProjectVersions } from './project-versions'
 import { ProjectEvaluation } from './project-evaluation'
 import { ProjectComparison } from './project-comparison'
+import { ProjectResults } from './project-results'
 
 export function ProjectWorkbench({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject')
@@ -72,6 +73,7 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
               />
               <ProjectEvaluation agentId={agentId} versions={versions.data} />
               <ProjectComparison agentId={agentId} versions={versions.data} />
+              <ProjectResults agentId={agentId} />
             </>
           )}
         </>
