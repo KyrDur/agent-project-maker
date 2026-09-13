@@ -11,8 +11,9 @@ validation is recorded in [agent-project-release.md](agent-project-release.md).
 Use `compose.alibaba-2c2g.yml` **alone**, never combined with the development
 `docker-compose.yml`, which publishes PostgreSQL and binds application ports publicly.
 The source release is `7aa8a5e0f48e8c5717f8c652d19c8ba424bd7dd5`.
-Deployment files prepared after that release must also be transferred to the server;
-they are not automatically present in GitHub main. No commit/push is implied here.
+Use the deployment files from the same reviewed GitHub commit as the published
+images. The production target is `https://agent.softcue.xyz`, `linux/amd64`.
+The manual image workflow builds on GitHub runners, never on the production host.
 
 Architecture:
 
@@ -133,36 +134,86 @@ confirmed OS; use the [official distribution instructions](https://docs.docker.c
 or BaoTa's supported installation path. Do not install Docker Desktop on the server.
 Check `docker info` for memory/swap-limit support; validate real limits after startup.
 
-**Recommended: build both images on a separate Linux Docker builder**, or Windows
-Docker Desktop using Linux containers, matching the server's architecture. This
-Windows task currently has no usable Docker CLI, so image builds are still pending.
+**Recommended: use the manual GitHub Actions image workflow below.** It builds on
+an `ubuntu-latest` GitHub runner using Docker Buildx, targeting `linux/amd64` only.
 The existing frontend multi-stage build produces a small standalone runtime but
 its build-stage peak memory has not been measured. Building on this 2 GB host
 can OOM even with swap, especially beside BaoTa and a live database. Runtime
 Compose limits do not constrain Docker build stages. No complex CI/CD is needed.
 
-On a capable builder, from the prepared repository, example for an x86_64 server:
+Workflow: [build-deploy-images.yml](../.github/workflows/build-deploy-images.yml).
+In GitHub, open **Actions → Build deployment images → Run workflow**, choose `main`,
+and wait for both image steps to complete successfully. It is manual-only; pushing
+the workflow file does not itself publish images. No SSH/deployment step is included.
+Authentication uses the automatically supplied `GITHUB_TOKEN` with `contents: read`
+and `packages: write`; no manually created publishing secret is required.
 
-```bash
-# Change linux/amd64 to linux/arm64 only if server uname -m is aarch64.
-# Domain is baked into frontend JavaScript; do not build for YOUR_DOMAIN literally.
-docker buildx build --platform linux/amd64 --load -f backend/Dockerfile \
-  -t agent-project-backend:7aa8a5e .
-docker buildx build --platform linux/amd64 --load -f frontend/Dockerfile \
-  --build-arg NEXT_PUBLIC_API_BASE_URL=https://YOUR_DOMAIN \
-  --build-arg NEXT_PUBLIC_CHAT_RUNTIME=langgraph_v3 \
-  -t agent-project-frontend:7aa8a5e .
-docker image save -o agent-project-7aa8a5e.tar \
-  agent-project-backend:7aa8a5e agent-project-frontend:7aa8a5e
+Published names:
+
+```text
+ghcr.io/kyrdur/agent-project-maker-backend:<full-40-character-source-commit-SHA>
+ghcr.io/kyrdur/agent-project-maker-frontend:<full-40-character-source-commit-SHA>
 ```
 
-Transfer this archive with your authorized SSH/SFTP method and `docker image load
--i agent-project-7aa8a5e.tar` on the server. Keep archives outside the source tree.
-Alternatively tag/push to your chosen registry from the builder, set both image
-references in the server environment, and run `dc pull`. Use trusted registry
-access appropriate to the server's region; do not guess mirrors. Record image IDs
-or immutable digests and the source commit. Never reuse a release tag for updates.
-No images have been built or published by this preparation.
+The tag is exactly `${{ github.sha }}` of the selected workflow run: 40 lowercase
+hexadecimal characters, with no `sha-` prefix and no `latest` tag. Checkout uses
+that run's commit. Backend uses `backend/Dockerfile`; frontend uses
+`frontend/Dockerfile` with `NEXT_PUBLIC_API_BASE_URL=https://agent.softcue.xyz`
+and `NEXT_PUBLIC_CHAT_RUNTIME=langgraph_v3`. Node 22 and Python 3.12 remain supplied
+by the existing Dockerfiles; action runtimes do not change application versions.
+Runs for the same SHA are serialized and already published tags are skipped, so a
+normal rerun can finish a missing image without replacing a successfully published
+one. Do not manually overwrite source tags. GHCR tags are not registry-enforced
+immutable objects; use the published `@sha256:...` digest for strict content pinning.
+Keep both images on the same source SHA and record both digests for rollback.
+
+Repository/package setup to check manually:
+
+- Enable Actions for the repository and allow the `actions/checkout` and Docker
+  actions used by this workflow. Account/organization policy must allow package writes.
+- A package created by the workflow normally links to its repository. If either
+  desired package already exists, grant this repository Actions write access in
+  that package's settings before running the workflow.
+- GHCR packages default to private on first publish, independently of repository
+  visibility. For anonymous server pulls, the owner must make **both** packages
+  public in package settings after publication. This exposes the image contents;
+  choose public visibility only if intended.
+- To retain private packages, authenticate Docker on the server with a separately
+  issued classic PAT with `read:packages` and access to both packages (authorize
+  SSO if required). This pull credential is not used by the build workflow and must
+  never go into `.env.production`, source code, shell history, or this chat. Example
+  using a hidden interactive Bash prompt and password stdin:
+
+```bash
+read -r -p 'GitHub username: ' GHCR_USER
+read -r -s -p 'GHCR read-only pull token: ' GHCR_PULL_TOKEN
+printf '\n'
+printf '%s' "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+unset GHCR_PULL_TOKEN
+```
+
+Docker stores login credentials in its configured credential store; protect that
+account and use a credential helper if available. Public packages need no login.
+Do not change package visibility automatically. See GitHub's
+[GHCR authentication and visibility documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+
+After BOTH images are published, copy the run's full source SHA into both image
+references in the server's existing `.env.production`; retain database and signing
+secrets. Follow E to define `dc`, then:
+
+```bash
+dc config --quiet
+dc pull
+# First deployment only; for an existing deployment follow backup/update section O.
+dc up -d --no-build
+dc ps
+dc logs --tail=100 backend
+curl --fail https://agent.softcue.xyz/api/health
+```
+
+If a tag is missing or GHCR is unreachable from the Alibaba region, stop and resolve
+publication/network access. Do not fall back automatically to a production-host build.
+No images have been built or published merely by adding this workflow.
 
 Server-side builds are an emergency option only after swap, free disk, maintenance
 downtime and headroom are confirmed: build one service at a time (`dc build backend`,
@@ -194,12 +245,12 @@ Do not copy the placeholder values. Retain the encryption key across all restart
 updates and restores: losing it makes stored BYOK secrets unreadable. Retain the
 API hash secret for existing external Agent API keys; changing JWT invalidates sessions.
 
-`PUBLIC_ORIGIN=https://YOUR_DOMAIN` is the public frontend and API origin, **without
+`PUBLIC_ORIGIN=https://agent.softcue.xyz` is the public frontend and API origin, **without
 `/api` or a trailing slash**. Clients append `/api/...` themselves. Use the same
 origin during frontend image build; changing runtime env alone cannot update the
 browser bundle. Same-origin routing avoids cross-site cookie configuration.
 The backend URL inside Compose is generated as `postgres:5432` for DBs, while
-public API access is `https://YOUR_DOMAIN/api/...`. No extra application secret
+public API access is `https://agent.softcue.xyz/api/...`. No extra application secret
 or OAuth client is required for ordinary email/password login. Cookie domain is
 unset (host-only); secure cookies and explicit CORS are already configured.
 
@@ -311,7 +362,7 @@ and read-only. Run the two-user acceptance check below against the real deployme
 
 ## H. BaoTa reverse proxy
 
-Create/select the website for `YOUR_DOMAIN` in BaoTa. Use
+Create/select the website for `agent.softcue.xyz` in BaoTa. Use
 [`deploy/baota-agent-project.conf.example`](../deploy/baota-agent-project.conf.example)
 inside that site's HTTPS `server` block. Back up its existing config first.
 Do not overwrite global Nginx config or other sites. Keep BaoTa-managed TLS and
@@ -350,8 +401,8 @@ challenge route reachable, enable HTTPS and redirect ordinary HTTP to HTTPS usin
 BaoTa. Do not add another certificate manager. Verify:
 
 ```bash
-curl --fail https://YOUR_DOMAIN/api/health
-curl --fail -o /dev/null https://YOUR_DOMAIN/login
+curl --fail https://agent.softcue.xyz/api/health
+curl --fail -o /dev/null https://agent.softcue.xyz/login
 ```
 
 Confirm browser login persists, secure cookies work and the browser calls the HTTPS
@@ -563,12 +614,17 @@ Local preparation checks on 2026-09-13:
   deployment files; `.env.production.example` contains only placeholders.
 - Frontend application files are unchanged; TypeScript was not rerun.
 
+The later GHCR workflow addition passed YAML parsing, actionlint 1.7.12, upstream
+action-input/version checks, the existing secret-content scan and Bash syntax
+checks. No product code changed, so application tests were not rerun for that
+workflow-only update. The first actual GitHub image build is still pending.
+
 Live Docker build, Compose/Engine behavior, BaoTa syntax/SSL, PostgreSQL migrations,
 BYOK calls, two-user browser behavior, backup restore and peak memory still require
 the actual Linux environment. Repository tests cannot certify 2 GB production capacity.
 
-Next: provide the non-secret server facts in A, choose the domain and off-host image
-builder/transfer method, transfer the prepared files, then follow B–K in order.
+Next: provide the non-secret server facts in A, confirm DNS for agent.softcue.xyz and run the GitHub image
+workflow, transfer the prepared files, then follow B–K in order.
 Stop before remote access until an authorized access method is established.
 
 ### Configuration references
