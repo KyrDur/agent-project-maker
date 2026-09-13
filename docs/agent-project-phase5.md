@@ -1,6 +1,6 @@
 # Agent Project Maker — Phase 5
 
-Repository: `D:\Projects\agent-project-maker\natural-mold`
+Repository: the root of this natural-mold checkout.
 
 Phase 4 checkpoint: `f0c80835c157081c0036505cb1b73a8a186ba5ee`
 
@@ -137,7 +137,7 @@ Exported configuration is a sanitized descriptive subset, not a deployment/impor
 - Design-system guard: passed; 20 existing card-structure warnings remain unchanged.
 - `git diff --check`: passed (Git only reports its existing LF/CRLF conversion notices).
 
-Backend command: `.venv/Scripts/python.exe -m pytest --noconftest tests/test_agent_projects.py tests/test_agent_project_phase2.py tests/test_agent_project_phase3.py tests/test_agent_project_phase4.py tests/test_agent_project_phase5.py -q --basetemp=D:\Projects\agent-project-maker\.tmp\phase5-tests`.
+Backend command: `.venv/Scripts/python.exe -m pytest --noconftest tests/test_agent_projects.py tests/test_agent_project_phase2.py tests/test_agent_project_phase3.py tests/test_agent_project_phase4.py tests/test_agent_project_phase5.py -q --basetemp=../output/phase5-tests`.
 
 Frontend command: `vitest run` with the five project test files and the colocated public-project test. Windows ESLint received literal absolute filenames collected from the two affected route directories; wildcard paths containing `[agentId]` were not used in the final check.
 

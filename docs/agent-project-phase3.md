@@ -1,6 +1,6 @@
 # Agent Project Maker — Phase 3: Automatic Semantic Evaluation
 
-Repository: `D:\Projects\agent-project-maker\natural-mold`
+Repository: the root of this natural-mold checkout.
 
 Checkpoint: `1146221528b8deb79566a83d7800dd18f1ee1424` — **Agent Project Maker Phase 1-2 foundation**.
 Current branch: `codex/agent-project-phase3`. Phase 3 changes are uncommitted.

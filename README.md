@@ -28,6 +28,39 @@
 
 ## 🧐 Overview
 
+### Agent Project Maker
+
+This fork adds an evidence-based project and portfolio workflow around natural-mold's
+existing agents. It helps students and junior professionals explain what they built,
+how they evaluated it, what changed, and which limitations remain.
+
+**Workflow:** Build → immutable V1 → Eval Plan → 20-case EvalSet → mock-tool evaluation
+and semantic judge → Bad Cases → bounded optimization → V2/V3 regression → Best Version
+→ Report → Resume → read-only Share → ZIP Export.
+
+The implementation reuses the FastAPI/SQLAlchemy backend, Next.js project workspace,
+existing builder/runtime and user-owned model credentials. Project snapshots and frozen
+evaluation evidence are stored alongside the Agent. Candidate versions run the same
+benchmark; deterministic assertions and LLM-as-a-Judge metrics remain separate. Up to
+two optimization rounds can apply limited instruction, frozen Skill text or tool-description
+changes. The newest version is not necessarily the best, and no best version is automatically
+deployed to the live Agent.
+
+Reports and resume bullets are deterministic presentations of stored evidence. Public shares
+and ZIP exports omit credentials and raw private source data. Evaluation uses mock external
+tools; controlled demonstrations are **not production or real-provider validation**.
+
+Use **Node 22, Python 3.12 and PostgreSQL 16**. Follow the existing Docker Compose path or
+the [Agent Project setup guide](docs/agent-project-setup.md). See the
+[reproducible demo](docs/agent-project-demo.md) and [release validation record](docs/agent-project-release.md)
+for exact checks and outstanding Linux/provider validation. Historical Skill packages may
+not be reproducible, optimization workers are not durable across restarts, and the production
+runtime requires a supported Linux environment. The ZIP is a portfolio artifact, not a
+deployment package.
+
+Upstream: [YooSuhwa/natural-mold](https://github.com/YooSuhwa/natural-mold).
+The original [MIT license](LICENSE) and Moldy contributors' attribution are preserved.
+
 **Moldy** is a no-code AI agent builder you configure by *talking* instead of
 filling in forms. Describe what you want in natural language and a meta-agent
 assembles the tools, skills, and triggers for you. You can then chat with the

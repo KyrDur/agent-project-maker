@@ -1,6 +1,6 @@
 **Agent Project Maker — Phase 2 implementation and verification**
 
-Repository: `D:\Projects\agent-project-maker\natural-mold`.
+Repository: the root of this natural-mold checkout..
 Branch: `codex/agent-project-phase1`. Phase 1 and Phase 2 changes remain uncommitted;
 the existing history contains the source-import commit `e717881`.
 

@@ -1,6 +1,6 @@
 # Agent Project Maker — Phase 4
 
-Repository: `D:\Projects\agent-project-maker\natural-mold`
+Repository: the root of this natural-mold checkout.
 
 Phase 3 checkpoint: `91c4999e1ad77088c4b1603c45e24d1418fa0b96`
 
