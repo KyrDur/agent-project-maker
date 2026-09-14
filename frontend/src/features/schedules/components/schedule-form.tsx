@@ -65,7 +65,7 @@ function conversationPolicyLabel(
 function formatConversationDate(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value.slice(0, 10)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('zh-CN', {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

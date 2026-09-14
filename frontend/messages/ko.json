@@ -580,6 +580,7 @@
       "system": "시스템"
     },
     "language": {
+      "zh-CN": "중국어 (간체)",
       "label": "언어",
       "ko": "한국어",
       "en": "영어"
@@ -4329,6 +4330,7 @@
         "system": "시스템"
       },
       "language": {
+      "zh-CN": "중국어 (간체)",
         "title": "언어",
         "description": "Agent Project Maker에서 사용할 표시 언어를 선택합니다.",
         "ko": "한국어",

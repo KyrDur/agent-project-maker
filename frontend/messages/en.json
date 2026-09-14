@@ -580,6 +580,7 @@
       "system": "System"
     },
     "language": {
+      "zh-CN": "Simplified Chinese",
       "label": "Language",
       "ko": "Korean",
       "en": "English"
@@ -4329,6 +4330,7 @@
         "system": "System"
       },
       "language": {
+      "zh-CN": "Simplified Chinese",
         "title": "Language",
         "description": "Choose the display language for Agent Project Maker.",
         "ko": "Korean",

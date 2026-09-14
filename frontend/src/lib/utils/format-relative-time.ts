@@ -1,5 +1,5 @@
 const TIMEZONE = 'Asia/Seoul'
-const LOCALE = 'en-US'
+const LOCALE = 'zh-CN'
 
 const dayKeyFmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: TIMEZONE,

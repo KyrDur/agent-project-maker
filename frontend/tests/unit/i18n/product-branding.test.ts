@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import en from '../../../messages/en.json'
+import zh from '../../../messages/zh-CN.json'
 import ko from '../../../messages/ko.json'
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME } from '@/i18n/locales'
 import { formatLongDate, formatRelativeKo } from '@/lib/utils/format-relative-time'
@@ -23,16 +24,24 @@ function leaves(value: unknown, prefix = ''): Record<string, string> {
 describe('product branding and locale defaults', () => {
   beforeEach(() => { state.locale = undefined })
 
-  it('uses complete English messages for new visitors and invalid locale cookies', async () => {
-    expect(DEFAULT_LOCALE).toBe('en')
+  it('uses complete Chinese messages for new visitors and invalid locale cookies', async () => {
+    expect(DEFAULT_LOCALE).toBe('zh-CN')
     expect(LOCALE_COOKIE_NAME).toBe('moldy_locale')
-    for (const locale of [undefined, 'invalid', 'en']) {
+    for (const locale of [undefined, 'invalid', 'zh-CN']) {
       state.locale = locale
       const config = await requestConfig({ requestLocale: Promise.resolve(undefined) })
-      expect(config.locale).toBe('en')
-      expect(config.messages).toEqual(en)
+      expect(config.locale).toBe('zh-CN')
+      expect(config.messages).toEqual(zh)
     }
-    expect(Object.keys(leaves(en))).toEqual(expect.arrayContaining(Object.keys(leaves(ko))))
+    expect(Object.keys(leaves(zh)).sort()).toEqual(Object.keys(leaves(en)).sort())
+    expect(Object.keys(leaves(zh)).sort()).toEqual(Object.keys(leaves(ko)).sort())
+  })
+
+  it('preserves explicitly selected English locale support', async () => {
+    state.locale = 'en'
+    const config = await requestConfig({ requestLocale: Promise.resolve(undefined) })
+    expect(config.locale).toBe('en')
+    expect(config.messages).toEqual(en)
   })
 
   it('preserves explicitly selected Korean locale support', async () => {
@@ -43,18 +52,29 @@ describe('product branding and locale defaults', () => {
   })
 
   it('has no Korean or legacy branding in default UI copy, retaining copyright', () => {
-    expect(en.metadata.title).toBe('Agent Project Maker')
-    expect(en.auth.hero.copyright).toBe('© 2026 Moldy contributors')
-    for (const [key, text] of Object.entries(leaves(en))) {
+    expect(zh.metadata.title).toBe('Agent Project Maker')
+    expect(zh.auth.hero.copyright).toBe('© 2026 Moldy contributors')
+    for (const [key, text] of Object.entries(leaves(zh))) {
       expect(text, key).not.toMatch(/[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]/)
       if (!key.endsWith('.copyright')) expect(text, key).not.toMatch(/moldy/i)
     }
   })
 
-  it('formats default date and relative-time UI in English', () => {
+  it('preserves dynamic arguments and rich-text tags in every Chinese message', () => {
+    const chinese = leaves(zh)
+    const tokens = (text: string) => [...new Set([
+      ...Array.from(text.matchAll(/\{(\w+)(?:,|\})/g), (match) => match[1]),
+      ...Array.from(text.matchAll(/<\/?(\w+)>/g), (match) => match[1]),
+    ])].sort()
+    for (const [key, text] of Object.entries(leaves(en))) {
+      expect(tokens(chinese[key]), key).toEqual(tokens(text))
+    }
+  })
+
+  it('formats default date and relative-time UI in Chinese', () => {
     const date = '2026-06-17T00:00:00Z'
-    expect(formatLongDate(date)).toBe('June 17, 2026')
-    expect(formatRelativeKo(date, new Date('2026-06-17T00:05:00Z'))).toBe('5 minutes ago')
-    expect(formatDisplayDateTime(date)).not.toMatch(/[\uac00-\ud7af]/)
+    expect(formatLongDate(date)).toBe('2026年6月17日')
+    expect(formatRelativeKo(date, new Date('2026-06-17T00:05:00Z'))).toBe('5分钟前')
+    expect(formatDisplayDateTime(date)).toContain('2026年')
   })
 })
