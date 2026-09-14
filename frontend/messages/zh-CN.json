@@ -2381,7 +2381,7 @@
         "apiUrlPlaceholder": "https://api.example.com/weather",
         "httpMethod": "HTTP方法",
         "params": "参数",
-        "paramsPlaceholder": "'{ \"type\": \"object\", \"properties\": '{ \"city\": '{ \"type\": \"string\" '}' '}' '}'",
+        "paramsPlaceholder": "'{' \"type\": \"object\", \"properties\": '{' \"city\": '{' \"type\": \"string\" '}' '}' '}'",
         "auth": "授权",
         "connectionHint": "连接提示",
         "credentialRequired": "所需凭据",

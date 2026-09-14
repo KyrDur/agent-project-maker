@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createTranslator } from 'next-intl'
 import en from '../../../messages/en.json'
 import zh from '../../../messages/zh-CN.json'
 import ko from '../../../messages/ko.json'
@@ -69,6 +70,13 @@ describe('product branding and locale defaults', () => {
     for (const [key, text] of Object.entries(leaves(en))) {
       expect(tokens(chinese[key]), key).toEqual(tokens(text))
     }
+  })
+
+  it('renders the Chinese tool schema example as valid JSON', () => {
+    const t = createTranslator({ locale: 'zh-CN', messages: zh })
+    expect(JSON.parse(t('tool.addDialog.custom.paramsPlaceholder'))).toEqual({
+      type: 'object', properties: { city: { type: 'string' } },
+    })
   })
 
   it('formats default date and relative-time UI in Chinese', () => {
