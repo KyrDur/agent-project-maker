@@ -39,12 +39,12 @@ describe('SidebarBrandHeader', () => {
   it('renders a brand link with the configured home href', () => {
     render(
       <SidebarProvider>
-        <SidebarBrandHeader brandLabel="Moldy" homeHref="/settings" toggleLabel="전환" />
+        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/settings" toggleLabel="전환" />
       </SidebarProvider>,
     )
 
-    expect(screen.getByRole('link', { name: 'Moldy' })).toHaveAttribute('href', '/settings')
-    expect(screen.getAllByRole('img', { name: 'Moldy' })).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'Agent Project Maker' })).toHaveAttribute('href', '/settings')
+    expect(screen.getAllByRole('img', { name: 'Agent Project Maker' })).toHaveLength(2)
   })
 
   it('toggles the sidebar when the header control is clicked', async () => {
@@ -52,7 +52,7 @@ describe('SidebarBrandHeader', () => {
 
     render(
       <SidebarProvider>
-        <SidebarBrandHeader brandLabel="Moldy" homeHref="/" toggleLabel="전환" />
+        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/" toggleLabel="전환" />
         <SidebarStateProbe />
       </SidebarProvider>,
     )

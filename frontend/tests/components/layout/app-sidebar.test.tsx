@@ -180,7 +180,7 @@ describe('AppSidebar', () => {
 
   it('renders sidebar with brand', () => {
     render(<AppSidebar />)
-    expect(screen.getByText('Moldy')).toBeInTheDocument()
+    expect(screen.getByText('Agent Project Maker')).toBeInTheDocument()
   })
 
   it('renders navigation items', () => {

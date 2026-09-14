@@ -74,8 +74,8 @@ function Hero({ title, subtitle }: { title: string; subtitle: string }) {
       <div className="relative">
         <div aria-hidden className="moldy-agent-create-glow" />
         <Image
-          src="/agent-create-hero.webp"
-          alt="Moldy"
+          src="/project-maker.svg"
+          alt=""
           width={160}
           height={160}
           priority

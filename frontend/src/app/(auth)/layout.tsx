@@ -55,8 +55,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <header className="auth-topbar">
         <div className="auth-brand">
           <Image
-            src="/logo.webp"
-            alt="Moldy"
+            src="/project-maker.svg"
+            alt=""
             width={30}
             height={30}
             className="auth-brand-logo size-8 shrink-0 object-contain"
@@ -125,7 +125,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <div aria-hidden className="auth-mascot">
               <div className="auth-mascot-halo" />
               <Image
-                src="/moldy-mascot.webp"
+                src="/project-maker.svg"
                 alt=""
                 width={170}
                 height={170}

@@ -93,6 +93,7 @@ function ToolRecommendationHeader({
   count: number
   phase: number
 }) {
+  const t = useTranslations('chat.recommendation')
   const HeaderIcon = cardKind === 'middleware' ? BlocksIcon : WrenchIcon
   return (
     <PhaseCardHeader>
@@ -100,7 +101,7 @@ function ToolRecommendationHeader({
         <HeaderIcon className="size-3" />
       </BuilderHeaderIcon>
       <BuilderTitle>{title}</BuilderTitle>
-      <BuilderMuted>· {count}개 · 검토 필요</BuilderMuted>
+      <BuilderMuted>{t('reviewCount', { count })}</BuilderMuted>
       <div className="flex-1" />
       <BuilderPhaseLabel>PHASE {phase}</BuilderPhaseLabel>
     </PhaseCardHeader>

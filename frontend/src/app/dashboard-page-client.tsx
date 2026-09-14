@@ -116,7 +116,7 @@ export default function DashboardPage() {
           </div>
           <div className="relative hidden aspect-[738/628] shrink-0 sm:block sm:w-32 md:w-40 lg:w-44">
             <Image
-              src="/dashboard-mascot.webp"
+              src="/project-maker.svg"
               alt=""
               fill
               priority

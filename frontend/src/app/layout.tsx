@@ -22,6 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('metadata')
   return {
     title: t('title'),
+    icons: { icon: '/project-maker.svg' },
     description: t('description'),
   }
 }

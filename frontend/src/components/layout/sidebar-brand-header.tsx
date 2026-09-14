@@ -18,15 +18,15 @@ export function SidebarBrandHeader({ brandLabel, homeHref, toggleLabel }: Sideba
   return (
     <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2">
       <div className="flex items-center justify-between group-data-[collapsible=icon]:hidden">
-        <Link href={homeHref} aria-label={brandLabel} className="flex items-center gap-2">
+        <Link href={homeHref} aria-label={brandLabel} className="flex min-w-0 items-center gap-2">
           <Image
-            src="/logo.webp"
+            src="/project-maker.svg"
             alt={brandLabel}
             width={32}
             height={32}
             className="size-8 shrink-0 object-contain"
           />
-          <span className="text-lg font-bold">{brandLabel}</span>
+          <span className="min-w-0 text-lg font-bold leading-tight">{brandLabel}</span>
         </Link>
         <button
           type="button"
@@ -45,7 +45,7 @@ export function SidebarBrandHeader({ brandLabel, homeHref, toggleLabel }: Sideba
           aria-label={toggleLabel}
         >
           <Image
-            src="/logo.webp"
+            src="/project-maker.svg"
             alt={brandLabel}
             width={32}
             height={32}

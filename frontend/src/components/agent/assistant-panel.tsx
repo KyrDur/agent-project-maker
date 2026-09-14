@@ -14,8 +14,8 @@ import { AssistantThread } from '@/components/chat/assistant-thread'
 import { FixHero } from '@/components/agent/fix-hero'
 import { agentQueryKeys } from '@/lib/query-keys/agents'
 
-const FIX_AGENT_IMAGE = '/agent-fix-hero.webp'
-const CREATE_HERO_IMAGE = '/agent-create-hero.webp'
+const FIX_AGENT_IMAGE = '/project-maker.svg'
+const CREATE_HERO_IMAGE = '/project-maker.svg'
 
 interface AssistantPanelProps {
   agentId: string

@@ -263,8 +263,8 @@
     }
   },
   "metadata": {
-    "title": "Moldy - AI Agent Builder",
-    "description": "Create, chat with, and schedule AI agents."
+    "title": "Agent Project Maker",
+    "description": "Build, evaluate, optimize, and share reliable AI agents."
   },
   "auth": {
     "login": {
@@ -295,7 +295,7 @@
     "register": {
       "title": "Sign up",
       "formTitle": "Create a new account",
-      "subtitle": "Create your Moldy account.",
+      "subtitle": "Create your Agent Project Maker account.",
       "name": "Display name",
       "namePlaceholder": "Chester",
       "nameHelp": "You do not need to enter your legal name.",
@@ -320,16 +320,16 @@
       }
     },
     "hero": {
-      "brand": "Moldy",
+      "brand": "Agent Project Maker",
       "category": "AI Agent Builder",
       "copyright": "© 2026 Moldy contributors",
-      "socialProof": "<strong>200+ teams</strong> are building agents with Moldy",
+      "socialProof": "Build, evaluate, optimize, and share reliable AI agents.",
       "loginTitleLine1": "Welcome",
       "loginTitleLine2": "back 👋",
       "registerTitleLine1": "Your first agent,",
       "registerTitleLine2": "shall we build it together?",
-      "loginSubtitle": "Continue building your agents or start a new idea.",
-      "registerSubtitle": "Ready-to-use templates and tools are waiting for you.",
+      "loginSubtitle": "Build, evaluate, optimize, and share reliable AI agents.",
+      "registerSubtitle": "Create an agent, evaluate it with structured test cases, improve failed cases, compare versions, and package the best result.",
       "features": {
         "noCode": "No-code agents built through conversation",
         "branching": "LangGraph branching and time travel",
@@ -355,9 +355,9 @@
       "nameRequired": "Enter a display name."
     },
     "onboarding": {
-      "title": "Welcome to Moldy",
+      "title": "Welcome to Agent Project Maker",
       "subtitle": "You're almost ready to build AI agents.",
-      "body": "Register an LLM API key to create AI agents.",
+      "body": "Create an agent, evaluate it with structured test cases, improve failed cases, compare versions, and package the best result. Register an LLM API key to get started.",
       "providers": "Register one of the following.",
       "providerList": {
         "openai": "OpenAI API Key",
@@ -466,7 +466,7 @@
     }
   },
   "sidebar": {
-    "brand": "Moldy",
+    "brand": "Agent Project Maker",
     "nav": {
       "home": "Home",
       "connectors": "Connectors",
@@ -572,7 +572,7 @@
     },
     "user": {
       "name": "Suhwa",
-      "email": "suhwa@moldy.ai"
+      "email": "user@example.com"
     },
     "theme": {
       "light": "Light mode",
@@ -688,7 +688,7 @@
       "backToHome": "Back to Home",
       "hero": {
         "title": "What do you want to build?",
-        "subtitle": "Describe it in natural language, and Moldy will suggest tools, models, and triggers step by step."
+        "subtitle": "Describe it in natural language, and Agent Project Maker will suggest tools, models, and triggers step by step."
       },
       "chatPlaceholder": "Example: Search for news about my tracked keywords every morning at 8 and send it to Slack.",
       "startButtonAria": "Start creating an agent",
@@ -776,7 +776,7 @@
       },
       "legacy": {
         "title": "Default Templates",
-        "description": "Quick-start templates that were already available in Moldy."
+        "description": "Quick-start templates that were already available in Agent Project Maker."
       },
       "emptyCategory": "No templates in this category.",
       "noSearchResults": {
@@ -1924,6 +1924,7 @@
       }
     },
     "recommendation": {
+      "reviewCount": "{count} items · Review required",
       "recommended": "Recommended",
       "reason": "Reason",
       "feedbackPlaceholder": "Feedback Placeholder",
@@ -2459,7 +2460,7 @@
   "mcp": {
     "page": {
       "title": "MCP Servers",
-      "description": "Connect MCP servers and import their tools into Moldy.",
+      "description": "Connect MCP servers and import their tools into Agent Project Maker.",
       "count": "{count}",
       "toolCount": "{count} tools",
       "tabs": {
@@ -2633,7 +2634,7 @@
         "connectOAuth": "Authenticate in Browser",
         "oauthConnected": "OAuth authentication completed.",
         "oauthWaiting": "Waiting for browser authentication.",
-        "oauthPopupTitle": "Moldy OAuth",
+        "oauthPopupTitle": "Agent Project Maker OAuth",
         "oauthSelectFirst": "Select an OAuth credential first.",
         "oauthPopupBlocked": "Browser popup was blocked. Allow popups and try again.",
         "oauthStartFailed": "Could not start OAuth authentication.",
@@ -3206,7 +3207,7 @@
       },
       "statusRow": {
         "frontmatter": "Portable frontmatter",
-        "moldyMetadata": "Standard / Moldy field separation",
+        "moldyMetadata": "Standard / runtime-specific fields",
         "trigger": "Description trigger clarity",
         "secrets": "Secret scan",
         "runtimeCompat": "Runtime compatibility",
@@ -4129,7 +4130,7 @@
     }
   },
   "sharedConversation": {
-    "brand": "Moldy",
+    "brand": "Agent Project Maker",
     "headerCta": "Header CTA",
     "eyebrow": "Eyebrow",
     "history": "History",
@@ -4141,7 +4142,7 @@
     },
     "footer": {
       "title": "Footer",
-      "description": "Build and share no-code agents with tools and skills in Moldy.",
+      "description": "Build and share no-code agents with tools and skills in Agent Project Maker.",
       "cta": "CTA",
       "messageCount": "{count} messages",
       "madeWith": "Made With"
@@ -4154,7 +4155,7 @@
   },
   "appSettings": {
     "title": "App Settings",
-    "description": "Manage your account and Moldy preferences.",
+    "description": "Manage your account and Agent Project Maker preferences.",
     "navLabel": "Settings menu",
     "nav": {
       "account": "Account",
@@ -4180,11 +4181,11 @@
     },
     "profile": {
       "title": "Profile",
-      "description": "Choose how Moldy and your agents display and address you.",
+      "description": "Choose how Agent Project Maker and your agents display and address you.",
       "profileSettings": "Profile settings",
       "profileSettingsDescription": "You can change your display name and profile icon anytime.",
       "accountInfo": "Account information",
-      "accountInfoDescription": "This information comes from your Moldy login session.",
+      "accountInfoDescription": "This information comes from your Agent Project Maker login session.",
       "name": "Name",
       "displayName": "Display name",
       "displayNamePlaceholder": "e.g. Chester",
@@ -4314,7 +4315,7 @@
       "placeholder": {
         "title": "Security settings coming soon",
         "description": "Password changes and session management are coming soon.",
-        "detail": "Moldy currently uses session-based authentication. Detailed security controls will be added in a later step."
+        "detail": "Agent Project Maker currently uses session-based authentication. Detailed security controls will be added in a later step."
       }
     },
     "appearance": {
@@ -4329,14 +4330,14 @@
       },
       "language": {
         "title": "Language",
-        "description": "Choose the display language for Moldy.",
+        "description": "Choose the display language for Agent Project Maker.",
         "ko": "Korean",
         "en": "English"
       }
     },
     "agentApi": {
       "title": "Agent API",
-      "description": "Deploy agents, issue server-side API keys, and call Moldy from external systems.",
+      "description": "Deploy agents, issue server-side API keys, and call Agent Project Maker from external systems.",
       "actions": {
         "createKey": "API key",
         "deploy": "Deploy",

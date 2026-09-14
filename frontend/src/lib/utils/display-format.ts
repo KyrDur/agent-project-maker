@@ -1,6 +1,6 @@
 import { parseTimestamp } from './format-relative-time'
 
-export const DEFAULT_DISPLAY_LOCALE = 'ko-KR'
+export const DEFAULT_DISPLAY_LOCALE = 'en-US'
 export const DEFAULT_DISPLAY_TIME_ZONE = 'Asia/Seoul'
 export const DEFAULT_EMPTY_DISPLAY = '-'
 

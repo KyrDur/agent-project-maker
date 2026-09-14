@@ -263,7 +263,7 @@
     }
   },
   "metadata": {
-    "title": "Moldy - AI Agent Builder",
+    "title": "Agent Project Maker",
     "description": "대화로 만드는 AI 에이전트 빌더"
   },
   "auth": {
@@ -295,7 +295,7 @@
     "register": {
       "title": "회원가입",
       "formTitle": "새 계정 만들기",
-      "subtitle": "Moldy 계정을 만들어보세요",
+      "subtitle": "Agent Project Maker 계정을 만들어보세요",
       "name": "표시 이름",
       "namePlaceholder": "체스터",
       "nameHelp": "실명을 입력하지 않아도 됩니다.",
@@ -320,10 +320,10 @@
       }
     },
     "hero": {
-      "brand": "Moldy",
+      "brand": "Agent Project Maker",
       "category": "AI Agent Builder",
       "copyright": "© 2026 Moldy contributors",
-      "socialProof": "<strong>200+ 팀</strong>이 Moldy로 에이전트를 만들고 있어요",
+      "socialProof": "Build, evaluate, optimize, and share reliable AI agents.",
       "loginTitleLine1": "다시 만나서",
       "loginTitleLine2": "반가워요 👋",
       "registerTitleLine1": "첫 에이전트,",
@@ -355,7 +355,7 @@
       "nameRequired": "표시 이름을 입력해 주세요"
     },
     "onboarding": {
-      "title": "Moldy에 오신 것을 환영합니다",
+      "title": "Agent Project Maker에 오신 것을 환영합니다",
       "subtitle": "AI 에이전트를 만들 준비가 거의 끝났어요",
       "body": "AI 에이전트를 만들려면 LLM API 키를 등록해야 합니다.",
       "providers": "다음 중 하나를 등록해 주세요",
@@ -466,7 +466,7 @@
     }
   },
   "sidebar": {
-    "brand": "Moldy",
+    "brand": "Agent Project Maker",
     "nav": {
       "home": "홈",
       "connectors": "커넥터",
@@ -572,7 +572,7 @@
     },
     "user": {
       "name": "수화",
-      "email": "suhwa@moldy.ai"
+      "email": "user@example.com"
     },
     "theme": {
       "light": "라이트 모드",
@@ -688,7 +688,7 @@
       "backToHome": "홈으로",
       "hero": {
         "title": "무엇을 만들고 싶으세요?",
-        "subtitle": "자연어로 설명해 주시면 Moldy가 도구·모델·트리거를 단계별로 제안해드릴게요."
+        "subtitle": "자연어로 설명해 주시면 Agent Project Maker가 도구·모델·트리거를 단계별로 제안해드릴게요."
       },
       "chatPlaceholder": "예: 매일 아침 8시에 관심 키워드 뉴스를 검색해서 슬랙으로 보내주세요.",
       "startButtonAria": "에이전트 만들기 시작",
@@ -1924,6 +1924,7 @@
       }
     },
     "recommendation": {
+      "reviewCount": "{count} items · Review required",
       "recommended": "추천",
       "reason": "사유",
       "feedbackPlaceholder": "추가하거나 빼고 싶은 도구, 변경 사유를 적어주세요",
@@ -2633,7 +2634,7 @@
         "connectOAuth": "브라우저로 인증",
         "oauthConnected": "OAuth 인증이 완료되었습니다.",
         "oauthWaiting": "브라우저 인증 완료를 기다리는 중입니다.",
-        "oauthPopupTitle": "Moldy OAuth",
+        "oauthPopupTitle": "Agent Project Maker OAuth",
         "oauthSelectFirst": "먼저 OAuth 자격증명을 선택하세요.",
         "oauthPopupBlocked": "브라우저 팝업이 차단되었습니다. 팝업을 허용한 뒤 다시 시도하세요.",
         "oauthStartFailed": "OAuth 인증을 시작하지 못했습니다.",
@@ -3206,7 +3207,7 @@
       },
       "statusRow": {
         "frontmatter": "Portable frontmatter",
-        "moldyMetadata": "표준 / Moldy 전용 필드 분리",
+        "moldyMetadata": "표준 / Agent Project Maker 전용 필드 분리",
         "trigger": "description 트리거 명확성",
         "secrets": "시크릿 검사",
         "runtimeCompat": "런타임 호환",
@@ -4129,7 +4130,7 @@
     }
   },
   "sharedConversation": {
-    "brand": "Moldy",
+    "brand": "Agent Project Maker",
     "headerCta": "나만의 에이전트 만들기 →",
     "eyebrow": "공유된 대화",
     "history": "대화 기록",
@@ -4141,10 +4142,10 @@
     },
     "footer": {
       "title": "나만의 AI 에이전트를 만들어 보세요",
-      "description": "Moldy로 도구·스킬을 조합한 에이전트를 노코드로 구축하고 공유하세요.",
-      "cta": "Moldy 시작하기 →",
+      "description": "Agent Project Maker로 도구·스킬을 조합한 에이전트를 노코드로 구축하고 공유하세요.",
+      "cta": "Agent Project Maker 시작하기 →",
       "messageCount": "{count}개 메시지",
-      "madeWith": "Moldy로 만든 대화"
+      "madeWith": "Agent Project Maker로 만든 대화"
     },
     "error": {
       "title": "공유된 대화를 찾을 수 없어요",
@@ -4154,7 +4155,7 @@
   },
   "appSettings": {
     "title": "설정",
-    "description": "계정과 Moldy 사용 환경을 관리합니다.",
+    "description": "계정과 Agent Project Maker 사용 환경을 관리합니다.",
     "navLabel": "설정 메뉴",
     "nav": {
       "account": "계정",
@@ -4180,11 +4181,11 @@
     },
     "profile": {
       "title": "프로필",
-      "description": "Moldy와 에이전트가 나를 어떻게 표시하고 부를지 정합니다.",
+      "description": "Agent Project Maker와 에이전트가 나를 어떻게 표시하고 부를지 정합니다.",
       "profileSettings": "프로필 설정",
       "profileSettingsDescription": "표시 이름과 프로필 아이콘은 언제든 바꿀 수 있습니다.",
       "accountInfo": "계정 정보",
-      "accountInfoDescription": "이 정보는 Moldy 로그인 세션에서 가져옵니다.",
+      "accountInfoDescription": "이 정보는 Agent Project Maker 로그인 세션에서 가져옵니다.",
       "name": "이름",
       "displayName": "표시 이름",
       "displayNamePlaceholder": "예: 체스터",
@@ -4329,7 +4330,7 @@
       },
       "language": {
         "title": "언어",
-        "description": "Moldy에서 사용할 표시 언어를 선택합니다.",
+        "description": "Agent Project Maker에서 사용할 표시 언어를 선택합니다.",
         "ko": "한국어",
         "en": "English"
       }

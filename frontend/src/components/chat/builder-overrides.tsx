@@ -53,7 +53,7 @@ import { reportClientWarning } from '@/lib/logging/client-logger'
  * - Composer: mint focus ring, 파일/템플릿 IconBtn, 모델 메타, Send ↔ Stop 토글
  */
 
-const MASCOT_SRC = '/moldy-mascot.webp'
+const MASCOT_SRC = '/project-maker.svg'
 
 /** User 메시지 — 아바타 없음 + mint bubble. */
 export function BuilderUserMessage({ metaRow }: { metaRow: React.ReactNode }) {
