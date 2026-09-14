@@ -10,15 +10,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime.assistant.tools.write_tools.context import WriteToolContext
+from app.agent_runtime.builder_i18n import tr
 from app.models.agent_trigger import AgentTrigger
 from app.schemas.trigger import TriggerCreate, TriggerUpdate
 from app.services import trigger_service
 
 
 def _format_trigger_candidate(trigger: AgentTrigger) -> str:
-    return (
-        f"ID: {trigger.id}, 이름: {trigger.name}, 상태: {trigger.status}, "
-        f"다음 실행: {trigger.next_run_at or '미정'}"
+    return tr(
+        "id_v_name_v_status_e6ee46",
+        v0=f"{trigger.id}",
+        v1=f"{trigger.name}",
+        v2=f"{trigger.status}",
+        v3=f"{trigger.next_run_at or tr('not_yet_decided_35a478')}",
     )
 
 
@@ -32,7 +36,7 @@ async def _resolve_trigger_for_write(
         try:
             sid = uuid.UUID(schedule_id)
         except ValueError:
-            return None, "유효하지 않은 스케줄 ID입니다."
+            return None, tr("invalid_schedule_id_22d6bb")
         result = await session.execute(
             select(AgentTrigger).where(
                 AgentTrigger.id == sid,
@@ -42,11 +46,11 @@ async def _resolve_trigger_for_write(
         )
         trigger = result.scalar_one_or_none()
         if not trigger:
-            return None, "스케줄을 찾을 수 없습니다."
+            return None, tr("schedule_not_found_0a71df")
         return trigger, None
 
     if not schedule_name:
-        return None, "schedule_id 또는 schedule_name이 필요합니다."
+        return None, tr("requires_schedule_id_or_schedule_a052ed")
 
     result = await session.execute(
         select(AgentTrigger)
@@ -59,14 +63,17 @@ async def _resolve_trigger_for_write(
     )
     matches = list(result.scalars().all())
     if not matches:
-        return None, "스케줄을 찾을 수 없습니다."
+        return None, tr("schedule_not_found_0a71df")
     if len(matches) > 1:
         candidates = "\n".join(_format_trigger_candidate(trigger) for trigger in matches)
         return (
             None,
             (
-                f"'{schedule_name}' 이름의 스케줄이 여러 개 있습니다. "
-                f"ID를 지정해 주세요.\n{candidates}"
+                tr(
+                    "there_are_multiple_schedules_with_5c0ade",
+                    v0=f"{schedule_name}",
+                    v1=f"{candidates}",
+                )
             ),
         )
     return matches[0], None
@@ -112,27 +119,21 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         schedule_config: dict[str, Any] = {}
         if trigger_type == "cron":
             if not cron_expression:
-                return "반복 스케줄에는 cron_expression이 필요합니다."
+                return tr("a_recurring_schedule_requires_cron_91026d")
             parts = cron_expression.strip().split()
             if len(parts) != 5:
-                return (
-                    f"유효하지 않은 cron 표현식입니다: '{cron_expression}'. "
-                    "5개 필드 (분 시 일 월 요일)가 필요합니다."
-                )
+                return tr("invalid_cron_expression_v_five_d4ae76", v0=f"{cron_expression}")
             schedule_config = {"cron_expression": cron_expression}
         elif trigger_type == "interval":
             if interval_minutes is None:
-                return "간격 스케줄에는 interval_minutes가 필요합니다."
+                return tr("interval_schedules_require_interval_minutes_d45185")
             schedule_config = {"interval_minutes": interval_minutes}
         elif trigger_type == "one_time":
             if not scheduled_at:
-                return "1회 스케줄에는 scheduled_at이 필요합니다."
+                return tr("scheduled_at_is_required_for_4ef5ae")
             schedule_config = {"scheduled_at": scheduled_at}
         else:
-            return (
-                "schedule_type은 'recurring' 또는 'one_time'이어야 합니다. "
-                "추가로 'cron', 'interval'도 사용할 수 있습니다."
-            )
+            return tr("schedule_type_must_be_recurring_3c9b07")
 
         async with ctx.session_factory() as session:
             try:
@@ -156,9 +157,11 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     ),
                 )
             except ValueError as exc:
-                return f"스케줄 설정이 올바르지 않습니다: {exc}"
-            return (
-                f"스케줄 생성 완료 (ID: {trigger.id}, 다음 실행: {trigger.next_run_at or '미정'})"
+                return tr("schedule_settings_are_incorrect_v_667184", v0=f"{exc}")
+            return tr(
+                "schedule_creation_completed_id_v_28fe85",
+                v0=f"{trigger.id}",
+                v1=f"{trigger.next_run_at or tr('not_yet_decided_35a478')}",
             )
 
     # ------ 15. update_cron_schedule ------
@@ -202,7 +205,7 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 ctx, session, schedule_id, schedule_name
             )
             if error or not trigger:
-                return error or "스케줄을 찾을 수 없습니다."
+                return error or tr("schedule_not_found_0a71df")
 
             update_payload: dict[str, Any] = {}
             if cron_expression:
@@ -236,8 +239,8 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 update = TriggerUpdate.model_validate(update_payload)
                 await trigger_service.update_trigger(session, trigger, update)
             except ValueError as exc:
-                return f"스케줄 설정이 올바르지 않습니다: {exc}"
-            return "스케줄 수정 완료."
+                return tr("schedule_settings_are_incorrect_v_667184", v0=f"{exc}")
+            return tr("schedule_modification_completed_7469cd")
 
     # ------ 16. delete_cron_schedule ------
 
@@ -256,9 +259,9 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 ctx, session, schedule_id, schedule_name
             )
             if error or not trigger:
-                return error or "스케줄을 찾을 수 없습니다."
+                return error or tr("schedule_not_found_0a71df")
             await trigger_service.delete_trigger(session, trigger)
-            return "스케줄 삭제 완료."
+            return tr("schedule_deletion_completed_ec007b")
 
     # ------ 17. enable_cron_schedule ------
 
@@ -277,7 +280,7 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 ctx, session, schedule_id, schedule_name
             )
             if error or not trigger:
-                return error or "스케줄을 찾을 수 없습니다."
+                return error or tr("schedule_not_found_0a71df")
             try:
                 await trigger_service.update_trigger(
                     session,
@@ -285,8 +288,8 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     TriggerUpdate(status="active"),
                 )
             except ValueError as exc:
-                return f"스케줄 설정이 올바르지 않습니다: {exc}"
-            return "스케줄 활성화 완료."
+                return tr("schedule_settings_are_incorrect_v_667184", v0=f"{exc}")
+            return tr("schedule_activation_complete_60fc1e")
 
     # ------ 18. disable_cron_schedule ------
 
@@ -305,34 +308,34 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 ctx, session, schedule_id, schedule_name
             )
             if error or not trigger:
-                return error or "스케줄을 찾을 수 없습니다."
+                return error or tr("schedule_not_found_0a71df")
             await trigger_service.update_trigger(session, trigger, TriggerUpdate(status="paused"))
-            return "스케줄 비활성화 완료."
+            return tr("schedule_deactivation_complete_b3350d")
 
     return [
         StructuredTool.from_function(
             coroutine=create_cron_schedule,
             name="create_cron_schedule",
-            description="크론 스케줄 생성 (반복 또는 1회)",
+            description=tr("create_cron_schedule_recurring_or_727ffd"),
         ),
         StructuredTool.from_function(
             coroutine=update_cron_schedule,
             name="update_cron_schedule",
-            description="크론 스케줄 수정",
+            description=tr("edit_cron_schedule_cb2488"),
         ),
         StructuredTool.from_function(
             coroutine=delete_cron_schedule,
             name="delete_cron_schedule",
-            description="크론 스케줄 삭제",
+            description=tr("delete_cron_schedule_070739"),
         ),
         StructuredTool.from_function(
             coroutine=enable_cron_schedule,
             name="enable_cron_schedule",
-            description="크론 스케줄 활성화",
+            description=tr("activate_cron_schedule_6593d0"),
         ),
         StructuredTool.from_function(
             coroutine=disable_cron_schedule,
             name="disable_cron_schedule",
-            description="크론 스케줄 비활성화",
+            description=tr("disable_cron_schedule_730ada"),
         ),
     ]

@@ -13,6 +13,7 @@ from langchain_core.messages import AIMessage
 from langgraph.types import interrupt
 from sqlalchemy import select
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_phase_complete,
     close_pending_tool_card,
@@ -35,11 +36,11 @@ async def _confirm_and_create_agent(state: BuilderState) -> tuple[str | None, st
     """
     session_id_str = state.get("session_id", "")
     if not session_id_str:
-        return None, "session_id 없음"
+        return None, tr("session_id_none_3e17d0")
     try:
         sid = uuid.UUID(session_id_str)
     except ValueError:
-        return None, "잘못된 session_id"
+        return None, tr("invalid_session_id_a70fd8")
 
     from app.services.builder_service import claim_for_confirming, confirm_build
 
@@ -48,28 +49,28 @@ async def _confirm_and_create_agent(state: BuilderState) -> tuple[str | None, st
             stmt = select(BuilderSession).where(BuilderSession.id == sid)
             session = (await db.execute(stmt)).scalar_one_or_none()
             if not session:
-                return None, "세션을 찾을 수 없음"
+                return None, tr("session_not_found_49c021")
 
             if session.status == BuilderStatus.COMPLETED and session.agent_id:
                 return str(session.agent_id), None
 
             if session.status != BuilderStatus.PREVIEW:
-                return None, f"세션 상태가 PREVIEW가 아닙니다: {session.status}"
+                return None, tr("session_state_is_not_preview_2f4bb5", v0=f"{session.status}")
 
             claimed = await claim_for_confirming(db, sid, session.user_id)
             if not claimed:
-                return None, "다른 요청이 처리 중입니다."
+                return None, tr("another_request_is_being_processed_5e0780")
 
             session = (await db.execute(stmt)).scalar_one_or_none()
             if not session:
-                return None, "세션이 사라졌습니다."
+                return None, tr("your_session_has_disappeared_ac033a")
             agent = await confirm_build(db, session)
             if not agent:
-                return None, "에이전트 생성 실패"
+                return None, tr("agent_creation_failed_37b0f1")
             return str(agent.id), None
-    except Exception as exc:  # pragma: no cover
+    except Exception:  # pragma: no cover
         logger.exception("Phase 8 confirm failed")
-        return None, str(exc)
+        return None, tr("agent_creation_failed_472967")
 
 
 async def _persist_error(state: BuilderState, error_message: str) -> None:
@@ -107,12 +108,12 @@ async def phase8_propose(state: BuilderState) -> dict:
         "draft_approval",
         {
             "phase": 8,
-            "title": "최종 확인",
+            "title": tr("final_confirmation_01f780"),
             "draft": draft,
             "image_url": image_url,
-            "summary": "이 설정으로 에이전트를 생성하시겠습니까?",
+            "summary": tr("would_you_like_to_create_1a0964"),
         },
-        intro_text="아래 설정을 확인하고 '승인' 또는 '수정요청'을 선택해주세요.",
+        intro_text=tr("please_check_the_settings_below_9119d0"),
     )
 
     return {"messages": msgs, "pending_tool_call_id": tool_call_id}
@@ -147,11 +148,13 @@ async def phase8_build_wait(state: BuilderState) -> dict:
     if approved:
         agent_id, error = await _confirm_and_create_agent(state)
         if agent_id:
-            close_msgs = close_pending_tool_card(pending_tc_id, "draft_approval", "승인됨")
+            close_msgs = close_pending_tool_card(
+                pending_tc_id, "draft_approval", tr("approved_4131b9")
+            )
             complete_msgs = build_phase_complete(
                 8,
                 ensure_todos(state),
-                "[Phase 8 완료] 에이전트가 생성되었습니다! 잠시 후 페이지로 이동합니다.",
+                tr("phase_completed_agent_has_been_441141"),
             )
             return {
                 "messages": [*close_msgs, *complete_msgs],
@@ -160,30 +163,24 @@ async def phase8_build_wait(state: BuilderState) -> dict:
                 "pending_tool_call_id": None,
             }
         # 생성 실패 — 사용자에게 명시적으로 노출
-        err_text = error or "에이전트 생성에 실패했습니다."
+        err_text = error or tr("agent_creation_failed_472967")
         await _persist_error(state, err_text)
         close_msgs = close_pending_tool_card(
-            pending_tc_id, "draft_approval", f"실패: {err_text}"
+            pending_tc_id, "draft_approval", tr("failure_v_d3b58d", v0=f"{err_text}")
         )
         return {
             "messages": [
                 *close_msgs,
-                AIMessage(
-                    content=(
-                        f"⚠️ 에이전트 생성에 실패했습니다.\n\n"
-                        f"**원인**: {err_text}\n\n"
-                        "관리자에게 문의하거나 모델 설정을 확인 후 다시 시도해주세요."
-                    )
-                ),
+                AIMessage(content=(tr("agent_creation_failed_cause_v_77c822", v0=f"{err_text}"))),
             ],
             "error_message": err_text,
             "pending_tool_call_id": None,
         }
 
     # 수정요청
-    revision_text = revision or "수정 요청"
+    revision_text = revision or tr("modification_request_a33895")
     close_msgs = close_pending_tool_card(
-        pending_tc_id, "draft_approval", f"수정 요청: {revision_text}"
+        pending_tc_id, "draft_approval", tr("edit_request_v_bc1316", v0=f"{revision_text}")
     )
     return {
         "messages": close_msgs,

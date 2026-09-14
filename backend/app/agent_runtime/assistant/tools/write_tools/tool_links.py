@@ -9,6 +9,7 @@ from app.agent_runtime.assistant.tools.write_tools.context import (
     WriteToolContext,
     get_agent_with_session,
 )
+from app.agent_runtime.builder_i18n import tr
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import AgentMcpToolLink, McpTool
 from app.models.tool import AgentToolLink, Tool
@@ -28,12 +29,12 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             existing = {link.tool.name.lower() for link in agent.tool_links}
             lower_names = [n.lower() for n in tool_names if n.lower() not in existing]
             if not lower_names:
-                return "모든 도구가 이미 추가되어 있습니다."
+                return tr("all_tools_are_already_added_ef5d57")
 
             result = await session.execute(
                 select(Tool).where(
@@ -43,14 +44,14 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             )
             found_tools = list(result.scalars().all())
             if not found_tools:
-                return f"도구를 찾을 수 없습니다: {', '.join(tool_names)}"
+                return tr("tool_not_found_v_5db284", v0=f"{', '.join(tool_names)}")
 
             for t in found_tools:
                 agent.tool_links.append(AgentToolLink(tool_id=t.id))
             await session.commit()
 
             added = [t.name for t in found_tools]
-            return f"도구 추가 완료: {', '.join(added)}"
+            return tr("completed_tool_addition_v_d3d5fc", v0=f"{', '.join(added)}")
 
     # ------ 2. remove_tool_from_agent ------
 
@@ -63,7 +64,7 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             lower_names = {n.lower() for n in tool_names}
             removed = []
@@ -72,10 +73,10 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     removed.append(link.tool.name)
                     await session.delete(link)
             if not removed:
-                return f"해당 도구가 에이전트에 없습니다: {', '.join(tool_names)}"
+                return tr("the_tool_is_missing_from_ce7f7d", v0=f"{', '.join(tool_names)}")
 
             await session.commit()
-            return f"도구 제거 완료: {', '.join(removed)}"
+            return tr("tool_removal_complete_v_d996e0", v0=f"{', '.join(removed)}")
 
     # ------ 2-1. add_mcp_tool_to_agent ------
 
@@ -88,12 +89,12 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             existing = {link.mcp_tool.name.lower() for link in agent.mcp_tool_links}
             lower_names = [n.lower() for n in mcp_tool_names if n.lower() not in existing]
             if not lower_names:
-                return "모든 MCP 도구가 이미 추가되어 있습니다."
+                return tr("all_mcp_tools_are_already_c6de94")
 
             # MCP 도구는 사용자 소유 server에 묶여 있음 → server.user_id 필터.
             result = await session.execute(
@@ -106,14 +107,14 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             )
             found = list(result.scalars().all())
             if not found:
-                return f"MCP 도구를 찾을 수 없습니다: {', '.join(mcp_tool_names)}"
+                return tr("mcp_tool_not_found_v_26f016", v0=f"{', '.join(mcp_tool_names)}")
 
             for mt in found:
                 agent.mcp_tool_links.append(AgentMcpToolLink(mcp_tool_id=mt.id))
             await session.commit()
 
             added = [mt.name for mt in found]
-            return f"MCP 도구 추가 완료: {', '.join(added)}"
+            return tr("mcp_tool_addition_completed_v_ba11e1", v0=f"{', '.join(added)}")
 
     # ------ 2-2. remove_mcp_tool_from_agent ------
 
@@ -126,7 +127,7 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             lower_names = {n.lower() for n in mcp_tool_names}
             removed = []
@@ -135,30 +136,32 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     removed.append(link.mcp_tool.name)
                     await session.delete(link)
             if not removed:
-                return f"해당 MCP 도구가 에이전트에 없습니다: {', '.join(mcp_tool_names)}"
+                return tr(
+                    "the_corresponding_mcp_tool_does_60301d", v0=f"{', '.join(mcp_tool_names)}"
+                )
 
             await session.commit()
-            return f"MCP 도구 제거 완료: {', '.join(removed)}"
+            return tr("mcp_tool_removal_complete_v_541274", v0=f"{', '.join(removed)}")
 
     return [
         StructuredTool.from_function(
             coroutine=add_tool_to_agent,
             name="add_tool_to_agent",
-            description="에이전트에 도구 배치 추가",
+            description=tr("add_tool_deployment_to_agent_950498"),
         ),
         StructuredTool.from_function(
             coroutine=remove_tool_from_agent,
             name="remove_tool_from_agent",
-            description="에이전트에서 도구 배치 제거",
+            description=tr("remove_tool_deployment_from_agent_3821f7"),
         ),
         StructuredTool.from_function(
             coroutine=add_mcp_tool_to_agent,
             name="add_mcp_tool_to_agent",
-            description="에이전트에 MCP 도구 배치 추가 (도구 이름으로)",
+            description=tr("add_mcp_tool_batch_to_52f23d"),
         ),
         StructuredTool.from_function(
             coroutine=remove_mcp_tool_from_agent,
             name="remove_mcp_tool_from_agent",
-            description="에이전트에서 MCP 도구 배치 제거",
+            description=tr("remove_mcp_tool_deployment_from_2231ed"),
         ),
     ]

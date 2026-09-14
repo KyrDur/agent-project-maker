@@ -7,6 +7,7 @@ import logging
 from langgraph.types import interrupt
 
 from app.agent_runtime.builder.sub_agents.prompt_generator import generate_system_prompt
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.constants import ToolNames
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_phase_complete,
@@ -34,7 +35,7 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
     if not intent_dict:
         return {
             "current_phase": 5,
-            "error_message": "Phase 5 진입 전 intent가 비어 있습니다.",
+            "error_message": tr("phase_the_intent_before_entering_0c0e21"),
         }
 
     intent_obj = AgentCreationIntent(**intent_dict)
@@ -43,7 +44,9 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
 
     if revision:
         merged = AgentCreationIntent(**intent_dict)
-        merged.agent_description = (merged.agent_description or "") + f"\n\n[수정 요청] {revision}"
+        merged.agent_description = (merged.agent_description or "") + tr(
+            "request_for_modification_v_f2b088", v0=f"{revision}"
+        )
         intent_obj = merged
 
     try:
@@ -56,14 +59,11 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
         ToolNames.PROMPT_APPROVAL,
         {
             "phase": 5,
-            "title": "시스템 프롬프트",
+            "title": tr("system_prompt_30dccb"),
             "system_prompt": prompt,
-            "summary": (
-                "에이전트의 시스템 프롬프트를 작성했습니다. "
-                "검토 후 승인 또는 수정 요청해주세요."
-            ),
+            "summary": (tr("created_the_agent_s_system_ba6541")),
         },
-        intro_text="이제 시스템 프롬프트를 작성합니다.",
+        intro_text=tr("now_we_will_write_a_996c21"),
     )
 
     return {
@@ -80,7 +80,7 @@ async def phase5_approval(state: BuilderState) -> dict:
         {
             "type": "approval",
             "phase": 5,
-            "title": "시스템 프롬프트 승인",
+            "title": tr("system_prompts_for_approval_b0045f"),
         }
     )
 
@@ -89,13 +89,12 @@ async def phase5_approval(state: BuilderState) -> dict:
 
     if approved:
         close_msgs = close_pending_tool_card(
-            pending_tc_id, ToolNames.PROMPT_APPROVAL, "승인됨"
+            pending_tc_id, ToolNames.PROMPT_APPROVAL, tr("approved_4131b9")
         )
         complete_msgs = build_phase_complete(
             5,
             ensure_todos(state),
-            "[Phase 5 완료] 시스템 프롬프트 승인됨. "
-            "이제 Phase 6: 에이전트 이미지 생성을 시작하겠습니다.",
+            tr("phase_completed_system_prompt_acknowledged_b1d122"),
         )
         return {
             "messages": [*close_msgs, *complete_msgs],
@@ -104,9 +103,9 @@ async def phase5_approval(state: BuilderState) -> dict:
             "pending_tool_call_id": None,
         }
 
-    revision_text = revision or "프롬프트를 다시 작성해주세요"
+    revision_text = revision or tr("please_rewrite_the_prompt_5d3386")
     close_msgs = close_pending_tool_card(
-        pending_tc_id, ToolNames.PROMPT_APPROVAL, f"수정 요청: {revision_text}"
+        pending_tc_id, ToolNames.PROMPT_APPROVAL, tr("edit_request_v_bc1316", v0=f"{revision_text}")
     )
     return {
         "messages": close_msgs,

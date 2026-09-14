@@ -9,6 +9,8 @@ import json
 
 from langchain_core.tools import StructuredTool
 
+from app.agent_runtime.builder_i18n import tr
+
 
 def build_clarify_tools() -> list[StructuredTool]:
     """Assistant 명확화 도구 1개를 생성한다."""
@@ -34,7 +36,7 @@ def build_clarify_tools() -> list[StructuredTool]:
             {
                 "type": "clarifying_question",
                 "question": question,
-                "options": [option_1, option_2, option_3, "직접 입력"],
+                "options": [option_1, option_2, option_3, tr("enter_your_own_answer_eb6130")],
             },
             ensure_ascii=False,
         )
@@ -43,6 +45,6 @@ def build_clarify_tools() -> list[StructuredTool]:
         StructuredTool.from_function(
             coroutine=ask_clarifying_question,
             name="ask_clarifying_question",
-            description="사용자에게 명확화 질문 (옵션 3개 + 직접입력). 모호한 요청 시 사용.",
+            description=tr("clarification_question_to_user_options_eb65c7"),
         ),
     ]

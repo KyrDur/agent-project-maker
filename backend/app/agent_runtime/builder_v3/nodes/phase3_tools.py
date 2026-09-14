@@ -11,6 +11,7 @@ import logging
 from langgraph.types import interrupt
 
 from app.agent_runtime.builder.sub_agents.tool_recommender import recommend_tools
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.constants import ToolNames
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_approval_result,
@@ -40,7 +41,7 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
     if not intent_obj:
         return {
             "current_phase": 3,
-            "error_message": "Phase 3 진입 전 intent가 비어 있습니다.",
+            "error_message": tr("the_intent_before_entering_phase_2e6619"),
         }
 
     try:
@@ -56,21 +57,21 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
 
     tools_data = [t.model_dump(mode="json") for t in tool_objs]
     summary_text = (
-        f"{len(tools_data)}개의 도구를 추천합니다. 검토 후 승인 또는 수정 요청해주세요."
+        tr("v_tools_are_recommended_after_15f7dc", v0=f"{len(tools_data)}")
         if tools_data
-        else "추천된 도구가 없습니다. 수정 의견을 입력해주세요."
+        else tr("there_are_no_recommended_tools_1de525")
     )
 
     msgs, tool_call_id = make_pending_tool_card(
         ToolNames.RECOMMENDATION_APPROVAL,
         {
             "phase": 3,
-            "title": "도구 추천",
+            "title": tr("tool_recommendations_19ce61"),
             "items": tools_data,
             "summary": summary_text,
             "item_kind": "tool",
         },
-        intro_text="이제 도구를 추천받겠습니다.",
+        intro_text=tr("now_let_s_get_some_d00d56"),
     )
 
     return {
@@ -88,7 +89,7 @@ async def phase3_approval(state: BuilderState) -> dict:
         {
             "type": "approval",
             "phase": 3,
-            "title": "도구 추천 승인",
+            "title": tr("approval_of_tool_recommendations_0f0e41"),
         }
     )
 
@@ -101,10 +102,7 @@ async def phase3_approval(state: BuilderState) -> dict:
         tool_name=ToolNames.RECOMMENDATION_APPROVAL,
         phase_id=3,
         next_phase=4,
-        completion_message=(
-            "[Phase 3 완료] 도구 추천 승인됨. "
-            "이제 Phase 4: 미들웨어 추천을 시작하겠습니다."
-        ),
-        revision_default="다른 도구를 추천해주세요",
+        completion_message=(tr("phase_completed_tool_recommendation_approved_01d3a6")),
+        revision_default=tr("please_recommend_another_tool_4a42a8"),
         clear_field="tools",
     )

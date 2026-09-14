@@ -13,6 +13,7 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.state import (
     BuilderState,
     PhaseTodo,
@@ -223,10 +224,8 @@ def build_approval_result(
     clear 해 강제 재생성.
     """
     if approved:
-        close_msgs = close_pending_tool_card(pending_tc_id, tool_name, "승인됨")
-        complete_msgs = build_phase_complete(
-            phase_id, ensure_todos(state), completion_message
-        )
+        close_msgs = close_pending_tool_card(pending_tc_id, tool_name, tr("approved_4131b9"))
+        complete_msgs = build_phase_complete(phase_id, ensure_todos(state), completion_message)
         return {
             "messages": [*close_msgs, *complete_msgs],
             "current_phase": next_phase,
@@ -236,7 +235,7 @@ def build_approval_result(
 
     revision_text = revision or revision_default
     close_msgs = close_pending_tool_card(
-        pending_tc_id, tool_name, f"수정 요청: {revision_text}"
+        pending_tc_id, tool_name, tr("edit_request_v_bc1316", v0=f"{revision_text}")
     )
     result: dict[str, Any] = {
         "messages": close_msgs,
@@ -256,7 +255,9 @@ def build_phase_intro(phase_id: int, todos: list[PhaseTodo] | None) -> list[Base
     msgs, _ = make_tool_card(
         PHASE_TIMELINE_TOOL,
         {"todos": [dict(t) for t in new_todos]},
-        intro_text=f"이제 Phase {phase_id}: {get_phase_name(phase_id)}을 진행하겠습니다.",
+        intro_text=tr(
+            "now_let_s_proceed_with_0dfd2f", v0=f"{phase_id}", v1=f"{get_phase_name(phase_id)}"
+        ),
     )
     return msgs
 
@@ -306,7 +307,7 @@ def get_last_user_text(state: BuilderState) -> str:
 
 
 def ensure_todos(state: BuilderState) -> list[PhaseTodo]:
-    return state.get("todos") or initial_todos()
+    return [{**t, "name": get_phase_name(t["id"])} for t in (state.get("todos") or initial_todos())]
 
 
 def updated_todos_after(phase_id: int, todos: list[PhaseTodo] | None) -> list[PhaseTodo]:

@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent_runtime.assistant.tools.clarify_tools import build_clarify_tools
 from app.agent_runtime.assistant.tools.read_tools import build_read_tools
 from app.agent_runtime.assistant.tools.write_tools import build_write_tools
+from app.agent_runtime.builder_i18n import localized_prompt
 from app.agent_runtime.checkpointer import get_checkpointer
 from app.agent_runtime.model_factory import create_chat_model
 from app.agent_runtime.runtime_component_builder import build_agent
@@ -40,7 +41,7 @@ def _load_system_prompt() -> str:
     except FileNotFoundError:
         logger.warning("Assistant prompt file not found: %s, using fallback", _PROMPT_PATH)
         return (
-            "You are Moldy Agent Assistant, an AI that modifies existing "
+            "You are Agent Project Maker Assistant, an AI that modifies existing "
             "agent configurations. Always VERIFY before MODIFY."
         )
 
@@ -87,7 +88,7 @@ async def build_assistant_agent(
     clarify_tools = build_clarify_tools()
     tools = read_tools + write_tools + clarify_tools
 
-    system_prompt = _load_system_prompt()
+    system_prompt = localized_prompt(_load_system_prompt())
 
     return build_agent(
         model=model,

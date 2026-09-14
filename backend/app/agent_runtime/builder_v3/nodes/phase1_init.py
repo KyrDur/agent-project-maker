@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_phase_complete,
     get_last_user_text,
@@ -29,10 +30,7 @@ async def phase1_init(state: BuilderState) -> dict:
     intro_msgs, _ = make_tool_card(
         PHASE_TIMELINE_TOOL,
         {"todos": [dict(t) for t in in_progress_todos]},
-        intro_text=(
-            "에이전트를 만들어드리겠습니다! 먼저 작업 목록을 설정하고 단계별로 진행하겠습니다.\n\n"
-            "이제 Phase 1: 프로젝트 초기화를 진행하겠습니다."
-        ),
+        intro_text=(tr("we_ll_make_you_an_b8b04a")),
     )
 
     # 작업 — 단순한 path 문자열 (실제 파일 생성 없음, 메타용)
@@ -42,7 +40,7 @@ async def phase1_init(state: BuilderState) -> dict:
     complete_msgs = build_phase_complete(
         1,
         in_progress_todos,
-        "[Phase 1 완료] 프로젝트 초기화 완료. 이제 Phase 2: 사용자 의도 분석을 시작합니다.",
+        tr("phase_completed_project_initialization_completed_eb79d9"),
     )
     final_todos = mark_completed_through(in_progress_todos, 1)
 

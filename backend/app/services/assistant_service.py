@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime import event_names
 from app.agent_runtime.assistant.assistant_agent import build_assistant_agent
+from app.agent_runtime.builder_i18n import get_locale, localized_stream, tr
 from app.agent_runtime.streaming import format_sse, stream_agent_response
 from app.schemas.conversation import Decision
 from app.services.system_credential_resolver import SystemModelNotConfiguredError
@@ -19,12 +20,15 @@ from app.services.system_credential_resolver import SystemModelNotConfiguredErro
 logger = logging.getLogger(__name__)
 
 
+@localized_stream
 async def stream_assistant_message(
     db: AsyncSession,
     agent_id: uuid.UUID,
     user_id: uuid.UUID,
     thread_id: str,
     user_message: str,
+    *,
+    locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
     """Assistant 메시지를 SSE 스트리밍으로 처리한다.
 
@@ -40,28 +44,28 @@ async def stream_assistant_message(
         yield format_sse(
             event_names.ERROR,
             {
-                "message": (
-                    "운영자가 System LLM 설정(텍스트 모델)을 완료해야 "
-                    "어시스턴트를 사용할 수 있습니다."
-                ),
+                "message": (tr("the_assistant_cannot_be_used_c11b21")),
                 "code": "system_model_not_configured",
             },
         )
         return
 
     messages = [HumanMessage(content=user_message)]
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id, "ui_locale": get_locale()}}
 
     async for chunk in stream_agent_response(agent, messages, config):
         yield chunk
 
 
+@localized_stream
 async def stream_assistant_resume(
     db: AsyncSession,
     agent_id: uuid.UUID,
     user_id: uuid.UUID,
     thread_id: str,
     decisions: Sequence[Decision],
+    *,
+    locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
     try:
         agent = await build_assistant_agent(db, agent_id, user_id, thread_id)
@@ -70,17 +74,14 @@ async def stream_assistant_resume(
         yield format_sse(
             event_names.ERROR,
             {
-                "message": (
-                    "운영자가 System LLM 설정(텍스트 모델)을 완료해야 "
-                    "어시스턴트를 사용할 수 있습니다."
-                ),
+                "message": (tr("the_assistant_cannot_be_used_c11b21")),
                 "code": "system_model_not_configured",
             },
         )
         return
 
     decisions_payload = [decision.model_dump(exclude_none=True) for decision in decisions]
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id, "ui_locale": get_locale()}}
 
     async for chunk in stream_agent_response(
         agent,

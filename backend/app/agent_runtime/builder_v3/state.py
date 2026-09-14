@@ -11,6 +11,8 @@ from typing import Annotated, Any, Literal, TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
+from app.agent_runtime.builder_i18n import localize
+
 PhaseStatus = Literal["pending", "in_progress", "completed"]
 PhaseId = Literal[1, 2, 3, 4, 5, 6, 7, 8]
 
@@ -59,12 +61,12 @@ class BuilderState(TypedDict, total=False):
     project_path: str
 
     # Phase별 결과
-    intent: dict[str, Any] | None             # Phase 2
-    tools: list[dict[str, Any]]               # Phase 3 (ToolRecommendation list)
-    middlewares: list[dict[str, Any]]         # Phase 4
-    system_prompt: str | None                 # Phase 5
-    image_url: str | None                     # Phase 6 (None이면 이미지 없음)
-    draft_config: dict[str, Any] | None       # Phase 7
+    intent: dict[str, Any] | None  # Phase 2
+    tools: list[dict[str, Any]]  # Phase 3 (ToolRecommendation list)
+    middlewares: list[dict[str, Any]]  # Phase 4
+    system_prompt: str | None  # Phase 5
+    image_url: str | None  # Phase 6 (None이면 이미지 없음)
+    draft_config: dict[str, Any] | None  # Phase 7
 
     # 진행 위치
     current_phase: int
@@ -94,12 +96,12 @@ class BuilderState(TypedDict, total=False):
 def initial_todos() -> list[PhaseTodo]:
     """8개 phase 초기 상태 (모두 pending)."""
     return [
-        {"id": p["id"], "name": p["name"], "status": "pending"} for p in PHASE_DEFINITIONS
+        {"id": p["id"], "name": p["name"], "status": "pending"} for p in localize(PHASE_DEFINITIONS)
     ]
 
 
 def get_phase_name(phase_id: int) -> str:
-    for p in PHASE_DEFINITIONS:
+    for p in localize(PHASE_DEFINITIONS):
         if p["id"] == phase_id:
             return str(p["name"])
     return f"Phase {phase_id}"

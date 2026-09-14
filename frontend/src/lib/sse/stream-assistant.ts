@@ -1,3 +1,4 @@
+import { getActiveClientLocale } from '@/i18n/client-locale'
 import type { Decision, SSEEvent, SSEEventType } from '@/lib/types'
 import { streamSSEPost } from './parse-sse'
 
@@ -7,7 +8,7 @@ export async function* streamAssistant(
   signal?: AbortSignal,
   sessionId?: string,
 ): AsyncGenerator<SSEEvent> {
-  const body: Record<string, unknown> = { content }
+  const body: Record<string, unknown> = { content, locale: getActiveClientLocale() }
   if (sessionId) {
     body.session_id = sessionId
   }
@@ -29,6 +30,7 @@ export async function* streamAssistantResume(
   sessionId?: string,
 ): AsyncGenerator<SSEEvent> {
   const body: Record<string, unknown> = {
+    locale: getActiveClientLocale(),
     decisions,
     display_text: displayText,
     interrupt_id: interruptId ?? null,

@@ -11,6 +11,7 @@ import logging
 from langgraph.types import Command, interrupt
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry
+from app.agent_runtime.builder_i18n import localize, tr
 from app.agent_runtime.builder_v3.state import BuilderState
 
 logger = logging.getLogger(__name__)
@@ -41,18 +42,14 @@ _SYSTEM_PROMPT = (
     " - middlewares: 미들웨어 추천 변경\n"
     " - prompt: 시스템 프롬프트 수정\n"
     " - image: 에이전트 이미지 변경\n\n"
-    "응답 형식: {\"target\": \"<label>\", \"reason\": \"<짧은 설명>\"}"
+    '응답 형식: {"target": "<label>", "reason": "<짧은 설명>"}'
 )
 
 
 async def _classify_target(message: str) -> str | None:
-    task = (
-        f"사용자 요청: '{message}'\n\n"
-        "이 요청은 빌더의 어느 단계를 다시 실행해야 하나요? "
-        "intent / tools / middlewares / prompt / image 중 하나의 라벨로 답하세요."
-    )
+    task = tr("user_request_v_which_steps_9cc08c", v0=f"{message}")
     try:
-        result = await invoke_with_json_retry(_SYSTEM_PROMPT, task, max_retries=1)
+        result = await invoke_with_json_retry(localize(_SYSTEM_PROMPT), task, max_retries=1)
         if isinstance(result, dict):
             label = str(result.get("target") or "").strip().lower()
             return _LABEL_TO_NODE.get(label)
@@ -78,18 +75,29 @@ async def router(state: BuilderState) -> Command:
     answer = interrupt(
         {
             "type": "ask_user",
-            "question": "어느 단계를 수정하시겠어요?",
+            "question": tr("which_step_would_you_like_b0a0e5"),
             "options": [
-                "에이전트 이름/설명",
-                "도구 추천",
-                "미들웨어 추천",
-                "시스템 프롬프트",
-                "에이전트 이미지",
+                tr("agent_name_description_089718"),
+                tr("tool_recommendations_19ce61"),
+                tr("middleware_recommendations_b55f76"),
+                tr("system_prompt_30dccb"),
+                tr("agent_image_b1fd5a"),
             ],
         }
     )
 
     text = str(answer or "").lower()
+    localized_targets = {
+        tr("agent_name_description_089718").lower(): "phase2_analyze_intent",
+        tr("tool_recommendations_19ce61").lower(): "phase3_recommend_tools",
+        tr("middleware_recommendations_b55f76").lower(): "phase4_recommend_middlewares",
+        tr("system_prompt_30dccb").lower(): "phase5_generate_prompt",
+        tr("agent_image_b1fd5a").lower(): "phase6_choice_propose",
+    }
+    if text in localized_targets:
+        return Command(
+            goto=localized_targets[text], update={"last_router_decision": localized_targets[text]}
+        )
     fallback_target = "phase3_recommend_tools"  # 가장 흔한 케이스
     if "이름" in text or "설명" in text or "intent" in text:
         fallback_target = "phase2_analyze_intent"

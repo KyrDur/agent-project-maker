@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_runtime.builder_i18n import BuilderLocale, locale_scope, normalize_locale
 from app.dependencies import CurrentUser, get_current_user, get_db, verify_csrf
 from app.error_codes import (
     agent_creation_failed,
@@ -30,6 +31,7 @@ from app.services import builder_service
 class BuilderMessageRequest(BaseModel):
     """Builder v3 — 메시지 전송 요청."""
 
+    locale: BuilderLocale | None = None
     content: str = Field(..., min_length=1, max_length=4000)
 
 
@@ -49,6 +51,7 @@ class BuilderResumeRequest(BaseModel):
 
     model_config = {"extra": "forbid"}
 
+    locale: BuilderLocale | None = None
     decisions: list[Decision] = Field(..., min_length=1, description="표준 HiTL decisions")
     display_text: str | None = Field(None, max_length=200)
     # SSE interrupt 이벤트의 interrupt_id (stale 카드로 응답 시 차단용)
@@ -91,6 +94,7 @@ async def get_build_session(
 )
 async def confirm_build(
     session_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
@@ -132,7 +136,8 @@ async def confirm_build(
         raise session_not_found()
 
     try:
-        agent = await builder_service.confirm_build(db, session)
+        with locale_scope(request.cookies.get("moldy_locale")):
+            agent = await builder_service.confirm_build(db, session)
     except ValueError as exc:
         raise ValidationError("MODEL_NOT_FOUND", str(exc)) from exc
     except Exception as exc:
@@ -162,6 +167,7 @@ _SSE_HEADERS = {
 async def post_message(
     session_id: uuid.UUID,
     payload: BuilderMessageRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
@@ -180,6 +186,7 @@ async def post_message(
             session_id=session.id,
             user_id=session.user_id,
             content=payload.content,
+            locale=normalize_locale(payload.locale or request.cookies.get("moldy_locale")),
         ),
         media_type="text/event-stream",
         headers=_SSE_HEADERS,
@@ -190,6 +197,7 @@ async def post_message(
 async def resume_message(
     session_id: uuid.UUID,
     payload: BuilderResumeRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
@@ -206,6 +214,7 @@ async def resume_message(
             user_id=session.user_id,
             response=response,
             interrupt_id=payload.interrupt_id,
+            locale=normalize_locale(payload.locale or request.cookies.get("moldy_locale")),
         ),
         media_type="text/event-stream",
         headers=_SSE_HEADERS,

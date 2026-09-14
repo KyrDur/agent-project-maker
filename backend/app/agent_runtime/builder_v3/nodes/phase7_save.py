@@ -12,6 +12,7 @@ from typing import Any
 
 from sqlalchemy import select
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_phase_complete,
     ensure_todos,
@@ -107,17 +108,17 @@ async def phase7_save(state: BuilderState) -> dict:
         "draft_config_card",
         {
             "phase": 7,
-            "title": "에이전트 설정 미리보기",
+            "title": tr("preview_agent_settings_5d80e9"),
             "draft": draft_dict,
             "image_url": state.get("image_url"),
         },
-        intro_text="모든 정보를 종합하여 에이전트 설정을 준비했습니다.",
+        intro_text=tr("we_ve_put_all_the_dee8a9"),
     )
 
     complete_msgs = build_phase_complete(
         7,
         ensure_todos(state),
-        "[Phase 7 완료] 설정 저장 완료. 마지막으로 최종 확인 후 빌드합니다.",
+        tr("phase_completed_settings_saved_completed_614679"),
     )
 
     return {

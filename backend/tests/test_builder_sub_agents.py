@@ -587,3 +587,11 @@ def test_format_middlewares_items():
     ]
     result = _format_middlewares(mws)
     assert "tool_retry" in result
+
+
+@pytest.fixture(autouse=True)
+def explicit_korean_locale():
+    from app.agent_runtime.builder_i18n import locale_scope
+
+    with locale_scope("ko"):
+        yield

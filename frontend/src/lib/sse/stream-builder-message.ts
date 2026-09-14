@@ -1,3 +1,4 @@
+import { getActiveClientLocale } from '@/i18n/client-locale'
 import type { SSEEvent, SSEEventType } from '@/lib/types'
 import { streamSSEPost } from './parse-sse'
 
@@ -13,7 +14,7 @@ export async function* streamBuilderMessage(
 ): AsyncGenerator<SSEEvent> {
   yield* streamSSEPost<SSEEventType>(
     `/api/builder/${sessionId}/messages`,
-    { content },
+    { content, locale: getActiveClientLocale() },
     signal,
     'content_delta',
   ) as AsyncGenerator<SSEEvent>

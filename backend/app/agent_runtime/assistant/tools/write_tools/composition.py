@@ -11,6 +11,7 @@ from app.agent_runtime.assistant.tools.write_tools.context import (
     WriteToolContext,
     get_agent_with_session,
 )
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.middleware_registry import MIDDLEWARE_REGISTRY
 from app.models.agent import AGENT_RUNTIME_PROFILE_STANDARD, Agent
 from app.models.agent_subagent import AgentSubAgentLink
@@ -31,7 +32,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             configs = list(agent.middleware_configs or [])
             existing = {mc.get("type", "").lower() for mc in configs}
@@ -45,11 +46,11 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 added.append(name)
 
             if not added:
-                return "추가할 미들웨어가 없습니다 (이미 존재하거나 카탈로그에 없음)."
+                return tr("there_is_no_middleware_to_282033")
 
             agent.middleware_configs = configs
             await session.commit()
-            return f"미들웨어 추가 완료: {', '.join(added)}"
+            return tr("middleware_added_v_0215d4", v0=f"{', '.join(added)}")
 
     # ------ 4. remove_middleware_from_agent ------
 
@@ -62,7 +63,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             lower_names = {n.lower() for n in middleware_names}
             configs = list(agent.middleware_configs or [])
@@ -75,11 +76,11 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     new_configs.append(mc)
 
             if not removed:
-                return f"해당 미들웨어가 없습니다: {', '.join(middleware_names)}"
+                return tr("no_such_middleware_v_a133a9", v0=f"{', '.join(middleware_names)}")
 
             agent.middleware_configs = new_configs
             await session.commit()
-            return f"미들웨어 제거 완료: {', '.join(removed)}"
+            return tr("middleware_removal_complete_v_3710ac", v0=f"{', '.join(removed)}")
 
     # ------ 5. add_subagent_to_agent ------
 
@@ -92,7 +93,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             existing_ids = {link.sub_agent_id for link in agent.sub_agent_links}
             added: list[str] = []
@@ -104,13 +105,13 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 try:
                     sid = uuid.UUID(raw_id)
                 except (ValueError, TypeError):
-                    skipped.append(f"{raw_id}(잘못된 UUID)")
+                    skipped.append(tr("v_invalid_uuid_88b951", v0=f"{raw_id}"))
                     continue
                 if sid == agent.id:
-                    skipped.append(f"{raw_id}(자기 참조)")
+                    skipped.append(tr("v_self_referenced_e4701d", v0=f"{raw_id}"))
                     continue
                 if sid in existing_ids:
-                    skipped.append(f"{raw_id}(이미 추가됨)")
+                    skipped.append(tr("v_already_added_877a78", v0=f"{raw_id}"))
                     continue
                 candidates[sid] = raw_id
 
@@ -131,7 +132,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             next_pos = max((link.position for link in agent.sub_agent_links), default=-1) + 1
             for sid, raw_id in candidates.items():
                 if sid not in name_by_id:
-                    skipped.append(f"{raw_id}(찾을 수 없음)")
+                    skipped.append(tr("v_not_found_38c16e", v0=f"{raw_id}"))
                     continue
                 agent.sub_agent_links.append(AgentSubAgentLink(sub_agent_id=sid, position=next_pos))
                 existing_ids.add(sid)
@@ -139,16 +140,16 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 next_pos += 1
 
             if not added and not skipped:
-                return "추가할 서브에이전트가 없습니다."
+                return tr("there_are_no_subagents_to_9d2716")
 
             if added:
                 await session.commit()
 
             parts = []
             if added:
-                parts.append(f"추가 완료: {', '.join(added)}")
+                parts.append(tr("added_v_e0abab", v0=f"{', '.join(added)}"))
             if skipped:
-                parts.append(f"건너뜀: {', '.join(skipped)}")
+                parts.append(tr("skip_v_7a10fe", v0=f"{', '.join(skipped)}"))
             return " | ".join(parts)
 
     # ------ 6. remove_subagent_from_agent ------
@@ -162,7 +163,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             target_ids: set[uuid.UUID] = set()
             invalid: list[str] = []
@@ -179,15 +180,15 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     await session.delete(link)
 
             if not removed:
-                msg = "해당 서브에이전트가 에이전트에 없습니다."
+                msg = tr("the_subagent_does_not_exist_532127")
                 if invalid:
-                    msg += f" (유효하지 않은 ID: {', '.join(invalid)})"
+                    msg += tr("invalid_id_v_84b95e", v0=f"{', '.join(invalid)}")
                 return msg
 
             await session.commit()
-            result_msg = f"서브에이전트 제거 완료: {', '.join(removed)}"
+            result_msg = tr("subagent_removal_completed_v_868fc6", v0=f"{', '.join(removed)}")
             if invalid:
-                result_msg += f" | 유효하지 않은 ID 건너뜀: {', '.join(invalid)}"
+                result_msg += tr("invalid_id_skipping_v_2db2cf", v0=f"{', '.join(invalid)}")
             return result_msg
 
     # ------ 6-2. add_skill_to_agent ------
@@ -201,12 +202,12 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             existing = {link.skill.name.lower() for link in agent.skill_links}
             lower_names = [n.lower() for n in skill_names if n.lower() not in existing]
             if not lower_names:
-                return "모든 스킬이 이미 추가되어 있습니다."
+                return tr("all_skills_have_already_been_056dc5")
 
             result = await session.execute(
                 select(Skill)
@@ -224,7 +225,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     unique_by_name[key] = s
             found_skills = list(unique_by_name.values())
             if not found_skills:
-                return f"스킬을 찾을 수 없습니다: {', '.join(skill_names)}"
+                return tr("skill_not_found_v_59d909", v0=f"{', '.join(skill_names)}")
 
             for s in found_skills:
                 agent.skill_links.append(AgentSkillLink(skill_id=s.id))
@@ -235,9 +236,9 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             missing = [
                 n for n in skill_names if n.lower() not in found_lower and n.lower() not in existing
             ]
-            msg = f"스킬 추가 완료: {', '.join(added)}"
+            msg = tr("skill_added_v_966f7f", v0=f"{', '.join(added)}")
             if missing:
-                msg += f" | 미존재 건너뜀: {', '.join(missing)}"
+                msg += tr("skip_nonexistent_v_0c62ec", v0=f"{', '.join(missing)}")
             return msg
 
     # ------ 6-3. remove_skill_from_agent ------
@@ -251,7 +252,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
-                return "에이전트를 찾을 수 없습니다."
+                return tr("agent_not_found_1a3985")
 
             lower_names = {n.lower() for n in skill_names}
             removed: list[str] = []
@@ -260,40 +261,40 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     removed.append(link.skill.name)
                     await session.delete(link)
             if not removed:
-                return f"해당 스킬이 에이전트에 없습니다: {', '.join(skill_names)}"
+                return tr("the_skill_does_not_exist_50a929", v0=f"{', '.join(skill_names)}")
 
             await session.commit()
-            return f"스킬 제거 완료: {', '.join(removed)}"
+            return tr("skill_removed_v_911593", v0=f"{', '.join(removed)}")
 
     return [
         StructuredTool.from_function(
             coroutine=add_middleware_to_agent,
             name="add_middleware_to_agent",
-            description="에이전트에 미들웨어 배치 추가",
+            description=tr("add_middleware_deployment_to_agent_f714aa"),
         ),
         StructuredTool.from_function(
             coroutine=remove_middleware_from_agent,
             name="remove_middleware_from_agent",
-            description="에이전트에서 미들웨어 배치 제거",
+            description=tr("remove_middleware_deployment_from_agent_bb3b35"),
         ),
         StructuredTool.from_function(
             coroutine=add_subagent_to_agent,
             name="add_subagent_to_agent",
-            description="에이전트에 서브에이전트 배치 추가",
+            description=tr("add_subagent_placement_to_agent_bd94a3"),
         ),
         StructuredTool.from_function(
             coroutine=remove_subagent_from_agent,
             name="remove_subagent_from_agent",
-            description="에이전트에서 서브에이전트 배치 제거",
+            description=tr("remove_subagent_deployment_from_agent_544fb1"),
         ),
         StructuredTool.from_function(
             coroutine=add_skill_to_agent,
             name="add_skill_to_agent",
-            description="에이전트에 스킬 배치 추가",
+            description=tr("add_skill_placement_to_agent_6135d1"),
         ),
         StructuredTool.from_function(
             coroutine=remove_skill_from_agent,
             name="remove_skill_from_agent",
-            description="에이전트에서 스킬 배치 제거",
+            description=tr("remove_skill_placement_from_agent_e4feaf"),
         ),
     ]

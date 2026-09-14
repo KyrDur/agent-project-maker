@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.identity import AGENT_IDENTITY_PER_USER, validate_identity_mode
 
 # ---------------------------------------------------------------------------
@@ -66,15 +67,21 @@ class BuilderSessionResponse(BaseModel):
 class AgentCreationIntent(BaseModel):
     """의도 분석 서브에이전트의 구조화된 출력."""
 
-    agent_name: str = Field(..., description="영문 에이전트 이름")
-    agent_name_ko: str = Field(..., description="한글 에이전트 이름")
+    agent_name: str = Field(..., description="Agent name in the active output language")
+    agent_name_ko: str = Field(
+        ..., description="Localized display name; legacy field name retained for compatibility"
+    )
     agent_description: str = Field(
         ..., description="에이전트의 역할과 기능에 대한 상세 설명 (3~5문장)"
     )
     primary_task_type: str = Field(..., description="에이전트의 핵심 작업 한 문장")
     tool_preferences: str = Field(default="", description="선호하는 도구 유형")
-    output_style: str = Field(default="간단한 요약과 주요 포인트", description="결과물 형태")
-    response_tone: str = Field(default="친근하고 캐주얼한 어조", description="응답 톤")
+    output_style: str = Field(
+        default_factory=lambda: tr("brief_summary_and_key_points_dedcfb"), description="결과물 형태"
+    )
+    response_tone: str = Field(
+        default_factory=lambda: tr("friendly_and_casual_301c5f"), description="응답 톤"
+    )
     identity_mode: str = Field(
         default=AGENT_IDENTITY_PER_USER,
         description="credential 사용 주체: per_user 또는 fixed",

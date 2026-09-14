@@ -13,6 +13,7 @@ from typing import Any
 
 from langgraph.types import interrupt
 
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.image_gen import (
     ImageGenerationError,
     build_default_prompt,
@@ -53,16 +54,16 @@ async def phase6_choice_propose(state: BuilderState) -> dict:
             "image_choice",
             {
                 "phase": 6,
-                "title": "에이전트 이미지 생성",
+                "title": tr("generate_agent_image_172ee6"),
                 "available": False,
-                "auto_prompt": "이미지 생성이 비활성화되어 있습니다 (OPENROUTER_API_KEY 미설정).",
+                "auto_prompt": tr("image_creation_is_disabled_openrouter_a99d28"),
             },
-            intro_text="이미지 생성이 설정되지 않아 이 단계를 건너뜁니다.",
+            intro_text=tr("image_creation_is_not_set_91eafc"),
         )
         complete_msgs = build_phase_complete(
             6,
             ensure_todos(state),
-            "[Phase 6 완료] 이미지 생성 건너뜀. 이제 Phase 7: 설정 저장을 진행합니다.",
+            tr("phase_completed_image_creation_skipped_347fcb"),
         )
         return {
             "messages": list(info_msgs) + list(complete_msgs),
@@ -76,15 +77,15 @@ async def phase6_choice_propose(state: BuilderState) -> dict:
         "image_choice",
         {
             "phase": 6,
-            "title": "에이전트 이미지를 생성하시겠습니까?",
+            "title": tr("would_you_like_to_create_571561"),
             "auto_prompt": auto_prompt,
             "available": True,
             "options": [
-                {"value": "skip", "label": "넘어가기"},
-                {"value": "generate", "label": "생성하기"},
+                {"value": "skip", "label": tr("skip_3563f5")},
+                {"value": "generate", "label": tr("generate_ad63ee")},
             ],
         },
-        intro_text="이제 에이전트의 이미지를 만들어 보겠습니다.",
+        intro_text=tr("now_let_s_create_an_4b6f31"),
     )
     return {
         "messages": msgs,
@@ -106,11 +107,11 @@ async def phase6_choice_wait(state: BuilderState) -> dict:
         {
             "type": "image_choice",
             "phase": 6,
-            "title": "에이전트 이미지를 생성하시겠습니까?",
+            "title": tr("would_you_like_to_create_571561"),
             "auto_prompt": auto_prompt,
             "options": [
-                {"value": "skip", "label": "넘어가기"},
-                {"value": "generate", "label": "생성하기"},
+                {"value": "skip", "label": tr("skip_3563f5")},
+                {"value": "generate", "label": tr("generate_ad63ee")},
             ],
         }
     )
@@ -124,7 +125,7 @@ async def phase6_choice_wait(state: BuilderState) -> dict:
         complete_msgs = build_phase_complete(
             6,
             ensure_todos(state),
-            "[Phase 6 완료] 이미지 생성 건너뜀. 이제 Phase 7: 설정 저장을 진행합니다.",
+            tr("phase_completed_image_creation_skipped_347fcb"),
         )
         return {
             "messages": [*close_msgs, *complete_msgs],
@@ -153,25 +154,23 @@ async def phase6_image_generate(state: BuilderState) -> dict:
     prompt = state.get("last_revision_message") or _get_image_prompt_seed(state)
 
     try:
-        public_url, _local_path = await generate_agent_image(
-            prompt=prompt, session_id=session_id
-        )
+        public_url, _local_path = await generate_agent_image(prompt=prompt, session_id=session_id)
     except ImageGenerationError as exc:
         logger.warning("Image generation failed: %s", exc)
         msgs, fail_tc_id = make_pending_tool_card(
             "image_approval",
             {
                 "phase": 6,
-                "title": "이미지 생성 실패",
+                "title": tr("image_creation_failed_0ceb50"),
                 "image_url": None,
                 "prompt": prompt,
                 "error": str(exc),
                 "options": [
-                    {"value": "regenerate", "label": "재시도"},
-                    {"value": "skip", "label": "넘어가기"},
+                    {"value": "regenerate", "label": tr("retry_1d9e7f")},
+                    {"value": "skip", "label": tr("skip_3563f5")},
                 ],
             },
-            intro_text=f"이미지 생성에 실패했습니다: {exc}",
+            intro_text=tr("image_creation_failed_v_2b1a2f", v0=f"{exc}"),
         )
         return {
             "messages": msgs,
@@ -183,16 +182,16 @@ async def phase6_image_generate(state: BuilderState) -> dict:
         "image_approval",
         {
             "phase": 6,
-            "title": "이미지 미리보기",
+            "title": tr("image_preview_eacc54"),
             "image_url": public_url,
             "prompt": prompt,
             "options": [
-                {"value": "confirm", "label": "확정"},
-                {"value": "regenerate", "label": "재생성"},
-                {"value": "skip", "label": "넘어가기"},
+                {"value": "confirm", "label": tr("confirmed_568940")},
+                {"value": "regenerate", "label": tr("regenerate_bd72a5")},
+                {"value": "skip", "label": tr("skip_3563f5")},
             ],
         },
-        intro_text="이미지가 생성되었습니다. 확인해주세요.",
+        intro_text=tr("your_image_has_been_created_3fe9f8"),
     )
     return {
         "messages": msgs,
@@ -222,11 +221,13 @@ async def phase6_image_approval(state: BuilderState) -> dict:
     pending_tc_id = state.get("pending_tool_call_id")
 
     if choice in ("confirm", "확정"):
-        close_msgs = close_pending_tool_card(pending_tc_id, "image_approval", "확정")
+        close_msgs = close_pending_tool_card(
+            pending_tc_id, "image_approval", tr("confirmed_568940")
+        )
         complete_msgs = build_phase_complete(
             6,
             ensure_todos(state),
-            "[Phase 6 완료] 에이전트 이미지 확정. 이제 Phase 7: 설정 저장을 진행합니다.",
+            tr("phase_completed_agent_image_confirmed_521661"),
         )
         return {
             "messages": [*close_msgs, *complete_msgs],
@@ -240,7 +241,7 @@ async def phase6_image_approval(state: BuilderState) -> dict:
         complete_msgs = build_phase_complete(
             6,
             ensure_todos(state),
-            "[Phase 6 완료] 이미지 생성 건너뜀. 이제 Phase 7: 설정 저장을 진행합니다.",
+            tr("phase_completed_image_creation_skipped_347fcb"),
         )
         return {
             "messages": [*close_msgs, *complete_msgs],
@@ -251,7 +252,7 @@ async def phase6_image_approval(state: BuilderState) -> dict:
         }
 
     # regenerate — image_url 클리어 + last_revision_message 설정
-    close_msgs = close_pending_tool_card(pending_tc_id, "image_approval", "재생성")
+    close_msgs = close_pending_tool_card(pending_tc_id, "image_approval", tr("regenerate_bd72a5"))
     base_prompt: Any = state.get("image_url") and _get_image_prompt_seed(state)
     target_prompt = new_prompt or base_prompt or _get_image_prompt_seed(state)
     return {

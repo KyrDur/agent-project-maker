@@ -1,3 +1,4 @@
+import { getActiveClientLocale } from '@/i18n/client-locale'
 import type { Decision, SSEEvent, SSEEventType } from '@/lib/types'
 import { streamSSEPost } from './parse-sse'
 
@@ -18,6 +19,7 @@ export async function* streamBuilderResume(
   yield* streamSSEPost<SSEEventType>(
     `/api/builder/${sessionId}/messages/resume`,
     {
+      locale: getActiveClientLocale(),
       decisions,
       display_text: displayText,
       interrupt_id: interruptId ?? null,

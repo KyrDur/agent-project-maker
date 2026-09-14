@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_runtime.builder_i18n import normalize_locale
 from app.dependencies import CurrentUser, get_current_user, get_db, verify_csrf
 from app.error_codes import agent_not_found
 from app.schemas.assistant import AssistantMessageRequest, AssistantResumeRequest
@@ -26,6 +27,7 @@ def _assistant_thread_id(agent_id: uuid.UUID, session_id: str | None) -> str:
 async def send_assistant_message(
     agent_id: uuid.UUID,
     data: AssistantMessageRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
@@ -44,6 +46,7 @@ async def send_assistant_message(
             user_id=user.id,
             thread_id=thread_id,
             user_message=data.content,
+            locale=normalize_locale(data.locale or request.cookies.get("moldy_locale")),
         ),
         media_type="text/event-stream",
         headers={
@@ -58,6 +61,7 @@ async def send_assistant_message(
 async def resume_assistant_message(
     agent_id: uuid.UUID,
     data: AssistantResumeRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
@@ -75,6 +79,7 @@ async def resume_assistant_message(
             user_id=user.id,
             thread_id=thread_id,
             decisions=data.decisions,
+            locale=normalize_locale(data.locale or request.cookies.get("moldy_locale")),
         ),
         media_type="text/event-stream",
         headers={

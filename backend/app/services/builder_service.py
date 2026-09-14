@@ -12,6 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.agent_runtime.builder_i18n import get_locale, localized_stream, tr
 from app.agent_runtime.identity import AGENT_IDENTITY_PER_USER, validate_identity_mode
 from app.agent_runtime.middleware_registry import get_middleware_registry
 from app.agent_runtime.streaming import format_sse
@@ -206,9 +207,7 @@ async def confirm_build(db: AsyncSession, session: BuilderSession) -> Agent | No
             any_result = await db.execute(select(ModelORM).limit(1))
             model = any_result.scalar_one_or_none()
         if not model:
-            raise ValueError(
-                "사용 가능한 모델이 없습니다. 모델 설정 페이지에서 모델을 등록해주세요."
-            )
+            raise ValueError(tr("there_are_no_models_available_992704"))
 
         # 항목 매칭 — 이름으로 Tool / McpTool / Skill 3-way 분리 조회
         tools_to_link, mcp_tools_to_link, skills_to_link = await _resolve_tools(
@@ -218,7 +217,7 @@ async def confirm_build(db: AsyncSession, session: BuilderSession) -> Agent | No
         # 에이전트 생성
         agent = Agent(
             user_id=session.user_id,
-            name=config.get("name_ko") or config.get("name", "새 에이전트"),
+            name=config.get("name_ko") or config.get("name", tr("new_agent_265674")),
             description=config.get("description", ""),
             system_prompt=config.get("system_prompt", ""),
             model_id=model.id,
@@ -389,10 +388,13 @@ async def _transfer_builder_image(
         agent.image_path = result
 
 
+@localized_stream
 async def run_v3_message_stream(
     session_id: uuid.UUID,
     user_id: uuid.UUID,
     content: str,
+    *,
+    locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
     """Builder v3 StateGraph로 메시지를 스트리밍한다.
 
@@ -413,7 +415,9 @@ async def run_v3_message_stream(
 
     checkpointer = get_checkpointer()
     graph_compiled = compile_graph(checkpointer)
-    config: dict[str, Any] = {"configurable": {"thread_id": str(session_id)}}
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": str(session_id), "ui_locale": get_locale()}
+    }
 
     state_snapshot = await graph_compiled.aget_state(config)
     is_first = not state_snapshot.values
@@ -441,11 +445,14 @@ class StaleInterruptError(Exception):
     """resume이 현재 paused interrupt와 매칭되지 않음 (stale 카드 클릭)."""
 
 
+@localized_stream
 async def run_v3_resume_stream(
     session_id: uuid.UUID,
     user_id: uuid.UUID,
     response: Any,
     interrupt_id: str | None = None,
+    *,
+    locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
     """interrupt 응답을 받아 Command(resume=...)로 그래프를 재개한다.
 
@@ -460,7 +467,9 @@ async def run_v3_resume_stream(
 
     checkpointer = get_checkpointer()
     graph_compiled = compile_graph(checkpointer)
-    config: dict[str, Any] = {"configurable": {"thread_id": str(session_id)}}
+    config: dict[str, Any] = {
+        "configurable": {"thread_id": str(session_id), "ui_locale": get_locale()}
+    }
 
     # interrupt_id stale 검증
     if interrupt_id:
@@ -480,12 +489,7 @@ async def run_v3_resume_stream(
                 yield format_sse("message_start", {"id": "stale", "role": "assistant"})
                 yield format_sse(
                     "error",
-                    {
-                        "message": (
-                            "이 카드는 이미 처리되었거나 만료되었습니다. "
-                            "최신 카드에서 응답해주세요."
-                        )
-                    },
+                    {"message": (tr("this_card_has_already_been_adc634"))},
                 )
                 yield format_sse("message_end", {"usage": {}, "content": ""})
                 return

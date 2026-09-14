@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry, load_prompt
+from app.agent_runtime.builder_i18n import tr
 from app.schemas.builder import AgentCreationIntent
 
 logger = logging.getLogger(__name__)
@@ -22,18 +23,7 @@ SYSTEM_PROMPT = load_prompt("intent_analyzer.md") or _FALLBACK_PROMPT
 
 
 def _build_task_description(user_request: str) -> str:
-    return (
-        f'사용자가 "{user_request}"라고 요청했습니다.\n'
-        "다음 정보를 수집해주세요:\n\n"
-        "1. 에이전트 이름 (영문과 한글)\n"
-        "2. 에이전트 설명 (상세한 기능 설명)\n"
-        "3. 주요 작업 유형 (primary_task_type)\n"
-        "4. 에이전트의 주요 기능들\n"
-        "5. 사용자가 원하는 기능의 특징\n\n"
-        "credential 사용 방식(identity_mode)은 항상 기본값 per_user로 둡니다. "
-        "이 값은 생성 후 설정 화면에서 사용자가 직접 변경합니다.\n\n"
-        "사용자의 요청을 정리하고 AgentCreationIntent 형식으로 반환해주세요."
-    )
+    return tr("user_requested_v_please_collect_a2ff0e", v0=f"{user_request}")
 
 
 async def analyze_intent(user_request: str) -> AgentCreationIntent:
@@ -52,10 +42,10 @@ async def analyze_intent(user_request: str) -> AgentCreationIntent:
     # fallback
     return AgentCreationIntent(
         agent_name="Custom Agent",
-        agent_name_ko="맞춤 에이전트",
-        agent_description=f"사용자 요청에 따라 생성된 에이전트: {user_request}",
-        primary_task_type="일반 작업 수행",
+        agent_name_ko=tr("custom_agent_ba8ff9"),
+        agent_description=tr("agent_created_upon_user_request_d1f519", v0=f"{user_request}"),
+        primary_task_type=tr("perform_common_tasks_136765"),
         identity_mode="per_user",
-        use_cases=["사용자 요청 처리"],
-        required_capabilities=["일반 대화"],
+        use_cases=[tr("handling_user_requests_b68392")],
+        required_capabilities=[tr("normal_conversation_fb5742")],
     )

@@ -19,6 +19,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
+from app.agent_runtime.builder_i18n import localize, localized_prompt
 from app.agent_runtime.model_factory import create_chat_model
 from app.database import async_session
 from app.services.system_credential_resolver import (
@@ -189,6 +190,7 @@ async def invoke_with_json_retry(
     Raises:
         ValueError: max_retries 횟수만큼 파싱 실패 시
     """
+    system_prompt = localized_prompt(system_prompt)
     model = await _get_builder_model()
     fallback = await _get_fallback_model()
     description = task_description
@@ -213,7 +215,7 @@ async def invoke_with_json_retry(
         except (json.JSONDecodeError, ValueError) as exc:
             logger.warning("JSON parsing failed (attempt %d): %s", attempt + 1, exc)
             if attempt < max_retries - 1:
-                description += retry_suffix
+                description += localize(retry_suffix)
 
     raise ValueError(f"JSON parsing failed after {max_retries} attempts")
 
@@ -243,6 +245,7 @@ async def invoke_for_text(
     Returns:
         텍스트 응답. max_retries 초과 시 None.
     """
+    system_prompt = localized_prompt(system_prompt)
     model = await _get_builder_model()
     fallback = await _get_fallback_model()
     description = task_description
@@ -266,7 +269,7 @@ async def invoke_for_text(
                 attempt + 1,
             )
             if attempt < max_retries - 1:
-                description += retry_suffix_template.format(char_count=char_count)
+                description += localize(retry_suffix_template).format(char_count=char_count)
                 continue
         return prompt_text
 

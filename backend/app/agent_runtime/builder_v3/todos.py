@@ -17,6 +17,7 @@ from app.agent_runtime.builder_v3.state import (
     PHASE_DEFINITIONS,
     BuilderState,
     PhaseTodo,
+    get_phase_name,
     initial_todos,
 )
 
@@ -28,7 +29,7 @@ def update_phase_status(
     todos: list[PhaseTodo] | None, phase_id: int, status: str
 ) -> list[PhaseTodo]:
     """단일 phase의 status를 갱신한 새 todos 리스트를 반환한다 (불변)."""
-    base = list(todos) if todos else initial_todos()
+    base = [{**t, "name": get_phase_name(t["id"])} for t in todos] if todos else initial_todos()
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] == phase_id:
@@ -40,7 +41,7 @@ def update_phase_status(
 
 def mark_completed_through(todos: list[PhaseTodo] | None, phase_id: int) -> list[PhaseTodo]:
     """1..phase_id 까지를 completed, phase_id+1을 pending(기본값) 유지한 todos 반환."""
-    base = list(todos) if todos else initial_todos()
+    base = [{**t, "name": get_phase_name(t["id"])} for t in todos] if todos else initial_todos()
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] <= phase_id:
@@ -62,7 +63,9 @@ def build_timeline_messages(
     Returns:
         (messages, updated_todos): messages는 add_messages reducer로 누적
     """
-    todos = state.get("todos") or initial_todos()
+    todos = [
+        {**t, "name": get_phase_name(t["id"])} for t in (state.get("todos") or initial_todos())
+    ]
     tool_call_id = str(uuid.uuid4())
 
     ai_msg = AIMessage(
@@ -86,5 +89,5 @@ def build_timeline_messages(
 def get_phase_meta(phase_id: int) -> dict[str, Any]:
     for p in PHASE_DEFINITIONS:
         if p["id"] == phase_id:
-            return dict(p)
+            return {**p, "name": get_phase_name(phase_id)}
     return {"id": phase_id, "name": f"Phase {phase_id}"}

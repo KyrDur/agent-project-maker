@@ -562,7 +562,12 @@ async def stream_agent_response(
             was_interrupted = True
         except Exception as e:
             stream_failed = True
-            error_record = StreamErrorRecord(error=e, message=public_stream_error_message(e))
+            error_record = StreamErrorRecord(
+                error=e,
+                message=public_stream_error_message(
+                    e, locale=config.get("configurable", {}).get("ui_locale")
+                ),
+            )
             if error_sink is not None:
                 error_sink.append(error_record)
             yield emit(event_names.ERROR, {"message": error_record.message})

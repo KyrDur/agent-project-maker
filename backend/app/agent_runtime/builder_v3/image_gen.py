@@ -15,6 +15,7 @@ from pathlib import Path
 
 import httpx
 
+from app.agent_runtime.builder_i18n import tr
 from app.database import async_session
 from app.services.agent_image_paths import agent_image_dir
 from app.services.image_service import (
@@ -101,18 +102,14 @@ async def generate_agent_image(
         try:
             resolved = await resolve_system_model(db, "image")
         except SystemModelNotConfiguredError as exc:
-            raise ImageGenerationError(
-                "운영자가 System LLM 설정에서 이미지 모델을 선택해야 합니다."
-            ) from exc
+            raise ImageGenerationError(tr("the_operator_must_select_the_2bd719")) from exc
     api_key = resolved.api_key
     base_url = resolve_image_base_url(resolved)
 
     try:
         ref_b64 = _load_reference_image_base64()
     except FileNotFoundError as exc:  # pragma: no cover
-        raise ImageGenerationError(
-            "Moldy reference image (static/moldy_main.png)를 찾을 수 없습니다."
-        ) from exc
+        raise ImageGenerationError(tr("moldy_reference_image_static_moldy_f7edc8")) from exc
 
     body = {
         "model": resolved.model_name,
@@ -146,13 +143,13 @@ async def generate_agent_image(
             resp.raise_for_status()
     except httpx.HTTPError as exc:
         logger.exception("OpenRouter image API failed")
-        raise ImageGenerationError(f"이미지 API 호출 실패: {exc}") from exc
+        raise ImageGenerationError(tr("image_api_call_failed_v_893b3f", v0=f"{exc}")) from exc
 
     payload = resp.json()
     try:
         message = payload["choices"][0]["message"]
     except (KeyError, IndexError) as exc:
-        raise ImageGenerationError(f"응답 형식 오류: {payload}") from exc
+        raise ImageGenerationError(tr("response_format_error_v_33515d", v0=f"{payload}")) from exc
 
     images = message.get("images")
     content = message.get("content")
@@ -163,7 +160,7 @@ async def generate_agent_image(
         elif content:
             image_bytes = _extract_image_data(content)
         else:
-            raise ImageGenerationError("응답에 이미지 데이터가 없습니다.")
+            raise ImageGenerationError(tr("there_is_no_image_data_23a65e"))
     except RuntimeError as exc:
         raise ImageGenerationError(str(exc)) from exc
 

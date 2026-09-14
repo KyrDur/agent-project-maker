@@ -9,6 +9,7 @@ from langgraph.types import interrupt
 from app.agent_runtime.builder.sub_agents.middleware_recommender import (
     recommend_middlewares,
 )
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.builder_v3.constants import ToolNames
 from app.agent_runtime.builder_v3.nodes._helpers import (
     build_approval_result,
@@ -34,7 +35,7 @@ async def phase4_recommend_middlewares(state: BuilderState) -> dict:
     if not intent_dict:
         return {
             "current_phase": 4,
-            "error_message": "Phase 4 진입 전 intent가 비어 있습니다.",
+            "error_message": tr("phase_the_intent_before_entering_da6fdb"),
         }
 
     intent_obj = AgentCreationIntent(**intent_dict)
@@ -42,7 +43,9 @@ async def phase4_recommend_middlewares(state: BuilderState) -> dict:
 
     if revision:
         merged = AgentCreationIntent(**intent_dict)
-        merged.constraints = list(merged.constraints) + [f"[수정 요청] {revision}"]
+        merged.constraints = list(merged.constraints) + [
+            tr("request_for_modification_v_82d2ec", v0=f"{revision}")
+        ]
         intent_obj = merged
 
     try:
@@ -55,21 +58,21 @@ async def phase4_recommend_middlewares(state: BuilderState) -> dict:
 
     mw_data = [m.model_dump(mode="json") for m in mw_objs]
     summary_text = (
-        f"{len(mw_data)}개의 미들웨어를 추천합니다. 검토 후 승인 또는 수정 요청해주세요."
+        tr("we_recommend_v_middleware_after_f725b4", v0=f"{len(mw_data)}")
         if mw_data
-        else "추천된 미들웨어가 없습니다. 그대로 승인하거나 수정 의견을 주세요."
+        else tr("there_is_no_recommended_middleware_763ee0")
     )
 
     msgs, tool_call_id = make_pending_tool_card(
         ToolNames.RECOMMENDATION_APPROVAL,
         {
             "phase": 4,
-            "title": "미들웨어 추천",
+            "title": tr("middleware_recommendations_b55f76"),
             "items": mw_data,
             "summary": summary_text,
             "item_kind": "middleware",
         },
-        intro_text="이제 미들웨어를 추천받겠습니다.",
+        intro_text=tr("now_i_will_recommend_middleware_588d3f"),
     )
 
     return {
@@ -86,7 +89,7 @@ async def phase4_approval(state: BuilderState) -> dict:
         {
             "type": "approval",
             "phase": 4,
-            "title": "미들웨어 추천 승인",
+            "title": tr("middleware_recommendation_approval_3d5436"),
         }
     )
 
@@ -99,10 +102,7 @@ async def phase4_approval(state: BuilderState) -> dict:
         tool_name=ToolNames.RECOMMENDATION_APPROVAL,
         phase_id=4,
         next_phase=5,
-        completion_message=(
-            "[Phase 4 완료] 미들웨어 추천 승인됨. "
-            "이제 Phase 5: 시스템 프롬프트 작성을 시작하겠습니다."
-        ),
-        revision_default="다른 미들웨어를 추천해주세요",
+        completion_message=(tr("phase_completed_middleware_recommendation_approved_744bda")),
+        revision_default=tr("please_recommend_other_middleware_ac0a8f"),
         clear_field="middlewares",
     )

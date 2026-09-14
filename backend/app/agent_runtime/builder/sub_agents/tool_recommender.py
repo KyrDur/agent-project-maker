@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry, load_prompt
+from app.agent_runtime.builder_i18n import tr
 from app.schemas.builder import AgentCreationIntent, ToolRecommendation
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ def _format_catalog(tools_catalog: list[dict[str, Any]]) -> str:
     prefix 를 붙인다.
     """
     if not tools_catalog:
-        return "(사용 가능한 항목이 없습니다)"
+        return tr("no_items_available_9943cb")
     lines: list[str] = []
     for t in tools_catalog:
         name = t.get("name", "")
@@ -48,32 +49,26 @@ def _build_task_description(
 ) -> str:
     catalog_text = _format_catalog(tools_catalog)
     sections = [
-        "다음 AgentCreationIntent를 분석하여 필요한 항목들을 추천해주세요:",
+        tr("please_analyze_the_following_agentcreationintent_0a656a"),
         "",
         f"## AgentCreationIntent\n{intent.model_dump_json(indent=2)}",
-        f"## 사용 가능한 카탈로그\n{catalog_text}",
+        tr("available_catalogs_v_2b7870", v0=f"{catalog_text}"),
     ]
     if previous_recommendations:
         prev_text = "\n".join(
             f"- [{p.get('kind', 'tool')}] {p.get('tool_name', '')}: {p.get('reason', '')}"
             for p in previous_recommendations
         )
-        sections.append(f"## 직전 추천 (수정 대상)\n{prev_text}")
+        sections.append(
+            tr("previous_recommendation_subject_to_modification_b22780", v0=f"{prev_text}")
+        )
     if revision_message:
         # 수정 메시지는 LLM 추론을 override 하는 절대 지시. 원래 intent 보다
         # 우선하며, 수치/한정 표현 (e.g. "이것만", "X 빼고") 은 정확히 반영.
         sections.append(
-            "## 사용자 수정 요청 (절대 우선)\n"
-            f"{revision_message}\n\n"
-            "위 수정 요청은 원래 intent 보다 절대 우선합니다. "
-            "사용자가 특정 항목명을 명시하면 그 집합을 정확히 따르고, "
-            "보조/지원 도구를 임의 추가하지 않습니다. "
-            "사용자가 \"이것만\", \"~만\", \"X 빼고\" 같은 한정 표현을 쓰면 "
-            "그 의미를 그대로 반영합니다."
+            tr("user_modification_request_absolute_priority_0863f2", v0=f"{revision_message}")
         )
-    sections.append(
-        "응답: tool_name, kind, description, reason 을 포함한 JSON 배열만."
-    )
+    sections.append(tr("answer_only_json_arrays_including_8e9ee6"))
     return "\n\n".join(sections)
 
 
@@ -110,10 +105,7 @@ async def recommend_tools(
         raw_list = await invoke_with_json_retry(
             SYSTEM_PROMPT,
             description,
-            retry_suffix=(
-                "\n\n[시스템] 이전 응답이 유효한 JSON 배열이 아니었습니다. "
-                "반드시 JSON 배열 형식으로만 응답해주세요."
-            ),
+            retry_suffix=(tr("system_the_previous_response_was_3900ee")),
         )
         if not isinstance(raw_list, list):
             raise ValueError("Expected JSON array")

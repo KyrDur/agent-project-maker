@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.agent_runtime.builder_i18n import BuilderLocale
 from app.schemas.conversation import Decision
 
 # ---------------------------------------------------------------------------
@@ -17,6 +18,7 @@ from app.schemas.conversation import Decision
 class AssistantMessageRequest(BaseModel):
     """POST /api/agents/{agent_id}/assistant/message — 메시지 요청."""
 
+    locale: BuilderLocale | None = None
     content: str = Field(..., min_length=1, max_length=4000)
     session_id: str | None = Field(
         default=None,
@@ -26,6 +28,7 @@ class AssistantMessageRequest(BaseModel):
 
 
 class AssistantResumeRequest(BaseModel):
+    locale: BuilderLocale | None = None
     decisions: list[Decision] = Field(..., min_length=1)
     session_id: str | None = None
     display_text: str | None = None

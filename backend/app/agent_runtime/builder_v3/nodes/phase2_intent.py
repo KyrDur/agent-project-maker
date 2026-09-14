@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from langchain_core.messages import HumanMessage
@@ -26,6 +27,7 @@ from langgraph.types import interrupt
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry
 from app.agent_runtime.builder.sub_agents.intent_analyzer import analyze_intent
+from app.agent_runtime.builder_i18n import get_locale, localize, localized_prompt, tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     _extract_text_from_content,
     build_phase_complete,
@@ -42,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 # fallback 라벨 (intent_analyzer.py가 파싱 실패 시 채우는 값)
-_FALLBACK_NAMES = {"Custom Agent", "맞춤 에이전트", ""}
+_FALLBACK_NAMES = {"Custom Agent", "맞춤 에이전트", "自定义智能体", "自定义代理", ""}
 
 _ASK_QUESTION = "만들고 싶은 에이전트의 이름을 무엇으로 하시겠습니까?"
 
@@ -63,28 +65,28 @@ def _build_phase2_ask_user_payload(name_options: list[str]) -> dict[str, Any]:
     cleaned_names = [name for name in name_options if name.strip()]
     return {
         "mode": "question_flow",
-        "title": "에이전트 설정 확인",
+        "title": tr("confirm_agent_settings_ce5874"),
         "questions": [
             {
                 "id": "agent_name",
-                "label": "에이전트 이름",
-                "question": _ASK_QUESTION,
+                "label": tr("agent_name_8b57e7"),
+                "question": localize(_ASK_QUESTION),
                 "type": "single_select",
                 "options": [{"id": name, "label": name} for name in cleaned_names],
                 "required": True,
             },
             {
                 "id": "response_tone",
-                "label": "답변 톤",
+                "label": tr("response_tone_facf54"),
                 "type": "single_select",
-                "options": _TONE_OPTIONS,
+                "options": localize(_TONE_OPTIONS),
                 "required": True,
             },
             {
                 "id": "output_style",
-                "label": "결과 스타일",
+                "label": tr("output_style_e9b8d7"),
                 "type": "single_select",
-                "options": _OUTPUT_STYLE_OPTIONS,
+                "options": localize(_OUTPUT_STYLE_OPTIONS),
                 "required": True,
             },
         ],
@@ -124,9 +126,9 @@ def _phase2_selection_summary(
     output_style: str,
 ) -> str:
     parts = [
-        f"에이전트 이름: {name}" if name else "",
-        f"답변 톤: {response_tone}" if response_tone else "",
-        f"결과 스타일: {output_style}" if output_style else "",
+        tr("agent_name_v_8e0834", v0=f"{name}") if name else "",
+        tr("answer_tone_v_4dd130", v0=f"{response_tone}") if response_tone else "",
+        tr("resulting_style_v_a9715d", v0=f"{output_style}") if output_style else "",
     ]
     return " | ".join(part for part in parts if part)
 
@@ -136,9 +138,9 @@ def _fallback_name_options(state: BuilderState) -> list[str]:
     candidates = [
         str(intent.get("agent_name_ko") or "").strip(),
         str(intent.get("agent_name") or "").strip(),
-        "검색 에이전트",
-        "도우미 봇",
-        "어시스턴트",
+        tr("search_agent_cbfa49"),
+        tr("helper_bot_68e74f"),
+        tr("assistant_d74087"),
     ]
     return [name for name in candidates if name and name not in _FALLBACK_NAMES][:3]
 
@@ -166,38 +168,44 @@ def _build_combined_request(state: BuilderState) -> str:
 
     revision = state.get("last_revision_message")
     if revision:
-        parts.append(f"[수정 요청] {revision}")
+        parts.append(tr("request_for_modification_v_82d2ec", v0=f"{revision}"))
 
     return "\n\n".join(parts) if parts else (initial or "")
 
 
+def _name_matches_locale(name: str, request: str) -> bool:
+    # Explicit foreign names supplied/requested by the user remain valid.
+    return (
+        get_locale() == "ko"
+        or not re.search(r"[가-힯]", name)
+        or name in request
+        or bool(re.search(r"Korean|韩语|韩文|한국어", request, re.IGNORECASE))
+    )
+
+
 async def _suggest_name_options(user_request: str) -> list[str]:
     """LLM에게 에이전트 이름 후보 3개를 생성해달라고 한다."""
-    system = (
-        "당신은 AI 에이전트 네이밍 전문가입니다. "
-        "사용자의 요청을 보고 어울리는 에이전트 이름 3개를 한국어로 제시합니다. "
-        'JSON 배열 형식으로만 응답하세요. 예: ["이름1", "이름2", "이름3"]'
-    )
-    task = (
-        f"사용자 요청: '{user_request}'\n\n"
-        "이 요청에 어울리는 에이전트 이름 후보 3개를 JSON 배열로 제시해주세요. "
-        "각 이름은 5~12자, 한국어, 명사구."
-    )
+    system = tr("you_name_ai_agents_suggest_97611d")
+    task = tr("user_request_v_suggest_three_a2fc9c", v0=f"{user_request}")
     try:
-        result = await invoke_with_json_retry(system, task, max_retries=1)
+        result = await invoke_with_json_retry(localized_prompt(system), task, max_retries=1)
         if isinstance(result, list):
-            cleaned = [str(x).strip() for x in result if str(x).strip()]
+            cleaned = [
+                str(x).strip()
+                for x in result
+                if str(x).strip() and _name_matches_locale(str(x), user_request)
+            ]
             if len(cleaned) >= 2:
                 return cleaned[:3]
     except Exception:
         logger.warning("Name suggestion failed, using fallback options", exc_info=True)
-    return ["검색 에이전트", "도우미 봇", "어시스턴트"]
+    return [tr("search_agent_cbfa49"), tr("helper_bot_68e74f"), tr("assistant_d74087")]
 
 
 def _format_intent_summary(intent: dict[str, Any]) -> str:
     name = intent.get("agent_name_ko") or intent.get("agent_name", "Agent")
     desc = intent.get("agent_description", "")
-    return f"- 에이전트 이름: {name}\n- 설명: {desc}"
+    return tr("agent_name_v_description_v_565ef2", v0=f"{name}", v1=f"{desc}")
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +221,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
     if not (state.get("user_request") or get_last_user_text(state)):
         return {
             "current_phase": 2,
-            "error_message": "사용자 요청이 비어 있습니다.",
+            "error_message": tr("user_request_is_empty_3eb039"),
         }
 
     # 사용자가 이미 이름을 확인한 경우 → 완료 메시지만 emit
@@ -224,9 +232,10 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
         complete_msgs = build_phase_complete(
             2,
             ensure_todos(state),
-            f"좋습니다! 의도 분석이 완료되었습니다.\n\n[Phase 2 완료] 의도 수집\n\n"
-            f"{_format_intent_summary(intent_dict)}\n\n"
-            f"이제 Phase 3: 도구 추천을 시작하겠습니다.",
+            tr(
+                "great_intent_analysis_is_complete_16bc36",
+                v0=f"{_format_intent_summary(intent_dict)}",
+            ),
         )
         return {
             "messages": complete_msgs,
@@ -245,11 +254,16 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
         logger.exception("Intent analysis failed")
         return {
             "current_phase": 2,
-            "error_message": "의도 분석 중 오류가 발생했습니다.",
+            "error_message": tr("an_error_occurred_while_resolving_1678d2"),
         }
 
     suggested = (intent_obj.agent_name_ko or "").strip()
-    if suggested and suggested not in _FALLBACK_NAMES and suggested not in name_options:
+    if (
+        suggested
+        and suggested not in _FALLBACK_NAMES
+        and suggested not in name_options
+        and _name_matches_locale(suggested, combined)
+    ):
         name_options = [suggested] + name_options[:2]
     name_options = name_options[:3]
 
@@ -261,7 +275,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
     msgs, tool_call_id = make_pending_tool_card(
         "ask_user",
         _build_phase2_ask_user_payload(name_options),
-        intro_text="이제 사용자 의도를 분석하겠습니다.",
+        intro_text=tr("now_let_s_analyze_user_c8f8bf"),
     )
 
     return {
@@ -294,7 +308,7 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
 
     # 빈 응답 → intent_confirmed=False로 둠 (analyze 재진입)
     if not answer_text:
-        close_msgs = close_pending_tool_card(pending_tc_id, "ask_user", "(응답 없음)")
+        close_msgs = close_pending_tool_card(pending_tc_id, "ask_user", tr("no_response_c3ac04"))
         return {
             "messages": close_msgs,
             "last_revision_message": None,
@@ -308,13 +322,13 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
         "response_tone",
         structured_answers,
         structured_labels,
-        options=_TONE_OPTIONS,
+        options=localize(_TONE_OPTIONS),
     )
     selected_style = _selected_label(
         "output_style",
         structured_answers,
         structured_labels,
-        options=_OUTPUT_STYLE_OPTIONS,
+        options=localize(_OUTPUT_STYLE_OPTIONS),
     )
     receipt_text = _phase2_selection_summary(
         name=selected_name,

@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry, load_prompt
+from app.agent_runtime.builder_i18n import tr
 from app.schemas.builder import (
     AgentCreationIntent,
     MiddlewareRecommendation,
@@ -29,7 +30,7 @@ SYSTEM_PROMPT = load_prompt("middleware_recommender.md") or _FALLBACK_PROMPT
 
 def _format_catalog(middlewares_catalog: list[dict[str, Any]]) -> str:
     if not middlewares_catalog:
-        return "(사용 가능한 미들웨어가 없습니다)"
+        return tr("no_middleware_available_21dc6a")
     lines: list[str] = []
     for m in middlewares_catalog:
         mtype = m.get("type", "")
@@ -49,15 +50,11 @@ def _build_task_description(
 ) -> str:
     tool_names = [t.tool_name for t in tools]
     catalog_text = _format_catalog(middlewares_catalog)
-    return (
-        "다음 정보를 분석하여 필요한 미들웨어들을 추천해주세요:\n\n"
-        f"AgentCreationIntent:\n{intent.model_dump_json(indent=2)}\n\n"
-        f"추천된 도구들: {json.dumps(tool_names, ensure_ascii=False)}\n\n"
-        f"## 사용 가능한 미들웨어 카탈로그\n{catalog_text}\n\n"
-        "위 카탈로그에서 에이전트의 성능, 보안, 안정성을 고려한 "
-        "미들웨어들을 추천해주세요.\n"
-        "각 미들웨어에 대해 middleware_name, description, reason을 "
-        "포함한 JSON 배열로 반환해주세요."
+    return tr(
+        "please_analyze_the_following_information_8a7b7a",
+        v0=f"{intent.model_dump_json(indent=2)}",
+        v1=f"{json.dumps(tool_names, ensure_ascii=False)}",
+        v2=f"{catalog_text}",
     )
 
 
@@ -75,10 +72,7 @@ async def recommend_middlewares(
         raw_list = await invoke_with_json_retry(
             SYSTEM_PROMPT,
             description,
-            retry_suffix=(
-                "\n\n[시스템] 이전 응답이 유효한 JSON 배열이 아니었습니다. "
-                "반드시 JSON 배열 형식으로만 응답해주세요."
-            ),
+            retry_suffix=(tr("system_the_previous_response_was_3900ee")),
         )
         if not isinstance(raw_list, list):
             raise ValueError("Expected JSON array")

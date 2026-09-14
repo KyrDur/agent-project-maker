@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime.assistant.tools.helpers import get_agent_with_eager_load
+from app.agent_runtime.builder_i18n import tr
 from app.agent_runtime.middleware_registry import MIDDLEWARE_REGISTRY
 from app.database import async_session as async_session_factory
 from app.models.agent import AGENT_RUNTIME_PROFILE_STANDARD, Agent
@@ -62,7 +63,7 @@ def build_read_tools(
         """현재 에이전트의 전체 설정을 조회합니다."""
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         tools_info = [
             {
                 "name": link.tool.name,
@@ -120,7 +121,7 @@ def build_read_tools(
         """현재 에이전트의 모델 설정을 조회합니다."""
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         return json.dumps(
             {
                 "model_name": (
@@ -232,7 +233,7 @@ def build_read_tools(
         # PoC: 도구 타입별 필요 키 반환
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         required: set[str] = set()
         for link in agent.tool_links:
             if "naver" in link.tool.name.lower():
@@ -261,7 +262,7 @@ def build_read_tools(
         """현재 에이전트의 채팅 시작 질문 목록을 조회합니다."""
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         openers = agent.opener_questions or []
         return json.dumps({"chat_openers": openers}, ensure_ascii=False)
 
@@ -271,7 +272,7 @@ def build_read_tools(
         """현재 에이전트의 재귀 한도를 조회합니다."""
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         limit = (agent.model_params or {}).get("recursion_limit", 25)
         return json.dumps({"recursion_limit": limit}, ensure_ascii=False)
 
@@ -290,7 +291,7 @@ def build_read_tools(
         Args:
             file_id: 파일 고유 ID
         """
-        return f"파일 '{file_id}'을(를) 찾을 수 없습니다."
+        return tr("file_v_not_found_62501a", v0=f"{file_id}")
 
     # ------ 14. search_system_prompt ------
 
@@ -302,7 +303,7 @@ def build_read_tools(
         """
         agent = await _get_agent()
         if not agent:
-            return "에이전트를 찾을 수 없습니다."
+            return tr("agent_not_found_1a3985")
         prompt = agent.system_prompt or ""
         matches = []
         for i, line in enumerate(prompt.split("\n"), 1):
@@ -370,7 +371,7 @@ def build_read_tools(
         try:
             sid = uuid.UUID(schedule_id)
         except ValueError:
-            return "유효하지 않은 스케줄 ID입니다."
+            return tr("invalid_schedule_id_22d6bb")
         async with async_session_factory() as session:
             result = await session.execute(
                 select(AgentTrigger).where(
@@ -381,7 +382,7 @@ def build_read_tools(
             )
             t = result.scalar_one_or_none()
             if not t:
-                return "스케줄을 찾을 수 없습니다."
+                return tr("schedule_not_found_0a71df")
             return json.dumps(
                 _serialize_schedule_for_assistant(t),
                 ensure_ascii=False,
@@ -393,81 +394,81 @@ def build_read_tools(
         StructuredTool.from_function(
             coroutine=get_agent_config,
             name="get_agent_config",
-            description="현재 에이전트의 전체 설정 조회 (도구, 미들웨어, 프롬프트, 모델)",
+            description=tr("view_the_current_agent_s_1dae0d"),
         ),
         StructuredTool.from_function(
             coroutine=get_model_config,
             name="get_model_config",
-            description="현재 에이전트의 모델 설정 조회",
+            description=tr("view_model_settings_for_current_687d31"),
         ),
         StructuredTool.from_function(
             coroutine=list_available_tools,
             name="list_available_tools",
-            description="시스템에서 사용 가능한 도구 목록 조회",
+            description=tr("view_the_list_of_tools_3d2b81"),
         ),
         StructuredTool.from_function(
             coroutine=list_available_middlewares,
             name="list_available_middlewares",
-            description="시스템에서 사용 가능한 미들웨어 목록 조회",
+            description=tr("check_the_list_of_middleware_ad2a12"),
         ),
         StructuredTool.from_function(
             coroutine=list_available_subagents,
             name="list_available_subagents",
-            description="서브에이전트로 사용 가능한 에이전트 목록 조회",
+            description=tr("view_the_list_of_agents_9b0d5a"),
         ),
         StructuredTool.from_function(
             coroutine=list_available_skills,
             name="list_available_skills",
-            description="사용 가능한 스킬 목록 조회",
+            description=tr("view_list_of_available_skills_503636"),
         ),
         StructuredTool.from_function(
             coroutine=list_available_models,
             name="list_available_models",
-            description="사용 가능한 LLM 모델 목록 조회",
+            description=tr("view_list_of_available_llm_55c935"),
         ),
         StructuredTool.from_function(
             coroutine=get_agent_required_secrets,
             name="get_agent_required_secrets",
-            description="에이전트에 필요한 API 키 목록 조회",
+            description=tr("query_the_list_of_api_aca24b"),
         ),
         StructuredTool.from_function(
             coroutine=get_user_secrets,
             name="get_user_secrets",
-            description="사용자가 등록한 시크릿(API 키) 목록 조회",
+            description=tr("view_the_list_of_secrets_513559"),
         ),
         StructuredTool.from_function(
             coroutine=get_chat_openers,
             name="get_chat_openers",
-            description="현재 에이전트의 채팅 시작 질문 목록 조회",
+            description=tr("view_list_of_chat_start_57af9e"),
         ),
         StructuredTool.from_function(
             coroutine=get_recursion_limit,
             name="get_recursion_limit",
-            description="현재 에이전트의 재귀 한도 조회",
+            description=tr("query_the_current_agent_s_e600c0"),
         ),
         StructuredTool.from_function(
             coroutine=list_permanent_files,
             name="list_permanent_files",
-            description="에이전트에 업로드된 영구 파일(RAG용) 목록 조회",
+            description=tr("view_list_of_persistent_files_f39ccf"),
         ),
         StructuredTool.from_function(
             coroutine=get_file_content,
             name="get_file_content",
-            description="파일 내용 미리보기",
+            description=tr("preview_file_contents_b26951"),
         ),
         StructuredTool.from_function(
             coroutine=search_system_prompt,
             name="search_system_prompt",
-            description="시스템 프롬프트에서 키워드 검색",
+            description=tr("search_for_keywords_from_the_e48060"),
         ),
         StructuredTool.from_function(
             coroutine=list_cron_schedules,
             name="list_cron_schedules",
-            description="에이전트의 크론 스케줄 목록 조회",
+            description=tr("view_the_agent_s_cron_d4e26d"),
         ),
         StructuredTool.from_function(
             coroutine=get_cron_schedule,
             name="get_cron_schedule",
-            description="특정 크론 스케줄의 상세 정보 조회",
+            description=tr("view_detailed_information_of_a_8d2e23"),
         ),
     ]
