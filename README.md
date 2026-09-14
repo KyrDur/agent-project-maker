@@ -1,743 +1,808 @@
 <div align="center">
 
-<img src="docs/images/moldy-mascot.webp" alt="Moldy mascot" width="160">
+<img src="frontend/public/project-maker.svg" alt="Agent Project Maker" width="120">
 
-# Moldy
+# Agent Project Maker
 
-**A no-code AI agent builder you talk to — FastAPI + LangGraph + deepagents**
+**从「做出一个 Agent」到「证明它真的变好了」**
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)]()
-[![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)]()
-[![React](https://img.shields.io/badge/React-19-61dafb.svg)]()
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)]()
-[![LangGraph](https://img.shields.io/badge/LangGraph-1.0+-purple.svg)]()
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+通过自然语言创建 Agent，并完成评测、Bad Case 分析、自动优化、版本回归、结果报告与作品分享。
 
-[한국어](README_KO.md) · English · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
-
-[Overview](#-overview) · [Quick Answers](#-quick-answers) · [Quick Start](#-quick-start) · [Trust](#-quality-security-and-documentation-signals) · [Features](#-features) · [Architecture](#-architecture)
-
-<!-- project-current-source: migration=m77_side_chat_link; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-10 -->
-
-**Last updated:** September 5, 2026 · **Repository:** [YooSuhwa/natural-mold](https://github.com/YooSuhwa/natural-mold) · **License:** [MIT](LICENSE)
+[在线体验](https://agent.softcue.xyz) · [部署文档](docs/alibaba-2c2g-deployment.md) · [项目设置](docs/agent-project-setup.md) · [MIT License](LICENSE)
 
 </div>
 
 ---
 
-## 🧐 Overview
+## 📌 项目简介
 
-### Agent Project Maker
+Agent Project Maker 是一个面向 **Agent 创建、评测与优化** 的开源项目。
 
-This fork adds an evidence-based project and portfolio workflow around natural-mold's
-existing agents. It helps students and junior professionals explain what they built,
-how they evaluated it, what changed, and which limitations remain.
+很多 Agent Builder 解决的是：
 
-**Workflow:** Build → immutable V1 → Eval Plan → 20-case EvalSet → mock-tool evaluation
-and semantic judge → Bad Cases → bounded optimization → V2/V3 regression → Best Version
-→ Report → Resume → read-only Share → ZIP Export.
+> 怎么把一个 Agent 做出来？
 
-The implementation reuses the FastAPI/SQLAlchemy backend, Next.js project workspace,
-existing builder/runtime and user-owned model credentials. Project snapshots and frozen
-evaluation evidence are stored alongside the Agent. Candidate versions run the same
-benchmark; deterministic assertions and LLM-as-a-Judge metrics remain separate. Up to
-two optimization rounds can apply limited instruction, frozen Skill text or tool-description
-changes. The newest version is not necessarily the best, and no best version is automatically
-deployed to the live Agent.
+Agent Project Maker 更进一步关注：
 
-Reports and resume bullets are deterministic presentations of stored evidence. Public shares
-and ZIP exports omit credentials and raw private source data. Evaluation uses mock external
-tools; controlled demonstrations are **not production or real-provider validation**.
+> 这个 Agent 到底好不好？  
+> 哪里做得不好？  
+> 优化以后真的变好了吗？  
+> 哪个版本才是当前最佳版本？
 
-Use **Node 22, Python 3.12 and PostgreSQL 16**. Follow the existing Docker Compose path or
-the [Agent Project setup guide](docs/agent-project-setup.md). See the
-[reproducible demo](docs/agent-project-demo.md) and [release validation record](docs/agent-project-release.md)
-for exact checks and outstanding Linux/provider validation. Historical Skill packages may
-not be reproducible, optimization workers are not durable across restarts, and the production
-runtime requires a supported Linux environment. The ZIP is a portfolio artifact, not a
-deployment package.
+因此，项目在传统 Agent Builder 的基础上增加了一套完整的 Agent 生命周期：
 
-Upstream: [YooSuhwa/natural-mold](https://github.com/YooSuhwa/natural-mold).
-The original [MIT license](LICENSE) and Moldy contributors' attribution are preserved.
+```text
+创建 Agent
+    ↓
+生成不可变 V1 快照
+    ↓
+Eval Plan
+    ↓
+20-case EvalSet
+    ↓
+执行评测
+    ↓
+Bad Case 分析
+    ↓
+Optimize
+    ↓
+V2 / V3
+    ↓
+使用同一套测试集 Regression
+    ↓
+选择 Best Version
+    ↓
+Report / Resume / Share / Export
+```
 
-**Moldy** is a no-code AI agent builder you configure by *talking* instead of
-filling in forms. Describe what you want in natural language and a meta-agent
-assembles the tools, skills, and triggers for you. You can then chat with the
-resulting agent or schedule it to run on its own.
+核心目标是：
 
-### What Is Moldy?
+> **让 Agent 的改进从「感觉更好了」，变成「有评测证据证明它更好了」。**
 
-Moldy is an open-source, self-hostable AI agent builder for creating, configuring,
-chatting with, and scheduling AI agents from a web UI. The project combines a
-Next.js 16 + React 19 frontend, a FastAPI backend, PostgreSQL 16, LangGraph 1.x,
-and the `deepagents` `create_deep_agent` runtime. Moldy is built for multi-user
-operation: ADR-016 added JWT auth, HttpOnly cookies, CSRF double-submit
-protection, refresh-token rotation, and a `super_user` role for system resources.
-The monorepo includes chat streaming, message branching, credential management,
-MCP server integration, skill packages, marketplace installation, scheduled
-triggers, and usage tracking.
+当前项目仍处于 **Beta / 持续开发阶段**。
 
-### Project Facts
+---
 
-| Fact | Current README State |
+## ✨ 核心能力
+
+### 1. 通过对话创建 Agent
+
+用户可以直接用自然语言描述自己想做什么。
+
+例如：
+
+> 我想做一个每周自动整理工作内容并生成周报的 Agent。
+
+Conversational Builder 会逐步理解用户意图，并协助完成 Agent 的配置，包括：
+
+- Prompt
+- Model
+- Tool
+- Skill
+- MCP
+- Credential
+- 运行配置
+
+用户不需要从一大堆技术参数开始搭建。
+
+> Builder 属于平台级能力，需要管理员先配置 System LLM 才能正常调用模型。
+
+---
+
+### 2. Agent Project
+
+每个 Agent 都可以进入一个独立 Project。
+
+Project 用来保存这个 Agent 从初始版本到最终版本的完整演进过程，包括：
+
+- V1 / V2 / V3
+- Eval Plan
+- EvalSet
+- Evaluation Runs
+- Bad Cases
+- Optimization
+- Regression
+- Best Version
+- Report
+- Resume
+- Share
+- Export
+
+可以把两者理解为：
+
+> **Agent 是执行体，Project 是它的实验记录和成长档案。**
+
+---
+
+### 3. Eval：结构化评测
+
+Agent Project Maker 可以围绕一个 Project 建立固定评测集。
+
+当前项目评测流程使用 **20 个测试 Case**，覆盖多类场景，例如：
+
+- 正常请求
+- 信息缺失
+- 模糊请求
+- Tool Failure
+- Edge Case
+- Hallucination 风险
+
+评测结果区分两类指标。
+
+#### Deterministic Assertions
+
+适合可以确定性判断的结果，例如：
+
+- 是否调用了正确 Tool
+- 是否输出必需字段
+- 是否违反固定规则
+- 是否完成目标动作
+
+#### LLM-as-a-Judge
+
+适合评价难以通过规则直接判断的生成质量，例如：
+
+- Relevance
+- Accuracy
+- Completeness
+- Helpfulness
+
+两类指标分别保存，避免把主观 Judge 分数伪装成确定性结果。
+
+---
+
+## 🧠 Bad Case Analysis
+
+评测完成后，系统不会只给一个总分。
+
+它会继续分析失败 Case，并尝试定位问题发生在哪一层：
+
+```text
+Case Failed
+    ↓
+为什么失败？
+    ↓
+Prompt？
+Skill？
+Tool Description？
+任务理解？
+知识不足？
+    ↓
+Root Cause
+```
+
+这样优化的对象不再只是模糊的“模型能力”，而是尽可能定位到 Agent 的具体配置问题。
+
+---
+
+## 🚀 Optimizer
+
+Optimizer 是 Agent Project Maker 最核心的能力之一。
+
+系统会根据 Bad Case 提出 **受约束的最小修改方案**，并生成新的不可变版本。
+
+例如：
+
+```text
+V1
+15 / 20
+75%
+
+↓ Optimize
+
+V2
+18 / 20
+90%
+
+→ Accepted
+→ Best Version
+
+↓ Optimize
+
+V3
+17 / 20
+85%
+
+→ Rejected
+```
+
+这里最重要的一点是：
+
+> **最新版本不一定是最好版本。**
+
+每一个 Candidate Version 都必须重新运行 **同一套冻结 EvalSet**。
+
+因此系统真正判断的是：
+
+```text
+修改以后
+到底是变好了
+还是变差了
+```
+
+而不是让 AI 自己说一句“我已经帮你优化完成”。
+
+---
+
+## 🔁 Version & Regression
+
+每轮优化都会生成新的不可变版本：
+
+```text
+V1 → V2 → V3
+```
+
+每个版本保留相应的：
+
+- Agent 配置快照
+- 评测结果
+- Score
+- Bad Cases
+- 修改内容
+- Regression 结果
+
+最终根据回归结果确定：
+
+```text
+Best Version
+```
+
+而不是默认使用最新版本。
+
+这使 Agent 的优化过程更接近真实的软件工程：
+
+> **修改 → 测试 → Regression → 接受 / 拒绝**
+
+Best Version 的选择也不会自动覆盖线上 Agent，避免未经确认的版本直接进入运行环境。
+
+---
+
+## 📊 Project Report
+
+系统可以把整个 Agent Project 整理为项目报告。
+
+报告基于已保存的项目证据生成，包括：
+
+- Agent 要解决什么问题
+- V1 如何设计
+- EvalSet 测了什么
+- 初始表现如何
+- 出现了哪些 Bad Cases
+- 做了哪些优化
+- V2 / V3 表现如何
+- 哪个版本最终胜出
+- 当前仍有哪些限制
+
+例如：
+
+```text
+V1
+75%
+
+主要问题：
+- Tool selection 不稳定
+- 缺少信息时直接猜测
+
+Optimization：
+- 补充工具选择规则
+- 增加 missing information guard
+
+V2
+90%
+
+Regression：
++15%
+
+Best Version：
+V2
+```
+
+因此 Report 既可以用于项目复盘，也可以作为作品集材料。
+
+---
+
+## 💼 Resume
+
+系统可以根据 Project 中已有的评测证据生成不同方向的简历描述，例如：
+
+- AI Product
+- Product Manager
+- Engineering
+
+Resume Bullet 只应使用 Project 中已经存在的数据和实验结果，例如：
+
+- Eval 数量
+- Score
+- Improvement
+- Version
+- Bad Case
+- 优化结果
+
+避免凭空生成不存在的项目指标。
+
+---
+
+## 🔗 Share
+
+Project 可以生成只读分享链接，适合用于：
+
+- 作品集
+- 面试展示
+- 项目 Demo
+- 分享实验结果
+
+公开页面只展示允许公开的项目成果，不应包含：
+
+- API Key
+- Credential
+- 私有原始数据
+- 内部敏感配置
+
+分享链接可以被撤销。
+
+---
+
+## 📦 Export
+
+Project 可以导出为 ZIP，用于：
+
+- 项目存档
+- Portfolio
+- 实验记录
+- 离线查看
+
+需要注意：
+
+> **Export ZIP 是项目成果包，不是生产部署包。**
+
+---
+
+# 🧩 Agent 的组成
+
+Agent Project Maker 沿用了 natural-mold 已经成熟的 Agent 基础设施。
+
+一个 Agent 可以简单理解为：
+
+```text
+Agent
+├── Model
+├── Prompt
+├── Tool
+├── Skill
+├── MCP
+└── Credential
+```
+
+### Model
+
+Agent 使用的大语言模型，例如：
+
+- OpenAI
+- Anthropic
+- OpenRouter
+- OpenAI-compatible Provider
+
+可以把 Model 理解成 Agent 的：
+
+> **大脑**
+
+### Tool
+
+Agent 可以真正执行的能力，例如：
+
+- 搜索
+- 调用 API
+- 获取外部数据
+- 操作服务
+- 读取资源
+
+可以把 Tool 理解成：
+
+> **手**
+
+### Skill
+
+Skill 描述的是：
+
+> 遇到某一类任务时应该怎么做。
+
+它通常是一套方法、规则和工作流程。
+
+例如一个“研发周报 Skill”：
+
+```text
+1. 获取本周 merged PR
+2. 按项目分类
+3. 提取主要改动
+4. 找出未解决风险
+5. 按固定模板生成周报
+```
+
+因此：
+
+> **Tool 决定能做什么，Skill 决定应该怎么做。**
+
+### MCP
+
+MCP 用于标准化地连接外部工具与服务。
+
+可以把它理解为：
+
+> **Agent 与外部能力之间的标准接口。**
+
+### Credential
+
+Credential 保存 Agent 调用外部服务所需要的认证信息，例如：
+
+- API Key
+- Token
+- OAuth 凭证
+
+Credential 与用户作用域隔离，并以加密形式保存。
+
+---
+
+# 🧠 System LLM 与用户模型
+
+Agent Project Maker 区分两类模型调用。
+
+### System LLM
+
+用于平台自身能力，例如：
+
+```text
+Builder
+Assistant
+Image Generation
+```
+
+由平台管理员统一配置。
+
+当前系统提供三个 System LLM Slot：
+
+```text
+text_primary
+text_fallback
+image
+```
+
+### User Model / BYOK
+
+用户真正运行自己创建的 Agent 时，可以绑定自己的：
+
+```text
+Model + Credential
+```
+
+因此架构上可以实现：
+
+```text
+平台帮助用户造 Agent
+→ 平台 System LLM
+
+用户运行自己的 Agent
+→ 用户自己的 BYOK
+```
+
+平台内部模型配置与用户 Agent 的模型配置彼此分离。
+
+---
+
+# 🏗 技术架构
+
+```text
+Browser
+   │
+   ▼
+Next.js 16 + React 19
+   │
+   ▼
+FastAPI
+   │
+   ├── Auth
+   ├── Agent Builder
+   ├── Agent Runtime
+   ├── Agent Project
+   ├── Eval
+   ├── Optimizer
+   ├── Report
+   ├── Tools / Skills / MCP
+   │
+   ▼
+PostgreSQL 16
+   │
+   ▼
+LangGraph + deepagents
+   │
+   ▼
+LLM / External Tools
+```
+
+主要技术栈：
+
+| 层 | 技术 |
 |---|---|
-| Project type | Open-source web application and monorepo |
-| Primary use case | No-code AI agent creation, chat, scheduling, and tool/skill orchestration |
-| Backend | FastAPI 0.115+, SQLAlchemy 2.0 async, Alembic, Python 3.12 |
-| Frontend | Next.js 16, React 19, TailwindCSS v4, shadcn/ui |
-| AI runtime | LangGraph 1.x + `deepagents` 0.7.11 via `create_deep_agent` |
-| Runtime policy | Agent policy is mutable for new conversations; each existing conversation keeps an immutable effective-policy snapshot |
-| Database | PostgreSQL 16, Alembic head `m77_side_chat_link` |
-| Authentication | JWT HS256, HttpOnly cookies, CSRF double-submit, refresh-token rotation, `super_user` |
-| License | MIT |
+| Frontend | Next.js 16 / React 19 |
+| UI | TailwindCSS / shadcn/ui |
+| Backend | FastAPI |
+| ORM | SQLAlchemy 2 |
+| Migration | Alembic |
+| Agent Runtime | LangGraph / deepagents |
+| Database | PostgreSQL 16 |
+| Language | Python 3.12 / TypeScript |
+| Deployment | Docker / Docker Compose / Nginx |
 
-### What's different
+---
 
-- **Conversational builder** — A meta-agent interviews you about your intent,
-  proposes build options step by step, and only commits to creating the agent
-  once you agree. **Describe requirements** instead of filling out a long form.
-- **Unified tool / skill / MCP catalog** — Manage prebuilt tools (web search,
-  scraper, Gmail, Calendar, ...), registry-backed **MCP servers** (stdio / SSE /
-  Streamable HTTP), and user-defined **Skills** (a `SKILL.md` plus auxiliary
-  files) from a single UI.
-- **Branching conversations** — Built on the LangGraph checkpointer so editing
-  a user message or regenerating an assistant reply forks a new branch.
-  `<N/M>` arrows let you flip between sibling responses.
-- **Human-in-the-Loop** — Tool-call approvals, user-input prompts, and
-  clarifying-question interrupts come with a **countdown timer + auto-extend**
-  UX that promotes urgency without forcing you to babysit the agent.
-- **No-code triggers** — Cron / interval schedules run agents at chosen times
-  and pipe the result to a notification channel (Google Chat webhook, etc.).
-- **Public share links** — One click turns a conversation into a read-only
-  link anyone can open without signing in to follow the agent's reasoning.
+# 🚀 本地运行
 
-## ❓ Quick Answers
+## 环境要求
 
-### What Does Moldy Do?
+建议使用：
 
-Moldy turns natural-language requirements into runnable AI agents. A user can
-describe a workflow, let the conversational builder propose an agent
-configuration, attach tools, skills, MCP tools, and credentials, then run that
-agent in chat or through cron/interval triggers. The app supports branchable
-conversations, SSE streaming, tool-call approval flows, public read-only share
-links, and per-user credential isolation.
+```text
+Python 3.12
+Node.js 22
+pnpm
+uv
+Docker
+PostgreSQL 16
+```
 
-### Who Is Moldy For?
-
-Moldy is for developers, operators, and internal-tool teams that want a local or
-self-hosted agent builder rather than a fully managed SaaS-only workflow. The
-README assumes the reader can run PostgreSQL, Python 3.12, Node 22, `uv`, and
-`pnpm`, while the product UI is designed so non-coding users can assemble agents
-through guided setup, credentials, tools, skills, and schedules.
-
-### How Does Moldy Handle Credentials and System Access?
-
-Moldy separates operator-managed system resources from per-user resources.
-System credentials and System LLM settings are managed by `super_user` accounts,
-while ordinary users register personal credentials at `/credentials`. Credential
-payloads are encrypted with Cipher V2, using HKDF-SHA256 and AES-256-GCM, and
-runtime access is mediated through explicit tool, model, MCP, and skill bindings.
-
-### What Claims Can Be Verified in This Repository?
-
-Moldy's architecture and security claims are backed by repository-local evidence.
-Architecture decisions live in [`docs/design-docs/`](docs/design-docs/), the
-high-level system map lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-security reporting and deployer hardening live in [`SECURITY.md`](SECURITY.md),
-and repeatable verification commands are listed in this README. The backend and
-frontend also include test suites that are exercised by the documented commands
-and the pre-push hook.
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- [uv](https://docs.astral.sh/uv/) — Python package manager; also provisions Python 3.12 for the backend
-- [Node.js 22](https://nodejs.org/) + [pnpm](https://pnpm.io/) — frontend runtime + package manager
-- [Docker](https://www.docker.com/) — for the PostgreSQL 16 container
-- An LLM API key — one of OpenAI / Anthropic / OpenRouter / OpenAI-compatible (e.g. LiteLLM). No need to put it in ENV; **register it in the UI after boot** (ADR-013)
-
-### Local development
+## 1. 启动 PostgreSQL
 
 ```bash
-# 1. Start PostgreSQL
-docker compose up postgres -d         # localhost:5432, moldy:moldy/moldy
+docker compose up postgres -d
+```
 
-# 2. Backend (uv downloads Python 3.12 automatically)
+## 2. 启动 Backend
+
+```bash
 cd backend
-cp .env.example .env                  # set ENCRYPTION_KEYS / JWT_SECRET (LLM keys via UI)
-uv sync                               # install dependencies (+ Python 3.12 if missing)
-uv run alembic upgrade head           # run migrations (head: m77_side_chat_link)
-uv run uvicorn app.main:app --reload --reload-dir app --port 8001
-# → http://localhost:8001/docs (Swagger UI)
 
-# 3. Frontend (new terminal, Node 22)
+cp .env.example .env
+
+uv sync
+uv run alembic upgrade head
+
+uv run uvicorn app.main:app \
+  --reload \
+  --reload-dir app \
+  --port 8001
+```
+
+Backend：
+
+```text
+http://localhost:8001
+```
+
+Swagger：
+
+```text
+http://localhost:8001/docs
+```
+
+## 3. 启动 Frontend
+
+新开一个 Terminal：
+
+```bash
 cd frontend
-cp .env.example .env.local            # NEXT_PUBLIC_API_BASE_URL / E2E account defaults
+
+cp .env.example .env.local
+
 pnpm install
 pnpm dev
-# → http://localhost:3000
 ```
 
-The first run seeds default models (GPT-5.5, Claude Sonnet 4.6, Gemini, ...),
-system tools, agent templates, and the local Playwright E2E account. However,
-**operator setup below is required before you can build and use agents**.
+Frontend：
 
-### Post-boot setup (operator)
-
-LLM keys are registered in the UI (not ENV), and system features (builder,
-assistant, image generation) require the operator to pick which models to use
-(ADR-013/016/019).
-
-1. **First account = operator** — Sign up at http://localhost:3000. The first
-   user is auto-promoted to `super_user` (ADR-016, `ALLOW_FIRST_USER_AS_ADMIN=true`;
-   turn it off after the operator account exists in production).
-2. **Register LLM credentials** — At `/settings/system-credentials`, add OpenAI ·
-   Anthropic · OpenRouter · OpenAI-compatible (e.g. LiteLLM) keys.
-3. **Pick System LLM models (ADR-019, required)** — At `/settings/system-llm`,
-   choose a model for each of the `text_primary` · `text_fallback` · `image`
-   slots (select credential → "Load models" → pick a model). **Until this is
-   configured, the builder, assistant, and image generation will not work**
-   (explicit error, no silent failure).
-4. **Wire models for agents** — At `/models`, attach a credential to the models
-   your agents will use, or auto-register them via discovery.
-
-Then build agents through the conversational builder (`/agents`) and chat. Regular
-users register their own keys at `/credentials`.
-
-### Worktree dev port / CORS rules
-
-When working in a git worktree, run `bash scripts/worktree-setup.sh` first so that
-`backend/.env` and `backend/data` point at the main checkout via symlinks. Sharing
-the same PostgreSQL, `ENCRYPTION_KEYS`, and `JWT_SECRET` keeps existing credential
-decryption and login sessions from breaking.
-
-The backend/frontend dev servers must keep **frontend port, backend port, CORS
-origin, and `NEXT_PUBLIC_API_BASE_URL` as one matched set**. Recommended default:
-
-```bash
-# backend
-cd backend
-uv run uvicorn app.main:app --reload --reload-dir app --port 8001
-
-# frontend
-cd frontend
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 pnpm dev -- --port 3000
+```text
+http://localhost:3000
 ```
-
-To run several worktrees at once, pin the port pairs explicitly:
-
-```bash
-# backend (:8010)
-cd backend
-CORS_ALLOWED_ORIGINS=http://localhost:3010,http://127.0.0.1:3010 \
-  uv run uvicorn app.main:app --reload --reload-dir app --port 8010
-
-# frontend (:3010)
-cd frontend
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8010 pnpm dev -- --port 3010
-```
-
-Always fix the port with `pnpm dev -- --port <port>` — if Next.js picks a random
-port on conflict, CORS / cookies / CSRF can drift. Attaching multiple backends to
-the same DB can double-run APScheduler/trigger jobs, so be careful with long
-concurrent sessions.
-
-### Run everything with Docker Compose
-
-Compose reads secrets from `backend/.env`, runs `alembic upgrade head` inside the
-backend container before it serves, and persists `data/` in a named volume.
-
-```bash
-cp backend/.env.example backend/.env  # set ENCRYPTION_KEYS / JWT_SECRET
-docker compose up -d                  # postgres + backend (migrate → serve) + frontend
-# Then follow "Post-boot setup" above for operator onboarding.
-```
-
-Deploying to a remote host (not localhost)? `NEXT_PUBLIC_API_BASE_URL` is inlined
-into the frontend bundle at build time, so set it before the build and allow the
-new origin in CORS:
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=https://api.example.com \
-CORS_ALLOWED_ORIGINS=https://app.example.com \
-  docker compose up -d --build
-```
-
-### Verification commands
-
-```bash
-# Backend
-(
-  cd backend
-  uv run ruff check .                 # lint (Ruff 0.16.5)
-  uv run pytest                       # unit tests (aiosqlite, no Postgres needed)
-)
-manifest=".omo/evidence/project-restart-consolidated-roadmap/local-postgres-$(date +%s).json"
-bash scripts/run-isolated-postgres-tests.sh all --manifest "$manifest"
-(cd backend && uv run python ../scripts/check-isolation-cleanup.py \
-  "../$manifest") # disposable PostgreSQL lane
-(cd backend && uv run python ../scripts/check-isolation-cleanup.py \
-  --discover ../.omo/evidence/project-restart-consolidated-roadmap) # all known test residue
-
-# Frontend
-cd frontend
-pnpm lint                             # ESLint
-pnpm exec tsc --noEmit                # type check
-pnpm test --run                       # vitest (jsdom)
-pnpm build                            # production build
-pnpm test:e2e                         # Playwright E2E
-```
-
-## ✅ Quality, Security, and Documentation Signals
-
-Moldy documents its technical decisions and operational risks inside the
-repository, so readers can verify the README's claims without relying on
-unsupported positioning copy. The strongest trust signals are the ADR record,
-the explicit security policy, the reproducible test commands, and the local
-operator setup instructions. For E-E-A-T, this README exposes implementation
-experience through setup details, expertise through architecture and ADR links,
-authoritativeness through repository evidence, and trust through security and
-verification workflows.
-
-| Signal | Evidence | Why It Matters |
-|---|---|---|
-| Architecture decisions | [`docs/design-docs/`](docs/design-docs/) includes ADR-016 for multi-user auth and ADR-019 for System LLM settings | Shows when and why major runtime, auth, credential, and UI decisions were made |
-| System architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) maps the Next.js frontend, FastAPI backend, PostgreSQL data layer, and LangGraph/deepagents runtime | Gives reviewers a traceable design reference beyond the README |
-| Security process | [`SECURITY.md`](SECURITY.md) documents private vulnerability reporting, response targets, and deployer hardening checks | Makes security reporting and production responsibilities explicit |
-| Verification workflow | This README lists backend lint/tests, frontend lint/typecheck/tests/build, integration tests, and Playwright E2E commands | Lets maintainers and adopters reproduce the validation path |
-| Operational setup | The Quick Start separates local dev, worktree CORS rules, Docker Compose, E2E seed auth, System LLM setup, and MCP registry setup | Reduces ambiguity for self-hosted or multi-worktree development |
-
-### Playwright E2E auth
-
-E2E does not log in through the form per test. Instead, Playwright's global setup
-performs one API login, then injects the resulting `storageState` into every
-browser context. `backend/.env.example` ships `E2E_SEED_USER_ENABLED=true` for
-local dev, so the backend creates/refreshes the dummy super_user below on startup.
-This seed is skipped automatically when `APP_ENV=production`.
-
-```bash
-E2E_USER_EMAIL=playwright-e2e@moldy.dev
-E2E_USER_PASSWORD=correct horse battery staple 42
-E2E_USER_NAME=E2E User
-```
-
-The frontend env file uses the same dedicated test account:
-
-```bash
-cd frontend
-cp .env.example .env.local
-# adjust E2E_USER_EMAIL / E2E_USER_PASSWORD if needed
-pnpm test:e2e
-```
-
-The recommended flow is `login → register fallback → login → save to
-e2e/.auth/user.json`. `frontend/e2e/.auth/` is generated output and is not
-committed. E2E setup code that creates/updates via the API must pass the login
-response's `csrf_token` as an `X-CSRF-Token` header.
-
-> **Pre-push hook**: `git push` triggers `.husky/pre-push`, which runs backend
-> pytest + frontend vitest. Failing tests block the push so regressions cannot
-> reach the remote. Bypass with `git push --no-verify` for WIP branches only.
-
-### Tavily + Deep Research
-
-The Tavily hosted search tool (`tavily_search`) is wired to the Deep Research
-marketplace skill. Set `TAVILY_API_KEY` in the backend `.env` and the Deep
-Research skill **auto-injects `tavily_search` as a runtime tool dependency**, so
-it runs citation-backed multi-step web research without the user attaching any
-tool manually. (Design background:
-`docs/superpowers/plans/2026-05-31-deep-research-tavily.md`)
-
-### MCP Registry and MCP Secret
-
-At `/mcp-servers` -> **New MCP Server**, choose a registry preset to pre-fill
-transport, URL, and stdio command/env templates, then run a **tool probe**
-before saving to see what the server actually exposes. Current presets include
-GitHub, Linear, Atlassian Jira, Slack, Notion, and local first-party MCP servers
-(Hancom Groupware, Hancom Mile Meeting, Hancom Org Chart, Maepsi).
-
-For first-party MCP presets that require auth, create an `MCP Secret` credential
-at `/credentials`, then attach it in the wizard's **Auth** tab. Moldy forwards
-the `secret` value as the `X-Moldy-Credential` header during connection and
-runtime execution. For manually registered MCP servers, headers and stdio env
-vars can interpolate the attached credential with `{{ $credentials.<field> }}`.
-
-Local first-party MCP presets default to the `localhost:18001`-`18004` range.
-Those servers are not included in `docker compose up`, so start the MCP server
-process separately before probing those presets.
-
-## 📸 Screenshots
-
-> Coming soon. Screen wireframes are documented in `docs/PRD-screens.md`.
-
-## ✨ Features
-
-<details>
-<summary><b>🤖 Agent system</b></summary>
-
-- **deepagents engine** — `create_deep_agent` over a compiled LangGraph that
-  manages the message tree, branches, and checkpoints
-- **Conversational builder** — Meta-agent interviews requirements and proposes
-  build options (`agent_runtime/builder_v3/`)
-- **Agent templates** — Pre-built agents you can spawn instantly
-- **Sub-agents** — Multi-level delegation (an agent invokes another agent as a tool)
-- **Middleware system** — 22 middlewares across context engineering, planning,
-  safety, reliability, and provider-specific categories
-- **Model fallback chain** — Up to 5 fallback models if the primary call fails
-
-</details>
-
-<details>
-<summary><b>💬 Chat + branching</b></summary>
-
-- **SSE streaming** — Token-level live output with tool-call visualization;
-  plain code-block rendering while streaming + O(1) SSE queue keep long replies fast
-- **IME-safe composer** — Korean and other composition-based input stays intact
-  across Enter, edit, and regenerate flows while composer state syncs safely
-- **LangGraph fork** — Editing a user message or regenerating an assistant turn
-  forks a new branch; checkpoint IDs power "time travel"
-- **BranchPicker** — `<N/M>` arrows compare sibling responses (assistant-ui integration)
-- **HITL countdown** — Timer + auto-extend + urgent-state styling for tool
-  approvals, user-input requests, and clarifying questions
-- **Message actions** — Copy, edit, regenerate, thumb feedback, delete, search
-- **Markdown surface** — Mermaid diagrams, KaTeX math, code blocks, image lightbox
-- **Attachments** — Inline image / document uploads embedded into messages
-- **Public share links** — Read-only `/shared/{token}` page; soft-deleting the
-  link invalidates it instantly
-
-</details>
-
-<details>
-<summary><b>🛠️ Tools · Skills · MCP</b></summary>
-
-- **Built-in tool catalog** — DuckDuckGo, web scraper, current time, relative-date
-  resolver (`resolve_relative_date`), Tavily search, Naver search (5), Google CSE (3),
-  Gmail send, Google Calendar, Google Chat webhook, HTTP request
-- **MCP integration** — Register stdio + SSE + Streamable HTTP servers via
-  `langchain-mcp-adapters`, with import / export and health-check polling
-- **MCP registry presets** — Pick GitHub / Linear / Jira / Slack / Notion /
-  Hancom / Maepsi servers in the `/mcp-servers` wizard and probe tools before saving
-- **MCP Secret credential** — Automatically forwards a per-user secret to
-  first-party MCP servers via the `X-Moldy-Credential` header
-- **Skill system** — `SKILL.md` (YAML frontmatter) plus auxiliary files; inline
-  multi-file editor; create skills from scratch, upload, or import
-- **Skill runtime dependencies** — Tools a skill declares are auto-injected at
-  agent runtime (e.g. Deep Research → Tavily); no manual tool attachment needed
-- **Custom tools** — Define tool parameters with Pydantic schemas
-
-</details>
-
-<details>
-<summary><b>🔐 Credentials · model management</b></summary>
-
-- **Cipher V2 encryption** — HKDF-SHA256 + AES-256-GCM single-blob Base64
-- **Vault integration** — `hvac`-based external secrets
-- **System / user split** — Operator-managed credentials vs. per-user keys
-- **MCP Secret** — Per-user secret credential for local first-party MCP servers
-- **Korean service integrations (8 types)** — SRT · KTX · Forest Trip · KIPRIS · DART · ODsay · Coupang Partners · K-Skill Proxy
-- **Model discovery** — Probe LLM APIs through a credential to auto-pull the
-  available model list, pricing, and context window
-- **Model health checks** — Periodic probes monitor reachability
-- **Benchmark rankings** — Surface LMArena, LiveBench, AAIndex scores
-
-</details>
-
-<details>
-<summary><b>⏰ Triggers · usage · observability</b></summary>
-
-- **Schedule triggers** — APScheduler-backed cron / interval, per-agent input
-  message, Google Chat webhook notifications
-- **Schedule guardrails** — Max run count (`max_runs`), end time (`end_at`),
-  auto-pause after consecutive failures (`auto_pause_after_failures`)
-- **Conversation policy** — Each trigger can start a fresh conversation or reuse a target one
-- **Run history** — `agent_trigger_runs` records per-run source / output preview /
-  duration / thread · checkpoint · trace IDs
-- **Token usage tracking** — Per-agent / per-model / daily token + estimated cost
-- **Daily spend** — Roll-ups by user / agent / model
-- **Tracing** — LangSmith auto-forwarding + Langfuse external traces
-  (provider / id / url recorded on `message_events`)
-
-</details>
-
-<details>
-<summary><b>🎨 Frontend</b></summary>
-
-- **Next.js 16 + React 19** — App Router, Server Components first
-- **TailwindCSS v4 + shadcn/ui** — Token-based design (`--primary-strong` emerald),
-  per ADR-010
-- **DialogShell pattern** — Every dialog uses size tokens (`md`/`lg`/`xl`/`console`);
-  `srOnly` header prop for lightbox-style dialogs
-- **TanStack Query** — Server state with caching + invalidation
-- **Jotai** — Client state (sidebar, right rail, etc.)
-- **assistant-ui** — Chat message tree, BranchPicker, ActionBar
-- **i18n** — Powered by next-intl, Korean as the default locale
-- **Responsive** — Mobile sidebar uses Sheet; desktop uses SidebarProvider
-
-</details>
-
-<details>
-<summary><b>🛒 Marketplace</b></summary>
-
-- **Catalog** — Publish Agents, MCP servers, and Skills to a shared marketplace; install with one click
-- **Publish / install separation** — Installing creates an independent copy in your account, decoupled from the original
-- **Version snapshots** — `marketplace_versions` stores an immutable history of every published version
-- **Credential binding** — Map skill-required credentials to your own keys at install time
-- **Tool dependency surfacing** — The install wizard shows tools a skill needs
-  (e.g. Tavily) and auto-injects them at runtime
-- **Moderation** — super_user reviews submissions at `/settings/marketplace-admin`
-
-</details>
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend (Next.js)                      │
-│  app/ (routes) → components/ (UI) → lib/api,hooks,stores        │
-│  ↓ fetch + SSE (EventSource)                                   │
-└─────────────────────────────────────────────────────────────────┘
-                                 ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                       Backend (FastAPI)                         │
-│  routers/ → services/ → models/ (SQLAlchemy 2.0 async)         │
-│                                                                 │
-│  agent_runtime/                                                 │
-│    ├ builder_v3/ (conversational meta builder — latest)         │
-│    ├ executor.py (compat facade)                                │
-│    ├ runtime_component_builder.py (models/tools/skills/memory)  │
-│    ├ agent_stream_runner.py (stream/invoke execution)           │
-│    ├ streaming.py (LangGraph events → SSE + traces + artifacts) │
-│    ├ mcp_tool_loader.py / skill_executor.py                     │
-│    └ trigger_executor.py (schedule → invoke)                    │
-│                                                                 │
-│  scheduler.py — APScheduler singleton                           │
-└─────────────────────────────────────────────────────────────────┘
-                  ↓                              ↓
-       PostgreSQL (models / chats / tools)  LangGraph PostgresSaver
-                                            (checkpoints = message tree)
-```
-
-### Three-tier backend
-
-- **Router** (`app/routers/`) — HTTP endpoints, request / response shaping
-- **Service** (`app/services/`) — Business logic, DB queries, transactions
-- **Model** (`app/models/`) — SQLAlchemy ORM
-
-### Frontend pattern
-
-- API client (`lib/api/`) → TanStack Query hooks (`lib/hooks/`) → components
-- Chat SSE flows through an EventSource wrapper in `lib/sse/`
-- Design tokens live in `lib/design-tokens.ts` + `app/globals.css` (oklch-based)
-
-See [`CLAUDE.md`](CLAUDE.md) for the developer handbook with deeper conventions.
-
-## 📁 Project structure
-
-```
-natural-mold/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app factory + lifespan
-│   │   ├── config.py            # pydantic-settings (.env)
-│   │   ├── database.py          # async engine + session
-│   │   ├── dependencies.py      # get_db, get_current_user, require_super_user, verify_csrf
-│   │   ├── scheduler.py         # APScheduler singleton
-│   │   ├── models/              # SQLAlchemy ORM
-│   │   ├── schemas/             # Pydantic schemas
-│   │   ├── routers/             # HTTP routers
-│   │   ├── services/            # business logic
-│   │   ├── credentials/         # Cipher V2 + domain
-│   │   ├── agent_runtime/       # AI execution engine
-│   │   └── seed/                # seed data
-│   ├── alembic/versions/        # migrations (head: m77_side_chat_link)
-│   └── tests/                   # pytest (aiosqlite in-memory)
-├── frontend/
-│   └── src/
-│       ├── app/                 # Next.js App Router (23+ routes)
-│       ├── components/          # UI components
-│       └── lib/                 # api, hooks, stores, sse, types
-├── docs/
-│   ├── PRD.md                   # product requirements
-│   ├── PRD-screens.md           # screen wireframes
-│   ├── ARCHITECTURE.md          # system architecture
-│   ├── design-docs/             # ADRs (design decisions)
-│   ├── marketplace-resources-prd.md  # marketplace PRD
-│   └── tool-setup-guide.md      # tool API key setup
-├── tasks/                       # working notes + archive/
-├── docker-compose.yml
-├── HANDOFF.md                   # session handoff doc
-├── TASKS.md                     # phased task tracker
-├── CLAUDE.md                    # developer handbook
-├── CONTRIBUTING.md
-└── SECURITY.md
-```
-
-## 🔧 Environment variables
-
-See `backend/.env.example` for the full list. Minimum keys to boot:
-
-| Variable | Required | Description |
-|------|------|------|
-| `DATABASE_URL` | yes | PostgreSQL async URL (`postgresql+asyncpg://...`) |
-| `DATABASE_URL_SYNC` | yes | PostgreSQL sync URL (`postgresql://...`) — used by the LangGraph checkpointer; **not derived** from `DATABASE_URL`, so set both when changing the DB host |
-| `ENCRYPTION_KEYS` | yes | Cipher V2 master key(s) — comma-separated 64-char hex, first is active (HKDF-SHA256 + AES-256-GCM). Generate: `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `JWT_SECRET` | yes | JWT HS256 signing key (ADR-016 multi-user auth) |
-| LLM keys (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, …) | optional | Register via UI Credentials (ADR-013). ENV is an optional dev bootstrap |
-| `OPENROUTER_API_KEY` | optional | Agent image generation (OpenRouter + Gemini Flash Image) |
-| `LANGSMITH_API_KEY` | optional | LangSmith tracing |
-| `TAVILY_API_KEY` | optional | Hosted key for Tavily search / Deep Research skill |
-| `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | optional | Naver search tools |
-| `GOOGLE_API_KEY` / `GOOGLE_CSE_ID` | optional | Google CSE tools |
-| Google OAuth2 token | optional | Gmail / Calendar tools (`scripts/google_oauth_setup.py`) |
-
-Per-tool key setup is documented in [`docs/tool-setup-guide.md`](docs/tool-setup-guide.md).
-
-## 🧩 Structured Data (JSON-LD)
-
-Moldy can use the following JSON-LD on a project homepage, documentation site,
-or product page that republishes this README. GitHub README rendering does not
-execute JSON-LD, so place this block in a server-rendered
-`<script type="application/ld+json">` element on the actual web page. The schema
-uses only repository-visible facts; add additional `sameAs` links only after
-official profiles or documentation URLs exist.
-
-```json
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      "@id": "https://github.com/YooSuhwa/natural-mold#organization",
-      "name": "Moldy contributors",
-      "url": "https://github.com/YooSuhwa/natural-mold",
-      "sameAs": [
-        "https://github.com/YooSuhwa/natural-mold"
-      ],
-      "description": "Moldy contributors maintain an open-source, self-hostable AI agent builder for creating, chatting with, and scheduling AI agents.",
-      "knowsAbout": [
-        "AI agent builders",
-        "LangGraph",
-        "deepagents",
-        "FastAPI",
-        "Next.js",
-        "Model Context Protocol",
-        "credential encryption",
-        "agent scheduling"
-      ]
-    },
-    {
-      "@type": "SoftwareApplication",
-      "@id": "https://github.com/YooSuhwa/natural-mold#software",
-      "name": "Moldy",
-      "url": "https://github.com/YooSuhwa/natural-mold",
-      "description": "Moldy is an open-source, self-hostable no-code AI agent builder for creating, configuring, chatting with, and scheduling AI agents from a web UI.",
-      "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Web",
-      "isAccessibleForFree": true,
-      "license": "https://github.com/YooSuhwa/natural-mold/blob/main/LICENSE",
-      "softwareVersion": "development snapshot, migration head m77_side_chat_link",
-      "dateModified": "2026-09-01",
-      "author": {
-        "@id": "https://github.com/YooSuhwa/natural-mold#organization"
-      },
-      "publisher": {
-        "@id": "https://github.com/YooSuhwa/natural-mold#organization"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "softwareRequirements": [
-        "Python 3.12",
-        "Node.js 22",
-        "PostgreSQL 16",
-        "Docker",
-        "uv",
-        "pnpm"
-      ],
-      "featureList": [
-        "Conversational AI agent builder",
-        "LangGraph and deepagents runtime",
-        "MCP server registry and tool import",
-        "Skill package management",
-        "JWT and HttpOnly cookie authentication",
-        "Cipher V2 credential encryption",
-        "SSE chat streaming",
-        "Branchable conversations",
-        "Cron and interval agent triggers",
-        "Marketplace installation for skills"
-      ]
-    },
-    {
-      "@type": "SoftwareSourceCode",
-      "@id": "https://github.com/YooSuhwa/natural-mold#source-code",
-      "name": "Moldy source code",
-      "codeRepository": "https://github.com/YooSuhwa/natural-mold",
-      "programmingLanguage": [
-        "Python",
-        "TypeScript"
-      ],
-      "runtimePlatform": [
-        "Python 3.12",
-        "Node.js 22",
-        "PostgreSQL 16"
-      ],
-      "license": "https://github.com/YooSuhwa/natural-mold/blob/main/LICENSE",
-      "targetProduct": {
-        "@id": "https://github.com/YooSuhwa/natural-mold#software"
-      }
-    },
-    {
-      "@type": "FAQPage",
-      "@id": "https://github.com/YooSuhwa/natural-mold#faq",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "What does Moldy do?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Moldy turns natural-language requirements into runnable AI agents that can use tools, skills, MCP tools, credentials, chat streaming, and scheduled triggers."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How does Moldy protect credentials and system access?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Moldy separates super_user-managed system resources from per-user resources, uses JWT auth with HttpOnly cookies and CSRF protection, and encrypts credential payloads with Cipher V2 using HKDF-SHA256 and AES-256-GCM."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What technology stack does Moldy use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Moldy uses Next.js 16, React 19, TailwindCSS v4, FastAPI, SQLAlchemy 2.0 async, PostgreSQL 16, LangGraph 1.x, and deepagents create_deep_agent."
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
-## 🤝 Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). Security issues should follow the
-process in [`SECURITY.md`](SECURITY.md).
-
-## 📄 License
-
-[MIT](LICENSE) — Copyright (c) 2026 Moldy contributors.
 
 ---
 
-<div align="center">
+# ⚙️ 首次配置
 
-For deeper conventions, design tokens, and long-horizon workflows see
-[`CLAUDE.md`](CLAUDE.md) and [`frontend/AGENTS.md`](frontend/AGENTS.md).
+启动项目以后，还需要配置模型。
 
-</div>
+## System Credential
+
+管理员进入：
+
+```text
+/settings/system-credentials
+```
+
+添加平台使用的大模型 API Credential。
+
+## System LLM
+
+管理员进入：
+
+```text
+/settings/system-llm
+```
+
+为以下 Slot 选择模型：
+
+```text
+text_primary
+text_fallback
+image
+```
+
+如果 `text_primary` 没有配置，Conversational Builder 无法正常调用 LLM。
+
+## 用户 Credential
+
+普通用户可以添加自己的模型 API Key。
+
+这些 Credential 用于用户自己的 Agent Runtime。
+
+---
+
+# 🐳 Docker Compose
+
+```bash
+cp backend/.env.example backend/.env
+
+docker compose up -d
+```
+
+Backend 会在启动时执行数据库 migration。
+
+---
+
+# ✅ 开发检查
+
+## Backend
+
+```bash
+cd backend
+
+uv run ruff check .
+uv run pytest
+```
+
+## Frontend
+
+```bash
+cd frontend
+
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm test --run
+pnpm build
+```
+
+---
+
+# 🌐 在线部署
+
+当前项目支持：
+
+```text
+Docker Compose
++
+PostgreSQL
++
+FastAPI
++
+Next.js
++
+Nginx Reverse Proxy
+```
+
+当前测试站点：
+
+**https://agent.softcue.xyz**
+
+阿里云 2C2G 部署参考：
+
+[`docs/alibaba-2c2g-deployment.md`](docs/alibaba-2c2g-deployment.md)
+
+---
+
+# ⚠️ 当前限制
+
+Agent Project Maker 仍处于持续开发阶段，目前需要注意：
+
+- Conversational Builder 依赖管理员配置 System LLM
+- Eval 中的外部 Tool 默认使用 Mock 环境进行受控评测
+- Mock Eval 结果不能等价于真实 Provider 的生产验证
+- Optimizer 当前使用受约束的修改策略
+- Historical Skill Package 不一定能够完全复现
+- 部分长期任务暂未提供 durable worker 保证
+- Export ZIP 用于作品展示和记录，不是直接部署包
+- 多语言与部分上游遗留文案仍在持续清理
+
+---
+
+# 🗺 产品方向
+
+Agent Project Maker 希望解决的并不是：
+
+> 再做一个 Agent Builder。
+
+我们更关心 Agent 被创建之后发生的事情：
+
+```text
+Build
+↓
+Evaluate
+↓
+Understand Failures
+↓
+Optimize
+↓
+Regression Test
+↓
+Version
+↓
+Prove Improvement
+↓
+Share
+```
+
+最终希望让一个 Agent 从：
+
+> **“能跑”**
+
+进化到：
+
+> **“知道它为什么能跑、哪里跑不好，以及如何证明它变得更好。”**
+
+---
+
+# 🙏 开源致谢
+
+Agent Project Maker 基于开源项目：
+
+[natural-mold / Moldy](https://github.com/YooSuhwa/natural-mold)
+
+进行开发。
+
+本项目复用了 natural-mold 的多项基础能力，包括：
+
+- Agent Builder
+- Agent Runtime
+- Authentication
+- Model / Credential
+- Tool
+- Skill
+- MCP
+- Chat
+- Marketplace
+- Trigger
+- 多用户基础设施
+
+Agent Project Maker 在此基础上增加并重点发展：
+
+- Agent Project
+- Immutable Version
+- Eval Plan
+- EvalSet
+- Evaluation
+- Bad Case Analysis
+- Optimizer
+- Regression
+- Best Version
+- Report
+- Resume
+- Project Share
+- Export
+
+本仓库是 natural-mold 的衍生项目，并非上游官方版本。
+
+原项目版权信息、贡献者 attribution 以及 MIT License 均予以保留。
+
+---
+
+# 📄 License
+
+本项目遵循仓库中的 [MIT License](LICENSE)。
+
+涉及上游 natural-mold 的代码继续保留原有版权与许可证声明。
