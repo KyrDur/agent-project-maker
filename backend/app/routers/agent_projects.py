@@ -318,3 +318,18 @@ async def export_project(
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.post("/bootstrap", status_code=202)
+async def bootstrap_builder_project(
+    agent_id: uuid.UUID,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import builder_project_lifecycle
+
+    project = await service.require_project(db, agent_id, user.id)
+    if project.builder_session_id:
+        background.add_task(builder_project_lifecycle.bootstrap, agent_id, user.id)
+    return {"accepted": bool(project.builder_session_id)}

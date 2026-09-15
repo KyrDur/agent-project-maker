@@ -50,13 +50,21 @@ async def write_set(
     set_id: uuid.UUID | None = None,
     *,
     rubric: dict[str, Any] | None = None,
+    new_id: uuid.UUID | None = None,
 ) -> AgentProjectEvalSet:
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
+    if new_id:
+        existing = await db.get(AgentProjectEvalSet, new_id)
+        if existing:
+            if existing.project_id != project.id:
+                raise error("evaluation_request_conflict", 409)
+            await db.commit()
+            return existing
     row = (
         await get_set(db, project.id, set_id)
         if set_id
-        else AgentProjectEvalSet(project_id=project.id)
+        else AgentProjectEvalSet(project_id=project.id, **({"id": new_id} if new_id else {}))
     )
     if row.frozen:
         raise error("agent_project_eval_set_frozen", 409)
@@ -130,6 +138,7 @@ async def create_run(
     from app.services.agent_project_semantic import frozen_plan
 
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
+    dataset.frozen = True
     return await insert_frozen_run(
         db,
         project.id,

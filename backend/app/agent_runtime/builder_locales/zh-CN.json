@@ -260,5 +260,13 @@
   "confirmed_568940": "确认的",
   "agents_with_active_schedules_cannot_30ae0e": "具有活动计划的智能体无法更改为每用户 credential 模式。首先禁用计划。",
   "stream_model_error": "模型服务请求失败。请检查模型设置、凭据和用量限制。",
-  "stream_generation_error": "生成回复时发生错误，请重试。"
+  "stream_generation_error": "生成回复时发生错误，请重试。",
+  "builder_runtime_title": "运行模型设置",
+  "builder_runtime_setup": "尚无可用的个人运行模型。请先添加个人凭据和兼容模型，再点击重新检查。平台系统凭据不能用于运行你的智能体。",
+  "builder_runtime_choose": "请选择要运行此智能体的个人模型。",
+  "builder_runtime_model_unavailable": "所选模型或个人凭据已不可用或不兼容。请在凭据和模型页面修复后重新构建。",
+  "builder_runtime_retry": "重新检查",
+  "builder_runtime_links": "[配置个人凭据](/credentials) · [配置模型](/models)，完成后回到这里继续。",
+  "builder_tool_unavailable": "所需工具不可用。请在工具设置中修复或移除该工具，再重新构建。",
+  "builder_tool_credential": "所需工具缺少可用且兼容的个人凭据。请在工具设置中绑定个人凭据，再重新构建。"
 }

@@ -85,7 +85,10 @@ async def resolve_llm_api_key_for_agent(
 
     cred = getattr(agent, "llm_credential", None)
     if cred is not None:
-        if _credential_owned_by_subject(cred, subject_user_id):
+        if _credential_owned_by_subject(cred, subject_user_id) and (
+            model is not None
+            and cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)
+        ):
             key = await _decrypt_api_key(cred)
             if key is not None:
                 logger.info(
@@ -112,7 +115,10 @@ async def resolve_llm_api_key_for_agent(
         fallback_cred = await credential_service.get_for_user(
             db, model.default_credential_id, subject_user_id
         )
-        if fallback_cred is not None:
+        if fallback_cred is not None and (
+            fallback_cred.status == "active"
+            and fallback_cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)
+        ):
             key = await _decrypt_api_key(fallback_cred)
             if key is not None:
                 logger.info(

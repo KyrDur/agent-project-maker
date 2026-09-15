@@ -103,6 +103,8 @@ def _route_after_phase6_image_approval(state: BuilderState) -> str:
 
 def _route_after_phase8_build_wait(state: BuilderState) -> str:
     """승인+생성 성공 → END. 에러 발생 → END (사용자에게 error_message 노출). 수정 요청 → router."""
+    if state.get("runtime_setup_payload"):
+        return "phase8_propose"
     if state.get("completed"):
         return END
     if state.get("error_message"):
@@ -203,7 +205,7 @@ def build_graph() -> StateGraph:
     g.add_conditional_edges(
         "phase8_build_wait",
         _route_after_phase8_build_wait,
-        [END, "router"],
+        [END, "router", "phase8_propose"],
     )
 
     return g

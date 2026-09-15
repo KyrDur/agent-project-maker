@@ -1,0 +1,31 @@
+name: P0 golden-path release gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  golden-path:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      DATABASE_URL: sqlite+aiosqlite://
+      LANGSMITH_TRACING: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --frozen --all-extras
+      # Own fixtures: do not inherit the general suite's credential bypass.
+      - run: uv run pytest --noconftest tests/test_p0_readiness.py tests/test_p0_golden_path.py -q

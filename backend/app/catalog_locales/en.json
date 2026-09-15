@@ -1,0 +1,149 @@
+{
+  "templates": {
+    "email_assistant": {
+      "name": "Email Assistant",
+      "system_prompt": "You are an email management assistant. Analyze email by importance and draft replies. Urgent: senior managers and important clients. Normal: teammates and routine work. Low: newsletters and marketing.",
+      "usage_example": "Classify today's email",
+      "description": "Classify email and draft replies."
+    },
+    "daily_brief": {
+      "name": "Daily Brief",
+      "system_prompt": "You are a schedule briefing assistant. Read today's events from the user's calendar and summarize them concisely. Sort chronologically, mark importance, and remind the user what to prepare.",
+      "usage_example": "Show today's schedule",
+      "description": "Summarize the day’s schedule and important reminders."
+    },
+    "web_researcher": {
+      "name": "Web Researcher",
+      "system_prompt": "You are a web research expert. Search the user's topic and organize key information as a report. Cite sources, summarize 3–5 key points, and suggest areas for further research.",
+      "usage_example": "Research the latest AI agent trends",
+      "description": "Search the web by topic and summarize key findings."
+    },
+    "data_collector": {
+      "name": "Data Collector",
+      "system_prompt": "You are a data collection and organization expert. Collect data from user-specified sources, structure it as tables, flag outliers, and provide summary statistics.",
+      "usage_example": "Collect competitor pricing",
+      "description": "Collect and organize website data."
+    },
+    "naver_news": {
+      "name": "Naver News Monitor",
+      "system_prompt": "You are a news monitoring expert. Search Naver News for the user's keywords and produce a briefing. Summarize 3–5 main stories with key points and source links. Search related blog posts if needed.",
+      "usage_example": "Summarize today's AI news",
+      "description": "Find and summarize recent Naver news for selected keywords."
+    },
+    "shopping_compare": {
+      "name": "Shopping Price Comparison",
+      "system_prompt": "You are a shopping comparison expert. Find the user's product on Naver Shopping and compare prices and sellers. Sort by lowest price, include seller or store information, summarize the price range, and provide purchase links.",
+      "usage_example": "Compare iPhone 16 prices",
+      "description": "Find products on Naver Shopping and compare prices."
+    },
+    "openwiki": {
+      "name": "OpenWiki Documentation Agent",
+      "system_prompt": "You are OpenWiki, a codebase documentation expert combining technical writing, software architecture, and product analysis. Analyze the user's Git repository and create Markdown documentation under openwiki/, then update only changed areas. Read the openwiki skill SKILL.md first and follow sync_repo.py repository sync → research → write → publish_wiki.py publication. Ask for a missing repository URL before execution. Explore entry points, manifests, and files supported by commit evidence; never dump entire directories. Initial creation starts with quickstart.md and includes at most 8 pages. Update only pages affected by commits; if unchanged, report Already up to date and finish. End every page with Source map and Git evidence. Never read repository .env, key, or secret files or copy them into documentation. Never modify repository source files.",
+      "usage_example": "Create a wiki for https://github.com/langchain-ai/openwiki",
+      "description": "Analyze a Git repository and create or update its openwiki/ Markdown documentation."
+    },
+    "local_search": {
+      "name": "Local Restaurant Finder",
+      "system_prompt": "You are a local restaurant and business recommendation expert. Search businesses matching the user's location and criteria. Include business name, category, address, phone number when available, and a short description. Search blog reviews if needed.",
+      "usage_example": "Recommend restaurants near Gangnam Station",
+      "description": "Find nearby restaurants and businesses using Naver local search."
+    }
+  },
+  "middlewares": {
+    "summarization": {
+      "display_name": "Conversation Summarization",
+      "description": "Summarize conversations near the context limit."
+    },
+    "context_editing": {
+      "display_name": "Context Editing",
+      "description": "Clear older tool results to manage context."
+    },
+    "filesystem": {
+      "display_name": "Filesystem Access",
+      "description": "Provide filesystem operations."
+    },
+    "todo_list": {
+      "display_name": "Task Planning and Tracking",
+      "description": "Plan tasks and track progress."
+    },
+    "subagent": {
+      "display_name": "Subagent Delegation",
+      "description": "Delegate tasks to subagents."
+    },
+    "human_in_the_loop": {
+      "display_name": "User Approval",
+      "description": "Request user approval before selected actions."
+    },
+    "pii": {
+      "display_name": "PII Protection",
+      "description": "Detect and handle personal information such as email addresses and credit cards."
+    },
+    "shell_tool": {
+      "display_name": "Shell Commands",
+      "description": "Provide a persistent shell session."
+    },
+    "llm_tool_selector": {
+      "display_name": "Automatic Tool Selection",
+      "description": "Select tools relevant to the request."
+    },
+    "model_call_limit": {
+      "display_name": "Model Call Limit",
+      "description": "Limit model calls to prevent infinite loops."
+    },
+    "tool_retry": {
+      "display_name": "Tool Retry",
+      "description": "Retry failed tool calls with backoff."
+    },
+    "tool_call_limit": {
+      "display_name": "Tool Call Limit",
+      "description": "Limit tool calls."
+    },
+    "model_fallback": {
+      "display_name": "Model Fallback",
+      "description": "Switch to a fallback model when the primary fails."
+    },
+    "model_retry": {
+      "display_name": "Model Retry",
+      "description": "Retry failed model calls with backoff."
+    },
+    "file_search": {
+      "display_name": "File Search",
+      "description": "Search file contents."
+    },
+    "llm_tool_emulator": {
+      "display_name": "Tool Emulator",
+      "description": "Use a model to simulate tool results."
+    },
+    "anthropic_prompt_caching": {
+      "display_name": "Anthropic Prompt Caching",
+      "description": "Cache Anthropic prompts."
+    },
+    "anthropic_memory": {
+      "display_name": "Anthropic Persistent Memory",
+      "description": "Support Anthropic persistent memory."
+    },
+    "anthropic_bash_tool": {
+      "display_name": "Anthropic Bash Tool",
+      "description": "Support Anthropic Bash tools."
+    },
+    "anthropic_file_search": {
+      "display_name": "Anthropic File Search",
+      "description": "Support Anthropic file search."
+    },
+    "anthropic_text_editor": {
+      "display_name": "Anthropic Text Editor",
+      "description": "Support Anthropic text editing."
+    },
+    "openai_moderation": {
+      "display_name": "OpenAI Content Moderation",
+      "description": "Moderate content using OpenAI."
+    }
+  },
+  "categories": {
+    "productivity": "Productivity",
+    "data": "Data",
+    "development": "Development",
+    "lifestyle": "Lifestyle",
+    "communication": "Communication"
+  }
+}

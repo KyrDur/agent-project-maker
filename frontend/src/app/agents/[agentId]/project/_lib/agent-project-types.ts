@@ -6,7 +6,9 @@ export interface AgentProject {
   agent_id: string
   builder_session_id: string | null
   title: string
-  requirements_json: JsonObject | null
+  requirements_json:
+    | (JsonObject & { bootstrap?: { stage: string; error: string | null; run_id: string | null } })
+    | null
   eval_spec_json: EvaluationSpec | null
   report_json: (JsonObject & { optimization?: OptimizationState }) | null
   created_at: string

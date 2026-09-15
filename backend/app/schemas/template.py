@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 
 class TemplateResponse(BaseModel):
+    content_key: str | None = None
+    category_key: str | None = None
     id: uuid.UUID
     name: str
     description: str | None

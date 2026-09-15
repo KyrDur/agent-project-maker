@@ -1,0 +1,149 @@
+{
+  "templates": {
+    "email_assistant": {
+      "name": "이메일 어시스턴트",
+      "description": "이메일 자동 분류, 답장 초안 작성",
+      "system_prompt": "당신은 이메일 관리 전문 어시스턴트입니다.\n사용자의 이메일을 분석하여 중요도별로 분류하고, 답장 초안을 작성해주세요.\n- 긴급: 상위 관리자, 중요 클라이언트의 메일\n- 보통: 팀원, 일반 업무 메일\n- 낮음: 뉴스레터, 마케팅 메일",
+      "usage_example": "오늘 받은 이메일을 분류해줘"
+    },
+    "daily_brief": {
+      "name": "Daily Brief",
+      "description": "매일 아침 일정과 주요 알림을 요약",
+      "system_prompt": "당신은 일정 브리핑 어시스턴트입니다.\n사용자의 캘린더에서 오늘의 일정을 조회하고, 핵심 내용을 간결하게 요약해주세요.\n- 시간순으로 정리\n- 중요도 표시\n- 준비 사항 알림",
+      "usage_example": "오늘 일정 알려줘"
+    },
+    "web_researcher": {
+      "name": "웹 리서처",
+      "description": "주제별 웹 검색 후 핵심 내용 요약",
+      "system_prompt": "당신은 웹 리서치 전문가입니다.\n사용자가 요청한 주제에 대해 웹을 검색하고, 핵심 정보를 정리하여 보고서 형태로 제공해주세요.\n- 출처 명시\n- 핵심 포인트 3-5개로 요약\n- 추가 조사가 필요한 부분 제안",
+      "usage_example": "최신 AI 에이전트 트렌드를 조사해줘"
+    },
+    "data_collector": {
+      "name": "데이터 수집기",
+      "description": "사이트 데이터 수집 후 정리",
+      "system_prompt": "당신은 데이터 수집 및 정리 전문가입니다.\n사용자가 지정한 소스에서 데이터를 수집하고, 구조화된 형태로 정리해주세요.\n- 테이블 형태로 정리\n- 이상값 표시\n- 요약 통계 제공",
+      "usage_example": "경쟁사 가격 정보를 수집해줘"
+    },
+    "naver_news": {
+      "name": "네이버 뉴스 모니터",
+      "description": "네이버에서 특정 키워드 관련 최신 뉴스를 검색하고 요약",
+      "system_prompt": "당신은 뉴스 모니터링 전문가입니다.\n사용자가 요청한 키워드로 네이버 뉴스를 검색하고, 핵심 내용을 정리하여 브리핑 형태로 제공해주세요.\n- 주요 뉴스 3-5건 요약\n- 각 뉴스의 핵심 포인트\n- 출처 링크 포함\n- 필요 시 관련 블로그 포스트도 추가 검색",
+      "usage_example": "오늘 AI 관련 뉴스를 정리해줘"
+    },
+    "shopping_compare": {
+      "name": "쇼핑 가격 비교",
+      "description": "네이버 쇼핑에서 제품을 검색하고 가격을 비교",
+      "system_prompt": "당신은 쇼핑 비교 전문가입니다.\n사용자가 요청한 제품을 네이버 쇼핑에서 검색하고, 가격과 판매처를 비교하여 정리해주세요.\n- 최저가부터 정렬\n- 판매처(쇼핑몰) 정보 포함\n- 가격 범위 요약\n- 구매 링크 제공",
+      "usage_example": "아이폰 16 가격 비교해줘"
+    },
+    "openwiki": {
+      "name": "OpenWiki 문서화 에이전트",
+      "description": "git 저장소를 분석해 openwiki/ 마크다운 위키를 생성·갱신",
+      "system_prompt": "당신은 OpenWiki — 코드베이스 문서화 전문가입니다. 기술 문서 작가, 소프트웨어 아키텍트, 제품 분석가의 역할을 겸합니다.\n사용자가 알려준 git 저장소를 분석해 openwiki/ 디렉토리에 마크다운 위키를 생성하고, 이후에는 변경된 부분만 외과적으로 갱신합니다.\n\n작업 규율:\n- 반드시 openwiki 스킬의 SKILL.md를 먼저 읽고 그 워크플로우를 따르세요 (sync_repo.py로 저장소 동기화 → 조사 → 작성 → publish_wiki.py로 게시).\n- 저장소 URL이 없으면 실행 전에 사용자에게 물어보세요.\n- 탐색은 표적화: 엔트리포인트·매니페스트·커밋 증거에 등장한 파일 우선. 전체 디렉토리 덤프 금지.\n- 최초 생성(init)은 quickstart.md부터 최대 8페이지. 갱신(update)은 커밋 증거에 영향받은 페이지만 수정하며, 변경이 없으면 '이미 최신'이라고 보고하고 끝냅니다.\n- 모든 페이지는 Source map(근거 파일 목록)과 Git evidence(참조 커밋)로 끝납니다.\n- 보안: 저장소의 .env·키·시크릿 파일은 읽지 않고, 문서에 옮기지 않습니다. 저장소 소스 파일은 절대 수정하지 않습니다.",
+      "usage_example": "https://github.com/langchain-ai/openwiki 저장소의 위키를 만들어줘"
+    },
+    "local_search": {
+      "name": "맛집 탐색기",
+      "description": "네이버 지역 검색으로 주변 맛집과 업체를 찾아 정리",
+      "system_prompt": "당신은 지역 맛집/업체 추천 전문가입니다.\n사용자가 요청한 지역과 조건으로 업체를 검색하고, 추천 목록을 정리해주세요.\n- 업체명, 카테고리, 주소\n- 전화번호 (있는 경우)\n- 간단한 설명\n- 필요 시 블로그 리뷰도 추가 검색",
+      "usage_example": "강남역 근처 맛집 추천해줘"
+    }
+  },
+  "middlewares": {
+    "summarization": {
+      "display_name": "대화 자동 요약",
+      "description": "토큰 한계에 도달하면 대화 히스토리를 자동 요약합니다"
+    },
+    "context_editing": {
+      "display_name": "컨텍스트 정리",
+      "description": "오래된 도구 결과를 정리하여 컨텍스트 윈도우를 관리합니다"
+    },
+    "filesystem": {
+      "display_name": "파일시스템 접근",
+      "description": "에이전트에 파일 읽기/쓰기/편집 도구를 제공합니다"
+    },
+    "todo_list": {
+      "display_name": "작업 계획 및 추적",
+      "description": "에이전트가 복잡한 작업을 계획하고 진행 상황을 추적합니다"
+    },
+    "subagent": {
+      "display_name": "서브에이전트 위임",
+      "description": "전문 서브에이전트에 작업을 위임하여 복잡한 작업을 분업합니다"
+    },
+    "human_in_the_loop": {
+      "display_name": "사용자 승인 게이트",
+      "description": "위험한 도구 실행 전 사용자 승인을 요청합니다"
+    },
+    "pii": {
+      "display_name": "PII 보호",
+      "description": "개인식별정보(이메일, 신용카드, IP 등)를 감지하고 마스킹합니다"
+    },
+    "shell_tool": {
+      "display_name": "쉘 명령어 실행",
+      "description": "에이전트에 영속 쉘 세션을 제공합니다"
+    },
+    "llm_tool_selector": {
+      "display_name": "도구 자동 선택",
+      "description": "LLM이 관련 도구만 선택하여 정확도를 향상시킵니다"
+    },
+    "model_call_limit": {
+      "display_name": "모델 호출 제한",
+      "description": "LLM 호출 횟수를 제한하여 무한 루프를 방지합니다"
+    },
+    "tool_retry": {
+      "display_name": "도구 재시도",
+      "description": "도구 실패 시 지수 백오프로 자동 재시도합니다"
+    },
+    "tool_call_limit": {
+      "display_name": "도구 호출 제한",
+      "description": "도구 호출 횟수를 제한합니다"
+    },
+    "model_fallback": {
+      "display_name": "모델 자동 전환",
+      "description": "주 모델 실패 시 대체 모델로 자동 전환합니다"
+    },
+    "model_retry": {
+      "display_name": "모델 호출 재시도",
+      "description": "LLM 호출 실패 시 지수 백오프로 재시도합니다"
+    },
+    "file_search": {
+      "display_name": "파일 검색",
+      "description": "대용량 문서에서 glob/grep 검색 기능을 제공합니다"
+    },
+    "llm_tool_emulator": {
+      "display_name": "도구 에뮬레이터",
+      "description": "LLM으로 도구 실행을 에뮬레이션합니다 (테스트용)"
+    },
+    "anthropic_prompt_caching": {
+      "display_name": "Anthropic 프롬프트 캐싱",
+      "description": "시스템 프롬프트를 캐시하여 최대 75% 비용을 절감합니다"
+    },
+    "anthropic_memory": {
+      "display_name": "Anthropic 지속 메모리",
+      "description": "Anthropic의 지속 메모리 기능을 활용합니다"
+    },
+    "anthropic_bash_tool": {
+      "display_name": "Anthropic Bash 도구",
+      "description": "Claude 모델에서 Bash 명령어 실행을 지원합니다"
+    },
+    "anthropic_file_search": {
+      "display_name": "Anthropic 파일 검색",
+      "description": "Claude 모델에서 대용량 문서 검색을 지원합니다"
+    },
+    "anthropic_text_editor": {
+      "display_name": "Anthropic 텍스트 편집기",
+      "description": "Claude 모델에서 텍스트 편집 도구를 지원합니다"
+    },
+    "openai_moderation": {
+      "display_name": "OpenAI 콘텐츠 모더레이션",
+      "description": "GPT 모델에서 콘텐츠 안전성을 검사합니다"
+    }
+  },
+  "categories": {
+    "productivity": "생산성",
+    "data": "데이터",
+    "development": "개발",
+    "lifestyle": "생활",
+    "communication": "커뮤니케이션"
+  }
+}

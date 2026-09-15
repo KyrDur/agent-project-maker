@@ -1,0 +1,149 @@
+{
+  "templates": {
+    "email_assistant": {
+      "name": "邮件助手",
+      "system_prompt": "你是邮件管理助手。分析用户邮件，按重要程度分类并起草回复。紧急：上级管理者和重要客户；普通：团队成员和日常工作；低：简报和营销邮件。",
+      "usage_example": "分类今天收到的邮件",
+      "description": "自动分类邮件并起草回复。"
+    },
+    "daily_brief": {
+      "name": "每日简报",
+      "system_prompt": "你是日程简报助手。查询用户日历中的今日安排，简洁汇总要点。按时间排序，标注重要程度，并提醒需要准备的事项。",
+      "usage_example": "告诉我今天的日程",
+      "description": "汇总每天的日程与重要提醒。"
+    },
+    "web_researcher": {
+      "name": "网络研究助手",
+      "system_prompt": "你是网络研究专家。针对用户指定的主题搜索网页，并以报告形式整理关键信息。标明来源，总结 3–5 个关键要点，提出需要进一步调查的方向。",
+      "usage_example": "研究最新的 AI 智能体趋势",
+      "description": "按主题搜索网页并归纳关键内容。"
+    },
+    "data_collector": {
+      "name": "数据收集助手",
+      "system_prompt": "你是数据收集与整理专家。从用户指定的数据源收集数据，整理为结构化表格，标出异常值，并提供汇总统计。",
+      "usage_example": "收集竞争对手的价格信息",
+      "description": "收集并整理网站数据。"
+    },
+    "naver_news": {
+      "name": "Naver 新闻监测",
+      "system_prompt": "你是新闻监测专家。使用用户指定的关键词搜索 Naver 新闻并整理为简报。总结 3–5 条主要新闻，提炼每条的关键要点，包含来源链接，必要时补充搜索相关博客文章。",
+      "usage_example": "整理今天的 AI 相关新闻",
+      "description": "搜索并汇总 Naver 上与指定关键词相关的最新新闻。"
+    },
+    "shopping_compare": {
+      "name": "购物比价助手",
+      "system_prompt": "你是购物比价专家。在 Naver Shopping 搜索用户指定的商品，对比价格和销售渠道。按最低价排序，包含商家或购物平台信息，汇总价格区间，提供购买链接。",
+      "usage_example": "比较 iPhone 16 的价格",
+      "description": "在 Naver Shopping 搜索商品并比较价格。"
+    },
+    "openwiki": {
+      "name": "OpenWiki 文档助手",
+      "system_prompt": "你是 OpenWiki 代码库文档专家，兼具技术写作者、软件架构师和产品分析师的职责。分析用户提供的 Git 仓库，在 openwiki/ 目录生成 Markdown 维基，后续只精确更新变化的部分。必须先阅读 openwiki 技能的 SKILL.md 并遵循流程：sync_repo.py 同步仓库 → 调查 → 编写 → publish_wiki.py 发布。没有仓库 URL 时先询问用户。定向探索入口、清单和提交证据涉及的文件，禁止转储整个目录。首次生成从 quickstart.md 开始，最多 8 页；更新只修改提交证据影响的页面，没有变化时报告“已是最新”并结束。每页以 Source map（依据文件列表）和 Git evidence（参考提交）结束。不读取仓库中的 .env、密钥或机密文件，不将其写入文档，绝不修改仓库源文件。",
+      "usage_example": "为 https://github.com/langchain-ai/openwiki 仓库生成维基",
+      "description": "分析 Git 仓库，生成或更新 openwiki/ Markdown 文档。"
+    },
+    "local_search": {
+      "name": "餐厅与商家搜索",
+      "system_prompt": "你是本地餐厅与商家推荐专家。按用户指定的地区和条件搜索商家并整理推荐列表，包括名称、类别、地址、电话号码（如有）和简要介绍，必要时补充搜索博客评价。",
+      "usage_example": "推荐江南站附近的餐厅",
+      "description": "通过 Naver 地区搜索查找并整理附近餐厅与商家。"
+    }
+  },
+  "middlewares": {
+    "summarization": {
+      "display_name": "对话自动摘要",
+      "description": "在接近上下文限制时生成对话摘要。"
+    },
+    "context_editing": {
+      "display_name": "上下文清理",
+      "description": "清理过期工具结果以管理上下文窗口。"
+    },
+    "filesystem": {
+      "display_name": "文件系统访问",
+      "description": "为智能体提供文件系统操作。"
+    },
+    "todo_list": {
+      "display_name": "任务规划与跟踪",
+      "description": "规划任务并跟踪进度。"
+    },
+    "subagent": {
+      "display_name": "子智能体委派",
+      "description": "将任务委派给子智能体。"
+    },
+    "human_in_the_loop": {
+      "display_name": "用户审批",
+      "description": "在执行指定操作前请求用户批准。"
+    },
+    "pii": {
+      "display_name": "个人信息保护",
+      "description": "检测并处理邮件地址、信用卡等个人信息。"
+    },
+    "shell_tool": {
+      "display_name": "Shell 命令执行",
+      "description": "为智能体提供持续的 Shell 会话。"
+    },
+    "llm_tool_selector": {
+      "display_name": "工具自动选择",
+      "description": "选择与当前请求相关的工具。"
+    },
+    "model_call_limit": {
+      "display_name": "模型调用限制",
+      "description": "限制模型调用次数，避免无限循环。"
+    },
+    "tool_retry": {
+      "display_name": "工具重试",
+      "description": "工具失败后按退避策略重试。"
+    },
+    "tool_call_limit": {
+      "display_name": "工具调用限制",
+      "description": "限制工具调用次数。"
+    },
+    "model_fallback": {
+      "display_name": "模型自动切换",
+      "description": "主模型失败时切换到备用模型。"
+    },
+    "model_retry": {
+      "display_name": "模型调用重试",
+      "description": "模型调用失败后按退避策略重试。"
+    },
+    "file_search": {
+      "display_name": "文件搜索",
+      "description": "查找文件内容。"
+    },
+    "llm_tool_emulator": {
+      "display_name": "工具模拟器",
+      "description": "用模型模拟工具结果。"
+    },
+    "anthropic_prompt_caching": {
+      "display_name": "Anthropic 提示缓存",
+      "description": "缓存 Anthropic 提示以减少重复处理。"
+    },
+    "anthropic_memory": {
+      "display_name": "Anthropic 持久记忆",
+      "description": "提供 Anthropic 持久记忆支持。"
+    },
+    "anthropic_bash_tool": {
+      "display_name": "Anthropic Bash 工具",
+      "description": "提供 Anthropic Bash 工具支持。"
+    },
+    "anthropic_file_search": {
+      "display_name": "Anthropic 文件搜索",
+      "description": "提供 Anthropic 文件搜索支持。"
+    },
+    "anthropic_text_editor": {
+      "display_name": "Anthropic 文本编辑器",
+      "description": "提供 Anthropic 文本编辑支持。"
+    },
+    "openai_moderation": {
+      "display_name": "OpenAI 内容审核",
+      "description": "使用 OpenAI 审核内容。"
+    }
+  },
+  "categories": {
+    "productivity": "生产力",
+    "data": "数据",
+    "development": "开发",
+    "lifestyle": "生活",
+    "communication": "沟通"
+  }
+}

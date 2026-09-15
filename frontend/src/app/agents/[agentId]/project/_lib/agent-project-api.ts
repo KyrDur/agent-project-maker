@@ -20,6 +20,7 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  bootstrap: (agentId: string) => apiFetch(`${projectPath(agentId)}/bootstrap`, { method: 'POST' }),
   report: (agentId: string, generate = false) =>
     apiFetch<PortfolioReport>(`${projectPath(agentId)}/report${generate ? '/generate' : ''}`, {
       method: generate ? 'POST' : 'GET',

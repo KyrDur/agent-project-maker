@@ -260,5 +260,13 @@
   "confirmed_568940": "확정",
   "agents_with_active_schedules_cannot_30ae0e": "활성 스케줄이 있는 에이전트는 사용자별 credential 모드로 변경할 수 없습니다. 먼저 스케줄을 비활성화하세요.",
   "stream_model_error": "모델 제공자 요청이 실패했습니다. 모델 설정, 자격증명, 사용량 한도를 확인해주세요.",
-  "stream_generation_error": "응답 생성 중 오류가 발생했습니다. 다시 시도해주세요."
+  "stream_generation_error": "응답 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
+  "builder_runtime_title": "실행 모델 설정",
+  "builder_runtime_setup": "사용 가능한 개인 실행 모델이 없습니다. 개인 자격증명과 호환 모델을 등록한 후 다시 확인하세요. 시스템 자격증명은 사용할 수 없습니다.",
+  "builder_runtime_choose": "이 에이전트를 실행할 개인 모델을 선택하세요.",
+  "builder_runtime_model_unavailable": "선택한 모델 또는 개인 자격증명이 없거나 호환되지 않습니다. 자격증명과 모델 설정을 수정한 후 다시 빌드하세요.",
+  "builder_runtime_retry": "다시 확인",
+  "builder_runtime_links": "[개인 자격증명 설정](/credentials) · [모델 설정](/models) 후 돌아와서 계속하세요.",
+  "builder_tool_unavailable": "필수 도구를 사용할 수 없습니다. 도구 설정에서 수정 또는 제거한 후 다시 빌드하세요.",
+  "builder_tool_credential": "필수 도구에 호환되는 개인 자격증명이 없습니다. 도구 설정에서 연결한 후 다시 빌드하세요."
 }
