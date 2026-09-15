@@ -90,6 +90,7 @@ class AgentProjectEvalSet(Base):
     rubric_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     cases_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     frozen: Mapped[bool] = mapped_column(default=False, server_default="false")
+    quality_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 

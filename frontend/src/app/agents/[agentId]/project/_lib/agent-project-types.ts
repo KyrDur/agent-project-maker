@@ -1,3 +1,15 @@
+export interface EvalSetQualityReport {
+  eval_set_id: string
+  coverage_score: number
+  validity_score: number
+  diversity_score: number
+  evaluability_score: number
+  overall_score: number
+  issues: string[]
+  recommendation: string
+  status: 'pending' | 'approved' | 'rejected'
+}
+
 type JsonObject = Record<string, unknown>
 
 export interface AgentProject {
@@ -63,6 +75,7 @@ export interface EvaluationSet {
   name: string
   cases_json: (EvaluationCase & { project_id: string; created_at: string; updated_at: string })[]
   frozen: boolean
+  quality_report_json?: EvalSetQualityReport | null
   created_at: string
 }
 

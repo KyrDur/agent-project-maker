@@ -158,6 +158,13 @@ async def update_eval_set(
     return await evaluation.write_set(db, agent_id, user.id, body, set_id)
 
 
+@router.post("/eval-sets/{set_id}/quality", response_model=EvalSetResponse)
+async def judge_eval_set(
+    agent_id: uuid.UUID, set_id: uuid.UUID, db: AsyncSession = Depends(get_db), user: CurrentUser = Depends(get_current_user)
+):
+    return await evaluation.judge_set(db, agent_id, user.id, set_id)
+
+
 @router.delete("/eval-sets/{set_id}", status_code=204)
 async def delete_eval_set(
     agent_id: uuid.UUID,

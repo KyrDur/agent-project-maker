@@ -109,6 +109,7 @@ class EvalSetResponse(BaseModel):
     name: str
     cases_json: list[dict[str, Any]]
     frozen: bool
+    quality_report_json: dict[str, Any] | None = None
     created_at: datetime
     rubric_json: dict[str, Any] | None = None
 

@@ -68,6 +68,8 @@ export const agentProjectApi = {
       body: JSON.stringify({ request_id: requestId }),
     }),
   sets: (agentId: string) => apiFetch<EvaluationSet[]>(`${projectPath(agentId)}/eval-sets`),
+  judgeSet: (agentId: string, setId: string) =>
+    apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/${setId}/quality`, { method: 'POST' }),
   saveSet: (agentId: string, data: { id?: string; name: string; cases: EvaluationCase[] }) =>
     apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets${data.id ? `/${data.id}` : ''}`, {
       method: data.id ? 'PUT' : 'POST',

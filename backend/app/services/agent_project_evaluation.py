@@ -68,6 +68,8 @@ async def write_set(
     )
     if row.frozen:
         raise error("agent_project_eval_set_frozen", 409)
+    if row.quality_report_json and row.quality_report_json.get("status") != "approved":
+        raise error("agent_project_eval_set_quality_required", 409)
     old = {case["id"]: case for case in (row.cases_json or []) if "id" in case}
     if len({case.id for case in body.cases}) != len(body.cases):
         raise error("duplicate_evaluation_case")
@@ -88,6 +90,29 @@ async def write_set(
     await db.commit()
     return row
 
+
+async def judge_set(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, set_id: uuid.UUID) -> AgentProjectEvalSet:
+    dataset = await get_set(db, (await projects.require_project(db, agent_id, user_id)).id, set_id)
+    project = await projects.require_project(db, agent_id, user_id)
+    profile = (project.eval_spec_json or {}).get("capability_profile", {})
+    cases = dataset.cases_json or []
+    tools = set(profile.get("tools", [])) if isinstance(profile, dict) else set()
+    covered = {tag for case in cases for tag in case.get("tags", [])}
+    capabilities = set(profile.get("capabilities", [])) if isinstance(profile, dict) else set()
+    coverage = 1.0 if not capabilities else len(capabilities & covered) / len(capabilities)
+    valid = sum(bool(case.get("input") and (case.get("expected_behavior") or case.get("expected"))) for case in cases) / max(len(cases), 1)
+    unique_inputs = len({str(case.get("input", "")).strip().lower() for case in cases})
+    diversity = unique_inputs / max(len(cases), 1)
+    evaluable = sum(bool((case.get("expected_behavior") or case.get("expected")) and (case.get("expected", {}).get("answer") if isinstance(case.get("expected"), dict) else True)) for case in cases) / max(len(cases), 1)
+    scores = {"coverage_score": coverage, "validity_score": valid, "diversity_score": diversity, "evaluability_score": evaluable}
+    overall = sum(scores.values()) / 4
+    issues = []
+    if capabilities - covered: issues.append("missing_capabilities")
+    if diversity < 0.8: issues.append("low_diversity")
+    status = "approved" if overall >= 0.75 and not (capabilities - covered) else "rejected"
+    dataset.quality_report_json = {"eval_set_id": str(dataset.id), **scores, "overall_score": overall, "issues": issues, "recommendation": "approve" if status == "approved" else "regenerate", "status": status}
+    await db.commit()
+    return dataset
 
 async def remove_set(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, set_id: uuid.UUID
