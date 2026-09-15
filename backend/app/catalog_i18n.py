@@ -66,7 +66,7 @@ def template_display(row, locale: str):
 def middleware_display(item: dict, locale: str) -> dict:
     result = deepcopy(item)
     result.update(catalog(locale)["middlewares"].get(item["type"], {}))
-    if normalize_locale(locale) != "ko":
+    if normalize_locale(locale) in ("zh-CN", "en"):
         # Field identifiers stay intact; localized field copy is separate from schema data.
         for key, field in result.get("config_schema", {}).items():
             field["description"] = key.replace("_", " ")

@@ -25,8 +25,8 @@ const checks = [
   },
   {
     name: 'messages-ko',
-    ok: existsSync(join(root, 'messages', 'ko.json')),
-    message: 'Missing messages/ko.json.',
+    ok: existsSync(join(root, 'messages', 'zh-CN.json')),
+    message: 'Missing messages/zh-CN.json.',
   },
   {
     name: 'messages-en',

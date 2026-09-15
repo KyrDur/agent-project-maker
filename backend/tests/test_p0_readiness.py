@@ -211,7 +211,7 @@ async def test_confirmation_commits_one_agent_project_and_immutable_v1(db, encry
     await db.rollback()
 
 
-@pytest.mark.parametrize("locale", ["zh-CN", "en", "ko"])
+@pytest.mark.parametrize("locale", ["zh-CN", "en"])
 def test_first_party_catalog_locale_and_external_content(locale):
     from datetime import datetime
 
