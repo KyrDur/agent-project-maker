@@ -14,8 +14,9 @@ import { ProjectResults } from './project-results'
 
 export function ProjectWorkbench({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject')
-  const { project, versions, create } = useAgentProject(agentId)
+  const { project, versions, create, bootstrap } = useAgentProject(agentId)
   const currentVersion = versions.data?.[0]
+  const bootstrapError = project.data?.requirements_json?.bootstrap?.error
 
   return (
     <PageShell
@@ -40,6 +41,38 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
         </div>
       ) : (
         <>
+          {project.data.builder_session_id && (
+            <SettingsSectionCard title={t('bootstrap.title')}>
+              <p>{t('bootstrap.steps')}</p>
+              <p role="status">
+                {t('bootstrap.current', {
+                  stage: t(
+                    `bootstrap.stages.${project.data.requirements_json?.bootstrap?.stage ?? 'v1'}`,
+                  ),
+                })}
+              </p>
+              {(project.data.requirements_json?.bootstrap?.error || bootstrap.isError) && (
+                <div role="alert" className="space-y-2">
+                  <p>{t('bootstrap.blocked')}</p>
+                  <p>
+                    {bootstrapError && t.has(`executionErrors.${bootstrapError}`)
+                      ? t(`executionErrors.${bootstrapError}`)
+                      : t('executionErrors.evaluation_execution_failed')}
+                  </p>
+                  <Link className="underline" href="/credentials">
+                    {t('bootstrap.credentials')}
+                  </Link>
+                  {' · '}
+                  <Link className="underline" href="/models">
+                    {t('bootstrap.models')}
+                  </Link>
+                  <Button onClick={() => bootstrap.mutate()} disabled={bootstrap.isPending}>
+                    {t('bootstrap.retry')}
+                  </Button>
+                </div>
+              )}
+            </SettingsSectionCard>
+          )}
           <SettingsSectionCard title={t('project')}>
             <dl className="grid gap-4 sm:grid-cols-2">
               <div>

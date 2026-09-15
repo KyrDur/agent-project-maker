@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { Agent, BuilderSession } from '@/lib/types'
+import type { Agent, BuilderSession, Message } from '@/lib/types'
 
 export const builderApi = {
   start: (userRequest: string) =>
@@ -7,6 +7,14 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify({ user_request: userRequest }),
     }),
+
+  snapshot: (sessionId: string) =>
+    apiFetch<{
+      messages: Message[]
+      interrupt_id: string | null
+      status: string
+      agent_id: string | null
+    }>(`/api/builder/${sessionId}/snapshot`),
 
   getSession: (sessionId: string) => apiFetch<BuilderSession>(`/api/builder/${sessionId}`),
 

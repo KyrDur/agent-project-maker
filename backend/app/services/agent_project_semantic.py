@@ -42,6 +42,7 @@ async def generate(
     version_id: uuid.UUID,
     *,
     cases: bool = False,
+    dataset_id: uuid.UUID | None = None,
 ) -> Any:
     project = await projects.require_project(db, agent_id, user_id)
     version = await projects.get_version(db, agent_id, user_id, version_id)
@@ -123,7 +124,7 @@ async def generate(
         # One transaction for dataset and pinned rubric, using the existing writer.
         from app.services.agent_project_evaluation import write_set
 
-        return await write_set(db, agent_id, user_id, body, rubric=saved_spec)
+        return await write_set(db, agent_id, user_id, body, rubric=saved_spec, new_id=dataset_id)
     except (SnapshotExecutionUnavailable, ValueError) as exc:
         code = (
             str(exc)

@@ -192,11 +192,11 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     // Agent name appears in multiple headings (sidebar h2, chat header h1, empty state h2).
     // smoke 검증은 적어도 하나가 보이면 OK.
     await expect(main.getByRole('heading', { name: 'E2E Smoke Agent' }).first()).toBeVisible()
-    // 사이드바 통합 이후 '새 대화'/'설정'은 채팅 헤더의 더보기 메뉴 항목으로 이동했다.
-    // 메뉴는 portal로 렌더되므로 menuitem은 page 레벨에서 찾는다.
-    await main.getByRole('button', { name: '더보기 메뉴' }).click()
-    await expect(page.getByRole('menuitem', { name: '새 대화' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: '설정' })).toBeVisible()
+    // New Conversation and Settings are available from the chat header menu.
+    // The menu is rendered in a portal, so locate its items at page level.
+    await main.getByRole('button', { name: 'Menu' }).click()
+    await expect(page.getByRole('menuitem', { name: 'New Conversation' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible()
     await page.keyboard.press('Escape')
     // Empty conversation prompt
     await expect(main.getByText('대화를 시작해보세요.')).toBeVisible()
@@ -546,3 +546,4 @@ test.describe('Smoke Test - Conversational Creation', () => {
     expect(errors.network).toEqual([])
   })
 })
+

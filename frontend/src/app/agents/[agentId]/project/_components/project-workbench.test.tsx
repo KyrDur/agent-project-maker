@@ -1,3 +1,7 @@
+import { render as renderDirect } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { NextIntlClientProvider, createTranslator } from 'next-intl'
+import zhMessages from '../../../../../../messages/zh-CN.json'
 import { beforeEach, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { render, screen, userEvent } from '../../../../../../tests/test-utils'
@@ -57,4 +61,38 @@ it('keeps creation available after an API failure', async () => {
   await userEvent.click(await screen.findByRole('button', { name: '프로젝트 만들기' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('프로젝트를 만들지 못했습니다')
   expect(screen.getByRole('button', { name: '프로젝트 만들기' })).toBeEnabled()
+})
+
+it('automatically resumes a Builder project and shows Chinese lifecycle progress', async () => {
+  const bootstrap = vi.fn()
+  server.use(
+    http.get(path, () =>
+      HttpResponse.json({
+        ...project,
+        builder_session_id: 'builder-id',
+        requirements_json: { bootstrap: { stage: 'cases', error: null, run_id: null } },
+      }),
+    ),
+    http.post(`${path}/bootstrap`, () => {
+      bootstrap()
+      return HttpResponse.json({ accepted: true })
+    }),
+  )
+  const { container } = renderDirect(
+    <NextIntlClientProvider locale="zh-CN" messages={zhMessages}>
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <ProjectWorkbench agentId="agent-id" />
+      </QueryClientProvider>
+    </NextIntlClientProvider>,
+  )
+  expect(await screen.findByText('构建与基线评估')).toBeInTheDocument()
+  expect(await screen.findByText('当前步骤：生成 20 个评估用例')).toBeInTheDocument()
+  expect(bootstrap).toHaveBeenCalledOnce()
+  expect(create).not.toHaveBeenCalled()
+  expect(container.textContent).not.toMatch(/[\uac00-\ud7af]|agentProject\./)
+  const t = createTranslator({ locale: 'zh-CN', messages: zhMessages })
+  expect(t('agentProject.openProject')).toBe('打开项目')
+  expect(t('agent.settings.toolsSkills.empty')).toBe('尚未添加工具或技能。')
 })

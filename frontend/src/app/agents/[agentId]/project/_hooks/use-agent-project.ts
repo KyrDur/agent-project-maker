@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { agentProjectApi } from '../_lib/agent-project-api'
 
@@ -21,8 +21,12 @@ export function useAgentProject(agentId: string) {
     queryKey: agentProjectKeys.project(agentId),
     queryFn: () => agentProjectApi.get(agentId),
     refetchInterval: (query) =>
+      (query.state.data?.builder_session_id &&
+        query.state.data?.requirements_json?.bootstrap?.stage !== 'results') ||
       ['pending', 'running'].includes(query.state.data?.report_json?.optimization?.state ?? '')
-        ? 1500
+        ? query.state.data?.requirements_json?.bootstrap?.error
+          ? 5000
+          : 1500
         : false,
   })
   const versions = useQuery({
@@ -30,6 +34,28 @@ export function useAgentProject(agentId: string) {
     queryFn: () => agentProjectApi.versions(agentId),
     enabled: !!project.data,
   })
+  const resumed = useRef(new Set<string>())
+  const builderSessionId = project.data?.builder_session_id
+  const bootstrapStage = project.data?.requirements_json?.bootstrap?.stage
+  const bootstrap = useMutation({
+    mutationFn: () => agentProjectApi.bootstrap(agentId),
+    onSuccess: () =>
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
+  })
+  const resumeBootstrap = bootstrap.mutate
+  useEffect(() => {
+    if (builderSessionId && !resumed.current.has(agentId) && bootstrapStage !== 'results') {
+      resumed.current.add(agentId)
+      resumeBootstrap()
+    }
+  }, [agentId, builderSessionId, bootstrapStage, resumeBootstrap])
+  useEffect(() => {
+    if (bootstrapStage) {
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) })
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.runs(agentId) })
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.versions(agentId) })
+    }
+  }, [bootstrapStage, agentId, queryClient])
   const optimization = project.data?.report_json?.optimization
   useEffect(() => {
     if (optimization) {
@@ -44,5 +70,5 @@ export function useAgentProject(agentId: string) {
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.versions(agentId) })
     },
   })
-  return { project, versions, create }
+  return { project, versions, create, bootstrap }
 }

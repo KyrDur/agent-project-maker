@@ -114,7 +114,7 @@
     },
     "title": "Agent Project Maker",
     "description": "Turn this Agent into an evaluated, versioned project.",
-    "openProject": "Project",
+    "openProject": "Open Project",
     "backToSettings": "Agent settings",
     "loading": "Loading…",
     "creating": "Creating…",
@@ -260,6 +260,23 @@
       "revoked": "Share revoked.",
       "publicTitle": "Agent Project Case Study",
       "shareUnavailable": "This project share is unavailable or has been revoked."
+    },
+    "bootstrap": {
+      "title": "Build and baseline evaluation",
+      "steps": "Build Agent → V1 → Eval Plan → 20 Eval Cases → Baseline Evaluation → Results",
+      "current": "Current step: {stage}",
+      "stages": {
+        "v1": "Save V1",
+        "plan": "Generate Eval Plan",
+        "cases": "Generate 20 Eval Cases",
+        "baseline": "Run baseline evaluation",
+        "results": "View results"
+      },
+      "blocked": "This step could not finish. Check your personal model credentials and model availability, then retry. Existing versions and test cases are preserved.",
+      "reason": "Blocking reason code: {code}",
+      "credentials": "Personal credentials",
+      "models": "Model settings",
+      "retry": "Retry workflow"
     }
   },
   "metadata": {
@@ -874,7 +891,9 @@
       "breadcrumb": {
         "create": "Create Agent",
         "conversational": "Build by Chat"
-      }
+      },
+      "restoring": "Restoring build session…",
+      "restoreError": "Could not restore the build session. Check your connection and retry; your session is preserved."
     },
     "card": {
       "status": {
@@ -1144,7 +1163,17 @@
         "saved": "Saved successfully.",
         "saveFailed": "Operation failed.",
         "deleteFailed": "Operation failed."
-      }
+      },
+      "testRuntimeInfo": "Tests the saved Agent through a real conversation. Conversations are saved and tools may perform real actions. Save configuration changes first.",
+      "testChecking": "Checking runtime configuration…",
+      "testMissingCredential": "Test blocked: no compatible, usable personal model credential. Add or repair your personal credential, then check again.",
+      "testMissingModel": "Test blocked: no runtime model is bound. Select a model in Agent settings and save.",
+      "testMissingToolCredential": "Test blocked: a required tool lacks a compatible personal credential. Bind it in Tools settings.",
+      "testUnavailable": "Test blocked: runtime configuration or service unavailable. Check model and tool settings, then check again.",
+      "testConfigureCredentials": "Configure personal credentials",
+      "testConfigureModels": "Configure models",
+      "testConfigureTools": "Configure tools",
+      "testCheckAgain": "Check again"
     },
     "visualSettings": {
       "nodes": {
@@ -1544,15 +1573,42 @@
       "unavailable": "Unavailable in this conversation",
       "unknown": "Unknown command",
       "argumentsNotSupported": "This command does not accept arguments",
-      "search": { "label": "/search", "description": "Search this conversation" },
-      "export": { "label": "/export", "description": "Open the export chooser" },
-      "files": { "label": "/files", "description": "Open conversation files" },
-      "attach": { "label": "/attach", "description": "Choose a file to attach" },
-      "new": { "label": "/new", "description": "Start a new conversation" },
-      "retry": { "label": "/retry", "description": "Retry the last failed run" },
-      "compact": { "label": "/compact", "description": "Compact conversation context" },
-      "stop": { "label": "/stop", "description": "Stop the run and pause its queue" },
-      "help": { "label": "/help", "description": "Show available commands" }
+      "search": {
+        "label": "/search",
+        "description": "Search this conversation"
+      },
+      "export": {
+        "label": "/export",
+        "description": "Open the export chooser"
+      },
+      "files": {
+        "label": "/files",
+        "description": "Open conversation files"
+      },
+      "attach": {
+        "label": "/attach",
+        "description": "Choose a file to attach"
+      },
+      "new": {
+        "label": "/new",
+        "description": "Start a new conversation"
+      },
+      "retry": {
+        "label": "/retry",
+        "description": "Retry the last failed run"
+      },
+      "compact": {
+        "label": "/compact",
+        "description": "Compact conversation context"
+      },
+      "stop": {
+        "label": "/stop",
+        "description": "Stop the run and pause its queue"
+      },
+      "help": {
+        "label": "/help",
+        "description": "Show available commands"
+      }
     },
     "sideChat": {
       "userMessage": "Your message",
@@ -4330,7 +4386,7 @@
         "system": "System"
       },
       "language": {
-      "zh-CN": "Simplified Chinese",
+        "zh-CN": "Simplified Chinese",
         "title": "Language",
         "description": "Choose the display language for Agent Project Maker.",
         "ko": "Korean",

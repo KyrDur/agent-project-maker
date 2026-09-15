@@ -1,13 +1,18 @@
 'use client'
 
-import { useMemo, useCallback, useState } from 'react'
+import { useCallback, useState, useMemo } from 'react'
 import { MessageSquareIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { AuiConfig, AssistantRuntimeProvider, Tools } from '@assistant-ui/react'
+import { AuiConfig, AssistantRuntimeProvider } from '@assistant-ui/react'
+import { HiTLContext } from '@/lib/chat/hitl-context'
 import { useChatRuntime } from '@/lib/chat/use-chat-runtime'
 import type { Message } from '@/lib/types'
-import { SETTINGS_TEST_TOOLKIT } from '@/lib/chat/tool-ui-registry'
-import { streamAssistant } from '@/lib/sse/stream-assistant'
+import { ALL_TOOLKIT, createMoldyChatTools } from '@/lib/chat/tool-ui-registry'
+import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api/client'
+import { agentQueryKeys } from '@/lib/query-keys/agents'
+import { streamChat, streamStartConversation, type StreamChatOptions } from '@/lib/sse/stream-chat'
 import { AssistantThread } from '@/components/chat/assistant-thread'
 
 interface TestChatPanelProps {
@@ -16,16 +21,17 @@ interface TestChatPanelProps {
   agentImageUrl?: string | null
 }
 
-/**
- * 일회성 테스트 채팅 패널 — 워크벤치 우측 [테스트] 탭.
- * 세션 내 로컬 state로만 메시지를 관리한다 (서버 저장 X).
- * MVP: streamAssistant(Fix endpoint)를 재사용. 별도 ephemeral conversation
- * 엔드포인트가 생기면 streamFn만 교체하면 된다.
- */
+/** Uses saved Agent configuration and the same durable chat/approval endpoints as production. */
 export function TestChatPanel({ agentId, agentName, agentImageUrl }: TestChatPanelProps) {
-  const config = AuiConfig({ tools: Tools({ toolkit: SETTINGS_TEST_TOOLKIT }) })
+  const [conversationId, setConversationId] = useState<string>()
+  const config = AuiConfig({ tools: createMoldyChatTools(ALL_TOOLKIT, conversationId) })
+  const readiness = useQuery({
+    queryKey: agentQueryKeys.readiness(agentId),
+    queryFn: () =>
+      apiFetch<{ ready: boolean; code: string | null }>(`/api/agents/${agentId}/runtime-readiness`),
+    staleTime: 0,
+  })
   const t = useTranslations('agent.settings')
-  const sessionId = useMemo(() => crypto.randomUUID(), [])
   const [localMessages, setLocalMessages] = useState<Message[]>([])
 
   const onMessagesCommit = useCallback((msgs: Message[]) => {
@@ -33,15 +39,32 @@ export function TestChatPanel({ agentId, agentName, agentImageUrl }: TestChatPan
   }, [])
 
   const streamFn = useCallback(
-    (content: string, signal: AbortSignal) => streamAssistant(agentId, content, signal, sessionId),
-    [agentId, sessionId],
+    (content: string, signal: AbortSignal, options?: StreamChatOptions) => {
+      const transportOptions = {
+        ...options,
+        onConversationId: (id: string) => {
+          setConversationId(id)
+          options?.onConversationId?.(id)
+        },
+      }
+      return conversationId
+        ? streamChat(conversationId, content, signal, transportOptions)
+        : streamStartConversation(agentId, content, signal, transportOptions)
+    },
+    [agentId, conversationId],
   )
 
-  const { runtime } = useChatRuntime({
+  const { runtime, onResumeDecisions, registerDecision } = useChatRuntime({
     messages: localMessages,
+    conversationId,
     streamFn,
     onMessagesCommit,
   })
+
+  const hitlValue = useMemo(
+    () => ({ onResumeDecisions, registerDecision }),
+    [onResumeDecisions, registerDecision],
+  )
 
   const emptyContent = (
     <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
@@ -53,18 +76,52 @@ export function TestChatPanel({ agentId, agentName, agentImageUrl }: TestChatPan
   return (
     <div className="moldy-card flex h-full min-h-0 flex-col">
       <div className="moldy-status-surface moldy-status-warn border-x-0 border-t-0 px-4 py-2 text-xs">
-        {t('testWarning')}
+        {t('testRuntimeInfo')}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <AssistantRuntimeProvider runtime={runtime} config={config}>
-          <AssistantThread
-            agentImageUrl={agentImageUrl}
-            agentName={agentName}
-            compact
-            emptyContent={emptyContent}
-          />
-        </AssistantRuntimeProvider>
-      </div>
+      {!readiness.data?.ready || readiness.isError ? (
+        <div className="space-y-3 p-4" role="status">
+          <p>
+            {readiness.isPending
+              ? t('testChecking')
+              : t(
+                  readiness.data?.code === 'llm_credential_required'
+                    ? 'testMissingCredential'
+                    : readiness.data?.code === 'no_model'
+                      ? 'testMissingModel'
+                      : readiness.data?.code === 'builder_tool_credential'
+                        ? 'testMissingToolCredential'
+                        : 'testUnavailable',
+                )}
+          </p>
+          <Link className="underline" href="/credentials">
+            {t('testConfigureCredentials')}
+          </Link>
+          {' · '}
+          <Link className="underline" href="/models">
+            {t('testConfigureModels')}
+          </Link>
+          {' · '}
+          <Link className="underline" href="/tools">
+            {t('testConfigureTools')}
+          </Link>
+          <button className="block underline" onClick={() => void readiness.refetch()}>
+            {t('testCheckAgain')}
+          </button>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <AssistantRuntimeProvider runtime={runtime} config={config}>
+            <HiTLContext.Provider value={hitlValue}>
+              <AssistantThread
+                agentImageUrl={agentImageUrl}
+                agentName={agentName}
+                compact
+                emptyContent={emptyContent}
+              />
+            </HiTLContext.Provider>
+          </AssistantRuntimeProvider>
+        </div>
+      )}
     </div>
   )
 }

@@ -114,7 +114,7 @@
     },
     "title": "Agent Project Maker",
     "description": "将这个智能体转为可评测、可追踪版本的项目。",
-    "openProject": "项目",
+    "openProject": "打开项目",
     "backToSettings": "智能体设置",
     "loading": "加载中...",
     "creating": "正在创建…",
@@ -260,6 +260,23 @@
       "revoked": "分享已撤销。",
       "publicTitle": "智能体项目案例",
       "shareUnavailable": "该项目共享不可用或已被撤销。"
+    },
+    "bootstrap": {
+      "title": "构建与基线评估",
+      "steps": "构建智能体 → V1 → 评估计划 → 20 个评估用例 → 基线评估 → 结果",
+      "current": "当前步骤：{stage}",
+      "stages": {
+        "v1": "保存 V1",
+        "plan": "生成评估计划",
+        "cases": "生成 20 个评估用例",
+        "baseline": "运行基线评估",
+        "results": "查看结果"
+      },
+      "blocked": "此步骤未能完成。请检查个人模型凭据及模型可用性，修复后重试；已有版本和测试集会保留。",
+      "reason": "阻塞原因代码：{code}",
+      "credentials": "个人凭据",
+      "models": "模型设置",
+      "retry": "重试此流程"
     }
   },
   "metadata": {
@@ -874,7 +891,9 @@
       "breadcrumb": {
         "create": "创建智能体",
         "conversational": "通过聊天构建"
-      }
+      },
+      "restoring": "正在恢复构建会话…",
+      "restoreError": "无法恢复构建会话。请检查网络并重试；原会话仍保留。"
     },
     "card": {
       "status": {
@@ -1021,7 +1040,7 @@
         "skillsCount": "{n}技能",
         "noSkills": "没有注册技能。从 {link} 添加一个。",
         "skillsLink": "技能管理",
-        "empty": "还没有商品。",
+        "empty": "尚未添加工具或技能。",
         "dialogTitle": "对话框标题"
       },
       "modelConfig": "模型设置",
@@ -1144,7 +1163,17 @@
         "saved": "保存成功。",
         "saveFailed": "操作失败。",
         "deleteFailed": "操作失败。"
-      }
+      },
+      "testRuntimeInfo": "使用已保存的智能体配置进行真实对话测试。会保存对话，工具可能产生实际操作；修改配置后请先保存。",
+      "testChecking": "正在检查运行配置…",
+      "testMissingCredential": "无法测试：缺少兼容且可用的个人模型凭据。请添加或修复个人凭据，然后重新检查。",
+      "testMissingModel": "无法测试：未绑定运行模型。请在智能体设置中选择模型并保存。",
+      "testMissingToolCredential": "无法测试：必需工具缺少兼容的个人凭据。请在工具设置中绑定凭据。",
+      "testUnavailable": "无法测试：运行配置或服务暂不可用。请检查模型和工具设置，然后重新检查。",
+      "testConfigureCredentials": "配置个人凭据",
+      "testConfigureModels": "配置模型",
+      "testConfigureTools": "配置工具",
+      "testCheckAgain": "重新检查"
     },
     "visualSettings": {
       "nodes": {
@@ -1167,7 +1196,7 @@
         "setIdentity": "设置身份"
       },
       "subagents": {
-        "empty": "还没有商品。",
+        "empty": "尚未添加子智能体。",
         "remove": "移除"
       },
       "comingSoon": "即将推出",
@@ -1218,7 +1247,7 @@
         "selectedEmpty": "选定为空",
         "current": "当前（{count}）",
         "available": "可用",
-        "empty": "还没有商品。",
+        "empty": "没有可用的中间件。",
         "remove": "移除",
         "removeNamed": "删除{name}",
         "selectToPreview": "选择预览",

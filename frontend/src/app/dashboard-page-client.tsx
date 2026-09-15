@@ -88,7 +88,7 @@ export default function DashboardPage() {
     }
 
     result = [...result].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko')
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'zh-CN')
       if (sortBy === 'favorite') {
         if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1
       }

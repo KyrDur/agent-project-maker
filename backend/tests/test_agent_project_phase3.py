@@ -137,7 +137,11 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
     frozen = deepcopy(run.cases_snapshot_json)
     frozen_spec = deepcopy(run.comparison_json)
     authored.cases[0].input = "Edited after submission"
-    await evaluation.write_set(db, agent.id, TEST_USER_ID, authored, uuid.UUID(dataset["id"]))
+    from app.exceptions import AppError
+
+    with pytest.raises(AppError, match="agent_project_eval_set_frozen"):
+        await evaluation.write_set(db, agent.id, TEST_USER_ID, authored, uuid.UUID(dataset["id"]))
+    assert frozen is not None
     assert frozen[0]["input"] == "Edited before submission"
     assert run.cases_snapshot_json == frozen
     project = await projects.require_project(db, agent.id, TEST_USER_ID)
@@ -239,7 +243,7 @@ async def test_snapshot_adapter_tools_mcp_skills_are_isolated(db, setup_project,
         return Graph()
 
     module = ModuleType("app.agent_runtime.runtime_component_builder")
-    module.build_agent = build
+    monkeypatch.setattr(module, "build_agent", build, raising=False)
     monkeypatch.setitem(sys.modules, module.__name__, module)
     case = generated_cases()["cases"][0]
     case["mock_tool_data"]["mcp_read"] = {"result": "Synthetic MCP result"}
@@ -309,6 +313,9 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
     await evaluation.execute_run(run.id, agent.id, TEST_USER_ID)
     await db.refresh(run)
     assert run.status == "completed" and run.pass_rate == 0.5
+    assert run.results_json is not None
+    assert run.metrics_json is not None
+    assert run.comparison_json is not None
     assert run.results_json[1]["metric_scores"]["groundedness"]["score"] == 0.2
     assert not run.results_json[1]["passed"]
     assert run.metrics_json["metric_scores"]["tool_correctness"]["score"] == 1
@@ -417,6 +424,7 @@ async def test_invalid_judge_is_not_counted_as_pass(db, setup_project, monkeypat
     await evaluation.execute_run(run.id, agent.id, TEST_USER_ID)
     await db.refresh(run)
     assert run.status == "failed" and run.pass_rate == 0
+    assert run.results_json is not None
     result = run.results_json[0]
     assert result["execution_status"] == "completed"
     assert result["actual_output"] == "Hello back" and not result["passed"]
@@ -469,6 +477,7 @@ async def test_real_json_wrapper_redaction_survives_persistence(db, setup_projec
     await db.refresh(run)
     assert run.status == "completed"
     assert secret not in json.dumps(run.results_json)
+    assert run.results_json is not None
     assert "<redacted>" in run.results_json[0]["judge_reasons"]["groundedness"]
 
 

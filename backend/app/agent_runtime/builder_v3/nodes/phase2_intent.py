@@ -27,7 +27,7 @@ from langgraph.types import interrupt
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry
 from app.agent_runtime.builder.sub_agents.intent_analyzer import analyze_intent
-from app.agent_runtime.builder_i18n import get_locale, localize, localized_prompt, tr
+from app.agent_runtime.builder_i18n import localize, localized_prompt, tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     _extract_text_from_content,
     build_phase_complete,
@@ -176,8 +176,7 @@ def _build_combined_request(state: BuilderState) -> str:
 def _name_matches_locale(name: str, request: str) -> bool:
     # Explicit foreign names supplied/requested by the user remain valid.
     return (
-        get_locale() == "ko"
-        or not re.search(r"[가-힯]", name)
+        not re.search(r"[가-힯]", name)
         or name in request
         or bool(re.search(r"Korean|韩语|韩文|한국어", request, re.IGNORECASE))
     )

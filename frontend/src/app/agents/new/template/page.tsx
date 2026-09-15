@@ -14,7 +14,7 @@ import {
   SparklesIcon,
   WrenchIcon,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useTemplates } from '@/lib/hooks/use-templates'
 import { useCreateAgent } from '@/lib/hooks/use-agents'
 import { useModels } from '@/lib/hooks/use-models'
@@ -40,18 +40,19 @@ type SortKey = 'newest' | 'name'
 
 const CATEGORIES: { value: string; labelKey: string }[] = [
   { value: '', labelKey: 'category.all' },
-  { value: 'category.productivityValue', labelKey: 'category.productivity' },
-  { value: 'category.communicationValue', labelKey: 'category.communication' },
-  { value: 'category.dataValue', labelKey: 'category.data' },
+  { value: 'productivity', labelKey: 'category.productivity' },
+  { value: 'communication', labelKey: 'category.communication' },
+  { value: 'data', labelKey: 'category.data' },
 ]
 
 export default function TemplateSelectionPage() {
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations('agent.template')
   const deepLinkedBlueprintId = searchParams.get('blueprintId')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const categoryValue = selectedCategory ? t(selectedCategory) : ''
+  const categoryValue = selectedCategory
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
   const [sortBy, setSortBy] = useState<SortKey>('newest')
@@ -88,10 +89,10 @@ export default function TemplateSelectionPage() {
       )
     }
     return [...list].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko')
+      if (sortBy === 'name') return a.name.localeCompare(b.name, locale)
       return b.created_at.localeCompare(a.created_at)
     })
-  }, [templates, deferredSearch, sortBy])
+  }, [templates, deferredSearch, sortBy, locale])
 
   const filteredBlueprints = useMemo(() => {
     if (!blueprints) return [] as AgentBlueprint[]
@@ -113,10 +114,10 @@ export default function TemplateSelectionPage() {
       )
     }
     return [...list].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko')
+      if (sortBy === 'name') return a.name.localeCompare(b.name, locale)
       return b.created_at.localeCompare(a.created_at)
     })
-  }, [blueprints, categoryValue, deferredSearch, sortBy])
+  }, [blueprints, categoryValue, deferredSearch, sortBy, locale])
 
   async function handleCreateFromTemplate(template: Template) {
     if (creatingId || creatingBlueprintId) return

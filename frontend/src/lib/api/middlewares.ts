@@ -1,6 +1,7 @@
 // Middleware catalog (read-only). Backend exposes `/api/middlewares`.
 
 import { apiFetch } from './client'
+import { getActiveClientLocale } from '@/i18n/client-locale'
 
 export interface MiddlewareRegistryItem {
   type: string
@@ -13,5 +14,6 @@ export interface MiddlewareRegistryItem {
 }
 
 export const middlewaresApi = {
-  list: () => apiFetch<MiddlewareRegistryItem[]>('/api/middlewares'),
+  list: () =>
+    apiFetch<MiddlewareRegistryItem[]>(`/api/middlewares?locale=${getActiveClientLocale()}`),
 }

@@ -20,6 +20,7 @@ class SnapshotExecutionUnavailable(Exception):
 
     def __init__(self, code: str, evidence: dict[str, Any] | None = None) -> None:
         super().__init__(code)
+        self.code = code
         self.evidence = evidence or {}
 
 
@@ -31,13 +32,13 @@ async def execute_snapshot(
         raise SnapshotExecutionUnavailable("snapshot_invalid")
     for field in (
         "sub_agent_links",
-        "middleware_configs",
         "model_fallback_list",
     ):
         if config.get(field):
             raise SnapshotExecutionUnavailable("snapshot_capabilities_not_supported")
     if "<redacted>" in json.dumps(config):
         raise SnapshotExecutionUnavailable("snapshot_redacted_configuration")
+    middleware = snapshot_middlewares(config)
     from app.services.agent_project_mock_tools import frozen_skill_prompt, mock_tools
 
     tools, missing = mock_tools(config, case)
@@ -61,6 +62,7 @@ async def execute_snapshot(
                 llm,
                 tools,
                 config["system_prompt"] + skill_prompt,
+                middleware=middleware,
                 backend=StateBackend(),
                 checkpointer=None,
                 store=None,
@@ -108,3 +110,16 @@ async def execute_snapshot(
         raise
     except Exception as exc:
         raise SnapshotExecutionUnavailable("evaluation_execution_failed") from exc
+
+
+def snapshot_middlewares(config: dict[str, Any]) -> list:
+    from app.agent_runtime.middleware_registry import build_middleware_instances
+    from app.services.builder_runtime_readiness import BUILDER_MIDDLEWARE_TYPES
+
+    configs = config.get("middleware_configs") or []
+    if any(c.get("type") not in BUILDER_MIDDLEWARE_TYPES for c in configs):
+        raise SnapshotExecutionUnavailable("snapshot_capabilities_not_supported")
+    instances = build_middleware_instances(configs)
+    if len(instances) != len(configs):
+        raise SnapshotExecutionUnavailable("snapshot_middleware_unavailable")
+    return instances

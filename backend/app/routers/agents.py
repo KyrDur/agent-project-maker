@@ -341,9 +341,37 @@ async def get_agent_image(
 
 
 @middleware_router.get("/api/middlewares")
-async def list_middlewares() -> list[dict[str, Any]]:
+async def list_middlewares(locale: str = "zh-CN") -> list[dict[str, Any]]:
     """Return the available middleware catalog.
 
     deepagents가 자동 추가하는 빌트인 미들웨어는 제외한다.
     """
-    return get_middleware_registry(exclude_builtin=True)
+    from app.catalog_i18n import middleware_display
+
+    return [
+        middleware_display(item, locale) for item in get_middleware_registry(exclude_builtin=True)
+    ]
+
+
+@router.get("/{agent_id}/runtime-readiness")
+async def runtime_readiness(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.agent_runtime.credential_resolution import resolve_llm_api_key_for_agent
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import validate_tools
+
+    agent = await agent_service.get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise agent_not_found()
+    if agent.model is None:
+        return {"ready": False, "code": "no_model"}
+    await db.refresh(agent, ["llm_credential"])
+    try:
+        await resolve_llm_api_key_for_agent(db, agent)
+        await validate_tools(db, user.id, [link.tool for link in agent.tool_links])
+    except AppError as exc:
+        return {"ready": False, "code": exc.code}
+    return {"ready": True, "code": None}

@@ -38,6 +38,8 @@ class PhaseTodo(TypedDict):
 
 
 class BuilderState(TypedDict, total=False):
+    runtime_model_id: str | None
+    runtime_setup_payload: dict[str, Any] | None
     """LangGraph StateGraph가 관리하는 빌더 세션 상태.
 
     `total=False`로 모든 키를 optional로 두어, 노드가 부분 업데이트만 반환해도 됨.
