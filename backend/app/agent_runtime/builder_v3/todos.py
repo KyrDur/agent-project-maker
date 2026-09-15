@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import AIMessage, ToolMessage
 
@@ -33,7 +33,7 @@ def update_phase_status(
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] == phase_id:
-            new_todos.append({**t, "status": status})  # type: ignore[typeddict-item]
+            new_todos.append(cast(PhaseTodo, {**t, "status": status}))
         else:
             new_todos.append(t)
     return new_todos
@@ -45,7 +45,7 @@ def mark_completed_through(todos: list[PhaseTodo] | None, phase_id: int) -> list
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] <= phase_id:
-            new_todos.append({**t, "status": "completed"})  # type: ignore[typeddict-item]
+            new_todos.append(cast(PhaseTodo, {**t, "status": "completed"}))
         else:
             new_todos.append(t)
     return new_todos
@@ -83,7 +83,7 @@ def build_timeline_messages(
         tool_call_id=tool_call_id,
         name=PHASE_TIMELINE_TOOL,
     )
-    return [ai_msg, tool_msg], todos
+    return [ai_msg, tool_msg], cast(list[PhaseTodo], todos)
 
 
 def get_phase_meta(phase_id: int) -> dict[str, Any]:
