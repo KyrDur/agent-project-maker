@@ -162,6 +162,8 @@ async def create_run(
         raise error("evaluation_requires_enabled_cases")
     from app.services.agent_project_semantic import frozen_plan
 
+    if not dataset.quality_report_json or dataset.quality_report_json.get("status") != "approved":
+        raise error("agent_project_eval_set_quality_required", 409)
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
     dataset.frozen = True
     return await insert_frozen_run(
