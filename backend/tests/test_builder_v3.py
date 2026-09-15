@@ -186,8 +186,7 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
 
     # mock analyze_intent → 빈 fallback intent (이름 fallback 라벨)
     fake_intent = AgentCreationIntent(
-        agent_name="Custom Agent",
-        agent_name_ko="맞춤 에이전트",
+        agent_name="맞춤 에이전트",
         agent_description="사용자 요청에 따라 생성된 에이전트: x",
         primary_task_type="x",
         use_cases=["x"],
@@ -239,7 +238,7 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
     # state 검증
     state = await compiled.aget_state(config)
     assert state.values.get("intent_confirmed") is True
-    assert state.values["intent"]["agent_name_ko"] == "옵션 A"
+    assert state.values["intent"]["agent_name"] == "옵션 A"
     # phase 3 도구 추천 카드는 emit되었어야
     msgs = state.values.get("messages") or []
     has_recommendation = any(
@@ -260,8 +259,7 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
     from app.schemas.builder import AgentCreationIntent
 
     fake_intent = AgentCreationIntent(
-        agent_name="Research Agent",
-        agent_name_ko="리서치 에이전트",
+        agent_name="리서치 에이전트",
         agent_description="자료를 조사하고 정리하는 에이전트",
         primary_task_type="자료 조사",
         use_cases=["자료 조사"],
@@ -325,7 +323,7 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
 
     state = await compiled.aget_state(config)
     assert state.values.get("intent_confirmed") is True
-    assert state.values["intent"]["agent_name_ko"] == "리서치봇"
+    assert state.values["intent"]["agent_name"] == "리서치봇"
     assert state.values["intent"]["response_tone"] == "전문적으로"
     assert state.values["intent"]["output_style"] == "자세한 설명"
     assert state.values["intent"]["identity_mode"] == "per_user"
@@ -338,7 +336,7 @@ def test_phase7_draft_copies_identity_mode():
         {
             "intent": {
                 "agent_name": "Research Agent",
-                "agent_name_ko": "리서치 에이전트",
+                "agent_name": "리서치 에이전트",
                 "agent_description": "자료를 조사하는 에이전트",
                 "primary_task_type": "자료 조사",
                 "use_cases": ["자료 조사"],
@@ -380,3 +378,4 @@ def test_route_after_approval_factory():
     assert route({"last_revision_message": "다시"}) == "phase3_recommend"
     assert route({"last_revision_message": None}) == "phase4"
     assert route({}) == "phase4"
+

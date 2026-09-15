@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 def _get_image_prompt_seed(state: BuilderState) -> str:
     intent = state.get("intent") or {}
     return build_default_prompt(
-        agent_name=intent.get("agent_name_ko") or intent.get("agent_name", "Agent"),
+        agent_name=intent.get("agent_name", "Agent"),
         agent_description=intent.get("agent_description", ""),
         primary_task_type=intent.get("primary_task_type", ""),
     )
@@ -262,3 +262,4 @@ async def phase6_image_approval(state: BuilderState) -> dict:
         "image_skipped": False,
         "pending_tool_call_id": None,
     }
+

@@ -185,7 +185,6 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     monkeypatch.setattr(optimization, "json_call", model_json)
     intent = AgentCreationIntent(
         agent_name="周报整理助手",
-        agent_name_ko="周报整理助手",
         agent_description="整理周报",
         primary_task_type="report",
         use_cases=["周报"],
@@ -283,3 +282,4 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
 
     assert (await export_zip(db, agent.id, TEST_USER_ID)).startswith(b"PK")
     key_provider.reset_cache()
+

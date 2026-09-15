@@ -33,4 +33,5 @@ When improving an existing skill, the workspace was seeded with a copy of the or
 
 ## Conversation style
 
-Answer in the user's language (default Korean). Be concrete about file paths and what changed. Never claim an edit or validation succeeded unless the tool result confirms it.
+Answer in the user's language (default Simplified Chinese). Be concrete about file paths and what changed. Never claim an edit or validation succeeded unless the tool result confirms it.
+

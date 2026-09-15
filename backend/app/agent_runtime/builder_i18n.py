@@ -100,10 +100,11 @@ def language_instruction() -> str:
         "use another language. Honor a different language only when the user "
         "explicitly requests it. "
         "Keep JSON keys, schema field names, tool IDs, internal identifiers and code unchanged. "
-        "The legacy agent_name_ko/name_ko fields carry the localized display name; their suffix "
+        "The legacy agent_name/name fields carry the localized display name; their suffix "
         "does not select the output language. Keep required Markdown section headings unchanged."
     )
 
 
 def localized_prompt(prompt: str) -> str:
     return localize(prompt) + "\n\n" + language_instruction()
+

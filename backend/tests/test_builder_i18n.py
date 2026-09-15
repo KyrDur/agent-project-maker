@@ -162,8 +162,7 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
     from app.agent_runtime.builder_v3.nodes import phase3_tools
 
     intent = AgentCreationIntent(
-        agent_name="Search",
-        agent_name_ko="搜索智能体",
+        agent_name="搜索智能体",
         agent_description="Search pages",
         primary_task_type="search",
         use_cases=["Search pages"],
@@ -201,7 +200,7 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
 def test_explicit_prompt_locale_does_not_translate_identifiers():
     with locale_scope("zh-CN"):
         rule = language_instruction()
-        assert "agent_name_ko/name_ko" in rule
+        assert "agent_name/name" in rule
         assert "Simplified Chinese" in rule
 
 
@@ -303,7 +302,6 @@ async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
     with locale_scope(locale):
         intent = AgentCreationIntent(
             agent_name="Search",
-            agent_name_ko="Search",
             agent_description="Search pages",
             primary_task_type="search",
             use_cases=["Search pages"],
@@ -336,3 +334,4 @@ def test_builder_stream_errors_are_localized_without_provider_details(locale, ex
         assert not HANGUL.search(message)
         assert not HANGUL.search(public_stream_error_message(RuntimeError("오류"), locale=locale))
     assert public_stream_error_message(RuntimeError("plain error")) == "plain error"
+

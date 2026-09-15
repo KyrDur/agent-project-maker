@@ -216,7 +216,7 @@ async def confirm_build(
         # 에이전트 생성
         agent = Agent(
             user_id=session.user_id,
-            name=config.get("name_ko") or config.get("name", tr("new_agent_265674")),
+            name=config.get("name") or tr("new_agent_265674"),
             description=config.get("description", ""),
             system_prompt=config.get("system_prompt", ""),
             model_id=model.id,
@@ -505,3 +505,4 @@ async def run_v3_resume_stream(
 
     async for chunk in stream_agent_response(graph_compiled, Command(resume=response), config):
         yield chunk
+

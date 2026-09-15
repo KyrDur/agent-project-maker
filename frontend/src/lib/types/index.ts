@@ -649,7 +649,6 @@ export interface BuilderSession {
 
 export interface BuilderIntent {
   agent_name: string
-  agent_name_ko: string
   agent_description: string
   primary_task_type: string
   tool_preferences: string
@@ -674,7 +673,6 @@ export interface BuilderMiddlewareRecommendation {
 
 export interface BuilderDraftConfig {
   name: string
-  name_ko: string
   description: string
   system_prompt: string
   tools: string[]
@@ -824,3 +822,4 @@ export interface MiddlewareRegistryItem {
   config_schema: Record<string, unknown>
   provider_specific: string | null
 }
+

@@ -12,7 +12,7 @@ wait 노드에서 interrupt를 호출한다. resume 후 응답에 따라 self-lo
     phase2_intent_wait → interrupt → resume:
       ├ 빈/직접 입력 → Command(goto="phase2_analyze_intent")
       └ 옵션 선택   → Command(goto="phase2_analyze_intent",
-                              update={intent_confirmed=True, intent.agent_name_ko=..})
+                              update={intent_confirmed=True, intent.agent_name=..})
 """
 
 from __future__ import annotations
@@ -136,7 +136,6 @@ def _phase2_selection_summary(
 def _fallback_name_options(state: BuilderState) -> list[str]:
     intent = state.get("intent") or {}
     candidates = [
-        str(intent.get("agent_name_ko") or "").strip(),
         str(intent.get("agent_name") or "").strip(),
         tr("search_agent_cbfa49"),
         tr("helper_bot_68e74f"),
@@ -178,7 +177,7 @@ def _name_matches_locale(name: str, request: str) -> bool:
     return (
         not re.search(r"[가-힯]", name)
         or name in request
-        or bool(re.search(r"Korean|韩语|韩文|한국어", request, re.IGNORECASE))
+
     )
 
 
@@ -202,7 +201,7 @@ async def _suggest_name_options(user_request: str) -> list[str]:
 
 
 def _format_intent_summary(intent: dict[str, Any]) -> str:
-    name = intent.get("agent_name_ko") or intent.get("agent_name", "Agent")
+    name = intent.get("agent_name", "Agent")
     desc = intent.get("agent_description", "")
     return tr("agent_name_v_description_v_565ef2", v0=f"{name}", v1=f"{desc}")
 
@@ -256,7 +255,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
             "error_message": tr("an_error_occurred_while_resolving_1678d2"),
         }
 
-    suggested = (intent_obj.agent_name_ko or "").strip()
+    suggested = (intent_obj.agent_name or "").strip()
     if (
         suggested
         and suggested not in _FALLBACK_NAMES
@@ -340,9 +339,7 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
     if not receipt_text:
         receipt_text = selected_name
 
-    intent_dict["agent_name_ko"] = selected_name
-    if not intent_dict.get("agent_name") or intent_dict["agent_name"] in _FALLBACK_NAMES:
-        intent_dict["agent_name"] = selected_name
+    intent_dict["agent_name"] = selected_name
     if selected_tone:
         intent_dict["response_tone"] = selected_tone
     if selected_style:
@@ -357,3 +354,4 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
         "last_revision_message": None,  # router로 들어왔던 revision 소비 완료
         "pending_tool_call_id": None,
     }
+

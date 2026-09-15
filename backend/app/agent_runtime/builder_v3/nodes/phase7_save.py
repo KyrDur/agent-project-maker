@@ -39,7 +39,6 @@ def _build_draft(state: BuilderState) -> DraftAgentConfig:
     mws = [MiddlewareRecommendation(**m) for m in state.get("middlewares") or []]
     return DraftAgentConfig(
         name=intent.agent_name,
-        name_ko=intent.agent_name_ko,
         description=intent.agent_description,
         system_prompt=state.get("system_prompt") or "",
         tools=[t.tool_name for t in tools],
@@ -126,3 +125,4 @@ async def phase7_save(state: BuilderState) -> dict:
         "draft_config": draft_dict,
         "current_phase": 8,
     }
+

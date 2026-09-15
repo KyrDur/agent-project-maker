@@ -94,7 +94,7 @@ async def test_confirm_build(client: AsyncClient, db: AsyncSession):
         status=BuilderStatus.PREVIEW,
         draft_config={
             "name": "Weather Bot",
-            "name_ko": "날씨 봇",
+            "name": "날씨 봇",
             "description": "날씨를 알려주는 봇",
             "system_prompt": "You are a weather bot.",
             "tools": [],
@@ -211,7 +211,7 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
         status=BuilderStatus.PREVIEW,
         draft_config={
             "name": "Bot",
-            "name_ko": "봇",
+            "name": "봇",
             "description": "d",
             "system_prompt": "p",
             "tools": [],
@@ -226,3 +226,4 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
     resp = await client.post(f"/api/builder/{session.id}/confirm")
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "MODEL_NOT_FOUND"
+

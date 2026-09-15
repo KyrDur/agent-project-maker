@@ -176,7 +176,7 @@ async def test_confirm_build_success(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Weather Bot",
-        "name_ko": "날씨 봇",
+        "name": "날씨 봇",
         "description": "날씨를 알려주는 봇",
         "system_prompt": "You are a weather bot.",
         "tools": ["Web Search"],
@@ -209,7 +209,7 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Scheduler",
-        "name_ko": "스케줄 봇",
+        "name": "스케줄 봇",
         "description": "정해진 시간에 실행되는 봇",
         "system_prompt": "Run on schedule.",
         "tools": [],
@@ -244,7 +244,7 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "OrgChart",
-        "name_ko": "조직도 봇",
+        "name": "조직도 봇",
         "description": "조직도 QA",
         "system_prompt": "you are an org chart assistant",
         "tools": ["list_departments", "search_employees"],
@@ -275,7 +275,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Mixed",
-        "name_ko": "혼합",
+        "name": "혼합",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments"],
@@ -309,7 +309,7 @@ async def test_confirm_build_links_skills(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Locate",
-        "name_ko": "위치 봇",
+        "name": "위치 봇",
         "description": "직원 좌석 안내",
         "system_prompt": "p",
         "tools": ["seat_layout_guide", "evac_procedure"],
@@ -339,7 +339,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "All",
-        "name_ko": "전체",
+        "name": "전체",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments", "seat_layout_guide"],
@@ -381,7 +381,7 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
+        "name": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_skill"],
@@ -423,7 +423,7 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
+        "name": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_tool"],
@@ -449,7 +449,7 @@ async def test_confirm_build_no_model(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Test Agent",
-        "name_ko": "테스트 에이전트",
+        "name": "테스트 에이전트",
         "description": "desc",
         "system_prompt": "prompt",
         "tools": [],
@@ -476,7 +476,7 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -629,7 +629,7 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -682,3 +682,4 @@ async def test_get_agent_by_id_not_found(db: AsyncSession):
 
     found = await get_agent_by_id(db, _uuid.uuid4())
     assert found is None
+

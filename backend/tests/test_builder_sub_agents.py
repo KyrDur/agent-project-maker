@@ -24,7 +24,7 @@ from app.schemas.builder import (
 def _make_intent(**overrides) -> AgentCreationIntent:
     defaults = {
         "agent_name": "Weather Bot",
-        "agent_name_ko": "날씨 봇",
+        "agent_name": "날씨 봇",
         "agent_description": "날씨를 알려주는 에이전트입니다.",
         "primary_task_type": "날씨 정보 조회",
         "use_cases": ["날씨 검색"],
@@ -65,7 +65,7 @@ async def test_analyze_intent_success():
     """Mock LLM returns valid intent JSON."""
     mock_data = {
         "agent_name": "News Bot",
-        "agent_name_ko": "뉴스 봇",
+        "agent_name": "뉴스 봇",
         "agent_description": "뉴스를 요약하는 에이전트",
         "primary_task_type": "뉴스 요약",
         "use_cases": ["뉴스 검색"],
@@ -81,7 +81,7 @@ async def test_analyze_intent_success():
 
         result = await analyze_intent("뉴스 봇 만들어줘")
         assert result.agent_name == "News Bot"
-        assert result.agent_name_ko == "뉴스 봇"
+        assert result.agent_name == "뉴스 봇"
         assert result.primary_task_type == "뉴스 요약"
 
 
@@ -97,7 +97,7 @@ async def test_analyze_intent_fallback():
 
         result = await analyze_intent("테스트 봇")
         assert result.agent_name == "Custom Agent"
-        assert result.agent_name_ko == "맞춤 에이전트"
+        assert result.agent_name == "맞춤 에이전트"
         assert "테스트 봇" in result.agent_description
 
 
@@ -595,3 +595,4 @@ def explicit_korean_locale():
 
     with locale_scope("ko"):
         yield
+

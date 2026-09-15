@@ -68,9 +68,6 @@ class AgentCreationIntent(BaseModel):
     """의도 분석 서브에이전트의 구조화된 출력."""
 
     agent_name: str = Field(..., description="Agent name in the active output language")
-    agent_name_ko: str = Field(
-        ..., description="Localized display name; legacy field name retained for compatibility"
-    )
     agent_description: str = Field(
         ..., description="에이전트의 역할과 기능에 대한 상세 설명 (3~5문장)"
     )
@@ -140,7 +137,6 @@ class DraftAgentConfig(BaseModel):
     """빌드 파이프라인 최종 산출물 — 사용자 확인용 에이전트 설정 프리뷰."""
 
     name: str
-    name_ko: str
     description: str
     system_prompt: str
     tools: list[str] = Field(default_factory=list, description="도구 이름 목록")
@@ -222,3 +218,4 @@ class BuilderStateSchema(BaseModel):
 
 # Pydantic v2 모델 재구성 (forward references 해결)
 BuilderSessionResponse.model_rebuild()
+

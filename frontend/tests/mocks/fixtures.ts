@@ -391,8 +391,7 @@ export const mockUsageSummary: UsageSummary = {
 // ── Builder v2 ────────────────────────────────────────────────────
 
 export const mockBuilderDraftConfig: BuilderDraftConfig = {
-  name: 'News Agent',
-  name_ko: '뉴스 에이전트',
+  name: '뉴스 에이전트',
   description: 'Summarizes daily news',
   system_prompt: 'You are a news summarizer.',
   tools: ['Web Search', 'Web Scraper'],
@@ -408,8 +407,7 @@ export const mockBuilderSession: BuilderSession = {
   current_phase: 7,
   user_request: '뉴스 요약 에이전트',
   intent: {
-    agent_name: 'News Agent',
-    agent_name_ko: '뉴스 에이전트',
+    agent_name: '뉴스 에이전트',
     agent_description: 'Summarizes daily news',
     primary_task_type: 'research',
     tool_preferences: 'web search',
@@ -491,3 +489,4 @@ export const mockMarketplaceItemsPage: MarketplaceItemsPage = {
   has_more: false,
   next_offset: null,
 }
+

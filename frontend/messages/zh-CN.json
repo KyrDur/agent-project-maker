@@ -598,7 +598,6 @@
     },
     "language": {
       "label": "语言",
-      "ko": "韩语",
       "en": "英语",
       "zh-CN": "简体中文"
     },
@@ -860,7 +859,6 @@
       "toolReason": "原因",
       "configComplete": "智能体配置完成",
       "draftName": "名称",
-      "draftNameKo": "韩文名字",
       "draftDescription": "描述",
       "draftModel": "模型",
       "draftTaskType": "主要任务",
@@ -4388,7 +4386,6 @@
       "language": {
         "title": "语言",
         "description": "选择 Agent Project Maker 的显示语言。",
-        "ko": "韩语",
         "en": "英语",
         "zh-CN": "简体中文"
       }
@@ -4906,3 +4903,4 @@
     }
   }
 }
+

@@ -214,7 +214,7 @@ def resolve_relative_date_expression(
     now: datetime | None = None,
     timezone: str = DEFAULT_TIMEZONE,
 ) -> dict[str, Any]:
-    """Resolve common Korean relative date expressions into an ISO date range."""
+    """Resolve common relative date expressions into an ISO date range."""
 
     current = _coerce_now(now, timezone=timezone)
     today = current.date()
@@ -300,3 +300,4 @@ def resolve_relative_date_expression(
         "reference_date": today.isoformat(),
         "reference_weekday": _weekday_ko(today),
     }
+

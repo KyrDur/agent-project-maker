@@ -42,10 +42,10 @@ async def analyze_intent(user_request: str) -> AgentCreationIntent:
     # fallback
     return AgentCreationIntent(
         agent_name="Custom Agent",
-        agent_name_ko=tr("custom_agent_ba8ff9"),
         agent_description=tr("agent_created_upon_user_request_d1f519", v0=f"{user_request}"),
         primary_task_type=tr("perform_common_tasks_136765"),
         identity_mode="per_user",
         use_cases=[tr("handling_user_requests_b68392")],
         required_capabilities=[tr("normal_conversation_fb5742")],
     )
+

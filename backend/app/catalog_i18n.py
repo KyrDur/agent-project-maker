@@ -22,11 +22,11 @@ TEMPLATE_KEYS = (
     "local_search",
 )
 CATEGORY_KEYS = {
-    "생산성": "productivity",
-    "데이터": "data",
-    "개발": "development",
-    "생활": "lifestyle",
-    "커뮤니케이션": "communication",
+    "生产力": "productivity",
+    "数据": "data",
+    "开发": "development",
+    "生活": "lifestyle",
+    "通信": "communication",
 }
 
 
@@ -71,3 +71,4 @@ def middleware_display(item: dict, locale: str) -> dict:
         for key, field in result.get("config_schema", {}).items():
             field["description"] = key.replace("_", " ")
     return result
+

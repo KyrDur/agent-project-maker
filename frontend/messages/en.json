@@ -599,7 +599,6 @@
     "language": {
       "zh-CN": "Simplified Chinese",
       "label": "Language",
-      "ko": "Korean",
       "en": "English"
     },
     "settings": "Settings",
@@ -860,7 +859,6 @@
       "toolReason": "Reason",
       "configComplete": "Agent configuration complete",
       "draftName": "Name",
-      "draftNameKo": "Korean name",
       "draftDescription": "Description",
       "draftModel": "Models",
       "draftTaskType": "Primary task",
@@ -4389,7 +4387,6 @@
         "zh-CN": "Simplified Chinese",
         "title": "Language",
         "description": "Choose the display language for Agent Project Maker.",
-        "ko": "Korean",
         "en": "English"
       }
     },
@@ -4906,3 +4903,4 @@
     }
   }
 }
+
