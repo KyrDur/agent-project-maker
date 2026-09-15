@@ -24,6 +24,20 @@ def spec_value(stored: dict[str, Any]) -> EvalSpec:
     )
 
 
+
+def capability_profile(snapshot: dict[str, Any]) -> dict[str, Any]:
+    agent = snapshot.get("agent", {})
+    tools = agent.get("tool_links") or []
+    skills = agent.get("skill_links") or []
+    middlewares = agent.get("middleware_configs") or []
+    prompt = str(agent.get("system_prompt") or "").lower()
+    capabilities = set()
+    if tools or "tool" in prompt or "workflow" in prompt: capabilities.add("tool_calling")
+    if skills or "knowledge" in prompt or "retriev" in prompt: capabilities.add("knowledge_retrieval")
+    if middlewares or "workflow" in prompt: capabilities.add("workflow")
+    if not capabilities: capabilities.add("conversation")
+    return {"agent_type": "workflow" if "workflow" in capabilities else "knowledge" if "knowledge_retrieval" in capabilities else "general", "capabilities": sorted(capabilities), "tools": [str(item.get("definition_key") or item.get("name")) for item in tools if isinstance(item, dict)], "skills": [str(item.get("slug") or item.get("skill_id")) for item in skills if isinstance(item, dict)]}
+
 def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
     model = snapshot["agent"]["model"]
     descriptor = {key: model.get(key) for key in ("id", "provider", "model_name")}
@@ -76,6 +90,7 @@ async def generate(
                 "config_hash": version.config_hash,
                 "categories": list(SCENARIOS),
                 "case_count": 20,
+                "capability_profile": capability_profile(snapshot),
                 "roles": model_roles(snapshot),
             }
             await projects.lock_project(db, project)
@@ -90,7 +105,7 @@ async def generate(
             snapshot,
             user_id,
             "case_generator",
-            "Generate exactly 20 diverse evaluation cases covering ALL six scenario categories. "
+            "Generate exactly 20 diverse evaluation cases informed by the capability profile. Include normal, edge, and failure cases and cover relevant scenario categories. "
             "Use only synthetic invented source data, never request external integration data. "
             "Return name and cases matching the supplied schema. Each case must have an id UUID, "
             "name,input,context,expected.answer describing expected behavior, required_tools, "
@@ -105,6 +120,7 @@ async def generate(
                 "snapshot": snapshot,
                 "eval_spec": saved_spec,
                 "categories": list(SCENARIOS),
+                "capability_profile": saved_spec.get("capability_profile", {}),
                 "schema": EvalSetWrite.model_json_schema(),
             },
         )
@@ -115,6 +131,8 @@ async def generate(
         if len({case.id for case in body.cases}) != 20:
             raise ValueError("Duplicate case IDs")
         for case in body.cases:
+            if case.expected_behavior is None:
+                case.expected_behavior = case.expected.model_dump(mode="json")
             if not case.enabled or not case.expected.answer:
                 raise ValueError("Missing expected behavior")
             if len(set(case.tags) & set(SCENARIOS)) != 1:

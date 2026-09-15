@@ -72,6 +72,10 @@ class MockToolBehavior(BaseModel):
 
 class EvaluationCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    evaluation_type: Literal["normal", "edge", "failure"] = "normal"
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    source: Literal["ai_generated", "imported", "official_benchmark"] = "ai_generated"
+    expected_behavior: dict[str, Any] | None = None
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     name: str = Field(min_length=1, max_length=200)
     input: str = Field(min_length=1, max_length=10000)
@@ -165,6 +169,7 @@ METRICS = {
 
 class EvalSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    capability_profile: dict[str, Any] = Field(default_factory=dict)
     metrics: list[EvalMetric] = Field(min_length=3, max_length=5)
     pass_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
 

@@ -36,6 +36,10 @@ export interface VersionCreated {
 }
 
 export interface EvaluationCase {
+  evaluation_type?: 'normal' | 'edge' | 'failure'
+  difficulty?: 'easy' | 'medium' | 'hard'
+  source?: 'ai_generated' | 'imported' | 'official_benchmark'
+  expected_behavior?: Record<string, unknown> | null
   id: string
   name: string
   input: string
@@ -121,6 +125,7 @@ export interface VersionComparison {
 }
 
 export interface EvaluationSpec {
+  capability_profile?: Record<string, unknown>
   version_id: string
   metrics: { name: string; type: string; weight: number; criteria: string }[]
   categories: string[]
