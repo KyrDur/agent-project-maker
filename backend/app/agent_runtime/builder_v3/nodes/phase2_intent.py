@@ -176,7 +176,7 @@ def _build_combined_request(state: BuilderState) -> str:
 def _name_matches_locale(name: str, request: str) -> bool:
     # Explicit foreign names supplied/requested by the user remain valid.
     return (
-not re.search(r"[가-힯]", name)
+        not re.search(r"[가-힯]", name)
         or name in request
         or bool(re.search(r"Korean|韩语|韩文|한국어", request, re.IGNORECASE))
     )
