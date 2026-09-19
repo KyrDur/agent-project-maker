@@ -20,7 +20,7 @@ async def test_ask_clarifying_question():
     result = await tool.ainvoke(
         {
             "question": "어떤 유형의 검색을 원하시나요?",
-            "option_1": "웹 검색",
+            "option_1": "默认标题",
             "option_2": "뉴스 검색",
             "option_3": "이미지 검색",
         }
@@ -30,7 +30,7 @@ async def test_ask_clarifying_question():
     assert data["type"] == "clarifying_question"
     assert data["question"] == "어떤 유형의 검색을 원하시나요?"
     assert len(data["options"]) == 4
-    assert "웹 검색" in data["options"]
+    assert "默认标题" in data["options"]
     assert "뉴스 검색" in data["options"]
     assert "이미지 검색" in data["options"]
-    assert "직접 입력" in data["options"]
+    assert "直接输入" in data["options"]

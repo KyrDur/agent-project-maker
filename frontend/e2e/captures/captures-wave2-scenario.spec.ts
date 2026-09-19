@@ -135,13 +135,13 @@ test.describe('Wave 2 scenario captures', () => {
     await capture(page, WAVE, '00-search-rich-answer-and-memory-chip.png')
 
     // 회상 칩 펼침 — scope 배지 + 기억 미리보기.
-    await memoryChip.getByText('기억 참고').click()
+    await memoryChip.getByText('记忆回忆').click()
     await expect(memoryChip.getByText('답변은 한국어로, 결론부터 정리하는 것을 선호한다.')).toBeVisible(
       { timeout: 10_000 },
     )
     await settle(page)
     await capture(page, WAVE, '01-memory-recall-expanded.png')
-    await memoryChip.getByText('기억 참고').click()
+    await memoryChip.getByText('记忆回忆').click()
 
     // 쇼핑 검색 — Naver items shape: 썸네일 + 최저가 + 판매처.
     await sendMessage(page, '무선 키보드 최저가 알려줘 E2E_SEARCH_SHOP')
@@ -206,7 +206,7 @@ test.describe('Wave 2 scenario captures', () => {
     await settle(page)
     await capture(page, WAVE, '06-skill-pill-files-after-reload.png')
 
-    // ── 정리: user-scope 기억은 계정 전역이라 다른 spec 화면에 "기억 참고"
+    // ── 정리: user-scope 기억은 계정 전역이라 다른 spec 화면에 "记忆回忆"
     // 칩이 새어 들어간다 — 투어가 만든 기억을 지워 spec 간 결합을 끊는다.
     await resetMemories(request, csrfHeaders, [])
   })

@@ -210,7 +210,7 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "file_search": {
         "name": "FilesystemFileSearchMiddleware",
-        "display_name": "파일 검색",
+        "display_name": "搜索文件",
         "description": "대용량 문서에서 glob/grep 검색 기능을 제공합니다",
         "category": "reliability",
         "config_schema": {},

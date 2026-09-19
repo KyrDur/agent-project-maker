@@ -76,17 +76,17 @@ describe('AgentCard', () => {
 
   it('shows active status badge', () => {
     render(<AgentCard agent={activeAgent} />)
-    expect(screen.getByText('활성')).toBeInTheDocument()
+    expect(screen.getByText('启用')).toBeInTheDocument()
   })
 
   it('shows error status badge', () => {
     render(<AgentCard agent={errorAgent} />)
-    expect(screen.getByText('오류')).toBeInTheDocument()
+    expect(screen.getByText('错误')).toBeInTheDocument()
   })
 
   it('shows inactive status badge', () => {
     render(<AgentCard agent={inactiveAgent} />)
-    expect(screen.getByText('비활성')).toBeInTheDocument()
+    expect(screen.getByText('停用')).toBeInTheDocument()
   })
 
   it('shows model name', () => {

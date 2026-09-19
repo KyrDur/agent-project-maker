@@ -15,7 +15,7 @@ function Harness() {
       message_id: 'm1',
       message_role: 'assistant',
       quote: '원문 일부',
-      label: '출처 대화',
+      label: '来源对话',
     },
   ])
   return (
@@ -42,6 +42,6 @@ describe('quote chip preview and editor', () => {
     )
     await user.hover(chip)
     await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('내 의견'))
-    expect(screen.getByRole('tooltip')).toHaveTextContent('출처 대화')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('来源对话')
   })
 })

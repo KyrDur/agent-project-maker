@@ -1,5 +1,269 @@
 {
   "agentProject": {
+    "lifecycle": {
+      "proposals": "AI Optimization Proposals",
+      "reviewFirst": "AI produces a proposal and change preview first. Accepting creates a new version snapshot; the live Agent is not changed automatically.",
+      "generate": "Generate AI proposal",
+      "generating": "Analyzing evidence and generating a proposal…",
+      "capabilities": "Affected capabilities: {value}",
+      "rootCause": "Root cause: {value}",
+      "suggestion": "Improvement: {value}",
+      "change": "Review {target} changes",
+      "deferred": "Manual follow-up (historical Skill content unavailable): {value}",
+      "accept": "Accept and create version",
+      "reject": "Reject proposal",
+      "decisionReason": "Why choose this strategy? (optional)",
+      "decisionReasonPlaceholder": "Example: prioritize tool calling because it is the highest launch risk.",
+      "savedDecisionReason": "Decision reason: {value}",
+      "defaultProposalTitle": "Evidence-driven optimization",
+      "whatChanges": "Changes: {value}",
+      "whyItMayWork": "Why it may work: {value}",
+      "targetedCases": "Targeted failed cases: {value}",
+      "benefits": "Benefits",
+      "risks": "Risks and trade-offs",
+      "cannotApply": "No supported snapshot changes. Resolve the deferred advice or reject this proposal.",
+      "versionCreated": "Created {version} from {source}. The original version is unchanged.",
+      "runRegression": "Run frozen-set regression",
+      "rerunRegression": "Create another regression run",
+      "regressionRunning": "Regression running…",
+      "compareReport": "View report and version comparison",
+      "rejectedHistory": "Rejected. The proposal and change preview remain in history.",
+      "error": "The operation did not complete. Check the run evidence or model status and retry.",
+      "statuses": {
+        "pending": "Pending review",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "qualityStatus": "Eval set quality: {status}",
+      "qualityScore": "Quality score: {value}%",
+      "qualityStates": {
+        "pending": "Not checked",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "qualityCheck": "Check eval set quality",
+      "checking": "Checking…",
+      "qualityIssues": {
+        "missing_capabilities": "Capabilities are missing. Add case tags or regenerate cases.",
+        "low_diversity": "Too many duplicate cases. Edit or regenerate cases."
+      },
+      "bestReason": "Reason: highest valid score on the same eval set and scoring rule.",
+      "createdFrom": "Created from {source} · proposal {proposal}"
+    },
+    "evaluationReport": {
+      "title": "Evaluation Report",
+      "selectReport": "Evaluation history (Version B)",
+      "score": "Overall Score",
+      "summary": "Evaluation Summary",
+      "summaryValue": "{passed} of {total} cases passed",
+      "best": "Best Version",
+      "unavailable": "No evaluation score",
+      "percent": "{value}%",
+      "delta": "{value} percentage points",
+      "scoreRule": "Overall Score is the evaluation pass rate. Metrics retain existing Judge scores. Runs with execution or grading errors have no overall score.",
+      "bestRule": "Best Version has the highest score on the same frozen data and scoring criteria. Ties keep the earlier evaluation. Live Agent settings are not automatically changed.",
+      "dataset": "Eval set: {id}",
+      "metrics": "Metrics",
+      "noMetrics": "No stored metrics.",
+      "badCases": "Bad Cases ({count})",
+      "noFailures": "No recorded failures.",
+      "noReason": "Open the run details for failure evidence.",
+      "suggestions": "Optimization Suggestions",
+      "noSuggestions": "No saved suggestions. Analyze bad cases in the run details.",
+      "openRun": "Open run details / analysis / optimization",
+      "compare": "Version Score Comparison",
+      "baseline": "Baseline (Version A)",
+      "comparison": "A {before} → B {after}",
+      "needBaseline": "Evaluate another version to compare scores.",
+      "notComparable": "Valid evaluations with the same frozen data and scoring criteria are required to calculate a difference.",
+      "running": "Evaluation or optimization is running. Reports refresh automatically when it finishes.",
+      "empty": "No evaluation reports yet. Select a version and eval set, then run evaluation."
+    },
+    "workspace": {
+      "navAria": "Agent lifecycle workspace",
+      "tabs": {
+        "overview": {
+          "label": "Overview",
+          "description": "Lifecycle status"
+        },
+        "versions": {
+          "label": "Versions",
+          "description": "Version evolution"
+        },
+        "evaluation": {
+          "label": "Evaluation",
+          "description": "Evaluation evidence"
+        },
+        "optimization": {
+          "label": "Optimization",
+          "description": "Improvement loop"
+        },
+        "settings": {
+          "label": "Settings",
+          "description": "Project settings"
+        }
+      },
+      "overview": {
+        "eyebrow": "Agent Lifecycle",
+        "narrative": "Create → Version → Evaluate → Analyze → Optimize → Regression → Best Version",
+        "currentVersion": "Current version",
+        "bestVersion": "Best version",
+        "latestEvaluation": "Latest evaluation",
+        "progressTitle": "Lifecycle Progress",
+        "noData": "No data",
+        "noVersion": "No version",
+        "aiReadiness": {
+          "status": {
+            "ready": "Ready",
+            "needsSetup": "Needs setup",
+            "notConfigured": "Not configured"
+          },
+          "pipeline": {
+            "title": "Platform AI pipeline",
+            "roles": {
+              "builder": "Builder AI",
+              "evaluation_generator": "Evaluation Generator AI",
+              "judge_optimizer": "Judge & Optimizer AI"
+            }
+          },
+          "runtime": {
+            "title": "Agent Runtime",
+            "model": "Runtime model",
+            "credential": "Runtime credential",
+            "masked": "Credential protected"
+          }
+        },
+        "steps": {
+          "v1Ready": "Agent V1 Ready",
+          "generatorAnalyzing": "Evaluation Generator Analysis",
+          "focusCheckpoint": "Evaluation Focus Checkpoint",
+          "benchmarkGenerating": "Generate 20 Cases",
+          "benchmarkFrozen": "Mock Environment Frozen",
+          "evaluationRunning": "V1 Evaluation Running",
+          "resultsBadCases": "Results and Bad Cases",
+          "optimizationProposals": "Optimization Proposals",
+          "optimizationDecision": "Optimization Decision",
+          "v2Generation": "Generate V2",
+          "regressionEvaluation": "Regression Evaluation",
+          "comparisonBestVersion": "Comparison and Best Version"
+        },
+        "stepStates": {
+          "completed": "completed",
+          "current": "current",
+          "pending": "pending"
+        },
+        "bestCard": {
+          "title": "Best Version",
+          "badge": "Best",
+          "overallScore": "Overall Score",
+          "noPreviousComparable": "No previous comparable version yet.",
+          "improvement": "{value} percentage points vs. previous comparable version",
+          "viewVersions": "View version evolution",
+          "empty": "Best Version appears after at least one valid evaluation.",
+          "runEvaluation": "Run evaluation"
+        },
+        "latestCard": {
+          "title": "Latest Evaluation",
+          "version": "Version",
+          "score": "Score",
+          "cases": "Cases",
+          "failedCases": "Failed cases",
+          "evaluatedWith": "Evaluated with",
+          "evaluationTime": "Evaluation time",
+          "empty": "No evaluation run yet.",
+          "viewEvaluation": "View Evaluation"
+        },
+        "optimizationCard": {
+          "title": "Latest Optimization",
+          "status": "Status: ",
+          "detectedIssue": "Detected issue: ",
+          "rootCause": "Root cause: ",
+          "uncategorized": "Uncategorized",
+          "noRootCause": "No root cause",
+          "review": "Review Optimization",
+          "empty": "No optimization proposal yet.",
+          "view": "Open optimization"
+        },
+        "nextAction": {
+          "title": "Next Action",
+          "generateEvalSet": {
+            "label": "Generate EvalSet",
+            "detail": "Create a reusable set of evaluation cases so future versions can be compared."
+          },
+          "chooseEvaluationFocus": {
+            "label": "Confirm Evaluation Focus",
+            "detail": "Choose the risks that matter most, then generate the fixed set of 20 formal cases."
+          },
+          "qualityCheck": {
+            "label": "Run Quality Check",
+            "detail": "Check coverage, validity, and evaluability before the formal run."
+          },
+          "runEvaluation": {
+            "label": "Run Evaluation",
+            "detail": "Select a version and eval set to create the first comparable evidence."
+          },
+          "analyzeBadCases": {
+            "label": "Analyze Bad Cases",
+            "detail": "Generate root-cause analysis and reviewable optimization proposals from failures."
+          },
+          "runRegression": {
+            "label": "Run Regression",
+            "detail": "Use the same frozen eval set to verify whether the new version improved."
+          },
+          "compareVersions": {
+            "label": "Compare Versions",
+            "detail": "Review the best version, score changes, and version evolution."
+          }
+        }
+      },
+      "versions": {
+        "evolutionAria": "Version Evolution",
+        "bestBadge": "BEST",
+        "evaluationScore": "Evaluation",
+        "createdFrom": "Created from",
+        "optimizationProposal": "Optimization Proposal #{id}",
+        "initialVersion": "Initial Version",
+        "manualVersion": "Manual Version",
+        "parent": "Parent",
+        "none": "None",
+        "regression": "Regression",
+        "changes": "Changes"
+      },
+      "evaluation": {
+        "evalSets": {
+          "title": "Eval Sets",
+          "description": "Compare versions with the same frozen evaluation cases so latest and best stay separate.",
+          "frozen": "Frozen for regression",
+          "draft": "Draft",
+          "name": "EvalSet name",
+          "caseCount": "Case count",
+          "qualityStatus": "Quality status",
+          "source": "Source",
+          "sources": {
+            "aiGenerated": "AI generated",
+            "imported": "Imported",
+            "manual": "Manual"
+          }
+        },
+        "caseDefaults": {
+          "evaluationType": "normal",
+          "difficulty": "medium",
+          "source": "manual",
+          "enabled": "enabled",
+          "disabled": "disabled"
+        },
+        "runs": {
+          "title": "Evaluation Runs",
+          "description": "Every run is bound to a version and an eval set. Reports and optimization proposals start here."
+        }
+      },
+      "optimization": {
+        "title": "Optimization",
+        "description": "Review AI optimization proposals from evaluation failures, then verify them with the same frozen eval set.",
+        "loading": "Loading optimization evidence...",
+        "empty": "No optimizable evaluation evidence yet. Run Evaluation first, then generate proposals from failed cases."
+      }
+    },
     "createVersion": "Create version",
     "configHash": "Configuration hash",
     "snapshotDetail": "View snapshot",
@@ -144,13 +408,27 @@
     "scenarioCategories": "Scenario categories",
     "planVersionMismatch": "Generate a plan for the selected version.",
     "generateCases": "Generate 20 Test Cases",
+    "evaluationFocus": {
+      "title": "Where are you most worried this Agent could fail?",
+      "description": "Select at least 2. Evaluation Generator AI will use this to distribute the formal 20-case benchmark.",
+      "reason": "Why are these scenarios most important? (optional)",
+      "reasonPlaceholder": "Example: before production, it must query both Feishu and Notion without inventing sources.",
+      "fallbackDescription": "Include this risk category in the formal evaluation coverage.",
+      "minimum": "Select at least 2 focus areas."
+    },
     "generationFailed": "Generation failed. Check model credentials and retry.",
     "metricScores": "Metric Scores",
     "passRate": "Pass rate {value}%",
     "scorePercent": "{value}%",
     "scoredCases": "{count} scored cases",
     "semanticDescription": "Run semantic grading and structural checks when an evaluation plan is available.",
-    "mockScope": "External tools use frozen mock data only. Real external data is never accessed.",
+    "mockEnvironmentTitle": "Mock Evaluation Environment",
+    "mockScope": "Evaluation uses fixed mock data and never changes real Feishu, Notion, or other external systems. Connect real tools later for production use.",
+    "toolTrace": "Inspect tool trace",
+    "toolOrder": "Call {value}",
+    "toolArguments": "Arguments",
+    "toolResult": "Mock result",
+    "toolError": "Mock error",
     "deterministicReason": "Tool-use or output-format assertion result",
     "semanticExpected": "With an evaluation plan, the judge compares expected behavior with the actual result.",
     "formatRule": "Output format rule",
@@ -259,15 +537,24 @@
       "copyLink": "Copy share link",
       "revoked": "Share revoked.",
       "publicTitle": "Agent Project Case Study",
-      "shareUnavailable": "This project share is unavailable or has been revoked."
+      "shareUnavailable": "This project share is unavailable or has been revoked.",
+      "reportOverview": "Evaluation overview",
+      "bestEvidence": "Highest evaluation evidence",
+      "failedCases": "Failed cases",
+      "metricsTitle": "Metrics",
+      "failedCaseDetails": "Failed case details",
+      "failureReasonUnavailable": "Failure reason unavailable",
+      "toolCalls": "Tool calls",
+      "none": "None"
     },
     "bootstrap": {
       "title": "Build and baseline evaluation",
-      "steps": "Build Agent → V1 → Eval Plan → 20 Eval Cases → Baseline Evaluation → Results",
+      "steps": "Build Agent → V1 → Eval Plan → Confirm Focus → 20 Eval Cases → Baseline Evaluation → Results",
       "current": "Current step: {stage}",
       "stages": {
         "v1": "Save V1",
         "plan": "Generate Eval Plan",
+        "focus": "Confirm Evaluation Focus",
         "cases": "Generate 20 Eval Cases",
         "baseline": "Run baseline evaluation",
         "results": "View results"
@@ -493,7 +780,7 @@
       "artifacts": "Files",
       "credentials": "Credentials",
       "systemCredentials": "System Credentials",
-      "systemLlm": "System LLM Settings",
+      "systemLlm": "Platform AI",
       "skills": "Skills",
       "schedules": "Schedules",
       "usage": "Usage",
@@ -666,6 +953,18 @@
       "template": {
         "label": "Use a Template",
         "description": "Start quickly from a ready-made template."
+      }
+    },
+    "aiSetup": {
+      "title": "Finish platform AI setup first",
+      "adminDescription": "Builder, evaluation generation, and optimization judging need platform models. One API key can configure the baseline setup.",
+      "userDescription": "Platform AI setup is not complete. Ask an admin to finish setup before creating or evaluating agents.",
+      "action": "Configure AI Models",
+      "notConfigured": "Not configured",
+      "roles": {
+        "builder": "Builder",
+        "evaluationGenerator": "Evaluation generation",
+        "judgeOptimizer": "Judge & optimizer"
       }
     },
     "myAgents": "My Agents",
@@ -1853,6 +2152,13 @@
       "disabledAria": "Context limit unknown",
       "disabledShort": "no limit",
       "disabled": "This model has no configured context window (context_window), so usage can't be shown.",
+      "runtimeModel": "Runtime model",
+      "runtimeCredential": "Runtime credential",
+      "runtimeReadiness": "Runtime status",
+      "masked": "protected",
+      "ready": "Ready",
+      "needsSetup": "Needs setup",
+      "notConfigured": "Not configured",
       "compactHint": "Context is nearly full. Consider starting a new conversation or compacting."
     },
     "message": {
@@ -1981,6 +2287,7 @@
     "recommendation": {
       "reviewCount": "{count} items · Review required",
       "recommended": "Recommended",
+      "planned": "Planned (mock-ready)",
       "reason": "Reason",
       "feedbackPlaceholder": "Feedback Placeholder",
       "approved": "Approved",
@@ -2806,18 +3113,21 @@
     }
   },
   "systemLlm": {
-    "title": "System LLM",
-    "description": "Configure the default LLMs used by system workflows.",
+    "title": "Platform AI",
+    "description": "Configure platform AI roles separately from Agent runtime models.",
     "loading": "Loading",
     "configured": "Configured",
     "notConfigured": "Not Configured",
     "credential": "Credentials",
     "model": "Models",
+    "test": "Test",
+    "testing": "Testing",
     "systemCredential": "System Credentials",
     "none": "None",
+    "selectProvider": "Select provider",
     "selectCredential": "Select Credential",
     "selectModel": "Select model",
-    "emptyCredentials": "Empty Credentials",
+    "emptyCredentials": "No system credentials are available yet.",
     "loadModels": "Load Models",
     "selectCredentialFirst": "Select Credential First",
     "modelLoadFailed": "Model Load Failed",
@@ -2827,26 +3137,40 @@
     "saving": "Saving",
     "save": "Save",
     "operatorOnly": {
-      "title": "Operator Only",
-      "description": "Only super users can manage system LLM settings."
+      "title": "Admin configuration",
+      "description": "Platform AI uses system credentials. Agent runtime still uses personal models and personal credentials."
+    },
+    "quickSetup": {
+      "title": "Quick setup",
+      "description": "Use one provider, system credential, and model for Builder, evaluation generation, and judge/optimizer roles.",
+      "addCredential": "Add system credential",
+      "apply": "Apply to three platform roles",
+      "note": "Only credential references and model names are saved; API keys stay encrypted on the backend and are never stored in the browser."
     },
     "roles": {
-      "text_primary": {
-        "label": "Label",
-        "description": "Primary model for text generation."
+      "builder": {
+        "label": "Builder AI",
+        "description": "Used for agent creation, edit assistant, skill builder, and build-time text generation."
       },
-      "text_fallback": {
-        "label": "Label",
-        "description": "Fallback model used when primary text generation fails."
+      "evaluation_generator": {
+        "label": "Evaluation Generator AI",
+        "description": "Used for Agent Project Eval Plan, EvalSet, and test case generation."
+      },
+      "judge_optimizer": {
+        "label": "Judge & Optimizer AI",
+        "description": "Used for semantic judging, bad-case analysis, root cause analysis, reports, and optimization proposals."
       },
       "image": {
-        "label": "Label",
+        "label": "Image Generation AI",
         "description": "Model used for image generation."
       }
     },
     "toast": {
       "loadModelsFailed": "Operation failed.",
       "saved": "Saved successfully.",
+      "simpleSaved": "Platform AI roles are configured.",
+      "testSucceeded": "Test passed.",
+      "testFailed": "Test failed.",
       "saveFailed": "Operation failed."
     }
   },
@@ -4231,7 +4555,7 @@
       "admin": "Admin",
       "marketplaceAdmin": "Marketplace Admin",
       "systemCredentials": "System Credentials",
-      "systemLlm": "System LLM Settings",
+      "systemLlm": "Platform AI",
       "adminAudit": "All Activity"
     },
     "profile": {
@@ -4531,7 +4855,7 @@
     "marketplaceAdmin": "Marketplace Admin",
     "adminAudit": "All Activity",
     "systemCredentials": "System Credentials",
-    "systemLlm": "System LLM Settings",
+    "systemLlm": "Platform AI",
     "skills": "Skills",
     "create": "Create",
     "createAgent": "Create Agent",
@@ -4903,4 +5227,3 @@
     }
   }
 }
-

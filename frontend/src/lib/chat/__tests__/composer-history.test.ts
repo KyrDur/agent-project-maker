@@ -49,13 +49,13 @@ describe('caret line 판정', () => {
 })
 
 describe('stepHistoryIndex + historyItemAt', () => {
-  const history = ['오래된', '중간', '최신']
+  const history = ['오래된', '중간', '最新']
 
   it('↑는 최신부터 과거로, 경계에서 멈춘다', () => {
     expect(stepHistoryIndex(3, -1, 'up')).toBe(0)
     expect(stepHistoryIndex(3, 0, 'up')).toBe(1)
     expect(stepHistoryIndex(3, 2, 'up')).toBeNull()
-    expect(historyItemAt(history, 0)).toBe('최신')
+    expect(historyItemAt(history, 0)).toBe('最新')
     expect(historyItemAt(history, 2)).toBe('오래된')
   })
 

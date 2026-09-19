@@ -179,18 +179,18 @@ class TestLangchainMessagesToResponse:
             content=[
                 {"type": "text"},  # no text
                 {"type": "text", "text": None},  # null
-                {"type": "text", "text": "정상"},
+                {"type": "text", "text": "健康"},
             ]
         )
         result = langchain_messages_to_response([msg], conv_id)
-        assert result[0].content == "정상"
+        assert result[0].content == "健康"
 
     def test_tool_message_string_content(self):
         conv_id = uuid.uuid4()
-        msg = ToolMessage(content="결과", tool_call_id="toolu_1")
+        msg = ToolMessage(content="结果", tool_call_id="toolu_1")
         result = langchain_messages_to_response([msg], conv_id)
         assert result[0].role == "tool"
-        assert result[0].content == "결과"
+        assert result[0].content == "结果"
         assert result[0].tool_call_id == "toolu_1"
 
     def test_tool_message_projects_exact_large_result_pointer_without_mutating_source(self):

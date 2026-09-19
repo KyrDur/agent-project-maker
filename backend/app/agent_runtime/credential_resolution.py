@@ -85,6 +85,17 @@ async def resolve_llm_api_key_for_agent(
 
     cred = getattr(agent, "llm_credential", None)
     if cred is not None:
+        if cred.is_system and (
+            model is not None
+            and cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)
+        ):
+            key = await _decrypt_api_key(cred)
+            if key is not None:
+                logger.info(
+                    "agent %s: api_key from explicit system llm_credential",
+                    agent.id,
+                )
+                return key
         if _credential_owned_by_subject(cred, subject_user_id) and (
             model is not None
             and cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)

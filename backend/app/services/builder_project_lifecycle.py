@@ -17,9 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, engine
-from app.models.agent_project import AgentProject, AgentProjectEvalSet
-from app.schemas.agent_project import EvalRunCreate
-from app.services import agent_project_evaluation as evaluation
+from app.models.agent_project import AgentProject
 from app.services import agent_project_semantic as semantic
 from app.services import agent_project_service as projects
 
@@ -78,58 +76,11 @@ async def bootstrap(agent_id: uuid.UUID, user_id: uuid.UUID) -> None:
                 await progress(db, project, stage)
                 if not project.eval_spec_json:
                     await semantic.generate(db, agent_id, user_id, v1.id)
-                stage = "cases"
+                stage = "focus"
                 await progress(db, project, stage)
-                set_id = uuid.uuid5(project.id, "builder-baseline-20")
-                dataset = await db.get(AgentProjectEvalSet, set_id)
-                if dataset is None:
-                    dataset = await semantic.generate(
-                        db, agent_id, user_id, v1.id, cases=True, dataset_id=set_id
-                    )
-                if len(dataset.cases_json) != 20 or not all(
-                    c.get("enabled") for c in dataset.cases_json
-                ):
-                    raise ValueError("evaluation_requires_twenty_cases")
-                stage = "baseline"
-                await progress(db, project, stage)
-                run = await evaluation.create_run(
-                    db,
-                    agent_id,
-                    user_id,
-                    EvalRunCreate(
-                        version_id=v1.id,
-                        eval_set_id=set_id,
-                        request_id=uuid.uuid5(project.id, "builder-baseline"),
-                    ),
-                )
-                await progress(db, project, stage, run_id=run.id)
-                if run.status in {"failed", "running"}:
-                    # Explicit retry keeps the same run ID, V1 and frozen benchmark.
-                    # This deterministic baseline is executed only while holding
-                    # exclusive(). A running row after acquiring that lock belongs
-                    # to a disconnected worker, not a concurrent bootstrap.
-                    run.status = "pending"
-                    run.error = None
-                    run.completed_at = None
-                    await db.commit()
-                if run.status == "pending":
-                    await evaluation.execute_run(run.id, agent_id, user_id)
-                await db.refresh(run)
-                failure = next(
-                    (
-                        result.get("error_code")
-                        for result in (run.results_json or [])
-                        if result.get("error_code")
-                    ),
-                    run.error,
-                )
-                await progress(
-                    db,
-                    project,
-                    "results" if run.status == "completed" else "baseline",
-                    error=failure if run.status == "failed" else None,
-                    run_id=run.id,
-                )
+                # Final product flow pauses here: the user must choose evaluation
+                # focus areas before the formal 20-case benchmark is generated.
+                return
             except Exception as exc:
                 await db.rollback()
                 logger.exception("Builder project bootstrap failed at %s", stage)

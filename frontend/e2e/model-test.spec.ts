@@ -133,7 +133,7 @@ test.describe('Model connection test', () => {
 
     await page.goto('/models')
 
-    await expect(page.getByRole('heading', { name: '모델' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByText('GPT-4o mini')).toBeVisible()
 
     await page.getByRole('button', { name: 'GPT-4o mini 테스트' }).click()
@@ -149,7 +149,7 @@ test.describe('Model connection test', () => {
     await page.getByTestId('toggle-details').click()
     await page.getByRole('tab', { name: /curl/i }).click()
     await page.getByTestId('copy-curl').click()
-    await expect(page.getByText('클립보드에 복사했습니다')).toBeVisible()
+    await expect(page.getByText('已复制')).toBeVisible()
   })
 
   test('Custom ID tab → mock 401 → 인증 실패', async ({ page }) => {
@@ -164,10 +164,10 @@ test.describe('Model connection test', () => {
       .getByRole('button', { name: /새 모델|모델 추가/ })
       .first()
       .click()
-    await page.getByRole('tab', { name: '사용자 지정 ID' }).click()
+    await page.getByRole('tab', { name: '定制' }).click()
 
     // Fill required fields. Provider defaults to "openai" so we just set ID.
-    await page.getByLabel('모델 ID').fill('gpt-x-preview')
+    await page.getByLabel('模型编号').fill('gpt-x-preview')
 
     await page.getByTestId('custom-test-button').click()
 

@@ -44,17 +44,50 @@ async def _make_system_credential(
 # --------------------------------------------------------------------------- #
 
 
-async def test_get_returns_three_unconfigured_roles(client: AsyncClient) -> None:
+async def test_get_returns_platform_roles(client: AsyncClient) -> None:
     resp = await client.get(BASE)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     roles = {row["role"] for row in body}
-    assert roles == {"text_primary", "text_fallback", "image"}
+    assert roles == {"builder", "evaluation_generator", "judge_optimizer", "image"}
     for row in body:
         assert row["configured"] is False
         assert row["credential_id"] is None
         assert row["provider"] is None
         assert row["model_name"] is None
+
+
+async def test_readiness_returns_platform_text_roles(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    cred_id = await _make_system_credential(
+        db, definition_key="openai", data={"api_key": "sk-test"}
+    )
+    db.add(
+        SystemLlmSetting(
+            role="evaluation_generator",
+            credential_id=cred_id,
+            model_name="gpt-5.4",
+        )
+    )
+    await db.commit()
+
+    resp = await client.get(f"{BASE}/readiness")
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert {row["role"] for row in body} == {
+        "builder",
+        "evaluation_generator",
+        "judge_optimizer",
+    }
+    configured = next(row for row in body if row["role"] == "evaluation_generator")
+    assert configured == {
+        "role": "evaluation_generator",
+        "configured": True,
+        "provider": "openai",
+        "model_name": "gpt-5.4",
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -96,6 +129,37 @@ async def test_put_openai_compatible_exposes_base_url(
     body = resp.json()
     assert body["provider"] == "openai_compatible"
     assert body["base_url"] == "https://litellm.local/v1"
+    assert body["configured"] is True
+
+
+@pytest.mark.parametrize(
+    ("definition_key", "model_name"),
+    [
+        ("deepseek", "deepseek-v4-pro"),
+        ("moonshot", "moonshot-v1-8k"),
+        ("openai", "gpt-5.4"),
+        ("zhipu_glm", "glm-4-plus"),
+    ],
+)
+async def test_put_accepts_common_platform_providers(
+    client: AsyncClient,
+    db: AsyncSession,
+    definition_key: str,
+    model_name: str,
+) -> None:
+    cred_id = await _make_system_credential(
+        db, definition_key=definition_key, data={"api_key": "sk-test"}
+    )
+    resp = await client.put(
+        f"{BASE}/builder",
+        json={"credential_id": str(cred_id), "model_name": model_name},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["role"] == "builder"
+    assert body["provider"] == definition_key
+    assert body["credential_id"] == str(cred_id)
+    assert body["model_name"] == model_name
     assert body["configured"] is True
 
 
@@ -167,6 +231,63 @@ async def test_put_user_credential_rejected(client: AsyncClient, db: AsyncSessio
         json={"credential_id": str(cred.id), "model_name": "gpt-5.4"},
     )
     assert resp.status_code == 404
+
+
+async def test_platform_test_uses_selected_provider_credential_and_model(
+    client: AsyncClient, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cred_id = await _make_system_credential(
+        db,
+        definition_key="moonshot",
+        data={"api_key": "sk-moonshot"},
+        name="sys-kimi",
+    )
+    observed: dict[str, object] = {}
+
+    async def fake_run_model_test(**kwargs):
+        from app.services.model_test import ModelTestResult
+
+        observed.update(kwargs)
+        return ModelTestResult(success=True, response="pong", latency_ms=12)
+
+    monkeypatch.setattr(
+        "app.routers.system_llm_settings.run_model_test",
+        fake_run_model_test,
+    )
+
+    resp = await client.post(
+        f"{BASE}/test",
+        json={
+            "provider": "moonshot",
+            "credential_id": str(cred_id),
+            "model_name": "moonshot-v1-8k",
+        },
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["success"] is True
+    assert observed["provider"] == "moonshot"
+    assert observed["model_name"] == "moonshot-v1-8k"
+    assert observed["credential_data"] == {"api_key": "sk-moonshot"}
+
+
+async def test_platform_test_rejects_provider_credential_mismatch(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    cred_id = await _make_system_credential(
+        db, definition_key="deepseek", data={"api_key": "sk-deepseek"}
+    )
+    resp = await client.post(
+        f"{BASE}/test",
+        json={
+            "provider": "openai",
+            "credential_id": str(cred_id),
+            "model_name": "gpt-5.4",
+        },
+    )
+
+    assert resp.status_code == 422
+    assert "selected provider" in resp.json()["error"]["message"]
 
 
 # --------------------------------------------------------------------------- #

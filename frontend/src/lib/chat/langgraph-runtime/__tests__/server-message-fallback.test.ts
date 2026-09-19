@@ -34,7 +34,7 @@ describe('appendPendingNewSubmitMessage', () => {
   it('inserts the optimistic human bubble at the captured base index in the normal case', () => {
     const messages = [
       new HumanMessage({ id: 'u-1', content: '첫 질문' }),
-      new AIMessage({ id: 'a-1', content: '답변' }),
+      new AIMessage({ id: 'a-1', content: '回应' }),
     ]
 
     const result = appendPendingNewSubmitMessage(messages, pendingSubmit('두번째 질문', 2))
@@ -48,7 +48,7 @@ describe('appendPendingNewSubmitMessage', () => {
     // capture and render. The captured index must not insert mid-list.
     const messages = [
       new HumanMessage({ id: 'u-1', content: '첫 질문' }),
-      new AIMessage({ id: 'a-1', content: '답변' }),
+      new AIMessage({ id: 'a-1', content: '回应' }),
     ]
 
     const result = appendPendingNewSubmitMessage(messages, pendingSubmit('두번째 질문', 4))

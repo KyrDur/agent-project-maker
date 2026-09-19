@@ -210,10 +210,10 @@ test.describe('Chat streaming render integrity', () => {
     // Each query returns a different multi-domain slice, so the collapsed search
     // group's header aggregates the per-call results into domain badges + a
     // source count ("출처 9개"). tavily_search maps to label key webSearch
-    // ("웹 검색") and carries no HITL interrupt, so the run streams to completion.
+    // ("默认标题") and carries no HITL interrupt, so the run streams to completion.
     const GROUPED_COUNT = 3
     const SOURCE_COUNT = 9
-    const SEARCH_LABEL = '웹 검색' // chat.toolGroup.labels.webSearch (ko)
+    const SEARCH_LABEL = '默认标题' // chat.toolGroup.labels.webSearch (ko)
     const FINAL_TEXT = 'E2E search group rendering complete.'
     const COUNT_META = `${GROUPED_COUNT}회`
     const SOURCE_META = `출처 ${SOURCE_COUNT}개` // chat.toolGroup.sourceCount (ko)
@@ -252,7 +252,7 @@ test.describe('Chat streaming render integrity', () => {
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
 
       // Exactly ONE search group container — NOT 3 separate boxes. It shows the
-      // "웹 검색" label and "{N}회".
+      // "默认标题" label and "{N}회".
       await expect(groupContainer).toHaveCount(1, { timeout: 15_000 })
       await expect(groupContainer).toContainText(SEARCH_LABEL)
       await expect(groupContainer).toContainText(COUNT_META)
@@ -284,7 +284,7 @@ test.describe('Chat streaming render integrity', () => {
 
       // Expanding the group reveals exactly the N search child pills inside it.
       // Each child pill (SearchRender) titles itself with its quoted query, not
-      // the "웹 검색" group label, so count the child .moldy-tool-pill nodes and
+      // the "默认标题" group label, so count the child .moldy-tool-pill nodes and
       // confirm each scripted query is shown.
       await groupToggle.click()
       await expect(groupContainer.locator('.moldy-tool-pill')).toHaveCount(GROUPED_COUNT, {
@@ -401,8 +401,8 @@ test.describe('Chat streaming render integrity', () => {
       await expect(approveButtons).toHaveCount(0, { timeout: 30_000 })
       await expect(page.getByText(FINAL_TEXT_PARTIAL).last()).toBeVisible({ timeout: 60_000 })
       await expect(cards).toHaveCount(2, { timeout: 30_000 })
-      await expect(page.getByText('승인됨', { exact: true })).toHaveCount(2)
-      await expect(page.getByText('모든 액션을 결정했습니다', { exact: true })).toBeVisible()
+      await expect(page.getByText('已批准', { exact: true })).toHaveCount(2)
+      await expect(page.getByText('所有行动已完成', { exact: true })).toBeVisible()
       await expect(userBubbles).toHaveCount(1)
       expect(resumeCommands, 'exactly one batched resume for both actions').toHaveLength(1)
       expect(resumeCommands[0]).toMatchObject({

@@ -411,7 +411,7 @@ test.describe('LangGraph v3 regression coverage', () => {
       await page.reload()
       await waitRunIdle(request, conversationId)
 
-      await page.getByRole('button', { name: '재생성' }).first().click()
+      await page.getByRole('button', { name: '再生' }).first().click()
       const regenerated = await waitForAssistantBranch(request, conversationId, 1)
       await waitRunIdle(request, conversationId)
 

@@ -62,13 +62,13 @@ test.describe('Message attachments', () => {
     test.setTimeout(90_000)
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
 
-    const composer = page.getByPlaceholder('메시지 입력...')
+    const composer = page.getByPlaceholder('占位符')
     await expect(composer).toBeVisible()
 
     // 1. Attach a text file via the paperclip → native file chooser.
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: '파일 첨부' }).click(),
+      page.getByRole('button', { name: '附加' }).click(),
     ])
     await chooser.setFiles({
       name: filename,

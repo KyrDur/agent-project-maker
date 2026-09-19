@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 def conversation_title_from_content(content: str) -> str:
     title = content.strip().replace("\n", " ")
     if not title:
-        return "새 대화"
+        return "备用标题"
     if len(title) > 40:
         return title[:37] + "..."
     return title
@@ -276,7 +276,7 @@ async def create_conversation(
     *,
     source: str = "ui",
 ) -> Conversation:
-    conv = Conversation(agent_id=agent_id, title=title or "새 대화", source=source)
+    conv = Conversation(agent_id=agent_id, title=title or "备用标题", source=source)
     if source == "draft":
         runtime_profile = await db.scalar(select(Agent.runtime_profile).where(Agent.id == agent_id))
         if runtime_profile == AGENT_RUNTIME_PROFILE_SKILL_BUILDER:
@@ -476,7 +476,7 @@ async def maybe_set_auto_title(
     title = conversation_title_from_content(content)
     await db.execute(
         update(Conversation)
-        .where(Conversation.id == conversation_id, Conversation.title == "새 대화")
+        .where(Conversation.id == conversation_id, Conversation.title == "备用标题")
         .values(title=title)
     )
     await db.flush()

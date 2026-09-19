@@ -41,7 +41,7 @@ async def setup_project(db, monkeypatch):
 
 
 async def dataset(db, agent):
-    return await evaluation.write_set(
+    row = await evaluation.write_set(
         db,
         agent.id,
         TEST_USER_ID,
@@ -52,6 +52,7 @@ async def dataset(db, agent):
             ],
         ),
     )
+    return await evaluation.judge_set(db, agent.id, TEST_USER_ID, row.id)
 
 
 @pytest.mark.asyncio
@@ -371,21 +372,23 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
         assert kwargs["memory"] is None
         return Graph()
 
-    async def resolve(*_args):
-        return secret
+    async def resolve_examinee(*_args):
+        return object(), secret
 
     replacements = {
         "app.agent_runtime.runtime_component_builder": {"build_agent": build},
         "app.agent_runtime.model_factory": {
             "create_chat_model": lambda *_args, **_kwargs: object()
         },
-        "app.agent_runtime.credential_resolution": {"resolve_llm_api_key_for_agent": resolve},
     }
     for name, attributes in replacements.items():
         module = ModuleType(name)
         for key, value in attributes.items():
             setattr(module, key, value)
         monkeypatch.setitem(sys.modules, name, module)
+    from app.services import agent_project_llm
+
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", resolve_examinee)
     result = await execute_snapshot(db, version.snapshot_json, {"input": "Hi"}, TEST_USER_ID)
     assert calls == ["Be helpful"]
     assert result["output"] == "Answer <redacted>"
@@ -397,13 +400,11 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
     assert agent.system_prompt == "Current prompt must not execute"
 
     async def keyless(*_args):
-        return None
+        from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
 
-    monkeypatch.setattr(
-        sys.modules["app.agent_runtime.credential_resolution"],
-        "resolve_llm_api_key_for_agent",
-        keyless,
-    )
+        raise LLMCredentialRequiredError()
+
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", keyless)
     with pytest.raises(SnapshotExecutionUnavailable, match="snapshot_credential_unavailable"):
         await execute_snapshot(db, version.snapshot_json, {"input": "Hi"}, TEST_USER_ID)
 

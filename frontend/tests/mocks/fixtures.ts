@@ -28,7 +28,12 @@ export const mockAgent: Agent = {
   name: 'Test Agent',
   description: 'A test agent',
   system_prompt: 'You are a helpful assistant.',
-  model: { id: 'model-1', display_name: 'GPT-4o' },
+  model: {
+    id: 'model-1',
+    display_name: 'GPT-4o',
+    provider: 'openai',
+    model_name: 'gpt-4o',
+  },
   tools: [{ id: 'tool-1', name: 'Web Search' }],
   mcp_tools: [],
   skills: [],
@@ -443,7 +448,7 @@ export const mockMarketplaceItem: MarketplaceItem = {
   is_listed: true,
   tags: [],
   categories: [],
-  locale: 'ko-KR',
+  locale: 'zh-CN',
   created_at: '2026-05-01T00:00:00Z',
   updated_at: '2026-05-02T00:00:00Z',
   latest_version: {

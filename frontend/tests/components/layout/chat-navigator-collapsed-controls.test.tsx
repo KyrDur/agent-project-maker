@@ -57,7 +57,7 @@ describe('collapsed chat navigator controls', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '더 보기' })).toHaveClass(
+    expect(screen.getByRole('button', { name: '加载更多' })).toHaveClass(
       'group-data-[collapsible=icon]:hidden',
     )
 
@@ -90,7 +90,7 @@ describe('collapsed chat navigator controls', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '더 보기' })).toHaveClass(
+    expect(screen.getByRole('button', { name: '加载更多' })).toHaveClass(
       'group-data-[collapsible=icon]:hidden',
     )
   })

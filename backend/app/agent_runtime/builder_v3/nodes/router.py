@@ -99,15 +99,15 @@ async def router(state: BuilderState) -> Command:
             goto=localized_targets[text], update={"last_router_decision": localized_targets[text]}
         )
     fallback_target = "phase3_recommend_tools"  # 가장 흔한 케이스
-    if "이름" in text or "설명" in text or "intent" in text:
+    if "名称" in text or "描述" in text or "intent" in text:
         fallback_target = "phase2_analyze_intent"
-    elif "도구" in text or "tool" in text:
+    elif "工具" in text or "tool" in text:
         fallback_target = "phase3_recommend_tools"
-    elif "미들웨어" in text or "middleware" in text:
+    elif "中间件" in text or "middleware" in text:
         fallback_target = "phase4_recommend_middlewares"
     elif "프롬프트" in text or "prompt" in text:
         fallback_target = "phase5_generate_prompt"
-    elif "이미지" in text or "image" in text:
+    elif "图片" in text or "image" in text:
         fallback_target = "phase6_choice_propose"
 
     return Command(

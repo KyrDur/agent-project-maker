@@ -20,7 +20,7 @@ vi.mock('next/link', () => ({
 describe('AgentNewPage', () => {
   it('renders hero section with title', () => {
     render(<AgentNewPage />)
-    expect(screen.getByText('무엇을 만들고 싶으세요?')).toBeInTheDocument()
+    expect(screen.getByText('你想建造什么？')).toBeInTheDocument()
   })
 
   it('renders chat input textarea', () => {
@@ -31,13 +31,13 @@ describe('AgentNewPage', () => {
 
   it('manual option links to correct path', () => {
     render(<AgentNewPage />)
-    const manualLink = screen.getByText('직접 만들기').closest('a')
+    const manualLink = screen.getByText('手动构建').closest('a')
     expect(manualLink).toHaveAttribute('href', '/agents/new/manual')
   })
 
   it('template option links to correct path', () => {
     render(<AgentNewPage />)
-    const templateLink = screen.getByText('템플릿으로 만들기').closest('a')
+    const templateLink = screen.getByText('使用模板').closest('a')
     expect(templateLink).toHaveAttribute('href', '/agents/new/template')
   })
 })

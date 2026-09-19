@@ -3,16 +3,16 @@
   "sheets": [
     {
       "name": "검증요약",
-      "headers": ["항목", "상태", "비고"],
+      "headers": ["항목", "状态", "비고"],
       "rows": [
-        ["JS runner", "통과", "node scripts/create_xlsx.cjs"],
-        ["Artifact ingest", "통과", "conversation_artifacts"],
-        ["Viewer", "통과", "SheetJS table UI"]
+        ["JS runner", "通行证", "node scripts/create_xlsx.cjs"],
+        ["Artifact ingest", "通行证", "conversation_artifacts"],
+        ["Viewer", "通行证", "SheetJS table UI"]
       ]
     },
     {
       "name": "측정값",
-      "headers": ["날짜", "문서유형", "생성수", "미리보기"],
+      "headers": ["日期", "문서유형", "생성수", "预览"],
       "rows": [
         ["2026-06-07", "DOCX", 1, "docx-preview"],
         ["2026-06-07", "XLSX", 1, "SheetJS"],

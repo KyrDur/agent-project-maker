@@ -67,7 +67,7 @@ describe('PhaseTimelineRender', () => {
 
     expect(screen.getByText('요구사항 정리')).toBeInTheDocument()
     expect(screen.getByText('런타임 연결')).toBeInTheDocument()
-    expect(screen.getByText('진행중')).toBeInTheDocument()
+    expect(screen.getByText('进行中')).toBeInTheDocument()
   })
 
   it('hides replayed older phase_timeline tool calls', () => {

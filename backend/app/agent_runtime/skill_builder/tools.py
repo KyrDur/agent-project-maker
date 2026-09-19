@@ -43,7 +43,7 @@ SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 EVALS_FILE_PATH = "evals/evals.json"
 
-# AD-4 — 세션 동의("이 세션에서 계속 허용")가 허용되는 도구. finalize_skill은
+# AD-4 — 세션 동의("留出本次会议的剩余时间")가 허용되는 도구. finalize_skill은
 # 절대 포함 금지(항상 승인 카드), requires_network 드래프트는 런타임에서 재차
 # 차단된다 (``skill_draft_workspace.draft_requires_network``).
 SESSION_CONSENT_ELIGIBLE_TOOLS = frozenset({"test_skill_draft"})

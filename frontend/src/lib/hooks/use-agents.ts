@@ -36,6 +36,15 @@ export function useAgent(id: string) {
   })
 }
 
+export function useAgentRuntimeReadiness(id: string) {
+  return useQuery({
+    queryKey: agentQueryKeys.readiness(id),
+    queryFn: () => agentsApi.runtimeReadiness(id),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+}
+
 export function useCreateAgent() {
   const qc = useQueryClient()
   return useMutation({

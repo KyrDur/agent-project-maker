@@ -1,5 +1,7 @@
 import { apiFetch, API_BASE } from '@/lib/api/client'
 import type {
+  EvaluationReports,
+  OptimizationProposal,
   PortfolioReport,
   PortfolioResume,
   ResumeStyle,
@@ -10,7 +12,6 @@ import type {
   EvaluationSpec,
   BadCase,
   OptimizationGroup,
-  OptimizationState,
   EvaluationSet,
   EvaluationRun,
   VersionComparison,
@@ -20,6 +21,35 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  propose: (agentId: string, runId: string, requestId: string) =>
+    apiFetch<OptimizationProposal>(`${projectPath(agentId)}/eval-runs/${runId}/proposals`, {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId }),
+    }),
+  decideProposal: (
+    agentId: string,
+    runId: string,
+    proposalId: string,
+    decision: 'accepted' | 'rejected',
+    decisionReason?: string,
+  ) =>
+    apiFetch<OptimizationProposal>(
+      `${projectPath(agentId)}/eval-runs/${runId}/proposals/${proposalId}/decision`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ decision, decision_reason: decisionReason || null }),
+      },
+    ),
+  proposalRegression: (agentId: string, runId: string, proposalId: string, requestId: string) =>
+    apiFetch<EvaluationRun>(
+      `${projectPath(agentId)}/eval-runs/${runId}/proposals/${proposalId}/regression`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ request_id: requestId }),
+      },
+    ),
+  evaluationReports: (agentId: string) =>
+    apiFetch<EvaluationReports>(`${projectPath(agentId)}/evaluation-reports`),
   bootstrap: (agentId: string) => apiFetch(`${projectPath(agentId)}/bootstrap`, { method: 'POST' }),
   report: (agentId: string, generate = false) =>
     apiFetch<PortfolioReport>(`${projectPath(agentId)}/report${generate ? '/generate' : ''}`, {
@@ -40,20 +70,23 @@ export const agentProjectApi = {
       `${projectPath(agentId)}/eval-runs/${runId}/analyze`,
       { method: 'POST' },
     ),
-  optimize: (agentId: string, runId: string, requestId: string) =>
-    apiFetch<OptimizationState>(`${projectPath(agentId)}/eval-runs/${runId}/optimize`, {
-      method: 'POST',
-      body: JSON.stringify({ request_id: requestId }),
-    }),
   generateSpec: (agentId: string, versionId: string) =>
     apiFetch<EvaluationSpec>(`${projectPath(agentId)}/eval-spec/generate`, {
       method: 'POST',
       body: JSON.stringify({ version_id: versionId }),
     }),
-  generateCases: (agentId: string, versionId: string) =>
+  generateCases: (
+    agentId: string,
+    versionId: string,
+    data: { evaluation_focus: string[]; evaluation_focus_reason?: string | null },
+  ) =>
     apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/generate`, {
       method: 'POST',
-      body: JSON.stringify({ version_id: versionId }),
+      body: JSON.stringify({
+        version_id: versionId,
+        evaluation_focus: data.evaluation_focus,
+        evaluation_focus_reason: data.evaluation_focus_reason || null,
+      }),
     }),
   get: (agentId: string) => apiFetch<AgentProject | null>(projectPath(agentId)),
   create: (agentId: string) =>
@@ -69,7 +102,9 @@ export const agentProjectApi = {
     }),
   sets: (agentId: string) => apiFetch<EvaluationSet[]>(`${projectPath(agentId)}/eval-sets`),
   judgeSet: (agentId: string, setId: string) =>
-    apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/${setId}/quality`, { method: 'POST' }),
+    apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/${setId}/quality`, {
+      method: 'POST',
+    }),
   saveSet: (agentId: string, data: { id?: string; name: string; cases: EvaluationCase[] }) =>
     apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets${data.id ? `/${data.id}` : ''}`, {
       method: data.id ? 'PUT' : 'POST',

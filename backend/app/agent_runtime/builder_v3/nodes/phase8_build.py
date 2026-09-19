@@ -110,11 +110,27 @@ async def phase8_propose(state: BuilderState) -> dict:
     image_url = state.get("image_url") or draft.get("image_url")
 
     async with async_session_factory() as db:
+        from app.services.builder_service import get_builder_system_runtime
+
         session_id = state.get("session_id")
         session = await db.get(BuilderSession, uuid.UUID(session_id)) if session_id else None
         bindings = await usable_bindings(db, session.user_id) if session else []
+        try:
+            system_binding = await get_builder_system_runtime(db)
+        except AppError:
+            system_binding = None
     chosen = state.get("runtime_model_id")
     available = {str(b.model.id): b.model for b in bindings}
+    if system_binding is not None and chosen not in available:
+        model = system_binding.model
+        return await _propose_final_draft(
+            state,
+            draft,
+            image_url,
+            model_name=f"{model.provider}:{model.model_name}",
+            runtime_model_id=str(model.id),
+            runtime_model_source="system_builder",
+        )
     if chosen not in available:
         chosen = next(iter(available)) if len(available) == 1 else None
     if not chosen:
@@ -148,7 +164,45 @@ async def phase8_propose(state: BuilderState) -> dict:
             "runtime_model_id": None,
         }
     model = available[chosen]
-    draft = {**draft, "model_name": f"{model.provider}:{model.model_name}"}
+    return await _propose_final_draft(
+        state,
+        draft,
+        image_url,
+        model_name=f"{model.provider}:{model.model_name}",
+        runtime_model_id=chosen,
+        runtime_model_source="personal",
+    )
+
+
+async def _propose_final_draft(
+    state: BuilderState,
+    draft: dict,
+    image_url: str | None,
+    *,
+    model_name: str,
+    runtime_model_id: str,
+    runtime_model_source: str,
+) -> dict:
+    draft = {
+        **draft,
+        "model_name": model_name,
+        "runtime_model_id": runtime_model_id,
+        "runtime_model_source": runtime_model_source,
+    }
+    session_id = state.get("session_id")
+    if session_id:
+        try:
+            async with async_session_factory() as db:
+                row = await db.get(BuilderSession, uuid.UUID(session_id))
+                if row:
+                    persisted = dict(row.draft_config or draft)
+                    persisted["model_name"] = draft["model_name"]
+                    persisted["runtime_model_id"] = runtime_model_id
+                    persisted["runtime_model_source"] = runtime_model_source
+                    row.draft_config = persisted
+                    await db.commit()
+        except Exception:  # pragma: no cover
+            logger.warning("Phase 8 runtime model persist failed", exc_info=True)
 
     msgs, tool_call_id = make_pending_tool_card(
         "draft_approval",
@@ -166,7 +220,7 @@ async def phase8_propose(state: BuilderState) -> dict:
         "messages": msgs,
         "pending_tool_call_id": tool_call_id,
         "runtime_setup_payload": None,
-        "runtime_model_id": chosen,
+        "runtime_model_id": runtime_model_id,
         "draft_config": draft,
     }
 

@@ -442,7 +442,7 @@ E2E_UI_DATA_DEMO_FIXTURES: dict[str, dict[str, Any]] = {
         "title": "E2E 데이터 테이블",
         "searchable": True,
         "columns": [
-            {"key": "name", "header": "이름"},
+            {"key": "name", "header": "名称"},
             {"key": "role", "header": "역할"},
             {"key": "score", "header": "점수"},
         ],

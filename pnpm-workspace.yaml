@@ -1,6 +1,13 @@
 packages:
   - 'frontend'
   - 'backend/skill-node'
-ignoredBuiltDependencies:
+ignoredOptionalDependencies:
+  - '@img/sharp-*'
+  - '@img/sharp-libvips-*'
   - sharp
-  - unrs-resolver
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  msw: true
+  sharp: true
+  unrs-resolver: true

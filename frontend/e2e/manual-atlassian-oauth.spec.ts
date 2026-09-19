@@ -83,7 +83,7 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
       .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
       .first()
       .click()
-    await expect(page.getByText('빠른 시작')).toBeVisible()
+    await expect(page.getByText('登记处')).toBeVisible()
     await capture(page, '01-mcp-wizard-registry.png')
 
     const atlassianCard = page.getByTestId('registry-card-atlassian-rovo')
@@ -94,20 +94,20 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
     }
 
     console.log('Selected Atlassian Rovo registry entry')
-    await expect(page.getByLabel('이름')).toHaveValue(/Atlassian|Jira/)
-    await page.getByRole('button', { name: '인증으로 계속 →' }).click()
+    await expect(page.getByLabel('名称')).toHaveValue(/Atlassian|Jira/)
+    await page.getByRole('button', { name: '继续验证' }).click()
     await expect(page.getByText('mcp_oauth2 타입 자격증명으로 필터링되었습니다.')).toBeVisible()
     await capture(page, '02-auth-tab-oauth-actions.png')
 
     console.log('Creating MCP OAuth credential')
-    await page.getByRole('button', { name: 'OAuth 자격증명 만들기' }).click()
+    await page.getByRole('button', { name: '创建 OAuth 凭据' }).click()
     const credentialDialog = page.getByRole('dialog').filter({ hasText: /MCP OAuth2/i }).last()
     await expect(credentialDialog).toBeVisible()
-    await expect(credentialDialog.getByLabel('이름')).toHaveValue(/OAuth/)
-    await credentialDialog.getByLabel('이름').fill(CREDENTIAL_NAME)
+    await expect(credentialDialog.getByLabel('名称')).toHaveValue(/OAuth/)
+    await credentialDialog.getByLabel('名称').fill(CREDENTIAL_NAME)
     await capture(page, '03-oauth-credential-prefilled.png')
-    await credentialDialog.getByRole('button', { name: '저장' }).click()
-    await expect(page.getByRole('button', { name: '브라우저로 인증' })).toBeVisible({
+    await credentialDialog.getByRole('button', { name: '保存' }).click()
+    await expect(page.getByRole('button', { name: '在浏览器中进行身份验证' })).toBeVisible({
       timeout: 30_000,
     })
 
@@ -115,13 +115,13 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: new RegExp(CREDENTIAL_NAME) }).last().click()
     await capture(page, '04-credential-selected.png')
-    await expect(page.getByRole('button', { name: '브라우저로 인증' })).toBeEnabled({
+    await expect(page.getByRole('button', { name: '在浏览器中进行身份验证' })).toBeEnabled({
       timeout: 10_000,
     })
 
     console.log('Starting OAuth popup')
     const popupPromise = page.waitForEvent('popup')
-    await page.getByRole('button', { name: '브라우저로 인증' }).click()
+    await page.getByRole('button', { name: '在浏览器中进行身份验证' }).click()
     const popup = await popupPromise
     await popup.waitForLoadState('domcontentloaded')
     await expect
@@ -142,27 +142,27 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
       .poll(async () => {
         if (popup.isClosed()) return 'closed'
         const statusVisible = await page
-          .getByText('OAuth 인증이 완료되었습니다.')
+          .getByText('OAuth 身份验证完成。')
           .isVisible()
           .catch(() => false)
         return statusVisible ? 'connected' : popup.url()
       }, { timeout: MANUAL_TIMEOUT_MS })
       .toMatch(/closed|connected/)
 
-    await expect(page.getByText('OAuth 인증이 완료되었습니다.').last()).toBeVisible({
+    await expect(page.getByText('OAuth 身份验证完成。').last()).toBeVisible({
       timeout: 30_000,
     })
     await capture(page, '05-oauth-complete.png')
 
-    await page.getByRole('button', { name: '연결 테스트' }).click()
+    await page.getByRole('button', { name: '测试连接' }).click()
     await expect(page.getByText(/연결됨|개 도구를 찾았습니다/)).toBeVisible({
       timeout: 120_000,
     })
-    await page.getByRole('button', { name: '도구로 계속 →' }).click()
+    await page.getByRole('button', { name: '继续工具' }).click()
     await expect(page.getByText(/개 도구 발견됨/)).toBeVisible({ timeout: 120_000 })
     await capture(page, '06-tools-discovered.png')
 
-    await page.getByRole('button', { name: '서버 저장' }).click()
+    await page.getByRole('button', { name: '保存' }).click()
     await expect(page.getByText(/Atlassian|Jira/).first()).toBeVisible({ timeout: 30_000 })
     await capture(page, '07-server-saved.png')
 

@@ -71,7 +71,7 @@ def test_sanitize_empty_returns_none() -> None:
 
 def test_transcript_tail_filters_roles_and_limits() -> None:
     messages = [
-        _Msg("system", "숨김"),
+        _Msg("system", "隐藏徽章"),
         _Msg("user", "질문1"),
         _Msg("tool", "도구 출력"),
         _Msg("assistant", "답변1"),

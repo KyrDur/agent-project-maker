@@ -304,6 +304,60 @@ async def test_discover_openai_compatible_requires_base_url(
         await model_discovery.discover_from_credential(db, cred)
 
 
+@pytest.mark.parametrize(
+    ("definition_key", "expected_host", "model_name"),
+    [
+        ("deepseek", "api.deepseek.com", "deepseek-v4-pro"),
+        ("moonshot", "api.moonshot.cn", "moonshot-v1-8k"),
+        ("zhipu_glm", "open.bigmodel.cn", "glm-4-plus"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_discover_named_openai_compatible_providers_use_default_base_url(
+    db: AsyncSession,
+    definition_key: str,
+    expected_host: str,
+    model_name: str,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == expected_host
+        assert request.url.path.endswith("/models")
+        return httpx.Response(200, json={"data": [{"id": model_name}]})
+
+    cred = await _make_credential(
+        db,
+        definition_key=definition_key,
+        data={"api_key": "sk-test"},
+    )
+
+    with _patch_async_client(handler):
+        results = await model_discovery.discover_from_credential(db, cred)
+
+    assert [m.model_name for m in results] == [model_name]
+    assert all(m.provider == definition_key for m in results)
+
+
+@pytest.mark.asyncio
+async def test_discover_deepseek_falls_back_when_models_endpoint_times_out(
+    db: AsyncSession,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("connect timed out", request=request)
+
+    cred = await _make_credential(
+        db,
+        definition_key="deepseek",
+        data={"api_key": "sk-test"},
+    )
+
+    with _patch_async_client(handler):
+        results = await model_discovery.discover_from_credential(db, cred)
+
+    names = {m.model_name for m in results}
+    assert names == {"deepseek-flash", "deepseek-v4-pro"}
+    assert all(m.provider == "deepseek" for m in results)
+
+
 # ---------------------------------------------------------------------------
 # Dispatch errors
 # ---------------------------------------------------------------------------

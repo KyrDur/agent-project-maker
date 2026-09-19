@@ -23,6 +23,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_runtime.model_factory import openai_family_base_url
 from app.credentials import service as credential_service
 from app.models.credential import Credential
 from app.models.model import Model
@@ -63,6 +64,26 @@ _ANTHROPIC_DISCOVERY_FALLBACKS: tuple[dict[str, Any], ...] = (
         "supports_function_calling": True,
     },
 )
+
+_OPENAI_COMPATIBLE_DISCOVERY_FALLBACKS: dict[str, tuple[str, ...]] = {
+    "deepseek": ("deepseek-flash", "deepseek-v4-pro"),
+    "moonshot": (
+        "kimi-k3",
+        "kimi-k2.5",
+        "kimi-k2-0711-preview",
+        "moonshot-v1-auto",
+        "moonshot-v1-8k",
+        "moonshot-v1-32k",
+        "moonshot-v1-128k",
+    ),
+    "zhipu_glm": (
+        "glm-5.3",
+        "glm-4.5",
+        "glm-4.5-air",
+        "glm-4-plus",
+        "glm-4-flash",
+    ),
+}
 
 
 @dataclass
@@ -334,37 +355,45 @@ async def _discover_openrouter(data: dict[str, Any]) -> list[DiscoveredModel]:
     return out
 
 
-async def _discover_openai_compatible(data: dict[str, Any]) -> list[DiscoveredModel]:
-    """Catch-all for self-hosted / OpenAI-compatible deployments.
+async def _discover_openai_compatible_provider(
+    data: dict[str, Any],
+    *,
+    provider: str,
+    default_base_url: str | None,
+) -> list[DiscoveredModel]:
+    """Catch-all for hosted or self-hosted OpenAI-compatible deployments.
 
     No filtering is applied (``is_custom_api=True``) and the catalog is only
     consulted opportunistically — most local deployments ship custom model
     IDs the catalog has never heard of.
     """
 
-    base_url = data.get("base_url")
+    base_url = data.get("base_url") or default_base_url
     if not base_url:
-        raise ValueError("openai_compatible credential requires a base_url")
+        raise ValueError(f"{provider} credential requires a base_url")
 
     api_key = data.get("api_key")
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     primary_url = f"{base_url.rstrip('/')}/models"
 
-    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-        try:
-            response = await client.get(primary_url, headers=headers)
-            response.raise_for_status()
-            items = response.json().get("data", []) or []
-        except httpx.HTTPStatusError:
-            # Ollama-style fallback: /api/tags returns ``{"models": [{"name": ...}]}``.
-            stripped = base_url.rstrip("/").removesuffix("/v1")
-            fallback_url = f"{stripped}/api/tags"
-            response = await client.get(fallback_url, headers=headers)
-            response.raise_for_status()
-            items = [
-                {"id": m.get("name") or ""}
-                for m in (response.json().get("models", []) or [])
-            ]
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            try:
+                response = await client.get(primary_url, headers=headers)
+                response.raise_for_status()
+                items = response.json().get("data", []) or []
+            except httpx.HTTPStatusError:
+                # Ollama-style fallback: /api/tags returns ``{"models": [{"name": ...}]}``.
+                stripped = base_url.rstrip("/").removesuffix("/v1")
+                fallback_url = f"{stripped}/api/tags"
+                response = await client.get(fallback_url, headers=headers)
+                response.raise_for_status()
+                items = [
+                    {"id": m.get("name") or ""}
+                    for m in (response.json().get("models", []) or [])
+                ]
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        items = _fallback_items_for_provider(provider, exc)
 
     out: list[DiscoveredModel] = []
     for item in items:
@@ -381,7 +410,7 @@ async def _discover_openai_compatible(data: dict[str, Any]) -> list[DiscoveredMo
             DiscoveredModel(
                 model_name=model_id,
                 display_name=enriched.get("display_name") or model_id,
-                provider="openai_compatible",
+                provider=provider,
                 source=source,
                 context_window=enriched.get("context_window"),
                 max_output_tokens=enriched.get("max_output_tokens"),
@@ -399,6 +428,38 @@ async def _discover_openai_compatible(data: dict[str, Any]) -> list[DiscoveredMo
     return out
 
 
+async def _discover_openai_compatible(data: dict[str, Any]) -> list[DiscoveredModel]:
+    return await _discover_openai_compatible_provider(
+        data,
+        provider="openai_compatible",
+        default_base_url=None,
+    )
+
+
+async def _discover_deepseek(data: dict[str, Any]) -> list[DiscoveredModel]:
+    return await _discover_openai_compatible_provider(
+        data,
+        provider="deepseek",
+        default_base_url=openai_family_base_url("deepseek"),
+    )
+
+
+async def _discover_moonshot(data: dict[str, Any]) -> list[DiscoveredModel]:
+    return await _discover_openai_compatible_provider(
+        data,
+        provider="moonshot",
+        default_base_url=openai_family_base_url("moonshot"),
+    )
+
+
+async def _discover_zhipu_glm(data: dict[str, Any]) -> list[DiscoveredModel]:
+    return await _discover_openai_compatible_provider(
+        data,
+        provider="zhipu_glm",
+        default_base_url=openai_family_base_url("zhipu_glm"),
+    )
+
+
 # -- Helpers -----------------------------------------------------------------
 
 
@@ -413,6 +474,24 @@ def _to_decimal(value: Any) -> Decimal | None:
         return Decimal(str(value))
     except (TypeError, ValueError):
         return None
+
+
+def _fallback_items_for_provider(provider: str, exc: Exception) -> list[dict[str, str]]:
+    """Fallback model choices when a known provider's /models endpoint is unreachable.
+
+    This keeps local setup usable behind WSL/proxy/firewall hiccups. The user's
+    selected model is still validated by the explicit Test action.
+    """
+
+    names = _OPENAI_COMPATIBLE_DISCOVERY_FALLBACKS.get(provider)
+    if not names:
+        raise exc
+    logger.warning(
+        "model discovery fallback used: provider=%s err=%s",
+        provider,
+        exc.__class__.__name__,
+    )
+    return [{"id": name} for name in names]
 
 
 def _from_enriched(
@@ -472,11 +551,14 @@ async def _mark_already_registered(
 
 
 _DISPATCH: dict[str, tuple[Any, str]] = {
+    "deepseek": (_discover_deepseek, "deepseek"),
     "openai": (_discover_openai, "openai"),
     "anthropic": (_discover_anthropic, "anthropic"),
     "google_genai": (_discover_google, "google_genai"),
+    "moonshot": (_discover_moonshot, "moonshot"),
     "openrouter": (_discover_openrouter, "openrouter"),
     "openai_compatible": (_discover_openai_compatible, "openai_compatible"),
+    "zhipu_glm": (_discover_zhipu_glm, "zhipu_glm"),
 }
 
 

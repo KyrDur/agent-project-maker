@@ -72,7 +72,7 @@ function main() {
   }
 
   if (!workbook.SheetNames.length) {
-    const worksheet = XLSX.utils.aoa_to_sheet([['항목', '값'], ['상태', 'empty workbook']]);
+    const worksheet = XLSX.utils.aoa_to_sheet([['항목', '关键值'], ['状态', 'empty workbook']]);
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
   }
 

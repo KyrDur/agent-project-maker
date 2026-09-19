@@ -92,20 +92,20 @@ describe('ChatNavigatorSessionRow run 상태 표시', () => {
     )
 
     expect(screen.getByText('Running session')).toBeInTheDocument()
-    expect(screen.getByLabelText('답변 생성 중')).toHaveAttribute(
+    expect(screen.getByLabelText('生成答案')).toHaveAttribute(
       'data-moldy-run-spinner',
       'conversation-running',
     )
 
     expect(screen.getByText('Needs action')).toBeInTheDocument()
-    expect(screen.getByLabelText('사용자 확인 필요')).toHaveAttribute(
+    expect(screen.getByLabelText('需要用户操作')).toHaveAttribute(
       'data-moldy-run-attention',
       'conversation-interrupted',
     )
 
     expect(screen.getByText('Done session')).toBeInTheDocument()
-    expect(screen.queryAllByLabelText('답변 생성 중')).toHaveLength(1)
-    expect(screen.queryAllByLabelText('사용자 확인 필요')).toHaveLength(1)
+    expect(screen.queryAllByLabelText('生成答案')).toHaveLength(1)
+    expect(screen.queryAllByLabelText('需要用户操作')).toHaveLength(1)
   })
 
   it('active_run이 없어도 같은 탭 스트리밍 오버레이(atom)가 running이면 스피너를 표시한다', () => {
@@ -122,7 +122,7 @@ describe('ChatNavigatorSessionRow run 상태 표시', () => {
       </Provider>,
     )
 
-    expect(screen.getByLabelText('답변 생성 중')).toHaveAttribute(
+    expect(screen.getByLabelText('生成答案')).toHaveAttribute(
       'data-moldy-run-spinner',
       'conversation-local',
     )

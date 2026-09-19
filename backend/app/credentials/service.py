@@ -194,10 +194,13 @@ LLM_DEFINITION_TO_ENV_KEY: dict[str, str] = {
 # provider→definition_key lookup and doesn't share that constraint.
 PROVIDER_TO_DEFINITION_KEY: dict[str, str] = {
     "anthropic": "anthropic",
+    "deepseek": "deepseek",
+    "moonshot": "moonshot",
     "openai": "openai",
     "google": "google_genai",
     "openrouter": "openrouter",
     "openai_compatible": "openai_compatible",
+    "zhipu_glm": "zhipu_glm",
 }
 
 

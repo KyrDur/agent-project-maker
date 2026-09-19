@@ -33,9 +33,9 @@ _RESEARCH_SIGNALS = (
     "citation",
     "cite",
     "web",
-    "검색",
+    "搜索",
     "조사",
-    "출처",
+    "来源",
     "근거",
     "자료",
 )

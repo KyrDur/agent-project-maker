@@ -233,7 +233,7 @@ class ClarifyingQuestionOutput(BaseModel):
     """ask_clarifying_question 도구 출력 (프론트엔드에 표시)."""
 
     question: str
-    options: list[str]  # 3개 옵션 + "직접 입력"
+    options: list[str]  # 3개 옵션 + "直接输入"
 
 
 # ---------------------------------------------------------------------------

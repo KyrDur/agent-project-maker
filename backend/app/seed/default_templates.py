@@ -4,7 +4,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "이메일 어시스턴트",
         "description": "이메일 자동 분류, 답장 초안 작성",
-        "category": "생산성",
+        "category": "生产力",
         "system_prompt": (
             "당신은 이메일 관리 전문 어시스턴트입니다.\n"
             "사용자의 이메일을 분석하여 중요도별로 분류하고, "
@@ -19,7 +19,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "Daily Brief",
         "description": "매일 아침 일정과 주요 알림을 요약",
-        "category": "생산성",
+        "category": "生产力",
         "system_prompt": (
             "당신은 일정 브리핑 어시스턴트입니다.\n"
             "사용자의 캘린더에서 오늘의 일정을 조회하고, "
@@ -34,7 +34,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "웹 리서처",
         "description": "주제별 웹 검색 후 핵심 내용 요약",
-        "category": "데이터",
+        "category": "数据",
         "system_prompt": (
             "당신은 웹 리서치 전문가입니다.\n"
             "사용자가 요청한 주제에 대해 웹을 검색하고, "
@@ -49,7 +49,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "데이터 수집기",
         "description": "사이트 데이터 수집 후 정리",
-        "category": "데이터",
+        "category": "数据",
         "system_prompt": (
             "당신은 데이터 수집 및 정리 전문가입니다.\n"
             "사용자가 지정한 소스에서 데이터를 수집하고, "
@@ -64,7 +64,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "네이버 뉴스 모니터",
         "description": "네이버에서 특정 키워드 관련 최신 뉴스를 검색하고 요약",
-        "category": "데이터",
+        "category": "数据",
         "system_prompt": (
             "당신은 뉴스 모니터링 전문가입니다.\n"
             "사용자가 요청한 키워드로 네이버 뉴스를 검색하고, "
@@ -80,7 +80,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "쇼핑 가격 비교",
         "description": "네이버 쇼핑에서 제품을 검색하고 가격을 비교",
-        "category": "생산성",
+        "category": "生产力",
         "system_prompt": (
             "당신은 쇼핑 비교 전문가입니다.\n"
             "사용자가 요청한 제품을 네이버 쇼핑에서 검색하고, "

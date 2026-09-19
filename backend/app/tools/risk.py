@@ -53,9 +53,9 @@ _READ_ONLY_MCP_NAME_PREFIXES = (
 )
 _READ_ONLY_MCP_DESCRIPTION_HINTS = (
     "조회",
-    "목록",
-    "검색",
-    "상세",
+    "列表",
+    "搜索",
+    "打开详情",
     "현황",
     "read",
     "list",

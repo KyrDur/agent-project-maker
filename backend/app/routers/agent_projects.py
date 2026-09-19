@@ -13,6 +13,7 @@ from app.schemas.agent_project import (
     AgentProjectResponse,
     AgentProjectVersionResponse,
     AgentProjectVersionSummary,
+    EvalCaseGenerationRequest,
     EvalGenerationRequest,
     EvalRunCreate,
     EvalRunResponse,
@@ -21,8 +22,9 @@ from app.schemas.agent_project import (
     VersionCreate,
     VersionCreated,
 )
-from app.schemas.agent_project_optimization import OptimizeRequest
+from app.schemas.agent_project_optimization import OptimizeRequest, ProposalDecision
 from app.schemas.agent_project_portfolio import ResumeRequest
+from app.schemas.agent_project_report import EvaluationReports
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_portfolio as portfolio
 from app.services import agent_project_service as service
@@ -160,7 +162,10 @@ async def update_eval_set(
 
 @router.post("/eval-sets/{set_id}/quality", response_model=EvalSetResponse)
 async def judge_eval_set(
-    agent_id: uuid.UUID, set_id: uuid.UUID, db: AsyncSession = Depends(get_db), user: CurrentUser = Depends(get_current_user)
+    agent_id: uuid.UUID,
+    set_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
 ):
     return await evaluation.judge_set(db, agent_id, user.id, set_id)
 
@@ -223,13 +228,21 @@ async def generate_eval_spec(
 @router.post("/eval-sets/generate", response_model=EvalSetResponse, status_code=201)
 async def generate_eval_set(
     agent_id: uuid.UUID,
-    body: EvalGenerationRequest,
+    body: EvalCaseGenerationRequest,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     from app.services.agent_project_semantic import generate
 
-    return await generate(db, agent_id, user.id, body.version_id, cases=True)
+    return await generate(
+        db,
+        agent_id,
+        user.id,
+        body.version_id,
+        cases=True,
+        evaluation_focus=body.evaluation_focus,
+        evaluation_focus_reason=body.evaluation_focus_reason,
+    )
 
 
 @router.post("/eval-runs/{run_id}/analyze")
@@ -253,14 +266,76 @@ async def optimize_eval_run(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    from app.services.agent_project_optimization import execute_optimization, start
+    del agent_id, run_id, body, background, db, user
+    raise AppError(
+        code="optimization_requires_user_proposal_decision",
+        message="Generate proposals, accept one, then run regression.",
+        status=410,
+    )
 
-    state, schedule = await start(db, agent_id, user.id, run_id, body.request_id)
-    if schedule:
-        background.add_task(
-            execute_optimization, agent_id, user.id, uuid.UUID(state["root_run_id"])
-        )
-    return state
+
+@router.post("/eval-runs/{run_id}/proposals")
+async def generate_optimization_proposal(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: OptimizeRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_proposals
+
+    return await agent_project_proposals.generate(db, agent_id, user.id, run_id, body.request_id)
+
+
+@router.post("/eval-runs/{run_id}/proposals/{proposal_id}/decision")
+async def decide_optimization_proposal(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    proposal_id: uuid.UUID,
+    body: ProposalDecision,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_proposals
+
+    return await agent_project_proposals.decide(
+        db,
+        agent_id,
+        user.id,
+        run_id,
+        proposal_id,
+        body.decision,
+        body.decision_reason,
+    )
+
+
+@router.post(
+    "/eval-runs/{run_id}/proposals/{proposal_id}/regression",
+    response_model=EvalRunResponse,
+    status_code=202,
+)
+async def run_proposal_regression(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    proposal_id: uuid.UUID,
+    body: OptimizeRequest,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_proposals
+
+    row = await agent_project_proposals.regression(
+        db,
+        agent_id,
+        user.id,
+        run_id,
+        proposal_id,
+        body.request_id,
+    )
+    if row.status == "pending":
+        background.add_task(evaluation.execute_run, row.id, agent_id, user.id)
+    return row
 
 
 @router.get("/report")
@@ -270,6 +345,17 @@ async def get_report(
     user: CurrentUser = Depends(get_current_user),
 ):
     return await portfolio.report(db, agent_id, user.id)
+
+
+@router.get("/evaluation-reports", response_model=EvaluationReports)
+async def evaluation_reports(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_report import list_reports
+
+    return await list_reports(db, agent_id, user.id)
 
 
 @router.post("/report/generate")

@@ -85,7 +85,7 @@ test.describe('Independent assistant side chat', () => {
         request.method() === 'POST' &&
         request.url().endsWith(`/api/agents/${fixture.agentId}/assistant/message`),
     )
-    await sideChat.getByRole('button', { name: '전송' }).click()
+    await sideChat.getByRole('button', { name: '发送按钮' }).click()
     const sideRequest = await sideRequestPromise
     const sidePayload: unknown = sideRequest.postDataJSON()
     expect(isRecord(sidePayload) && typeof sidePayload.session_id === 'string').toBe(true)
@@ -97,15 +97,15 @@ test.describe('Independent assistant side chat', () => {
     await expect(sideChat.getByText('side transcript survives')).toBeVisible()
     await expect(mainComposer).toHaveValue('main draft remains independent')
 
-    await sideChat.getByRole('button', { name: '닫기' }).click()
+    await sideChat.getByRole('button', { name: '关闭' }).click()
     await expect(sideChat).toBeHidden()
     await expect(page.getByRole('button', { name: 'AI Assistant' })).toBeFocused()
-    await main.getByRole('button', { name: '더보기 메뉴' }).click()
-    const settingsItem = page.getByRole('menuitem', { name: '설정' })
+    await main.getByRole('button', { name: '菜单' }).click()
+    const settingsItem = page.getByRole('menuitem', { name: '设置' })
     await settingsItem.hover()
     await settingsItem.dispatchEvent('click')
     await expect(page).toHaveURL(new RegExp(`/agents/${fixture.agentId}/settings`))
-    const settingsName = main.getByPlaceholder('에이전트 이름')
+    const settingsName = main.getByPlaceholder('智能体名称')
     await settingsName.fill('E2E Side Chat unsaved')
 
     await page.getByRole('button', { name: 'AI Assistant' }).click()
@@ -113,7 +113,7 @@ test.describe('Independent assistant side chat', () => {
       page.getByTestId('assistant-side-chat').getByText('side transcript survives'),
     ).toBeVisible()
     await expect(page.getByTestId('assistant-side-chat')).not.toHaveAttribute('aria-modal')
-    await expect(main.getByRole('button', { name: '저장', exact: true }).first()).toBeEnabled()
+    await expect(main.getByRole('button', { name: '保存', exact: true }).first()).toBeEnabled()
     await expect(settingsName).toHaveValue('E2E Side Chat unsaved')
     await page.screenshot({ path: testInfo.outputPath('desktop-retained-side-chat.png') })
     await page.setViewportSize({ width: 1600, height: 900 })
@@ -147,9 +147,9 @@ test.describe('Independent assistant side chat', () => {
     const composer = sideChat.locator('textarea[data-moldy-composer-input="true"]')
 
     await composer.fill('first side request fails')
-    await sideChat.getByRole('button', { name: '전송' }).click()
+    await sideChat.getByRole('button', { name: '发送按钮' }).click()
     await expect.poll(() => sideRequests).toBeGreaterThan(0)
-    await sideChat.getByRole('button', { name: '닫기' }).click()
+    await sideChat.getByRole('button', { name: '关闭' }).click()
     const failedRequestCount = sideRequests
     failSideRequests = false
     await page.getByRole('button', { name: 'AI Assistant' }).click()
@@ -158,8 +158,8 @@ test.describe('Independent assistant side chat', () => {
       'textarea[data-moldy-composer-input="true"]',
     )
     await recoveredComposer.fill('side recovery request')
-    await expect(recoveredSideChat.getByRole('button', { name: '전송' })).toBeEnabled()
-    await recoveredSideChat.getByRole('button', { name: '전송' }).click()
+    await expect(recoveredSideChat.getByRole('button', { name: '发送按钮' })).toBeEnabled()
+    await recoveredSideChat.getByRole('button', { name: '发送按钮' }).click()
 
     await expect.poll(() => sideRequests).toBeGreaterThan(failedRequestCount)
     await expect(recoveredSideChat.getByText('side recovery request')).toBeVisible()
@@ -172,7 +172,7 @@ test.describe('Independent assistant side chat', () => {
     await desktopTrigger.click()
     const desktopSideChat = page.getByTestId('assistant-side-chat')
     await expect(desktopSideChat).toBeVisible()
-    await desktopSideChat.getByRole('button', { name: '닫기' }).click()
+    await desktopSideChat.getByRole('button', { name: '关闭' }).click()
     await page.setViewportSize({ width: 390, height: 844 })
     const trigger = page.getByRole('button', { name: 'AI Assistant' })
 
@@ -184,7 +184,7 @@ test.describe('Independent assistant side chat', () => {
       .poll(() => dialog.evaluate((element) => getComputedStyle(element).opacity))
       .toBe('1')
     await page.screenshot({ path: testInfo.outputPath('mobile-side-chat-focus.png') })
-    await dialog.getByRole('button', { name: '닫기' }).click()
+    await dialog.getByRole('button', { name: '关闭' }).click()
 
     await expect(dialog).toBeHidden()
     await expect(trigger).toBeFocused()

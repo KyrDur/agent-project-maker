@@ -18,14 +18,14 @@ PhaseId = Literal[1, 2, 3, 4, 5, 6, 7, 8]
 
 
 PHASE_DEFINITIONS: list[dict[str, Any]] = [
-    {"id": 1, "name": "프로젝트 초기화", "label_en": "Project Initialization"},
-    {"id": 2, "name": "사용자 의도 분석", "label_en": "Intent Analysis"},
-    {"id": 3, "name": "도구 추천", "label_en": "Tool Recommendation"},
-    {"id": 4, "name": "미들웨어 추천", "label_en": "Middleware Recommendation"},
-    {"id": 5, "name": "시스템 프롬프트 작성", "label_en": "System Prompt"},
-    {"id": 6, "name": "에이전트 이미지 생성", "label_en": "Agent Image"},
-    {"id": 7, "name": "에이전트 설정 저장", "label_en": "Save Configuration"},
-    {"id": 8, "name": "에이전트 빌드", "label_en": "Build Agent"},
+    {"id": 1, "name": "项目初始化", "label_en": "Project Initialization"},
+    {"id": 2, "name": "用户意图分析", "label_en": "Intent Analysis"},
+    {"id": 3, "name": "工具推荐", "label_en": "Tool Recommendation"},
+    {"id": 4, "name": "中间件推荐", "label_en": "Middleware Recommendation"},
+    {"id": 5, "name": "系统 Prompt 编写", "label_en": "System Prompt"},
+    {"id": 6, "name": "Agent 图像生成", "label_en": "Agent Image"},
+    {"id": 7, "name": "保存 Agent 配置", "label_en": "Save Configuration"},
+    {"id": 8, "name": "构建 Agent", "label_en": "Build Agent"},
 ]
 
 

@@ -34,6 +34,8 @@ export interface AgentBrief {
 export interface ModelBrief {
   id: string
   display_name: string
+  provider: string
+  model_name: string
   /** 컨텍스트 창 한도(토큰). null이면 한도 미설정(게이지 비활성). */
   context_window?: number | null
 }
@@ -83,6 +85,9 @@ export interface Agent {
   // (rather than crashing the whole list). UI surfaces "no model bound"
   // and prompts re-binding instead of throwing on agent.model.x access.
   model: ModelBrief | null
+  llm_credential_id?: string | null
+  llm_credential_name?: string | null
+  llm_credential_status?: string | null
   tools: ToolBrief[]
   mcp_tools: McpToolBrief[]
   skills: SkillBrief[]
@@ -100,7 +105,6 @@ export interface Agent {
   last_used_at?: string | null
   image_url: string | null
   opener_questions: string[] | null
-  llm_credential_id?: string | null
   unread_count: number
   /**
    * M10 — fallback model UUIDs tried in order when the primary model fails.
@@ -402,7 +406,7 @@ export interface MessagesEnvelope {
   active_run?: ConversationRun | null
   /** 최신 run (상태 무관). active_run 은 terminal run 을 보고하지 않으므로
    * 마지막 turn 의 canceled/canceling 여부는 이 필드로만 알 수 있다.
-   * "중단됨" notice 의 durable 렌더 근거. */
+   * "被遗弃" notice 의 durable 렌더 근거. */
   latest_run?: ConversationRun | null
   active_tip_message_id?: string | null
   active_checkpoint_id?: string | null
@@ -508,7 +512,7 @@ export interface ReviewConfig {
   action_name: string
   allowed_decisions: DecisionType[]
   /**
-   * 스킬 빌더 챗 AD-4 — 승인 카드에 "이 세션에서 계속 허용" 옵션을 노출할지.
+   * 스킬 빌더 챗 AD-4 — 승인 카드에 "留出本次会议的剩余时间" 옵션을 노출할지.
    * 백엔드 wire 계층이 주입한다 (requires_network 드래프트/이미 동의된 도구는
    * 미주입). langchain ReviewConfig에는 없는 Moldy 확장 필드.
    */
@@ -537,7 +541,7 @@ export interface Decision {
   /** type='respond' 시 필수, type='reject' 시 선택. */
   message?: string
   /**
-   * 스킬 빌더 챗 AD-4 — "이 세션에서 계속 허용" 동의. type='approve'에만 의미.
+   * 스킬 빌더 챗 AD-4 — "留出本次会议的剩余时间" 동의. type='approve'에만 의미.
    * 백엔드 커맨드 핸들러가 세션에 기록한 뒤 이 키를 벗겨 표준 approve만
    * 미들웨어로 내려보낸다 (비표준 decision 필드는 langchain 검증을 깨뜨림).
    */
@@ -663,6 +667,7 @@ export interface BuilderToolRecommendation {
   tool_name: string
   description: string
   reason: string
+  kind?: 'tool' | 'mcp' | 'skill' | 'planned'
 }
 
 export interface BuilderMiddlewareRecommendation {
@@ -676,6 +681,7 @@ export interface BuilderDraftConfig {
   description: string
   system_prompt: string
   tools: string[]
+  planned_tools?: BuilderToolRecommendation[]
   middlewares: string[]
   model_name: string
   primary_task_type: string

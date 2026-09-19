@@ -33,6 +33,7 @@ class AgentProjectVersionSummary(BaseModel):
     change_summary: str | None
     config_hash: str | None
     created_at: datetime
+    created_from: dict[str, str] | None = None
 
 
 class AgentProjectVersionResponse(AgentProjectVersionSummary):
@@ -107,6 +108,8 @@ class EvalSetResponse(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID
     name: str
+    evaluation_focus_json: list[dict[str, Any]] | None = None
+    evaluation_focus_reason: str | None = None
     cases_json: list[dict[str, Any]]
     frozen: bool
     quality_report_json: dict[str, Any] | None = None
@@ -141,6 +144,11 @@ class EvalRunResponse(BaseModel):
 
 class EvalGenerationRequest(BaseModel):
     version_id: uuid.UUID
+
+
+class EvalCaseGenerationRequest(EvalGenerationRequest):
+    evaluation_focus: list[str] = Field(min_length=2, max_length=8)
+    evaluation_focus_reason: str | None = Field(default=None, max_length=1000)
 
 
 class EvalMetric(BaseModel):

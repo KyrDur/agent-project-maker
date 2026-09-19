@@ -34,7 +34,7 @@ interface ClarifyingResult {
 
 /**
  * Fix 에이전트 `ask_clarifying_question` 도구 UI.
- * Backend는 일반 LLM tool로 옵션 3개 + "직접 입력"을 반환.
+ * Backend는 일반 LLM tool로 옵션 3개 + "直接输入"을 반환.
  * 사용자가 옵션 클릭 시 setText + send로 새 사용자 메시지를 보낸다.
  *
  * HITL이 아니라 backend pause가 없으므로 만료 시 별도 액션 없이

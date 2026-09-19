@@ -82,7 +82,7 @@ describe('skill state filters', () => {
       name: 'Credential Weather',
       health: {
         state: 'needs_credentials',
-        label: '자격증명 필요',
+        label: '所需凭据',
         reason: '필수 연결이 없습니다.',
         severity: 'warning',
       },
@@ -93,7 +93,7 @@ describe('skill state filters', () => {
       kind: 'text',
       health: {
         state: 'needs_credentials',
-        label: '자격증명 필요',
+        label: '所需凭据',
         reason: '필수 연결이 없습니다.',
         severity: 'warning',
       },

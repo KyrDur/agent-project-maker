@@ -9,7 +9,7 @@ const HIGHLIGHT_MATCH = 'moldy-search-match'
 const HIGHLIGHT_CURRENT = 'moldy-search-current'
 
 /** 메시지 본문이 아닌 텍스트는 검색에서 제외한다: 메타행(복사/편집/브랜치 피커/
- *  타임스탬프/토큰 수)과 sr-only 라벨. 안 그러면 "복사"/"편집"이 모든 메시지를,
+ *  타임스탬프/토큰 수)과 sr-only 라벨. 안 그러면 "复制"/"编辑"이 모든 메시지를,
  *  숫자가 메타를 매치시켜 카운트가 부풀고 보이지 않는 텍스트로 점프한다. */
 function isNonBodyText(node: Node): boolean {
   const parent = node.parentElement

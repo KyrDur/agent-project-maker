@@ -12,16 +12,16 @@ describe('ReasoningDataUI', () => {
       <ReasoningDataView data={{ summary: '검토한 내용을 요약합니다.' }} statusType="complete" />,
     )
 
-    expect(screen.getByText('추론 요약')).toBeInTheDocument()
+    expect(screen.getByText('推理总结')).toBeInTheDocument()
     expect(screen.getByText('검토한 내용을 요약합니다.')).toBeInTheDocument()
-    expect(screen.getByText('준비됨')).toBeInTheDocument()
+    expect(screen.getByText('准备好了')).toBeInTheDocument()
   })
 
   it('does not render raw reasoning fields', () => {
     const data = { status: 'working', reasoning: 'hidden chain' }
     render(<ReasoningDataView data={data} statusType="running" />)
 
-    expect(screen.getByText('추론 요약')).toBeInTheDocument()
+    expect(screen.getByText('推理总结')).toBeInTheDocument()
     expect(screen.queryByText('working')).toBeInTheDocument()
     expect(screen.queryByText('hidden chain')).not.toBeInTheDocument()
   })

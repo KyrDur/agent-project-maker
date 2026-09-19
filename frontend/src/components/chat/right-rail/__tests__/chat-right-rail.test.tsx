@@ -170,7 +170,7 @@ describe('ChatRightRail', () => {
     )
 
     expect(screen.getAllByRole('heading', { name: 'example.py' }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('heading', { name: '파일' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '文件' })).not.toBeInTheDocument()
   })
 
   it('falls back to the current store selection when payload points to a deleted artifact', () => {
@@ -207,7 +207,7 @@ describe('ChatRightRail', () => {
     )
 
     expect(screen.getAllByRole('heading', { name: 'example.py' }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('heading', { name: '파일' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '文件' })).not.toBeInTheDocument()
   })
 
   it('uses stable desktop rail and mobile full-screen classes for artifact shell', () => {
@@ -259,7 +259,7 @@ describe('ChatRightRail', () => {
 
     expect(container.querySelector('aside')).toHaveClass('hidden', 'xl:block')
     expect(container.querySelector('[role="dialog"]')).toHaveClass('xl:hidden')
-    expect(screen.getByRole('separator', { name: '파일 패널 크기 조절' })).toHaveClass('xl:flex')
+    expect(screen.getByRole('separator', { name: '调整文件面板大小' })).toHaveClass('xl:flex')
   })
 
   it('resizes the desktop rail and persists the last stable width', () => {
@@ -279,7 +279,7 @@ describe('ChatRightRail', () => {
     )
 
     const aside = container.querySelector('aside')
-    const handle = screen.getByRole('separator', { name: '파일 패널 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整文件面板大小' })
 
     fireEvent.pointerDown(handle, { clientX: 400, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 240, pointerId: 1 })
@@ -310,7 +310,7 @@ describe('ChatRightRail', () => {
     await waitFor(() => {
       expect(aside).toHaveStyle({ '--chat-right-rail-width': '480px' })
     })
-    expect(screen.getByRole('separator', { name: '파일 패널 크기 조절' })).toHaveAttribute(
+    expect(screen.getByRole('separator', { name: '调整文件面板大小' })).toHaveAttribute(
       'aria-valuemax',
       '480',
     )
@@ -395,7 +395,7 @@ describe('ChatRightRail', () => {
     )
 
     const aside = container.querySelector('aside')
-    const handle = screen.getByRole('separator', { name: '파일 패널 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整文件面板大小' })
 
     fireEvent.pointerDown(handle, { clientX: 400, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 700, pointerId: 1 })

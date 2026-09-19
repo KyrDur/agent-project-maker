@@ -61,12 +61,12 @@ async def test_start_build_empty_request(client: AsyncClient):
 async def test_get_session(client: AsyncClient, db: AsyncSession):
     await _seed(db)
 
-    create_resp = await client.post("/api/builder", json={"user_request": "검색 에이전트"})
+    create_resp = await client.post("/api/builder", json={"user_request": "搜索智能体"})
     session_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/builder/{session_id}")
     assert resp.status_code == 200
-    assert resp.json()["user_request"] == "검색 에이전트"
+    assert resp.json()["user_request"] == "搜索智能体"
 
 
 @pytest.mark.asyncio
@@ -119,7 +119,7 @@ async def test_confirm_not_preview(client: AsyncClient, db: AsyncSession):
     await _seed(db)
 
     # Create a session still in BUILDING state
-    resp = await client.post("/api/builder", json={"user_request": "테스트"})
+    resp = await client.post("/api/builder", json={"user_request": "测试"})
     session_id = resp.json()["id"]
 
     resp = await client.post(f"/api/builder/{session_id}/confirm")

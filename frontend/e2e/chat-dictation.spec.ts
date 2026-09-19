@@ -164,22 +164,22 @@ test.describe('Editable browser dictation', () => {
 
     const composer = page.locator('textarea[data-moldy-composer-input="true"]:visible')
     await expect(composer).toHaveCount(1)
-    await composer.fill('초안')
+    await composer.fill('吃水')
     const messagesBefore = await messageCount(request, fixture.conversationId)
 
-    await page.getByRole('button', { name: '음성 입력 시작' }).click()
+    await page.getByRole('button', { name: '开始语音输入' }).click()
     await emitSpeech(page, '부분', false)
     await expect(composer).toHaveValue('초안 부분')
     await expect(page.getByText('부분', { exact: true })).toBeVisible()
     await page.screenshot({ path: path.join(CAPTURE_DIR, 'partial-editable.png'), fullPage: true })
 
-    await emitSpeech(page, '확정', true)
+    await emitSpeech(page, '确认', true)
     await expect(composer).toHaveValue('초안 확정')
     await expect.poll(() => messageCount(request, fixture.conversationId)).toBe(messagesBefore)
     await page.screenshot({ path: path.join(CAPTURE_DIR, 'final-not-sent.png'), fullPage: true })
 
-    await page.getByRole('button', { name: '음성 입력 중단' }).click()
-    await expect(page.getByRole('button', { name: '음성 입력 시작' })).toBeVisible()
+    await page.getByRole('button', { name: '停止语音输入' }).click()
+    await expect(page.getByRole('button', { name: '开始语音输入' })).toBeVisible()
     expect(errors.console).toEqual([])
     expect(errors.page).toEqual([])
     expect(errors.network).toEqual([])

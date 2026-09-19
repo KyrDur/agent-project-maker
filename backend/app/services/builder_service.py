@@ -21,6 +21,7 @@ from app.models.agent import Agent
 from app.models.builder_session import BuilderSession
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import AgentMcpToolLink, McpTool
+from app.models.model import Model
 from app.models.skill import AgentSkillLink, Skill
 from app.models.tool import AgentToolLink, Tool
 from app.schemas.builder import BuilderStatus
@@ -181,9 +182,14 @@ async def confirm_build(
         return None
 
     try:
-        from app.services.builder_runtime_readiness import require_binding
-
-        binding = await require_binding(db, session.user_id, model_id)
+        selected_model_id = model_id or config.get("runtime_model_id")
+        runtime_source = config.get("runtime_model_source")
+        binding = await _resolve_confirm_runtime_binding(
+            db,
+            session.user_id,
+            str(selected_model_id) if selected_model_id else None,
+            runtime_source=runtime_source if isinstance(runtime_source, str) else None,
+        )
         model = binding.model
 
         # 항목 매칭 — 이름으로 Tool / McpTool / Skill 3-way 분리 조회
@@ -275,6 +281,60 @@ async def confirm_build(
         session.status = BuilderStatus.PREVIEW
         await db.commit()
         raise
+
+
+async def get_builder_system_runtime(db: AsyncSession):
+    """Return the operator-selected Builder runtime as a model/credential binding."""
+
+    from app.credentials import service as credential_service
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import RuntimeBinding
+    from app.services.system_credential_resolver import get_effective_setting
+
+    _, setting = await get_effective_setting(db, "builder")
+    if setting is None or setting.credential_id is None or not setting.model_name:
+        raise AppError(code="builder_runtime_setup", message=tr("builder_runtime_setup"), status=422)
+    credential = await credential_service.get_system(db, setting.credential_id)
+    if credential is None:
+        raise AppError(code="builder_runtime_setup", message=tr("builder_runtime_setup"), status=422)
+
+    result = await db.execute(
+        select(Model).where(
+            Model.provider == credential.definition_key,
+            Model.model_name == setting.model_name,
+        )
+    )
+    model = result.scalar_one_or_none()
+    if model is None:
+        model = Model(
+            provider=credential.definition_key,
+            model_name=setting.model_name,
+            display_name=setting.model_name,
+            is_visible=True,
+        )
+        db.add(model)
+        await db.flush()
+    return RuntimeBinding(model=model, credential=credential)
+
+
+async def _resolve_confirm_runtime_binding(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    selected_model_id: str | None,
+    *,
+    runtime_source: str | None,
+):
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import require_binding
+
+    if runtime_source == "system_builder":
+        return await get_builder_system_runtime(db)
+    try:
+        return await require_binding(db, user_id, selected_model_id)
+    except AppError:
+        if selected_model_id:
+            raise
+        return await get_builder_system_runtime(db)
 
 
 async def _resolve_tools(

@@ -50,7 +50,7 @@ test.describe('Marketplace', () => {
 
     // 3. The installed tab reflects it.
     await page.goto('/marketplace')
-    await page.getByRole('tab', { name: '설치됨' }).click()
+    await page.getByRole('tab', { name: '已安装' }).click()
     await expect(page.getByText(ITEM_NAME).first()).toBeVisible()
   })
 })

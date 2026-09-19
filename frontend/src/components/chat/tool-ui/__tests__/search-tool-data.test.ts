@@ -99,7 +99,7 @@ describe('parseSearchResults', () => {
       parseSearchResults({
         items: [
           {
-            title: '이미지',
+            title: '图片',
             link: 'https://images.example/full.jpg',
             image: { thumbnailLink: 'https://images.example/thumb.jpg' },
           },
@@ -107,7 +107,7 @@ describe('parseSearchResults', () => {
       }),
     ).toEqual([
       {
-        title: '이미지',
+        title: '图片',
         link: 'https://images.example/full.jpg',
         thumbnail: 'https://images.example/thumb.jpg',
       },

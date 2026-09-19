@@ -3,39 +3,39 @@ import { parsePhaseNarration } from '../builder-phase-parser'
 
 describe('parsePhaseNarration', () => {
   it('returns the original text when no phase markers are present', () => {
-    const segs = parsePhaseNarration('안녕하세요! 단계별로 함께 만들어볼게요.')
-    expect(segs).toEqual([{ kind: 'text', text: '안녕하세요! 단계별로 함께 만들어볼게요.' }])
+    const segs = parsePhaseNarration('你好！我们一步步来创建。')
+    expect(segs).toEqual([{ kind: 'text', text: '你好！我们一步步来创建。' }])
   })
 
-  it('extracts a [Phase N 완료] marker and trims redundant narration', () => {
-    const segs = parsePhaseNarration('[Phase 1 완료] 프로젝트 초기화 완료.')
+  it('extracts a [Phase N 已完成] marker and trims redundant narration', () => {
+    const segs = parsePhaseNarration('[Phase 1 已完成] 项目初始化已完成。')
     expect(segs).toEqual([{ kind: 'event', phaseId: 1, transition: 'completed' }])
   })
 
-  it('extracts "이제 Phase N: <name>을 시작합니다" as a started event', () => {
-    const segs = parsePhaseNarration('이제 Phase 2: 사용자 의도 분석을 시작합니다.')
+  it('extracts "现在开始 Phase N：<name>" as a started event', () => {
+    const segs = parsePhaseNarration('现在开始 Phase 2：用户意图分析。')
     expect(segs).toEqual([{ kind: 'event', phaseId: 2, transition: 'started' }])
   })
 
   it('handles the full mid-session narration from the conversational builder', () => {
     const text =
-      '에이전트를 만들어드리겠습니다! 이제 Phase 1: 프로젝트 초기화를 진행하겠습니다.' +
-      '[Phase 1 완료] 프로젝트 초기화 완료. 이제 Phase 2: 사용자 의도 분석을 시작합니다.' +
-      '이제 사용자 의도를 분석하겠습니다.'
+      '我来帮你创建智能体！ 现在开始 Phase 1：项目初始化。' +
+      '[Phase 1 已完成] 项目初始化已完成。 现在开始 Phase 2：用户意图分析。' +
+      '接下来分析用户意图。'
 
     const segs = parsePhaseNarration(text)
-    // 첫 인사 + Phase 1 시작 + Phase 1 완료 + Phase 2 시작 + 나머지 narration
+    // 问候 + Phase 1 开始 + Phase 1 完成 + Phase 2 开始 + 后续说明
     expect(segs).toEqual([
-      { kind: 'text', text: '에이전트를 만들어드리겠습니다!' },
+      { kind: 'text', text: '我来帮你创建智能体！' },
       { kind: 'event', phaseId: 1, transition: 'started' },
       { kind: 'event', phaseId: 1, transition: 'completed' },
       { kind: 'event', phaseId: 2, transition: 'started' },
-      { kind: 'text', text: '이제 사용자 의도를 분석하겠습니다.' },
+      { kind: 'text', text: '接下来分析用户意图。' },
     ])
   })
 
   it('dedupes consecutive identical events', () => {
-    const text = '[Phase 1 완료] [Phase 1 완료]'
+    const text = '[Phase 1 已完成] [Phase 1 已完成]'
     const segs = parsePhaseNarration(text)
     expect(segs).toEqual([{ kind: 'event', phaseId: 1, transition: 'completed' }])
   })

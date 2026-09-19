@@ -13,7 +13,7 @@ import {
 import { records, sendMessageForRun, stringField, waitForRunStatus } from './langgraph-v3-helpers'
 
 const QUALITY_MARKER = 'MOLDY_LIVE_OK'
-const REQUIRED_WORDS = ['연결', '실행', '응답'] as const
+const REQUIRED_WORDS = ['标签', '运行', '回应'] as const
 
 async function liveModelId(request: APIRequestContext): Promise<string> {
   const models = records(await apiGetJson(request, `${API_BASE}/api/models`), 'models')

@@ -4,7 +4,7 @@ import type { APIRequestContext, Locator, Page, TestInfo } from '@playwright/tes
 // Real agent-settings journeys against the live backend (no LLM needed):
 // edit the system prompt and attach a sub-agent, then verify each persisted
 // via the API. The settings page uses a single-save draft model — all edits
-// commit on one top-right "저장" click (PATCH /api/agents/{id}).
+// commit on one top-right "保存" click (PATCH /api/agents/{id}).
 const API =
   process.env.E2E_API_BASE_URL ?? `http://localhost:${process.env.E2E_BACKEND_PORT ?? '8001'}`
 const EMAIL = process.env.E2E_USER_EMAIL ?? process.env.E2E_EMAIL ?? 'playwright-e2e@moldy.dev'
@@ -23,7 +23,7 @@ async function captureRuntimePolicySettings(
 
   for (const width of RUNTIME_POLICY_CAPTURE_VIEWPORTS) {
     await page.setViewportSize({ width, height: 960 })
-    await page.getByRole('tab', { name: '설정', exact: true }).scrollIntoViewIfNeeded()
+    await page.getByRole('tab', { name: '设置', exact: true }).scrollIntoViewIfNeeded()
     await section.evaluate((element) =>
       element.scrollIntoView({ block: 'center', inline: 'nearest' }),
     )
@@ -167,12 +167,12 @@ test.describe('Agent settings — edit & attach', () => {
 
   test('editing the system prompt and saving persists it', async ({ page, request }) => {
     await page.goto(`/agents/${agentId}/settings`)
-    const textarea = page.locator('textarea[placeholder="에이전트 지침을 입력하세요"]')
+    const textarea = page.locator('textarea[placeholder="输入智能体指令"]')
     await expect(textarea).toBeVisible()
 
     const newPrompt = `Updated by E2E ${Date.now()}`
     await textarea.fill(newPrompt)
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
 
     await expect
       .poll(async () => (await getAgent(request, agentId)).system_prompt, { timeout: 15_000 })
@@ -184,34 +184,34 @@ test.describe('Agent settings — edit & attach', () => {
     request,
   }, testInfo) => {
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('tab', { name: '설정', exact: true }).click()
+    await page.getByRole('tab', { name: '设置', exact: true }).click()
     const runtimeSettings = page
-      .getByRole('heading', { name: '실행 동작' })
+      .getByRole('heading', { name: '运行时行为' })
       .locator('xpath=ancestor::section[1]')
     const sourceBadge = runtimeSettings.locator('[data-slot="badge"]')
-    const headerSave = page.locator('header').getByRole('button', { name: '저장', exact: true })
-    await expect(sourceBadge).toHaveText('권장 설정')
+    const headerSave = page.locator('header').getByRole('button', { name: '保存', exact: true })
+    await expect(sourceBadge).toHaveText('推荐设置')
 
-    const custom = runtimeSettings.getByRole('button', { name: '직접 설정', exact: true })
+    const custom = runtimeSettings.getByRole('button', { name: '自定义设置', exact: true })
     await custom.focus()
     await page.keyboard.press('Enter')
-    await expect(sourceBadge).toHaveText('직접 설정')
+    await expect(sourceBadge).toHaveText('自定义设置')
 
-    const todoSwitch = runtimeSettings.getByRole('switch', { name: '할 일 목록 사용' })
+    const todoSwitch = runtimeSettings.getByRole('switch', { name: '使用任务列表' })
     await todoSwitch.focus()
     await page.keyboard.press('Space')
     await expect(todoSwitch).toHaveAttribute('aria-checked', 'false')
-    await runtimeSettings.getByRole('button', { name: '검토만', exact: true }).click()
-    await runtimeSettings.getByRole('button', { name: '균형', exact: true }).click()
+    await runtimeSettings.getByRole('button', { name: '仅供审核', exact: true }).click()
+    await runtimeSettings.getByRole('button', { name: '平衡', exact: true }).click()
     await expect(runtimeSettings).toContainText(
-      '이미 실행된 대화에는 영향을 주지 않습니다. 아직 실행하지 않은 대화와 새 대화에는 변경된 설정이 적용됩니다.',
+      '这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。',
     )
 
-    await page.getByRole('tab', { name: '비주얼', exact: true }).click()
-    await page.getByRole('tab', { name: '폼', exact: true }).click()
+    await page.getByRole('tab', { name: '视觉', exact: true }).click()
+    await page.getByRole('tab', { name: '形式', exact: true }).click()
     await expect(todoSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(
-      runtimeSettings.getByRole('button', { name: '검토만', exact: true }),
+      runtimeSettings.getByRole('button', { name: '仅供审核', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')
 
     await headerSave.click()
@@ -226,22 +226,22 @@ test.describe('Agent settings — edit & attach', () => {
       .toEqual(expectedCustomPolicy)
 
     await page.reload()
-    await page.getByRole('tab', { name: '설정', exact: true }).click()
-    await expect(sourceBadge).toHaveText('직접 설정')
+    await page.getByRole('tab', { name: '设置', exact: true }).click()
+    await expect(sourceBadge).toHaveText('自定义设置')
     await expect(todoSwitch).toHaveAttribute('aria-checked', 'false')
     await expect(
-      runtimeSettings.getByRole('button', { name: '균형', exact: true }),
+      runtimeSettings.getByRole('button', { name: '平衡', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')
     await captureRuntimePolicySettings(
       page,
       testInfo,
       'custom-reload',
       runtimeSettings,
-      runtimeSettings.getByRole('button', { name: '균형', exact: true }),
+      runtimeSettings.getByRole('button', { name: '平衡', exact: true }),
     )
 
-    await page.getByRole('tab', { name: '폼', exact: true }).click()
-    await page.getByRole('button', { name: '모델 설정', exact: true }).click()
+    await page.getByRole('tab', { name: '形式', exact: true }).click()
+    await page.getByRole('button', { name: '配置模型', exact: true }).click()
     const modelDialog = page.getByRole('dialog')
     await expect(modelDialog).toBeVisible()
     await modelDialog.getByRole('combobox').click()
@@ -251,13 +251,13 @@ test.describe('Agent settings — edit & attach', () => {
       .filter({ hasText: noContextModelName })
     await expect(noContextOption).toBeVisible({ timeout: 10_000 })
     await noContextOption.click()
-    await modelDialog.getByRole('button', { name: '완료', exact: true }).click()
-    await page.getByRole('tab', { name: '설정', exact: true }).click()
-    await page.getByRole('tab', { name: '설정', exact: true }).click()
-    const balanced = runtimeSettings.getByRole('button', { name: '균형', exact: true })
+    await modelDialog.getByRole('button', { name: '完成', exact: true }).click()
+    await page.getByRole('tab', { name: '设置', exact: true }).click()
+    await page.getByRole('tab', { name: '设置', exact: true }).click()
+    const balanced = runtimeSettings.getByRole('button', { name: '平衡', exact: true })
     await expect(balanced).toBeDisabled()
     await expect(runtimeSettings).toContainText(
-      '현재 선택은 이 모델에서 사용할 수 없습니다. 모델을 바꾸거나 자동으로 전환하세요.',
+      '当前的选择不适用于该模型。更改模型或切换为自动。',
     )
     await captureRuntimePolicySettings(
       page,
@@ -265,7 +265,7 @@ test.describe('Agent settings — edit & attach', () => {
       'balanced-invalid-current',
       runtimeSettings,
       runtimeSettings.getByText(
-        '현재 선택은 이 모델에서 사용할 수 없습니다. 모델을 바꾸거나 자동으로 전환하세요.',
+        '当前的选择不适用于该模型。更改模型或切换为自动。',
         { exact: true },
       ),
     )
@@ -273,26 +273,26 @@ test.describe('Agent settings — edit & attach', () => {
     await expect
       .poll(async () => (await getAgent(request, agentId)).runtime_policy, { timeout: 15_000 })
       .toEqual(expectedCustomPolicy)
-    await runtimeSettings.getByRole('button', { name: '자동', exact: true }).click()
+    await runtimeSettings.getByRole('button', { name: '汽车', exact: true }).click()
     await expect(runtimeSettings).toContainText(
-      '선택한 모델의 컨텍스트 길이 정보가 있어야 균형 모드를 사용할 수 있어요.',
+      '平衡模式需要所选模型的上下文长度信息。',
     )
     await expect(headerSave).toBeEnabled()
 
-    await runtimeSettings.getByRole('button', { name: '권장 설정 사용', exact: true }).click()
+    await runtimeSettings.getByRole('button', { name: '使用推荐设置', exact: true }).click()
     await headerSave.click()
     await expect
       .poll(async () => (await getAgent(request, agentId)).runtime_policy, { timeout: 15_000 })
       .toBeNull()
     await page.reload()
-    await page.getByRole('tab', { name: '설정', exact: true }).click()
-    await expect(sourceBadge).toHaveText('권장 설정')
+    await page.getByRole('tab', { name: '设置', exact: true }).click()
+    await expect(sourceBadge).toHaveText('推荐设置')
     await captureRuntimePolicySettings(
       page,
       testInfo,
       'recommended-reset',
       runtimeSettings,
-      runtimeSettings.getByRole('heading', { name: '실행 동작' }),
+      runtimeSettings.getByRole('heading', { name: '运行时行为' }),
     )
   })
 
@@ -305,22 +305,22 @@ test.describe('Agent settings — edit & attach', () => {
 
     try {
       await page.goto('/agents/new/manual')
-      await page.getByPlaceholder('에이전트 이름').fill(name)
-      await page.locator('summary').filter({ hasText: '실행 동작 고급 설정' }).click()
+      await page.getByPlaceholder('智能体名称').fill(name)
+      await page.locator('summary').filter({ hasText: '高级运行时设置' }).click()
       const runtimeSettings = page
-        .getByRole('heading', { name: '실행 동작' })
+        .getByRole('heading', { name: '运行时行为' })
         .locator('xpath=ancestor::section[1]')
-      await runtimeSettings.getByRole('button', { name: '직접 설정', exact: true }).click()
-      await runtimeSettings.getByRole('button', { name: '검토만', exact: true }).click()
+      await runtimeSettings.getByRole('button', { name: '自定义设置', exact: true }).click()
+      await runtimeSettings.getByRole('button', { name: '仅供审核', exact: true }).click()
 
-      await page.getByRole('tab', { name: '비주얼', exact: true }).click()
-      await page.getByRole('tab', { name: '폼', exact: true }).click()
-      await page.locator('summary').filter({ hasText: '실행 동작 고급 설정' }).click()
+      await page.getByRole('tab', { name: '视觉', exact: true }).click()
+      await page.getByRole('tab', { name: '形式', exact: true }).click()
+      await page.locator('summary').filter({ hasText: '高级运行时设置' }).click()
       await expect(
-        runtimeSettings.getByRole('button', { name: '검토만', exact: true }),
+        runtimeSettings.getByRole('button', { name: '仅供审核', exact: true }),
       ).toHaveAttribute('aria-pressed', 'true')
 
-      await page.getByRole('button', { name: '저장', exact: true }).click()
+      await page.getByRole('button', { name: '保存', exact: true }).click()
       await expect(page).toHaveURL(/\/agents\/[^/]+\/settings$/)
       const match = page.url().match(/\/agents\/([^/]+)\/settings$/)
       if (!match?.[1])
@@ -347,10 +347,10 @@ test.describe('Agent settings — edit & attach', () => {
   test('renders a generic inaccessible-agent state without runtime controls', async ({ page }) => {
     await page.goto('/agents/00000000-0000-4000-8000-000000000000/settings')
     await expect(
-      page.getByText('에이전트를 찾을 수 없거나 접근 권한이 없습니다.', { exact: true }),
+      page.getByText('找不到 智能体 或您无权访问它。', { exact: true }),
     ).toBeVisible()
-    await expect(page.getByRole('textbox', { name: '에이전트 이름' })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: '실행 동작' })).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: '智能体名称' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: '运行时行为' })).toHaveCount(0)
   })
 
   test('attaching a sub-agent and saving persists the delegation link', async ({
@@ -358,19 +358,19 @@ test.describe('Agent settings — edit & attach', () => {
     request,
   }) => {
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('button', { name: '서브에이전트 관리' }).click()
+    await page.getByRole('button', { name: '管理子代理' }).click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
-    await dialog.getByPlaceholder('에이전트 검색...').fill(childName)
+    await dialog.getByPlaceholder('搜索智能体...').fill(childName)
     // Add the child from the "available" column (per-row add action).
     await dialog
       .getByRole('button', { name: new RegExp(`(추가|${childName})`) })
       .first()
       .click()
-    await dialog.getByRole('button', { name: '닫기' }).click()
+    await dialog.getByRole('button', { name: '关闭' }).click()
 
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
 
     await expect
       .poll(
@@ -386,15 +386,15 @@ test.describe('Agent settings — edit & attach', () => {
 
   test('attaching a skill and saving persists it', async ({ page, request }) => {
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('button', { name: '추가', exact: true }).first().click()
+    await page.getByRole('button', { name: '添加', exact: true }).first().click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('tab', { name: 'Skills' }).click()
     await dialog.getByRole('button', { name: `${skillName} 추가` }).click()
-    await dialog.getByRole('button', { name: '닫기' }).click()
+    await dialog.getByRole('button', { name: '关闭' }).click()
 
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
 
     await expect
       .poll(
@@ -410,15 +410,15 @@ test.describe('Agent settings — edit & attach', () => {
 
   test('attaching a tool and saving persists it', async ({ page, request }) => {
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('button', { name: '추가', exact: true }).first().click()
+    await page.getByRole('button', { name: '添加', exact: true }).first().click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('tab', { name: 'My Tools' }).click()
     await dialog.getByRole('button', { name: `${toolName} 추가` }).click()
-    await dialog.getByRole('button', { name: '닫기' }).click()
+    await dialog.getByRole('button', { name: '关闭' }).click()
 
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
 
     await expect
       .poll(

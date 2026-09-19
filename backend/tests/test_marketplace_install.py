@@ -44,7 +44,7 @@ _SRT_REQUIREMENT = {
     "key": "srt_login",
     "definition_key": "srt_account",
     "required": True,
-    "label": "SRT 계정",
+    "label": "SRT账户",
     "fields": ["username", "password"],
     "injection": "env",
     "scope": "user",

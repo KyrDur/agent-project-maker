@@ -56,13 +56,13 @@ describe('MarkdownContent', () => {
   it('uses Korean copy text in code blocks', () => {
     render(<MarkdownContent content={'```js\nconst x = 1\n```'} />)
 
-    expect(screen.getByRole('button', { name: '복사' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '复制' })).toBeInTheDocument()
   })
 
   it('renders fenced code as a plain block while streaming', () => {
     const { container } = render(<MarkdownContent content={'```js\nconst x = 1\n```'} isStreaming />)
 
-    expect(screen.queryByRole('button', { name: '복사' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '复制' })).not.toBeInTheDocument()
     expect(container.querySelector('.code-block-wrapper')).not.toBeInTheDocument()
     const code = container.querySelector('pre code')
     expect(code).toBeInTheDocument()
@@ -114,7 +114,7 @@ describe('MarkdownContent', () => {
 
     fireEvent.error(screen.getByRole('img', { name: 'sample' }))
     fireEvent.error(screen.getByRole('img', { name: 'sample' }))
-    expect(screen.getByText('이미지를 불러오지 못했어요')).toBeInTheDocument()
+    expect(screen.getByText('图片加载失败')).toBeInTheDocument()
   })
 
   it('renders KaTeX math via remark-math + rehype-katex', () => {

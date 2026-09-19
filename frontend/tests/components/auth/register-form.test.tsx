@@ -6,19 +6,19 @@ describe('RegisterForm', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     render(<RegisterForm onSubmit={onSubmit} isLoading={false} error={null} />)
 
-    await userEvent.type(screen.getByLabelText('표시 이름'), '체스터')
-    await userEvent.type(screen.getByLabelText('이메일'), 'chester@example.com')
-    await userEvent.type(screen.getByLabelText('비밀번호'), 'correct horse')
+    await userEvent.type(screen.getByLabelText('显示名称'), '用户')
+    await userEvent.type(screen.getByLabelText('电子邮件'), 'chester@example.com')
+    await userEvent.type(screen.getByLabelText('密码'), 'correct horse')
     await userEvent.click(screen.getByRole('checkbox'))
-    await userEvent.click(screen.getByRole('button', { name: '가입하기' }))
+    await userEvent.click(screen.getByRole('button', { name: '创建帐户' }))
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
-        display_name: '체스터',
+        display_name: '用户',
         email: 'chester@example.com',
         password: 'correct horse',
       })
     })
-    expect(screen.getByText('실명을 입력하지 않아도 됩니다.')).toBeInTheDocument()
+    expect(screen.getByText('您无需输入您的法定姓名。')).toBeInTheDocument()
   })
 })

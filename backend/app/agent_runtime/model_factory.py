@@ -50,8 +50,11 @@ PROVIDER_MAP: dict[str, type[BaseChatModel]] = {
     "anthropic": ChatAnthropic,
     "google": ChatGoogleGenerativeAI,
     "custom": ChatOpenAI,
+    "deepseek": ChatOpenAI,
+    "moonshot": ChatOpenAI,
     "openrouter": ChatOpenAI,
     "openai_compatible": ChatOpenAI,
+    "zhipu_glm": ChatOpenAI,
 }
 
 if settings.e2e_scripted_model_enabled:
@@ -285,7 +288,7 @@ def create_chat_model(
     if base_url:
         kwargs["base_url"] = base_url
 
-    for param in ("temperature", "top_p", "max_tokens"):
+    for param in ("temperature", "top_p", "max_tokens", "timeout", "max_retries"):
         if param in extra and extra[param] is not None:
             if param == "top_p" and extra[param] == 1.0:
                 continue
@@ -470,13 +473,22 @@ def _apply_openai_ssl_clients(cls: type[BaseChatModel], kwargs: dict[str, Any]) 
 # Default base URL per OpenAI-compatible provider. Used only when the caller
 # (credential payload, model row, or preview body) didn't supply one.
 _OPENAI_FAMILY_BASE_URLS: dict[str, str] = {
+    "deepseek": "https://api.deepseek.com/v1",
+    "moonshot": "https://api.moonshot.cn/v1",
     "openai": "https://api.openai.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
     # 사내 표준 게이트웨이. ``model.base_url`` 이 명시돼 있으면 그것을 우선
     # 사용하고, 비어 있을 때만 이 default 가 적용된다. 다른 게이트웨이를
     # 등록할 때는 모델 행의 ``base_url`` 컬럼을 채울 것.
     "openai_compatible": "https://llm-gw.hancom.com/v1",
+    "zhipu_glm": "https://open.bigmodel.cn/api/paas/v4",
 }
+
+
+def openai_family_base_url(provider: str) -> str | None:
+    """Canonical base URL for providers handled by ChatOpenAI."""
+
+    return _OPENAI_FAMILY_BASE_URLS.get(provider)
 
 
 # ---------------------------------------------------------------------------
@@ -731,5 +743,6 @@ __all__ = [
     "clear_model_cache",
     "env_provider_keys",
     "is_gpt5_family",
+    "openai_family_base_url",
     "sync_env_fallback_from_credentials",
 ]

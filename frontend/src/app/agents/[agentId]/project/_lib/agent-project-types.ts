@@ -28,6 +28,11 @@ export interface AgentProject {
 }
 
 export interface AgentProjectVersionSummary {
+  created_from?: {
+    source_version_id: string
+    optimization_proposal_id: string
+    source_run_id: string
+  } | null
   id: string
   project_id: string
   version_number: number
@@ -73,6 +78,8 @@ export interface EvaluationSet {
   id: string
   project_id: string
   name: string
+  evaluation_focus_json?: EvaluationFocusOption[] | null
+  evaluation_focus_reason?: string | null
   cases_json: (EvaluationCase & { project_id: string; created_at: string; updated_at: string })[]
   frozen: boolean
   quality_report_json?: EvalSetQualityReport | null
@@ -87,6 +94,14 @@ export interface EvaluationResult {
   expected: EvaluationCase['expected']
   status: 'passed' | 'failed' | 'errored'
   tool_calls: { name: string }[]
+  tool_trace?: {
+    name: string
+    order?: number
+    arguments?: Record<string, unknown>
+    output?: unknown
+    error?: string | null
+    latency_ms?: number
+  }[]
   assertions: { kind: string; target?: string; passed: boolean }[]
   error: string | null
   metric_scores?: Record<string, { score: number; passed: boolean; reason: string; method: string }>
@@ -117,6 +132,8 @@ export interface EvaluationRun {
   results_json: EvaluationResult[] | null
   bad_cases_json?: BadCase[] | null
   comparison_json?: {
+    proposals?: OptimizationProposal[]
+    regression?: { source_run_id: string; proposal_id: string }
     eval_spec?: EvaluationSpec
     analysis?: { groups: OptimizationGroup[] }
     deferred_changes?: { limitation: string; content: string }[]
@@ -125,6 +142,7 @@ export interface EvaluationRun {
 }
 
 export interface VersionComparison {
+  comparable?: boolean
   changes: {
     field: string
     before: unknown
@@ -142,8 +160,15 @@ export interface EvaluationSpec {
   version_id: string
   metrics: { name: string; type: string; weight: number; criteria: string }[]
   categories: string[]
+  focus_options?: EvaluationFocusOption[]
   case_count: number
   pass_threshold: number
+}
+
+export interface EvaluationFocusOption {
+  id: string
+  label: string
+  description: string
 }
 
 export interface BadCase {
@@ -220,4 +245,52 @@ export interface PortfolioResume {
   style: ResumeStyle
   bullets: string[]
   evidence_hash: string
+}
+export interface EvaluationReport {
+  proposals?: OptimizationProposal[]
+  source_run_id?: string | null
+  version_id: string
+  eval_set_id: string
+  evaluation_run_id: string
+  status: string
+  score: number | null
+  metrics: Record<string, number>
+  total: number
+  passed: number
+  bad_case_count: number
+  bad_cases: { case_id: string; name: string; reasons: string[] }[]
+  optimization_suggestions: string[]
+  comparison_key: string | null
+  created_at: string
+}
+
+export interface EvaluationReports {
+  reports: EvaluationReport[]
+  best_run_ids: Record<string, string>
+  active: boolean
+}
+
+export interface OptimizationProposal {
+  id: string
+  proposal_request_id?: string
+  source_version_id: string
+  source_run_id: string
+  eval_set_id: string
+  status: 'pending' | 'accepted' | 'rejected'
+  created_at: string
+  decided_at: string | null
+  decision_reason?: string | null
+  version_id: string | null
+  title?: string
+  what_changes?: string
+  why_it_may_work?: string
+  benefits?: string[]
+  risks?: string[]
+  targeted_case_ids?: string[]
+  superseded_by?: string
+  affected_capabilities: string[]
+  failure_patterns: OptimizationGroup[]
+  diffs: { target: string; before: string; after: string; reason: string }[]
+  deferred_changes: { target: string; content: string; limitation: string }[]
+  can_accept: boolean
 }

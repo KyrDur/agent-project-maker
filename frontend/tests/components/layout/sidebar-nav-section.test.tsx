@@ -27,12 +27,12 @@ vi.mock('next/link', () => ({
 }))
 
 const section = {
-  label: '계정',
+  label: '账户',
   items: [
-    { href: '/settings', label: '프로필', icon: UserIcon, exact: true },
+    { href: '/settings', label: '公司简介', icon: UserIcon, exact: true },
     {
       href: '/settings/schedules',
-      label: '스케줄',
+      label: '定时任务',
       icon: CalendarClockIcon,
       badge: 120,
     },
@@ -51,10 +51,10 @@ describe('SidebarNavSection', () => {
       </SidebarProvider>,
     )
 
-    expect(screen.getByText('계정')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '스케줄' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByText('账户')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '定时任务' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByText('99+')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '프로필' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: '公司简介' })).not.toHaveAttribute('aria-current')
   })
 
   it('runs the navigation callback from rendered links', async () => {
@@ -72,7 +72,7 @@ describe('SidebarNavSection', () => {
       </SidebarProvider>,
     )
 
-    await user.click(screen.getByRole('link', { name: '스케줄' }))
+    await user.click(screen.getByRole('link', { name: '定时任务' }))
 
     expect(onNavigate).toHaveBeenCalledOnce()
   })

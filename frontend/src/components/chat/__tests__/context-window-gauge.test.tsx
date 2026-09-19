@@ -52,14 +52,14 @@ describe('ContextWindowGauge', () => {
     expect(container.querySelector('.text-status-danger')).not.toBeNull()
   })
 
-  it('context_window null: 숨기지 않고 비활성 + "한도 미설정" 표시', () => {
+  it('context_window null: 숨기지 않고 비활성 + "没有限制" 표시', () => {
     render(
       <ContextWindowGauge usage={usage({ prompt_tokens: 500000 })} contextWindow={null} modelName="scripted" />,
     )
     const trigger = screen.getByRole('button')
     expect(trigger).toBeInTheDocument() // 숨기지 않음
-    expect(trigger.textContent).toContain('한도 미설정')
-    expect(trigger).toHaveAttribute('aria-label', '컨텍스트 한도 미설정')
+    expect(trigger.textContent).toContain('没有限制')
+    expect(trigger).toHaveAttribute('aria-label', '上下文限制未知')
     // 점유율(%) 텍스트는 없다.
     expect(trigger.textContent).not.toContain('%')
   })

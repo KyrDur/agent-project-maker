@@ -203,7 +203,7 @@ async def refresh_endpoint(
     refresh = request.cookies.get(settings.cookie_name_refresh)
     if not refresh:
         raise AppError(
-            code="invalid_refresh", message="세션이 만료되었습니다", status=401
+            code="invalid_refresh", message="会话已过期", status=401
         )
     access, new_refresh, csrf, user = await auth_service.rotate_refresh(
         db, refresh, request
@@ -247,7 +247,7 @@ async def me_endpoint(
     if db_user is None:
         # Should be impossible — ``get_current_user`` already loaded the row.
         raise AppError(
-            code="not_authenticated", message="인증이 필요합니다", status=401
+            code="not_authenticated", message="需要登录后继续。", status=401
         )
     return UserResponse.model_validate(db_user)
 
@@ -256,7 +256,7 @@ async def _load_profile_user(db: AsyncSession, user: CurrentUser):
     db_user = await user_service.get_by_id(db, user.id)
     if db_user is None:
         raise AppError(
-            code="not_authenticated", message="인증이 필요합니다", status=401
+            code="not_authenticated", message="需要登录后继续。", status=401
         )
     return db_user
 

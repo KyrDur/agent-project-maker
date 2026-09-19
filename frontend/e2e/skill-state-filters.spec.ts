@@ -30,7 +30,7 @@ const baseSkill = {
   package_metadata: null,
   health: {
     state: 'ready',
-    label: '검증됨',
+    label: '已验证',
     reason: 'Latest evaluation passed for the current skill.',
     severity: 'success',
   },
@@ -58,7 +58,7 @@ const skills = [
     name: 'Credential Setup',
     health: {
       state: 'needs_credentials',
-      label: '자격증명 필요',
+      label: '所需凭据',
       reason: '필수 자격증명이 없습니다.',
       severity: 'warning',
     },
@@ -69,7 +69,7 @@ const skills = [
     name: 'Rerun Needed',
     health: {
       state: 'needs_rerun',
-      label: '재평가 필요',
+      label: '需要重新运行',
       reason: '콘텐츠가 바뀌었습니다.',
       severity: 'warning',
     },
@@ -80,7 +80,7 @@ const skills = [
     name: 'Failed Eval',
     health: {
       state: 'evaluation_failed',
-      label: '평가 실패',
+      label: '评估失败',
       reason: '마지막 평가가 실패했습니다.',
       severity: 'error',
     },
@@ -112,7 +112,7 @@ test.describe('Skill state filters', () => {
 
     await page.goto('/skills')
 
-    await expect(page.getByRole('group', { name: '스킬 상태 필터' })).toBeVisible()
+    await expect(page.getByRole('group', { name: '技能状态过滤器' })).toBeVisible()
     await expect(page.getByRole('button', { name: '자격증명 필요 1개' })).toBeVisible()
     await expect(page.getByRole('button', { name: '재평가 필요 1개' })).toBeVisible()
     await expect(page.getByRole('button', { name: '평가 실패 1개' })).toBeVisible()

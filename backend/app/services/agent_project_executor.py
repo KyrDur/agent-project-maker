@@ -41,7 +41,8 @@ async def execute_snapshot(
     middleware = snapshot_middlewares(config)
     from app.services.agent_project_mock_tools import frozen_skill_prompt, mock_tools
 
-    tools, missing = mock_tools(config, case)
+    tool_trace: list[dict[str, Any]] = []
+    tools, missing = mock_tools(config, case, trace=tool_trace)
     skill_prompt, limitations = frozen_skill_prompt(config)
     try:
         from app.agent_runtime.runtime_component_builder import build_agent
@@ -57,7 +58,7 @@ async def execute_snapshot(
 
     try:
         with tracing_context(enabled=False):
-            llm, api_key = await resolve_model(db, snapshot, user_id)
+            llm, api_key = await resolve_model(db, snapshot, user_id, role="examinee")
             graph = build_agent(
                 llm,
                 tools,
@@ -82,11 +83,16 @@ async def execute_snapshot(
         ]
         output = answers[-1].text if answers else ""
         calls = [call for message in answers for call in message.tool_calls]
+        called_tools = (
+            [{"name": event["name"]} for event in tool_trace]
+            or [{"name": call["name"]} for call in calls]
+        )
         evidence = {
             "output": output,
             "limitations": limitations,
             "execution_mode": "mock_sandbox",
-            "tool_calls": [{"name": call["name"]} for call in calls],
+            "tool_calls": called_tools,
+            "tool_trace": tool_trace,
             "handoffs": [
                 call.get("args", {}).get("subagent_type")
                 for call in calls
@@ -109,6 +115,8 @@ async def execute_snapshot(
     except SnapshotExecutionUnavailable:
         raise
     except Exception as exc:
+        if exc.__class__.__name__ == "LLMCredentialRequiredError":
+            raise SnapshotExecutionUnavailable("snapshot_credential_unavailable") from exc
         raise SnapshotExecutionUnavailable("evaluation_execution_failed") from exc
 
 

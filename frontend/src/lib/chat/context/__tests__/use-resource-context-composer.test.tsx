@@ -23,7 +23,7 @@ describe('useResourceContextComposer', () => {
       kind: 'conversation',
       id: '11111111-1111-4111-8111-111111111111',
       message_id: 'm',
-      quote: '선택',
+      quote: '可选',
       label: '원문',
     } as const
     const { result } = renderHook(() => useHarness(0), { wrapper: Wrapper })

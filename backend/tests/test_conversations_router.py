@@ -550,7 +550,7 @@ async def test_create_conversation_default_title(client: AsyncClient):
         json={},
     )
     assert resp.status_code == 201
-    assert resp.json()["title"] == "새 대화"
+    assert resp.json()["title"] == "备用标题"
 
 
 @pytest.mark.asyncio
@@ -561,7 +561,7 @@ async def test_create_draft_conversation_is_hidden_from_user_lists(client: Async
 
     assert resp.status_code == 201
     draft = resp.json()
-    assert draft["title"] == "새 대화"
+    assert draft["title"] == "备用标题"
     assert draft["agent_id"] == str(agent_id)
 
     list_resp = await client.get(f"/api/agents/{agent_id}/conversations")
@@ -837,9 +837,9 @@ async def test_send_message_sets_auto_title(client: AsyncClient):
     """send_message should set auto-title from user content."""
     agent_id, _ = await _seed_agent()
 
-    # Create conversation with default title "새 대화"
+    # Create conversation with default title "备用标题"
     async with TestSession() as db:
-        conv = Conversation(agent_id=agent_id, title="새 대화")
+        conv = Conversation(agent_id=agent_id, title="备用标题")
         db.add(conv)
         await db.commit()
         conv_id = conv.id

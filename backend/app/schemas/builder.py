@@ -87,7 +87,7 @@ class AgentCreationIntent(BaseModel):
         default_factory=list, min_length=1, description="사용 사례 (최소 1개)"
     )
     constraints: list[str] = Field(default_factory=list, description="제약 조건")
-    required_capabilities: list[str] = Field(default_factory=list, description="필수 기능")
+    required_capabilities: list[str] = Field(default_factory=list, description="所需能力")
 
     @field_validator("identity_mode")
     @classmethod
@@ -101,18 +101,16 @@ class AgentCreationIntent(BaseModel):
 
 
 class ToolRecommendation(BaseModel):
-    """도구 추천 서브에이전트의 개별 추천 항목.
+    """Builder 工具推荐子代理的单项推荐。
 
-    ``kind`` 는 매칭 대상 카테고리를 명시한다 — phase8 confirm 단계가 종류별
-    로 다른 테이블/링크를 사용하므로 (Tool / McpTool / Skill). 기본값은
-    ``"tool"`` 로 backward compat 보장 — 기존 LLM 응답이 kind 를 누락해도
-    Tool 매칭 경로로 흘러간다.
+    ``planned`` 表示尚未连接真实资源、但可以先在评测 mock 环境中使用的工具接口。
+    这类条目不会在确认创建 Agent 时强制解析为真实 Tool/MCP/Skill。
     """
 
     tool_name: str
     description: str
     reason: str
-    kind: Literal["tool", "mcp", "skill"] = "tool"
+    kind: Literal["tool", "mcp", "skill", "planned"] = "tool"
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +138,9 @@ class DraftAgentConfig(BaseModel):
     description: str
     system_prompt: str
     tools: list[str] = Field(default_factory=list, description="도구 이름 목록")
+    planned_tools: list[dict[str, Any]] = Field(
+        default_factory=list, description="尚未连接、可在评测 mock 环境中使用的工具接口"
+    )
     middlewares: list[str] = Field(default_factory=list, description="미들웨어 이름 목록")
     model_name: str = Field(default="")
     primary_task_type: str = ""

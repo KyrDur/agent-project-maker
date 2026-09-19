@@ -23,7 +23,13 @@ const caseOne = {
   tags: [],
   enabled: true,
 }
-const dataset = { id: 'set1', name: 'Manual', frozen: false, cases_json: [caseOne] }
+const dataset = {
+  id: 'set1',
+  name: 'Manual',
+  frozen: false,
+  cases_json: [caseOne],
+  quality_report_json: { status: 'approved', overall_score: 1, issues: [] },
+}
 const run = {
   id: 'r1',
   version_id: 'v1',
@@ -46,9 +52,16 @@ const run = {
   ],
 }
 
+async function openProjectTab(name: 'Versions' | 'Evaluation') {
+  await userEvent.click(await screen.findByRole('button', { name: new RegExp(name) }))
+}
+
 beforeEach(() => {
   server.use(
     http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
+    http.get(`${path}/evaluation-reports`, () =>
+      HttpResponse.json({ reports: [], best_run_ids: {}, active: false }),
+    ),
     http.get(path, () => HttpResponse.json({ id: 'p1', title: 'Example Agent' })),
     http.get(`${path}/versions`, () => HttpResponse.json([v1])),
     http.get(`${path}/eval-sets`, () => HttpResponse.json([])),
@@ -78,8 +91,9 @@ it('creates a version and refreshes the history', async () => {
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: '버전 만들기' }))
-  expect(await screen.findByText('버전을 만들었습니다.')).toBeInTheDocument()
+  await openProjectTab('Versions')
+  await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
+  expect(await screen.findByText('版本已创建。')).toBeInTheDocument()
   expect(await screen.findByRole('button', { name: 'V2' })).toBeInTheDocument()
 })
 
@@ -88,12 +102,11 @@ it('explains unchanged configuration and exposes version detail', async () => {
     http.post(`${path}/versions`, () => HttpResponse.json({ outcome: 'unchanged', version: v1 })),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: '버전 만들기' }))
-  expect(
-    await screen.findByText('설정이 변경되지 않아 최신 버전을 유지했습니다.'),
-  ).toBeInTheDocument()
+  await openProjectTab('Versions')
+  await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
+  expect(await screen.findByText('配置不变。保留了最新版本。')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'V1' }))
-  await userEvent.click(await screen.findByText('스냅샷 보기'))
+  await userEvent.click(await screen.findByText('查看快照'))
   expect(screen.getByText(/Original instruction/)).toBeInTheDocument()
 })
 
@@ -111,16 +124,15 @@ it('shows the evaluation empty state and creates an accessible manual case', asy
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  expect(
-    await screen.findByText('평가 케이스가 없습니다. 케이스를 추가해 시작하세요.'),
-  ).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '평가 실행' })).toBeDisabled()
-  await userEvent.click(screen.getByRole('button', { name: '케이스 추가' }))
-  await userEvent.type(screen.getByLabelText('케이스 이름'), 'New case')
-  await userEvent.type(screen.getByLabelText('입력'), 'A test message')
-  await userEvent.click(screen.getByRole('button', { name: '케이스 저장' }))
+  await openProjectTab('Evaluation')
+  expect(await screen.findByText('尚无评测用例。添加一个用例开始。')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '运行评测' })).toBeDisabled()
+  await userEvent.click(screen.getByRole('button', { name: '添加用例' }))
+  await userEvent.type(screen.getByLabelText('用例名称'), 'New case')
+  await userEvent.type(screen.getByLabelText('输入'), 'A test message')
+  await userEvent.click(screen.getByRole('button', { name: '保存用例' }))
   expect(await screen.findByText('New case')).toBeInTheDocument()
-  await waitFor(() => expect(screen.getByRole('button', { name: '평가 실행' })).toBeEnabled())
+  await waitFor(() => expect(screen.getByRole('button', { name: '运行评测' })).toBeEnabled())
 })
 
 it('edits, disables and removes a case', async () => {
@@ -133,16 +145,15 @@ it('edits, disables and removes a case', async () => {
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: 'Greeting case 수정' }))
-  await userEvent.clear(screen.getByLabelText('케이스 이름'))
-  await userEvent.type(screen.getByLabelText('케이스 이름'), 'Edited')
-  await userEvent.click(screen.getByRole('button', { name: '케이스 저장' }))
-  await userEvent.click(await screen.findByRole('button', { name: 'Edited 활성화 또는 비활성화' }))
-  await waitFor(() => expect(screen.getByRole('button', { name: '평가 실행' })).toBeDisabled())
-  await userEvent.click(screen.getByRole('button', { name: 'Edited 삭제' }))
-  expect(
-    await screen.findByText('평가 케이스가 없습니다. 케이스를 추가해 시작하세요.'),
-  ).toBeInTheDocument()
+  await openProjectTab('Evaluation')
+  await userEvent.click(await screen.findByRole('button', { name: '编辑Greeting case' }))
+  await userEvent.clear(screen.getByLabelText('用例名称'))
+  await userEvent.type(screen.getByLabelText('用例名称'), 'Edited')
+  await userEvent.click(screen.getByRole('button', { name: '保存用例' }))
+  await userEvent.click(await screen.findByRole('button', { name: '启用或禁用 Edited' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: '运行评测' })).toBeDisabled())
+  await userEvent.click(screen.getByRole('button', { name: '删除Edited' }))
+  expect(await screen.findByText('尚无评测用例。添加一个用例开始。')).toBeInTheDocument()
 })
 
 it('submits evaluation against the chosen version and shows persisted results', async () => {
@@ -158,17 +169,18 @@ it('submits evaluation against the chosen version and shows persisted results', 
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await waitFor(() => expect(screen.getByRole('button', { name: '평가 실행' })).toBeEnabled())
-  await userEvent.click(screen.getByRole('button', { name: '평가 실행' }))
-  await userEvent.click(await screen.findByText(/V1 · 완료/))
-  expect(screen.getByText('출력: Hello back')).toBeInTheDocument()
-  expect(screen.getByText('전체 1 · 통과 1 · 실패 0 · 오류 0')).toBeInTheDocument()
+  await openProjectTab('Evaluation')
+  await waitFor(() => expect(screen.getByRole('button', { name: '运行评测' })).toBeEnabled())
+  await userEvent.click(screen.getByRole('button', { name: '运行评测' }))
+  await userEvent.click(await screen.findByText(/V1 · 已完成/))
+  expect(screen.getByText('输出: Hello back')).toBeInTheDocument()
+  expect(screen.getByText('总计 1 · 通过 1 · 失败 0 · 错误 0')).toBeInTheDocument()
 })
 
 it.each(['pending', 'running', 'completed', 'failed'] as const)(
   'shows the %s lifecycle state',
   async (status) => {
-    const labels = { pending: '대기 중', running: '실행 중', completed: '완료', failed: '실패' }
+    const labels = { pending: '等待中', running: '运行中', completed: '已完成', failed: '失败' }
     server.use(
       http.get(`${path}/eval-runs`, () =>
         HttpResponse.json([
@@ -177,10 +189,11 @@ it.each(['pending', 'running', 'completed', 'failed'] as const)(
       ),
     )
     render(<ProjectWorkbench agentId="agent-id" />)
+    await openProjectTab('Evaluation')
     await userEvent.click(await screen.findByText(new RegExp(`V1 · ${labels[status]}`)))
     expect(screen.getByText(labels[status], { selector: 'p' })).toBeInTheDocument()
     if (status === 'failed')
-      expect(screen.getByRole('alert')).toHaveTextContent('실행하지 못한 케이스가 있습니다.')
+      expect(screen.getByRole('alert')).toHaveTextContent('一个或多个用例无法执行。')
   },
 )
 
@@ -192,24 +205,28 @@ it('shows loading while data is in flight', async () => {
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  expect(screen.getByRole('status')).toHaveTextContent('불러오는 중')
-  expect(await screen.findByRole('button', { name: '프로젝트 만들기' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('加载中...')
+  expect(await screen.findByRole('button', { name: '创建项目' })).toBeInTheDocument()
 })
 
 it('compares two versions without treating different datasets as comparable', async () => {
   server.use(http.get(`${path}/versions`, () => HttpResponse.json([v2, v1])))
   render(<ProjectWorkbench agentId="agent-id" />)
+  await openProjectTab('Versions')
   expect(await screen.findByText('Old instruction')).toBeInTheDocument()
   expect(screen.getByText('New instruction')).toBeInTheDocument()
-  expect(screen.getByRole('combobox', { name: '왼쪽 버전' })).toBeInTheDocument()
-  expect(screen.getByRole('combobox', { name: '오른쪽 버전' })).toBeInTheDocument()
-  expect(screen.getByText(/결과를 직접 비교할 수 없습니다/)).toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: '左侧版本' })).toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: '右侧版本' })).toBeInTheDocument()
+  expect(
+    screen.getByText(/缺少已完成的运行，或运行使用了不同的测试用例，结果不能直接比较。/),
+  ).toBeInTheDocument()
 })
 
 it('shows retry controls for a rejected version creation', async () => {
   server.use(http.post(`${path}/versions`, () => HttpResponse.json({}, { status: 500 })))
   render(<ProjectWorkbench agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: '버전 만들기' }))
+  await openProjectTab('Versions')
+  await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
   expect(await screen.findByRole('alert')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
 })

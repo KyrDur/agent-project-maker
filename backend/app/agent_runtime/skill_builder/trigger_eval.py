@@ -11,7 +11,7 @@ from app.schemas.skill_builder import SkillDraftFile, SkillDraftPackage
 SEED: Final = 42
 RUNS_PER_QUERY: Final = 3
 MAX_DESCRIPTION_LENGTH: Final = 1024
-WORD_RE: Final = re.compile(r"[\w가-힣]{3,}")
+WORD_RE: Final = re.compile(r"[\w]{3,}")
 
 
 class TriggerExamplePayload(TypedDict):

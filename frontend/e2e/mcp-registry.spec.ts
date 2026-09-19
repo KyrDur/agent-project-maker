@@ -145,7 +145,7 @@ test.describe('MCP server wizard — From Registry', () => {
 
     // Wait for the client query to replace the server-rendered loading shell.
     // Clicking the SSR button before hydration can lose the state update.
-    await expect(page.getByText('아직 MCP 서버가 없어요')).toBeVisible()
+    await expect(page.getByText('空')).toBeVisible()
 
     await page
       .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
@@ -153,15 +153,15 @@ test.describe('MCP server wizard — From Registry', () => {
       .click()
 
     // Step 1: Registry quick-start is visible.
-    await expect(page.getByText('빠른 시작')).toBeVisible()
+    await expect(page.getByText('登记处')).toBeVisible()
 
     // Click GitHub card.
     await page.getByTestId('registry-card-github').click()
 
     // Auto-filled name should be visible.
-    await expect(page.getByLabel('이름')).toHaveValue('GitHub')
+    await expect(page.getByLabel('名称')).toHaveValue('GitHub')
 
-    await page.getByRole('button', { name: '인증으로 계속 →' }).click()
+    await page.getByRole('button', { name: '继续验证' }).click()
 
     // Step 2: Auth — credential filter limits to http_bearer.
     await expect(page.getByText('http_bearer 타입 자격증명으로 필터링되었습니다.')).toBeVisible()
@@ -169,12 +169,12 @@ test.describe('MCP server wizard — From Registry', () => {
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: /GitHub PAT/i }).click()
 
-    await page.getByRole('button', { name: '도구로 계속 →' }).click()
+    await page.getByRole('button', { name: '继续工具' }).click()
 
     // Step 3: Discover + save
     await expect(page.getByText('1개 도구 발견됨')).toBeVisible()
     await expect(page.getByRole('checkbox')).toHaveCount(0)
-    await page.getByRole('button', { name: '서버 저장' }).click()
+    await page.getByRole('button', { name: '保存' }).click()
 
     // After close, the table should show the new server (mocked list).
     await expect(page.getByText('GitHub').first()).toBeVisible()

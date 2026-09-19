@@ -29,13 +29,13 @@ const idSchema = z.object({ id: z.string() })
 
 async function publishPublic(page: Page, name: string, sourcePath: string) {
   const dialog = page.getByRole('dialog', { name: `${name} 게시` })
-  await dialog.getByRole('button', { name: '다음', exact: true }).click()
-  await expect(dialog.getByLabel('이름', { exact: true })).toHaveValue(name)
-  await dialog.getByLabel('설명', { exact: true }).fill('Isolated E2E publication')
-  await dialog.getByRole('button', { name: '다음', exact: true }).click()
+  await dialog.getByRole('button', { name: '下一步', exact: true }).click()
+  await expect(dialog.getByLabel('名称', { exact: true })).toHaveValue(name)
+  await dialog.getByLabel('描述', { exact: true }).fill('Isolated E2E publication')
+  await dialog.getByRole('button', { name: '下一步', exact: true }).click()
   await dialog.getByRole('combobox').click()
-  await page.getByRole('option', { name: '공개 (리스팅 대기)', exact: true }).click()
-  await dialog.getByRole('button', { name: '다음', exact: true }).click()
+  await page.getByRole('option', { name: '公共', exact: true }).click()
+  await dialog.getByRole('button', { name: '下一步', exact: true }).click()
   const published = page.waitForResponse(
     (res) => res.url().endsWith(sourcePath) && res.request().method() === 'POST',
   )
@@ -44,7 +44,7 @@ async function publishPublic(page: Page, name: string, sourcePath: string) {
       /\/api\/marketplace\/items\/[^/]+\/versions$/.test(res.url()) &&
       res.request().method() === 'GET',
   )
-  await dialog.getByRole('button', { name: '게시', exact: true }).click()
+  await dialog.getByRole('button', { name: '发布', exact: true }).click()
   const item = itemSchema.parse(await apiJson(await published, 'Publish marketplace item'))
   expect(item).toMatchObject({ name, visibility: 'public', is_listed: false, status: 'published' })
   await expect(page).toHaveURL(new RegExp(`/marketplace/${item.id}$`))
@@ -87,14 +87,14 @@ test('agent UI publication waits for operator approval and becomes listed', asyn
       .locator(`a[href="/agents/${agent.id}"]`)
       .filter({ hasText: name })
     await card.hover()
-    await card.getByRole('button', { name: '마켓플레이스에 게시', exact: true }).click()
+    await card.getByRole('button', { name: '发布到市场', exact: true }).click()
     const item = await publishPublic(page, name, `/api/marketplace/items/from-agent/${agent.id}`)
     itemId = item.id
     expect(item.resource_type).toBe('agent')
     await page.goto('/settings/marketplace-admin')
     const sidebarNavigationBoundary = page.locator('[data-sidebar="content"]')
     const adminNavigationTail = page.getByRole('link', {
-      name: '전체 활동 기록',
+      name: '所有活动',
       exact: true,
     })
     const row = page
@@ -116,12 +116,12 @@ test('agent UI publication waits for operator approval and becomes listed', asyn
         res.url().endsWith(`/api/marketplace/admin/items/${item.id}/listed`) &&
         res.request().method() === 'POST',
     )
-    await row.getByRole('button', { name: '승인', exact: true }).click()
+    await row.getByRole('button', { name: '批准', exact: true }).click()
     expect(itemSchema.parse(await apiJson(await approved, 'Approve listing')).is_listed).toBe(true)
     await expect(row).toHaveCount(0)
     await page.reload()
     await expect(
-      page.getByRole('heading', { name: '마켓플레이스 운영', exact: true }),
+      page.getByRole('heading', { name: '市场审核', exact: true }),
     ).toBeVisible()
     await expect(row).toHaveCount(0)
     const listed = z
@@ -137,7 +137,7 @@ test('agent UI publication waits for operator approval and becomes listed', asyn
       page,
       testInfo,
       state: 'marketplace-agent-approved',
-      evidence: page.getByRole('heading', { name: '마켓플레이스 운영', exact: true }),
+      evidence: page.getByRole('heading', { name: '市场审核', exact: true }),
       verticalContainment: {
         target: adminNavigationTail,
         boundary: sidebarNavigationBoundary,
@@ -172,14 +172,14 @@ test('MCP UI publication can be disabled by moderation and stays unlisted', asyn
     ).id
     await page.goto('/mcp-servers')
     const card = page.getByRole('article').filter({ hasText: name })
-    await card.getByRole('button', { name: '게시', exact: true }).click()
+    await card.getByRole('button', { name: '发布', exact: true }).click()
     const item = await publishPublic(page, name, `/api/marketplace/items/from-mcp/${serverId}`)
     itemId = item.id
     expect(item.resource_type).toBe('mcp')
     await page.goto('/settings/marketplace-admin')
     const sidebarNavigationBoundary = page.locator('[data-sidebar="content"]')
     const adminNavigationTail = page.getByRole('link', {
-      name: '전체 활동 기록',
+      name: '所有活动',
       exact: true,
     })
     const row = page
@@ -200,7 +200,7 @@ test('MCP UI publication can be disabled by moderation and stays unlisted', asyn
         res.url().endsWith(`/api/marketplace/items/${item.id}/disable`) &&
         res.request().method() === 'POST',
     )
-    await row.getByRole('button', { name: '비활성화', exact: true }).click()
+    await row.getByRole('button', { name: '禁用', exact: true }).click()
     expect(itemSchema.parse(await apiJson(await disabled, 'Disable publication'))).toMatchObject({
       status: 'disabled',
       is_listed: false,
@@ -208,14 +208,14 @@ test('MCP UI publication can be disabled by moderation and stays unlisted', asyn
     await expect(row).toHaveCount(0)
     await page.reload()
     await expect(
-      page.getByRole('heading', { name: '마켓플레이스 운영', exact: true }),
+      page.getByRole('heading', { name: '市场审核', exact: true }),
     ).toBeVisible()
     await expect(row).toHaveCount(0)
     await captureResourcePage({
       page,
       testInfo,
       state: 'marketplace-mcp-disabled',
-      evidence: page.getByRole('heading', { name: '마켓플레이스 운영', exact: true }),
+      evidence: page.getByRole('heading', { name: '市场审核', exact: true }),
       verticalContainment: {
         target: adminNavigationTail,
         boundary: sidebarNavigationBoundary,
@@ -243,13 +243,13 @@ test('ordinary member cannot access moderation controls or listing approval API'
 }, testInfo) => {
   const member = await registerMember(page)
   await page.goto('/settings/marketplace-admin')
-  await expect(page.getByText('운영자 전용 페이지', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: '승인', exact: true })).toHaveCount(0)
+  await expect(page.getByText('仅限运营商', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '批准', exact: true })).toHaveCount(0)
   await captureResourcePage({
     page,
     testInfo,
     state: 'marketplace-member-denied',
-    evidence: page.getByText('운영자 전용 페이지', { exact: true }),
+    evidence: page.getByText('仅限运营商', { exact: true }),
   })
   const denied = await page.request.post(
     `${API_BASE}/api/marketplace/admin/items/${randomUUID()}/listed`,

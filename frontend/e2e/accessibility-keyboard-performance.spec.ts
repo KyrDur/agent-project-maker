@@ -54,7 +54,7 @@ test('keyboard users can skip repeated navigation and return focus to the main c
   await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
 
   await page.keyboard.press('Tab')
-  const skipLink = page.getByRole('link', { name: '본문으로 건너뛰기' })
+  const skipLink = page.getByRole('link', { name: '跳至主要内容' })
   await expect(skipLink).toBeFocused()
   await expect(skipLink).toBeVisible()
 

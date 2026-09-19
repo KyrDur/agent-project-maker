@@ -28,16 +28,16 @@ describe('ScheduleForm', () => {
 
     render(<ScheduleForm onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: '1회' }))
-    await user.type(screen.getByPlaceholderText('예: 매일 아침 뉴스 요약'), '한 번만 실행')
+    await user.click(screen.getByRole('button', { name: '一次' }))
+    await user.type(screen.getByPlaceholderText('名称'), '한 번만 실행')
     await user.type(
-      screen.getByPlaceholderText('각 실행 시 에이전트에 전달할 메시지...'),
+      screen.getByPlaceholderText('提示'),
       '테스트 메시지',
     )
-    fireEvent.change(screen.getByLabelText('실행 시각 (KST)'), {
+    fireEvent.change(screen.getByLabelText('预定于'), {
       target: { value: '2030-01-02T09:30' },
     })
-    await user.click(screen.getByRole('button', { name: '스케줄 생성' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit).toHaveBeenCalledWith(
@@ -60,12 +60,12 @@ describe('ScheduleForm', () => {
 
     render(<ScheduleForm agentId="agent-1" onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: '기존 대화에 저장' }))
+    await user.click(screen.getByRole('button', { name: '保存到现有对话' }))
 
-    expect(screen.queryByPlaceholderText('기존 대화 ID')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('combobox', { name: '기존 대화 선택' }))
+    expect(screen.queryByPlaceholderText('对话ID')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: '对话' }))
     await user.click(screen.getByRole('option', { name: /주말 여행 상담/ }))
-    await user.click(screen.getByRole('button', { name: '스케줄 생성' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit).toHaveBeenCalledWith(
@@ -82,17 +82,17 @@ describe('ScheduleForm', () => {
 
     render(<ScheduleForm onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: '최대 실행 횟수 제한' }))
-    await user.clear(screen.getByLabelText('최대 실행 횟수'))
-    await user.type(screen.getByLabelText('최대 실행 횟수'), '3')
-    await user.click(screen.getByRole('button', { name: '최대 실행 횟수 무제한' }))
+    await user.click(screen.getByRole('button', { name: '麦克斯跑有限公司' }))
+    await user.clear(screen.getByLabelText('最大运行值'))
+    await user.type(screen.getByLabelText('最大运行值'), '3')
+    await user.click(screen.getByRole('button', { name: '最大运行次数无限制' }))
 
-    await user.click(screen.getByRole('button', { name: '실패 후 정지 사용' }))
-    await user.clear(screen.getByLabelText('실패 허용 횟수'))
-    await user.type(screen.getByLabelText('실패 허용 횟수'), '2')
-    await user.click(screen.getByRole('button', { name: '실패 후 정지 사용 안 함' }))
+    await user.click(screen.getByRole('button', { name: '自动暂停已启用' }))
+    await user.clear(screen.getByLabelText('自动暂停值'))
+    await user.type(screen.getByLabelText('自动暂停值'), '2')
+    await user.click(screen.getByRole('button', { name: '自动暂停已禁用' }))
 
-    await user.click(screen.getByRole('button', { name: '스케줄 생성' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit).toHaveBeenCalledWith(

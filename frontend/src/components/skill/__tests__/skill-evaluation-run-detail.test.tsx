@@ -42,7 +42,7 @@ describe('SkillEvaluationRunDetail', () => {
   it('shows failure details for failed evaluation runs', () => {
     render(<SkillEvaluationRunDetail run={failedRun()} />)
 
-    expect(screen.getByText('실패 원인')).toBeInTheDocument()
+    expect(screen.getByText('失败原因')).toBeInTheDocument()
     expect(screen.getByText('runner failed before grading')).toBeInTheDocument()
   })
 
@@ -64,7 +64,7 @@ describe('SkillEvaluationRunDetail', () => {
     expect(line).not.toHaveTextContent('미측정')
   })
 
-  it('shows "토큰 미측정" instead of 0 tokens when usage_metadata was absent', () => {
+  it('shows "Token未知" instead of 0 tokens when usage_metadata was absent', () => {
     // review R5 — a priced/real run with no usage_metadata must not present 0
     // tokens as a measured quantity (unknown ≠ zero).
     render(
@@ -80,7 +80,7 @@ describe('SkillEvaluationRunDetail', () => {
       />,
     )
     const line = screen.getByTestId('run-usage-line')
-    expect(line).toHaveTextContent('토큰 미측정')
+    expect(line).toHaveTextContent('Token未知')
     expect(line).not.toHaveTextContent('0 토큰')
   })
 })

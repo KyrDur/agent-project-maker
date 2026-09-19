@@ -22,7 +22,7 @@ from app.services.system_credential_resolver import (
     resolve_system_model,
 )
 
-SKILL_BUILDER_AGENT_NAME = "스킬 빌더"
+SKILL_BUILDER_AGENT_NAME = "技能培养者"
 
 # 런타임이 skill_builder 프로필 분기에서 전용 prompt.md로 교체하므로(M3)
 # row의 system_prompt는 실행에 쓰이지 않는 자리표시자다.
@@ -51,7 +51,7 @@ async def get_or_create_skill_builder_agent(
     if existing is not None:
         return existing
 
-    resolved = await resolve_system_model(db, "text_primary")
+    resolved = await resolve_system_model(db, "builder")
     agent = Agent(
         user_id=user_id,
         name=SKILL_BUILDER_AGENT_NAME,
@@ -81,5 +81,5 @@ async def _seed_model_id(db: AsyncSession, model_name: str) -> uuid.UUID:
     if model_id is None:
         # 모델 카탈로그가 비어 있으면 시스템 LLM 셋업이 실질적으로 미완 —
         # 기존 SYSTEM_LLM_NOT_CONFIGURED 계약으로 수렴시킨다.
-        raise SystemModelNotConfiguredError("text_primary")
+        raise SystemModelNotConfiguredError("builder")
     return model_id

@@ -9,14 +9,14 @@ describe('resource layout primitives', () => {
         value="all"
         onValueChange={() => undefined}
         tabs={[
-          { value: 'all', label: '전체', countLabel: '7개' },
-          { value: 'data', label: '데이터', countLabel: '2개' },
+          { value: 'all', label: '所有时间', countLabel: '7개' },
+          { value: 'data', label: '数据', countLabel: '2개' },
         ]}
       />,
     )
 
     const activeTab = screen.getByRole('tab', { name: '전체 7개' })
-    const inactiveTab = screen.getByRole('tab', { name: '데이터' })
+    const inactiveTab = screen.getByRole('tab', { name: '数据' })
 
     expect(activeTab).toHaveAttribute('aria-selected', 'true')
     expect(within(activeTab).getByText('7개')).toBeInTheDocument()

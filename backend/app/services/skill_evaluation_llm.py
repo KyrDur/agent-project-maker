@@ -6,7 +6,7 @@
 2. without-arm — 스킬 컨텍스트 없이 같은 과제 해결 (baseline **실측**)
 3. grader — 두 실제 산출물을 expected에 대해 채점
 
-legacy ``llm-1``은 grader가 baseline을 "추정"했다 — llm-2의 baseline 수치는
+legacy ``llm-1``은 grader가 baseline을 "估计"했다 — llm-2의 baseline 수치는
 전부 실행 산출물 채점이다. arm별 wall-clock/usage_metadata가 케이스 행의
 ``duration_ms``/``tokens``/``baseline_*`` 슬롯을 채워 benchmark/kpi 델타가
 실측으로 계산된다.

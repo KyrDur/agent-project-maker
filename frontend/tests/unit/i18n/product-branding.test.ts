@@ -44,8 +44,8 @@ describe('product branding and locale defaults', () => {
     expect(config.messages).toEqual(en)
   })
 
-  it('falls back safely for removed Korean locale', async () => {
-    state.locale = 'ko'
+  it('falls back safely for unsupported locales', async () => {
+    state.locale = 'unsupported'
     const config = await requestConfig({ requestLocale: Promise.resolve(undefined) })
     expect(config.locale).toBe('zh-CN')
     expect(config.messages).toEqual(zh)

@@ -4,6 +4,7 @@ from app.credentials.definitions.anthropic import definition as anthropic
 from app.credentials.definitions.azure_openai import definition as azure_openai
 from app.credentials.definitions.coupang_partners import definition as coupang_partners
 from app.credentials.definitions.dart_api import definition as dart_api
+from app.credentials.definitions.deepseek import definition as deepseek
 from app.credentials.definitions.foresttrip_account import (
     definition as foresttrip_account,
 )
@@ -20,6 +21,7 @@ from app.credentials.definitions.kipris_plus_api import definition as kipris_plu
 from app.credentials.definitions.ktx_account import definition as ktx_account
 from app.credentials.definitions.mcp_oauth2 import definition as mcp_oauth2
 from app.credentials.definitions.mcp_secret import definition as mcp_secret
+from app.credentials.definitions.moonshot import definition as moonshot
 from app.credentials.definitions.naver_search import definition as naver_search
 from app.credentials.definitions.odsay_api import definition as odsay_api
 from app.credentials.definitions.openai import definition as openai
@@ -28,13 +30,17 @@ from app.credentials.definitions.openai_compatible import (
 )
 from app.credentials.definitions.openrouter import definition as openrouter
 from app.credentials.definitions.srt_account import definition as srt_account
+from app.credentials.definitions.zhipu_glm import definition as zhipu_glm
 from app.credentials.registry import registry
 
 for _definition in (
     naver_search,
     google_search,
     google_workspace_oauth2,
+    deepseek,
+    moonshot,
     openai,
+    zhipu_glm,
     anthropic,
     google_genai,
     azure_openai,
@@ -63,6 +69,7 @@ __all__ = [
     "azure_openai",
     "coupang_partners",
     "dart_api",
+    "deepseek",
     "foresttrip_account",
     "google_genai",
     "google_search",
@@ -75,10 +82,12 @@ __all__ = [
     "ktx_account",
     "mcp_secret",
     "mcp_oauth2",
+    "moonshot",
     "naver_search",
     "odsay_api",
     "openai",
     "openai_compatible",
     "openrouter",
     "srt_account",
+    "zhipu_glm",
 ]

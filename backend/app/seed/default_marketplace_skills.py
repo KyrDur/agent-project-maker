@@ -277,7 +277,7 @@ async def _seed_image_generation_skill(
             source_external_id="image-generation",
             categories=["image"],
             tags=["image", "generation"],
-            locale="ko",
+            locale="zh-CN",
         )
         db.add(item)
         await db.flush()
@@ -389,7 +389,7 @@ async def _seed_deep_research_skill(
             source_external_id="deep-research",
             categories=["research"],
             tags=["research", "web", "citations", "tavily"],
-            locale="ko",
+            locale="zh-CN",
         )
         db.add(item)
         await db.flush()
@@ -494,7 +494,7 @@ async def _seed_document_skill(
             source_external_id=slug,
             categories=list(spec["categories"]),
             tags=list(spec["tags"]),
-            locale="ko",
+            locale="zh-CN",
         )
         db.add(item)
         await db.flush()

@@ -246,13 +246,13 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    expect(screen.getByRole('alert')).toHaveTextContent('문제가 발생했습니다')
+    expect(screen.getByRole('alert')).toHaveTextContent('出了点问题')
     expect(screen.getByRole('alert')).toHaveTextContent(
-      '에이전트를 찾을 수 없거나 접근 권한이 없습니다.',
+      '找不到 智能体 或您无权访问它。',
     )
-    expect(screen.queryByRole('tab', { name: '폼' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: '形式' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    await user.click(screen.getByRole('button', { name: '重试' }))
     expect(mockRefetchAgent).toHaveBeenCalledOnce()
   })
 
@@ -278,7 +278,7 @@ describe('AgentSettingsPage', () => {
         params={{ agentId: 'agent-1' } as unknown as Promise<{ agentId: string }>}
       />,
     )
-    // ``tabs.form`` = "폼", ``tabs.visual`` = "비주얼"
+    // ``tabs.form`` = "形式", ``tabs.visual`` = "视觉"
     expect(screen.getByRole('tab', { name: /폼/ })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /비주얼/ })).toBeInTheDocument()
   })
@@ -292,9 +292,9 @@ describe('AgentSettingsPage', () => {
         params={{ agentId: 'agent-1' } as unknown as Promise<{ agentId: string }>}
       />,
     )
-    expect(screen.getByLabelText('돌아가기')).toBeInTheDocument()
-    expect(screen.getByLabelText('에이전트 삭제')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument()
+    expect(screen.getByLabelText('返回')).toBeInTheDocument()
+    expect(screen.getByLabelText('删除智能体')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument()
   })
 
   it('right pane mounts the AssistantPanel', () => {
@@ -323,8 +323,8 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    expect(screen.getByText('메모리 정책')).toBeInTheDocument()
-    expect(screen.getAllByText('전역 정책 상속')).toHaveLength(2)
+    expect(screen.getByText('内存策略')).toBeInTheDocument()
+    expect(screen.getAllByText('继承全球政策')).toHaveLength(2)
   })
 
   it('calls updateAgent when save is clicked after editing name', async () => {
@@ -340,7 +340,7 @@ describe('AgentSettingsPage', () => {
     const nameInput = screen.getByDisplayValue('Test Agent')
     await user.clear(nameInput)
     await user.type(nameInput, 'Updated Agent')
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '저장' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '保存' }))
     expect(mockUpdateAgent).toHaveBeenCalledWith(expect.objectContaining({ name: 'Updated Agent' }))
   })
 
@@ -376,12 +376,12 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    const saveButton = screen.getByRole('button', { name: '저장' })
+    const saveButton = screen.getByRole('button', { name: '保存' })
     await waitFor(() => expect(saveButton).toBeDisabled())
 
-    const toolsSkillsBox = screen.getByText('도구·스킬').closest('.rounded-lg')
+    const toolsSkillsBox = screen.getByText('工具与技能').closest('.rounded-lg')
     expect(toolsSkillsBox).not.toBeNull()
-    await user.click(within(toolsSkillsBox as HTMLElement).getByRole('button', { name: '추가' }))
+    await user.click(within(toolsSkillsBox as HTMLElement).getByRole('button', { name: '添加' }))
     await user.click(screen.getByRole('tab', { name: /MCP/ }))
 
     const mcpRow = screen.getByText('Repo Search').closest('.rounded-lg')
@@ -408,22 +408,22 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    await user.click(screen.getByRole('tab', { name: '설정' }))
+    await user.click(screen.getByRole('tab', { name: '设置' }))
 
-    expect(screen.getByText('권장 설정')).toBeInTheDocument()
+    expect(screen.getByText('推荐设置')).toBeInTheDocument()
     expect(
       screen.getByText(
-        '이미 실행된 대화에는 영향을 주지 않습니다. 아직 실행하지 않은 대화와 새 대화에는 변경된 설정이 적용됩니다.',
+        '这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。',
       ),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
-    await user.click(screen.getByRole('switch', { name: '할 일 목록 사용' }))
-    await user.click(screen.getByRole('button', { name: '검토만' }))
-    const balancedButton = screen.getByRole('button', { name: '균형' })
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('switch', { name: '使用任务列表' }))
+    await user.click(screen.getByRole('button', { name: '仅供审核' }))
+    const balancedButton = screen.getByRole('button', { name: '平衡' })
     expect(balancedButton).toBeEnabled()
     await user.click(balancedButton)
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '저장' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '保存' }))
 
     expect(mockUpdateAgent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -458,11 +458,11 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    await user.click(screen.getByRole('tab', { name: '설정' }))
-    expect(screen.getByText('직접 설정', { selector: '[data-slot="badge"]' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '设置' }))
+    expect(screen.getByText('自定义设置', { selector: '[data-slot="badge"]' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '권장 설정 사용' }))
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '저장' }))
+    await user.click(screen.getByRole('button', { name: '使用推荐设置' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '保存' }))
 
     expect(mockUpdateAgent).toHaveBeenCalledWith(expect.objectContaining({ runtime_policy: null }))
   })
@@ -486,12 +486,12 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    await user.click(screen.getByRole('tab', { name: '설정' }))
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
-    const balancedButton = screen.getByRole('button', { name: '균형' })
+    await user.click(screen.getByRole('tab', { name: '设置' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    const balancedButton = screen.getByRole('button', { name: '平衡' })
     expect(balancedButton).toBeEnabled()
     await user.click(balancedButton)
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '저장' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: '保存' }))
 
     expect(mockUpdateAgent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -526,13 +526,13 @@ describe('AgentSettingsPage', () => {
         />,
       )
 
-      await user.click(screen.getByRole('tab', { name: '설정' }))
-      const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: '저장' })
+      await user.click(screen.getByRole('tab', { name: '设置' }))
+      const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: '保存' })
       expect(saveButton).toBeDisabled()
       await user.click(saveButton)
       expect(mockUpdateAgent).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: '자동' }))
+      await user.click(screen.getByRole('button', { name: '汽车' }))
       expect(saveButton).toBeEnabled()
       await user.click(saveButton)
       expect(mockUpdateAgent).toHaveBeenCalledWith(
@@ -569,8 +569,8 @@ describe('AgentSettingsPage', () => {
       />,
     )
 
-    await user.click(screen.getByRole('tab', { name: '설정' }))
-    const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: '저장' })
+    await user.click(screen.getByRole('tab', { name: '设置' }))
+    const saveButton = within(screen.getByRole('banner')).getByRole('button', { name: '保存' })
     expect(saveButton).toBeDisabled()
     await user.click(saveButton)
     expect(mockUpdateAgent).not.toHaveBeenCalled()

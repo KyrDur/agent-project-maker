@@ -69,7 +69,7 @@ test.describe('Public share link', () => {
 
     // 1. Put a real message into the conversation (scripted model).
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
-    await page.getByPlaceholder('메시지 입력...').fill(message)
+    await page.getByPlaceholder('占位符').fill(message)
     await page.getByRole('button', { name: /전송/ }).click()
     await expect(page.getByText(message)).toBeVisible()
     // Let the run commit at least one assistant message into the snapshot.

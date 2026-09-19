@@ -49,7 +49,7 @@ describe('root message scope', () => {
     render(
       createElement(
         NextIntlClientProvider,
-        { locale: 'ko', messages: scoped },
+        { locale: 'zh-CN', messages: scoped },
         createElement(RootAssistantTranslationProbe),
       ),
     )

@@ -47,7 +47,7 @@ test('captures accessibility validation surfaces and focused skip link', async (
 
       if (route.path === '/') {
         await page.keyboard.press('Tab')
-        await expect(page.getByRole('link', { name: '본문으로 건너뛰기' })).toBeVisible()
+        await expect(page.getByRole('link', { name: '跳至主要内容' })).toBeVisible()
         await captureViewport(page, WAVE, `${viewport.name}-dashboard-skip-focused.png`)
       }
     }

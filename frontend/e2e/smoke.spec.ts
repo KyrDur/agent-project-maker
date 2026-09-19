@@ -66,8 +66,8 @@ test.describe('Smoke Test - Static Pages', () => {
     // Verify personalized dashboard hero rendered
     await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
     // Verify quick action cards
-    await expect(main.getByText('대화로 만들기')).toBeVisible()
-    await expect(main.getByText('템플릿으로 만들기')).toBeVisible()
+    await expect(main.getByText('通过聊天构建')).toBeVisible()
+    await expect(main.getByText('使用模板')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -77,10 +77,10 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.goto('/agents/new')
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(page.getByRole('heading', { name: '무엇을 만들고 싶으세요?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '你想建造什么？' })).toBeVisible()
     const main = page.getByRole('main')
-    await expect(main.getByText('직접 만들기')).toBeVisible()
-    await expect(main.getByText('템플릿으로 만들기')).toBeVisible()
+    await expect(main.getByText('手动构建')).toBeVisible()
+    await expect(main.getByText('使用模板')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -91,10 +91,10 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(
-      page.getByRole('main').getByRole('heading', { name: '템플릿으로 시작하기' }),
+      page.getByRole('main').getByRole('heading', { name: '从模板开始' }),
     ).toBeVisible()
     // Category tabs (custom pill-group with role="tab")
-    await expect(page.getByRole('tab', { name: '전체' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '所有时间' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -104,10 +104,10 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.goto('/tools')
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(page.getByRole('heading', { name: '도구' })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: '도구 보기 모드' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
+    await expect(page.getByRole('tablist', { name: '查看模式' })).toBeVisible()
     await expect(page.getByRole('tab', { name: /전체/ })).toBeVisible()
-    await expect(page.getByPlaceholder('도구 검색...')).toBeVisible()
+    await expect(page.getByPlaceholder('搜索占位符')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -117,7 +117,7 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.goto('/models')
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(page.getByRole('heading', { name: '모델' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByTestId('show-hidden')).toBeVisible()
     await expect(page.getByRole('button', { name: /새 모델|모델 추가/ }).first()).toBeVisible()
 
@@ -129,7 +129,7 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.goto('/usage')
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(page.getByRole('heading', { name: '사용량' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '用量' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -199,7 +199,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible()
     await page.keyboard.press('Escape')
     // Empty conversation prompt
-    await expect(main.getByText('대화를 시작해보세요.')).toBeVisible()
+    await expect(main.getByText('空状态')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -213,11 +213,11 @@ test.describe('Smoke Test - Dynamic Pages', () => {
 
     await expect(page.locator('header input').first()).toHaveValue('E2E Smoke Agent')
     // Form labels
-    await expect(main.getByText('시스템 프롬프트')).toBeVisible()
-    // "저장" button
-    await expect(main.getByRole('button', { name: '저장' })).toBeVisible()
-    // "에이전트 삭제" button
-    await expect(main.getByRole('button', { name: '에이전트 삭제' })).toBeVisible()
+    await expect(main.getByText('系统提示')).toBeVisible()
+    // "保存" button
+    await expect(main.getByRole('button', { name: '保存' })).toBeVisible()
+    // "删除智能体" button
+    await expect(main.getByRole('button', { name: '删除智能体' })).toBeVisible()
     // AssistantPanel은 우측 패널로 통합 — 별도 트리거 버튼 없음
 
     expect(errors.console).toEqual([])
@@ -301,7 +301,7 @@ test.describe('Smoke Test - Chat Navigator', () => {
 
     // 행 메뉴는 hover 시 노출되고, 메뉴 항목은 portal로 렌더된다
     await sessionRow.hover()
-    await sessionRow.getByRole('button', { name: '대화 메뉴' }).click()
+    await sessionRow.getByRole('button', { name: '对话菜单' }).click()
     await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
     await page.keyboard.press('Escape')
@@ -317,9 +317,9 @@ test.describe('Smoke Test - Chat Navigator', () => {
 
     const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
     await page.keyboard.press(`${modifier}+K`)
-    await expect(page.getByRole('heading', { name: '빠른 이동' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '快速开关' })).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('heading', { name: '빠른 이동' })).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: '快速开关' })).not.toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -330,13 +330,13 @@ test.describe('Smoke Test - Chat Navigator', () => {
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByText('E2E Navigator Smoke Agent').first()).toBeVisible()
 
-    await page.getByRole('button', { name: '에이전트 검색' }).click()
+    await page.getByRole('button', { name: '搜索智能体' }).click()
     await page
-      .getByRole('textbox', { name: '에이전트 또는 대화 검색' })
+      .getByRole('textbox', { name: '搜索智能体或对话' })
       .fill('Navigator smoke session')
-    await expect(page.getByText('검색 결과')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('搜索结果')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Navigator smoke session').first()).toBeVisible()
-    await expect(page.getByText('검색 결과가 없습니다')).toHaveCount(0)
+    await expect(page.getByText('没有搜索结果')).toHaveCount(0)
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -379,18 +379,18 @@ test.describe('Smoke Test - Dialogs', () => {
     }
   })
 
-  test('models page - "모델 추가" dialog opens', async ({ page, errors }) => {
+  test('models page - "添加对话框" dialog opens', async ({ page, errors }) => {
     await page.goto('/models')
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByTestId('show-hidden')).toBeVisible()
 
-    await page.getByRole('button', { name: '새 모델' }).click()
+    await page.getByRole('button', { name: '新' }).click()
     // Verify dialog content
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('heading', { name: '모델 추가' })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: '添加对话框' })).toBeVisible()
     await expect(
       dialog.getByText(
-        '자격증명으로 모델을 탐색하거나, 프리뷰/비공개 배포용 사용자 지정 ID를 직접 입력하세요.',
+        '注册模型并配置定价和功能。',
       ),
     ).toBeVisible()
     // Close by pressing Escape
@@ -438,7 +438,7 @@ test.describe('Smoke Test - Dialogs', () => {
       // The detail Sheet opens. Close it first, then verify the auth dialog.
       // If two dialogs opened, one is the Sheet and one is the auth Dialog.
       // Check if auth dialog content is present anywhere on the page.
-      const authDialogContent = page.getByText('이 도구를 사용하려면 API 키를 설정하세요.')
+      const authDialogContent = page.getByText('选择此工具应使用的凭据。')
       if (await authDialogContent.isVisible({ timeout: 2_000 }).catch(() => false)) {
         await expect(authDialogContent).toBeVisible()
       } else {
@@ -452,12 +452,12 @@ test.describe('Smoke Test - Dialogs', () => {
 
         // Now check for auth dialog or Sheet - at minimum verify no crash
         const dialogVisible = await page
-          .getByText('이 도구를 사용하려면 API 키를 설정하세요.')
+          .getByText('选择此工具应使用的凭据。')
           .isVisible({ timeout: 2_000 })
           .catch(() => false)
 
         if (dialogVisible) {
-          await expect(page.getByText('이 도구를 사용하려면 API 키를 설정하세요.')).toBeVisible()
+          await expect(page.getByText('选择此工具应使用的凭据。')).toBeVisible()
         }
         // If still not visible, the Card click always takes precedence - this is a known
         // event propagation issue. The button renders correctly, which is what the smoke
@@ -469,7 +469,7 @@ test.describe('Smoke Test - Dialogs', () => {
     } else {
       // Verify the page itself is healthy when no credential-backed tool is
       // seeded for this lane.
-      await expect(page.getByRole('heading', { name: '도구' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
     }
 
     expect(errors.console).toEqual([])
@@ -480,30 +480,30 @@ test.describe('Smoke Test - Dialogs', () => {
     await page.goto(`/agents/${agentId}/settings`)
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(page.getByRole('tab', { name: 'Fix 에이전트' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '修复智能体' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'E2E Dialog Agent 수정' })).toBeVisible()
-    await expect(page.getByText('자연어로 에이전트를 수정하세요')).toBeVisible()
+    await expect(page.getByText('修复英雄字幕')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
   })
 
-  test('settings page - "에이전트 삭제" confirmation dialog opens', async ({ page, errors }) => {
+  test('settings page - "删除智能体" confirmation dialog opens', async ({ page, errors }) => {
     await page.goto(`/agents/${agentId}/settings`)
     await page.waitForLoadState('domcontentloaded')
 
-    await page.getByRole('button', { name: '에이전트 삭제' }).click()
+    await page.getByRole('button', { name: '删除智能体' }).click()
     // Verify alert dialog content
     const dialog = page.getByRole('alertdialog')
-    await expect(dialog.getByText('에이전트를 삭제하시겠습니까?')).toBeVisible()
+    await expect(dialog.getByText('删除对话框')).toBeVisible()
     await expect(
-      dialog.getByText('이 작업은 되돌릴 수 없습니다. 에이전트와 관련된 모든 대화가 삭제됩니다.'),
+      dialog.getByText('此智能体 及其对话将被删除。此操作无法撤消。'),
     ).toBeVisible()
     // Cancel and confirm buttons inside dialog
-    await expect(dialog.getByRole('button', { name: '취소' })).toBeVisible()
-    await expect(dialog.getByRole('button', { name: '삭제' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: '取消' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: '删除' })).toBeVisible()
     // Close by clicking Cancel
-    await dialog.getByRole('button', { name: '취소' }).click()
+    await dialog.getByRole('button', { name: '取消' }).click()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -537,10 +537,10 @@ test.describe('Smoke Test - Conversational Creation', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Header
-    await expect(page.getByRole('heading', { name: '에이전트 만들기' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '자연어로 에이전트 만들기' })).toBeVisible()
-    await expect(page.getByPlaceholder('메시지 입력...')).toBeVisible()
-    await expect(page.getByRole('button', { name: '전송' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '创建智能体' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
+    await expect(page.getByPlaceholder('占位符')).toBeVisible()
+    await expect(page.getByRole('button', { name: '发送按钮' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])

@@ -27,6 +27,6 @@ it('public revoked link renders unavailable', async () => {
   )
   render(<PublicProject projectId="p" token="t" />)
   expect(await screen.findByRole('alert')).toHaveTextContent(
-    '공유가 해제되었거나 프로젝트를 찾을 수 없어요.',
+    '该项目共享不可用或已被撤销。',
   )
 })

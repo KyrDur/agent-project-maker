@@ -163,10 +163,10 @@ def test_build_default_prompt_includes_metadata():
     prompt = image_gen.build_default_prompt(
         agent_name="검색 봇",
         agent_description="인터넷 검색 자동화",
-        primary_task_type="웹 검색",
+        primary_task_type="默认标题",
     )
     assert "검색 봇" in prompt
-    assert "인터넷 검색" in prompt or "웹 검색" in prompt
+    assert "인터넷 검색" in prompt or "默认标题" in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
 
     # mock analyze_intent → 빈 fallback intent (이름 fallback 라벨)
     fake_intent = AgentCreationIntent(
-        agent_name="맞춤 에이전트",
+        agent_name="自定义智能体",
         agent_description="사용자 요청에 따라 생성된 에이전트: x",
         primary_task_type="x",
         use_cases=["x"],
@@ -315,8 +315,8 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
         },
         "labels": {
             "agent_name": "리서치봇",
-            "response_tone": "전문적으로",
-            "output_style": "자세한 설명",
+            "response_tone": "专业严谨",
+            "output_style": "详细说明",
         },
     }
     await compiled.ainvoke(Command(resume=json.dumps(response, ensure_ascii=False)), config=config)
@@ -324,9 +324,50 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
     state = await compiled.aget_state(config)
     assert state.values.get("intent_confirmed") is True
     assert state.values["intent"]["agent_name"] == "리서치봇"
-    assert state.values["intent"]["response_tone"] == "전문적으로"
-    assert state.values["intent"]["output_style"] == "자세한 설명"
+    assert state.values["intent"]["response_tone"] == "专业严谨"
+    assert state.values["intent"]["output_style"] == "详细说明"
     assert state.values["intent"]["identity_mode"] == "per_user"
+
+
+def test_phase2_confirmed_intent_completion_fills_required_fields():
+    from app.agent_runtime.builder_v3.nodes.phase2_intent import _complete_confirmed_intent
+
+    result = _complete_confirmed_intent(
+        {"agent_name": "周报助手", "identity_mode": "per_user"},
+        {"user_request": "帮我做一个每天写周报的agent"},
+    )
+
+    assert result["agent_name"] == "周报助手"
+    assert result["agent_description"]
+    assert result["primary_task_type"] == "帮我做一个每天写周报的agent"
+    assert result["use_cases"] == ["帮我做一个每天写周报的agent"]
+
+
+@pytest.mark.asyncio
+async def test_phase3_completes_legacy_partial_intent(monkeypatch):
+    from app.agent_runtime.builder_v3.nodes import phase3_tools
+
+    observed = {}
+
+    async def _fake_recommend_tools(intent, catalog, **kwargs):
+        del catalog, kwargs
+        observed["intent"] = intent
+        return []
+
+    monkeypatch.setattr(phase3_tools, "recommend_tools", _fake_recommend_tools)
+
+    result = await phase3_tools.phase3_recommend_tools(
+        {
+            "intent": {"agent_name": "周报助手", "identity_mode": "per_user"},
+            "user_request": "帮我做一个每天写周报的agent",
+            "tools_catalog": [],
+            "todos": [],
+        }
+    )
+
+    assert observed["intent"].agent_description
+    assert observed["intent"].primary_task_type == "帮我做一个每天写周报的agent"
+    assert result["intent"]["use_cases"] == ["帮我做一个每天写周报的agent"]
 
 
 def test_phase7_draft_copies_identity_mode():
@@ -336,7 +377,6 @@ def test_phase7_draft_copies_identity_mode():
         {
             "intent": {
                 "agent_name": "Research Agent",
-                "agent_name": "리서치 에이전트",
                 "agent_description": "자료를 조사하는 에이전트",
                 "primary_task_type": "자료 조사",
                 "use_cases": ["자료 조사"],
@@ -350,6 +390,42 @@ def test_phase7_draft_copies_identity_mode():
     )
 
     assert draft.identity_mode == "fixed"
+
+
+def test_phase7_draft_separates_planned_tools_from_real_links():
+    from app.agent_runtime.builder_v3.nodes.phase7_save import _build_draft
+
+    draft = _build_draft(
+        {
+            "intent": {
+                "agent_name": "Research Agent",
+                "agent_description": "Researches documents.",
+                "primary_task_type": "Research",
+                "use_cases": ["Research"],
+                "identity_mode": "per_user",
+            },
+            "tools": [
+                {
+                    "tool_name": "search_feishu",
+                    "description": "Search Feishu",
+                    "reason": "Evaluate first with a mock",
+                    "kind": "planned",
+                },
+                {
+                    "tool_name": "web_search",
+                    "description": "Search the web",
+                    "reason": "Use the connected catalog tool",
+                    "kind": "tool",
+                },
+            ],
+            "middlewares": [],
+            "system_prompt": "You research.",
+            "default_model_name": "GPT-4o",
+        }
+    )
+
+    assert draft.tools == ["web_search"]
+    assert [item["tool_name"] for item in draft.planned_tools] == ["search_feishu"]
 
 
 def test_phase8_error_routes_to_end_not_router():

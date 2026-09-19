@@ -154,7 +154,7 @@ describe('AssistantThread message actions', () => {
         user={{
           id: 'user-1',
           name: 'Real Name',
-          display_name: '체스터',
+          display_name: '用户',
           email: 'chester@example.com',
           is_super_user: false,
           created_at: '2026-05-01T00:00:00Z',
@@ -162,7 +162,7 @@ describe('AssistantThread message actions', () => {
       />,
     )
 
-    expect(screen.getAllByTestId('user-avatar')[0]).toHaveTextContent('체스터')
+    expect(screen.getAllByTestId('user-avatar')[0]).toHaveTextContent('用户')
   })
 
   it('keeps builder user messages avatar-free', () => {
@@ -172,7 +172,7 @@ describe('AssistantThread message actions', () => {
         user={{
           id: 'user-1',
           name: 'Real Name',
-          display_name: '체스터',
+          display_name: '用户',
           email: 'chester@example.com',
           is_super_user: false,
           created_at: '2026-05-01T00:00:00Z',
@@ -187,11 +187,11 @@ describe('AssistantThread message actions', () => {
     render(<AssistantThread />)
 
     const actionButtons = [
-      ...screen.getAllByRole('button', { name: '복사' }),
-      screen.getByRole('button', { name: '편집' }),
-      screen.getByRole('button', { name: '재생성' }),
-      screen.getByRole('button', { name: '도움이 됨' }),
-      screen.getByRole('button', { name: '도움이 안 됨' }),
+      ...screen.getAllByRole('button', { name: '复制' }),
+      screen.getByRole('button', { name: '编辑' }),
+      screen.getByRole('button', { name: '再生' }),
+      screen.getByRole('button', { name: '反馈向上' }),
+      screen.getByRole('button', { name: '反馈向下' }),
     ]
 
     for (const button of actionButtons) {

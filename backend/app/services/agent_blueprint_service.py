@@ -648,7 +648,7 @@ async def _resolve_sub_agent_ids(
                 .where(
                     Agent.user_id == user_id,
                     Agent.name.in_(set(names)),
-                    # 히든 런타임 에이전트("스킬 빌더" 등)가 이름 충돌로 일반
+                    # 히든 런타임 에이전트("技能培养者" 등)가 이름 충돌로 일반
                     # 에이전트의 서브에이전트로 조용히 결선되는 것을 차단.
                     Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
                 )

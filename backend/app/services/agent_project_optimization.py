@@ -152,6 +152,10 @@ async def analyze(
     groups = [group.model_dump(mode="json") for group in proposal.groups]
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
+    await db.refresh(run, ["comparison_json", "bad_cases_json"])
+    if "analysis" in (run.comparison_json or {}):
+        await db.commit()
+        return {"bad_cases": run.bad_cases_json or [], **(run.comparison_json or {})["analysis"]}
     run.bad_cases_json = projects.snapshot_value(analyses)
     run.comparison_json = {
         **(run.comparison_json or {}),
@@ -256,7 +260,7 @@ async def create_candidate(
     )
     core = {
         key: deepcopy((parent_run.comparison_json or {})[key])
-        for key in ("eval_spec", "spec_hash", "roles", "execution_mode")
+        for key in ("eval_spec", "spec_hash", "rubric_hash", "roles", "execution_mode")
         if key in (parent_run.comparison_json or {})
     }
     core["optimization"] = {
@@ -378,6 +382,7 @@ async def version_responses(
     responses = []
     for version in versions:
         response = AgentProjectVersionResponse.model_validate(version)
+        response.created_from = version.snapshot_json.get("created_from")
         if str(version.id) in decisions:
             response.status = decisions[str(version.id)]
         responses.append(response)

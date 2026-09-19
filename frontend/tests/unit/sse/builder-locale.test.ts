@@ -18,7 +18,7 @@ afterEach(() => {
 })
 
 describe('Builder runtime locale propagation', () => {
-  it.each(['zh-CN', 'en', 'ko'])(
+  it.each(['zh-CN', 'en', 'zh-CN'])(
     'sends %s on Builder and Assistant message/resume',
     async (locale) => {
       document.cookie = `moldy_locale=${locale}; path=/`

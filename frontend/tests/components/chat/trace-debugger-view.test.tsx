@@ -78,11 +78,11 @@ describe('TraceDebuggerView', () => {
 
     render(<TraceDebuggerView conversationId="conv-debug" />)
 
-    expect(await screen.findByText('Trace 상세')).toBeInTheDocument()
-    expect(await screen.findByText('수행정보')).toBeInTheDocument()
-    expect(await screen.findByText('Span 상세')).toBeInTheDocument()
-    expect(await screen.findByText('로그보기')).toBeInTheDocument()
-    expect((await screen.findAllByText('대화 Trace')).length).toBeGreaterThan(0)
+    expect(await screen.findByText('追踪详情')).toBeInTheDocument()
+    expect(await screen.findByText('运行信息')).toBeInTheDocument()
+    expect(await screen.findByText('跨度详细信息')).toBeInTheDocument()
+    expect(await screen.findByText('打开日志')).toBeInTheDocument()
+    expect((await screen.findAllByText('对话追踪')).length).toBeGreaterThan(0)
     expect((await screen.findAllByText('Moldy assistant turn')).length).toBeGreaterThan(0)
     expect(screen.queryByText('agent.chat')).not.toBeInTheDocument()
     expect(screen.getByText('web_search')).toBeInTheDocument()
@@ -116,7 +116,7 @@ describe('TraceDebuggerView', () => {
 
     render(<TraceDebuggerView conversationId="conv-debug" />)
 
-    expect(await screen.findByText('Trace 상세')).toBeInTheDocument()
+    expect(await screen.findByText('追踪详情')).toBeInTheDocument()
     expect(await screen.findByText('Moldy assistant turn')).toBeInTheDocument()
     expect(screen.queryByText('Langfuse disabled')).not.toBeInTheDocument()
     expect(screen.queryByText('message_events fallback')).not.toBeInTheDocument()

@@ -38,11 +38,11 @@ describe('ChatNavigatorMenu', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '탐색 옵션' }))
+    await user.click(screen.getByRole('button', { name: '导航器选项' }))
 
-    expect(screen.getByText('보기 방식')).toBeInTheDocument()
-    expect(screen.getByText('에이전트 정렬')).toBeInTheDocument()
-    expect(screen.getByText('대화 정렬')).toBeInTheDocument()
-    expect(screen.getByText('한 번에 하나만 펼치기')).toBeInTheDocument()
+    expect(screen.getByText('分组方式')).toBeInTheDocument()
+    expect(screen.getByText('智能体 排序')).toBeInTheDocument()
+    expect(screen.getByText('对话排序')).toBeInTheDocument()
+    expect(screen.getByText('一次展开一个智能体')).toBeInTheDocument()
   })
 })

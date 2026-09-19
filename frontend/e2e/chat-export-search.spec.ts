@@ -41,8 +41,8 @@ test.describe('Chat export + in-conversation search (G5/G6)', () => {
     }
 
     // G5 — navigator session menu → 내보내기 → Markdown triggers a download.
-    await page.getByRole('button', { name: '대화 메뉴' }).first().click()
-    await page.getByRole('menuitem', { name: '내보내기' }).click()
+    await page.getByRole('button', { name: '对话菜单' }).first().click()
+    await page.getByRole('menuitem', { name: '导出' }).click()
     const downloadPromise = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Markdown (.md)' }).click()
     const download = await downloadPromise

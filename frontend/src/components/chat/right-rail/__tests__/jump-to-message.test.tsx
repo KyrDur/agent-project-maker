@@ -70,7 +70,7 @@ describe('JumpToMessageButton', () => {
     document.body.innerHTML = ''
   })
 
-  it('renders an enabled "대화로 이동" action and scrolls when the message is loaded', async () => {
+  it('renders an enabled "前往留言处" action and scrolls when the message is loaded', async () => {
     render(
       <div>
         <div data-moldy-message-id="loaded-1">target message</div>
@@ -78,29 +78,29 @@ describe('JumpToMessageButton', () => {
       </div>,
     )
 
-    const button = await screen.findByRole('button', { name: '대화로 이동' })
+    const button = await screen.findByRole('button', { name: '前往留言处' })
     await userEvent.click(button)
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
   })
 
-  it('renders a disabled "이전 메시지" label when the message is not in the loaded page', () => {
+  it('renders a disabled "早些时候的消息" label when the message is not in the loaded page', () => {
     render(<JumpToMessageButton messageId="elsewhere" />)
 
-    expect(screen.getByText('이전 메시지')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '대화로 이동' })).toBeNull()
+    expect(screen.getByText('早些时候的消息')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '前往留言处' })).toBeNull()
   })
 
   it('updates to an enabled action when the message anchor is added later', async () => {
     render(<JumpToMessageButton messageId="late-message" />)
-    expect(screen.getByText('이전 메시지')).toBeInTheDocument()
+    expect(screen.getByText('早些时候的消息')).toBeInTheDocument()
 
     const anchor = document.createElement('div')
     anchor.setAttribute('data-moldy-message-id', 'late-message')
     document.body.appendChild(anchor)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '대화로 이동' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '前往留言处' })).toBeInTheDocument()
     })
   })
 

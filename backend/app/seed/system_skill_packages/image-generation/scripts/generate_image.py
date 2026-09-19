@@ -22,19 +22,19 @@ DEFAULT_TIMEOUT_SECONDS = 360.0
 
 _DATA_URL_RE = re.compile(r"data:(image/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)")
 _RAW_BASE64_RE = re.compile(r"\b([A-Za-z0-9+/]{32,}={0,2})\b")
-_TRAVEL_HINT_RE = re.compile(r"(여행|관광|투어).*(가이드|가이드맵|지도|맵)")
+_TRAVEL_HINT_RE = re.compile(r"(旅行|旅游|游览).*(攻略|指南|地图)")
 _ENGLISH_TRAVEL_HINT_RE = re.compile(
     r"\b(?:travel|tourism|tourist|itinerary|guide\s*map|map[- ]style|landmarks?)\b",
     re.IGNORECASE,
 )
 _BRACKET_LOCATION_RE = re.compile(r"^\s*\[([^\]]+)\]")
-_TRAVEL_SPLIT_RE = re.compile(r"\s*(?:주말\s*)?(?:여행|관광|투어|가이드맵|가이드|지도|맵)")
+_TRAVEL_SPLIT_RE = re.compile(r"\s*(?:周末\s*)?(?:旅行|旅游|游览|攻略|指南|地图)")
 _ENGLISH_TRAVEL_SPLIT_RE = re.compile(
     r"\b(?:south\s+korea|korea|japan|travel|tourism|tourist|itinerary|guide\s*map|guide|map|illustration|poster)\b|,",
     re.IGNORECASE,
 )
 _LEADING_TRAVEL_FILLER_RE = re.compile(
-    r"^(?:이번|다음|주말|당일|하루|1박\s*2일|2박\s*3일|어디|어느|좀|간단한)\s+"
+    r"^(?:这次|下次|周末|当天|一天|两天一晚|三天两晚|哪里|哪个|简单的)\s*"
 )
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -43,29 +43,29 @@ _IMAGE_API_SIZES = {"auto", "1024x1024", "1536x1024", "1024x1536"}
 _TRANSIENT_HTTP_STATUS_CODES = {408, 425, 429, 500, 502, 503, 504}
 _DEFAULT_HTTP_MAX_ATTEMPTS = 3
 _RETRY_BASE_DELAY_SECONDS = 1.0
-_KOREAN_LOCATION_NAMES = {
-    "seoul": "서울",
-    "busan": "부산",
-    "ulsan": "울산",
-    "daegu": "대구",
-    "daejeon": "대전",
-    "gwangju": "광주",
-    "incheon": "인천",
-    "jeju": "제주",
-    "jeju island": "제주",
-    "gyeongju": "경주",
-    "gangneung": "강릉",
-    "sokcho": "속초",
-    "jeonju": "전주",
-    "yeosu": "여수",
-    "fukuoka": "후쿠오카",
-    "tokyo": "도쿄",
-    "osaka": "오사카",
-    "kyoto": "교토",
-    "sapporo": "삿포로",
-    "okinawa": "오키나와",
-    "taipei": "타이베이",
-    "bangkok": "방콕",
+_CHINESE_LOCATION_NAMES = {
+    "seoul": "首尔",
+    "busan": "釜山",
+    "ulsan": "蔚山",
+    "daegu": "大邱",
+    "daejeon": "大田",
+    "gwangju": "光州",
+    "incheon": "仁川",
+    "jeju": "济州",
+    "jeju island": "济州",
+    "gyeongju": "庆州",
+    "gangneung": "江陵",
+    "sokcho": "束草",
+    "jeonju": "全州",
+    "yeosu": "丽水",
+    "fukuoka": "福冈",
+    "tokyo": "东京",
+    "osaka": "大阪",
+    "kyoto": "京都",
+    "sapporo": "札幌",
+    "okinawa": "冲绳",
+    "taipei": "台北",
+    "bangkok": "曼谷",
 }
 
 
@@ -107,19 +107,17 @@ def prepare_prompt(prompt: str) -> str:
 
     location = _extract_travel_location(stripped)
     return (
-        f"[{location}] 관광 가이드맵을 미니멀한 라인 아트 캐릭터를 사용한 "
-        "모던한 에디토리얼 일러스트레이션으로 만들어 줘. "
-        "대표 랜드마크, 로컬 음식, 이동 동선, 주말 여행 분위기를 깔끔한 "
-        "지도형 구성으로 표현해 줘. 영어 문구를 넣지 말고, 제목과 짧은 "
-        "한글 라벨만 사용해 줘. 긴 문장은 피하고, 밝고 세련된 색감과 "
-        "넉넉한 여백을 사용해 줘."
+        f"请为 [{location}] 制作旅游指南地图，采用现代编辑插画风格和极简线条人物。"
+        "在清晰的地图布局中展示代表性地标、当地美食、游览路线和周末旅行氛围。"
+        "标题和简短标签使用简体中文，不添加英文文案，避免长句。"
+        "使用明亮、协调的配色，并保留充足留白。"
     )
 
 
 def _looks_like_travel_guide_request(prompt: str) -> bool:
     if _TRAVEL_HINT_RE.search(prompt):
         return True
-    if "여행" in prompt and any(token in prompt for token in ("이미지", "그림", "일러스트")):
+    if "旅行" in prompt and any(token in prompt for token in ("图片", "绘画", "插画")):
         return True
     lowered = prompt.lower()
     return bool(_ENGLISH_TRAVEL_HINT_RE.search(lowered)) and any(
@@ -139,7 +137,7 @@ def _looks_like_travel_guide_request(prompt: str) -> bool:
 def _extract_travel_location(prompt: str) -> str:
     bracket = _BRACKET_LOCATION_RE.search(prompt)
     if bracket:
-        return bracket.group(1).strip() or "여행지"
+        return bracket.group(1).strip() or "旅行目的地"
 
     prefix = _TRAVEL_SPLIT_RE.split(prompt, maxsplit=1)[0].strip(" ,.-")
     if prefix == prompt.strip(" ,.-"):
@@ -149,26 +147,26 @@ def _extract_travel_location(prompt: str) -> str:
         if cleaned == prefix:
             break
         prefix = cleaned
-    return _korean_location_name(prefix) or "여행지"
+    return _chinese_location_name(prefix) or "旅行目的地"
 
 
-def _korean_location_name(location: str) -> str:
+def _chinese_location_name(location: str) -> str:
     stripped = location.strip()
     if not stripped:
         return ""
-    if re.search(r"[가-힣]", stripped):
+    if re.search(r"[\u4e00-\u9fff]", stripped):
         return stripped
 
     normalized = re.sub(r"[^a-zA-Z\s-]", " ", stripped).lower()
     normalized = re.sub(r"\s+", " ", normalized).strip()
-    if normalized in _KOREAN_LOCATION_NAMES:
-        return _KOREAN_LOCATION_NAMES[normalized]
+    if normalized in _CHINESE_LOCATION_NAMES:
+        return _CHINESE_LOCATION_NAMES[normalized]
 
     tokens = normalized.split()
     for size in range(min(3, len(tokens)), 0, -1):
         candidate = " ".join(tokens[:size])
-        if candidate in _KOREAN_LOCATION_NAMES:
-            return _KOREAN_LOCATION_NAMES[candidate]
+        if candidate in _CHINESE_LOCATION_NAMES:
+            return _CHINESE_LOCATION_NAMES[candidate]
     return stripped
 
 

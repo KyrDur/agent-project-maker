@@ -42,7 +42,7 @@ _MOLDY_YAML = "credential_requirements:\n  - key: naver_search\n    kind: api_ke
 async def _make_session(
     db: AsyncSession, *, user_id: uuid.UUID = TEST_USER_ID
 ) -> SkillBuilderSession:
-    session = SkillBuilderSession(user_id=user_id, user_request="테스트", status="active")
+    session = SkillBuilderSession(user_id=user_id, user_request="测试", status="active")
     db.add(session)
     await db.flush()
     path = workspace.create_workspace(session.id)

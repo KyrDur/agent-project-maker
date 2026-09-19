@@ -96,7 +96,7 @@ def apply_patches(
 
 def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
     # Compare the exact frozen experiment, not dataset IDs or freshly saved cases.
-    keys = ("eval_spec", "spec_hash", "roles", "execution_mode")
+    keys = ("eval_spec", "spec_hash", "rubric_hash", "roles", "execution_mode")
     if (
         baseline.dataset_hash != candidate.dataset_hash
         or baseline.cases_snapshot_json != candidate.cases_snapshot_json

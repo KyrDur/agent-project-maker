@@ -6,14 +6,17 @@ from typing import Any, Literal, cast
 import httpx
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime.middleware_registry import get_middleware_registry
 from app.agent_runtime.runtime_policy import resolve_runtime_policy
+from app.credentials.service import PROVIDER_TO_DEFINITION_KEY
 from app.dependencies import CurrentUser, get_current_user, get_db, verify_csrf
 from app.error_codes import agent_not_found, image_not_found
 from app.exceptions import ExternalServiceError, ValidationError
 from app.models.agent import AGENT_RUNTIME_PROFILE_STANDARD, Agent
+from app.models.credential import Credential
 from app.schemas.agent import (
     AgentBrief,
     AgentCreate,
@@ -32,6 +35,71 @@ from app.tools.registry import registry as tool_registry
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 middleware_router = APIRouter(tags=["middlewares"])
+
+
+def _runtime_credential_payload(credential: Credential | None) -> dict[str, str | bool] | None:
+    if credential is None:
+        return None
+    return {
+        "id": str(credential.id),
+        "name": credential.name,
+        "status": credential.status,
+        "masked": True,
+    }
+
+
+async def _resolve_runtime_credential_metadata(
+    db: AsyncSession,
+    agent: Agent,
+    user_id: uuid.UUID,
+) -> Credential | None:
+    """Mirror runtime credential precedence without decrypting the secret."""
+
+    model = getattr(agent, "model", None)
+    if model is None:
+        return None
+    provider_definition = PROVIDER_TO_DEFINITION_KEY.get(model.provider)
+    if provider_definition is None:
+        return None
+
+    credential = getattr(agent, "llm_credential", None)
+    if (
+        credential is not None
+        and credential.user_id == user_id
+        and credential.is_system is False
+        and credential.status == "active"
+        and credential.definition_key == provider_definition
+    ):
+        return credential
+
+    if model.default_credential_id is not None:
+        default_credential = (
+            await db.execute(
+                select(Credential).where(
+                    Credential.id == model.default_credential_id,
+                    Credential.user_id == user_id,
+                    Credential.is_system.is_(False),
+                    Credential.status == "active",
+                    Credential.definition_key == provider_definition,
+                )
+            )
+        ).scalar_one_or_none()
+        if default_credential is not None:
+            return default_credential
+
+    return (
+        await db.execute(
+            select(Credential)
+            .where(
+                Credential.user_id == user_id,
+                Credential.is_system.is_(False),
+                Credential.status == "active",
+                Credential.definition_key == provider_definition,
+            )
+            .order_by(Credential.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 def _sub_agent_image_url(sub: Agent) -> str | None:
@@ -78,6 +146,9 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         # rows from before the m18 wipe). The schema accepts None and the
         # frontend prompts re-binding instead of crashing the agents list.
         model=agent.model if agent.model is not None else None,
+        llm_credential_id=agent.llm_credential_id,
+        llm_credential_name=agent.llm_credential.name if agent.llm_credential else None,
+        llm_credential_status=agent.llm_credential.status if agent.llm_credential else None,
         tools=[
             ToolBrief(
                 id=link.tool.id,
@@ -366,12 +437,26 @@ async def runtime_readiness(
     agent = await agent_service.get_agent(db, agent_id, user.id)
     if agent is None:
         raise agent_not_found()
-    if agent.model is None:
-        return {"ready": False, "code": "no_model"}
+    model = agent.model
+    if model is None:
+        return {"ready": False, "code": "no_model", "model": None, "credential": None}
     await db.refresh(agent, ["llm_credential"])
+    credential = await _resolve_runtime_credential_metadata(db, agent, user.id)
+    credential_payload = _runtime_credential_payload(credential)
+    model_payload = {
+        "id": str(model.id),
+        "provider": model.provider,
+        "model_name": model.model_name,
+        "display_name": model.display_name,
+    }
     try:
         await resolve_llm_api_key_for_agent(db, agent)
         await validate_tools(db, user.id, [link.tool for link in agent.tool_links])
     except AppError as exc:
-        return {"ready": False, "code": exc.code}
-    return {"ready": True, "code": None}
+        return {
+            "ready": False,
+            "code": exc.code,
+            "model": model_payload,
+            "credential": credential_payload,
+        }
+    return {"ready": True, "code": None, "model": model_payload, "credential": credential_payload}

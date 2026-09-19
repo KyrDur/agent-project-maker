@@ -13,7 +13,8 @@ _PROMPT_PATH = Path(__file__).resolve().parent / "prompt.md"
 _FALLBACK_PROMPT = (
     "You are Moldy's Skill Builder. Edit the skill draft files under {workspace}/ "
     "incrementally with the filesystem tools (edit_file for existing files), run "
-    "validate_skill after meaningful edits, and never store secrets in package files."
+    "validate_skill after meaningful edits, and never store secrets in package files. "
+    "Respond in Simplified Chinese (zh-CN) unless the user explicitly requests another language."
 )
 
 

@@ -72,6 +72,9 @@ const state = {
 beforeEach(() =>
   server.use(
     http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
+    http.get(`${path}/evaluation-reports`, () =>
+      HttpResponse.json({ reports: [], best_run_ids: {}, active: false }),
+    ),
     http.get(path, () => HttpResponse.json({ id: 'p1', title: 'Example', eval_spec_json: null })),
     http.get(`${path}/versions`, () => HttpResponse.json([version])),
     http.get(`${path}/eval-sets`, () => HttpResponse.json([])),
@@ -82,24 +85,13 @@ beforeEach(() =>
   ),
 )
 
-it('analyzes grouped bad cases, optimizes and displays measured best instead of latest', async () => {
+async function openEvaluationTab() {
+  await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
+}
+
+it('reads retained optimization outcomes and patch evidence after analysis', async () => {
   server.use(
     http.post(`${path}/eval-runs/r1/analyze`, () => {
-      server.use(
-        http.get(`${path}/eval-runs`, () =>
-          HttpResponse.json([
-            {
-              ...run,
-              bad_cases_json: [badCase],
-              comparison_json: { ...run.comparison_json, analysis: { groups: [group] } },
-            },
-          ]),
-        ),
-      )
-      return HttpResponse.json({ bad_cases: [badCase], groups: [group] })
-    }),
-    http.post(`${path}/eval-runs/r1/optimize`, async ({ request }) => {
-      expect(await request.json()).toHaveProperty('request_id')
       server.use(
         http.get(path, () =>
           HttpResponse.json({ id: 'p1', title: 'Example', report_json: { optimization: state } }),
@@ -146,24 +138,22 @@ it('analyzes grouped bad cases, optimizes and displays measured best instead of 
     ),
   )
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
-  await screen.findByText('Source evidence case · 실패')
+  await openEvaluationTab()
+  await screen.findByText('Source evidence case · 失败')
   const summary = container.querySelector('summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
-  await userEvent.click(screen.getByRole('button', { name: '문제 사례 분석' }))
+  await userEvent.click(screen.getByRole('button', { name: '分析失败用例' }))
   expect(await screen.findByText(/Retrieve before answering/)).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: '에이전트 최적화' }))
-  expect(await screen.findByText('최적 버전: V2')).toBeInTheDocument()
+  expect(await screen.findByText('最佳版本: V2')).toBeInTheDocument()
   expect(await screen.findByText('75% → 90%')).toBeInTheDocument()
-  expect(await screen.findByText('개선 4개')).toBeInTheDocument()
-  expect(await screen.findByText('회귀 1개')).toBeInTheDocument()
-  await userEvent.click(screen.getAllByRole('button', { name: '변경 내용 보기' })[0])
+  expect(await screen.findByText('已修复：4')).toBeInTheDocument()
+  expect(await screen.findByText('退化用例：1')).toBeInTheDocument()
+  await userEvent.click(screen.getAllByRole('button', { name: '查看更改' })[0])
   expect(await screen.findByText(/Retrieve first/)).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '에이전트 최적화' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: '生成 AI 优化建议' })).toBeEnabled()
   expect(
-    screen.getAllByText(
-      '최적 버전은 프로젝트 평가 결과입니다. 실제 에이전트 설정은 변경되지 않습니다.',
-    ).length,
+    screen.getAllByText('最佳版本是项目评测的结果，不会改变在线智能体的配置。').length,
   ).toBeGreaterThan(0)
 })
 
@@ -182,32 +172,34 @@ it('keeps infrastructure-only analysis visible and disables optimization', async
     ),
   )
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
+  await openEvaluationTab()
   await screen.findByText('Judge unavailable')
   const summary = container.querySelector('summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
-  expect(screen.getByRole('button', { name: '에이전트 최적화' })).toBeDisabled()
-  expect(await screen.findByText('수정 가능한 문제 사례가 없습니다.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '生成 AI 优化建议' })).toBeDisabled()
+  expect(await screen.findByText('没有可以修复的失败用例。')).toBeInTheDocument()
 })
 
 it('retains request identity on failure and shows a safe error', async () => {
   const requests: unknown[] = []
   server.use(
-    http.post(`${path}/eval-runs/r1/optimize`, async ({ request }) => {
+    http.post(`${path}/eval-runs/r1/proposals`, async ({ request }) => {
       requests.push(await request.json())
       return HttpResponse.json({}, { status: 422 })
     }),
   )
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
-  await screen.findByText('Source evidence case · 실패')
+  await openEvaluationTab()
+  await screen.findByText('Source evidence case · 失败')
   const summary = container.querySelector('summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
-  await userEvent.click(screen.getByRole('button', { name: '에이전트 최적화' }))
+  await userEvent.click(screen.getByRole('button', { name: '生成 AI 优化建议' }))
   expect(
-    await screen.findByText('최적화를 완료하지 못했습니다. 실행 증거와 모델 상태를 확인하세요.'),
+    await screen.findByText('操作未完成，请检查运行证据或模型状态后重试。'),
   ).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: '에이전트 최적화' }))
+  await userEvent.click(screen.getByRole('button', { name: '生成 AI 优化建议' }))
   await waitFor(() => expect(requests).toHaveLength(2))
   expect(requests[0]).toEqual(requests[1])
 })

@@ -184,7 +184,7 @@ describe('useStableConvertedMessages', () => {
             name: 'ask_user',
             args: {
               mode: 'option_list',
-              title: '입력이 필요합니다',
+              title: '需要输入',
               question: '어떤 과일?',
               options: [{ id: 'apple', label: '🍎 사과' }],
               approval_id: 'call-ask',
@@ -201,7 +201,7 @@ describe('useStableConvertedMessages', () => {
             name: 'ask_user',
             args: {
               mode: 'option_list',
-              title: '입력이 필요합니다',
+              title: '需要输入',
               question: '어떤 과일?',
               options: [{ id: 'apple', label: '🍎 사과' }],
               approval_id: 'call-ask',
@@ -312,10 +312,10 @@ describe('useStableConvertedMessages', () => {
     // The old converter-cache key only fingerprinted content + type, so a
     // source change limited to usage_metadata (which the converter reads via
     // usageFromMessage) altered the converted output yet stayed invisible.
-    const baseSource = new AIMessage({ id: 'assistant-usage', content: '응답' })
+    const baseSource = new AIMessage({ id: 'assistant-usage', content: '回应' })
     const usageSource = new AIMessage({
       id: 'assistant-usage',
-      content: '응답',
+      content: '回应',
       usage_metadata: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
     })
     // The content-only fingerprint is identical for both, proving the field set
@@ -326,13 +326,13 @@ describe('useStableConvertedMessages', () => {
     )
 
     const withoutUsage: readonly ConvertedFixtureMessage[] = [
-      { id: 'assistant-usage', role: 'assistant', content: [{ type: 'text', text: '응답' }] },
+      { id: 'assistant-usage', role: 'assistant', content: [{ type: 'text', text: '回应' }] },
     ]
     const withUsage: readonly ConvertedFixtureMessage[] = [
       {
         id: 'assistant-usage',
         role: 'assistant',
-        content: [{ type: 'text', text: '응답' }],
+        content: [{ type: 'text', text: '回应' }],
         metadata: { custom: { usage: { totalTokens: 15 } } },
       },
     ]

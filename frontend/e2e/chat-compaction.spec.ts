@@ -39,7 +39,7 @@ const CONTEXT_PADDING = '이것은 컨텍스트를 채우기 위한 아주 긴 �
 //  - chat.activity.compaction  → run activity strip pill (running + complete)
 //  - chat.compaction.summary   → permanent marker on the compacted turn
 const COMPACTION_RUNNING_TEXT = '이전 대화를 압축하는 중'
-const COMPACTION_SUMMARY_TEXT = '이전 대화를 요약해 컨텍스트를 정리했어요'
+const COMPACTION_SUMMARY_TEXT = '对较旧的消息进行了总结以释放上下文'
 // The scripted model's generic reply (app/agent_runtime/e2e_scripted_model.py).
 const SCRIPTED_GENERIC_REPLY = 'E2E scripted document model is ready.'
 const SCRIPTED_SLOW_REPLY = 'E2E slow stream completed after detached navigation.'

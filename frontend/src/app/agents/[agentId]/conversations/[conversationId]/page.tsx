@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSetAtom } from 'jotai'
 import { useTranslations } from 'next-intl'
 import type { Conversation, Message } from '@/lib/types'
-import { useAgent } from '@/lib/hooks/use-agents'
+import { useAgent, useAgentRuntimeReadiness } from '@/lib/hooks/use-agents'
 import { useSession } from '@/lib/auth/session'
 import {
   useMessagesEnvelope,
@@ -86,6 +86,7 @@ export default function ChatPage({
   >(null)
   const [exportOpen, setExportOpen] = useState(false)
   const { data: agent } = useAgent(agentId)
+  const { data: runtimeReadiness } = useAgentRuntimeReadiness(agentId)
   const { data: user } = useSession()
   const messageEnvelopeConversationId = routeConversationId
   const shouldLoadMessageEnvelope = !isDraftConversation
@@ -446,7 +447,25 @@ export default function ChatPage({
                 feedbackAdapter={feedbackAdapter}
                 latestRun={envelope?.latest_run ?? null}
                 messages={messages}
-                modelName={agent?.model?.display_name}
+                modelName={
+                  runtimeReadiness?.model
+                    ? `${runtimeReadiness.model.provider} · ${
+                        runtimeReadiness.model.display_name || runtimeReadiness.model.model_name
+                      }`
+                    : agent?.model
+                      ? `${agent.model.provider} · ${
+                          agent.model.display_name || agent.model.model_name
+                        }`
+                      : undefined
+                }
+                runtimeCredentialName={
+                  runtimeReadiness?.credential?.name ?? agent?.llm_credential_name
+                }
+                runtimeReady={
+                  typeof runtimeReadiness?.ready === 'boolean'
+                    ? runtimeReadiness.ready
+                    : undefined
+                }
                 showContextGauge
                 contextWindow={agent?.model?.context_window ?? null}
                 onBeforeNewMessage={handleBeforeNewMessage}

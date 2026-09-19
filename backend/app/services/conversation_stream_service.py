@@ -228,7 +228,7 @@ async def _resolve_skill_builder_agent_context(
     )
 
     try:
-        resolved = await resolve_system_model(db, "text_primary")
+        resolved = await resolve_system_model(db, "builder")
     except SystemModelNotConfiguredError as exc:
         raise system_llm_not_configured() from exc
 

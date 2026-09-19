@@ -394,7 +394,11 @@ def _provider_wire_shape(
     base_url: str | None,
     api_key: str | None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
-    from app.agent_runtime.model_factory import TEST_COMPLETION_TOKEN_CAP, is_gpt5_family
+    from app.agent_runtime.model_factory import (
+        TEST_COMPLETION_TOKEN_CAP,
+        is_gpt5_family,
+        openai_family_base_url,
+    )
 
     is_gpt5 = is_gpt5_family(provider, model_name)
 
@@ -427,7 +431,9 @@ def _provider_wire_shape(
         }
     else:
         # openai / openrouter / openai_compatible / custom — all chat completions.
-        host = (base_url or "https://api.openai.com/v1").rstrip("/")
+        host = (base_url or openai_family_base_url(provider) or "https://api.openai.com/v1").rstrip(
+            "/"
+        )
         url = f"{host}/chat/completions"
         headers["Authorization"] = f"Bearer {_REDACTED}" if api_key else ""
 

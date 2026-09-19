@@ -143,7 +143,7 @@ describe('settings pages', () => {
       data: {
         id: 'user-1',
         name: 'Test User',
-        display_name: '체스터',
+        display_name: '用户',
         avatar_mode: 'initials',
         avatar_initials: '체',
         avatar_color: 'sky',
@@ -160,23 +160,23 @@ describe('settings pages', () => {
   it('renders editable profile settings from the active session', () => {
     render(<SettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '프로필' })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('체스터')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '公司简介' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('用户')).toBeInTheDocument()
     expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
     expect(screen.getByDisplayValue('체')).toBeInTheDocument()
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
-    expect(screen.getAllByText('관리자').length).toBeGreaterThanOrEqual(1)
-    expect(screen.queryByText('수화')).not.toBeInTheDocument()
+    expect(screen.getAllByText('管理员').length).toBeGreaterThanOrEqual(1)
+    expect(screen.queryByText('用户')).not.toBeInTheDocument()
   })
 
   it('saves display name and letter avatar settings', async () => {
     render(<SettingsPage />)
 
-    await userEvent.clear(screen.getByLabelText('표시 이름'))
-    await userEvent.type(screen.getByLabelText('표시 이름'), '새이름')
-    await userEvent.clear(screen.getByLabelText('아이콘 문자'))
-    await userEvent.type(screen.getByLabelText('아이콘 문자'), '새')
-    await userEvent.click(screen.getByRole('button', { name: '저장' }))
+    await userEvent.clear(screen.getByLabelText('显示名称'))
+    await userEvent.type(screen.getByLabelText('显示名称'), '새이름')
+    await userEvent.clear(screen.getByLabelText('图标字母'))
+    await userEvent.type(screen.getByLabelText('图标字母'), '새')
+    await userEvent.click(screen.getByRole('button', { name: '保存' }))
 
     await waitFor(() => {
       expect(updateProfile).toHaveBeenCalledWith({
@@ -191,14 +191,14 @@ describe('settings pages', () => {
   it('renders the security placeholder page', () => {
     render(<SecuritySettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '보안' })).toBeInTheDocument()
-    expect(screen.getByText('비밀번호 변경과 세션 관리는 준비 중입니다.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '安全性' })).toBeInTheDocument()
+    expect(screen.getByText('密码更改和会话管理即将推出。')).toBeInTheDocument()
   })
 
   it('renders appearance and language settings', () => {
     render(<AppearanceSettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '화면 및 언어' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '外貌与语言' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /라이트/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /다크/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /시스템/ })).toBeInTheDocument()
@@ -211,12 +211,12 @@ describe('settings pages', () => {
     expect(screen.getByRole('heading', { name: 'Agent API' })).toBeInTheDocument()
     expect(
       screen.getByText(
-        '에이전트를 외부 시스템에서 호출할 수 있도록 배포하고 서버용 API 키를 발급합니다.',
+        '部署智能体，颁发服务器端API密钥，并从外部系统调用Agent Project Maker。',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText('배포 후보')).toBeInTheDocument()
-    expect(screen.getAllByText('API 키').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('호출 예시')).toBeInTheDocument()
+    expect(screen.getByText('部署候选版本')).toBeInTheDocument()
+    expect(screen.getAllByText('API 密钥').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('调用示例')).toBeInTheDocument()
   })
 
   it('translates Agent API deployment candidate reason codes', () => {
@@ -239,7 +239,7 @@ describe('settings pages', () => {
     render(<AgentApiSettingsPage />)
 
     expect(
-      screen.getByText('API 배포에는 에이전트 고정 credential 사용 방식이 필요합니다.'),
+      screen.getByText('API 部署需要使用 智能体 固定凭据。'),
     ).toBeInTheDocument()
     expect(screen.queryByText('API deployment requires fixed identity.')).not.toBeInTheDocument()
   })
@@ -247,7 +247,7 @@ describe('settings pages', () => {
   it('shows the admin settings section for super users', () => {
     render(<SettingsPage />)
 
-    expect(screen.getAllByText('관리자').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('管理员').length).toBeGreaterThanOrEqual(1)
   })
 
   it('hides the admin settings section for regular users', () => {
@@ -257,7 +257,7 @@ describe('settings pages', () => {
         name: 'Regular User',
         display_name: '일반 사용자',
         avatar_mode: 'initials',
-        avatar_initials: '일',
+        avatar_initials: '太阳',
         avatar_color: 'mint',
         avatar_image_url: null,
         email: 'regular@example.com',
@@ -270,21 +270,21 @@ describe('settings pages', () => {
 
     render(<SettingsPage />)
 
-    expect(screen.queryByText('관리자')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '운영자 관리' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '시스템 자격증명' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '시스템 LLM 설정' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '전체 활동 기록' })).not.toBeInTheDocument()
+    expect(screen.queryByText('管理员')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '市场管理员' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '系统凭据' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '系统大模型设置' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '所有活动' })).not.toBeInTheDocument()
   })
 
   it('renders memory policy controls and recorded memories', () => {
     render(<MemorySettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '메모리' })).toBeInTheDocument()
-    expect(screen.getByLabelText('메모리 활성화')).toBeChecked()
-    expect(screen.getByLabelText('응답에 메모리 사용')).toBeChecked()
-    expect(screen.getByText('저장 전 확인')).toBeInTheDocument()
-    expect(screen.getByText('사용자 + 에이전트')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '记忆' })).toBeInTheDocument()
+    expect(screen.getByLabelText('启用内存')).toBeChecked()
+    expect(screen.getByLabelText('在回答中使用记忆')).toBeChecked()
+    expect(screen.getByText('保存前询问')).toBeInTheDocument()
+    expect(screen.getByText('用户+智能体')).toBeInTheDocument()
     expect(screen.getByText('회의는 오후 3시 이후를 선호합니다.')).toBeInTheDocument()
   })
 
@@ -308,10 +308,10 @@ describe('settings pages', () => {
     render(<MemorySettingsPage />)
 
     await userEvent.type(
-      screen.getByLabelText('새 메모리 내용'),
+      screen.getByLabelText('新的记忆内容'),
       '문서 초안은 한국어로 먼저 작성합니다.',
     )
-    await userEvent.click(screen.getByRole('button', { name: '메모리 추가' }))
+    await userEvent.click(screen.getByRole('button', { name: '添加内存' }))
 
     await waitFor(() => {
       expect(createMemory).toHaveBeenCalledWith({

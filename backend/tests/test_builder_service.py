@@ -122,11 +122,11 @@ async def test_get_session(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    created = await create_session(db, TEST_USER_ID, "검색 에이전트")
+    created = await create_session(db, TEST_USER_ID, "搜索智能体")
     found = await get_session(db, created.id, TEST_USER_ID)
     assert found is not None
     assert found.id == created.id
-    assert found.user_request == "검색 에이전트"
+    assert found.user_request == "搜索智能体"
 
 
 @pytest.mark.asyncio
@@ -146,7 +146,7 @@ async def test_claim_for_confirming(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     # Manually set status to PREVIEW
     session.status = BuilderStatus.PREVIEW
     await db.commit()
@@ -339,7 +339,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "All",
-        "name": "전체",
+        "name": "所有时间",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments", "seat_layout_guide"],
@@ -377,7 +377,7 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     )
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
@@ -419,7 +419,7 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     db.add(McpTool(server_id=other_server.id, name="cross_user_tool"))
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
@@ -445,7 +445,7 @@ async def test_confirm_build_no_model(db: AsyncSession):
     model = await _seed_model(db, is_default=True)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Test Agent",
@@ -472,7 +472,7 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     await db.commit()
 
     # Create session and confirm
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Bot",
@@ -605,7 +605,7 @@ async def test_confirm_build_no_draft_config(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = None
     await db.commit()
@@ -625,7 +625,7 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "Bot",

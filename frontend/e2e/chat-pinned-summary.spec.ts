@@ -114,9 +114,9 @@ test.describe('Pinned conversation summary', () => {
       await expect(reply).toBeVisible({ timeout: 60_000 })
       const assistantMessage = page.locator('[data-moldy-message-role="assistant"]').last()
       await assistantMessage.hover()
-      await page.getByRole('button', { name: '대화 요약으로 고정' }).last().click()
+      await page.getByRole('button', { name: '固定为对话摘要' }).last().click()
 
-      await expect(page.getByText('고정된 대화 요약')).toBeVisible()
+      await expect(page.getByText('固定对话摘要')).toBeVisible()
       await expect(page.getByText('E2E scripted document model is ready.')).toHaveCount(2)
       const persisted = await apiGetJson(
         request,
@@ -131,11 +131,11 @@ test.describe('Pinned conversation summary', () => {
       }
 
       await page.reload()
-      await expect(page.getByText('고정된 대화 요약')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByText('固定对话摘要')).toBeVisible({ timeout: 30_000 })
       await expect(page.getByText('E2E scripted document model is ready.')).toHaveCount(2)
       await page.screenshot({ path: path.join(CAPTURE_DIR, 'pinned-summary-reload.png') })
       await page.setViewportSize({ width: 390, height: 844 })
-      await expect(page.getByText('고정된 대화 요약')).toBeVisible()
+      await expect(page.getByText('固定对话摘要')).toBeVisible()
       await page.screenshot({ path: path.join(CAPTURE_DIR, 'pinned-summary-mobile.png') })
 
       const foreignEmail = `pinned-summary-${Date.now()}@moldy.dev`
@@ -157,8 +157,8 @@ test.describe('Pinned conversation summary', () => {
       )
       expect(denied.status()).toBe(404)
 
-      await page.getByRole('button', { name: '대화 요약 고정 해제' }).first().click()
-      await expect(page.getByText('고정된 대화 요약')).toHaveCount(0)
+      await page.getByRole('button', { name: '取消固定对话摘要' }).first().click()
+      await expect(page.getByText('固定对话摘要')).toHaveCount(0)
       const cleared = await apiGetJson(
         request,
         `${API_BASE}/api/conversations/${fixture.conversationId}/pinned-summary`,

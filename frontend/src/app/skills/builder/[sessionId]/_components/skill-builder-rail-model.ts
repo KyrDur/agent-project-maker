@@ -117,7 +117,7 @@ export function deriveStatusRows(validation: unknown): StatusRow[] {
       tone: rowTone(moldyMetadata, 'pass'),
       detail: firstMessage(moldyMetadata),
     },
-    // 목업의 "양호"(good) — 트리거 문구는 통과여도 품질 신호라 별도 톤.
+    // 목업의 "好"(good) — 트리거 문구는 통과여도 품질 신호라 별도 톤.
     { key: 'trigger', tone: rowTone(trigger, 'good'), detail: firstMessage(trigger) },
     { key: 'secrets', tone: rowTone(secrets, 'pass'), detail: firstMessage(secrets) },
   ]

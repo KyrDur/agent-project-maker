@@ -4,7 +4,7 @@ import { test, expect } from './fixtures'
 //
 // Backend interactions are mocked via Playwright `page.route` so this spec can
 // run with or without the FastAPI backend up. Coverage:
-// 1. Page loads and shows the "새 자격증명" CTA.
+// 1. Page loads and shows the "创建" CTA.
 // 2. Clicking it opens the catalog modal.
 // 3. Picking a definition reveals the dynamic form.
 // 4. Filling required fields enables Save.
@@ -68,25 +68,25 @@ test.describe('Credentials page', () => {
     await page.goto('/credentials')
 
     // Header CTA is present
-    await expect(page.getByRole('button', { name: '새 자격증명' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '创建' })).toBeVisible()
 
     // Open the modal
-    await page.getByRole('button', { name: '새 자격증명' }).click()
+    await page.getByRole('button', { name: '创建' }).click()
 
     // Step 1: pick a definition (OpenAI)
-    await expect(page.getByText('카탈로그에서 자격증명 종류를 선택하세요.')).toBeVisible()
+    await expect(page.getByText('目录')).toBeVisible()
     await page.getByText('OpenAI').click()
 
     // Step 2: form
     await expect(page.getByRole('heading', { name: '새 OpenAI 자격증명' })).toBeVisible()
-    await page.getByLabel('이름').fill('Prod OpenAI')
+    await page.getByLabel('名称').fill('Prod OpenAI')
     await page.getByLabel(/api key/i).fill('sk-test-1234')
 
     // Submit
-    await page.getByRole('button', { name: '자격증명 저장' }).click()
+    await page.getByRole('button', { name: '保存' }).click()
 
     // Toast and updated table
-    await expect(page.getByText('자격증명이 저장되었습니다')).toBeVisible()
+    await expect(page.getByText('保存成功。')).toBeVisible()
     await expect(page.getByText('Prod OpenAI')).toBeVisible()
   })
 })

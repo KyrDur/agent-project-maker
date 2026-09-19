@@ -728,7 +728,7 @@ async def test_run_start_command_promotes_draft_conversation_to_ui(
 ) -> None:
     conversation = await _seed_protocol_conversation(db)
     conversation.source = "draft"
-    conversation.title = "새 대화"
+    conversation.title = "备用标题"
     await db.commit()
     started = {}
 

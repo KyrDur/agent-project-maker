@@ -70,7 +70,7 @@ function buildEvaluationSet(overrides: Partial<SkillEvaluationSet>): SkillEvalua
     name: '품질 평가',
     description: '핵심 응답 품질을 확인합니다.',
     source_kind: 'generated',
-    evals: [{ input: '질문', expected: '답변' }],
+    evals: [{ input: '질문', expected: '回应' }],
     expectations_schema_version: 1,
     latest_run: null,
     created_at: '2026-06-01T00:00:00Z',
@@ -147,9 +147,9 @@ describe('SkillEvaluationTab', () => {
 
     expect(screen.getByText('생성된 품질 평가')).toBeInTheDocument()
     expect(screen.getByText('Builder가 만든 평가 세트입니다.')).toBeInTheDocument()
-    expect(screen.getByText('평가 없음')).toBeInTheDocument()
+    expect(screen.getByText('未评价')).toBeInTheDocument()
     expect(screen.getByText('1개 케이스')).toBeInTheDocument()
-    expect(screen.getByText('아직 실행 이력이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('还没有运行历史。')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '생성된 품질 평가 평가 다시 실행' }))
 
@@ -185,9 +185,9 @@ describe('SkillEvaluationTab', () => {
     // The default run keeps baseline comparison on.
     expect(mockEstimateRun).toHaveBeenLastCalledWith(true, expect.anything())
     expect(mockCreateRun).not.toHaveBeenCalled()
-    expect(screen.getByRole('alertdialog', { name: '평가 실행 확인' })).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog', { name: '确认评估运行' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '평가 실행' }))
+    await user.click(screen.getByRole('button', { name: '评估运行' }))
 
     expect(mockCreateRun).toHaveBeenCalledOnce()
     expect(mockCreateRun).toHaveBeenLastCalledWith(true, expect.anything())
@@ -220,13 +220,13 @@ describe('SkillEvaluationTab', () => {
     expect(mockEstimateRun).toHaveBeenLastCalledWith(true, expect.anything())
 
     // Accessible name is the title alone, not the long hint paragraph.
-    expect(screen.getByRole('checkbox', { name: '기준선 비교' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '基线比较' })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('estimate-baseline-toggle'))
     // Toggling off refetches the estimate so the shown numbers stay honest.
     expect(mockEstimateRun).toHaveBeenLastCalledWith(false, expect.anything())
 
-    await user.click(screen.getByRole('button', { name: '평가 실행' }))
+    await user.click(screen.getByRole('button', { name: '评估运行' }))
     expect(mockCreateRun).toHaveBeenLastCalledWith(false, expect.anything())
   })
 
@@ -283,7 +283,7 @@ describe('SkillEvaluationTab', () => {
 
     // Toggle off (#1) but leave it unresolved; cancel, reopen (#2), resolve #2.
     await user.click(screen.getByTestId('estimate-baseline-toggle'))
-    await user.click(screen.getByRole('button', { name: '취소' }))
+    await user.click(screen.getByRole('button', { name: '取消' }))
     await user.click(screen.getByRole('button', { name: '품질 평가 평가 다시 실행' }))
     await act(async () => calls[2].onSuccess?.(withBaseline))
     // Superseded #1 resolves last — the request-id guard must drop it.
@@ -382,9 +382,9 @@ describe('SkillEvaluationTab', () => {
 
     render(<SkillEvaluationTab skillId="skill-1" skillContentHash="hash-current" />)
 
-    expect(screen.getAllByText('재평가 필요')).toHaveLength(2)
-    expect(screen.getByText('실행 이력')).toBeInTheDocument()
-    expect(screen.getByText('선택한 실행 상세')).toBeInTheDocument()
+    expect(screen.getAllByText('需要重新运行')).toHaveLength(2)
+    expect(screen.getByText('运行历史')).toBeInTheDocument()
+    expect(screen.getByText('选定的运行详细信息')).toBeInTheDocument()
     expect(screen.getByText('통과율 74%')).toBeInTheDocument()
     expect(screen.getByText('트리거 정확도 50%')).toBeInTheDocument()
     expect(screen.getByText('평균 1.3초')).toBeInTheDocument()

@@ -227,10 +227,10 @@ test.describe('Chat navigator consolidation', () => {
   }) => {
     await setupNavigatorPage(page)
 
-    await expect(page.getByText('에이전트').first()).toBeVisible()
+    await expect(page.getByText('智能体').first()).toBeVisible()
     await expect(page.getByText('Alpha Agent').first()).toBeVisible()
     await expect(page.getByText('Alpha kickoff').first()).toBeVisible()
-    await expect(page.getByRole('textbox', { name: '에이전트 또는 대화 검색' })).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: '搜索智能体或对话' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Alpha Agent 대화 검색' })).toHaveCount(0)
     await capturePage(page, 'chat-navigator-default.png')
 
@@ -238,7 +238,7 @@ test.describe('Chat navigator consolidation', () => {
       '[data-chat-session-href="/agents/agent-1/conversations/conv-1"]',
     )
     await kickoffRow.hover()
-    await kickoffRow.getByRole('button', { name: '대화 메뉴' }).click()
+    await kickoffRow.getByRole('button', { name: '对话菜单' }).click()
     await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
     await capturePage(page, 'chat-navigator-row-menu.png')
@@ -253,19 +253,19 @@ test.describe('Chat navigator consolidation', () => {
     await page.keyboard.up(modifier)
 
     await page.keyboard.press(`${modifier}+K`)
-    await expect(page.getByRole('heading', { name: '빠른 이동' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '快速开关' })).toBeVisible()
     await capturePage(page, 'chat-navigator-quick-switcher.png')
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('heading', { name: '빠른 이동' })).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: '快速开关' })).not.toBeVisible()
 
-    await page.getByRole('button', { name: '에이전트 검색' }).click()
-    await page.getByRole('textbox', { name: '에이전트 또는 대화 검색' }).fill('Second')
-    await expect(page.getByText('검색 결과')).toBeVisible()
+    await page.getByRole('button', { name: '搜索智能体' }).click()
+    await page.getByRole('textbox', { name: '搜索智能体或对话' }).fill('Second')
+    await expect(page.getByText('搜索结果')).toBeVisible()
     await expect(page.getByText('Second hidden session').first()).toBeVisible()
-    await expect(page.getByText('검색 결과가 없습니다')).toHaveCount(0)
+    await expect(page.getByText('没有搜索结果')).toHaveCount(0)
     await capturePage(page, 'chat-navigator-search.png')
 
-    await page.getByRole('button', { name: '새 채팅' }).click()
+    await page.getByRole('button', { name: '新聊天' }).click()
     await expect(page).toHaveURL(/\/agents\/agent-1\/conversations\/new$/)
 
     expect(errors.console).toEqual([])
@@ -276,7 +276,7 @@ test.describe('Chat navigator consolidation', () => {
     await setupNavigatorPage(page)
 
     const sidebar = page.locator('[data-slot="sidebar-container"]')
-    const handle = page.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = page.getByRole('separator', { name: '调整侧边栏大小' })
     await expect(handle).toBeVisible()
     await handle.hover()
     await expect(handle).toHaveCSS('cursor', 'col-resize')
@@ -322,43 +322,43 @@ test.describe('Chat navigator consolidation', () => {
 
     // 트리거는 opacity-0이라 헤딩 hover로 노출시킨 뒤 연다 (Playwright는 opacity-0도 클릭 가능하지만 캡처를 위해)
     // Base UI 라디오 항목은 closeOnClick=false라 메뉴가 유지되므로, 한 번 열어 연속으로 조작한다
-    const menuTrigger = page.getByRole('button', { name: '탐색 옵션' })
+    const menuTrigger = page.getByRole('button', { name: '导航器选项' })
     await menuTrigger.hover()
     await menuTrigger.click()
-    await expect(page.getByRole('menuitem', { name: '보기 방식' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: '에이전트 정렬' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: '대화 정렬' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '分组方式' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '智能体 排序' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '对话排序' })).toBeVisible()
     await expect(
-      page.getByRole('menuitemcheckbox', { name: '한 번에 하나만 펼치기' }),
+      page.getByRole('menuitemcheckbox', { name: '一次展开一个智能体' }),
     ).toBeVisible()
     await capturePage(page, 'chat-navigator-options-menu.png')
 
     // 에이전트 정렬을 생성순으로 바꾸면 Beta(06-02 생성)가 Alpha(06-01 생성) 위로 올라온다
-    await page.getByRole('menuitem', { name: '에이전트 정렬' }).hover()
-    await expect(page.getByRole('menuitemradio', { name: '최근 사용' })).toHaveAttribute(
+    await page.getByRole('menuitem', { name: '智能体 排序' }).hover()
+    await expect(page.getByRole('menuitemradio', { name: '最后使用' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    await page.getByRole('menuitemradio', { name: '생성순' }).click()
+    await page.getByRole('menuitemradio', { name: '创建时间' }).click()
     await expect.poll(agentHeaderOrder).toEqual(['/agents/agent-2', '/agents/agent-1'])
     await capturePage(page, 'chat-navigator-agent-sort-created.png')
 
     // 보기 방식 서브메뉴: 세 가지 모드 라디오와 현재 선택(에이전트별)을 확인한다
-    await page.getByRole('menuitem', { name: '보기 방식' }).hover()
-    await expect(page.getByRole('menuitemradio', { name: '에이전트별' })).toHaveAttribute(
+    await page.getByRole('menuitem', { name: '分组方式' }).hover()
+    await expect(page.getByRole('menuitemradio', { name: '通过 智能体' })).toHaveAttribute(
       'aria-checked',
       'true',
     )
-    await expect(page.getByRole('menuitemradio', { name: '최근 에이전트' })).toBeVisible()
-    await expect(page.getByRole('menuitemradio', { name: '최근 대화' })).toBeVisible()
+    await expect(page.getByRole('menuitemradio', { name: '最近智能体' })).toBeVisible()
+    await expect(page.getByRole('menuitemradio', { name: '最近的对话' })).toBeVisible()
     await capturePage(page, 'chat-navigator-view-modes.png')
 
     // 최근 대화 모드로 전환: 그룹 헤더가 사라지고 모든 세션이 에이전트 아바타와 함께 평탄화된다
-    await page.getByRole('menuitemradio', { name: '최근 대화' }).click()
+    await page.getByRole('menuitemradio', { name: '最近的对话' }).click()
     // Escape는 한 레벨씩 닫는다 (서브메뉴 → 루트 메뉴)
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('menuitem', { name: '보기 방식' })).toHaveCount(0)
+    await expect(page.getByRole('menuitem', { name: '分组方式' })).toHaveCount(0)
     const betaRow = page.locator('[data-chat-session-href="/agents/agent-2/conversations/conv-3"]')
     await expect(betaRow).toBeVisible()
     // 에이전트 이름은 아바타 hover 툴팁으로 노출된다

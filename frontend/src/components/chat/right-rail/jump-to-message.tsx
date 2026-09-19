@@ -91,8 +91,8 @@ function useMessageInLoadedPage(messageId: string | null | undefined): boolean {
 
 /**
  * 파일 → 대화 메시지로 이동하는 액션.
- * - 메시지가 로드된 페이지에 있으면 "대화로 이동" 버튼.
- * - 없으면(이전 페이지) 비활성 "이전 메시지" 라벨 + 네이티브 tooltip.
+ * - 메시지가 로드된 페이지에 있으면 "前往留言处" 버튼.
+ * - 없으면(이전 페이지) 비활성 "早些时候的消息" 라벨 + 네이티브 tooltip.
  * - message_id가 없으면 렌더하지 않는다.
  */
 export function JumpToMessageButton({

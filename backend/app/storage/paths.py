@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from app.config import settings
 
@@ -34,8 +34,13 @@ def resolve_data_path(value: str | os.PathLike[str]) -> Path:
 
     if not value:
         raise ValueError("empty storage_path")
+    raw_value = str(value)
     path = Path(value)
-    if path.is_absolute():
+    if (
+        path.is_absolute()
+        or PurePosixPath(raw_value).is_absolute()
+        or PureWindowsPath(raw_value).is_absolute()
+    ):
         logger.debug("resolve_data_path got absolute input: %s", path)
         return path
     root = _data_root()
@@ -51,9 +56,18 @@ def ensure_relative(value: str) -> str:
 
     if not value:
         raise ValueError("empty storage_path")
-    if Path(value).is_absolute():
+    if PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute():
         raise ValueError(f"storage_path must be relative to data_root, got absolute: {value}")
-    sentinel_root = Path("/moldy-data-root")
-    if not (sentinel_root / value).resolve().is_relative_to(sentinel_root):
+    depth = 0
+    for part in PurePosixPath(value.replace("\\", "/")).parts:
+        if part in {"", "."}:
+            continue
+        if part == "..":
+            if depth == 0:
+                raise ValueError("relative storage_path cannot escape data_root")
+            depth -= 1
+            continue
+        depth += 1
+    if depth == 0:
         raise ValueError("relative storage_path cannot escape data_root")
     return value

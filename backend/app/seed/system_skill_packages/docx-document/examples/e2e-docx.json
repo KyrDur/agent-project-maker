@@ -3,7 +3,7 @@
   "subtitle": "DOCX artifact viewer E2E sample",
   "sections": [
     {
-      "heading": "개요",
+      "heading": "章节概述",
       "paragraphs": [
         "이 문서는 Moldy built-in skill이 DOCX 파일을 생성하고 artifact viewer가 이를 표시하는지 검증하기 위해 생성되었습니다.",
         "생성 경로는 execute_in_skill을 통해 실행되며 결과 파일은 conversation artifact로 수집됩니다."

@@ -4,7 +4,7 @@ Revision ID: m17_add_agent_subagents
 Revises: m16_add_opener_questions
 Create Date: 2026-04-29
 
-에이전트가 다른 에이전트를 "서브에이전트"로 호출할 수 있게 하는 자기참조
+에이전트가 다른 에이전트를 "子代理"로 호출할 수 있게 하는 자기참조
 many-to-many 관계 테이블. parent_agent_id / sub_agent_id 모두 agents.id를 참조.
 
 - PK: (parent_agent_id, sub_agent_id) 복합키 (중복 link 방지)

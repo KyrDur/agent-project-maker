@@ -31,8 +31,8 @@ function skillResource(): PublishWizardResource {
 }
 
 async function goToVisibilityStep(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: '다음' })) // review → metadata
-  await user.click(screen.getByRole('button', { name: '다음' })) // metadata → visibility
+  await user.click(screen.getByRole('button', { name: '下一步' })) // review → metadata
+  await user.click(screen.getByRole('button', { name: '下一步' })) // metadata → visibility
 }
 
 describe('PublishWizard ACL validation', () => {
@@ -48,15 +48,15 @@ describe('PublishWizard ACL validation', () => {
 
     await goToVisibilityStep(user)
 
-    await user.click(screen.getByRole('combobox', { name: '공개 범위' }))
-    await user.click(await screen.findByRole('option', { name: '제한 공유 (선택한 사용자)' }))
-    await user.type(screen.getByLabelText('공유 사용자 ID (쉼표로 구분)'), 'abc')
+    await user.click(screen.getByRole('combobox', { name: '能见度' }))
+    await user.click(await screen.findByRole('option', { name: '受限' }))
+    await user.type(screen.getByLabelText('共享用户 ID（以逗号分隔）'), 'abc')
 
-    await user.click(screen.getByRole('combobox', { name: '공개 범위' }))
-    await user.click(await screen.findByRole('option', { name: '공개 (리스팅 대기)' }))
+    await user.click(screen.getByRole('combobox', { name: '能见度' }))
+    await user.click(await screen.findByRole('option', { name: '公共' }))
 
-    await user.click(screen.getByRole('button', { name: '다음' })) // visibility → confirm
-    await user.click(screen.getByRole('button', { name: '게시' }))
+    await user.click(screen.getByRole('button', { name: '下一步' })) // visibility → confirm
+    await user.click(screen.getByRole('button', { name: '发布' }))
 
     await waitFor(() => expect(mockPublishSkill).toHaveBeenCalledTimes(1))
     expect(mockPublishSkill).toHaveBeenCalledWith({
@@ -75,12 +75,12 @@ describe('PublishWizard ACL validation', () => {
 
     await goToVisibilityStep(user)
 
-    await user.click(screen.getByRole('combobox', { name: '공개 범위' }))
-    await user.click(await screen.findByRole('option', { name: '제한 공유 (선택한 사용자)' }))
-    await user.type(screen.getByLabelText('공유 사용자 ID (쉼표로 구분)'), 'abc')
+    await user.click(screen.getByRole('combobox', { name: '能见度' }))
+    await user.click(await screen.findByRole('option', { name: '受限' }))
+    await user.type(screen.getByLabelText('共享用户 ID（以逗号分隔）'), 'abc')
 
-    await user.click(screen.getByRole('button', { name: '다음' })) // visibility → confirm
-    await user.click(screen.getByRole('button', { name: '게시' }))
+    await user.click(screen.getByRole('button', { name: '下一步' })) // visibility → confirm
+    await user.click(screen.getByRole('button', { name: '发布' }))
 
     expect(await screen.findByText(/유효하지 않은 사용자 ID/)).toBeInTheDocument()
     expect(mockPublishSkill).not.toHaveBeenCalled()

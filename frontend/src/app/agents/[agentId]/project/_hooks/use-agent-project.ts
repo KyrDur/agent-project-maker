@@ -5,14 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { agentProjectApi } from '../_lib/agent-project-api'
 
 export const agentProjectKeys = {
+  evaluationReports: (agentId: string) =>
+    [...agentProjectKeys.project(agentId), 'evaluation-reports'] as const,
   report: (agentId: string) => ['agent-project', agentId, 'portfolio-report'] as const,
   project: (agentId: string) => ['agent-project', agentId] as const,
   versions: (agentId: string) => [...agentProjectKeys.project(agentId), 'versions'] as const,
   version: (agentId: string, id: string) => [...agentProjectKeys.versions(agentId), id] as const,
   sets: (agentId: string) => [...agentProjectKeys.project(agentId), 'sets'] as const,
   runs: (agentId: string) => [...agentProjectKeys.project(agentId), 'runs'] as const,
+  comparisons: (agentId: string) => [...agentProjectKeys.project(agentId), 'compare'] as const,
   compare: (agentId: string, left: string, right: string) =>
-    [...agentProjectKeys.project(agentId), 'compare', left, right] as const,
+    [...agentProjectKeys.comparisons(agentId), left, right] as const,
 }
 
 export function useAgentProject(agentId: string) {
@@ -51,6 +54,7 @@ export function useAgentProject(agentId: string) {
   }, [agentId, builderSessionId, bootstrapStage, resumeBootstrap])
   useEffect(() => {
     if (bootstrapStage) {
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.evaluationReports(agentId) })
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) })
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.runs(agentId) })
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.versions(agentId) })
@@ -59,6 +63,7 @@ export function useAgentProject(agentId: string) {
   const optimization = project.data?.report_json?.optimization
   useEffect(() => {
     if (optimization) {
+      void queryClient.invalidateQueries({ queryKey: agentProjectKeys.evaluationReports(agentId) })
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.versions(agentId) })
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.runs(agentId) })
     }

@@ -63,6 +63,8 @@ type ThreadRenderProps = Pick<
   | 'dictationAvailability'
   | 'emptyContent'
   | 'modelName'
+  | 'runtimeCredentialName'
+  | 'runtimeReady'
   | 'showContextGauge'
   | 'user'
   | 'onDictationStart'
@@ -89,6 +91,8 @@ export interface ChatRuntimeSectionProps {
   readonly latestRun: ConversationRun | null
   readonly messages: Message[]
   readonly modelName?: string
+  readonly runtimeCredentialName?: string | null
+  readonly runtimeReady?: boolean
   /** 메인 v3 채팅 컴포저에 컨텍스트 창 사용량 게이지 표시. */
   readonly showContextGauge?: boolean
   /** 컨텍스트 게이지 한도(agent.model.context_window). null이면 비활성. */
@@ -120,6 +124,8 @@ export function ChatRuntimeSection({
   latestRun,
   messages,
   modelName,
+  runtimeCredentialName,
+  runtimeReady,
   showContextGauge,
   contextWindow,
   onRuntimeStatusChange,
@@ -151,6 +157,8 @@ export function ChatRuntimeSection({
       dictationAvailability: dictation.availability,
       emptyContent,
       modelName,
+      runtimeCredentialName,
+      runtimeReady,
       showContextGauge,
       user,
       commandActions,
@@ -171,6 +179,8 @@ export function ChatRuntimeSection({
       dictation.resetFailure,
       emptyContent,
       modelName,
+      runtimeCredentialName,
+      runtimeReady,
       showContextGauge,
       user,
       commandActions,

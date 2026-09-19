@@ -19,6 +19,7 @@ from app.dependencies import CurrentUser
 from app.exceptions import AppError
 from app.models.credential import Credential
 from app.models.model import Model
+from app.models.system_llm_setting import SystemLlmSetting
 from app.models.user import User
 from app.seed.default_templates import DEFAULT_TEMPLATES
 from app.services import builder_runtime_readiness as readiness
@@ -211,6 +212,133 @@ async def test_confirmation_commits_one_agent_project_and_immutable_v1(db, encry
     await db.rollback()
 
 
+@pytest.mark.asyncio
+async def test_confirm_build_uses_runtime_model_id_from_draft(db, encrypted, monkeypatch):
+    from app.services import builder_project_lifecycle
+
+    blob, key, fields = encrypted
+    db.add(User(id=TEST_USER_ID, name="P0", email="p0@example.test"))
+    openai_credential = Credential(
+        user_id=TEST_USER_ID,
+        name="OpenAI Personal",
+        definition_key="openai",
+        data_encrypted=blob,
+        key_id=key,
+        field_keys=fields,
+        status="active",
+        is_system=False,
+    )
+    anthropic_credential = Credential(
+        user_id=TEST_USER_ID,
+        name="Anthropic Personal",
+        definition_key="anthropic",
+        data_encrypted=blob,
+        key_id=key,
+        field_keys=fields,
+        status="active",
+        is_system=False,
+    )
+    db.add_all([openai_credential, anthropic_credential])
+    selected_model = Model(provider="openai", model_name="gpt-4o", display_name="GPT-4o")
+    other_model = Model(
+        provider="anthropic", model_name="claude-sonnet-4-6", display_name="Claude Sonnet 4.6"
+    )
+    db.add_all([other_model, selected_model])
+    await db.commit()
+    session = await builder_service.create_session(db, TEST_USER_ID, "Build")
+    session.status = builder_service.BuilderStatus.CONFIRMING
+    session.draft_config = {
+        "name": "日报助手",
+        "description": "整理每天的日程和提醒。",
+        "system_prompt": "请根据用户日程生成简洁日报。",
+        "tools": [],
+        "middlewares": [],
+        "runtime_model_id": str(selected_model.id),
+    }
+    await db.commit()
+    monkeypatch.setattr(builder_project_lifecycle, "schedule", lambda *args: None)
+
+    agent = await builder_service.confirm_build(db, session)
+
+    assert agent is not None
+    assert agent.model_id == selected_model.id
+    assert agent.llm_credential_id == openai_credential.id
+
+
+@pytest.mark.asyncio
+async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monkeypatch):
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    from sqlalchemy.orm import selectinload
+
+    from app.agent_runtime.credential_resolution import resolve_llm_api_key_for_agent
+    from app.models.agent import Agent
+    from app.services import builder_project_lifecycle
+
+    blob, key, fields = encrypted
+    db.add(User(id=TEST_USER_ID, name="P0", email="p0@example.test"))
+    system_credential = Credential(
+        user_id=None,
+        name="Builder DeepSeek",
+        definition_key="deepseek",
+        data_encrypted=blob,
+        key_id=key,
+        field_keys=fields,
+        status="active",
+        is_system=True,
+    )
+    db.add(system_credential)
+    await db.flush()
+    db.add(
+        SystemLlmSetting(
+            role="builder",
+            credential_id=system_credential.id,
+            model_name="deepseek-chat",
+        )
+    )
+    await db.commit()
+    session = await builder_service.create_session(db, TEST_USER_ID, "Build")
+    session.status = builder_service.BuilderStatus.PREVIEW
+    session.draft_config = {
+        "name": "日报助手",
+        "description": "整理每天的日程和提醒。",
+        "system_prompt": "请根据用户日程生成简洁日报。",
+        "tools": [],
+        "middlewares": [],
+    }
+    await db.commit()
+    monkeypatch.setattr(
+        phase8_build, "async_session_factory", async_sessionmaker(db.bind, expire_on_commit=False)
+    )
+
+    result = await phase8_build.phase8_propose(
+        {"session_id": str(session.id), "draft_config": session.draft_config}
+    )
+
+    assert result["runtime_setup_payload"] is None
+    assert result["draft_config"]["model_name"] == "deepseek:deepseek-chat"
+    assert result["draft_config"]["runtime_model_source"] == "system_builder"
+
+    session.status = builder_service.BuilderStatus.CONFIRMING
+    await db.commit()
+    monkeypatch.setattr(builder_project_lifecycle, "schedule", lambda *args: None)
+    agent = await builder_service.confirm_build(db, session)
+
+    assert agent is not None
+    assert agent.model is not None
+    assert agent.model.provider == "deepseek"
+    assert agent.model.model_name == "deepseek-chat"
+    assert agent.llm_credential_id == system_credential.id
+    reloaded = (
+        await db.execute(
+            select(Agent)
+            .where(Agent.id == agent.id)
+            .options(selectinload(Agent.model), selectinload(Agent.llm_credential))
+        )
+    ).scalar_one()
+    assert await resolve_llm_api_key_for_agent(db, reloaded) == "p0-dummy"
+
+
 @pytest.mark.parametrize("locale", ["zh-CN", "en"])
 def test_first_party_catalog_locale_and_external_content(locale):
     from datetime import datetime
@@ -221,14 +349,12 @@ def test_first_party_catalog_locale_and_external_content(locale):
         )
         display = template_display(row, locale)
         assert display.content_key and display.category_key
-        if locale != "ko":
-            assert not HANGUL.search(
-                json.dumps(display.model_dump(mode="json"), ensure_ascii=False)
-            )
+        assert not HANGUL.search(
+            json.dumps(display.model_dump(mode="json"), ensure_ascii=False)
+        )
         external = SimpleNamespace(**{**vars(row), "system_prompt": "외부 사용자 콘텐츠"})
         assert template_display(external, locale).name == row.name
     for item in get_middleware_registry():
         translated = middleware_display(item, locale)
         assert translated["type"] == item["type"] and translated["name"] == item["name"]
-        if locale != "ko":
-            assert not HANGUL.search(json.dumps(translated, ensure_ascii=False))
+        assert not HANGUL.search(json.dumps(translated, ensure_ascii=False))

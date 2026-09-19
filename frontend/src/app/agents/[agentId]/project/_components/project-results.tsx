@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/shared/error-state'
 import { formatDisplayNumber } from '@/lib/utils/display-format'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useProjectPortfolio } from '../_hooks/use-project-portfolio'
+import { useProjectEvaluation, useEvaluationReports } from '../_hooks/use-project-evaluation'
 import { agentProjectApi } from '../_lib/agent-project-api'
 import type { ResumeStyle } from '../_lib/agent-project-types'
 
@@ -15,6 +16,11 @@ export function ProjectResults({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject.portfolio')
   const locale = useLocale()
   const { report, generate, resume, share } = useProjectPortfolio(agentId)
+  const evaluation = useProjectEvaluation(agentId)
+  const evaluationReports = useEvaluationReports(agentId).data
+  const scope = evaluationReports?.reports.find((run) => run.score !== null)?.comparison_key
+  const bestRunId = scope ? evaluationReports?.best_run_ids[scope] : undefined
+  const latestRun = evaluation.runs.data?.find((run) => run.id === bestRunId)
   const [style, setStyle] = useState<ResumeStyle>('ai_product')
   const [copyState, setCopyState] = useState<'copied' | 'copyFailed' | null>(null)
   const [showReport, setShowReport] = useState(false)
@@ -81,6 +87,73 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 </li>
               ))}
             </ol>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">{t('reportOverview')}</p>
+                <p className="text-2xl font-semibold">{percent(results.best?.pass_rate)}</p>
+                <p className="text-sm">
+                  {t('evaluation', {
+                    passed: results.best?.passed ?? t('unavailable'),
+                    total: results.best?.total ?? t('unavailable'),
+                  })}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">{t('bestVersion')}</p>
+                <p className="text-2xl font-semibold">
+                  {results.best_version == null
+                    ? t('unavailable')
+                    : t('version', { version: results.best_version })}
+                </p>
+                <p className="text-sm">{t('bestEvidence')}</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">{t('failedCases')}</p>
+                <p className="text-2xl font-semibold">
+                  {latestRun?.results_json?.filter((item) => item.status !== 'passed').length ?? 0}
+                </p>
+                <p className="text-sm">{latestRun?.eval_set_id ?? t('unavailable')}</p>
+              </div>
+            </div>
+            <section className="space-y-3">
+              <h3 className="font-medium">{t('metricsTitle')}</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Object.entries(results.best?.metrics ?? {}).map(([name, metric]) => (
+                  <div key={name} className="rounded-lg border p-3">
+                    <div className="flex justify-between">
+                      <span>{name}</span>
+                      <strong>{percent(metric.score)}</strong>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t('scoredCases', { count: metric.evaluated_cases })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+            {latestRun?.results_json?.some((item) => item.status !== 'passed') && (
+              <section className="space-y-3">
+                <h3 className="font-medium">{t('failedCaseDetails')}</h3>
+                {latestRun.results_json
+                  .filter((item) => item.status !== 'passed')
+                  .map((item) => (
+                    <details key={item.case_id} className="rounded-lg border p-3">
+                      <summary>{item.name}</summary>
+                      <p className="mt-2 text-sm">{item.input}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.error ??
+                          (item.metric_scores
+                            ? JSON.stringify(item.metric_scores)
+                            : t('failureReasonUnavailable'))}
+                      </p>
+                      <p className="text-sm">
+                        {t('toolCalls')}:{' '}
+                        {item.tool_calls.map((call) => call.name).join(', ') || t('none')}
+                      </p>
+                    </details>
+                  ))}
+              </section>
+            )}
             <p className="text-sm text-muted-foreground">{t('liveNotice')}</p>
             <div className="flex flex-wrap gap-2">
               <Link className={buttonVariants({ variant: 'outline' })} href={`/agents/${agentId}`}>

@@ -33,6 +33,7 @@ def _selectin_agent() -> list:
     """
     return [
         selectinload(Agent.model),
+        selectinload(Agent.llm_credential),
         selectinload(Agent.tool_links).selectinload(AgentToolLink.tool),
         selectinload(Agent.mcp_tool_links).selectinload(AgentMcpToolLink.mcp_tool),
         selectinload(Agent.skill_links).selectinload(AgentSkillLink.skill),
