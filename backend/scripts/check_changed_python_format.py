@@ -51,12 +51,10 @@ def _run_ruff(paths: tuple[Path, ...]) -> int:
     if status == "failed":
         for stream in (result.stdout, result.stderr):
             for line in stream.decode(errors="replace").splitlines():
-                prefix = "Would reformat: "
-                if line.startswith(prefix):
-                    path_text = line.removeprefix(prefix)
+                if "reformat" in line.lower():
                     print(
-                        "changed-python-format would-reformat="
-                        + json.dumps(path_text, ensure_ascii=True)
+                        "changed-python-format detail="
+                        + json.dumps(line, ensure_ascii=True)
                     )
     return 0 if status == "passed" else 1
 
