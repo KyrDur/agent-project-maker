@@ -20,7 +20,7 @@ from app.error_codes import (
     session_not_found,
     session_not_preview,
 )
-from app.exceptions import ValidationError
+from app.exceptions import AppError, ValidationError
 from app.routers.agents import _agent_to_response
 from app.schemas.agent import AgentResponse
 from app.schemas.builder import BuilderSessionResponse, BuilderStartRequest, BuilderStatus
@@ -138,6 +138,8 @@ async def confirm_build(
     try:
         with locale_scope(request.cookies.get("moldy_locale")):
             agent = await builder_service.confirm_build(db, session)
+    except AppError:
+        raise
     except ValueError as exc:
         raise ValidationError("MODEL_NOT_FOUND", str(exc)) from exc
     except Exception as exc:
