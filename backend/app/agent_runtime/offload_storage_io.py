@@ -8,7 +8,6 @@ import stat
 from contextlib import suppress
 from errno import ELOOP, ENOTDIR
 from pathlib import Path
-from typing import BinaryIO
 
 if os.name == "nt":
     import msvcrt
@@ -20,18 +19,18 @@ from app.agent_runtime.offload_storage_fd import nofollow_flags
 from app.agent_runtime.offload_storage_types import OffloadSecurityError
 
 
-def _lock_exclusive(stream: BinaryIO) -> None:
+def _lock_exclusive_descriptor(descriptor: int) -> None:
     if os.name == "nt":
-        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-        return
-    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        raise OffloadSecurityError(
+            reason="secure offload filesystem operations are unavailable"
+        )
+    fcntl.flock(descriptor, fcntl.LOCK_EX)
 
 
-def _unlock(stream: BinaryIO) -> None:
+def _unlock_descriptor(descriptor: int) -> None:
     if os.name == "nt":
-        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
         return
-    fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+    fcntl.flock(descriptor, fcntl.LOCK_UN)
 
 
 def _validate_private_regular_file(descriptor: int, parent: int, name: str, reason: str) -> None:
@@ -76,46 +75,46 @@ def atomic_write_new_or_equal(path: Path, content: bytes) -> None:
         raise OffloadSecurityError(reason="offload destination directory is unavailable")
     temporary = f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
     flags = nofollow_flags(os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+    locked = False
     try:
-        with os.fdopen(os.dup(parent), "rb") as parent_stream:
-            _lock_exclusive(parent_stream)
-            locked = True
+        _lock_exclusive_descriptor(parent)
+        locked = True
+        try:
+            existing = _read_private_file(parent, path.name)
+            if existing is not None:
+                if existing != content:
+                    raise OffloadSecurityError(reason="offload destination conflicts")
+                return
+            descriptor = os.open(temporary, flags, 0o600, dir_fd=parent)
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            raced = _read_private_file(parent, path.name)
+            if raced is not None:
+                if raced != content:
+                    raise OffloadSecurityError(reason="offload destination conflicts")
+                return
             try:
-                existing = _read_private_file(parent, path.name)
-                if existing is not None:
-                    if existing != content:
-                        raise OffloadSecurityError(reason="offload destination conflicts")
-                    return
-                descriptor = os.open(temporary, flags, 0o600, dir_fd=parent)
-                with os.fdopen(descriptor, "wb") as stream:
-                    stream.write(content)
-                    stream.flush()
-                    os.fsync(stream.fileno())
+                os.link(
+                    temporary,
+                    path.name,
+                    src_dir_fd=parent,
+                    dst_dir_fd=parent,
+                    follow_symlinks=False,
+                )
+            except FileExistsError:
                 raced = _read_private_file(parent, path.name)
-                if raced is not None:
-                    if raced != content:
-                        raise OffloadSecurityError(reason="offload destination conflicts")
-                    return
-                try:
-                    os.link(
-                        temporary,
-                        path.name,
-                        src_dir_fd=parent,
-                        dst_dir_fd=parent,
-                        follow_symlinks=False,
-                    )
-                except FileExistsError:
-                    raced = _read_private_file(parent, path.name)
-                    if raced != content:
-                        raise OffloadSecurityError(reason="offload destination conflicts") from None
-                    return
+                if raced != content:
+                    raise OffloadSecurityError(reason="offload destination conflicts") from None
+                return
+            os.unlink(temporary, dir_fd=parent)
+            os.fsync(parent)
+        finally:
+            with suppress(FileNotFoundError):
                 os.unlink(temporary, dir_fd=parent)
-                os.fsync(parent)
-            finally:
-                with suppress(FileNotFoundError):
-                    os.unlink(temporary, dir_fd=parent)
-                if locked:
-                    _unlock(parent_stream)
+            if locked:
+                _unlock_descriptor(parent)
     finally:
         os.close(parent)
 
