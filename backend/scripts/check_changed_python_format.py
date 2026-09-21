@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -47,6 +48,16 @@ def _run_ruff(paths: tuple[Path, ...]) -> int:
         return 2
     status = "passed" if result.returncode == 0 else "failed"
     print(f"changed-python-format selected={len(paths)} status={status}")
+    if status == "failed":
+        for stream in (result.stdout, result.stderr):
+            for line in stream.decode(errors="replace").splitlines():
+                prefix = "Would reformat: "
+                if line.startswith(prefix):
+                    path_text = line.removeprefix(prefix)
+                    print(
+                        "changed-python-format would-reformat="
+                        + json.dumps(path_text, ensure_ascii=True)
+                    )
     return 0 if status == "passed" else 1
 
 
