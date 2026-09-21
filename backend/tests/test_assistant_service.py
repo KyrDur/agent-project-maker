@@ -99,4 +99,4 @@ async def test_stream_assistant_resume_sends_standard_hitl_decisions():
     mock_build.assert_called_once_with(mock_db, agent_id, user_id, thread_id)
     assert captured["agent"] is mock_agent
     assert captured["stream_input"].resume == {"decisions": [{"type": "approve"}]}
-    assert captured["config"] == {"configurable": {"thread_id": thread_id}}
+    assert captured["config"] == {"configurable": {"thread_id": thread_id, "ui_locale": "zh-CN"}}
