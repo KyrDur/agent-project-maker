@@ -9,9 +9,7 @@ from contextlib import suppress
 from errno import ELOOP, ENOTDIR
 from pathlib import Path
 
-if os.name == "nt":
-    import msvcrt
-else:
+if os.name != "nt":
     import fcntl
 
 from app.agent_runtime.offload_storage_backends import _open_scoped_directory
