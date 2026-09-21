@@ -33,4 +33,4 @@ async def test_ask_clarifying_question():
     assert "默认标题" in data["options"]
     assert "뉴스 검색" in data["options"]
     assert "이미지 검색" in data["options"]
-    assert "直接输入" in data["options"]
+    assert "自行输入" in data["options"]
