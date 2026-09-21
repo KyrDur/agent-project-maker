@@ -325,17 +325,15 @@ def test_post_json_retries_read_timeout_and_returns_json_error(monkeypatch) -> N
 def test_prepare_prompt_formats_travel_guide_requests() -> None:
     module = _load_script_module()
 
-    prompt = module.prepare_prompt("후쿠오카 주말 여행 가이드 이미지 만들어줘")
+    prompt = module.prepare_prompt("福冈周末旅行指南图片")
 
-    assert prompt.startswith(
-        "[후쿠오카] 관광 가이드맵을 미니멀한 라인 아트 캐릭터를 사용한 "
-        "모던한 에디토리얼 일러스트레이션으로 만들어 줘."
-    )
-    assert "대표 랜드마크" in prompt
-    assert "주말 여행" in prompt
+    assert prompt.startswith("请为 [福冈] 制作旅游指南地图")
+    assert "代表性地标" in prompt
+    assert "周末旅行氛围" in prompt
+    assert "简体中文" in prompt
 
 
-def test_prepare_prompt_rewrites_english_travel_guide_to_korean() -> None:
+def test_prepare_prompt_rewrites_english_travel_guide_to_chinese() -> None:
     module = _load_script_module()
 
     prompt = module.prepare_prompt(
@@ -344,10 +342,7 @@ def test_prepare_prompt_rewrites_english_travel_guide_to_korean() -> None:
         "Museum, Taehwa River bamboo forest, local seafood, travel routes"
     )
 
-    assert prompt.startswith(
-        "[울산] 관광 가이드맵을 미니멀한 라인 아트 캐릭터를 사용한 "
-        "모던한 에디토리얼 일러스트레이션으로 만들어 줘."
-    )
-    assert "대표 랜드마크" in prompt
-    assert "한글 라벨" in prompt
-    assert "영어 문구" in prompt
+    assert prompt.startswith("请为 [蔚山] 制作旅游指南地图")
+    assert "代表性地标" in prompt
+    assert "简体中文" in prompt
+    assert "不添加英文文案" in prompt
