@@ -124,7 +124,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "맛집 탐색기",
         "description": "네이버 지역 검색으로 주변 맛집과 업체를 찾아 정리",
-        "category": "생활",
+        "category": "生活",
         "system_prompt": (
             "당신은 지역 맛집/업체 추천 전문가입니다.\n"
             "사용자가 요청한 지역과 조건으로 업체를 검색하고, "
