@@ -8,7 +8,9 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.credentials.service import encrypt_data
 from app.models.builder_session import BuilderSession
+from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
 from app.schemas.builder import BuilderStatus
@@ -19,11 +21,25 @@ async def _seed(db: AsyncSession) -> None:
     """Create User + Model for confirm tests."""
     user = User(id=TEST_USER_ID, email="test@test.com", name="Test")
     db.add(user)
+    encrypted, key_id, field_keys = encrypt_data({"api_key": "sk-test-builder"})
+    credential = Credential(
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Builder test key",
+        data_encrypted=encrypted,
+        key_id=key_id,
+        field_keys=field_keys,
+        is_system=False,
+        status="active",
+    )
+    db.add(credential)
+    await db.flush()
     model = Model(
         provider="openai",
         model_name="gpt-4o",
         display_name="GPT-4o",
         is_default=True,
+        default_credential_id=credential.id,
     )
     db.add(model)
     await db.commit()
@@ -223,4 +239,4 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
 
     resp = await client.post(f"/api/builder/{session.id}/confirm")
     assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "MODEL_NOT_FOUND"
+    assert resp.json()["error"]["code"] == "builder_runtime_setup"
