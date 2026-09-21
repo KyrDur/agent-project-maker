@@ -858,7 +858,7 @@ def test_e2e_scripted_model_still_reports_completion_on_successful_tool_result()
         ]
     )
 
-    assert "完成" in str(result.content)
+    assert "生成完成" in str(result.content)
 
 
 def test_e2e_scripted_model_tool_execution_error_is_not_treated_as_rejection() -> None:
