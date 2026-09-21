@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import uuid
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
 
 revision = "m81_platform_ai_roles"
 down_revision = "m80_eval_set_quality"
