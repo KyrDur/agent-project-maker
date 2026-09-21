@@ -29,13 +29,13 @@ from app.models.system_llm_setting import (
     VISIBLE_SYSTEM_LLM_ROLES,
     SystemLlmSetting,
 )
+from app.schemas.model import ModelTestResponse
 from app.schemas.system_llm_setting import (
     SystemLlmSettingOut,
-    SystemLlmTestRequest,
     SystemLlmSettingUpdate,
+    SystemLlmTestRequest,
 )
 from app.services import audit_service
-from app.schemas.model import ModelTestResponse
 from app.services.model_test import run_model_test
 
 logger = logging.getLogger(__name__)
