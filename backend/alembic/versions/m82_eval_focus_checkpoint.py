@@ -6,8 +6,9 @@ Revises: m81_platform_ai_roles
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "m82_eval_focus_checkpoint"
 down_revision = "m81_platform_ai_roles"
