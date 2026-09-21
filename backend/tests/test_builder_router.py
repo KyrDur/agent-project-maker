@@ -93,7 +93,6 @@ async def test_confirm_build(client: AsyncClient, db: AsyncSession):
         user_request="날씨 봇",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "Weather Bot",
             "name": "날씨 봇",
             "description": "날씨를 알려주는 봇",
             "system_prompt": "You are a weather bot.",
@@ -210,7 +209,6 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
         user_request="test",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "Bot",
             "name": "봇",
             "description": "d",
             "system_prompt": "p",
