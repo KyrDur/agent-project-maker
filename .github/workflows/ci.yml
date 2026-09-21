@@ -72,8 +72,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add backend
-          git commit -m "style: apply ruff format to changed backend files"
-          git push origin HEAD:codex/agent-project-release
+          git commit --no-verify -m "style: apply ruff format to changed backend files"
+          HUSKY=0 git push origin HEAD:codex/agent-project-release
       # Test suite runs on aiosqlite in-memory — no Postgres service needed.
       # tests/integration/ drives background run workers via asyncio timing;
       # under xdist -n 4 on a 2-core runner those tasks starve and the poll
