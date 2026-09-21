@@ -7,7 +7,6 @@ type Messages = Record<string, unknown>
 
 const messageLoaders: Record<AppLocale, () => Promise<{ default: Messages }>> = {
   'zh-CN': () => import('../../messages/zh-CN.json'),
-  ko: () => import('../../messages/ko.json'),
   en: () => import('../../messages/en.json'),
 }
 

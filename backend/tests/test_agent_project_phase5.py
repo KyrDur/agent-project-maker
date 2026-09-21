@@ -1,5 +1,7 @@
 """Stored controlled experiments drive every portfolio claim. No live provider."""
 
+# pyright: reportOptionalSubscript=false
+
 from __future__ import annotations
 
 import io

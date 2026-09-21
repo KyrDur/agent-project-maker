@@ -57,6 +57,7 @@ def load_prompt(filename: str) -> str | None:
 _RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 529}
 _API_MAX_RETRIES = 2
 _API_RETRY_DELAY = 2.0  # seconds
+_API_CALL_TIMEOUT_SECONDS = 20.0
 
 
 def strip_code_fences(text: str) -> str:
@@ -71,7 +72,7 @@ def strip_code_fences(text: str) -> str:
 
 
 # ADR-019: builder text models come from the operator-selected system LLM
-# settings (``text_primary`` / ``text_fallback``), not ``.env``. The old
+# settings (``builder`` / ``text_fallback``), not ``.env``. The old
 # ``@functools.cache`` singletons hid runtime setting changes, so we cache by
 # the *resolved selection* instead: when the operator changes the credential or
 # model, the ``ResolvedSystemModel`` value differs and the chat model is rebuilt.
@@ -95,18 +96,20 @@ async def _resolve_cached_model(role: str) -> BaseChatModel:
         resolved.model_name,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
+        timeout=_API_CALL_TIMEOUT_SECONDS,
+        max_retries=0,
     )
     _MODEL_CACHE[role] = (resolved, model)
     return model
 
 
 async def _get_builder_model() -> BaseChatModel:
-    """Builder 기본 모델 (system role ``text_primary``)."""
-    return await _resolve_cached_model("text_primary")
+    """Builder primary model (system role ``builder``)."""
+    return await _resolve_cached_model("builder")
 
 
 async def _get_fallback_model() -> BaseChatModel | None:
-    """Builder 폴백 모델 (system role ``text_fallback``). 미설정 시 None."""
+    """Builder fallback model (system role ``text_fallback``). None if unset."""
     try:
         return await _resolve_cached_model("text_fallback")
     except SystemModelNotConfiguredError:
@@ -138,7 +141,10 @@ async def _invoke_with_api_retry(
 
     for attempt in range(_API_MAX_RETRIES):
         try:
-            return await model.ainvoke(messages, config=invoke_config)
+            return await asyncio.wait_for(
+                model.ainvoke(messages, config=invoke_config),
+                timeout=_API_CALL_TIMEOUT_SECONDS,
+            )
         except Exception as exc:
             if not _is_retryable(exc):
                 raise
@@ -168,9 +174,7 @@ async def invoke_with_json_retry(
     system_prompt: str,
     task_description: str,
     *,
-    retry_suffix: str = (
-        "\n\n[시스템] 이전 응답이 유효한 JSON이 아니었습니다. 반드시 JSON 형식으로만 응답해주세요."
-    ),
+    retry_suffix: str = "system_previous_response_was_not_86eef4",
     max_retries: int = 2,
 ) -> Any:
     """LLM을 호출하고 JSON 파싱을 시도한다. 실패 시 재시도한다.
@@ -225,10 +229,7 @@ async def invoke_for_text(
     task_description: str,
     *,
     min_length: int = 500,
-    retry_suffix_template: str = (
-        "\n\n[시스템] 이전 응답이 너무 짧았습니다 ({char_count}자). "
-        "2000~5000자 범위로 작성해주세요."
-    ),
+    retry_suffix_template: str = "system_previous_response_was_too_0a29d4",
     max_retries: int = 2,
 ) -> str | None:
     """LLM을 호출하고 텍스트 응답을 반환한다. 짧으면 재시도한다.

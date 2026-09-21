@@ -16,7 +16,7 @@ class SkillBuilderChatModel:
 
 
 async def build_skill_builder_chat_model(db: AsyncSession) -> SkillBuilderChatModel:
-    resolved = await resolve_system_model(db, "text_primary")
+    resolved = await resolve_system_model(db, "builder")
     return SkillBuilderChatModel(
         model=create_chat_model(
             resolved.provider,

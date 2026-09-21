@@ -10,9 +10,9 @@ Generate a new image from the user's text request through the configured image e
 
 ## Workflow
 
-1. Turn the user's request into a concise image prompt. Preserve the user's language; if the user asks in Korean, pass a Korean prompt to the script. Read `references/image-studio-prompt.md` if the request is vague or needs stronger composition guidance.
-   - For travel-guide requests such as "주말 여행 가이드 이미지 만들어줘", "후쿠오카 여행 가이드맵 만들어줘", or "울산 여행 가이드 이미지 만들어줘", use this Korean prompt shape before running the script:
-     `[지역] 관광 가이드맵을 미니멀한 라인 아트 캐릭터를 사용한 모던한 에디토리얼 일러스트레이션으로 만들어 줘. 대표 랜드마크, 로컬 음식, 이동 동선, 주말 여행 분위기를 깔끔한 지도형 구성으로 표현해 줘. 영어 문구를 넣지 말고, 제목과 짧은 한글 라벨만 사용해 줘.`
+1. 将用户请求整理成简洁的图像提示词，默认使用简体中文（zh-CN），除非用户明确指定其他语言。请求不够明确或需要构图指导时，阅读 `references/image-studio-prompt.md`。
+   - 对“制作周末旅行指南图”“制作福冈旅游地图”等请求，使用以下提示词结构：
+     `请为 [地区] 制作旅游指南地图，采用现代编辑插画风格和极简线条人物。展示代表性地标、当地美食、游览路线和周末旅行氛围。标题和简短标签使用简体中文，不添加英文文案。`
 2. Pick an aspect ratio from the user's intent:
    - `1:1` for icons, profile images, logos, and general square images.
    - `16:9` for thumbnails, banners, slides, and wide scenes.

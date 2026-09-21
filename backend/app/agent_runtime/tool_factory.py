@@ -259,7 +259,7 @@ def _build_resolve_relative_date_tool() -> BaseTool:
         coroutine=resolve_relative_date,
         name="resolve_relative_date",
         description=(
-            "한국어 상대 날짜 표현을 ISO 날짜 범위로 변환합니다. "
+            "将相对日期表达式转换为 ISO 日期范围。"
             "예: '이번주 주말', '다음주 수요일', '최근 뉴스', '내일'. "
             "날씨, 뉴스, 일정, 예약 조회 전에 날짜 범위를 확정할 때 사용하세요."
         ),
@@ -442,7 +442,7 @@ E2E_UI_DATA_DEMO_FIXTURES: dict[str, dict[str, Any]] = {
         "title": "E2E 데이터 테이블",
         "searchable": True,
         "columns": [
-            {"key": "name", "header": "이름"},
+            {"key": "name", "header": "名称"},
             {"key": "role", "header": "역할"},
             {"key": "score", "header": "점수"},
         ],

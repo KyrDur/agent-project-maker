@@ -29,25 +29,30 @@ def calculate_skill_health(
     if missing_required_keys:
         return _health(
             "needs_credentials",
-            "자격증명 필요",
+            "所需凭据",
             f"Missing required credential bindings: {', '.join(missing_required_keys)}.",
             "warning",
         )
     if latest_run is None:
-        return _health("needs_evaluation", "평가 없음", "No evaluation run exists.", "neutral")
+        return _health("needs_evaluation", "未评价", "No evaluation run exists.", "neutral")
     if latest_run.status in RUNNING_STATUSES:
-        return _health("evaluation_running", "평가 중", "An evaluation run is in progress.", "info")
+        return _health(
+            "evaluation_running",
+            "评估运行",
+            "An evaluation run is in progress.",
+            "info",
+        )
     if latest_run.status in FAILED_STATUSES:
         return _health(
             "evaluation_failed",
-            "평가 실패",
+            "评估失败",
             "The latest evaluation did not complete.",
             "error",
         )
     if latest_run.skill_content_hash != skill.content_hash:
         return _health(
             "needs_rerun",
-            "재평가 필요",
+            "需要重新运行",
             "Skill content changed after the latest completed evaluation.",
             "warning",
         )
@@ -55,11 +60,11 @@ def calculate_skill_health(
     if pass_rate < 0.8:
         return _health(
             "low_confidence",
-            "낮은 통과율",
+            "通过率低",
             f"Latest evaluation pass rate is {pass_rate:.0%}.",
             "warning",
         )
-    return _health("ready", "검증됨", "Latest evaluation passed for the current skill.", "success")
+    return _health("ready", "已验证", "Latest evaluation passed for the current skill.", "success")
 
 
 def _pass_rate(run: SkillEvaluationRun) -> float:

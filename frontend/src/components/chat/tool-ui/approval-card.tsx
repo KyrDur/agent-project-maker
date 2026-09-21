@@ -43,7 +43,7 @@ interface ApprovalArgs {
   hitl_total_actions?: number
   hitl_interrupt_id?: string | null
   allowed_decisions?: StandardDecision['type'][]
-  /** 스킬 빌더 AD-4 — "이 세션에서 계속 허용" 옵션 노출 (review_configs 플래그) */
+  /** 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 옵션 노출 (review_configs 플래그) */
   session_consent_eligible?: boolean
 }
 
@@ -392,7 +392,7 @@ export function ApprovalCard({
   const [submitting, setSubmitting] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [localResult, setLocalResult] = useState<ApprovalResult | null>(null)
-  // 스킬 빌더 AD-4 — "이 세션에서 계속 허용" 체크 상태. review_configs 플래그
+  // 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 체크 상태. review_configs 플래그
   // (session_consent_eligible)가 있을 때만 렌더/전송된다.
   const [consentSession, setConsentSession] = useState(false)
 
@@ -403,7 +403,7 @@ export function ApprovalCard({
   // requires-action 상태일 때만 timer 활성
   const isPending = status.type !== 'complete' && status.type !== 'running' && result === undefined
   // 그룹(멀티액션) 안에서 렌더될 때는 compact 모드 — 자체 헤더/카운트다운을 숨기고
-  // (그룹 컨테이너가 대신 보여준다) "모두 승인"을 위해 승인 콜백을 등록한다.
+  // (그룹 컨테이너가 대신 보여준다) "批准全部"을 위해 승인 콜백을 등록한다.
   const grouped = Boolean(multi) && typeof args?.hitl_action_index === 'number'
   const actionIndex = args?.hitl_action_index
   const groupedActive = !grouped || multi?.isActive(actionIndex ?? -1) === true
@@ -523,9 +523,9 @@ export function ApprovalCard({
   const canEdit = allowedDecisions.has('edit')
   const canReject = allowedDecisions.size === 0 || allowedDecisions.has('reject')
 
-  // "모두 승인"을 위해 미결정 카드의 승인 콜백을 그룹 컨테이너에 등록. 결정되거나
+  // "批准全部"을 위해 미결정 카드의 승인 콜백을 그룹 컨테이너에 등록. 결정되거나
   // (localResult) 사용자가 이미 거부/수정 흐름에 들어간 카드(decision/showEdit)는
-  // 등록에서 빠져, "모두 승인"이 진행 중인 거부·수정 의도를 덮어쓰지 않는다.
+  // 등록에서 빠져, "批准全部"이 진행 중인 거부·수정 의도를 덮어쓰지 않는다.
   useEffect(() => {
     const idx = args?.hitl_action_index
     if (
@@ -725,7 +725,7 @@ export function ApprovalCard({
   )
 
   // 그룹(멀티액션) 안: 헤더/카운트다운 없이 compact 블록. 그룹 컨테이너가
-  // "승인 대기 N건" 헤더와 단일 카운트다운, "모두 승인"을 소유한다.
+  // "승인 대기 N건" 헤더와 단일 카운트다운, "批准全部"을 소유한다.
   if (grouped) {
     return (
       <div

@@ -7,7 +7,9 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.credentials.service import encrypt_data
 from app.models.agent import Agent
+from app.models.credential import Credential
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import McpTool
 from app.models.model import Model
@@ -34,11 +36,25 @@ async def _seed_user(db: AsyncSession) -> User:
 
 
 async def _seed_model(db: AsyncSession, *, is_default: bool = True) -> Model:
+    encrypted, key_id, field_keys = encrypt_data({"api_key": "sk-test-builder"})
+    credential = Credential(
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Builder test key",
+        data_encrypted=encrypted,
+        key_id=key_id,
+        field_keys=field_keys,
+        is_system=False,
+        status="active",
+    )
+    db.add(credential)
+    await db.flush()
     model = Model(
         provider="openai",
         model_name="gpt-4o",
         display_name="GPT-4o",
         is_default=is_default,
+        default_credential_id=credential.id,
     )
     db.add(model)
     await db.flush()
@@ -56,9 +72,7 @@ async def _seed_tool(db: AsyncSession) -> Tool:
     return tool
 
 
-async def _seed_mcp_tools(
-    db: AsyncSession, *, names: list[str]
-) -> tuple[McpServer, list[McpTool]]:
+async def _seed_mcp_tools(db: AsyncSession, *, names: list[str]) -> tuple[McpServer, list[McpTool]]:
     """McpServer 한 개 + names 만큼의 McpTool 생성."""
     server = McpServer(
         user_id=TEST_USER_ID,
@@ -122,11 +136,11 @@ async def test_get_session(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    created = await create_session(db, TEST_USER_ID, "검색 에이전트")
+    created = await create_session(db, TEST_USER_ID, "搜索智能体")
     found = await get_session(db, created.id, TEST_USER_ID)
     assert found is not None
     assert found.id == created.id
-    assert found.user_request == "검색 에이전트"
+    assert found.user_request == "搜索智能体"
 
 
 @pytest.mark.asyncio
@@ -146,7 +160,7 @@ async def test_claim_for_confirming(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     # Manually set status to PREVIEW
     session.status = BuilderStatus.PREVIEW
     await db.commit()
@@ -175,8 +189,7 @@ async def test_confirm_build_success(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "날씨 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Weather Bot",
-        "name_ko": "날씨 봇",
+        "name": "날씨 봇",
         "description": "날씨를 알려주는 봇",
         "system_prompt": "You are a weather bot.",
         "tools": ["Web Search"],
@@ -208,8 +221,7 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "스케줄 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Scheduler",
-        "name_ko": "스케줄 봇",
+        "name": "스케줄 봇",
         "description": "정해진 시간에 실행되는 봇",
         "system_prompt": "Run on schedule.",
         "tools": [],
@@ -235,16 +247,13 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
     """
     await _seed_user(db)
     await _seed_model(db)
-    _, mcp_tools = await _seed_mcp_tools(
-        db, names=["list_departments", "search_employees"]
-    )
+    _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments", "search_employees"])
     await db.commit()
 
     session = await create_session(db, TEST_USER_ID, "조직도 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "OrgChart",
-        "name_ko": "조직도 봇",
+        "name": "조직도 봇",
         "description": "조직도 QA",
         "system_prompt": "you are an org chart assistant",
         "tools": ["list_departments", "search_employees"],
@@ -274,8 +283,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Mixed",
-        "name_ko": "혼합",
+        "name": "혼합",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments"],
@@ -287,9 +295,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     agent = await confirm_build(db, session)
     assert agent is not None
     assert {link.tool_id for link in agent.tool_links} == {tool.id}
-    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {
-        mt.id for mt in mcp_tools
-    }
+    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {mt.id for mt in mcp_tools}
 
 
 @pytest.mark.asyncio
@@ -308,8 +314,7 @@ async def test_confirm_build_links_skills(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "위치 안내 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Locate",
-        "name_ko": "위치 봇",
+        "name": "위치 봇",
         "description": "직원 좌석 안내",
         "system_prompt": "p",
         "tools": ["seat_layout_guide", "evac_procedure"],
@@ -338,8 +343,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "All",
-        "name_ko": "전체",
+        "name": "所有时间",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments", "seat_layout_guide"],
@@ -351,9 +355,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     agent = await confirm_build(db, session)
     assert agent is not None
     assert {link.tool_id for link in agent.tool_links} == {tool.id}
-    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {
-        mt.id for mt in mcp_tools
-    }
+    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {mt.id for mt in mcp_tools}
     assert {link.skill_id for link in agent.skill_links} == {s.id for s in skills}
 
 
@@ -377,11 +379,10 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     )
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_skill"],
@@ -419,11 +420,10 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     db.add(McpTool(server_id=other_server.id, name="cross_user_tool"))
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_tool"],
@@ -445,11 +445,10 @@ async def test_confirm_build_no_model(db: AsyncSession):
     model = await _seed_model(db, is_default=True)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Test Agent",
-        "name_ko": "테스트 에이전트",
+        "name": "테스트 에이전트",
         "description": "desc",
         "system_prompt": "prompt",
         "tools": [],
@@ -472,11 +471,10 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     await db.commit()
 
     # Create session and confirm
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -521,77 +519,43 @@ def test_get_middlewares_catalog():
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_settings(db: AsyncSession):
-    """When settings.default_agent_model is set, it is returned."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_requires_user_context(db: AsyncSession):
+    """Builder never falls back to operator/global model settings."""
     from app.services.builder_service import _get_default_model_name
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = "anthropic:claude-3"
-        result = await _get_default_model_name(db)
-        assert result == "anthropic:claude-3"
+    assert await _get_default_model_name(db) == ""
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_db_default(db: AsyncSession):
-    """When no env var, returns is_default=True model from DB."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_from_personal_binding(db: AsyncSession):
+    """Exactly one usable personal model binding is selected for Builder."""
     from app.services.builder_service import _get_default_model_name
 
-    user = User(id=TEST_USER_ID, email="test@test.com", name="Test")
-    db.add(user)
-    model = Model(
-        provider="openai",
-        model_name="gpt-4o",
-        display_name="GPT-4o",
-        is_default=True,
-    )
-    db.add(model)
+    await _seed_user(db)
+    await _seed_model(db)
     await db.commit()
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == "openai:gpt-4o"
+    result = await _get_default_model_name(db, TEST_USER_ID)
+    assert result == "openai:gpt-4o"
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_db_any(db: AsyncSession):
-    """When no default model, returns first model from DB."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_ignores_unbound_model(db: AsyncSession):
+    """A catalog model without a personal credential is not runnable."""
     from app.services.builder_service import _get_default_model_name
 
-    user = User(id=TEST_USER_ID, email="test@test.com", name="Test")
-    db.add(user)
-    model = Model(
-        provider="anthropic",
-        model_name="claude-3-sonnet",
-        display_name="Claude 3 Sonnet",
-        is_default=False,
+    await _seed_user(db)
+    db.add(
+        Model(
+            provider="openai",
+            model_name="gpt-4o",
+            display_name="GPT-4o",
+            is_default=True,
+        )
     )
-    db.add(model)
     await db.commit()
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == "anthropic:claude-3-sonnet"
-
-
-@pytest.mark.asyncio
-async def test_get_default_model_name_empty(db: AsyncSession):
-    """When no models in DB, returns empty string."""
-    from unittest.mock import patch as _patch
-
-    from app.services.builder_service import _get_default_model_name
-
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == ""
+    assert await _get_default_model_name(db, TEST_USER_ID) == ""
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +569,7 @@ async def test_confirm_build_no_draft_config(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = None
     await db.commit()
@@ -625,11 +589,10 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],

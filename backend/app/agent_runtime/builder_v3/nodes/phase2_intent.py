@@ -12,7 +12,7 @@ wait 노드에서 interrupt를 호출한다. resume 후 응답에 따라 self-lo
     phase2_intent_wait → interrupt → resume:
       ├ 빈/직접 입력 → Command(goto="phase2_analyze_intent")
       └ 옵션 선택   → Command(goto="phase2_analyze_intent",
-                              update={intent_confirmed=True, intent.agent_name_ko=..})
+                              update={intent_confirmed=True, intent.agent_name=..})
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from langgraph.types import interrupt
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry
 from app.agent_runtime.builder.sub_agents.intent_analyzer import analyze_intent
-from app.agent_runtime.builder_i18n import get_locale, localize, localized_prompt, tr
+from app.agent_runtime.builder_i18n import localize, localized_prompt, tr
 from app.agent_runtime.builder_v3.nodes._helpers import (
     _extract_text_from_content,
     build_phase_complete,
@@ -44,19 +44,19 @@ logger = logging.getLogger(__name__)
 
 
 # fallback 라벨 (intent_analyzer.py가 파싱 실패 시 채우는 값)
-_FALLBACK_NAMES = {"Custom Agent", "맞춤 에이전트", "自定义智能体", "自定义代理", ""}
+_FALLBACK_NAMES = {"Custom Agent", "自定义智能体", "自定义代理", ""}
 
-_ASK_QUESTION = "만들고 싶은 에이전트의 이름을 무엇으로 하시겠습니까?"
+_ASK_QUESTION = "你想给这个智能体取什么名字？"
 
 _TONE_OPTIONS = [
-    {"id": "friendly", "label": "친근하고 캐주얼한 어조"},
-    {"id": "professional", "label": "전문적으로"},
-    {"id": "concise", "label": "간결하게"},
+    {"id": "friendly", "label": "亲切自然"},
+    {"id": "professional", "label": "专业严谨"},
+    {"id": "concise", "label": "简洁明了"},
 ]
 _OUTPUT_STYLE_OPTIONS = [
-    {"id": "summary", "label": "간단한 요약과 주요 포인트"},
-    {"id": "detailed", "label": "자세한 설명"},
-    {"id": "checklist", "label": "체크리스트 중심"},
+    {"id": "summary", "label": "简要总结与关键要点"},
+    {"id": "detailed", "label": "详细说明"},
+    {"id": "checklist", "label": "清单形式"},
 ]
 
 
@@ -136,7 +136,6 @@ def _phase2_selection_summary(
 def _fallback_name_options(state: BuilderState) -> list[str]:
     intent = state.get("intent") or {}
     candidates = [
-        str(intent.get("agent_name_ko") or "").strip(),
         str(intent.get("agent_name") or "").strip(),
         tr("search_agent_cbfa49"),
         tr("helper_bot_68e74f"),
@@ -175,12 +174,7 @@ def _build_combined_request(state: BuilderState) -> str:
 
 def _name_matches_locale(name: str, request: str) -> bool:
     # Explicit foreign names supplied/requested by the user remain valid.
-    return (
-        get_locale() == "ko"
-        or not re.search(r"[가-힯]", name)
-        or name in request
-        or bool(re.search(r"Korean|韩语|韩文|한국어", request, re.IGNORECASE))
-    )
+    return not re.search(r"[\uac00-\ud7af]", name) or name in request
 
 
 async def _suggest_name_options(user_request: str) -> list[str]:
@@ -203,9 +197,30 @@ async def _suggest_name_options(user_request: str) -> list[str]:
 
 
 def _format_intent_summary(intent: dict[str, Any]) -> str:
-    name = intent.get("agent_name_ko") or intent.get("agent_name", "Agent")
+    name = intent.get("agent_name", "Agent")
     desc = intent.get("agent_description", "")
     return tr("agent_name_v_description_v_565ef2", v0=f"{name}", v1=f"{desc}")
+
+
+def _complete_confirmed_intent(intent: dict[str, Any], state: BuilderState) -> dict[str, Any]:
+    """Ensure downstream phases receive a complete AgentCreationIntent payload."""
+    completed = dict(intent)
+    user_request = state.get("user_request") or _build_combined_request(state) or ""
+    name = str(completed.get("agent_name") or "").strip() or tr("assistant_d74087")
+    completed["agent_name"] = name
+    completed.setdefault(
+        "agent_description",
+        tr("agent_created_upon_user_request_d1f519", v0=f"{user_request or name}"),
+    )
+    completed.setdefault("primary_task_type", user_request or name)
+    use_cases = completed.get("use_cases")
+    if not isinstance(use_cases, list) or not use_cases:
+        completed["use_cases"] = [user_request or name]
+    completed.setdefault("required_capabilities", [tr("normal_conversation_fb5742")])
+    completed.setdefault("tool_preferences", "")
+    completed.setdefault("constraints", [])
+    completed.setdefault("identity_mode", AGENT_IDENTITY_PER_USER)
+    return completed
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +272,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
             "error_message": tr("an_error_occurred_while_resolving_1678d2"),
         }
 
-    suggested = (intent_obj.agent_name_ko or "").strip()
+    suggested = (intent_obj.agent_name or "").strip()
     if (
         suggested
         and suggested not in _FALLBACK_NAMES
@@ -269,7 +284,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
 
     # ask_user pending 카드 emit (ToolMessage 없이 AIMessage tool_call만)
     # → frontend UserInputUI가 result undefined로 인식하여 입력 폼 표시
-    # NOTE: "직접 입력" 옵션은 의도적으로 제외 — UserInputUI가 single_select 1개
+    # NOTE: "直接输入" 옵션은 의도적으로 제외 — UserInputUI가 single_select 1개
     # 질문에서 옵션 클릭 즉시 라벨 그대로 자동 제출하여 무한 루프가 발생하기 때문.
     # 사용자가 다른 이름을 원하면 Phase 8 router에서 phase 2로 점프 가능.
     msgs, tool_call_id = make_pending_tool_card(
@@ -341,14 +356,13 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
     if not receipt_text:
         receipt_text = selected_name
 
-    intent_dict["agent_name_ko"] = selected_name
-    if not intent_dict.get("agent_name") or intent_dict["agent_name"] in _FALLBACK_NAMES:
-        intent_dict["agent_name"] = selected_name
+    intent_dict["agent_name"] = selected_name
     if selected_tone:
         intent_dict["response_tone"] = selected_tone
     if selected_style:
         intent_dict["output_style"] = selected_style
     intent_dict["identity_mode"] = AGENT_IDENTITY_PER_USER
+    intent_dict = _complete_confirmed_intent(intent_dict, state)
 
     close_msgs = close_pending_tool_card(pending_tc_id, "ask_user", receipt_text)
     return {

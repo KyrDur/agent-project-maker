@@ -17,7 +17,7 @@ describe('SubagentProgress', () => {
     expect(screen.getByText('서브 에이전트 3/4 완료')).toBeInTheDocument()
     expect(screen.getByText('1개 진행 중')).toBeInTheDocument()
     expect(screen.getByText('1개 실패')).toBeInTheDocument()
-    expect(screen.getByRole('progressbar', { name: '서브 에이전트 진행률' })).toHaveAttribute(
+    expect(screen.getByRole('progressbar', { name: '子智能体进度' })).toHaveAttribute(
       'value',
       '3',
     )

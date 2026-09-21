@@ -498,7 +498,7 @@ async def import_skill(
             source_url="https://github.com/NomaDamas/k-skill",
             source_external_id=upstream_name,
             categories=[metadata.get("category")] if metadata.get("category") else None,
-            locale=str(metadata.get("locale") or "ko") if metadata.get("locale") else "ko",
+            locale=str(metadata.get("locale") or "zh-CN") if metadata.get("locale") else "zh-CN",
         )
         if not dry_run:
             db.add(item)

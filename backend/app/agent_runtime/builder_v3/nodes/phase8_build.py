@@ -19,9 +19,11 @@ from app.agent_runtime.builder_v3.nodes._helpers import (
     close_pending_tool_card,
     ensure_todos,
     make_pending_tool_card,
+    parse_question_flow_response,
 )
 from app.agent_runtime.builder_v3.state import BuilderState
 from app.database import async_session as async_session_factory
+from app.exceptions import AppError
 from app.models.builder_session import BuilderSession
 from app.schemas.builder import BuilderStatus
 
@@ -64,10 +66,12 @@ async def _confirm_and_create_agent(state: BuilderState) -> tuple[str | None, st
             session = (await db.execute(stmt)).scalar_one_or_none()
             if not session:
                 return None, tr("your_session_has_disappeared_ac033a")
-            agent = await confirm_build(db, session)
+            agent = await confirm_build(db, session, model_id=state.get("runtime_model_id"))
             if not agent:
                 return None, tr("agent_creation_failed_37b0f1")
             return str(agent.id), None
+    except AppError as exc:
+        return None, exc.message
     except Exception:  # pragma: no cover
         logger.exception("Phase 8 confirm failed")
         return None, tr("agent_creation_failed_472967")
@@ -104,6 +108,104 @@ async def phase8_propose(state: BuilderState) -> dict:
     draft = state.get("draft_config") or {}
     image_url = state.get("image_url") or draft.get("image_url")
 
+    async with async_session_factory() as db:
+        from app.services.builder_service import (
+            get_builder_personal_bindings,
+            get_builder_system_runtime,
+        )
+
+        session_id = state.get("session_id")
+        session = await db.get(BuilderSession, uuid.UUID(session_id)) if session_id else None
+        bindings = await get_builder_personal_bindings(db, session.user_id) if session else []
+        try:
+            system_binding = await get_builder_system_runtime(db)
+        except AppError:
+            system_binding = None
+    chosen = state.get("runtime_model_id")
+    available = {str(b.model.id): b.model for b in bindings}
+    if system_binding is not None and chosen not in available:
+        model = system_binding.model
+        return await _propose_final_draft(
+            state,
+            draft,
+            image_url,
+            model_name=f"{model.provider}:{model.model_name}",
+            runtime_model_id=str(model.id),
+            runtime_model_source="system_builder",
+        )
+    if chosen not in available:
+        chosen = next(iter(available)) if len(available) == 1 else None
+    if not chosen:
+        payload = {
+            "mode": "question_flow",
+            "title": tr("builder_runtime_title"),
+            "questions": [
+                {
+                    "id": "runtime_model_id",
+                    "label": tr("builder_runtime_title"),
+                    "question": tr(
+                        "builder_runtime_choose" if bindings else "builder_runtime_setup"
+                    ),
+                    "type": "single_select",
+                    "required": True,
+                    "options": [
+                        {"id": key, "label": f"{m.display_name} ({m.provider})"}
+                        for key, m in available.items()
+                    ]
+                    or [{"id": "retry", "label": tr("builder_runtime_retry")}],
+                }
+            ],
+        }
+        msgs, tool_call_id = make_pending_tool_card(
+            "ask_user", payload, intro_text=tr("builder_runtime_links")
+        )
+        return {
+            "messages": msgs,
+            "pending_tool_call_id": tool_call_id,
+            "runtime_setup_payload": payload,
+            "runtime_model_id": None,
+        }
+    model = available[chosen]
+    return await _propose_final_draft(
+        state,
+        draft,
+        image_url,
+        model_name=f"{model.provider}:{model.model_name}",
+        runtime_model_id=chosen,
+        runtime_model_source="personal",
+    )
+
+
+async def _propose_final_draft(
+    state: BuilderState,
+    draft: dict,
+    image_url: str | None,
+    *,
+    model_name: str,
+    runtime_model_id: str,
+    runtime_model_source: str,
+) -> dict:
+    draft = {
+        **draft,
+        "model_name": model_name,
+        "runtime_model_id": runtime_model_id,
+        "runtime_model_source": runtime_model_source,
+    }
+    session_id = state.get("session_id")
+    if session_id:
+        try:
+            async with async_session_factory() as db:
+                row = await db.get(BuilderSession, uuid.UUID(session_id))
+                if row:
+                    persisted = dict(row.draft_config or draft)
+                    persisted["model_name"] = draft["model_name"]
+                    persisted["runtime_model_id"] = runtime_model_id
+                    persisted["runtime_model_source"] = runtime_model_source
+                    row.draft_config = persisted
+                    await db.commit()
+        except Exception:  # pragma: no cover
+            logger.warning("Phase 8 runtime model persist failed", exc_info=True)
+
     msgs, tool_call_id = make_pending_tool_card(
         "draft_approval",
         {
@@ -116,7 +218,13 @@ async def phase8_propose(state: BuilderState) -> dict:
         intro_text=tr("please_check_the_settings_below_9119d0"),
     )
 
-    return {"messages": msgs, "pending_tool_call_id": tool_call_id}
+    return {
+        "messages": msgs,
+        "pending_tool_call_id": tool_call_id,
+        "runtime_setup_payload": None,
+        "runtime_model_id": runtime_model_id,
+        "draft_config": draft,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +234,18 @@ async def phase8_propose(state: BuilderState) -> dict:
 
 async def phase8_build_wait(state: BuilderState) -> dict:
     """interrupt → 승인 시 Agent 생성, 수정 시 last_revision_message만 set. 라우팅은 graph."""
+    setup = state.get("runtime_setup_payload")
+    if setup:
+        answer = interrupt({"type": "ask_user", **setup})
+        answers, _ = parse_question_flow_response(answer)
+        selected = (answers.get("runtime_model_id") or [str(answer or "")])[0]
+        return {
+            "runtime_model_id": selected if selected != "retry" else None,
+            "messages": close_pending_tool_card(
+                state.get("pending_tool_call_id"), "ask_user", tr("builder_runtime_retry")
+            ),
+            "pending_tool_call_id": None,
+        }
     response = interrupt(
         {
             "type": "approval",

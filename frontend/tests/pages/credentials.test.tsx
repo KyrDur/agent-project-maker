@@ -56,8 +56,8 @@ describe('CredentialsPage', () => {
     render(<CredentialsPage />)
 
     expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('자격증명 검색')).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: '이름' })).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索凭据')).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: '名称' })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.getByText('운영용 OpenAI')).toBeInTheDocument()
     expect(screen.getByText('2개 필드')).toBeInTheDocument()

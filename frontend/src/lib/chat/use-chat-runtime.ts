@@ -353,7 +353,7 @@ interface UseChatRuntimeOptions {
   /** Durable active run discovered from conversation/message hydration. */
   activeRun?: ConversationRun | null
   /** envelope.latest_run — 최신 run (terminal 포함). 마지막 turn 의
-   *  canceled/canceling 여부를 fetch 데이터에서 파생해 "중단됨" notice 를
+   *  canceled/canceling 여부를 fetch 데이터에서 파생해 "被遗弃" notice 를
    *  durable 하게 렌더하는 근거. activeRun 은 terminal run 을 보고하지 않는다. */
   latestRun?: ConversationRun | null
 }

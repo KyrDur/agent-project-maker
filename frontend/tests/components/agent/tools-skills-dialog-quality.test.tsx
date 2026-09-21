@@ -33,7 +33,7 @@ const evaluatedSkill: Skill = {
   },
   health: {
     state: 'needs_credentials',
-    label: '자격증명 필요',
+    label: '所需凭据',
     reason: 'Missing required credential bindings.',
     severity: 'warning',
   },
@@ -56,7 +56,7 @@ describe('ToolsSkillsDialog skill quality summaries', () => {
     )
 
     expect(screen.getByText('회의록 정리')).toBeInTheDocument()
-    expect(screen.getByText('자격증명 필요')).toBeInTheDocument()
+    expect(screen.getByText('所需凭据')).toBeInTheDocument()
     expect(screen.getByText('평가 92%')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 취소/ })).not.toBeInTheDocument()
@@ -76,7 +76,7 @@ describe('ToolsSkillsDialog skill quality summaries', () => {
     )
 
     expect(screen.getByText('회의록 정리')).toBeInTheDocument()
-    expect(screen.getByText('자격증명 필요')).toBeInTheDocument()
+    expect(screen.getByText('所需凭据')).toBeInTheDocument()
     expect(screen.getByText('평가 92%')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '회의록 정리 제거' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()

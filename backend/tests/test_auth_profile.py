@@ -30,7 +30,7 @@ async def test_update_profile_changes_display_name_and_letter_avatar(raw_client:
     resp = await raw_client.patch(
         "/api/auth/me/profile",
         json={
-            "display_name": "체스터",
+            "display_name": "用户",
             "avatar_mode": "initials",
             "avatar_initials": "체",
             "avatar_color": "sky",
@@ -40,7 +40,7 @@ async def test_update_profile_changes_display_name_and_letter_avatar(raw_client:
 
     assert resp.status_code == 200, resp.text
     user = resp.json()
-    assert user["display_name"] == "체스터"
+    assert user["display_name"] == "用户"
     assert user["avatar_mode"] == "initials"
     assert user["avatar_initials"] == "체"
     assert user["avatar_color"] == "sky"
@@ -48,7 +48,7 @@ async def test_update_profile_changes_display_name_and_letter_avatar(raw_client:
 
     me = await raw_client.get("/api/auth/me")
     assert me.status_code == 200
-    assert me.json()["display_name"] == "체스터"
+    assert me.json()["display_name"] == "用户"
 
 
 @pytest.mark.asyncio

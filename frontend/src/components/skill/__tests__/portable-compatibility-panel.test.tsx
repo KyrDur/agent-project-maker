@@ -41,13 +41,13 @@ describe('PortableCompatibilityPanel', () => {
       />,
     )
 
-    expect(screen.getByText('공용 호환성')).toBeInTheDocument()
+    expect(screen.getByText('便携兼容性')).toBeInTheDocument()
     expect(screen.getByText('OpenAI/Codex')).toBeInTheDocument()
     expect(screen.getByText('Claude Code')).toBeInTheDocument()
     expect(screen.getByText('Vercel Agent Skills')).toBeInTheDocument()
-    expect(screen.getByText('통과')).toBeInTheDocument()
-    expect(screen.getByText('주의')).toBeInTheDocument()
-    expect(screen.getByText('오류')).toBeInTheDocument()
+    expect(screen.getByText('通行证')).toBeInTheDocument()
+    expect(screen.getByText('警告')).toBeInTheDocument()
+    expect(screen.getByText('错误')).toBeInTheDocument()
     expect(
       screen.getByText(/agents\/claude.yaml: Claude metadata is recommended\./),
     ).toBeInTheDocument()
@@ -59,6 +59,6 @@ describe('PortableCompatibilityPanel', () => {
   it('renders an empty state when no compatibility result exists', () => {
     render(<PortableCompatibilityPanel result={null} />)
 
-    expect(screen.getByText('호환성 결과가 아직 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('还没有兼容性结果。')).toBeInTheDocument()
   })
 })

@@ -4,7 +4,7 @@ import { test, expect } from './fixtures'
 //
 // Backend interactions are mocked via Playwright `page.route` so this spec can
 // run with or without the FastAPI backend up. Coverage:
-// 1. /models renders an empty state and the "새 모델" CTA.
+// 1. /models renders an empty state and the "新" CTA.
 // 2. Discover tab — pick credential → discover → multi-select → save → row
 //    appears in the catalog DataTable.
 // 3. Custom ID tab — provider + model_name → save → row appears.
@@ -157,32 +157,32 @@ test.describe('Models page', () => {
 
     await page.goto('/models')
 
-    await expect(page.getByRole('heading', { name: '모델' })).toBeVisible()
-    await expect(page.getByText('아직 모델이 없어요')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
+    await expect(page.getByText('空')).toBeVisible()
 
     await page
       .getByRole('button', { name: /새 모델|모델 추가/ })
       .first()
       .click()
-    await expect(page.getByRole('heading', { name: '모델 추가' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '添加对话框' })).toBeVisible()
 
     // Discover tab is the default. Open the credential picker.
     await page.getByRole('combobox').first().click()
     await page.getByRole('option', { name: /My OpenRouter/i }).click()
 
-    await page.getByRole('button', { name: '탐색' }).click()
+    await page.getByRole('button', { name: '发现' }).click()
 
     // Both discovered models render.
     await expect(page.getByText('Claude 3.5 Sonnet').first()).toBeVisible()
     await expect(page.getByText('GPT-4o', { exact: true })).toBeVisible()
 
     // Tick both via the toggle-all helper.
-    await page.getByRole('button', { name: '전체 전환' }).click()
+    await page.getByRole('button', { name: '全部切换' }).click()
 
-    await page.getByRole('button', { name: '선택 항목 저장' }).click()
+    await page.getByRole('button', { name: '保存所选内容' }).click()
 
     // After save, dialog closes and table shows the new rows.
-    await expect(page.getByRole('heading', { name: '모델 추가' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: '添加对话框' })).toBeHidden()
     await expect(page.getByText('Claude 3.5 Sonnet').first()).toBeVisible()
     await expect(page.getByRole('row', { name: /GPT-4o/ })).toBeVisible()
   })
@@ -207,19 +207,19 @@ test.describe('Models page', () => {
     await page.goto('/models')
 
     // The empty state is data-backed and proves the client page hydrated.
-    await expect(page.getByText('아직 모델이 없어요')).toBeVisible()
+    await expect(page.getByText('空')).toBeVisible()
 
     await page
       .getByRole('button', { name: /새 모델|모델 추가/ })
       .first()
       .click()
 
-    await page.getByRole('tab', { name: '사용자 지정 ID' }).click()
+    await page.getByRole('tab', { name: '定制' }).click()
 
-    await page.getByLabel('모델 ID').fill('gpt-x-preview')
-    await page.getByRole('button', { name: '모델 저장' }).click()
+    await page.getByLabel('模型编号').fill('gpt-x-preview')
+    await page.getByRole('button', { name: '保存' }).click()
 
-    await expect(page.getByRole('heading', { name: '모델 추가' })).toBeHidden()
+    await expect(page.getByRole('heading', { name: '添加对话框' })).toBeHidden()
     await expect(page.getByText('gpt-x-preview').first()).toBeVisible()
   })
 })

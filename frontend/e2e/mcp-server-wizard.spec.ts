@@ -77,25 +77,25 @@ test.describe('MCP server wizard', () => {
     // Wait until the client query has replaced the server-rendered loading
     // shell. The CTA is present in the SSR shell, but clicking it before
     // hydration can lose the dialog state update.
-    await expect(page.getByText('아직 MCP 서버가 없어요')).toBeVisible()
+    await expect(page.getByText('空')).toBeVisible()
     await page
       .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
       .first()
       .click()
 
     // Step 1: basics
-    await page.getByLabel('이름').fill('Local MCP')
+    await page.getByLabel('名称').fill('Local MCP')
     await page.getByRole('textbox', { name: 'URL *' }).fill('https://example.com/mcp')
-    await page.getByRole('button', { name: '인증으로 계속 →' }).click()
+    await page.getByRole('button', { name: '继续验证' }).click()
 
     // Step 2: auth — skip
-    await expect(page.getByText('자격증명 보간')).toBeVisible()
-    await page.getByRole('button', { name: '도구로 계속 →' }).click()
+    await expect(page.getByText('插值法')).toBeVisible()
+    await page.getByRole('button', { name: '继续工具' }).click()
 
     // Step 3: discover + save
     await expect(page.getByText('1개 도구 발견됨')).toBeVisible()
     await expect(page.getByRole('checkbox')).toHaveCount(0)
-    await page.getByRole('button', { name: '서버 저장' }).click()
+    await page.getByRole('button', { name: '保存' }).click()
 
     await expect(page.getByText('Local MCP').first()).toBeVisible()
   })

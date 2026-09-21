@@ -56,15 +56,15 @@ test.describe('Wave 8 — builder + extras captures', () => {
     try {
       await nav(page, '/')
       await settle(page, 1_200)
-      // The navigator options live behind the "탐색 옵션" (⋯) button in the
+      // The navigator options live behind the "导航器选项" (⋯) button in the
       // sidebar agent-list header (alongside + and search).
-      const trigger = page.getByRole('button', { name: '탐색 옵션' }).first()
+      const trigger = page.getByRole('button', { name: '导航器选项' }).first()
       await trigger.click().catch(() => {})
       await page.getByRole('menu').first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
       await page.waitForTimeout(400)
       await capture(page, WAVE, '01-sidebar-navigator-menu.png')
-      // Open the "보기 방식" submenu to reveal the view modes (에이전트별 / 최근 에이전트 / 최근 대화).
-      await page.getByText('보기 방식').first().hover().catch(() => {})
+      // Open the "分组方式" submenu to reveal the view modes (에이전트별 / 최근 에이전트 / 최근 대화).
+      await page.getByText('分组方式').first().hover().catch(() => {})
       await page.waitForTimeout(700)
       await capture(page, WAVE, '02-sidebar-view-modes.png')
     } finally {
@@ -89,7 +89,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
     })
     const agentId = isRecord(created) && typeof created.id === 'string' ? created.id : ''
     try {
-      const cid = await createConversation(request, csrf, agentId, '새 대화')
+      const cid = await createConversation(request, csrf, agentId, '备用标题')
       // 'commit' returns as soon as the navigation commits (avoids the
       // domcontentloaded/networkidle hang seen on the chat route); then wait for
       // the empty state's opener questions to render.
@@ -117,7 +117,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
 
     // Verified via diagnostics: options are <button role="option">; selecting the
     // LAST one (freshest card if regenerated) enables the EXACT 다음/완료 button.
-    // Must NOT match "재생성" (regenerate) — that loops the card forever.
+    // Must NOT match "再生" (regenerate) — that loops the card forever.
     let dryRounds = 0
     for (let step = 1; step <= 16 && dryRounds < 3; step += 1) {
       await streamSettle(page, 60_000)

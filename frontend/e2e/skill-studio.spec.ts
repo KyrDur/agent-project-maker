@@ -110,7 +110,7 @@ test.describe('Skill studio IA', () => {
     await page.getByText('Alpha Notes').click()
     await page.waitForURL(/\/skills\/skill-alpha\/source/)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Alpha Notes')
-    await expect(page.getByTestId('studio-context-bar')).toContainText('연결 에이전트')
+    await expect(page.getByTestId('studio-context-bar')).toContainText('已连接 智能体')
 
     // 탭 내비게이션: 평가 → 버전 → 설정.
     await page.getByTestId('studio-tab-evaluation').click()
@@ -119,8 +119,8 @@ test.describe('Skill studio IA', () => {
     await page.waitForURL(/\/skills\/skill-alpha\/versions/)
     await page.getByTestId('studio-tab-settings').click()
     await page.waitForURL(/\/skills\/skill-alpha\/settings/)
-    await expect(page.getByText('메타데이터')).toBeVisible()
-    await expect(page.getByRole('button', { name: '스킬 삭제' })).toBeVisible()
+    await expect(page.getByText('元数据')).toBeVisible()
+    await expect(page.getByRole('button', { name: '删除技能' })).toBeVisible()
   })
 
   test('skill switcher keeps the active tab', async ({ page }) => {
@@ -144,7 +144,7 @@ test.describe('Skill studio IA', () => {
 
     await page.waitForURL(/\/skills\/builder\?skillId=skill-alpha/)
     // 셸이 ?skillId= 스코프를 인식해 컨텍스트 유지 — 스킬 탭이 disabled로
-    // 오표기되거나 "새 스킬 초안"으로 바뀌면 안 된다 (리뷰 R 회귀 가드).
+    // 오표기되거나 "新技能草稿"으로 바뀌면 안 된다 (리뷰 R 회귀 가드).
     await expect(page.getByTestId('studio-context-bar')).toContainText('Alpha Notes')
     await expect(page.getByTestId('studio-tab-source')).toBeEnabled()
     await expect(page.getByRole('button', { name: /Alpha Notes 개선 시작/ })).toBeVisible()

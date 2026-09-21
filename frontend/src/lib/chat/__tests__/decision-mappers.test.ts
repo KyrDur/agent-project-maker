@@ -65,13 +65,13 @@ describe('serializeQuestionFlowResponse', () => {
           label: '답변 톤',
           type: 'single_select',
           options: [
-            { id: 'concise', label: '간결하게' },
+            { id: 'concise', label: '简洁明了' },
             { id: 'detailed', label: '자세하게' },
           ],
         },
         {
           id: 'tools',
-          label: '도구',
+          label: '工具',
           type: 'multi_select',
           options: [
             { id: 'web', label: 'Web Search' },
@@ -89,7 +89,7 @@ describe('serializeQuestionFlowResponse', () => {
         tools: ['web', 'calendar'],
       },
       labels: {
-        tone: '간결하게',
+        tone: '简洁明了',
         tools: ['Web Search', 'Calendar'],
       },
     })

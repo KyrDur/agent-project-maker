@@ -99,16 +99,16 @@ test.describe('HITL tool approval — reject', () => {
     await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 30_000 })
 
     // 2. Reject → confirm.
-    await page.getByRole('button', { name: '거부', exact: true }).last().click()
-    await page.getByRole('button', { name: '거부 확인' }).last().click()
+    await page.getByRole('button', { name: '拒绝', exact: true }).last().click()
+    await page.getByRole('button', { name: '拒绝 确认' }).last().click()
 
     // M8-2 회귀 가드: 백엔드가 인터럽트 전이를 trace보다 먼저 커밋하고 resume
     // 핸들러가 전이를 짧게 기다리므로, 거부 resume은 재시도 없이 한 번에
     // 수락되어야 한다 (재시도 문구가 뜨면 레이스 회귀).
-    const rejectedBadge = page.getByText('거부됨').last()
+    const rejectedBadge = page.getByText('被拒绝').last()
     await expect(rejectedBadge).toBeVisible({ timeout: 30_000 })
     await expect(
-      page.getByText('승인 응답을 전송하지 못했습니다. 다시 시도하세요.'),
+      page.getByText('无法发送批准响应。再试一次。'),
     ).toHaveCount(0)
 
     // 4. The tool never ran → no document artifact was produced.

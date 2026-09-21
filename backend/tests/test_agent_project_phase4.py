@@ -1,5 +1,7 @@
 """Controlled improvement/regression evidence; no live provider calls."""
 
+# pyright: reportOptionalSubscript=false
+
 from __future__ import annotations
 
 import json
@@ -64,6 +66,7 @@ async def experiment(db, monkeypatch):
     dataset = await evaluation.write_set(
         db, agent.id, TEST_USER_ID, EvalSetWrite.model_validate(body)
     )
+    await evaluation.judge_set(db, agent.id, TEST_USER_ID, dataset.id)
 
     async def examinee(_db, saved, case, _user):
         round_number = saved.get("optimization", {}).get("round", 0)
@@ -170,14 +173,11 @@ async def controlled_optimizer(_db, _snapshot, _user, role, _instruction, payloa
 
 
 @pytest.mark.asyncio
-async def test_full_two_round_loop_preserves_experiment_and_selects_v2(
+async def test_optimize_endpoint_requires_human_proposal_decision(
     client, db, experiment, monkeypatch
 ):
     ex = experiment
     monkeypatch.setattr(optimization, "json_call", controlled_optimizer)
-    original = deepcopy(ex.version.snapshot_json)
-    frozen_cases = deepcopy(ex.run.cases_snapshot_json)
-    frozen_plan = deepcopy(ex.run.comparison_json)
     path = f"/api/agents/{ex.agent.id}/project"
     analysis = (await client.post(f"{path}/eval-runs/{ex.run.id}/analyze")).json()
     assert len(analysis["bad_cases"]) == 5
@@ -189,48 +189,13 @@ async def test_full_two_round_loop_preserves_experiment_and_selects_v2(
     response = await client.post(
         f"{path}/eval-runs/{ex.run.id}/optimize", json={"request_id": str(uuid.uuid4())}
     )
-    assert response.status_code == 202
+    assert response.status_code == 410
+    assert "optimization_requires_user_proposal_decision" in response.text
     await db.refresh(ex.project)
-    state = optimization.state_of(ex.project)
-    assert state["state"] == "completed" and len(state["rounds"]) == 2
-    versions = await projects.list_versions(db, ex.agent.id, TEST_USER_ID)
-    assert [v.version_number for v in versions] == [3, 2, 1]
-    v3, v2, v1 = versions
-    assert (
-        v1.snapshot_json == original
-        and v2.parent_version_id == v1.id
-        and v3.parent_version_id == v2.id
-    )
-    assert state["best_version_id"] == str(v2.id)
-    assert [r["decision"] for r in state["rounds"]] == ["accepted", "rejected"]
-    for entry in state["rounds"]:
-        run = await evaluation.get_run(db, ex.agent.id, TEST_USER_ID, uuid.UUID(entry["run_id"]))
-        assert run.cases_snapshot_json == frozen_cases
-        assert run.eval_set_id == ex.dataset.id
-        for key in ("eval_spec", "spec_hash", "roles", "execution_mode"):
-            assert run.comparison_json[key] == frozen_plan[key]
-    comparison = state["rounds"][0]["comparison"]
-    assert len(comparison["fixed_cases"]) == 4
-    assert len(comparison["regressed_cases"]) == 1
-    assert len(comparison["still_failing_cases"]) == 1
-    assert len(comparison["still_passing_cases"]) == 14
-    assert comparison["pass_rate"] == {"before": 0.75, "after": 0.9, "delta": pytest.approx(0.15)}
-    assert state["rounds"][1]["comparison"]["pass_rate"]["after"] == 0.85
-    public = (await client.get(f"{path}/versions")).json()
-    assert [v["status"] for v in public] == ["rejected", "accepted", "original"]
-    assert v2.status == "candidate"  # Immutable physical row remains untouched.
-    await db.refresh(ex.agent)
-    assert ex.agent.system_prompt == original["agent"]["system_prompt"]
+    assert optimization.state_of(ex.project) is None
     assert ex.dataset.cases_json == [] and ex.project.eval_spec_json is None
-    # Independent retries and direct candidate requests cannot create a third round.
-    for run_id in (str(ex.run.id), state["rounds"][0]["run_id"]):
-        response = await client.post(
-            f"{path}/eval-runs/{run_id}/optimize", json={"request_id": str(uuid.uuid4())}
-        )
-        assert response.status_code == 202
-    assert len(await projects.list_versions(db, ex.agent.id, TEST_USER_ID)) == 3
-    assert "patches" in v2.snapshot_json["optimization"]
-    v1.snapshot_json = {}
+    assert len(await projects.list_versions(db, ex.agent.id, TEST_USER_ID)) == 1
+    ex.version.snapshot_json = {}
     with pytest.raises(ValueError, match="immutable"):
         await db.commit()
     await db.rollback()
@@ -364,7 +329,7 @@ async def test_analyzer_rejects_fabricated_evidence_and_foreign_scope(
     assert (await client.post(path + "/analyze")).status_code == 404
     assert (
         await client.post(path + "/optimize", json={"request_id": str(uuid.uuid4())})
-    ).status_code == 404
+    ).status_code == 410
 
 
 @pytest.mark.asyncio

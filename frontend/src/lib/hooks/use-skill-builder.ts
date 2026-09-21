@@ -74,7 +74,7 @@ export function useStartSkillBuilder() {
 
 /**
  * 빌더 세션 시작 + 라우팅 + 실패 토스트의 단일 정본 — 진입점 3곳(목록 행
- * "수정", 컨텍스트 바 "대화로 개선", 빌더 인덱스/생성 다이얼로그)이 공유한다.
+ * "编辑", 컨텍스트 바 "通过聊天改进", 빌더 인덱스/생성 다이얼로그)이 공유한다.
  * 성공 시 세션 라우트로 이동하고 true를 반환한다.
  */
 export function useBuilderSessionLauncher() {

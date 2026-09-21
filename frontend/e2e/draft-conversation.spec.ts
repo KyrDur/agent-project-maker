@@ -131,9 +131,9 @@ test.describe('Draft conversation lifecycle', () => {
       page.getByRole('main').getByRole('heading', { name: 'E2E Draft Conversation Agent' }).first(),
     ).toBeVisible()
 
-    await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+    await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
-    await expect(page.getByRole('link', { name: '새 대화' }).first()).toHaveAttribute(
+    await expect(page.getByRole('link', { name: '备用标题' }).first()).toHaveAttribute(
       'href',
       `/agents/${agentId}/conversations/new`,
     )
@@ -157,15 +157,15 @@ test.describe('Draft conversation lifecycle', () => {
 
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
     await page.waitForLoadState('domcontentloaded')
-    await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+    await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
 
     await page.goto(`/agents/${agentId}/settings`)
-    await expect(page.getByRole('button', { name: '저장' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '保存' })).toBeVisible()
     await page.goBack()
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
-    await expect(page.getByRole('link', { name: '새 대화' }).first()).toBeVisible()
-    await expect(page.getByPlaceholder('메시지 입력...')).toBeVisible()
+    await expect(page.getByRole('link', { name: '备用标题' }).first()).toBeVisible()
+    await expect(page.getByPlaceholder('占位符')).toBeVisible()
 
     const afterIds = await listConversationIds(request, agentId)
     expect(afterIds).toEqual(beforeIds)
@@ -200,11 +200,11 @@ test.describe('Draft conversation lifecycle', () => {
 
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
     await page.waitForLoadState('domcontentloaded')
-    await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+    await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
 
     const firstMessage = 'Draft E2E first message'
-    await page.getByPlaceholder('메시지 입력...').fill(firstMessage)
+    await page.getByPlaceholder('占位符').fill(firstMessage)
     await page.getByRole('button', { name: /전송/ }).click()
     await page.waitForURL(new RegExp(`/agents/${agentId}/conversations/(?!new$)[0-9a-f-]+$`), {
       timeout: 90_000,

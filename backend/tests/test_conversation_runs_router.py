@@ -243,7 +243,7 @@ async def test_messages_envelope_reports_canceled_latest_run(
 ) -> None:
     """취소된 run 은 active_run 에서 사라지지만 latest_run 으로는 보여야 한다.
 
-    프론트가 refetch/새로고침 후에도 "중단됨" notice 를 durable 하게 렌더하는
+    프론트가 refetch/새로고침 후에도 "被遗弃" notice 를 durable 하게 렌더하는
     근거 데이터 — active_run 만 있으면 terminal 상태가 유실된다.
     """
     agent, conversation = await _seed_agent_conversation(db)

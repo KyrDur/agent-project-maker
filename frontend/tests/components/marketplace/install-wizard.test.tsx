@@ -50,7 +50,7 @@ function agentItem(): MarketplaceItem {
     is_listed: true,
     tags: [],
     categories: [],
-    locale: 'ko-KR',
+    locale: 'zh-CN',
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-02T00:00:00Z',
     latest_version: {
@@ -108,14 +108,14 @@ describe('InstallWizard', () => {
 
     render(<InstallWizard item={agentItem()} open onOpenChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: '다음' }))
-    await user.click(screen.getByRole('button', { name: '설치' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    await user.click(screen.getByRole('button', { name: '安装' }))
 
     await waitFor(() => {
       expect(mockInstall).toHaveBeenCalled()
     })
     expect(await screen.findByText('Research Blueprint 설치 완료')).toBeInTheDocument()
-    expect(screen.queryByText('블루프린트 열기')).not.toBeInTheDocument()
+    expect(screen.queryByText('打开蓝图')).not.toBeInTheDocument()
   })
 
   it('starts a needs_setup item with requirements on the credentials step', () => {
@@ -148,7 +148,7 @@ describe('InstallWizard', () => {
 
     // The credentials step must be active on the very first render —
     // previously the initial step was frozen before the version loaded.
-    expect(screen.getByText('자격증명').closest('li')).toHaveAttribute('aria-current', 'step')
+    expect(screen.getByText('凭据').closest('li')).toHaveAttribute('aria-current', 'step')
     expect(screen.getByText('OpenAI API Key')).toBeInTheDocument()
   })
 
@@ -157,8 +157,8 @@ describe('InstallWizard', () => {
 
     render(<InstallWizard item={agentItem()} open onOpenChange={vi.fn()} />)
 
-    expect(screen.getByText('버전 정보를 불러오는 중…')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument()
+    expect(screen.getByText('正在加载版本详细信息...')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument()
   })
 
   it('버전 로드 실패 시 자격증명 단계로 진행하지 않고 에러와 재시도를 보여준다', async () => {
@@ -175,12 +175,12 @@ describe('InstallWizard', () => {
 
     // Error UI is shown — no install/next progression, no infinite loading.
     expect(
-      screen.getByText('버전 정보를 불러오지 못했습니다. 자격증명 설정 단계를 위해 다시 시도하세요.'),
+      screen.getByText('无法加载版本详细信息。重试设置其凭据。'),
     ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '다음' })).not.toBeInTheDocument()
-    expect(screen.queryByText('버전 정보를 불러오는 중…')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument()
+    expect(screen.queryByText('正在加载版本详细信息...')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    await user.click(screen.getByRole('button', { name: '重试' }))
     expect(refetch).toHaveBeenCalledTimes(1)
   })
 })

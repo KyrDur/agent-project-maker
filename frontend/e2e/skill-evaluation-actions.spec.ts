@@ -19,7 +19,7 @@ const skill = {
   package_metadata: null,
   health: {
     state: 'evaluation_running',
-    label: '평가 중',
+    label: '评估运行',
     reason: 'Latest evaluation is still running.',
     severity: 'info',
   },
@@ -103,7 +103,7 @@ const credentialRequiredSkill = {
   id: 'skill-needs-credentials',
   health: {
     state: 'needs_credentials',
-    label: '자격증명 필요',
+    label: '所需凭据',
     reason: '필수 자격증명이 연결되지 않았습니다.',
     severity: 'warning',
   },
@@ -217,13 +217,13 @@ test.describe('Skill evaluation actions', () => {
     })
 
     await page.getByRole('button', { name: '회귀 평가 평가 다시 실행' }).click()
-    await expect(page.getByRole('alertdialog', { name: '평가 실행 확인' })).toBeVisible()
+    await expect(page.getByRole('alertdialog', { name: '确认评估运行' })).toBeVisible()
     await page.screenshot({
       path: path.join(captureDir, 'evaluation-estimate-confirmation.png'),
       fullPage: false,
     })
-    await page.getByRole('button', { name: '평가 실행' }).click()
-    await expect(page.getByRole('alertdialog', { name: '평가 실행 확인' })).toBeHidden()
+    await page.getByRole('button', { name: '评估运行' }).click()
+    await expect(page.getByRole('alertdialog', { name: '确认评估运行' })).toBeHidden()
     await expect.poll(() => rerunRequested).toBe(true)
 
     await page.getByRole('button', { name: '핵심 평가 평가 취소' }).click()

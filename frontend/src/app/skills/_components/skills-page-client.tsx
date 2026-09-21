@@ -73,7 +73,7 @@ export function SkillsPageClient() {
     void launcher.startCreate(request)
   }
 
-  // 목록 표의 행 "수정" — 목업 계약대로 improve 빌더 세션을 바로 시작한다.
+  // 목록 표의 행 "编辑" — 목업 계약대로 improve 빌더 세션을 바로 시작한다.
   function openBuilderImprove(skillId: string) {
     void launcher.startImprove(skillId)
   }

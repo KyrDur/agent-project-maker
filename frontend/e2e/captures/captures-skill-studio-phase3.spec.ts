@@ -129,7 +129,7 @@ test.describe('Skill studio phase 3 captures', () => {
       const usageCard = page.getByTestId('skill-usage-summary-card')
       await expect(usageCard).toBeVisible({ timeout: 30_000 })
       // 실측 usage — 평가 런 2회가 스킬 축 원장에 적재됐다.
-      await expect(usageCard).toContainText('평가 실행', { timeout: 15_000 })
+      await expect(usageCard).toContainText('评估运行', { timeout: 15_000 })
       await expect(usageCard).toContainText('2')
       await expect(page.getByTestId('skill-feedback-card')).toBeVisible()
       await shot(page, '01-evaluation-overview.png')
@@ -144,8 +144,8 @@ test.describe('Skill studio phase 3 captures', () => {
       // ── 03. A/B 벤치마크 — 실측 배지 + with/without 바 + 델타 ───────────
       const benchmark = page.getByTestId('skill-benchmark-panel')
       await expect(benchmark.getByTestId('benchmark-measured')).toBeVisible({ timeout: 15_000 })
-      await expect(benchmark).toContainText('스킬 사용')
-      await expect(benchmark).toContainText('스킬 없이')
+      await expect(benchmark).toContainText('有技巧')
+      await expect(benchmark).toContainText('没有技巧')
       // scripted grader: with=pass(0.95), without=fail(0.3) — 양수 델타 실측.
       await expect(benchmark).toContainText('통과율 차이')
       await shot(page, '03-ab-benchmark.png')
@@ -153,7 +153,7 @@ test.describe('Skill studio phase 3 captures', () => {
       // ── 04. 런 실측 사용량 라인 — 모델 콜/토큰/비용 ─────────────────────
       const usageLine = page.getByTestId('run-usage-line')
       await expect(usageLine).toContainText('모델 콜', { timeout: 15_000 })
-      await expect(usageLine).toContainText('토큰')
+      await expect(usageLine).toContainText('Token 数')
       await shot(page, '04-run-measured-usage.png')
 
       // ── 05. 케이스 피드백 — 판정 비동의 + 코멘트 저장 ───────────────────

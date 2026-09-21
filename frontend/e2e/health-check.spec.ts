@@ -126,15 +126,15 @@ test.describe('Health check', () => {
 
     await page.goto('/models')
 
-    await expect(page.getByRole('heading', { name: '모델' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByText('GPT-4o mini')).toBeVisible()
 
     // Initial healthy chip
-    await expect(page.getByText('정상', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('健康', { exact: true }).first()).toBeVisible()
 
-    // Click "상태 확인" action — request fires, list refetches, chip swaps to 주의.
+    // Click "立即查看" action — request fires, list refetches, chip swaps to 주의.
     await page.getByTestId('check-now-model-1').click()
-    await expect(page.getByText('주의', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('警告', { exact: true }).first()).toBeVisible()
   })
 
   test('Row click → Health tab → 30-entry chart', async ({ page }) => {

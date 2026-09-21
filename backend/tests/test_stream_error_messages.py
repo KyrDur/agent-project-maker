@@ -1,8 +1,6 @@
 from app.agent_runtime.stream_error_messages import public_stream_error_message
 
-SAFE_MODEL_ERROR = (
-    "모델 제공자 요청이 실패했습니다. 모델 설정, 자격증명, 사용량 한도를 확인해주세요."
-)
+SAFE_MODEL_ERROR = "模型提供商请求失败。请检查模型设置、凭据和使用量限制。"
 
 
 def test_public_stream_error_message_hides_provider_budget_details() -> None:

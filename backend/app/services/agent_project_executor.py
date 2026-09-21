@@ -20,6 +20,7 @@ class SnapshotExecutionUnavailable(Exception):
 
     def __init__(self, code: str, evidence: dict[str, Any] | None = None) -> None:
         super().__init__(code)
+        self.code = code
         self.evidence = evidence or {}
 
 
@@ -31,16 +32,17 @@ async def execute_snapshot(
         raise SnapshotExecutionUnavailable("snapshot_invalid")
     for field in (
         "sub_agent_links",
-        "middleware_configs",
         "model_fallback_list",
     ):
         if config.get(field):
             raise SnapshotExecutionUnavailable("snapshot_capabilities_not_supported")
     if "<redacted>" in json.dumps(config):
         raise SnapshotExecutionUnavailable("snapshot_redacted_configuration")
+    middleware = snapshot_middlewares(config)
     from app.services.agent_project_mock_tools import frozen_skill_prompt, mock_tools
 
-    tools, missing = mock_tools(config, case)
+    tool_trace: list[dict[str, Any]] = []
+    tools, missing = mock_tools(config, case, trace=tool_trace)
     skill_prompt, limitations = frozen_skill_prompt(config)
     try:
         from app.agent_runtime.runtime_component_builder import build_agent
@@ -56,11 +58,12 @@ async def execute_snapshot(
 
     try:
         with tracing_context(enabled=False):
-            llm, api_key = await resolve_model(db, snapshot, user_id)
+            llm, api_key = await resolve_model(db, snapshot, user_id, role="examinee")
             graph = build_agent(
                 llm,
                 tools,
                 config["system_prompt"] + skill_prompt,
+                middleware=middleware,
                 backend=StateBackend(),
                 checkpointer=None,
                 store=None,
@@ -80,11 +83,16 @@ async def execute_snapshot(
         ]
         output = answers[-1].text if answers else ""
         calls = [call for message in answers for call in message.tool_calls]
+        called_tools = [{"name": event["name"]} for event in tool_trace] or [
+            {"name": call["name"]} for call in calls
+        ]
         evidence = {
             "output": output,
             "limitations": limitations,
             "execution_mode": "mock_sandbox",
-            "tool_calls": [{"name": call["name"]} for call in calls],
+            "tool_calls": called_tools,
+            "tool_trace": tool_trace,
+            "mock_missing_tools": sorted(set(missing)),
             "handoffs": [
                 call.get("args", {}).get("subagent_type")
                 for call in calls
@@ -93,7 +101,7 @@ async def execute_snapshot(
         }
         # Scrub actual resolved values before any database/API boundary. No raw
         # tool arguments, tool results, headers, or provider errors are retained.
-        retained = snapshot_value(
+        return snapshot_value(
             redact_protocol_data(
                 "project_evaluation",
                 evidence,
@@ -101,10 +109,22 @@ async def execute_snapshot(
                 secret_values=[api_key] if api_key else [],
             )
         )
-        if missing:
-            raise SnapshotExecutionUnavailable("evaluation_mock_missing", retained)
-        return retained
     except SnapshotExecutionUnavailable:
         raise
     except Exception as exc:
+        if exc.__class__.__name__ == "LLMCredentialRequiredError":
+            raise SnapshotExecutionUnavailable("snapshot_credential_unavailable") from exc
         raise SnapshotExecutionUnavailable("evaluation_execution_failed") from exc
+
+
+def snapshot_middlewares(config: dict[str, Any]) -> list:
+    from app.agent_runtime.middleware_registry import build_middleware_instances
+    from app.services.builder_runtime_readiness import BUILDER_MIDDLEWARE_TYPES
+
+    configs = config.get("middleware_configs") or []
+    if any(c.get("type") not in BUILDER_MIDDLEWARE_TYPES for c in configs):
+        raise SnapshotExecutionUnavailable("snapshot_capabilities_not_supported")
+    instances = build_middleware_instances(configs)
+    if len(instances) != len(configs):
+        raise SnapshotExecutionUnavailable("snapshot_middleware_unavailable")
+    return instances

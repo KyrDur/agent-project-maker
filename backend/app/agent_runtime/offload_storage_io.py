@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import fcntl
 import os
 import secrets
 import stat
@@ -10,9 +9,26 @@ from contextlib import suppress
 from errno import ELOOP, ENOTDIR
 from pathlib import Path
 
+if os.name != "nt":
+    import fcntl
+
 from app.agent_runtime.offload_storage_backends import _open_scoped_directory
 from app.agent_runtime.offload_storage_fd import nofollow_flags
 from app.agent_runtime.offload_storage_types import OffloadSecurityError
+
+
+def _lock_exclusive_descriptor(descriptor: int) -> None:
+    if os.name == "nt":
+        raise OffloadSecurityError(
+            reason="secure offload filesystem operations are unavailable"
+        )
+    fcntl.flock(descriptor, fcntl.LOCK_EX)
+
+
+def _unlock_descriptor(descriptor: int) -> None:
+    if os.name == "nt":
+        return
+    fcntl.flock(descriptor, fcntl.LOCK_UN)
 
 
 def _validate_private_regular_file(descriptor: int, parent: int, name: str, reason: str) -> None:
@@ -57,8 +73,10 @@ def atomic_write_new_or_equal(path: Path, content: bytes) -> None:
         raise OffloadSecurityError(reason="offload destination directory is unavailable")
     temporary = f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
     flags = nofollow_flags(os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+    locked = False
     try:
-        fcntl.flock(parent, fcntl.LOCK_EX)
+        _lock_exclusive_descriptor(parent)
+        locked = True
         try:
             existing = _read_private_file(parent, path.name)
             if existing is not None:
@@ -93,7 +111,8 @@ def atomic_write_new_or_equal(path: Path, content: bytes) -> None:
         finally:
             with suppress(FileNotFoundError):
                 os.unlink(temporary, dir_fd=parent)
-            fcntl.flock(parent, fcntl.LOCK_UN)
+            if locked:
+                _unlock_descriptor(parent)
     finally:
         os.close(parent)
 

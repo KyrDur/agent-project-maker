@@ -215,7 +215,7 @@ describe('ChatPage', () => {
         }
       />,
     )
-    expect(screen.getByPlaceholderText('메시지 입력...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('占位符')).toBeInTheDocument()
   })
 
   it('renders loading skeletons when messages loading', () => {
@@ -297,7 +297,7 @@ describe('ChatPage', () => {
         }
       />,
     )
-    expect(screen.getAllByText('대화를 시작해보세요.').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('空状态').length).toBeGreaterThanOrEqual(1)
   })
 
   it('calls streamChat when message is sent', async () => {
@@ -334,7 +334,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Test message')
     const sendButton = screen.getByRole('button', { name: /전송/ })
     await user.click(sendButton)
@@ -371,7 +371,7 @@ describe('ChatPage', () => {
     )
 
     expect(mockUseMessages).toHaveBeenCalledWith('new', false)
-    expect(screen.getByPlaceholderText('메시지 입력...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('占位符')).toBeInTheDocument()
     expect(container.querySelectorAll("[data-slot='skeleton']")).toHaveLength(0)
   })
 
@@ -404,7 +404,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    await user.type(screen.getByPlaceholderText('메시지 입력...'), 'Draft message')
+    await user.type(screen.getByPlaceholderText('占位符'), 'Draft message')
     await user.click(screen.getByRole('button', { name: /전송/ }))
 
     expect(mockStreamStartConversation).toHaveBeenCalledWith(
@@ -459,7 +459,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Search for something')
     const sendButton = screen.getByRole('button', { name: /전송/ })
     await user.click(sendButton)
@@ -485,7 +485,7 @@ describe('ChatPage', () => {
         }
       />,
     )
-    expect(screen.queryByText('대화')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '에이전트 정보' })).toBeInTheDocument()
+    expect(screen.queryByText('对话')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '智能体信息' })).toBeInTheDocument()
   })
 })

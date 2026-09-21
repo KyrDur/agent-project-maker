@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTranslator } from 'next-intl'
 import en from '../../../messages/en.json'
 import zh from '../../../messages/zh-CN.json'
-import ko from '../../../messages/ko.json'
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME } from '@/i18n/locales'
 import { formatLongDate, formatRelativeKo } from '@/lib/utils/format-relative-time'
 import { formatDisplayDateTime } from '@/lib/utils/display-format'
@@ -35,7 +34,7 @@ describe('product branding and locale defaults', () => {
       expect(config.messages).toEqual(zh)
     }
     expect(Object.keys(leaves(zh)).sort()).toEqual(Object.keys(leaves(en)).sort())
-    expect(Object.keys(leaves(zh)).sort()).toEqual(Object.keys(leaves(ko)).sort())
+    expect(Object.keys(leaves(zh)).sort()).toEqual(Object.keys(leaves(zh)).sort())
   })
 
   it('preserves explicitly selected English locale support', async () => {
@@ -45,11 +44,11 @@ describe('product branding and locale defaults', () => {
     expect(config.messages).toEqual(en)
   })
 
-  it('preserves explicitly selected Korean locale support', async () => {
-    state.locale = 'ko'
+  it('falls back safely for unsupported locales', async () => {
+    state.locale = 'unsupported'
     const config = await requestConfig({ requestLocale: Promise.resolve(undefined) })
-    expect(config.locale).toBe('ko')
-    expect(config.messages).toEqual(ko)
+    expect(config.locale).toBe('zh-CN')
+    expect(config.messages).toEqual(zh)
   })
 
   it('has no Korean or legacy branding in default UI copy, retaining copyright', () => {

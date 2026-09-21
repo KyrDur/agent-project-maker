@@ -61,7 +61,7 @@ def file_not_found() -> NotFoundError:
 
 
 def skill_not_found() -> NotFoundError:
-    return NotFoundError("SKILL_NOT_FOUND", "스킬을 찾을 수 없습니다")
+    return NotFoundError("SKILL_NOT_FOUND", "未找到技能")
 
 
 def skill_file_not_found() -> NotFoundError:

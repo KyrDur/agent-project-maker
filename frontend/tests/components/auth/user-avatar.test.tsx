@@ -17,7 +17,7 @@ describe('UserAvatar', () => {
       <UserAvatar
         user={{
           ...baseUser,
-          display_name: '체스터',
+          display_name: '用户',
           avatar_mode: 'initials',
           avatar_initials: '췌',
           avatar_color: 'sky',
@@ -31,7 +31,7 @@ describe('UserAvatar', () => {
   })
 
   it('falls back to the display name first character', () => {
-    render(<UserAvatar user={{ ...baseUser, display_name: '체스터' }} />)
+    render(<UserAvatar user={{ ...baseUser, display_name: '用户' }} />)
 
     expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
   })
@@ -41,7 +41,7 @@ describe('UserAvatar', () => {
       <UserAvatar
         user={{
           ...baseUser,
-          display_name: '체스터',
+          display_name: '用户',
           avatar_mode: 'image',
           avatar_image_url: '/api/auth/me/avatar-image?t=1',
         }}

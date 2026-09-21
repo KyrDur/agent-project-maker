@@ -39,7 +39,7 @@ def _conv(agent_id: uuid.UUID, *, source: str, age_hours: float) -> Conversation
     return Conversation(
         id=uuid.uuid4(),
         agent_id=agent_id,
-        title="새 대화",
+        title="备用标题",
         source=source,
         created_at=created,
         updated_at=created,

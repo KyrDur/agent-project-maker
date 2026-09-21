@@ -200,10 +200,11 @@ def _resolve_weekday(
             label_prefix = "지난 주"
         else:
             base = today + timedelta(days=(weekday_index - today.weekday()) % 7)
-            return f"{token if token.endswith('요일') else token + '요일'}", base
+            weekday_label = token if token.endswith(("요일", "天")) else f"{token}요일"
+            return weekday_label, base
 
         start = _week_start(today) + timedelta(days=7 * week_offset)
-        weekday_label = token if token.endswith("요일") else f"{token}요일"
+        weekday_label = token if token.endswith(("요일", "天")) else f"{token}요일"
         return f"{label_prefix} {weekday_label}", start + timedelta(days=weekday_index)
     return None
 
@@ -214,7 +215,7 @@ def resolve_relative_date_expression(
     now: datetime | None = None,
     timezone: str = DEFAULT_TIMEZONE,
 ) -> dict[str, Any]:
-    """Resolve common Korean relative date expressions into an ISO date range."""
+    """Resolve common relative date expressions into an ISO date range."""
 
     current = _coerce_now(now, timezone=timezone)
     today = current.date()
@@ -230,9 +231,9 @@ def resolve_relative_date_expression(
             "reference_weekday": _weekday_ko(today),
         }
 
-    if "어제" in compact:
+    if "昨天" in compact:
         target = today - timedelta(days=1)
-        return _date_payload(label="어제", start=target, end=target, now=current, timezone=timezone)
+        return _date_payload(label="昨天", start=target, end=target, now=current, timezone=timezone)
     if "오늘" in compact:
         return _date_payload(label="오늘", start=today, end=today, now=current, timezone=timezone)
     if "모레" in compact:
@@ -243,7 +244,7 @@ def resolve_relative_date_expression(
         return _date_payload(label="내일", start=target, end=target, now=current, timezone=timezone)
 
     if "주말" in compact:
-        offset = 1 if "다음" in compact else -1 if "지난" in compact else 0
+        offset = 1 if "下一步" in compact else -1 if "지난" in compact else 0
         start, end = _weekend_range(today, offset_weeks=offset)
         label = "다음 주말" if offset == 1 else "지난 주말" if offset == -1 else "이번 주말"
         return _date_payload(label=label, start=start, end=end, now=current, timezone=timezone)
@@ -276,10 +277,10 @@ def resolve_relative_date_expression(
             )
         return _date_payload(label="이번 주", start=start, end=end, now=current, timezone=timezone)
 
-    if "최근" in compact or "최신" in compact:
+    if "최근" in compact or "最新" in compact:
         start = today - timedelta(days=6)
         return _date_payload(
-            label="최근 7일",
+            label="过去 7 天",
             start=start,
             end=today,
             now=current,

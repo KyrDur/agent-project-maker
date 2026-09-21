@@ -48,10 +48,10 @@ test.describe('Operator screens (super_user)', () => {
     await page.goto('/settings/system-llm')
 
     // Renders (not redirected away) — operator banner + the primary slot card.
-    await expect(page.getByText('운영자 전용')).toBeVisible()
-    await expect(page.getByText('텍스트 기본 모델')).toBeVisible()
-    // The seed wired LiteLLM into text_primary/fallback → "설정됨" + cred name.
-    await expect(page.getByText('설정됨').first()).toBeVisible()
+    await expect(page.getByText('仅限运营商')).toBeVisible()
+    await expect(page.getByText('标签')).toBeVisible()
+    // The seed wired LiteLLM into text_primary/fallback → "已配置" + cred name.
+    await expect(page.getByText('已配置').first()).toBeVisible()
     await expect(page.getByText('[e2e] LiteLLM').first()).toBeVisible()
 
     // Cross-check the data path.
@@ -70,18 +70,18 @@ test.describe('Operator screens (super_user)', () => {
     await page.goto('/settings/system-credentials')
 
     // 1. Open the create modal and pick OpenAI from the catalog.
-    await page.getByRole('button', { name: '시스템 자격증명 추가' }).first().click()
+    await page.getByRole('button', { name: '添加' }).first().click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByText('OpenAI', { exact: true }).click()
 
     // 2. Name it uniquely and fill the only required (password) field.
-    await dialog.getByLabel('이름').fill(credName)
+    await dialog.getByLabel('名称').fill(credName)
     await dialog.locator('input[type="password"]').first().fill('e2e-fixture-input')
-    await dialog.getByRole('button', { name: '자격증명 저장' }).click()
+    await dialog.getByRole('button', { name: '保存' }).click()
 
     // 3. It persists as a system credential and renders in the list.
-    await expect(page.getByText('자격증명이 저장되었습니다')).toBeVisible()
+    await expect(page.getByText('保存成功。')).toBeVisible()
     const row = page.locator('li').filter({ hasText: credName })
     await expect(row).toBeVisible()
     await expect

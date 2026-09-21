@@ -73,6 +73,27 @@ async def collect_conversation_secret_values(
     # raises for an agent whose LLM credential was deleted) must NOT abort the
     # others, or tool/MCP/base_url secrets would silently go uncollected →
     # under-masking (ADR-021 re-review #1).
+
+    # Redaction is stricter than runtime eligibility. Even when an explicit
+    # Agent credential no longer matches the selected model/provider, its
+    # plaintext may already exist in persisted messages or traces and must
+    # still be masked on read paths.
+    explicit_credential = getattr(agent, "llm_credential", None)
+    if explicit_credential is not None:
+        try:
+            from app.credentials import service as credential_service
+
+            payload = await credential_service.decrypt_with_external(
+                explicit_credential.data_encrypted
+            )
+            secrets |= collect_secret_values(payload)
+        except Exception:  # noqa: BLE001
+            logger.debug(
+                "secret-collect explicit llm credential skipped for %s",
+                conversation.id,
+                exc_info=True,
+            )
+
     try:
         api_key = await resolve_llm_api_key_for_agent(db, agent)
         if api_key:

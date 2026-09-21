@@ -87,7 +87,7 @@ test.describe('Task 8 recovery and discovery browser acceptance', () => {
         'E2E_ERROR task8 retry',
       )
       await waitForRunStatus(request, setup.conversationId, failedRunId, 'failed')
-      const retryButton = page.getByRole('button', { name: '다시 시도' })
+      const retryButton = page.getByRole('button', { name: '重试' })
       await expect(retryButton).toBeVisible({ timeout: 30_000 })
       await capture(page, testInfo, '768-failed-run-before-retry.png')
 
@@ -99,7 +99,7 @@ test.describe('Task 8 recovery and discovery browser acceptance', () => {
       expect(runStartCommands.at(-1)).toContain('E2E_ERROR task8 retry')
       expect(retryRunId).not.toBe(failedRunId)
       await waitForRunStatus(request, setup.conversationId, retryRunId, 'failed')
-      await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole('button', { name: '重试' })).toBeVisible({ timeout: 30_000 })
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])

@@ -47,9 +47,9 @@ test.describe('스킬 빌더 Phase 1.5 — 자동 첫 메시지 + 바이너리 f
     await page.setViewportSize(DESKTOP_VIEWPORT)
     await loginApi(request)
 
-    // ── 1. 요청의 출처: "대화로 만들기" 다이얼로그 ─────────────────────
+    // ── 1. 요청의 출처: "通过聊天构建" 다이얼로그 ─────────────────────
     await page.goto('/skills', { waitUntil: 'domcontentloaded', timeout: 120_000 })
-    await page.getByRole('button', { name: '대화로 만들기' }).first().click()
+    await page.getByRole('button', { name: '通过聊天构建' }).first().click()
     const requestBox = page.locator('#skill-chat-request')
     await expect(requestBox).toBeVisible({ timeout: 15_000 })
     await requestBox.fill(CREATE_REQUEST)
@@ -57,7 +57,7 @@ test.describe('스킬 빌더 Phase 1.5 — 자동 첫 메시지 + 바이너리 f
     await capture(page, WAVE, '01-create-dialog-request.png')
 
     // ── 2. 대화 시작 → 빌더 진입 — 타이핑 없이 첫 턴이 자동 완료된다 ──
-    await page.getByRole('button', { name: '대화 시작' }).click()
+    await page.getByRole('button', { name: '开始聊天' }).click()
     await page.waitForURL(/\/skills\/builder\/[0-9a-f-]{36}/, { timeout: 120_000 })
     const composer = page.locator('textarea[data-moldy-composer-input="true"]').last()
     await expect(composer).toBeVisible({ timeout: 60_000 })
@@ -195,9 +195,9 @@ test.describe('스킬 빌더 Phase 1.5 — 자동 첫 메시지 + 바이너리 f
     expect(storedBytes.equals(pngBytes)).toBe(true)
 
     // ── 7. 완료 딥링크 → 생성된 package 스킬 소스 탭 ───────────────────
-    await page.getByRole('link', { name: '스킬 열기' }).click()
+    await page.getByRole('link', { name: '开放技能' }).click()
     await page.waitForURL(/\/skills\/[^/]+\/source/, { timeout: 60_000 })
-    await expect(page.getByRole('button', { name: '대화로 개선' })).toBeVisible({
+    await expect(page.getByRole('button', { name: '通过聊天改进' })).toBeVisible({
       timeout: 30_000,
     })
     await settle(page)

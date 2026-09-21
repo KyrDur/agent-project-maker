@@ -46,20 +46,20 @@ describe('ImeSafeComposerInput', () => {
   })
 
   it('focuses the composer input when auto focus is requested', () => {
-    render(<ImeSafeComposerInput autoFocus placeholder="메시지 입력..." />)
+    render(<ImeSafeComposerInput autoFocus placeholder="占位符" />)
 
-    expect(screen.getByPlaceholderText('메시지 입력...')).toHaveFocus()
+    expect(screen.getByPlaceholderText('占位符')).toHaveFocus()
   })
 
   it('restores focus when submitted composer text is cleared', async () => {
     mocks.composerText = 'hello'
-    const { rerender } = render(<ImeSafeComposerInput placeholder="메시지 입력..." />)
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
+    const textarea = screen.getByPlaceholderText('占位符')
 
     expect(textarea).not.toHaveFocus()
 
     mocks.composerText = ''
-    rerender(<ImeSafeComposerInput placeholder="메시지 입력..." />)
+    rerender(<ImeSafeComposerInput placeholder="占位符" />)
 
     await waitFor(() => {
       expect(textarea).toHaveFocus()
@@ -67,9 +67,9 @@ describe('ImeSafeComposerInput', () => {
   })
 
   it('keeps IME composition local until the syllable is committed', () => {
-    render(<ImeSafeComposerInput placeholder="메시지 입력..." />)
+    render(<ImeSafeComposerInput placeholder="占位符" />)
 
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    const textarea = screen.getByPlaceholderText('占位符')
 
     fireEvent.compositionStart(textarea)
     fireEvent.change(textarea, { target: { value: 'ㅎ' } })
@@ -83,16 +83,16 @@ describe('ImeSafeComposerInput', () => {
   })
 
   it('inserts an IME syllable before a final dictated transcript that arrives during composition', () => {
-    mocks.composerText = '초안'
-    const { rerender } = render(<ImeSafeComposerInput placeholder="메시지 입력..." />)
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    mocks.composerText = '吃水'
+    const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
+    const textarea = screen.getByPlaceholderText('占位符')
 
     textarea.setSelectionRange(2, 2)
     fireEvent.compositionStart(textarea)
     fireEvent.change(textarea, { target: { value: '초안한' } })
 
     mocks.composerText = '초안 음성'
-    rerender(<ImeSafeComposerInput placeholder="메시지 입력..." />)
+    rerender(<ImeSafeComposerInput placeholder="占位符" />)
 
     fireEvent.compositionEnd(textarea)
 
@@ -101,15 +101,15 @@ describe('ImeSafeComposerInput', () => {
 
   it('preserves a selected-text IME replacement when dictation updates during composition', () => {
     mocks.composerText = '첫 초안 문장'
-    const { rerender } = render(<ImeSafeComposerInput placeholder="메시지 입력..." />)
-    const textarea = screen.getByPlaceholderText('메시지 입력...')
+    const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
+    const textarea = screen.getByPlaceholderText('占位符')
 
     textarea.setSelectionRange(2, 4)
     fireEvent.compositionStart(textarea)
     fireEvent.change(textarea, { target: { value: '첫 대체 문장' } })
 
     mocks.composerText = '첫 초안 문장 음성'
-    rerender(<ImeSafeComposerInput placeholder="메시지 입력..." />)
+    rerender(<ImeSafeComposerInput placeholder="占位符" />)
 
     fireEvent.compositionEnd(textarea)
 
@@ -117,9 +117,9 @@ describe('ImeSafeComposerInput', () => {
   })
 
   it('syncs ordinary changes immediately', () => {
-    render(<ImeSafeComposerInput placeholder="메시지 입력..." />)
+    render(<ImeSafeComposerInput placeholder="占位符" />)
 
-    fireEvent.change(screen.getByPlaceholderText('메시지 입력...'), {
+    fireEvent.change(screen.getByPlaceholderText('占位符'), {
       target: { value: 'hello' },
     })
 
@@ -129,9 +129,9 @@ describe('ImeSafeComposerInput', () => {
   it('marks ordinary Enter as non-steering when the server queue is available', () => {
     mocks.hasQueue = true
     mocks.isRunning = true
-    render(<ImeSafeComposerInput submitMode="enter" placeholder="메시지 입력..." />)
+    render(<ImeSafeComposerInput submitMode="enter" placeholder="占位符" />)
 
-    fireEvent.keyDown(screen.getByPlaceholderText('메시지 입력...'), { key: 'Enter' })
+    fireEvent.keyDown(screen.getByPlaceholderText('占位符'), { key: 'Enter' })
 
     expect(mocks.send).toHaveBeenCalledExactlyOnceWith({ steer: false })
   })
@@ -139,9 +139,9 @@ describe('ImeSafeComposerInput', () => {
   it('uses explicit steer only for Shift plus Ctrl Enter', () => {
     mocks.hasQueue = true
     mocks.isRunning = true
-    render(<ImeSafeComposerInput submitMode="enter" placeholder="메시지 입력..." />)
+    render(<ImeSafeComposerInput submitMode="enter" placeholder="占位符" />)
 
-    fireEvent.keyDown(screen.getByPlaceholderText('메시지 입력...'), {
+    fireEvent.keyDown(screen.getByPlaceholderText('占位符'), {
       key: 'Enter',
       shiftKey: true,
       ctrlKey: true,

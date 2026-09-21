@@ -21,11 +21,11 @@ from app.models.agent import Agent
 from app.models.builder_session import BuilderSession
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import AgentMcpToolLink, McpTool
+from app.models.model import Model
 from app.models.skill import AgentSkillLink, Skill
 from app.models.tool import AgentToolLink, Tool
 from app.schemas.builder import BuilderStatus
 from app.schemas.conversation import Decision
-from app.services.model_service import resolve_model
 from app.services.tool_service import get_tools_catalog
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,14 @@ def _get_middlewares_catalog() -> list[dict[str, Any]]:
     deepagents가 자동 추가하는 빌트인 미들웨어는 제외하여
     중복 추가로 인한 오류를 방지한다.
     """
-    return get_middleware_registry(exclude_builtin=True)
+    from app.catalog_i18n import middleware_display
+    from app.services.builder_runtime_readiness import BUILDER_MIDDLEWARE_TYPES
+
+    return [
+        middleware_display(item, get_locale())
+        for item in get_middleware_registry(exclude_builtin=True)
+        if item["type"] in BUILDER_MIDDLEWARE_TYPES
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -144,37 +151,13 @@ def _get_middlewares_catalog() -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-async def _get_default_model_name(db: AsyncSession) -> str:
-    """에이전트에 할당할 기본 모델의 provider:model_name을 조회한다.
+async def _get_default_model_name(db: AsyncSession, user_id: uuid.UUID | None = None) -> str:
+    from app.services.builder_runtime_readiness import usable_bindings
 
-    우선순위:
-    1. 환경변수 DEFAULT_AGENT_MODEL (설정된 경우)
-    2. DB에서 is_default=True인 모델
-    3. DB의 첫 번째 모델
-    4. 빈 문자열 (phase6에서 fallback 처리)
-    """
-    from app.config import settings
-    from app.models.model import Model
-
-    # 1. 환경변수
-    if settings.default_agent_model:
-        return settings.default_agent_model
-
-    # 2. DB default — Model 테이블에는 is_default unique 제약이 없으므로
-    #    is_default=true row 가 여러 개여도 raise 하지 않도록 결정적 first 행 선택
-    result = await db.execute(
-        select(Model).where(Model.is_default.is_(True)).order_by(Model.created_at.asc()).limit(1)
-    )
-    model = result.scalars().first()
-    if model:
+    bindings = await usable_bindings(db, user_id) if user_id else []
+    if len(bindings) == 1:
+        model = bindings[0].model
         return f"{model.provider}:{model.model_name}"
-
-    # 3. 아무 모델 — 마찬가지로 결정적 순서 보장
-    result = await db.execute(select(Model).order_by(Model.created_at.asc()).limit(1))
-    model = result.scalars().first()
-    if model:
-        return f"{model.provider}:{model.model_name}"
-
     return ""
 
 
@@ -183,44 +166,67 @@ async def _get_default_model_name(db: AsyncSession) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def confirm_build(db: AsyncSession, session: BuilderSession) -> Agent | None:
+async def confirm_build(
+    db: AsyncSession, session: BuilderSession, *, model_id: str | None = None
+) -> Agent | None:
     """빌드 확인: draft_config를 기반으로 실제 Agent를 생성한다.
 
     agent_creation_service.confirm_creation()의 도구/모델 매칭 로직을 재사용.
     예외 발생 시 세션을 PREVIEW로 롤백하여 CONFIRMING 고착을 방지한다.
     """
+    await db.refresh(session, with_for_update=True)
+    if session.status == BuilderStatus.COMPLETED and session.agent_id:
+        return await get_agent_by_id(db, session.agent_id)
     config = session.draft_config
     if not config:
         return None
 
     try:
-        # 모델 매칭 — strict 조회 실패 시 fallback
-        model_name = config.get("model_name", "")
-        model = await resolve_model(db, model_name, strict=True) if model_name else None
-        if not model:
-            # strict 실패 → default 모델로 fallback
-            model = await resolve_model(db, "", strict=False)
-        if not model:
-            # default도 없으면 → DB의 아무 모델 사용
-            from app.models.model import Model as ModelORM
-
-            any_result = await db.execute(select(ModelORM).limit(1))
-            model = any_result.scalar_one_or_none()
-        if not model:
-            raise ValueError(tr("there_are_no_models_available_992704"))
+        selected_model_id = model_id or config.get("runtime_model_id")
+        runtime_source = config.get("runtime_model_source")
+        binding = await _resolve_confirm_runtime_binding(
+            db,
+            session.user_id,
+            str(selected_model_id) if selected_model_id else None,
+            runtime_source=runtime_source if isinstance(runtime_source, str) else None,
+        )
+        model = binding.model
 
         # 항목 매칭 — 이름으로 Tool / McpTool / Skill 3-way 분리 조회
         tools_to_link, mcp_tools_to_link, skills_to_link = await _resolve_tools(
             db, session.user_id, config.get("tools", [])
         )
+        resolved_names = {
+            item.name.lower() for item in [*tools_to_link, *mcp_tools_to_link, *skills_to_link]
+        }
+        if any(name.lower() not in resolved_names for name in config.get("tools", [])):
+            from app.exceptions import AppError
 
+            raise AppError(
+                code="builder_tool_unavailable", message=tr("builder_tool_unavailable"), status=422
+            )
+
+        from app.services.builder_runtime_readiness import validate_tools
+
+        await validate_tools(db, session.user_id, tools_to_link)
+
+        from app.services.agent_project_executor import snapshot_middlewares
+
+        snapshot_middlewares(
+            {
+                "middleware_configs": [
+                    {"type": name, "params": {}} for name in config.get("middlewares", [])
+                ]
+            }
+        )
         # 에이전트 생성
         agent = Agent(
             user_id=session.user_id,
-            name=config.get("name_ko") or config.get("name", tr("new_agent_265674")),
+            name=config.get("name") or tr("new_agent_265674"),
             description=config.get("description", ""),
             system_prompt=config.get("system_prompt", ""),
             model_id=model.id,
+            llm_credential_id=binding.credential.id,
             identity_mode=validate_identity_mode(
                 config.get("identity_mode") or AGENT_IDENTITY_PER_USER
             ),
@@ -237,7 +243,10 @@ async def confirm_build(db: AsyncSession, session: BuilderSession) -> Agent | No
         session.status = BuilderStatus.COMPLETED
         session.agent_id = agent.id
 
-        await db.commit()
+        from app.services import agent_project_service, builder_project_lifecycle
+
+        await agent_project_service.create_project(db, agent.id, session.user_id)
+        builder_project_lifecycle.schedule(agent.id, session.user_id)
         await db.refresh(agent, ["model", "tool_links"])
 
         # 이미지 처리: phase7_save가 draft_config["image_url"]을 항상 명시적으로 set.
@@ -265,9 +274,86 @@ async def confirm_build(db: AsyncSession, session: BuilderSession) -> Agent | No
     except Exception:
         # CONFIRMING 고착 방지: 예외 발생 시 PREVIEW로 롤백
         await db.rollback()
+        await db.refresh(session)
+        if session.status == BuilderStatus.COMPLETED and session.agent_id:
+            logger.exception("Post-build work failed; preserving completed Agent and Project")
+            return await get_agent_by_id(db, session.agent_id)
         session.status = BuilderStatus.PREVIEW
         await db.commit()
         raise
+
+
+async def get_builder_personal_bindings(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+):
+    """Expose personal Builder runtime bindings through the service facade."""
+
+    from app.services.builder_runtime_readiness import usable_bindings
+
+    return await usable_bindings(db, user_id)
+
+
+async def get_builder_system_runtime(db: AsyncSession):
+    """Return the operator-selected Builder runtime as a model/credential binding."""
+
+    from app.credentials import service as credential_service
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import RuntimeBinding
+    from app.services.system_credential_resolver import get_effective_setting
+
+    _, setting = await get_effective_setting(db, "builder")
+    if setting is None or setting.credential_id is None or not setting.model_name:
+        raise AppError(
+            code="builder_runtime_setup",
+            message=tr("builder_runtime_setup"),
+            status=422,
+        )
+    credential = await credential_service.get_system(db, setting.credential_id)
+    if credential is None:
+        raise AppError(
+            code="builder_runtime_setup",
+            message=tr("builder_runtime_setup"),
+            status=422,
+        )
+
+    result = await db.execute(
+        select(Model).where(
+            Model.provider == credential.definition_key,
+            Model.model_name == setting.model_name,
+        )
+    )
+    model = result.scalar_one_or_none()
+    if model is None:
+        model = Model(
+            provider=credential.definition_key,
+            model_name=setting.model_name,
+            display_name=setting.model_name,
+            is_visible=True,
+        )
+        db.add(model)
+        await db.flush()
+    return RuntimeBinding(model=model, credential=credential)
+
+
+async def _resolve_confirm_runtime_binding(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    selected_model_id: str | None,
+    *,
+    runtime_source: str | None,
+):
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import require_binding
+
+    if runtime_source == "system_builder":
+        return await get_builder_system_runtime(db)
+    try:
+        return await require_binding(db, user_id, selected_model_id)
+    except AppError:
+        if selected_model_id:
+            raise
+        return await get_builder_system_runtime(db)
 
 
 async def _resolve_tools(
@@ -410,7 +496,7 @@ async def run_v3_message_stream(
 
     async with async_session_factory() as db:
         tools_catalog = await get_tools_catalog(db, user_id)
-        default_model_name = await _get_default_model_name(db)
+        default_model_name = await _get_default_model_name(db, user_id)
         middlewares_catalog = _get_middlewares_catalog()
 
     checkpointer = get_checkpointer()

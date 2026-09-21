@@ -148,15 +148,15 @@ describe('ChatNavigator', () => {
   it('renders agent-grouped navigation and the local draft row', async () => {
     render(<ChatNavigator />)
 
-    expect(screen.getByText('에이전트')).toBeInTheDocument()
-    expect(screen.getByText('에이전트').closest('[data-sidebar="group-label"]')).toHaveClass(
+    expect(screen.getByText('智能体')).toBeInTheDocument()
+    expect(screen.getByText('智能体').closest('[data-sidebar="group-label"]')).toHaveClass(
       'group-data-[collapsible=icon]:hidden',
     )
     expect(screen.getByText('Test Agent')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('link', { name: /새 대화/ })).toBeInTheDocument())
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
     expect(
-      screen.queryByRole('textbox', { name: '에이전트 또는 대화 검색' }),
+      screen.queryByRole('textbox', { name: '搜索智能体或对话' }),
     ).not.toBeInTheDocument()
 
     const activeAgentNewChat = screen.getByRole('button', { name: 'Test Agent 새 채팅' })
@@ -189,12 +189,12 @@ describe('ChatNavigator', () => {
     const user = userEvent.setup()
     render(<ChatNavigator />)
 
-    await user.click(screen.getByRole('button', { name: '에이전트 검색' }))
-    await user.type(screen.getByRole('textbox', { name: '에이전트 또는 대화 검색' }), 'Second')
+    await user.click(screen.getByRole('button', { name: '搜索智能体' }))
+    await user.type(screen.getByRole('textbox', { name: '搜索智能体或对话' }), 'Second')
 
-    expect(screen.getByText('검색 결과')).toBeInTheDocument()
+    expect(screen.getByText('搜索结果')).toBeInTheDocument()
     expect(screen.getAllByText('Second Conversation').length).toBeGreaterThan(0)
-    expect(screen.queryByText('검색 결과가 없습니다')).not.toBeInTheDocument()
+    expect(screen.queryByText('没有搜索结果')).not.toBeInTheDocument()
   })
 
   it('expands collapsed agent sessions before fetching another page', async () => {
@@ -234,7 +234,7 @@ describe('ChatNavigator', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '더 보기' }))
+    await user.click(screen.getByRole('button', { name: '加载更多' }))
 
     expect(onToggleListExpanded).toHaveBeenCalledWith(agentSessionScope('agent-1'))
     expect(fetchNextPage).not.toHaveBeenCalled()
@@ -277,7 +277,7 @@ describe('ChatNavigator', () => {
       />,
     )
 
-    const collapseToggle = screen.getByRole('button', { name: '에이전트 펼치기' })
+    const collapseToggle = screen.getByRole('button', { name: '展开智能体' })
     expect(collapseToggle).toHaveClass('group-data-[collapsible=icon]:hidden')
 
     const agentLink = screen.getByRole('link', { name: 'Test Agent' })
@@ -338,7 +338,7 @@ describe('ChatNavigator', () => {
 
     // 활성 에이전트(agent-1)는 collapse override가 없는 한 기본 펼침이다
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
-    const toggle = screen.getByRole('button', { name: '에이전트 접기' })
+    const toggle = screen.getByRole('button', { name: '折叠智能体' })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
     await user.click(toggle)

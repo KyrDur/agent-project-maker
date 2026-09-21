@@ -14,7 +14,7 @@ import type { TokenUsageBreakdown } from '@/lib/types'
 // input_tokens는 cache 토큰을 모두 포함한 총 input이므로 cache_*를 더하지 않는다
 // (더하면 이중계상). 한도 = model.context_window.
 //
-// context_window가 null인 모델은 숨기지 않고 "비활성" 상태로 — muted/점선 ring +
+// context_window가 null인 모델은 숨기지 않고 "停用" 상태로 — muted/점선 ring +
 // 다른 색 + 호버 시 한도 미설정 안내. (사용량 표시 불가임을 명확히.)
 // ──────────────────────────────────────────────
 
@@ -25,6 +25,8 @@ interface ContextWindowGaugeProps {
   readonly contextWindow: number | null | undefined
   /** 게이지 옆에 함께 표시할 모델명. */
   readonly modelName?: string
+  readonly runtimeCredentialName?: string | null
+  readonly runtimeReady?: boolean
 }
 
 // 14px ring. r=6 → circumference 2π·6 ≈ 37.699.
@@ -39,7 +41,13 @@ function levelColorClass(hasLimit: boolean, percent: number): string {
   return 'text-muted-foreground'
 }
 
-export function ContextWindowGauge({ usage, contextWindow, modelName }: ContextWindowGaugeProps) {
+export function ContextWindowGauge({
+  usage,
+  contextWindow,
+  modelName,
+  runtimeCredentialName,
+  runtimeReady,
+}: ContextWindowGaugeProps) {
   const t = useTranslations('chat.contextWindow')
   const hasLimit = typeof contextWindow === 'number' && contextWindow > 0
   const promptTokens = usage?.prompt_tokens ?? 0
@@ -139,14 +147,61 @@ export function ContextWindowGauge({ usage, contextWindow, modelName }: ContextW
               {formatDisplayNumber(promptTokens, { locale: 'en-US' })} /{' '}
               {formatDisplayNumber(contextWindow as number, { locale: 'en-US' })}
             </div>
+            <RuntimeDetails
+              credentialName={runtimeCredentialName}
+              modelName={modelName}
+              ready={runtimeReady}
+            />
             {percent >= 80 ? (
               <div className={cn('mt-1.5 border-t pt-1.5', colorClass)}>{t('compactHint')}</div>
             ) : null}
           </>
         ) : (
-          <div className="text-muted-foreground">{t('disabled')}</div>
+          <>
+            <div className="text-muted-foreground">{t('disabled')}</div>
+            <RuntimeDetails
+              credentialName={runtimeCredentialName}
+              modelName={modelName}
+              ready={runtimeReady}
+            />
+          </>
         )}
       </TooltipContent>
     </Tooltip>
+  )
+}
+
+function RuntimeDetails({
+  credentialName,
+  modelName,
+  ready,
+}: {
+  readonly credentialName?: string | null
+  readonly modelName?: string
+  readonly ready?: boolean
+}) {
+  const t = useTranslations('chat.contextWindow')
+  if (!modelName && !credentialName && ready === undefined) return null
+  return (
+    <div className="mt-2 space-y-1 border-t pt-1.5 text-muted-foreground">
+      <div className="flex items-center justify-between gap-3">
+        <span>{t('runtimeModel')}</span>
+        <span className="truncate text-right text-foreground">{modelName ?? t('notConfigured')}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span>{t('runtimeCredential')}</span>
+        <span className="truncate text-right text-foreground">
+          {credentialName ? `${credentialName} (${t('masked')})` : t('notConfigured')}
+        </span>
+      </div>
+      {ready !== undefined ? (
+        <div className="flex items-center justify-between gap-3">
+          <span>{t('runtimeReadiness')}</span>
+          <span className={ready ? 'text-emerald-700' : 'text-amber-700'}>
+            {ready ? t('ready') : t('needsSetup')}
+          </span>
+        </div>
+      ) : null}
+    </div>
   )
 }

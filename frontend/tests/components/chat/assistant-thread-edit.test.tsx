@@ -77,7 +77,7 @@ vi.mock('@assistant-ui/react', () => {
             dictation: null,
             isEditing: true,
             isEmpty: false,
-            text: '초안',
+            text: '吃水',
           },
         },
         thread: { isDisabled: false, isRunning: false },

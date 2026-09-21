@@ -77,7 +77,7 @@ test.describe('Memory controls', () => {
 
     // 3. Delete it (inline confirm) — the API drops the record.
     await item.getByTestId('memory-delete-button').click()
-    await item.getByTestId('memory-delete-confirm').getByRole('button', { name: '삭제 확인' }).click()
+    await item.getByTestId('memory-delete-confirm').getByRole('button', { name: '确认删除' }).click()
     await expect
       .poll(async () => (await searchMemories(request, prefix)).length, { timeout: 15_000 })
       .toBe(0)

@@ -39,7 +39,7 @@ describe('ToolGroupContainer', () => {
         <div data-testid="child">leaf</div>
       </ToolGroupContainer>,
     )
-    expect(screen.getByText('웹 검색')).toBeInTheDocument()
+    expect(screen.getByText('默认标题')).toBeInTheDocument()
     expect(screen.getByText('10회')).toBeInTheDocument()
   })
 
@@ -59,7 +59,7 @@ describe('ToolGroupContainer', () => {
         <div data-testid="leaf">파일 내용</div>
       </ToolGroupContainer>,
     )
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
   })
 
@@ -69,7 +69,7 @@ describe('ToolGroupContainer', () => {
         <div data-testid="leaf">파일 내용</div>
       </ToolGroupContainer>,
     )
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.queryByTestId('leaf')).not.toBeInTheDocument()
   })
 
@@ -130,7 +130,7 @@ describe('ToolGroupContainer', () => {
           <div>leaf</div>
         </ToolGroupContainer>,
       )
-      expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+      expect(screen.getByText('读取文件')).toBeInTheDocument()
       expect(screen.queryByText(/출처/)).not.toBeInTheDocument()
       // 도메인 배지도 없어야 한다
       expect(screen.queryByText('A')).not.toBeInTheDocument()

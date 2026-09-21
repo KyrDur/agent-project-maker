@@ -33,6 +33,12 @@ from app.models.system_llm_setting import SystemLlmSetting
 
 logger = logging.getLogger(__name__)
 
+SYSTEM_LLM_ROLE_FALLBACKS: dict[str, tuple[str, ...]] = {
+    "builder": ("text_primary",),
+    "evaluation_generator": ("text_primary",),
+    "judge_optimizer": ("text_primary",),
+}
+
 
 class SystemModelNotConfiguredError(Exception):
     """Raised when a system LLM role has no credential/model selected.
@@ -59,9 +65,7 @@ class ResolvedSystemModel:
     base_url: str | None
 
 
-async def resolve_system_api_key(
-    db: AsyncSession, provider: str
-) -> str | None:
+async def resolve_system_api_key(db: AsyncSession, provider: str) -> str | None:
     """ENV → ``is_system=True`` Credential lookup → ``None``."""
 
     env_key = PROVIDER_API_KEY_MAP.get(provider)
@@ -72,9 +76,7 @@ async def resolve_system_api_key(
     if cred is None:
         return None
     try:
-        payload = await credential_service.decrypt_with_external(
-            cred.data_encrypted
-        )
+        payload = await credential_service.decrypt_with_external(cred.data_encrypted)
     except Exception:  # noqa: BLE001
         logger.exception("System credential %s decryption failed", cred.id)
         return None
@@ -82,19 +84,26 @@ async def resolve_system_api_key(
     return str(api_key) if api_key else None
 
 
-async def get_setting(
-    db: AsyncSession, role: str
-) -> SystemLlmSetting | None:
+async def get_setting(db: AsyncSession, role: str) -> SystemLlmSetting | None:
     """Fetch the ``system_llm_settings`` row for ``role`` (or ``None``)."""
-    result = await db.execute(
-        select(SystemLlmSetting).where(SystemLlmSetting.role == role)
-    )
+    result = await db.execute(select(SystemLlmSetting).where(SystemLlmSetting.role == role))
     return result.scalar_one_or_none()
 
 
-async def resolve_system_model(
-    db: AsyncSession, role: str
-) -> ResolvedSystemModel:
+async def get_effective_setting(db: AsyncSession, role: str) -> tuple[str, SystemLlmSetting | None]:
+    """Fetch the configured row for ``role``, falling back to legacy slots."""
+
+    setting = await get_setting(db, role)
+    if setting is not None and setting.credential_id is not None and setting.model_name:
+        return role, setting
+    for fallback_role in SYSTEM_LLM_ROLE_FALLBACKS.get(role, ()):
+        fallback = await get_setting(db, fallback_role)
+        if fallback is not None and fallback.credential_id is not None and fallback.model_name:
+            return fallback_role, fallback
+    return role, setting
+
+
+async def resolve_system_model(db: AsyncSession, role: str) -> ResolvedSystemModel:
     """Resolve the operator-selected model for a system ``role``.
 
     ADR-019 §결정3. Reads the role's ``system_llm_settings`` row, loads the
@@ -104,7 +113,7 @@ async def resolve_system_model(
     role has no credential or model selected, or the credential is missing.
     """
 
-    setting = await get_setting(db, role)
+    _, setting = await get_effective_setting(db, role)
     if setting is None or setting.credential_id is None or not setting.model_name:
         raise SystemModelNotConfiguredError(role)
 
@@ -128,6 +137,8 @@ async def resolve_system_model(
 __all__ = [
     "ResolvedSystemModel",
     "SystemModelNotConfiguredError",
+    "SYSTEM_LLM_ROLE_FALLBACKS",
+    "get_effective_setting",
     "get_setting",
     "resolve_system_api_key",
     "resolve_system_model",

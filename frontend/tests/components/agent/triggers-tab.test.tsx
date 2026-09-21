@@ -47,20 +47,20 @@ describe('TriggersTab', () => {
     const user = userEvent.setup()
     render(<TriggersTab agentId="agent-1" onRequestDelete={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: '자동 실행 추가' }))
+    await user.click(screen.getByRole('button', { name: '添加新内容' }))
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '스케줄' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '定时任务' })).toBeInTheDocument()
   })
 
   it('edits an existing trigger from the agent settings schedule tab', async () => {
     const user = userEvent.setup()
     render(<TriggersTab agentId="agent-1" onRequestDelete={vi.fn()} />)
 
-    await user.click(screen.getAllByRole('button', { name: '수정' })[0])
-    await user.clear(screen.getByPlaceholderText('예: 매일 아침 뉴스 요약'))
-    await user.type(screen.getByPlaceholderText('예: 매일 아침 뉴스 요약'), '수정된 스케줄')
-    await user.click(screen.getByRole('button', { name: '스케줄 수정' }))
+    await user.click(screen.getAllByRole('button', { name: '编辑' })[0])
+    await user.clear(screen.getByPlaceholderText('名称'))
+    await user.type(screen.getByPlaceholderText('名称'), '수정된 스케줄')
+    await user.click(screen.getByRole('button', { name: '编辑日程' }))
 
     await waitFor(() => expect(mockUpdateTriggerAsync).toHaveBeenCalledTimes(1))
     expect(mockUpdateTriggerAsync).toHaveBeenCalledWith({

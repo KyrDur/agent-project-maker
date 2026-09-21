@@ -31,11 +31,13 @@ interface PatternMatch {
  *   - `이제 Phase N ... 시작/진행`
  *   - `Phase N: <name>` (단독 헤더)
  */
-const COMPLETED_PATTERNS: RegExp[] = [/\[Phase\s+(\d+)\s+완료\][^\n.!?]*[.!?]?\s*/g]
+const COMPLETED_PATTERNS: RegExp[] = [
+  /\[Phase\s+(\d+)\s*(?:已完成|完成|completed)\][^\n.!?。！？\[]*[.!?。！？]?\s*/gi,
+]
 
 const STARTED_PATTERNS: RegExp[] = [
-  /이제\s+Phase\s+(\d+)[^\n.!?]*?(?:시작|진행)(?:하겠습니다|합니다|할게요)?[.!?]?\s*/g,
-  /Phase\s+(\d+)\s*[:·][^\n.!?]*[.!?]?\s*/g,
+  /(?:现在|接下来)[^\n.!?。！？]*?Phase\s+(\d+)[^\n.!?。！？]*[.!?。！？]?\s*/g,
+  /Phase\s+(\d+)\s*[:：·][^\n.!?。！？]*[.!?。！？]?\s*/g,
 ]
 
 function collectMatches(

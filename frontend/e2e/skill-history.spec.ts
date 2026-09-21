@@ -20,7 +20,7 @@ const skill = {
   current_revision_id: 'rev-3',
   health: {
     state: 'ready',
-    label: '검증됨',
+    label: '已验证',
     reason: 'Latest evaluation passed for the current skill.',
     severity: 'success',
   },
@@ -187,7 +187,7 @@ test.describe('Skill history tab', () => {
     await page.waitForURL(/\/skills\/skill-history\/versions/)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Korea Weather')
     await expect(page.getByRole('heading', { name: '리비전 3', exact: true })).toBeVisible()
-    await expect(page.getByText('현재 버전', { exact: true }).first()).toBeVisible()
+    await expect(page.getByText('当前', { exact: true }).first()).toBeVisible()
     await expect(page.getByText(/빌더 개선/)).toBeVisible()
     await expect(page.getByText('리비전 3 상세')).toBeVisible()
     await expect(page.getByRole('button', { name: '리비전 3 되돌리기' })).toBeDisabled()
@@ -195,10 +195,10 @@ test.describe('Skill history tab', () => {
     await page.getByRole('button', { name: '리비전 2 보기' }).click()
     await expect(page.getByText('리비전 2 상세')).toBeVisible()
     await expect(page.getByText('날씨 응답 톤 수정 · SKILL.md')).toBeVisible()
-    await expect(page.getByText('공용 호환성')).toBeVisible()
+    await expect(page.getByText('便携兼容性')).toBeVisible()
     await expect(page.getByText('OpenAI/Codex')).toBeVisible()
     // 스튜디오 컨텍스트 바의 "통과율 N%"와 substring 충돌 — exact 매칭.
-    await expect(page.getByText('통과', { exact: true })).toBeVisible()
+    await expect(page.getByText('通行证', { exact: true })).toBeVisible()
 
     // ── M4: SKILL.md diff (rev-2 vs parent rev-1) ──────────────────────
     const diffCard = page.getByTestId('revision-diff-card')
@@ -207,13 +207,13 @@ test.describe('Skill history tab', () => {
     await expect(diffCard).toContainText('+ 요약 규칙 v2')
 
     // ── M4: 이 버전 소스 보기 → read-only 리비전 뷰어 ──────────────────
-    await diffCard.getByRole('link', { name: '이 버전 소스 보기' }).click()
+    await diffCard.getByRole('link', { name: '查看此版本的源代码' }).click()
     await page.waitForURL(/\/skills\/skill-history\/source\?revision=rev-2/)
     await expect(page.getByText('리비전 2 소스')).toBeVisible()
-    await expect(page.getByText('읽기 전용')).toBeVisible()
+    await expect(page.getByText('只读')).toBeVisible()
     await expect(page.getByText('요약 규칙 v2')).toBeVisible()
     // 편집 UI가 없어야 한다 (read-only 계약).
-    await expect(page.getByRole('button', { name: '파일 저장' })).toBeHidden()
+    await expect(page.getByRole('button', { name: '保存文件' })).toBeHidden()
 
     const captureDir = path.resolve(process.cwd(), '../output/e2e-captures/20260615-skill-history')
     await mkdir(captureDir, { recursive: true })

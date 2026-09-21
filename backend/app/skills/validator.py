@@ -18,7 +18,7 @@ from app.skills.moldy_metadata import (
 )
 from app.skills.package_builder import normalize_draft_path
 
-TRIGGER_WORDS = ("use when", "사용", "when", "whenever")
+TRIGGER_WORDS = ("use when", "已启用", "when", "whenever")
 SCAFFOLDING_RE = re.compile(
     r"(?i)(<!--|complete and informative|replace with|todo:|\[describe|\[replace)"
 )

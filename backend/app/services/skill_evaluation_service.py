@@ -261,7 +261,7 @@ async def estimate_run_priced(
     The runner model is the ``text_primary`` System LLM (same resolution the
     evaluator uses); when the slot is unset or the model has no pricing the
     estimate degrades to ``estimated_cost_usd=0`` + ``pricing_available=False``
-    so the UI can say "단가 미설정" instead of implying "free" (spec §5.2).
+    so the UI can say "无定价" instead of implying "free" (spec §5.2).
     """
 
     estimate = estimate_run(evaluation_set, uses_baseline_comparison=uses_baseline_comparison)

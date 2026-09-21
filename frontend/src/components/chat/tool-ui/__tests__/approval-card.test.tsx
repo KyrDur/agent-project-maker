@@ -831,7 +831,7 @@ describe('ApprovalCard', () => {
     expect(group).toHaveAttribute('data-hitl-pending-actions', '0')
   })
 
-  it('does not let "모두 승인" override a card the user put into reject mode', async () => {
+  it('does not let "批准全部" override a card the user put into reject mode', async () => {
     const registerDecision = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
     function Card({ index }: { index: number }) {
       return renderApproval({

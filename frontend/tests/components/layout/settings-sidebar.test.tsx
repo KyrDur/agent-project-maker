@@ -105,7 +105,7 @@ describe('SettingsSidebar collapsed rail behavior', () => {
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('collapsed')
 
-    await user.click(screen.getByRole('link', { name: '프로필' }))
+    await user.click(screen.getByRole('link', { name: '公司简介' }))
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('expanded')
   })
@@ -116,7 +116,7 @@ describe('SettingsSidebar collapsed rail behavior', () => {
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('collapsed')
 
-    await user.click(screen.getByRole('link', { name: '앱으로 돌아가기' }))
+    await user.click(screen.getByRole('link', { name: '返回应用程序' }))
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('expanded')
   })

@@ -61,9 +61,9 @@ describe('TokenUsagePopover', () => {
 
     // hover로 popover 열기 — click은 onMouseEnter가 먼저 open(true)을 셋한 뒤
     // button onClick이 다시 toggle해서 닫혀버린다. 실 사용에서도 hover가 주 진입.
-    await user.hover(screen.getByRole('button', { name: '토큰 사용량 보기' }))
+    await user.hover(screen.getByRole('button', { name: '切换咏叹调' }))
 
-    expect(screen.getByText('토큰 사용량')).toBeInTheDocument()
+    expect(screen.getByText('Token 用量')).toBeInTheDocument()
     expect(screen.getByText('1,200')).toBeInTheDocument() // input
     expect(screen.getByText('300')).toBeInTheDocument() // output
     expect(screen.getByText('800')).toBeInTheDocument() // cache_creation
@@ -86,10 +86,10 @@ describe('TokenUsagePopover', () => {
       </div>,
     )
 
-    await user.hover(screen.getByRole('button', { name: '토큰 사용량 보기' }))
+    await user.hover(screen.getByRole('button', { name: '切换咏叹调' }))
 
     const tooltip = screen.getByRole('tooltip')
-    expect(tooltip).toHaveTextContent('토큰 사용량')
+    expect(tooltip).toHaveTextContent('Token 用量')
     expect(container).not.toContainElement(tooltip)
   })
 
@@ -103,7 +103,7 @@ describe('TokenUsagePopover', () => {
     })
     const user = userEvent.setup()
     render(<TokenUsagePopover />)
-    await user.hover(screen.getByRole('button', { name: '토큰 사용량 보기' }))
-    expect(screen.queryByText('추정 비용')).not.toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: '切换咏叹调' }))
+    expect(screen.queryByText('预计费用')).not.toBeInTheDocument()
   })
 })

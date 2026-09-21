@@ -74,7 +74,7 @@ describe('TextSkillEditor (소스 탭)', () => {
 
     await user.clear(textarea)
     await user.type(textarea, '# 수정된 본문')
-    await user.click(screen.getByRole('button', { name: '저장' }))
+    await user.click(screen.getByRole('button', { name: '保存' }))
 
     expect(mockUpdateContent).toHaveBeenCalledWith({
       id: 'skill-1',
@@ -122,17 +122,17 @@ describe('PackageSkillEditor (소스 탭)', () => {
     const user = userEvent.setup()
     render(<PackageSkillEditor skillId="skill-1">{renderTestSlots}</PackageSkillEditor>)
 
-    await user.click(screen.getByRole('button', { name: '파일 추가' }))
+    await user.click(screen.getByRole('button', { name: '添加文件' }))
     const pathInput = screen.getByPlaceholderText('path/to/new-file.md')
 
     // 중복 경로 거부 — 기존 파일이 빈 내용으로 덮이면 안 된다.
     await user.type(pathInput, 'SKILL.md')
-    await user.click(screen.getByRole('button', { name: '생성' }))
+    await user.click(screen.getByRole('button', { name: '已创建' }))
     expect(mockSetFile).not.toHaveBeenCalled()
 
     await user.clear(pathInput)
     await user.type(pathInput, '/references/new.md')
-    await user.click(screen.getByRole('button', { name: '생성' }))
+    await user.click(screen.getByRole('button', { name: '已创建' }))
     expect(mockSetFile).toHaveBeenCalledWith({ path: 'references/new.md', content: '' })
   })
 
@@ -143,8 +143,8 @@ describe('PackageSkillEditor (소스 탭)', () => {
     // 삭제 버튼은 SKILL.md(보호됨) 외 파일에서만 노출된다. 트리는 leaf 이름만
     // 표시하므로 run.py로 선택한다.
     await user.click(screen.getByRole('button', { name: /run\.py/ }))
-    await user.click(screen.getByRole('button', { name: '파일 삭제' }))
-    await user.click(screen.getByRole('button', { name: '삭제 확인' }))
+    await user.click(screen.getByRole('button', { name: '删除文件' }))
+    await user.click(screen.getByRole('button', { name: '确认删除' }))
 
     expect(mockDeleteFile).toHaveBeenCalledWith('scripts/run.py')
   })
@@ -156,7 +156,7 @@ describe('PackageSkillEditor (소스 탭)', () => {
     // SKILL.md가 기본 선택 — 원본 내용 렌더.
     const textarea = screen.getByRole('textbox')
     expect(textarea).toHaveValue('# SKILL.md 원본')
-    const save = screen.getByRole('button', { name: '파일 저장' })
+    const save = screen.getByRole('button', { name: '保存文件' })
     expect(save).toBeDisabled()
 
     await user.clear(textarea)

@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
+import { NextIntlClientProvider } from 'next-intl'
 import { useTemplates } from '@/lib/hooks/use-templates'
 import { mockTemplateList } from '../../mocks/fixtures'
 
@@ -9,7 +10,11 @@ function createWrapper() {
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
   function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    return (
+      <NextIntlClientProvider locale="zh-CN" messages={{}}>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </NextIntlClientProvider>
+    )
   }
   return Wrapper
 }

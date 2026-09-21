@@ -91,7 +91,7 @@ describe('ToolsPage', () => {
 
   it('renders page header with title', () => {
     render(<ToolsPage />)
-    expect(screen.getByText('도구')).toBeInTheDocument()
+    expect(screen.getByText('工具')).toBeInTheDocument()
   })
 
   it('renders catalog categories and installed in one tab row', () => {
@@ -99,7 +99,7 @@ describe('ToolsPage', () => {
       data: [
         {
           key: 'web_search',
-          display_name: '웹 검색',
+          display_name: '默认标题',
           description: '웹을 검색합니다.',
           icon_id: 'search',
           category: 'search',
@@ -123,9 +123,9 @@ describe('ToolsPage', () => {
 
     render(<ToolsPage />)
     expect(screen.getByRole('tab', { name: '전체 2개' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '검색' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '자동화' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: '설치됨' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '搜索' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '自动化' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '已安装' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /카탈로그/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: /관리/ })).not.toBeInTheDocument()
   })
@@ -135,7 +135,7 @@ describe('ToolsPage', () => {
       data: [
         {
           key: 'web_search',
-          display_name: '웹 검색',
+          display_name: '默认标题',
           description: '웹을 검색합니다.',
           icon_id: 'search',
           category: 'search',
@@ -174,7 +174,7 @@ describe('ToolsPage', () => {
     const user = userEvent.setup()
     render(<ToolsPage />)
     await user.click(screen.getByRole('tab', { name: /설치됨/ }))
-    expect(screen.getByText('아직 도구가 없어요')).toBeInTheDocument()
+    expect(screen.getByText('空')).toBeInTheDocument()
   })
 
   it('renders installed tools as catalog-style cards', async () => {
@@ -182,7 +182,7 @@ describe('ToolsPage', () => {
       data: [
         {
           key: 'web_search',
-          display_name: '웹 검색',
+          display_name: '默认标题',
           description: '웹을 검색합니다.',
           icon_id: 'search',
           category: 'search',
@@ -199,7 +199,7 @@ describe('ToolsPage', () => {
           id: 'tool-1',
           user_id: 'user-1',
           definition_key: 'web_search',
-          name: '웹 검색',
+          name: '默认标题',
           description: '웹을 검색합니다.',
           parameters: {},
           credential_id: null,

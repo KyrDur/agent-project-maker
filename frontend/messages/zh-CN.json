@@ -1,5 +1,269 @@
 {
   "agentProject": {
+    "lifecycle": {
+      "proposals": "AI 优化建议与审核",
+      "reviewFirst": "AI 先生成建议和变更预览。接受后创建新的版本快照；线上 Agent 不会被自动修改。",
+      "generate": "生成 AI 优化建议",
+      "generating": "正在分析证据并生成建议…",
+      "capabilities": "受影响能力：{value}",
+      "rootCause": "根因：{value}",
+      "suggestion": "改进建议：{value}",
+      "change": "查看 {target} 变更",
+      "deferred": "待手动处理（历史 Skill 内容不可用）：{value}",
+      "accept": "接受建议并创建新版本",
+      "reject": "拒绝建议",
+      "decisionReason": "为什么选择这个方案？（可选）",
+      "decisionReasonPlaceholder": "例如：优先修复工具调用，因为这是正式使用前最大的风险。",
+      "savedDecisionReason": "选择理由：{value}",
+      "defaultProposalTitle": "证据驱动优化方案",
+      "whatChanges": "调整内容：{value}",
+      "whyItMayWork": "为什么可能有效：{value}",
+      "targetedCases": "目标失败用例：{value}",
+      "benefits": "收益",
+      "risks": "风险与取舍",
+      "cannotApply": "没有可安全应用的快照变更；请处理待办建议或拒绝此建议。",
+      "versionCreated": "已从 {source} 创建 {version}，原版本保持不变。",
+      "runRegression": "运行同一评测集回归",
+      "rerunRegression": "新建一次回归评估",
+      "regressionRunning": "回归评估中…",
+      "compareReport": "查看报告和版本比较",
+      "rejectedHistory": "已拒绝，建议和变更预览保留在历史中。",
+      "error": "操作未完成，请检查运行证据或模型状态后重试。",
+      "statuses": {
+        "pending": "待审核",
+        "accepted": "已接受",
+        "rejected": "已拒绝"
+      },
+      "qualityStatus": "评测集质量：{status}",
+      "qualityScore": "质量评分：{value}%",
+      "qualityStates": {
+        "pending": "待检查",
+        "approved": "已通过",
+        "rejected": "未通过"
+      },
+      "qualityCheck": "执行质量检查",
+      "checking": "正在检查…",
+      "qualityIssues": {
+        "missing_capabilities": "缺少能力覆盖，请补充用例标签或重新生成。",
+        "low_diversity": "用例重复较多，请修改或重新生成。"
+      },
+      "bestReason": "原因：同一评测集和评分规则下的最高有效评分。",
+      "createdFrom": "来源：{source} · 优化建议 {proposal}"
+    },
+    "evaluationReport": {
+      "title": "Evaluation Report · 评估报告",
+      "selectReport": "选择历史评估（版本 B）",
+      "score": "Overall Score · 总分",
+      "summary": "评估摘要",
+      "summaryValue": "共 {total} 条用例，通过 {passed} 条",
+      "best": "Best Version · 最佳版本",
+      "unavailable": "暂无有效评分",
+      "percent": "{value}%",
+      "delta": "{value} 个百分点",
+      "scoreRule": "总分使用评估通过率；各指标保留已有 Judge 分数。执行或评分出错的运行不计总分。",
+      "bestRule": "在相同冻结数据和评分口径下选取最高分版本，同分保留较早评估。标记不会自动修改线上 Agent 配置。",
+      "dataset": "评测集：{id}",
+      "metrics": "Metrics · 指标",
+      "noMetrics": "暂无已保存指标。",
+      "badCases": "Bad Cases · 失败案例（{count}）",
+      "noFailures": "暂无记录的失败案例。",
+      "noReason": "请打开运行详情查看失败证据。",
+      "suggestions": "Optimization · 优化建议",
+      "noSuggestions": "暂无已保存建议，可在运行详情中分析失败案例。",
+      "openRun": "打开运行详情 / 失败分析 / 优化",
+      "compare": "Version Compare · 版本评分比较",
+      "baseline": "比较基准（版本 A）",
+      "comparison": "A {before} → B {after}",
+      "needBaseline": "评估另一个版本后，即可比较分数。",
+      "notComparable": "需要相同冻结数据、评分口径且有效的评估，才能计算提升幅度。",
+      "running": "评估或优化正在运行，完成后自动更新报告。",
+      "empty": "暂无评估报告，请选择版本和评测集并运行评估。"
+    },
+    "workspace": {
+      "navAria": "Agent 生命周期工作区",
+      "tabs": {
+        "overview": {
+          "label": "Overview",
+          "description": "生命周期状态"
+        },
+        "versions": {
+          "label": "Versions",
+          "description": "版本演进"
+        },
+        "evaluation": {
+          "label": "Evaluation",
+          "description": "评测证据"
+        },
+        "optimization": {
+          "label": "Optimization",
+          "description": "优化闭环"
+        },
+        "settings": {
+          "label": "Settings",
+          "description": "项目设置"
+        }
+      },
+      "overview": {
+        "eyebrow": "Agent Lifecycle",
+        "narrative": "创建 → 版本化 → 评测 → 分析 → 优化 → 回归 → 最佳版本",
+        "currentVersion": "当前版本",
+        "bestVersion": "最佳版本",
+        "latestEvaluation": "最近评测",
+        "progressTitle": "生命周期进度",
+        "noData": "暂无数据",
+        "noVersion": "暂无版本",
+        "aiReadiness": {
+          "status": {
+            "ready": "已就绪",
+            "needsSetup": "需要配置",
+            "notConfigured": "未配置"
+          },
+          "pipeline": {
+            "title": "平台 AI 流程",
+            "roles": {
+              "builder": "Builder AI",
+              "evaluation_generator": "评测生成 AI",
+              "judge_optimizer": "评判与优化 AI"
+            }
+          },
+          "runtime": {
+            "title": "Agent Runtime",
+            "model": "运行模型",
+            "credential": "运行凭据",
+            "masked": "凭据已保护"
+          }
+        },
+        "steps": {
+          "v1Ready": "Agent V1 就绪",
+          "generatorAnalyzing": "评测生成分析",
+          "focusCheckpoint": "评测重点决策",
+          "benchmarkGenerating": "生成 20 条用例",
+          "benchmarkFrozen": "模拟环境冻结",
+          "evaluationRunning": "V1 评测运行",
+          "resultsBadCases": "结果与失败案例",
+          "optimizationProposals": "优化方案",
+          "optimizationDecision": "优化决策",
+          "v2Generation": "生成 V2",
+          "regressionEvaluation": "回归评测",
+          "comparisonBestVersion": "比较与最佳版本"
+        },
+        "stepStates": {
+          "completed": "已完成",
+          "current": "当前步骤",
+          "pending": "待处理"
+        },
+        "bestCard": {
+          "title": "最佳版本",
+          "badge": "Best",
+          "overallScore": "总分",
+          "noPreviousComparable": "暂无可比较的上一版本。",
+          "improvement": "相比上一可比版本 {value} 个百分点",
+          "viewVersions": "查看版本演进",
+          "empty": "完成至少一次有效评测后生成最佳版本。",
+          "runEvaluation": "去运行评测"
+        },
+        "latestCard": {
+          "title": "最近评测",
+          "version": "版本",
+          "score": "得分",
+          "cases": "用例数",
+          "failedCases": "失败用例",
+          "evaluatedWith": "使用评测集",
+          "evaluationTime": "评测时间",
+          "empty": "暂无评测运行。",
+          "viewEvaluation": "查看评测"
+        },
+        "optimizationCard": {
+          "title": "最近优化",
+          "status": "状态：",
+          "detectedIssue": "发现问题：",
+          "rootCause": "根因：",
+          "uncategorized": "暂无分类",
+          "noRootCause": "暂无根因",
+          "review": "查看优化",
+          "empty": "暂无优化建议。",
+          "view": "查看优化入口"
+        },
+        "nextAction": {
+          "title": "下一步",
+          "generateEvalSet": {
+            "label": "生成评测集",
+            "detail": "先创建一组可复用的评测用例，后续版本都用它做对比。"
+          },
+          "chooseEvaluationFocus": {
+            "label": "确认评测重点",
+            "detail": "选择最需要关注的风险场景，并说明原因，再生成固定的 20 个正式用例。"
+          },
+          "qualityCheck": {
+            "label": "执行质量检查",
+            "detail": "确认评测集覆盖度、有效性和可评测性，再运行正式评测。"
+          },
+          "runEvaluation": {
+            "label": "运行评测",
+            "detail": "选择版本和评测集，生成第一份可比较的评测证据。"
+          },
+          "analyzeBadCases": {
+            "label": "分析失败案例",
+            "detail": "从失败用例生成根因分析和可审核的优化建议。"
+          },
+          "runRegression": {
+            "label": "运行回归评测",
+            "detail": "用同一个冻结评测集验证新版本是否真正变好。"
+          },
+          "compareVersions": {
+            "label": "比较版本",
+            "detail": "查看最佳版本、评分变化和版本演进关系。"
+          }
+        }
+      },
+      "versions": {
+        "evolutionAria": "版本演进",
+        "bestBadge": "最佳",
+        "evaluationScore": "评测得分",
+        "createdFrom": "创建来源",
+        "optimizationProposal": "优化建议 #{id}",
+        "initialVersion": "初始版本",
+        "manualVersion": "手动版本",
+        "parent": "父版本",
+        "none": "无",
+        "regression": "回归评测",
+        "changes": "变更"
+      },
+      "evaluation": {
+        "evalSets": {
+          "title": "评测集",
+          "description": "用同一组冻结评测用例比较不同版本，避免最新版本和最佳版本混淆。",
+          "frozen": "已冻结，可用于回归",
+          "draft": "草稿",
+          "name": "评测集名称",
+          "caseCount": "用例数",
+          "qualityStatus": "质量状态",
+          "source": "来源",
+          "sources": {
+            "aiGenerated": "AI 生成",
+            "imported": "导入",
+            "manual": "手动"
+          }
+        },
+        "caseDefaults": {
+          "evaluationType": "常规",
+          "difficulty": "中等",
+          "source": "手动",
+          "enabled": "已启用",
+          "disabled": "已停用"
+        },
+        "runs": {
+          "title": "评测运行",
+          "description": "每次运行都绑定一个版本和一个评测集，报告与优化建议都来自这里。"
+        }
+      },
+      "optimization": {
+        "title": "优化",
+        "description": "从评测失败证据出发，审核 AI 优化建议，并用同一个冻结评测集做回归验证。",
+        "loading": "正在加载优化证据...",
+        "empty": "暂无可优化的评测证据。请先在 Evaluation 中运行评测，产生失败案例后再生成优化建议。"
+      }
+    },
     "createVersion": "创建版本",
     "configHash": "配置哈希",
     "snapshotDetail": "查看快照",
@@ -114,7 +378,7 @@
     },
     "title": "Agent Project Maker",
     "description": "将这个智能体转为可评测、可追踪版本的项目。",
-    "openProject": "项目",
+    "openProject": "打开项目",
     "backToSettings": "智能体设置",
     "loading": "加载中...",
     "creating": "正在创建…",
@@ -144,13 +408,27 @@
     "scenarioCategories": "场景类别",
     "planVersionMismatch": "为所选版本生成计划。",
     "generateCases": "生成 20 个测试用例",
+    "evaluationFocus": {
+      "title": "你最担心这个 Agent 在哪些场景出问题？",
+      "description": "至少选择 2 项。评测生成 AI 会据此调整 20 个正式用例的覆盖重点。",
+      "reason": "为什么这些场景对你最重要？（可选）",
+      "reasonPlaceholder": "例如：正式使用前必须确认它会同时查飞书和 Notion，不会编造来源。",
+      "fallbackDescription": "将这一类风险纳入正式评测用例覆盖。",
+      "minimum": "请至少选择 2 个关注点。"
+    },
     "generationFailed": "生成失败，请检查模型凭据后重试。",
     "metricScores": "指标分数",
     "passRate": "通过率{value}%",
     "scorePercent": "{value}%",
     "scoredCases": "{count} 个已评分用例",
     "semanticDescription": "存在评测计划时，同时执行语义评分与结构化检查。",
-    "mockScope": "外部工具仅使用冻结的模拟数据，不会访问真实外部数据。",
+    "mockEnvironmentTitle": "模拟测试环境",
+    "mockScope": "评测期间使用固定模拟数据，不会修改真实飞书、Notion 或其他外部系统；正式使用时再连接真实工具。",
+    "toolTrace": "查看工具调用 trace",
+    "toolOrder": "第 {value} 次调用",
+    "toolArguments": "调用参数",
+    "toolResult": "模拟返回",
+    "toolError": "模拟错误",
     "deterministicReason": "工具使用或输出格式断言结果",
     "semanticExpected": "配置评测计划后，评审模型会将预期行为与实际结果进行比较。",
     "formatRule": "输出格式规则",
@@ -259,7 +537,35 @@
       "copyLink": "复制分享链接",
       "revoked": "分享已撤销。",
       "publicTitle": "智能体项目案例",
-      "shareUnavailable": "该项目共享不可用或已被撤销。"
+      "shareUnavailable": "该项目共享不可用或已被撤销。",
+      "reportOverview": "评测总览",
+      "bestVersion": "最佳版本",
+      "bestEvidence": "基于最高评测分数",
+      "failedCases": "失败用例",
+      "metricsTitle": "指标",
+      "scoredCases": "已评分用例：{count}",
+      "failedCaseDetails": "失败用例详情",
+      "failureReasonUnavailable": "未提供失败原因",
+      "toolCalls": "工具调用",
+      "none": "无"
+    },
+    "bootstrap": {
+      "title": "构建与基线评估",
+      "steps": "构建智能体 → V1 → 评估计划 → 确认评测重点 → 20 个评估用例 → 基线评估 → 结果",
+      "current": "当前步骤：{stage}",
+      "stages": {
+        "v1": "保存 V1",
+        "plan": "生成评估计划",
+        "focus": "确认评测重点",
+        "cases": "生成 20 个评估用例",
+        "baseline": "运行基线评估",
+        "results": "查看结果"
+      },
+      "blocked": "此步骤未能完成。请检查个人模型凭据及模型可用性，修复后重试；已有版本和测试集会保留。",
+      "reason": "阻塞原因代码：{code}",
+      "credentials": "个人凭据",
+      "models": "模型设置",
+      "retry": "重试此流程"
     }
   },
   "metadata": {
@@ -476,7 +782,7 @@
       "artifacts": "产物",
       "credentials": "凭据",
       "systemCredentials": "系统凭据",
-      "systemLlm": "系统大模型设置",
+      "systemLlm": "平台 AI",
       "skills": "技能",
       "schedules": "定时任务",
       "usage": "用量统计",
@@ -581,7 +887,6 @@
     },
     "language": {
       "label": "语言",
-      "ko": "韩语",
       "en": "英语",
       "zh-CN": "简体中文"
     },
@@ -650,6 +955,18 @@
       "template": {
         "label": "使用模板",
         "description": "从现成的模板快速开始。"
+      }
+    },
+    "aiSetup": {
+      "title": "先完成平台 AI 配置",
+      "adminDescription": "Builder、评测生成和优化判断需要平台模型。使用一个 API Key 即可快速完成基础配置。",
+      "userDescription": "平台 AI 尚未配置完成。请联系管理员完成配置后再创建或评测智能体。",
+      "action": "配置 AI Models",
+      "notConfigured": "未配置",
+      "roles": {
+        "builder": "Builder",
+        "evaluationGenerator": "评测生成",
+        "judgeOptimizer": "判断与优化"
       }
     },
     "myAgents": "我的智能体",
@@ -811,7 +1128,7 @@
       },
       "phase5": {
         "label": "提示生成",
-        "description": "编写系统提示符"
+        "description": "编写系统提示词"
       },
       "phase6": {
         "label": "保存配置",
@@ -843,7 +1160,6 @@
       "toolReason": "原因",
       "configComplete": "智能体配置完成",
       "draftName": "名称",
-      "draftNameKo": "韩文名字",
       "draftDescription": "描述",
       "draftModel": "模型",
       "draftTaskType": "主要任务",
@@ -874,7 +1190,9 @@
       "breadcrumb": {
         "create": "创建智能体",
         "conversational": "通过聊天构建"
-      }
+      },
+      "restoring": "正在恢复构建会话…",
+      "restoreError": "无法恢复构建会话。请检查网络并重试；原会话仍保留。"
     },
     "card": {
       "status": {
@@ -1021,7 +1339,7 @@
         "skillsCount": "{n}技能",
         "noSkills": "没有注册技能。从 {link} 添加一个。",
         "skillsLink": "技能管理",
-        "empty": "还没有商品。",
+        "empty": "尚未添加工具或技能。",
         "dialogTitle": "对话框标题"
       },
       "modelConfig": "模型设置",
@@ -1094,7 +1412,7 @@
       "manageModels": "管理模型",
       "image": {
         "generate": "生成",
-        "regenerate": "再生",
+        "regenerate": "重新生成",
         "generating": "生成",
         "success": "成功",
         "failed": "失败"
@@ -1144,7 +1462,17 @@
         "saved": "保存成功。",
         "saveFailed": "操作失败。",
         "deleteFailed": "操作失败。"
-      }
+      },
+      "testRuntimeInfo": "使用已保存的智能体配置进行真实对话测试。会保存对话，工具可能产生实际操作；修改配置后请先保存。",
+      "testChecking": "正在检查运行配置…",
+      "testMissingCredential": "无法测试：缺少兼容且可用的个人模型凭据。请添加或修复个人凭据，然后重新检查。",
+      "testMissingModel": "无法测试：未绑定运行模型。请在智能体设置中选择模型并保存。",
+      "testMissingToolCredential": "无法测试：必需工具缺少兼容的个人凭据。请在工具设置中绑定凭据。",
+      "testUnavailable": "无法测试：运行配置或服务暂不可用。请检查模型和工具设置，然后重新检查。",
+      "testConfigureCredentials": "配置个人凭据",
+      "testConfigureModels": "配置模型",
+      "testConfigureTools": "配置工具",
+      "testCheckAgain": "重新检查"
     },
     "visualSettings": {
       "nodes": {
@@ -1167,7 +1495,7 @@
         "setIdentity": "设置身份"
       },
       "subagents": {
-        "empty": "还没有商品。",
+        "empty": "尚未添加子智能体。",
         "remove": "移除"
       },
       "comingSoon": "即将推出",
@@ -1218,7 +1546,7 @@
         "selectedEmpty": "选定为空",
         "current": "当前（{count}）",
         "available": "可用",
-        "empty": "还没有商品。",
+        "empty": "没有可用的中间件。",
         "remove": "移除",
         "removeNamed": "删除{name}",
         "selectToPreview": "选择预览",
@@ -1826,6 +2154,13 @@
       "disabledAria": "上下文限制未知",
       "disabledShort": "没有限制",
       "disabled": "该模型没有配置上下文窗口（context_window），因此无法显示用法。",
+      "runtimeModel": "运行模型",
+      "runtimeCredential": "运行凭据",
+      "runtimeReadiness": "运行状态",
+      "masked": "已保护",
+      "ready": "已就绪",
+      "needsSetup": "需要配置",
+      "notConfigured": "未配置",
       "compactHint": "上下文几乎已满。考虑开始新的对话或压缩。"
     },
     "message": {
@@ -1837,7 +2172,7 @@
       "edit": "编辑",
       "editSave": "保存",
       "editCancel": "取消",
-      "regenerate": "再生",
+      "regenerate": "重新生成",
       "pinSummary": "固定为对话摘要",
       "unpinSummary": "取消固定对话摘要",
       "retry": "重试",
@@ -1914,7 +2249,7 @@
       "noImage": "无图像",
       "regeneratePrompt": "重新生成提示",
       "confirm": "确认",
-      "regenerate": "再生",
+      "regenerate": "重新生成",
       "previewTitle": "预览标题"
     },
     "intentSummary": {
@@ -1954,6 +2289,7 @@
     "recommendation": {
       "reviewCount": "{count} 项目 · 需要审核",
       "recommended": "推荐",
+      "planned": "待连接（可先模拟）",
       "reason": "原因",
       "feedbackPlaceholder": "反馈占位符",
       "approved": "已批准",
@@ -2779,47 +3115,64 @@
     }
   },
   "systemLlm": {
-    "title": "系统大模型",
-    "description": "配置系统工作流程使用的默认 LLM。",
+    "title": "平台 AI",
+    "description": "配置平台 AI 角色使用的系统模型，并与智能体运行模型保持独立。",
     "loading": "加载中",
     "configured": "已配置",
     "notConfigured": "未配置",
     "credential": "凭据",
     "model": "模型",
+    "test": "测试",
+    "testing": "测试中",
     "systemCredential": "系统凭据",
     "none": "无",
+    "selectProvider": "选择提供商",
     "selectCredential": "选择凭据",
     "selectModel": "选择模型",
-    "emptyCredentials": "空凭据",
+    "emptyCredentials": "还没有可用的系统凭据。",
     "loadModels": "加载模型",
     "selectCredentialFirst": "首先选择凭据",
     "modelLoadFailed": "模型加载失败",
     "noModels": "没有模型",
-    "provider": "提供者",
-    "baseUrl": "基本网址",
-    "saving": "节省",
+    "provider": "提供商",
+    "baseUrl": "Base URL",
+    "saving": "保存中",
     "save": "保存",
     "operatorOnly": {
-      "title": "仅限运营商",
-      "description": "只有超级用户才能管理系统 LLM 设置。"
+      "title": "仅管理员可配置",
+      "description": "系统模型由平台统一管理，普通用户的智能体运行模型仍使用个人模型和个人凭据。"
+    },
+    "quickSetup": {
+      "title": "快速配置",
+      "description": "用同一个提供商、系统凭据和模型一次配置 Builder、评测生成和评判优化三个平台角色。",
+      "addCredential": "新增系统凭据",
+      "apply": "应用到三个平台角色",
+      "note": "只会保存凭据引用和模型名；API Key 仍由后端加密保存，不会写入浏览器本地存储。"
     },
     "roles": {
-      "text_primary": {
-        "label": "标签",
-        "description": "文本生成的主要模型。"
+      "builder": {
+        "label": "Builder AI",
+        "description": "用于智能体创建、编辑助手、技能构建和构建流程中的文本生成。"
       },
-      "text_fallback": {
-        "label": "标签",
-        "description": "当主要文本生成失败时使用后备模型。"
+      "evaluation_generator": {
+        "label": "评测生成 AI",
+        "description": "用于生成 Agent Project 的 Eval Plan、EvalSet 和测试用例。"
+      },
+      "judge_optimizer": {
+        "label": "评判与优化 AI",
+        "description": "用于语义评分、坏例分析、根因分析、报告和优化提案。"
       },
       "image": {
-        "label": "标签",
+        "label": "图像生成 AI",
         "description": "用于图像生成的模型。"
       }
     },
     "toast": {
       "loadModelsFailed": "操作失败。",
       "saved": "保存成功。",
+      "simpleSaved": "平台 AI 角色已配置。",
+      "testSucceeded": "测试通过。",
+      "testFailed": "测试失败。",
       "saveFailed": "操作失败。"
     }
   },
@@ -4204,7 +4557,7 @@
       "admin": "管理员",
       "marketplaceAdmin": "市场管理员",
       "systemCredentials": "系统凭据",
-      "systemLlm": "系统大模型设置",
+      "systemLlm": "平台 AI",
       "adminAudit": "所有活动"
     },
     "profile": {
@@ -4359,7 +4712,6 @@
       "language": {
         "title": "语言",
         "description": "选择 Agent Project Maker 的显示语言。",
-        "ko": "韩语",
         "en": "英语",
         "zh-CN": "简体中文"
       }
@@ -4412,8 +4764,15 @@
       },
       "examples": {
         "title": "调用示例",
+        "agents": "部署智能体列表",
+        "threads": "创建会话",
         "blocking": "阻塞运行",
         "streaming": "流式运行",
+        "threadBlocking": "会话内阻塞运行",
+        "threadStreaming": "会话内流式运行",
+        "openai": "OpenAI 兼容接口",
+        "difyChat": "Dify Chat 兼容接口",
+        "difyWorkflow": "Dify Workflow 兼容接口",
         "endpoint": "端点"
       },
       "createDialog": {
@@ -4505,7 +4864,7 @@
     "marketplaceAdmin": "市场管理员",
     "adminAudit": "所有活动",
     "systemCredentials": "系统凭据",
-    "systemLlm": "系统大模型设置",
+    "systemLlm": "平台 AI",
     "skills": "技能",
     "create": "创建",
     "createAgent": "创建智能体",

@@ -68,8 +68,8 @@ test.describe('Tools catalog', () => {
     await page.getByLabel(/이름/).fill('Webhook')
     await page.getByRole('textbox', { name: 'URL *' }).fill('https://example.com/hook')
 
-    await page.getByRole('button', { name: '도구 생성' }).click()
-    await expect(page.getByText('도구가 생성되었습니다')).toBeVisible()
+    await page.getByRole('button', { name: '提交' }).click()
+    await expect(page.getByText('已创建')).toBeVisible()
 
     // Switched to manage tab — row appears
     await expect(page.getByText('Webhook')).toBeVisible()

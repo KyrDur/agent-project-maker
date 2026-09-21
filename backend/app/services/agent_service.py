@@ -11,8 +11,10 @@ from sqlalchemy.orm import selectinload
 
 from app.agent_runtime.identity import make_agent_runtime_name, validate_identity_mode
 from app.agent_runtime.runtime_policy import runtime_policy_to_json
+from app.credentials.service import PROVIDER_TO_DEFINITION_KEY
 from app.models.agent import AGENT_RUNTIME_PROFILE_STANDARD, Agent
 from app.models.agent_subagent import AgentSubAgentLink
+from app.models.credential import Credential
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import AgentMcpToolLink, McpTool
 from app.models.model import Model
@@ -33,11 +35,66 @@ def _selectin_agent() -> list:
     """
     return [
         selectinload(Agent.model),
+        selectinload(Agent.llm_credential),
         selectinload(Agent.tool_links).selectinload(AgentToolLink.tool),
         selectinload(Agent.mcp_tool_links).selectinload(AgentMcpToolLink.mcp_tool),
         selectinload(Agent.skill_links).selectinload(AgentSkillLink.skill),
         selectinload(Agent.sub_agent_links),
     ]
+
+
+async def resolve_runtime_credential_metadata(
+    db: AsyncSession,
+    agent: Agent,
+    user_id: uuid.UUID,
+) -> Credential | None:
+    """Resolve runtime credential metadata without decrypting the secret."""
+
+    model = getattr(agent, "model", None)
+    if model is None:
+        return None
+    provider_definition = PROVIDER_TO_DEFINITION_KEY.get(model.provider)
+    if provider_definition is None:
+        return None
+
+    credential = getattr(agent, "llm_credential", None)
+    if (
+        credential is not None
+        and credential.user_id == user_id
+        and credential.is_system is False
+        and credential.status == "active"
+        and credential.definition_key == provider_definition
+    ):
+        return credential
+
+    if model.default_credential_id is not None:
+        default_credential = (
+            await db.execute(
+                select(Credential).where(
+                    Credential.id == model.default_credential_id,
+                    Credential.user_id == user_id,
+                    Credential.is_system.is_(False),
+                    Credential.status == "active",
+                    Credential.definition_key == provider_definition,
+                )
+            )
+        ).scalar_one_or_none()
+        if default_credential is not None:
+            return default_credential
+
+    return (
+        await db.execute(
+            select(Credential)
+            .where(
+                Credential.user_id == user_id,
+                Credential.is_system.is_(False),
+                Credential.status == "active",
+                Credential.definition_key == provider_definition,
+            )
+            .order_by(Credential.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def list_agents(db: AsyncSession, user_id: uuid.UUID) -> list[Agent]:

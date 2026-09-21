@@ -71,14 +71,14 @@ def test_sanitize_empty_returns_none() -> None:
 
 def test_transcript_tail_filters_roles_and_limits() -> None:
     messages = [
-        _Msg("system", "숨김"),
+        _Msg("system", "隐藏徽章"),
         _Msg("user", "질문1"),
         _Msg("tool", "도구 출력"),
         _Msg("assistant", "답변1"),
         _Msg("user", ""),
     ]
     tail = _transcript_tail(messages)
-    assert tail == "사용자: 질문1\n어시스턴트: 답변1"
+    assert tail == "用户: 질문1\n助理: 답변1"
     assert _transcript_tail([_Msg("tool", "x")]) is None
 
 

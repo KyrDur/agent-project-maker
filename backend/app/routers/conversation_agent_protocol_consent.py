@@ -1,7 +1,7 @@
 """HITL 세션 동의 처리 (스킬 빌더 챗, 스펙 AD-4).
 
 프론트가 ``input.respond`` decision에 실어 보내는 확장 필드 ``scope:"session"``
-("이 세션에서 계속 허용")을 여기서 소비한다:
+("留出本次会议的剩余时间")을 여기서 소비한다:
 
 1. 세션 row(``skill_builder_sessions.tool_consents``)에 동의를 기록하고,
 2. decision에서 ``scope`` 키를 **제거**해 미들웨어에는 표준

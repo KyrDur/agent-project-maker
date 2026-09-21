@@ -60,7 +60,7 @@ export function SkillListTable({
   readonly isLoading: boolean
   readonly emptyTitle: string
   readonly onImprove: (skillId: string) => void
-  /** 빌더 세션 시작 중 — 행 "수정" 이중 클릭이 세션을 중복 생성하지 않게 막는다. */
+  /** 빌더 세션 시작 중 — 행 "编辑" 이중 클릭이 세션을 중복 생성하지 않게 막는다. */
   readonly improvePending: boolean
   readonly onPublish: (skill: Skill) => void
 }) {

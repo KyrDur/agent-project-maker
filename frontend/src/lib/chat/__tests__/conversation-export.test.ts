@@ -8,12 +8,12 @@ import {
 } from '../conversation-export'
 
 const labels: ExportLabels = {
-  roleUser: '사용자',
-  roleAssistant: '어시스턴트',
-  roleTool: '도구',
-  toolCalls: '도구 호출',
-  attachments: '첨부',
-  exportedAt: '내보낸 시각',
+  roleUser: '用户',
+  roleAssistant: '助理',
+  roleTool: '工具',
+  toolCalls: '工具调用',
+  attachments: '附',
+  exportedAt: '导出于',
 }
 
 function msg(partial: Partial<Message>): Message {

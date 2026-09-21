@@ -105,16 +105,16 @@ describe('RetryButton recovery adapter', () => {
   it('uses public AUI message context to distinguish legacy, failed, and unavailable retry surfaces', async () => {
     const { rerender } = render(<RetryButtonHarness surface="legacy" />)
 
-    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()
 
     rerender(<RetryButtonHarness surface="available" />)
-    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
     expect(await screen.findByText('input-current-failed')).toBeInTheDocument()
 
     rerender(<RetryButtonHarness surface="unavailable" />)
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
 
     rerender(<RetryButtonHarness surface="normal-message" />)
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 })

@@ -50,7 +50,7 @@ function marketplaceItem(overrides: Partial<MarketplaceItem> = {}): MarketplaceI
     is_listed: true,
     tags: [],
     categories: [],
-    locale: 'ko-KR',
+    locale: 'zh-CN',
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-02T00:00:00Z',
     latest_version: {
@@ -109,7 +109,7 @@ describe('MarketplaceCatalogPage', () => {
     expect(within(activeTab).getByText('2개')).toBeInTheDocument()
     expect(screen.getAllByText('2개')).toHaveLength(1)
 
-    expect(screen.getByPlaceholderText('마켓플레이스 검색…')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索市场...')).toBeInTheDocument()
     expect(screen.getByText('이미지 생성')).toBeInTheDocument()
     expect(screen.getByText('문서 요약')).toBeInTheDocument()
   })

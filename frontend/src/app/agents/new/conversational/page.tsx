@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl'
 
 import { AssistantThread } from '@/components/chat/assistant-thread'
 import { Button } from '@/components/ui/button'
+import { ErrorState } from '@/components/shared/error-state'
 import { builderApi } from '@/lib/api/builder'
 import { HiTLContext } from '@/lib/chat/hitl-context'
 import { BUILDER_TOOLKIT } from '@/lib/chat/tool-ui-registry'
@@ -37,17 +38,22 @@ function WelcomeContent() {
 export default function ConversationalCreationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ initialMessage?: string }>
+  searchParams: Promise<{ initialMessage?: string; sessionId?: string }>
 }) {
   const config = AuiConfig({ tools: Tools({ toolkit: BUILDER_TOOLKIT }) })
-  const { initialMessage } = use(searchParams)
+  const { initialMessage, sessionId: restoredSessionId } = use(searchParams)
   const t = useTranslations('agent.conversational')
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const sessionIdRef = useRef<string | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(restoredSessionId ?? null)
+  const sessionIdRef = useRef<string | null>(restoredSessionId ?? null)
+  const restoreRef = useRef(restoredSessionId)
+  const restoredInterruptRef = useRef<string | null>(null)
   const completedRef = useRef(false)
   const autoSentRef = useRef(false)
+  const [restoreAttempt, setRestoreAttempt] = useState(0)
+  const [restoring, setRestoring] = useState(!!restoredSessionId)
+  const [restoreFailed, setRestoreFailed] = useState(false)
 
   // 첫 메시지: 세션 생성 후 stream 시작 / 후속: 기존 세션으로
   const streamFn = useCallback((content: string, signal: AbortSignal): AsyncGenerator<SSEEvent> => {
@@ -57,6 +63,11 @@ export default function ConversationalCreationPage({
         const session = await builderApi.start(content)
         activeSessionId = session.id
         sessionIdRef.current = activeSessionId
+        window.history.replaceState(
+          window.history.state,
+          '',
+          `/agents/new/conversational?sessionId=${activeSessionId}`,
+        )
         setSessionId(session.id)
       }
       yield* streamBuilderMessage(activeSessionId, content, signal)
@@ -78,7 +89,7 @@ export default function ConversationalCreationPage({
           decisions,
           signal,
           displayText,
-          interruptId,
+          interruptId ?? restoredInterruptRef.current,
         )
       }
       return run()
@@ -102,7 +113,7 @@ export default function ConversationalCreationPage({
         const session = await builderApi.getSession(sid)
         if (session.status === 'completed' && session.agent_id) {
           completedRef.current = true
-          router.push(`/agents/${session.agent_id}`)
+          router.push(`/agents/${session.agent_id}/project`)
         } else if (session.status === 'failed') {
           completedRef.current = true
           reportClientWarning('builder', 'session failed:', session.error_message)
@@ -123,11 +134,38 @@ export default function ConversationalCreationPage({
 
   // URL ?initialMessage=... 가 있으면 한 번만 자동 전송
   useEffect(() => {
-    if (initialMessage && !autoSentRef.current) {
+    if (initialMessage && !restoreRef.current && !autoSentRef.current) {
       autoSentRef.current = true
       void sendMessage(initialMessage)
     }
   }, [initialMessage, sendMessage])
+
+  useEffect(() => {
+    const id = restoreRef.current
+    if (!id) return
+    let cancelled = false
+    void builderApi
+      .snapshot(id)
+      .then((snapshot) => {
+        if (cancelled) return
+        restoredInterruptRef.current = snapshot.interrupt_id
+        setMessages(snapshot.messages)
+        if (snapshot.status === 'completed' && snapshot.agent_id) {
+          completedRef.current = true
+          router.replace(`/agents/${snapshot.agent_id}/project`)
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setRestoreFailed(true)
+        reportClientError('builder', 'Restore failed:', error)
+      })
+      .finally(() => {
+        if (!cancelled) setRestoring(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [router, restoreAttempt])
 
   const hitlValue = useMemo(
     () => ({ onResumeDecisions, registerDecision }),
@@ -168,17 +206,30 @@ export default function ConversationalCreationPage({
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <AssistantRuntimeProvider runtime={runtime} config={config}>
-          <HiTLContext.Provider value={hitlValue}>
-            <AssistantThread
-              variant="builder"
-              builderModelLabel={t('builderModelLabel')}
-              builderAgentSubtitle={t('builderAgentSubtitle')}
-              agentName={t('builderAgentName')}
-              emptyContent={<WelcomeContent />}
-            />
-          </HiTLContext.Provider>
-        </AssistantRuntimeProvider>
+        {restoring ? (
+          <p role="status">{t('restoring')}</p>
+        ) : restoreFailed ? (
+          <ErrorState
+            title={t('restoreError')}
+            onRetry={() => {
+              setRestoreFailed(false)
+              setRestoring(true)
+              setRestoreAttempt((attempt) => attempt + 1)
+            }}
+          />
+        ) : (
+          <AssistantRuntimeProvider runtime={runtime} config={config}>
+            <HiTLContext.Provider value={hitlValue}>
+              <AssistantThread
+                variant="builder"
+                builderModelLabel={t('builderModelLabel')}
+                builderAgentSubtitle={t('builderAgentSubtitle')}
+                agentName={t('builderAgentName')}
+                emptyContent={<WelcomeContent />}
+              />
+            </HiTLContext.Provider>
+          </AssistantRuntimeProvider>
+        )}
       </div>
     </div>
   )

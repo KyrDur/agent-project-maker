@@ -145,6 +145,8 @@ class AgentUpdate(BaseModel):
 class ModelBrief(BaseModel):
     id: uuid.UUID
     display_name: str
+    provider: str
+    model_name: str
     # 컨텍스트 창 한도(토큰). 채팅 컴포저의 컨텍스트 사용량 게이지가 참조한다.
     # null이면 한도 미설정 모델(게이지 비활성).
     context_window: int | None = None
@@ -213,6 +215,9 @@ class AgentResponse(BaseModel):
     # under them (legacy data, manual cleanup, m18 wipe) still serialize.
     # The frontend renders a "no model bound" warning and prompts re-binding.
     model: ModelBrief | None = None
+    llm_credential_id: uuid.UUID | None = None
+    llm_credential_name: str | None = None
+    llm_credential_status: str | None = None
     tools: list[ToolBrief]
     mcp_tools: list[McpToolBrief] = Field(default_factory=list)
     skills: list[SkillBrief] = []

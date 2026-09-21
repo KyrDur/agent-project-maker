@@ -11,7 +11,7 @@ const themeMocks = vi.hoisted(() => ({
 }))
 
 const localeMocks = vi.hoisted(() => ({
-  locale: 'ko',
+  locale: 'zh-CN',
 }))
 
 const logoutMocks = vi.hoisted(() => ({
@@ -73,10 +73,10 @@ describe('SidebarUtilityFooter', () => {
       </SidebarProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: '다크 모드' }))
+    await user.click(screen.getByRole('button', { name: '深色模式' }))
 
     expect(themeMocks.setTheme).toHaveBeenCalledWith('dark')
-    expect(screen.getByRole('button', { name: '언어' })).toHaveTextContent('KO')
+    expect(screen.getByRole('button', { name: '语言' })).toHaveTextContent('KO')
     expect(screen.getByRole('button', { name: 'User menu' })).toBeInTheDocument()
   })
 })

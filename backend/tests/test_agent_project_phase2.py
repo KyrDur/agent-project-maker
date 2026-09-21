@@ -1,3 +1,9 @@
+# pyright: reportArgumentType=false
+# pyright: reportOptionalSubscript=false
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportAttributeAccessIssue=false
+# pyright: reportIndexIssue=false
+
 from __future__ import annotations
 
 import asyncio
@@ -41,7 +47,7 @@ async def setup_project(db, monkeypatch):
 
 
 async def dataset(db, agent):
-    return await evaluation.write_set(
+    row = await evaluation.write_set(
         db,
         agent.id,
         TEST_USER_ID,
@@ -52,6 +58,7 @@ async def dataset(db, agent):
             ],
         ),
     )
+    return await evaluation.judge_set(db, agent.id, TEST_USER_ID, row.id)
 
 
 @pytest.mark.asyncio
@@ -371,21 +378,23 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
         assert kwargs["memory"] is None
         return Graph()
 
-    async def resolve(*_args):
-        return secret
+    async def resolve_examinee(*_args):
+        return object(), secret
 
     replacements = {
         "app.agent_runtime.runtime_component_builder": {"build_agent": build},
         "app.agent_runtime.model_factory": {
             "create_chat_model": lambda *_args, **_kwargs: object()
         },
-        "app.agent_runtime.credential_resolution": {"resolve_llm_api_key_for_agent": resolve},
     }
     for name, attributes in replacements.items():
         module = ModuleType(name)
         for key, value in attributes.items():
             setattr(module, key, value)
         monkeypatch.setitem(sys.modules, name, module)
+    from app.services import agent_project_llm
+
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", resolve_examinee)
     result = await execute_snapshot(db, version.snapshot_json, {"input": "Hi"}, TEST_USER_ID)
     assert calls == ["Be helpful"]
     assert result["output"] == "Answer <redacted>"
@@ -397,15 +406,55 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
     assert agent.system_prompt == "Current prompt must not execute"
 
     async def keyless(*_args):
-        return None
+        from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
 
-    monkeypatch.setattr(
-        sys.modules["app.agent_runtime.credential_resolution"],
-        "resolve_llm_api_key_for_agent",
-        keyless,
-    )
+        raise LLMCredentialRequiredError()
+
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", keyless)
     with pytest.raises(SnapshotExecutionUnavailable, match="snapshot_credential_unavailable"):
         await execute_snapshot(db, version.snapshot_json, {"input": "Hi"}, TEST_USER_ID)
+
+
+@pytest.mark.asyncio
+async def test_project_examinee_falls_back_to_platform_model_without_user_credential(
+    db, setup_project, monkeypatch
+):
+    from app.services import agent_project_llm
+    from app.services.system_credential_resolver import ResolvedSystemModel
+
+    agent = setup_project
+    version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
+    sentinel = object()
+    seen: dict[str, object] = {}
+
+    async def resolve_system_model(_db, role: str):
+        seen["role"] = role
+        return ResolvedSystemModel(
+            provider="deepseek",
+            model_name="deepseek-flash",
+            api_key="sk-platform",
+            base_url="https://api.deepseek.com/v1",
+        )
+
+    def create_chat_model(provider, model_name, **kwargs):
+        seen.update(provider=provider, model_name=model_name, kwargs=kwargs)
+        return sentinel
+
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", resolve_system_model)
+    monkeypatch.setattr("app.agent_runtime.model_factory.create_chat_model", create_chat_model)
+
+    model, key = await agent_project_llm.resolve_examinee_model(
+        db, version.snapshot_json, TEST_USER_ID
+    )
+
+    assert model is sentinel
+    assert key == "sk-platform"
+    assert seen["role"] == "evaluation_generator"
+    assert seen["provider"] == "deepseek"
+    assert seen["model_name"] == "deepseek-flash"
+    assert seen["kwargs"]["api_key"] == "sk-platform"
+    assert seen["kwargs"]["base_url"] == "https://api.deepseek.com/v1"
+    assert seen["kwargs"]["allow_env_fallback"] is False
 
 
 @pytest.mark.asyncio

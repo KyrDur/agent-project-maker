@@ -114,7 +114,7 @@ describe('SkillHistoryTab', () => {
 
     const revisions = screen.getAllByRole('article')
     expect(within(revisions[0]).getByText('리비전 3')).toBeInTheDocument()
-    expect(within(revisions[0]).getByText('현재 버전')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('当前')).toBeInTheDocument()
     expect(within(revisions[0]).getByText(/빌더 개선/)).toBeInTheDocument()
     expect(within(revisions[0]).getByText('3개 파일')).toBeInTheDocument()
     expect(within(revisions[1]).getByText('리비전 2')).toBeInTheDocument()
@@ -170,9 +170,9 @@ describe('SkillHistoryTab', () => {
     expect(screen.getByText('리비전 2 상세')).toBeInTheDocument()
     expect(screen.getByText('지침을 더 구체화 · SKILL.md')).toBeInTheDocument()
     expect(screen.getByText('SKILL.md · modified')).toBeInTheDocument()
-    expect(screen.getByText('공용 호환성')).toBeInTheDocument()
+    expect(screen.getByText('便携兼容性')).toBeInTheDocument()
     expect(screen.getByText('OpenAI/Codex')).toBeInTheDocument()
-    expect(screen.getByText('통과')).toBeInTheDocument()
+    expect(screen.getByText('通行证')).toBeInTheDocument()
     expect(screen.getByText('mean_score: 0.82')).toBeInTheDocument()
   })
 
@@ -207,10 +207,10 @@ describe('SkillHistoryTab', () => {
     await user.click(screen.getByRole('button', { name: '리비전 1 되돌리기' }))
 
     expect(
-      screen.getByText('이전 버전으로 되돌리면 현재 내용은 새 이력으로 보존됩니다.'),
+      screen.getByText('回滚会将当前内容保留为新的历史记录条目。'),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '되돌리기' }))
+    await user.click(screen.getByRole('button', { name: '回滚' }))
 
     expect(mockRollback).toHaveBeenCalledWith(
       'rev-1',
@@ -223,6 +223,6 @@ describe('SkillHistoryTab', () => {
 
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
-    expect(screen.getByText('현재 버전부터 이력이 쌓입니다.')).toBeInTheDocument()
+    expect(screen.getByText('历史从当前版本开始。')).toBeInTheDocument()
   })
 })

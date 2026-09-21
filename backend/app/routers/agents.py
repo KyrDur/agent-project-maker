@@ -34,6 +34,17 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 middleware_router = APIRouter(tags=["middlewares"])
 
 
+def _runtime_credential_payload(credential: Any | None) -> dict[str, str | bool] | None:
+    if credential is None:
+        return None
+    return {
+        "id": str(credential.id),
+        "name": credential.name,
+        "status": credential.status,
+        "masked": True,
+    }
+
+
 def _sub_agent_image_url(sub: Agent) -> str | None:
     """Compute image_url for a sub-agent (mirrors _agent_to_response logic)."""
     return build_agent_image_url(sub.id, updated_at=sub.updated_at, image_path=sub.image_path)
@@ -78,6 +89,9 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         # rows from before the m18 wipe). The schema accepts None and the
         # frontend prompts re-binding instead of crashing the agents list.
         model=agent.model if agent.model is not None else None,
+        llm_credential_id=agent.llm_credential_id,
+        llm_credential_name=agent.llm_credential.name if agent.llm_credential else None,
+        llm_credential_status=agent.llm_credential.status if agent.llm_credential else None,
         tools=[
             ToolBrief(
                 id=link.tool.id,
@@ -341,9 +355,51 @@ async def get_agent_image(
 
 
 @middleware_router.get("/api/middlewares")
-async def list_middlewares() -> list[dict[str, Any]]:
+async def list_middlewares(locale: str = "zh-CN") -> list[dict[str, Any]]:
     """Return the available middleware catalog.
 
     deepagents가 자동 추가하는 빌트인 미들웨어는 제외한다.
     """
-    return get_middleware_registry(exclude_builtin=True)
+    from app.catalog_i18n import middleware_display
+
+    return [
+        middleware_display(item, locale) for item in get_middleware_registry(exclude_builtin=True)
+    ]
+
+
+@router.get("/{agent_id}/runtime-readiness")
+async def runtime_readiness(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.agent_runtime.credential_resolution import resolve_llm_api_key_for_agent
+    from app.exceptions import AppError
+    from app.services.builder_runtime_readiness import validate_tools
+
+    agent = await agent_service.get_agent(db, agent_id, user.id)
+    if agent is None:
+        raise agent_not_found()
+    model = agent.model
+    if model is None:
+        return {"ready": False, "code": "no_model", "model": None, "credential": None}
+    await db.refresh(agent, ["llm_credential"])
+    credential = await agent_service.resolve_runtime_credential_metadata(db, agent, user.id)
+    credential_payload = _runtime_credential_payload(credential)
+    model_payload = {
+        "id": str(model.id),
+        "provider": model.provider,
+        "model_name": model.model_name,
+        "display_name": model.display_name,
+    }
+    try:
+        await resolve_llm_api_key_for_agent(db, agent)
+        await validate_tools(db, user.id, [link.tool for link in agent.tool_links])
+    except AppError as exc:
+        return {
+            "ready": False,
+            "code": exc.code,
+            "model": model_payload,
+            "credential": credential_payload,
+        }
+    return {"ready": True, "code": None, "model": model_payload, "credential": credential_payload}

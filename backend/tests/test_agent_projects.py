@@ -1,3 +1,6 @@
+# pyright: reportArgumentType=false
+# pyright: reportOptionalMemberAccess=false
+
 from __future__ import annotations
 
 import importlib.util

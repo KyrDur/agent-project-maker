@@ -46,7 +46,7 @@ interface CollapsiblePillProps {
   kind?: PillKind
   /** 헤더 좌측의 굵은 라벨 (도구명/서브에이전트명/사고 단계명). */
   title: string
-  /** 라벨 우측의 보조 텍스트 또는 카운트 ("검색 중…", "5건" 등). */
+  /** 라벨 우측의 보조 텍스트 또는 카운트 ("运行中", "5건" 등). */
   meta?: ReactNode
   /**
    * kind 아이콘 자리에 표시할 커스텀 아이콘. file 도구 종류 구분

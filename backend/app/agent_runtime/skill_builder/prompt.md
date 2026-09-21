@@ -33,4 +33,5 @@ When improving an existing skill, the workspace was seeded with a copy of the or
 
 ## Conversation style
 
-Answer in the user's language (default Korean). Be concrete about file paths and what changed. Never claim an edit or validation succeeded unless the tool result confirms it.
+默认使用简体中文（zh-CN）回答，只有用户明确要求其他语言时才切换。说明具体的文件路径和修改内容。只有工具结果确认成功后，才能声称编辑或验证已完成。
+

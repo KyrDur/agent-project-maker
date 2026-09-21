@@ -563,7 +563,7 @@ describe('useMoldyLangGraphStream', () => {
             hitl_total_actions: 1,
             allowed_decisions: ['respond'],
             mode: 'option_list',
-            title: '입력이 필요합니다',
+            title: '需要输入',
             question: '어떤 과일이 좋아요?',
             options: [{ id: 'apple', label: '🍎 사과' }],
           },
@@ -595,7 +595,7 @@ describe('useMoldyLangGraphStream', () => {
               hitl_total_actions: 1,
               allowed_decisions: ['respond'],
               mode: 'option_list',
-              title: '입력이 필요합니다',
+              title: '需要输入',
               question: '어떤 과일이 좋아요?',
               options: [{ id: 'apple', label: '🍎 사과' }],
             },
@@ -787,7 +787,7 @@ describe('useMoldyLangGraphStream', () => {
     await act(async () => {})
     mocks.stream.isLoading = true
     // 스트림에 assistant 메시지를 남겨 하이드레이션 준비 판정이 재시도를 타게 한다.
-    mocks.stream.messages = [new AIMessage({ id: 'assistant-live-1', content: '응답' })]
+    mocks.stream.messages = [new AIMessage({ id: 'assistant-live-1', content: '回应' })]
     rerender()
     await act(async () => {})
     mocks.stream.isLoading = false
@@ -2339,7 +2339,7 @@ describe('useMoldyLangGraphStream', () => {
                       name: 'ask_user',
                       args: {
                         mode: 'option_list',
-                        title: '입력이 필요합니다',
+                        title: '需要输入',
                         question: '어떤 과일이 좋아요?',
                         options: [
                           { id: 'apple', label: '🍎 사과' },
@@ -2411,7 +2411,7 @@ describe('useMoldyLangGraphStream', () => {
                     name: 'ask_user',
                     args: {
                       mode: 'option_list',
-                      title: '입력이 필요합니다',
+                      title: '需要输入',
                       question: '어떤 과일이 좋아요?',
                       options: [
                         { id: 'apple', label: '🍎 사과' },
@@ -2464,7 +2464,7 @@ describe('useMoldyLangGraphStream', () => {
     const conversationId = '22222222-2222-4222-8222-222222222222'
     const askUserArgs = {
       mode: 'option_list',
-      title: '입력이 필요합니다',
+      title: '需要输入',
       question: '어떤 과일이 좋아요?',
       options: [
         { id: 'apple', label: '🍎 사과' },
@@ -2991,7 +2991,7 @@ describe('useMoldyLangGraphStream', () => {
       { wrapper: createQueryWrapper() },
     )
 
-    await result.current.onResumeDecisions([{ type: 'approve' }], '승인', 'intr-1')
+    await result.current.onResumeDecisions([{ type: 'approve' }], '批准', 'intr-1')
 
     expect(mocks.stream.respond).toHaveBeenCalledWith(
       { decisions: [{ type: 'approve' }] },
@@ -3024,16 +3024,16 @@ describe('useMoldyLangGraphStream', () => {
     )
 
     await expect(
-      result.current.onResumeDecisions([{ type: 'approve' }], '승인', 'intr-forged'),
+      result.current.onResumeDecisions([{ type: 'approve' }], '批准', 'intr-forged'),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
     await expect(
-      result.current.registerDecision(0, { type: 'approve' }, '승인', 'intr-forged'),
+      result.current.registerDecision(0, { type: 'approve' }, '批准', 'intr-forged'),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
     await expect(
-      result.current.onResumeDecisions([{ type: 'approve' }], '승인', null),
+      result.current.onResumeDecisions([{ type: 'approve' }], '批准', null),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
     await expect(
-      result.current.registerDecision(0, { type: 'approve' }, '승인', null),
+      result.current.registerDecision(0, { type: 'approve' }, '批准', null),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
 
     expect(mocks.stream.respond).not.toHaveBeenCalled()
@@ -3074,7 +3074,7 @@ describe('useMoldyLangGraphStream', () => {
       }),
     ])
 
-    await result.current.onResumeDecisions([{ type: 'approve' }], '승인', 'intr-subgraph')
+    await result.current.onResumeDecisions([{ type: 'approve' }], '批准', 'intr-subgraph')
 
     expect(mocks.stream.respond).toHaveBeenCalledWith(
       { decisions: [{ type: 'approve' }] },
@@ -3162,7 +3162,7 @@ describe('useMoldyLangGraphStream', () => {
     const firstDecision = result.current.registerDecision(
       1,
       { type: 'reject', message: '아니요' },
-      '거부',
+      '拒绝',
       'intr-multi',
     )
     expect(mocks.stream.respond).not.toHaveBeenCalled()
@@ -3210,7 +3210,7 @@ describe('useMoldyLangGraphStream', () => {
     const staleDecision = result.current.registerDecision(
       1,
       { type: 'reject', message: '아니요' },
-      '거부',
+      '拒绝',
       'intr-multi',
     )
     const staleRejection = expect(staleDecision).rejects.toMatchObject({ name: 'AbortError' })
@@ -3282,15 +3282,15 @@ describe('useMoldyLangGraphStream', () => {
       { wrapper: createQueryWrapper() },
     )
 
-    const firstDecision = result.current.registerDecision(0, { type: 'approve' }, '승인', 'intr-a')
+    const firstDecision = result.current.registerDecision(0, { type: 'approve' }, '批准', 'intr-a')
 
     expect(mocks.stream.respond).not.toHaveBeenCalled()
     expect(mocks.stream.respondAll).not.toHaveBeenCalled()
 
     const finalDecision = result.current.registerDecision(
       0,
-      { type: 'reject', message: '거부' },
-      '거부',
+      { type: 'reject', message: '拒绝' },
+      '拒绝',
       'intr-b',
     )
     await Promise.all([firstDecision, finalDecision])
@@ -3298,7 +3298,7 @@ describe('useMoldyLangGraphStream', () => {
     expect(mocks.stream.respond).not.toHaveBeenCalled()
     expect(mocks.stream.respondAll).toHaveBeenCalledWith({
       'intr-a': { decisions: [{ type: 'approve' }] },
-      'intr-b': { decisions: [{ type: 'reject', message: '거부' }] },
+      'intr-b': { decisions: [{ type: 'reject', message: '拒绝' }] },
     })
   })
 
@@ -3333,7 +3333,7 @@ describe('useMoldyLangGraphStream', () => {
     const pendingDecision = result.current.registerDecision(
       0,
       { type: 'approve' },
-      '승인',
+      '批准',
       'intr-a',
     )
     expect(mocks.stream.respond).not.toHaveBeenCalled()

@@ -45,7 +45,7 @@ describe('RunActivityStrip', () => {
     expect(screen.getByText('도구 총 1')).toBeInTheDocument()
     expect(screen.getByText('서브 에이전트 총 1')).toBeInTheDocument()
 
-    await screen.getByRole('button', { name: '활동 보기' }).click()
+    await screen.getByRole('button', { name: '显示活动' }).click()
 
     expect(screen.getAllByRole('listitem')).toHaveLength(4)
     expect(screen.getByText('web_search')).toBeInTheDocument()
@@ -60,8 +60,8 @@ describe('RunActivityStrip', () => {
       />,
     )
 
-    expect(screen.getByText('시간 정보 없음')).toBeInTheDocument()
-    await screen.getByRole('button', { name: '활동 보기' }).click()
+    expect(screen.getByText('时间不可用')).toBeInTheDocument()
+    await screen.getByRole('button', { name: '显示活动' }).click()
     expect(screen.getByText('Error')).toBeInTheDocument()
   })
 

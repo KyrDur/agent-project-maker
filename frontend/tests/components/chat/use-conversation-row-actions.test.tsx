@@ -10,7 +10,7 @@ import type {
   ConversationListEnvelope,
   ConversationWithAgentListEnvelope,
 } from '@/lib/types'
-import messages from '../../../messages/ko.json'
+import messages from '../../../messages/zh-CN.json'
 import {
   mockConversation,
   mockConversationList,
@@ -45,7 +45,7 @@ function createWrapperWithClient() {
   })
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <NextIntlClientProvider locale="ko" messages={messages}>
+      <NextIntlClientProvider locale="zh-CN" messages={messages}>
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
       </NextIntlClientProvider>
     )

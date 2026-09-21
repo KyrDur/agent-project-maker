@@ -21,19 +21,26 @@ router = APIRouter(prefix="/api/templates", tags=["templates"])
 @router.get("", response_model=list[TemplateResponse])
 async def list_templates(
     category: str | None = None,
+    locale: str = "zh-CN",
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(get_current_user),
 ):
-    return await template_service.list_templates(db, category)
+    from app.catalog_i18n import template_display
+
+    rows = [template_display(row, locale) for row in await template_service.list_templates(db)]
+    return [row for row in rows if not category or category in (row.category_key, row.category)]
 
 
 @router.get("/{template_id}", response_model=TemplateResponse)
 async def get_template(
     template_id: uuid.UUID,
+    locale: str = "zh-CN",
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(get_current_user),
 ):
     template = await template_service.get_template(db, template_id)
     if not template:
         raise template_not_found()
-    return template
+    from app.catalog_i18n import template_display
+
+    return template_display(template, locale)

@@ -36,9 +36,7 @@ async def _ensure_test_user(db: AsyncSession):
         await db.commit()
 
 
-async def _make_credential(
-    db: AsyncSession, *, definition_key: str, data: dict
-) -> Credential:
+async def _make_credential(db: AsyncSession, *, definition_key: str, data: dict) -> Credential:
     cred = await credential_service.create(
         db,
         user_id=TEST_USER_ID,
@@ -105,9 +103,7 @@ async def test_discover_openai_marks_already_registered(
 ) -> None:
     """Models already in the catalog table get ``already_registered=True``."""
 
-    db.add(
-        Model(provider="openai", model_name="gpt-4o", display_name="GPT-4o")
-    )
+    db.add(Model(provider="openai", model_name="gpt-4o", display_name="GPT-4o"))
     await db.commit()
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -135,9 +131,7 @@ async def test_discover_openai_marks_already_registered(
 async def test_discover_anthropic_uses_static_catalog(db: AsyncSession) -> None:
     """Anthropic has no /models endpoint — discovery is offline."""
 
-    cred = await _make_credential(
-        db, definition_key="anthropic", data={"api_key": "k"}
-    )
+    cred = await _make_credential(db, definition_key="anthropic", data={"api_key": "k"})
 
     # No HTTP mock — discovery must not make any outbound call.
     results = await model_discovery.discover_from_credential(db, cred)
@@ -187,9 +181,7 @@ async def test_discover_openrouter_uses_inline_pricing(
             },
         )
 
-    cred = await _make_credential(
-        db, definition_key="openrouter", data={"api_key": "sk-or"}
-    )
+    cred = await _make_credential(db, definition_key="openrouter", data={"api_key": "sk-or"})
 
     with _patch_async_client(handler):
         results = await model_discovery.discover_from_credential(db, cred)
@@ -239,9 +231,7 @@ async def test_discover_google_filters_to_generate_content(
             },
         )
 
-    cred = await _make_credential(
-        db, definition_key="google_genai", data={"api_key": "g-key"}
-    )
+    cred = await _make_credential(db, definition_key="google_genai", data={"api_key": "g-key"})
 
     with _patch_async_client(handler):
         results = await model_discovery.discover_from_credential(db, cred)
@@ -302,6 +292,60 @@ async def test_discover_openai_compatible_requires_base_url(
     )
     with pytest.raises(ValueError, match="base_url"):
         await model_discovery.discover_from_credential(db, cred)
+
+
+@pytest.mark.parametrize(
+    ("definition_key", "expected_host", "model_name"),
+    [
+        ("deepseek", "api.deepseek.com", "deepseek-v4-pro"),
+        ("moonshot", "api.moonshot.cn", "moonshot-v1-8k"),
+        ("zhipu_glm", "open.bigmodel.cn", "glm-4-plus"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_discover_named_openai_compatible_providers_use_default_base_url(
+    db: AsyncSession,
+    definition_key: str,
+    expected_host: str,
+    model_name: str,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == expected_host
+        assert request.url.path.endswith("/models")
+        return httpx.Response(200, json={"data": [{"id": model_name}]})
+
+    cred = await _make_credential(
+        db,
+        definition_key=definition_key,
+        data={"api_key": "sk-test"},
+    )
+
+    with _patch_async_client(handler):
+        results = await model_discovery.discover_from_credential(db, cred)
+
+    assert [m.model_name for m in results] == [model_name]
+    assert all(m.provider == definition_key for m in results)
+
+
+@pytest.mark.asyncio
+async def test_discover_deepseek_falls_back_when_models_endpoint_times_out(
+    db: AsyncSession,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("connect timed out", request=request)
+
+    cred = await _make_credential(
+        db,
+        definition_key="deepseek",
+        data={"api_key": "sk-test"},
+    )
+
+    with _patch_async_client(handler):
+        results = await model_discovery.discover_from_credential(db, cred)
+
+    names = {m.model_name for m in results}
+    assert names == {"deepseek-flash", "deepseek-v4-pro"}
+    assert all(m.provider == "deepseek" for m in results)
 
 
 # ---------------------------------------------------------------------------

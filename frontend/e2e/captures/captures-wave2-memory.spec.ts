@@ -14,13 +14,13 @@ import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-h
 /**
  * Wave 2 메모리 라이프사이클 캡처 — 채팅의 메모리 관련 표면 전부:
  *
- *  1막 자동 저장 : write_policy=auto + E2E_MEMORY_SAVE → "저장됨" pill (즉시 기록)
+ *  1막 자동 저장 : write_policy=auto + E2E_MEMORY_SAVE → "已保存" pill (즉시 기록)
  *  2막 저장 제안 : write_policy=ask + E2E_MEMORY_PROPOSE → 제안 카드
  *                 (저장/수정/거절 버튼, 기본 펼침)
- *  3막 저장 승인 : 제안 카드에서 저장 클릭 → "저장됨" 상태 전이
- *  4막 저장 거절 : 새 제안 → 거절 클릭 → "저장 안 함" 상태 전이
+ *  3막 저장 승인 : 제안 카드에서 저장 클릭 → "已保存" 상태 전이
+ *  4막 저장 거절 : 새 제안 → 거절 클릭 → "不保存" 상태 전이
  *  5막 수정 후 저장: 새 제안 → 수정 → textarea 편집 → 수정 후 저장
- *  6막 회상 풀서클: 저장된 기억들이 다음 런의 "기억 참고" 칩으로 돌아온다
+ *  6막 회상 풀서클: 저장된 기억들이 다음 런의 "记忆回忆" 칩으로 돌아온다
  *
  * Gated by E2E_CAPTURE_TOUR=1 (+ E2E_TEST_HELPERS_ENABLED, scripted model).
  */
@@ -117,9 +117,9 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
 
       const memoryCard = page.getByTestId('memory-tool-card').last()
-      await expect(memoryCard.getByText('저장됨')).toBeVisible({ timeout: 30_000 })
+      await expect(memoryCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
       // 접힌 pill에도 내용 미리보기(meta)가 보인다 — 펼쳐서 전문 확인.
-      await memoryCard.getByText('저장됨').click()
+      await memoryCard.getByText('已保存').click()
       // 내용은 접힘 meta(truncate span)와 펼침 본문(p) 두 곳에 나온다 — first로 고정.
       await expect(memoryCard.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await settle(page)
@@ -138,7 +138,7 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
 
       const proposalCard = page.getByTestId('memory-tool-card').last()
-      await expect(proposalCard.getByText('저장 제안')).toBeVisible({ timeout: 30_000 })
+      await expect(proposalCard.getByText('保存建议')).toBeVisible({ timeout: 30_000 })
       // 제안 카드는 기본 펼침 — 내용 + 저장/수정/거절 버튼이 바로 보인다.
       await expect(proposalCard.getByText(PROPOSE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await expect(proposalCard.getByTestId('memory-proposal-approve')).toBeVisible()
@@ -147,13 +147,13 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await settle(page)
       await capture(page, WAVE, '01-memory-proposal-card.png')
 
-      // ── 3막: 저장 승인 — 카드가 "저장됨"으로 전이 ───────────────────────
+      // ── 3막: 저장 승인 — 카드가 "已保存"으로 전이 ───────────────────────
       await proposalCard.getByTestId('memory-proposal-approve').click()
-      await expect(proposalCard.getByText('저장됨')).toBeVisible({ timeout: 30_000 })
+      await expect(proposalCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
       await settle(page)
       await capture(page, WAVE, '02-memory-proposal-approved.png')
 
-      // ── 4막: 저장 거절 — 카드가 "저장 안 함"으로 전이 ───────────────────
+      // ── 4막: 저장 거절 — 카드가 "不保存"으로 전이 ───────────────────
       const rejectConversationId = await createConversation(
         request,
         csrfHeaders,
@@ -168,7 +168,7 @@ test.describe('Wave 2 memory lifecycle captures', () => {
         timeout: 30_000,
       })
       await rejectCard.getByTestId('memory-proposal-reject').click()
-      await expect(rejectCard.getByText('저장 안 함')).toBeVisible({ timeout: 30_000 })
+      await expect(rejectCard.getByText('不保存')).toBeVisible({ timeout: 30_000 })
       await settle(page)
       await capture(page, WAVE, '03-memory-proposal-rejected.png')
 
@@ -191,7 +191,7 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await settle(page)
       await capture(page, WAVE, '04-memory-proposal-editing.png')
       await editCard.getByTestId('memory-proposal-edit-approve').click()
-      await expect(editCard.getByText('저장됨')).toBeVisible({ timeout: 30_000 })
+      await expect(editCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
       await expect(
         editCard.getByText('매주 월요일 오전 9시에 주간 계획 브리핑을 받고 싶어한다.').first(),
       ).toBeVisible()
@@ -211,7 +211,7 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       const recallChip = page.locator('[data-moldy-memory-recall]')
       await expect(recallChip).toBeVisible({ timeout: 60_000 })
       await expect(recallChip.getByText('3개')).toBeVisible({ timeout: 15_000 })
-      await recallChip.getByText('기억 참고').click()
+      await recallChip.getByText('记忆回忆').click()
       await expect(recallChip.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await settle(page)
       await capture(page, WAVE, '06-memory-recall-full-circle.png')
@@ -220,7 +220,7 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       // 계약), 소유자 화면은 메모리 API 조인으로 내용을 복원해야 한다.
       await gotoChat(page, setup.parentAgentId, recallConversationId)
       await expect(recallChip).toBeVisible({ timeout: 60_000 })
-      await recallChip.getByText('기억 참고').click()
+      await recallChip.getByText('记忆回忆').click()
       await expect(recallChip.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 15_000 })
       await expect(recallChip.getByText('<redacted>')).toHaveCount(0)
     } finally {

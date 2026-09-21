@@ -211,14 +211,20 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     state = (project.report_json or {}).get("optimization") or {}
     by_run = {str(r.id): r for r in runs}
     by_version = {str(v.id): v for v in versions}
-    baseline = by_run.get(str(state.get("root_run_id")))
-    if baseline is None and not state:
-        baseline = next((r for r in runs if run_summary(r)["complete"]), None)
-    best = by_run.get(str(state.get("best_run_id")))
-    if best and (
-        str(best.version_id) != state.get("best_version_id") or not run_summary(best)["complete"]
-    ):
-        best = None
+    from app.services.agent_project_report import report_for_run
+
+    scored = [(run, report_for_run(run)) for run in runs if run.status == "completed"]
+    valid = [
+        (run, report)
+        for run, report in scored
+        if report.score is not None and report.comparison_key
+    ]
+    scope = valid[-1][1].comparison_key if valid else None
+    cohort = [(run, report) for run, report in valid if report.comparison_key == scope]
+    winner = max(cohort, key=lambda pair: pair[1].score or 0) if cohort else None
+    best = winner[0] if winner else None
+    source_id = winner[1].source_run_id if winner else None
+    baseline = by_run.get(source_id) if source_id else (cohort[0][0] if cohort else None)
     selected = by_version.get(str(best.version_id)) if best else None
     config_version = selected or (versions[0] if versions else None)
     config = architecture(config_version.snapshot_json) if config_version else {}
@@ -230,6 +236,10 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     for version in versions:
         entry = rounds.get(str(version.id), {})
         run = by_run.get(entry.get("run_id"))
+        if not run:
+            run = next((r for r, _ in reversed(cohort) if r.version_id == version.id), None)
+        if best and version.id == best.version_id:
+            run = best
         if baseline and version.id == baseline.version_id:
             run = baseline
         meta = version.snapshot_json.get("optimization", {})

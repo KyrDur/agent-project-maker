@@ -90,7 +90,7 @@ describe('ArtifactLibraryContent', () => {
 
     render(<ArtifactLibraryContent />)
 
-    await userEvent.click(screen.getByRole('button', { name: '더 보기' }))
+    await userEvent.click(screen.getByRole('button', { name: '加载更多' }))
 
     expect(mocks.fetchNextPage).toHaveBeenCalledTimes(1)
   })
@@ -117,7 +117,7 @@ describe('ArtifactLibraryContent', () => {
 
     render(<ArtifactLibraryContent />)
 
-    expect(screen.getByText('조건에 맞는 파일이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('没有文件与这些过滤器匹配。')).toBeInTheDocument()
     expect(screen.getByTestId('artifact-preview')).toHaveTextContent('empty')
   })
 
@@ -149,9 +149,9 @@ describe('ArtifactLibraryContent', () => {
     await userEvent.click(screen.getByRole('button', { name: /recent\.md/ }))
     expect(screen.getByTestId('artifact-preview')).toHaveTextContent('recent.md')
 
-    await userEvent.type(screen.getByLabelText('파일 검색'), 'missing')
+    await userEvent.type(screen.getByLabelText('搜索文件'), 'missing')
 
-    expect(screen.getByText('조건에 맞는 파일이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('没有文件与这些过滤器匹配。')).toBeInTheDocument()
     expect(screen.getByTestId('artifact-preview')).toHaveTextContent('empty')
   })
 })

@@ -8,7 +8,7 @@ describe('DataTableCard', () => {
       <DataTableCard
         title="팀 점수"
         columns={[
-          { key: 'name', header: '이름' },
+          { key: 'name', header: '名称' },
           { key: 'score', header: '점수' },
         ]}
         rows={[
@@ -20,7 +20,7 @@ describe('DataTableCard', () => {
 
     expect(screen.getByTestId('data-ui-data-table')).toBeInTheDocument()
     expect(screen.getByText('팀 점수')).toBeInTheDocument()
-    expect(screen.getByText('이름')).toBeInTheDocument()
+    expect(screen.getByText('名称')).toBeInTheDocument()
     expect(screen.getByText('점수')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('92')).toBeInTheDocument()

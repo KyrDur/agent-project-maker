@@ -33,9 +33,9 @@ async def get_set(
     db: AsyncSession, project_id: uuid.UUID, set_id: uuid.UUID
 ) -> AgentProjectEvalSet:
     row = await db.scalar(
-        select(AgentProjectEvalSet).where(
-            AgentProjectEvalSet.id == set_id, AgentProjectEvalSet.project_id == project_id
-        )
+        select(AgentProjectEvalSet)
+        .where(AgentProjectEvalSet.id == set_id, AgentProjectEvalSet.project_id == project_id)
+        .execution_options(populate_existing=True)
     )
     if row is None:
         raise error("agent_project_eval_set_not_found", 404)
@@ -50,13 +50,23 @@ async def write_set(
     set_id: uuid.UUID | None = None,
     *,
     rubric: dict[str, Any] | None = None,
+    evaluation_focus: list[dict[str, Any]] | None = None,
+    evaluation_focus_reason: str | None = None,
+    new_id: uuid.UUID | None = None,
 ) -> AgentProjectEvalSet:
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
+    if new_id:
+        existing = await db.get(AgentProjectEvalSet, new_id)
+        if existing:
+            if existing.project_id != project.id:
+                raise error("evaluation_request_conflict", 409)
+            await db.commit()
+            return existing
     row = (
         await get_set(db, project.id, set_id)
         if set_id
-        else AgentProjectEvalSet(project_id=project.id)
+        else AgentProjectEvalSet(project_id=project.id, **({"id": new_id} if new_id else {}))
     )
     if row.frozen:
         raise error("agent_project_eval_set_frozen", 409)
@@ -75,10 +85,72 @@ async def write_set(
         cases.append(projects.snapshot_value(data))
     if rubric is not None:
         row.rubric_json = deepcopy(rubric)
+    if evaluation_focus is not None:
+        row.evaluation_focus_json = deepcopy(evaluation_focus)
+    if evaluation_focus_reason is not None:
+        row.evaluation_focus_reason = evaluation_focus_reason
     row.name, row.cases_json = projects.snapshot_value(body.name), cases
+    row.quality_report_json = None  # Edited cases must pass quality review again.
     db.add(row)
     await db.commit()
     return row
+
+
+async def judge_set(
+    db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, set_id: uuid.UUID
+) -> AgentProjectEvalSet:
+    project = await projects.require_project(db, agent_id, user_id)
+    await projects.lock_project(db, project)
+    dataset = await get_set(db, project.id, set_id)
+    await db.refresh(dataset)
+    if dataset.frozen:
+        await db.commit()
+        return dataset
+    profile = (dataset.rubric_json or project.eval_spec_json or {}).get("capability_profile", {})
+    cases = [case for case in dataset.cases_json or [] if case.get("enabled", True)]
+    covered = {tag for case in cases for tag in case.get("tags", [])}
+    capabilities = set(profile.get("capabilities", [])) if isinstance(profile, dict) else set()
+    coverage = 1.0 if not capabilities else len(capabilities & covered) / len(capabilities)
+    valid = sum(
+        bool(case.get("input") and (case.get("expected_behavior") or case.get("expected")))
+        for case in cases
+    ) / max(len(cases), 1)
+    unique_inputs = len({str(case.get("input", "")).strip().lower() for case in cases})
+    diversity = unique_inputs / max(len(cases), 1)
+    evaluable = sum(
+        bool(
+            (case.get("expected_behavior") or case.get("expected"))
+            and (
+                case.get("expected", {}).get("answer")
+                if isinstance(case.get("expected"), dict)
+                else True
+            )
+        )
+        for case in cases
+    ) / max(len(cases), 1)
+    scores = {
+        "coverage_score": coverage,
+        "validity_score": valid,
+        "diversity_score": diversity,
+        "evaluability_score": evaluable,
+    }
+    overall = sum(scores.values()) / 4
+    issues = []
+    if capabilities - covered:
+        issues.append("missing_capabilities")
+    if diversity < 0.8:
+        issues.append("low_diversity")
+    status = "approved" if overall >= 0.75 and not (capabilities - covered) else "rejected"
+    dataset.quality_report_json = {
+        "eval_set_id": str(dataset.id),
+        **scores,
+        "overall_score": overall,
+        "issues": issues,
+        "recommendation": "approve" if status == "approved" else "regenerate",
+        "status": status,
+    }
+    await db.commit()
+    return dataset
 
 
 async def remove_set(
@@ -127,9 +199,14 @@ async def create_run(
             cases.append(projects.snapshot_value(case.model_dump(mode="json")))
     if not cases or len(cases) > 20:
         raise error("evaluation_requires_enabled_cases")
+    if (dataset.rubric_json or {}).get("formal_benchmark") and len(cases) != 20:
+        raise error("formal_evaluation_requires_20_cases")
     from app.services.agent_project_semantic import frozen_plan
 
+    if not dataset.quality_report_json or dataset.quality_report_json.get("status") != "approved":
+        raise error("agent_project_eval_set_quality_required", 409)
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
+    dataset.frozen = True
     return await insert_frozen_run(
         db,
         project.id,
@@ -193,7 +270,6 @@ async def list_runs(
                 select(AgentProjectEvalRun)
                 .where(AgentProjectEvalRun.project_id == project.id)
                 .order_by(AgentProjectEvalRun.created_at.desc())
-                .limit(100)
                 .execution_options(populate_existing=True)
             )
         ).all()
@@ -404,6 +480,8 @@ async def compare_versions(
             )
         changes.append(change)
     summaries = []
+    from app.services.agent_project_report import report_for_run
+
     for version in (left, right):
         run = await db.scalar(
             select(AgentProjectEvalRun)
@@ -416,7 +494,14 @@ async def compare_versions(
             .limit(1)
         )
         summaries.append(
-            {"run_id": str(run.id), "dataset_hash": run.dataset_hash, "metrics": run.metrics_json}
+            {
+                "run_id": str(run.id),
+                "dataset_hash": run.dataset_hash,
+                "metrics": run.metrics_json,
+                "eval_set_id": str(run.eval_set_id),
+                "score": report_for_run(run).score,
+                "comparison_key": report_for_run(run).comparison_key,
+            }
             if run
             else None
         )
@@ -429,5 +514,14 @@ async def compare_versions(
             summaries[0]
             and summaries[1]
             and summaries[0]["dataset_hash"] == summaries[1]["dataset_hash"]
+            and summaries[0]["eval_set_id"] == summaries[1]["eval_set_id"]
+        ),
+        "comparable": bool(
+            summaries[0]
+            and summaries[1]
+            and summaries[0]["score"] is not None
+            and summaries[1]["score"] is not None
+            and summaries[0]["comparison_key"]
+            and summaries[0]["comparison_key"] == summaries[1]["comparison_key"]
         ),
     }

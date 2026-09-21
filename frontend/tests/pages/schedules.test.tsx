@@ -24,17 +24,17 @@ describe('SchedulesPage', () => {
   it('renders global schedule table', () => {
     render(<SchedulesPage />)
 
-    expect(screen.getByRole('heading', { name: '스케줄' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '定时任务' })).toBeInTheDocument()
     expect(screen.getByText('Hourly update')).toBeInTheDocument()
     expect(screen.getAllByText('Good morning report').length).toBeGreaterThan(0)
-    expect(screen.getByText('전체 스케줄')).toBeInTheDocument()
+    expect(screen.getByText('列表标题')).toBeInTheDocument()
   })
 
   it('runs a schedule from the global page', async () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.click(screen.getAllByRole('button', { name: '즉시 실행' })[0])
+    await user.click(screen.getAllByRole('button', { name: '立即运行' })[0])
 
     await waitFor(() => {
       expect(mockRunNow).toHaveBeenCalledWith('trigger-1')
@@ -45,7 +45,7 @@ describe('SchedulesPage', () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.type(screen.getByPlaceholderText('스케줄 검색'), 'morning')
+    await user.type(screen.getByPlaceholderText('搜索占位符'), 'morning')
 
     expect(screen.queryByText('Hourly update')).not.toBeInTheDocument()
     expect(screen.getAllByText('Good morning report').length).toBeGreaterThan(0)
@@ -55,8 +55,8 @@ describe('SchedulesPage', () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.type(screen.getByPlaceholderText('스케줄 검색'), '없는 스케줄')
+    await user.type(screen.getByPlaceholderText('搜索占位符'), '없는 스케줄')
 
-    expect(screen.getByText('조건에 맞는 스케줄이 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('已过滤')).toBeInTheDocument()
   })
 })

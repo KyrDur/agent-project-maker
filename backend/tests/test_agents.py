@@ -10,12 +10,14 @@ from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.credentials import service as credential_service
 from app.models.agent import Agent
 from app.models.agent_trigger import AgentTrigger
 from app.models.conversation import Conversation
 from app.models.model import Model
 from app.models.tool import AgentToolLink, Tool
-from tests.conftest import TestSession
+from app.models.user import User
+from tests.conftest import TEST_USER_ID, TestSession
 
 
 async def _create_model(client: AsyncClient) -> str:
@@ -103,6 +105,51 @@ async def test_create_agent_accepts_fixed_identity(client: AsyncClient) -> None:
     body = resp.json()
     assert body["identity_mode"] == "fixed"
     assert body["runtime_name"].startswith("agent_")
+
+
+@pytest.mark.asyncio
+async def test_runtime_readiness_displays_model_default_credential(
+    client: AsyncClient,
+    db: AsyncSession,
+) -> None:
+    db.add(User(id=TEST_USER_ID, email="test@test.com", name="Test User"))
+    credential = await credential_service.create(
+        db,
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Runtime OpenAI",
+        data={"api_key": "sk-runtime"},
+    )
+    model = Model(
+        provider="openai",
+        model_name="gpt-5.4-mini",
+        display_name="GPT-5.4 mini",
+        default_credential_id=credential.id,
+    )
+    db.add(model)
+    await db.flush()
+    agent = Agent(
+        user_id=TEST_USER_ID,
+        name="Runtime Agent",
+        system_prompt="help",
+        model_id=model.id,
+    )
+    db.add(agent)
+    await db.commit()
+
+    resp = await client.get(f"/api/agents/{agent.id}/runtime-readiness")
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["ready"] is True
+    assert body["model"]["provider"] == "openai"
+    assert body["model"]["model_name"] == "gpt-5.4-mini"
+    assert body["credential"] == {
+        "id": str(credential.id),
+        "name": "Runtime OpenAI",
+        "status": "active",
+        "masked": True,
+    }
 
 
 @pytest.mark.asyncio
@@ -356,9 +403,7 @@ def test_builder_sessions_agent_id_fk_set_null():
     """
     from app.models.builder_session import BuilderSession
 
-    fk = next(
-        c for c in BuilderSession.__table__.foreign_keys if c.column.table.name == "agents"
-    )
+    fk = next(c for c in BuilderSession.__table__.foreign_keys if c.column.table.name == "agents")
     assert fk.ondelete == "SET NULL"
 
 

@@ -1,24 +1,26 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
 import { useProjectOptimization, useProjectVersions } from '../_hooks/use-project-evaluation'
 import type { AgentProjectVersionSummary, EvaluationRun } from '../_lib/agent-project-types'
+import { ProjectProposals } from './project-proposals'
 
 export function ProjectOptimization({
   agentId,
   run,
   versions,
+  runs,
 }: {
   agentId: string
   run: EvaluationRun
   versions: AgentProjectVersionSummary[]
+  runs?: EvaluationRun[]
 }) {
   const t = useTranslations('agentProject')
-  const { analyze, optimize } = useProjectOptimization(agentId, run.id)
-  const request = useRef<string | null>(null)
+  const { analyze } = useProjectOptimization(agentId, run.id)
   const [selected, setSelected] = useState('')
   const { detail } = useProjectVersions(agentId, selected)
   const analysis = run.comparison_json?.analysis
@@ -31,8 +33,7 @@ export function ProjectOptimization({
   }, {})
   const versionName = (id: string) =>
     t('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
-  const busy =
-    analyze.isPending || optimize.isPending || ['pending', 'running'].includes(state?.state ?? '')
+  const busy = analyze.isPending || ['pending', 'running'].includes(state?.state ?? '')
   const meta = detail.data?.snapshot_json.optimization
   const patches =
     meta && typeof meta === 'object' && 'patches' in meta && Array.isArray(meta.patches)
@@ -81,19 +82,10 @@ export function ProjectOptimization({
         </>
       )}
       {!!run.comparison_json?.deferred_changes?.length && <p>{t('deferredSkillChange')}</p>}
-      <p className="text-sm text-muted-foreground">{t('optimizationPolicy')}</p>
       <p className="text-sm text-muted-foreground">{t('bestNotLive')}</p>
-      <Button
-        disabled={busy || !failedCount || !!state?.state || (!!analysis && !analysis.groups.length)}
-        onClick={() => {
-          request.current ??= crypto.randomUUID()
-          optimize.mutate(request.current)
-        }}
-      >
-        {t('optimizeAgent')}
-      </Button>
+      <ProjectProposals agentId={agentId} run={run} versions={versions} runs={runs} />
       {busy && <p role="status">{t('optimizing')}</p>}
-      {(analyze.isError || optimize.isError) && <ErrorState title={t('optimizationFailed')} />}
+      {analyze.isError && <ErrorState title={t('optimizationFailed')} />}
       {state?.stop_reason && (
         <p role="status">
           {t.has(`optimizationStops.${state.stop_reason}`)

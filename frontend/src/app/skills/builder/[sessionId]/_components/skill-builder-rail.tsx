@@ -39,7 +39,7 @@ export type RailMode = 'status' | 'source'
 /**
  * 스킬 빌더 챗 우측 레일 (M7 — skill-studio 목업 차용).
  *
- * 상태 모드: 목업의 "상태" 카드 — 통과/주의/오류 pill, 검증 행(실제 검증기
+ * 상태 모드: 목업의 "状态" 카드 — 통과/주의/오류 pill, 검증 행(실제 검증기
  * 이슈 코드 매핑), 런타임 호환 칩(compatibility_result.targets), Credential/
  * 샌드박스/평가 행. 소스 모드: 드래프트 파일 목록 + 읽기 전용 뷰어 — 목업의
  * 소스 탭을 Phase 1로 각색(저장 전 드래프트는 세션 파일 API로만 조회 가능).
@@ -97,7 +97,7 @@ export function SkillBuilderRail({
   )
 }
 
-// ── 상태 모드 (목업 "상태" 카드) ─────────────────────────────────────────
+// ── 상태 모드 (목업 "状态" 카드) ─────────────────────────────────────────
 
 function StatusPane({
   session,

@@ -124,7 +124,7 @@ def parse_choice_response(
 
     수용 형식:
     - dict: ``{"choice": "...", "prompt"|"auto_prompt": "..."}`` (canonical)
-    - str: 단일 옵션 라벨 (e.g. ``"skip"``, ``"generate"``, ``"확정"``)
+    - str: 단일 옵션 라벨 (e.g. ``"skip"``, ``"generate"``, ``"确认"``)
     - str (JSON): ``'{"choice":"skip","prompt":"..."}'`` — frontend 에서 dict
       의도로 JSON.stringify 한 페이로드가 router 어댑터의 ``respond`` 분기에서
       string 으로 전달된 경우 backward-compatible 하게 dict 분기로 fallthrough.

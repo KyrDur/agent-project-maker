@@ -230,7 +230,7 @@ HITL_MULTI_TOOL_CALLS = (
 )
 # A rejected tool call returns to the model as a ToolMessage with status="error"
 # (HumanInTheLoopMiddleware). The scripted model must acknowledge the cancellation
-# instead of reusing the generic "완료" completion line — otherwise a rejected
+# instead of reusing the generic "完成" completion line — otherwise a rejected
 # approval reads as if the tool had run.
 HITL_REJECTED_ACK_CONTENT = (
     "알겠습니다. 요청하신 도구 실행은 취소했어요. 다른 도움이 필요하면 말씀해 주세요."
@@ -256,7 +256,7 @@ HITL_EDIT_TOOL_CALL = {
 # --- 스킬 빌더 챗 (skill-studio phase 1, M6 E2E) -----------------------------
 # 결정론 시퀀스: WRITE(드래프트 파일 2개 write_file — 빌더 분기는 파일 도구
 # 승인 카드를 제외하므로 즉시 실행) → VALIDATE(validate_skill) →
-# TEST(test_skill_draft, CODE_EXECUTION 승인 카드 + "이 세션에서 계속 허용") →
+# TEST(test_skill_draft, CODE_EXECUTION 승인 카드 + "留出本次会议的剩余时间") →
 # RETEST(동의 후 무카드 — args가 달라야 승인 카드 pill-strip 키와 충돌하지
 # 않는다, HITL_MULTI의 distinct-output 선례) → FINALIZE(finalize_skill, 항상
 # 승인 카드). WRITE 메시지는 마커 뒤에 워크스페이스 가상 경로를 실어 보낸다
@@ -559,7 +559,7 @@ ASK_USER_FRUIT_PREFACE_CONTENT = "네, 골라봐요!"
 ASK_USER_FRUIT_FINAL_CONTENT = "E2E ask_user fruit selection received."
 ASK_USER_FRUIT_TOOL_ARGS = {
     "mode": "option_list",
-    "title": "입력이 필요합니다",
+    "title": "需要输入",
     "question": "어떤 과일이 좋아요?",
     "options": [
         {"id": "apple", "label": "🍎 사과"},
@@ -585,7 +585,7 @@ ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
         "preface": "관심 있는 운동을 모두 골라주세요!",
         "args": {
             "mode": "option_list",
-            "title": "입력이 필요합니다",
+            "title": "需要输入",
             "question": "관심 있는 운동을 모두 선택하세요 (복수 선택 가능)",
             "options": [
                 {"id": "run", "label": "🏃 러닝"},
@@ -621,7 +621,7 @@ ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
                 },
                 {
                     "id": "note",
-                    "label": "메모",
+                    "label": "注释",
                     "question": "추가로 원하는 점이 있다면 적어주세요",
                     "type": "text",
                 },
@@ -644,8 +644,17 @@ def _is_rich_output_request(human_text: str) -> bool:
         return True
 
     lowered = human_text.lower()
-    requested_surfaces = ("체크리스트", "표", "코드", "수식", "이미지", "링크")
-    mentions_required_surfaces = all(surface in human_text for surface in requested_surfaces)
+    surface_groups = (
+        ("체크리스트", "清单", "checklist"),
+        ("표", "表格", "table"),
+        ("代码", "코드", "code"),
+        ("수식", "公式", "math"),
+        ("图片", "이미지", "image"),
+        ("링크", "链接", "link"),
+    )
+    mentions_required_surfaces = all(
+        any(surface.lower() in lowered for surface in group) for group in surface_groups
+    )
     mentions_quote = "인용" in human_text or "blockquote" in lowered
     mentions_mermaid = "mermaid" in lowered or "머메이드" in human_text
     return mentions_required_surfaces and mentions_quote and mentions_mermaid
@@ -669,14 +678,19 @@ def _is_hitl_approval_request(human_text: str) -> bool:
         return True
 
     lowered = human_text.lower()
-    mentions_tool = "mcp" in lowered or "도구" in human_text or "tool" in lowered
-    mentions_hitl = "hitl" in lowered or "승인" in human_text or "approval" in lowered
+    mentions_tool = "mcp" in lowered or "工具" in human_text or "tool" in lowered
+    mentions_hitl = "hitl" in lowered or "批准" in human_text or "approval" in lowered
     # Require an explicit execution intent in addition to the tool/approval
     # mention so descriptive prompts ("설명/알려줘") are not mistaken for an
     # approval-triggering request. Backward compatible with existing specs that
     # phrase the prompt as "도구 사용 승인" / "tool ... HITL".
     mentions_execution = (
-        "사용" in human_text or "실행" in human_text or "use" in lowered or "run" in lowered
+        "已启用" in human_text
+        or "运行" in human_text
+        or "사용" in human_text
+        or "실행" in human_text
+        or "use" in lowered
+        or "run" in lowered
     )
     return mentions_tool and mentions_hitl and mentions_execution
 
@@ -850,9 +864,7 @@ class E2EScriptedChatModel(BaseChatModel):
             if ARTIFACT_SLOW_FINAL_MARKER in human_text:
                 message = AIMessage(content="".join(ARTIFACT_SLOW_FINAL_PARTS))
                 return ChatResult(generations=[ChatGeneration(message=message)])
-            message = AIMessage(
-                content="문서 파일 생성이 완료되었습니다. 오른쪽 파일 패널에서 확인하세요."
-            )
+            message = AIMessage(content="文档文件生成完成。请在右侧文件面板中查看。")
             return ChatResult(generations=[ChatGeneration(message=message)])
 
         if SLOW_STREAM_MARKER in human_text:

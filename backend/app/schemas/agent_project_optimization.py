@@ -61,3 +61,23 @@ class PatchProposal(BaseModel):
 
 class OptimizeRequest(BaseModel):
     request_id: uuid.UUID
+
+
+class OptimizationDraft(PatchProposal):
+    title: str = Field(default="Evidence-based optimization", min_length=1, max_length=120)
+    what_changes: str = Field(default="", max_length=1000)
+    why_it_may_work: str = Field(default="", max_length=1000)
+    benefits: list[str] = Field(default_factory=list, max_length=5)
+    risks: list[str] = Field(default_factory=list, max_length=5)
+    targeted_case_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20)
+    affected_capabilities: list[str] = Field(min_length=1, max_length=20)
+
+
+class OptimizationProposalSet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    proposals: list[OptimizationDraft] = Field(min_length=2, max_length=3)
+
+
+class ProposalDecision(BaseModel):
+    decision: Literal["accepted", "rejected"]
+    decision_reason: str | None = Field(default=None, max_length=1000)

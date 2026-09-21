@@ -10,8 +10,8 @@ vi.mock('next-intl', () => ({
 
 describe('ComposerGhostSuggestion', () => {
   it('제안 텍스트와 → 키캡 힌트를 연하게 렌더한다', () => {
-    render(<ComposerGhostSuggestion text="방금 답변을 표로 정리해줘" onAccept={() => {}} />)
-    expect(screen.getByText('방금 답변을 표로 정리해줘')).toBeInTheDocument()
+    render(<ComposerGhostSuggestion text="把刚才的回答整理成表格" onAccept={() => {}} />)
+    expect(screen.getByText('把刚才的回答整理成表格')).toBeInTheDocument()
     expect(screen.getByText('hint')).toBeInTheDocument()
     expect(document.querySelector('[data-moldy-followup-ghost]')).not.toBeNull()
   })

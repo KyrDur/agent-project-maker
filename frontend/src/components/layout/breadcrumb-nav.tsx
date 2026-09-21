@@ -106,7 +106,7 @@ export function BreadcrumbNav() {
 
     // Skip segments without real pages
     if (SKIP_SEGMENTS.has(segment)) continue
-    // 빌더 세션 uuid는 자체 라벨이 없다 — '빌더' 크럼(인덱스 링크)까지만 표시.
+    // 빌더 세션 uuid는 자체 라벨이 없다 — '建设者' 크럼(인덱스 링크)까지만 표시.
     if (isId && i > 0 && segments[i - 1] === 'builder') continue
 
     const isLast = i === segments.length - 1

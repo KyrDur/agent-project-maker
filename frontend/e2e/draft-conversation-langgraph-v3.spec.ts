@@ -6,7 +6,7 @@ interface ConversationRow {
   readonly id: string
 }
 
-const EMPTY_STATE_TEXT = '대화를 시작해보세요.'
+const EMPTY_STATE_TEXT = '空状态'
 const FIRST_TURN_RESPONSE_TEXT = 'E2E scripted document model is ready.'
 
 type EmptyStateObserverWindow = Window & {
@@ -165,7 +165,7 @@ async function cancelActiveRunIfPresent(
 
 async function visibleStopButtonCount(page: Page): Promise<number> {
   return page
-    .getByRole('button', { name: '중단' })
+    .getByRole('button', { name: '停止' })
     .evaluateAll(
       (buttons) =>
         buttons.filter(
@@ -507,12 +507,12 @@ async function editVisibleUserMessage(
   })
   await expect(userMessage).toHaveCount(1, { timeout: 20_000 })
   await userMessage.last().hover()
-  await userMessage.last().getByRole('button', { name: '편집' }).click()
+  await userMessage.last().getByRole('button', { name: '编辑' }).click()
 
   const editInput = page.locator('textarea:not([data-moldy-composer-input="true"])').last()
   await expect(editInput).toBeVisible({ timeout: 10_000 })
   await editInput.fill(nextText)
-  await page.getByRole('button', { name: '저장' }).click()
+  await page.getByRole('button', { name: '保存' }).click()
 }
 
 async function installWrongBranchIndexObserver(
@@ -670,7 +670,7 @@ async function branchPickerSnapshot(
 ): Promise<BranchPickerSnapshot> {
   return message.last().evaluate((element) => {
     const previousButton = element.querySelector<HTMLButtonElement>(
-      'button[aria-label="이전 분기"]',
+      'button[aria-label="上一页"]',
     )
     const picker = previousButton?.parentElement
     const row = picker?.parentElement
@@ -757,7 +757,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     try {
       const beforeIds = await listConversationIds(request, setup.parentAgentId)
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -772,7 +772,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expect(page).toHaveURL(new RegExp(`/agents/${setup.parentAgentId}/conversations/new$`))
       expect(draftConversationPosts).toHaveLength(1)
       expect(startRequests).toEqual([])
-      await expect(page.getByPlaceholder('메시지 입력...')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByPlaceholder('占位符')).toBeVisible({ timeout: 20_000 })
 
       await page.goto(`/agents/${setup.parentAgentId}/settings`)
       await expectConversationDetailStatus(request, draftConversationIds[0] ?? '', 404)
@@ -812,7 +812,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     try {
       const beforeIds = await listConversationIds(request, setup.parentAgentId)
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -828,7 +828,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
 
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       await expectConversationDetailStatus(request, firstDraftId, 404)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -844,7 +844,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expect(page).toHaveURL(new RegExp(`/agents/${setup.parentAgentId}/conversations/new$`))
       expect(draftConversationPosts).toHaveLength(2)
       expect(startRequests).toEqual([])
-      await expect(page.getByPlaceholder('메시지 입력...')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByPlaceholder('占位符')).toBeVisible({ timeout: 20_000 })
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])
@@ -863,7 +863,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -913,13 +913,13 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     const setup = await setupLangGraphV3Agent(request)
 
     try {
-      // 1) opener 대화에서 시작 → "새 채팅"으로 draft(`/new`) 진입.
+      // 1) opener 대화에서 시작 → "新聊天"으로 draft(`/new`) 진입.
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       await expect(page).toHaveURL(
         new RegExp(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}$`),
         { timeout: 20_000 },
       )
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -969,7 +969,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -986,7 +986,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
         timeout: 30_000,
       })
 
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -1023,7 +1023,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     let promotedConversationId: string | null = null
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      await page.getByRole('button', { name: '새 채팅', exact: true }).first().click()
+      await page.getByRole('button', { name: '新聊天', exact: true }).first().click()
       await page.waitForURL(`**/agents/${setup.parentAgentId}/conversations/new`, {
         timeout: 10_000,
       })
@@ -1168,14 +1168,14 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await expect(userMessage).toHaveCount(1, { timeout: 20_000 })
       await userMessage.last().hover()
-      await userMessage.last().getByRole('button', { name: '편집' }).click()
+      await userMessage.last().getByRole('button', { name: '编辑' }).click()
 
       const editInput = page.locator('textarea:not([data-moldy-composer-input="true"])').last()
       await expect(editInput).toBeVisible({ timeout: 10_000 })
       await editInput.fill(editedPrompt)
       await installEditedUserDuplicateObserver(page, editedPrompt)
       await installStaleAssistantAfterEditObserver(page, editedPrompt, FIRST_TURN_RESPONSE_TEXT)
-      await page.getByRole('button', { name: '저장' }).click()
+      await page.getByRole('button', { name: '保存' }).click()
 
       const editedUserMessage = page.locator('[data-moldy-message-role="user"]').filter({
         hasText: editedPrompt,
@@ -1231,12 +1231,12 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await expect(secondUserMessage).toHaveCount(1, { timeout: 20_000 })
       await secondUserMessage.last().hover()
-      await secondUserMessage.last().getByRole('button', { name: '편집' }).click()
+      await secondUserMessage.last().getByRole('button', { name: '编辑' }).click()
       const thirdEditInput = page.locator('textarea:not([data-moldy-composer-input="true"])').last()
       await expect(thirdEditInput).toBeVisible({ timeout: 10_000 })
       await thirdEditInput.fill(thirdPrompt)
       await installWrongBranchIndexObserver(page, thirdPrompt, '2/3')
-      await page.getByRole('button', { name: '저장' }).click()
+      await page.getByRole('button', { name: '保存' }).click()
       const visualFinalText = /chunks\s+arrive;\s+visual\s+stream\s+fixture\s+complete\./
       const visualPartialText = /E2E visual stream fixture is still running/
       await expect(page.getByText(visualFinalText).last()).toBeVisible({ timeout: 30_000 })
@@ -1250,13 +1250,13 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await newestUserMessage.last().hover()
       await expectBranchPickerVisible(newestUserMessage, '3/3')
 
-      await newestUserMessage.last().getByRole('button', { name: '이전 분기' }).click()
+      await newestUserMessage.last().getByRole('button', { name: '上一页' }).click()
       const previousUserBranch = page.locator('[data-moldy-message-role="user"]').filter({
         hasText: secondPrompt,
       })
       await expect(previousUserBranch).toHaveCount(1, { timeout: 20_000 })
       await expectBranchPickerVisible(previousUserBranch, '2/3')
-      await previousUserBranch.last().getByRole('button', { name: '다음 분기' }).click()
+      await previousUserBranch.last().getByRole('button', { name: '下一步' }).click()
       await expect(newestUserMessage).toHaveCount(1, { timeout: 20_000 })
       await expectBranchPickerVisible(newestUserMessage, '3/3')
 
@@ -1269,7 +1269,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
         await expect(page.getByText(visualFinalText).last()).toBeVisible({ timeout: 30_000 })
         await waitForNoVisibleStopButton(page)
         await expect(
-          newestAssistantMessage.last().getByRole('button', { name: '재생성' }),
+          newestAssistantMessage.last().getByRole('button', { name: '再生' }),
         ).toBeEnabled({ timeout: 30_000 })
         await newestAssistantMessage.last().hover()
       }
@@ -1280,7 +1280,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
         1,
       )
       await newestAssistantMessage.last().hover()
-      await newestAssistantMessage.last().getByRole('button', { name: '재생성' }).click()
+      await newestAssistantMessage.last().getByRole('button', { name: '再生' }).click()
 
       await waitForVisibleStopButton(page)
       const streamingAssistantMessage = page
@@ -1295,15 +1295,15 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expect(page.getByText(FIRST_TURN_RESPONSE_TEXT)).toHaveCount(0)
       await expect(newestUserMessage.last()).toContainText(/3\/3/, { timeout: 20_000 })
       await expectBranchPickerVisible(newestAssistantMessage, '2/2')
-      await newestAssistantMessage.last().getByRole('button', { name: '재생성' }).click()
+      await newestAssistantMessage.last().getByRole('button', { name: '再生' }).click()
       await waitForVisualAssistantComplete()
       await expectBranchPickerVisible(newestAssistantMessage, '3/3')
-      await newestAssistantMessage.last().getByRole('button', { name: '재생성' }).click()
+      await newestAssistantMessage.last().getByRole('button', { name: '再生' }).click()
       await waitForVisualAssistantComplete()
       await expectBranchPickerVisible(newestAssistantMessage, '4/4')
-      await newestAssistantMessage.last().getByRole('button', { name: '이전 분기' }).click()
+      await newestAssistantMessage.last().getByRole('button', { name: '上一页' }).click()
       await expectBranchPickerVisible(newestAssistantMessage, '3/4')
-      await newestAssistantMessage.last().getByRole('button', { name: '재생성' }).click()
+      await newestAssistantMessage.last().getByRole('button', { name: '再生' }).click()
       await waitForVisualAssistantComplete()
       await expectBranchPickerVisible(newestAssistantMessage, '5/5')
       await expectAssistantTextOccurrenceCount(

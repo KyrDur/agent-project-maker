@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { render, type RenderOptions } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import messages from '../messages/ko.json'
+import messages from '../messages/zh-CN.json'
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -17,7 +17,7 @@ function createTestQueryClient() {
 function AllProviders({ children }: { children: ReactNode }) {
   const queryClient = createTestQueryClient()
   return (
-    <NextIntlClientProvider locale="ko" messages={messages}>
+    <NextIntlClientProvider locale="zh-CN" messages={messages}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>{children}</TooltipProvider>
       </QueryClientProvider>

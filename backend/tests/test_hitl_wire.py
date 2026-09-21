@@ -361,7 +361,7 @@ class TestInterruptToStandardChunk:
                     "label": "답변 톤",
                     "type": "single_select",
                     "options": [
-                        {"id": "concise", "label": "간결하게"},
+                        {"id": "concise", "label": "简洁明了"},
                         {"id": "detailed", "label": "자세하게"},
                     ],
                     "required": True,
@@ -500,7 +500,7 @@ class TestAskUserFallbackResumeParser:
             assert ask_user.invoke({"question": "어느 쪽?"}) == "옵션 B"
 
     def test_ask_user_accepts_question_flow_payload(self):
-        with patch("app.agent_runtime.tools.ask_user.interrupt", return_value="완료") as intr:
+        with patch("app.agent_runtime.tools.ask_user.interrupt", return_value="完成") as intr:
             assert (
                 ask_user.invoke(
                     {
@@ -511,12 +511,12 @@ class TestAskUserFallbackResumeParser:
                                 "id": "tone",
                                 "label": "답변 톤",
                                 "type": "single_select",
-                                "options": [{"id": "concise", "label": "간결하게"}],
+                                "options": [{"id": "concise", "label": "简洁明了"}],
                             }
                         ],
                     }
                 )
-                == "완료"
+                == "完成"
             )
 
         payload = intr.call_args.args[0]

@@ -63,9 +63,7 @@ def _capture_resume_payload():
 
 class TestDecisionsToBuilderResponse:
     def test_approve_maps_to_approved_dict(self):
-        out = builder_service.decisions_to_builder_response(
-            [Decision(type="approve")]
-        )
+        out = builder_service.decisions_to_builder_response([Decision(type="approve")])
         assert out == {"approved": True}
 
     def test_reject_with_message_carries_revision_message(self):
@@ -75,9 +73,7 @@ class TestDecisionsToBuilderResponse:
         assert out == {"approved": False, "revision_message": "이름 다시"}
 
     def test_reject_without_message_uses_empty_string(self):
-        out = builder_service.decisions_to_builder_response(
-            [Decision(type="reject")]
-        )
+        out = builder_service.decisions_to_builder_response([Decision(type="reject")])
         assert out == {"approved": False, "revision_message": ""}
 
     def test_respond_returns_message_string(self):
@@ -109,9 +105,7 @@ class TestDecisionsToBuilderResponse:
 
 class TestResumeRouterContract:
     @pytest.mark.asyncio
-    async def test_resume_accepts_standard_decisions(
-        self, client: AsyncClient, db: AsyncSession
-    ):
+    async def test_resume_accepts_standard_decisions(self, client: AsyncClient, db: AsyncSession):
         """표준 ``{decisions: [{type:'respond', message:'옵션 A'}]}`` → 200 + builder
         helper 가 string ``"옵션 A"`` 로 변환해 graph 로 전달."""
         session_id = await _seed_session(db)
@@ -172,9 +166,7 @@ class TestResumeRouterContract:
         assert resp.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_resume_empty_decisions_422(
-        self, client: AsyncClient, db: AsyncSession
-    ):
+    async def test_resume_empty_decisions_422(self, client: AsyncClient, db: AsyncSession):
         """Decisions 빈 배열은 ``min_length=1`` 위반 → 422."""
         session_id = await _seed_session(db)
         resp = await client.post(
@@ -214,9 +206,7 @@ class TestPhase6JsonStringFallback:
             parse_choice_response,
         )
 
-        choice, prompt = parse_choice_response(
-            '{"choice":"generate","auto_prompt":"a"}'
-        )
+        choice, prompt = parse_choice_response('{"choice":"generate","auto_prompt":"a"}')
         assert choice == "generate"
         assert prompt == "a"
 
@@ -279,7 +269,7 @@ class TestPhase6JsonStringFallback:
             "messages": [],
             "session_id": "s1",
             "intent": {
-                "agent_name_ko": "테스트",
+                "agent_name": "测试",
                 "agent_description": "d",
                 "primary_task_type": "x",
             },

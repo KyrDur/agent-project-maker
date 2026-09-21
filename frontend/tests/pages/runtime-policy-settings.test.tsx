@@ -30,7 +30,7 @@ describe('RuntimePolicySettings', () => {
 
     render(<RuntimePolicySettings {...DEFAULT_PROPS} onValueChange={onValueChange} />)
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
 
     expect(onValueChange).toHaveBeenCalledWith({
       version: 1,
@@ -57,7 +57,7 @@ describe('RuntimePolicySettings', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '권장 설정 사용' }))
+    await user.click(screen.getByRole('button', { name: '使用推荐设置' }))
 
     expect(onValueChange).toHaveBeenCalledWith(null)
   })
@@ -79,7 +79,7 @@ describe('RuntimePolicySettings', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
 
     expect(onValueChange).not.toHaveBeenCalled()
   })
@@ -89,17 +89,17 @@ describe('RuntimePolicySettings', () => {
 
     render(<ControlledRuntimePolicySettings {...DEFAULT_PROPS} />)
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
-    await user.click(screen.getByRole('button', { name: '검토만' }))
-    await user.click(screen.getByRole('switch', { name: '할 일 목록 사용' }))
-    await user.click(screen.getByRole('button', { name: '균형' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '仅供审核' }))
+    await user.click(screen.getByRole('switch', { name: '使用任务列表' }))
+    await user.click(screen.getByRole('button', { name: '平衡' }))
 
-    expect(screen.getByRole('button', { name: '검토만' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('switch', { name: '할 일 목록 사용' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '仅供审核' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('switch', { name: '使用任务列表' })).toHaveAttribute(
       'aria-checked',
       'false',
     )
-    expect(screen.getByRole('button', { name: '균형' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: '平衡' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('groups each mutually exclusive runtime choice under its visible purpose', async () => {
@@ -107,17 +107,17 @@ describe('RuntimePolicySettings', () => {
 
     render(<ControlledRuntimePolicySettings {...DEFAULT_PROPS} />)
 
-    expect(screen.getByRole('group', { name: '실행 동작 설정 방식' })).toContainElement(
-      screen.getByRole('button', { name: '권장 설정 사용' }),
+    expect(screen.getByRole('group', { name: '运行时行为模式' })).toContainElement(
+      screen.getByRole('button', { name: '使用推荐设置' }),
     )
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
 
-    expect(screen.getByRole('group', { name: '파일 작업' })).toContainElement(
-      screen.getByRole('button', { name: '검토만' }),
+    expect(screen.getByRole('group', { name: '档案工作' })).toContainElement(
+      screen.getByRole('button', { name: '仅供审核' }),
     )
-    expect(screen.getByRole('group', { name: '긴 대화 정리' })).toContainElement(
-      screen.getByRole('button', { name: '자동' }),
+    expect(screen.getByRole('group', { name: '长对话上下文' })).toContainElement(
+      screen.getByRole('button', { name: '汽车' }),
     )
   })
 
@@ -126,11 +126,11 @@ describe('RuntimePolicySettings', () => {
 
     render(<ControlledRuntimePolicySettings {...DEFAULT_PROPS} contextWindow={null} />)
 
-    await user.click(screen.getByRole('button', { name: '직접 설정' }))
+    await user.click(screen.getByRole('button', { name: '自定义设置' }))
 
-    expect(screen.getByRole('button', { name: '균형' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '平衡' })).toBeDisabled()
     expect(
-      screen.getByText('선택한 모델의 컨텍스트 길이 정보가 있어야 균형 모드를 사용할 수 있어요.'),
+      screen.getByText('平衡模式需要所选模型的上下文长度信息。'),
     ).toBeInTheDocument()
   })
 
@@ -151,10 +151,10 @@ describe('RuntimePolicySettings', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '균형' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '平衡' })).toBeDisabled()
     expect(
       screen.getByText(
-        '현재 선택은 이 모델에서 사용할 수 없습니다. 모델을 바꾸거나 자동으로 전환하세요.',
+        '当前的选择不适用于该模型。更改模型或切换为自动。',
       ),
     ).toBeInTheDocument()
     expect(onValueChange).not.toHaveBeenCalled()
@@ -165,19 +165,19 @@ describe('RuntimePolicySettings', () => {
 
     render(<RuntimePolicySettings {...DEFAULT_PROPS} surface="new-agent" collapsible />)
 
-    expect(screen.getByRole('button', { name: '직접 설정' })).not.toBeVisible()
-    await user.click(screen.getByText('실행 동작 고급 설정'))
-    expect(screen.getByRole('button', { name: '직접 설정' })).toBeInTheDocument()
-    expect(screen.getByText('새 대화부터 설정이 적용됩니다.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '自定义设置' })).not.toBeVisible()
+    await user.click(screen.getByText('高级运行时设置'))
+    expect(screen.getByRole('button', { name: '自定义设置' })).toBeInTheDocument()
+    expect(screen.getByText('该设置适用于新对话。')).toBeInTheDocument()
   })
 
   it('labels the source without exposing internal runtime provenance', () => {
     render(<RuntimePolicySettings {...DEFAULT_PROPS} />)
 
-    expect(screen.getByText('권장 설정')).toBeInTheDocument()
+    expect(screen.getByText('推荐设置')).toBeInTheDocument()
     expect(
       screen.getByText(
-        '이미 실행된 대화에는 영향을 주지 않습니다. 아직 실행하지 않은 대화와 새 대화에는 변경된 설정이 적용됩니다.',
+        '这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。',
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText(/legacy_compat|stored/i)).not.toBeInTheDocument()

@@ -819,7 +819,7 @@ def test_e2e_scripted_model_emits_edit_file_tool_call_for_hitl_edit() -> None:
 def test_e2e_scripted_model_acknowledges_rejection_instead_of_completion() -> None:
     # A rejected tool call returns as a ToolMessage with status="error"
     # (HumanInTheLoopMiddleware). The follow-up turn must acknowledge the
-    # cancellation, not reuse the generic "완료" completion line.
+    # cancellation, not reuse the generic "完成" completion line.
     model = E2EScriptedChatModel(model="document-artifact-scripted").bind_tools(
         [{"name": "execute_in_skill"}]
     )
@@ -838,7 +838,7 @@ def test_e2e_scripted_model_acknowledges_rejection_instead_of_completion() -> No
     )
 
     assert result.content == HITL_REJECTED_ACK_CONTENT
-    assert "완료" not in str(result.content)
+    assert "完成" not in str(result.content)
 
 
 def test_e2e_scripted_model_still_reports_completion_on_successful_tool_result() -> None:
@@ -858,12 +858,12 @@ def test_e2e_scripted_model_still_reports_completion_on_successful_tool_result()
         ]
     )
 
-    assert "완료" in str(result.content)
+    assert "生成完成" in str(result.content)
 
 
 def test_e2e_scripted_model_tool_execution_error_is_not_treated_as_rejection() -> None:
     # An APPROVED edit whose tool ran and failed also comes back as an error
-    # ToolMessage — but it is NOT a rejection and must not read as "취소".
+    # ToolMessage — but it is NOT a rejection and must not read as "取消".
     model = E2EScriptedChatModel(model="document-artifact-scripted").bind_tools(
         [{"name": "edit_file"}]
     )
@@ -880,7 +880,7 @@ def test_e2e_scripted_model_tool_execution_error_is_not_treated_as_rejection() -
     )
 
     assert result.content != HITL_REJECTED_ACK_CONTENT
-    assert "취소" not in str(result.content)
+    assert "取消" not in str(result.content)
 
 
 def test_e2e_scripted_model_emits_grouped_tool_calls_for_tool_group_marker() -> None:

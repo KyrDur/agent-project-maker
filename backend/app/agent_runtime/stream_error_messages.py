@@ -23,9 +23,7 @@ _SECRETISH_RE = re.compile(
     r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|secret|authorization|bearer)"
 )
 
-_DEFAULT_MODEL_ERROR_MESSAGE = (
-    "모델 제공자 요청이 실패했습니다. 모델 설정, 자격증명, 사용량 한도를 확인해주세요."
-)
+_DEFAULT_MODEL_ERROR_MESSAGE = "模型提供商请求失败。请检查模型设置、凭据和使用量限制。"
 
 
 def public_stream_error_message(error: Exception, *, locale: str | None = None) -> str:
@@ -39,7 +37,7 @@ def public_stream_error_message(error: Exception, *, locale: str | None = None) 
             return tr("stream_model_error" if provider_error else "stream_generation_error")
 
     if not raw:
-        return "응답 생성 중 오류가 발생했습니다."
+        return "生成响应时发生错误。"
 
     if _SECRETISH_RE.search(raw) or any(marker in raw for marker in _PROVIDER_ERROR_MARKERS):
         return _DEFAULT_MODEL_ERROR_MESSAGE

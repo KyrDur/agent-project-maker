@@ -11,23 +11,23 @@ describe('static i18n text scanner', () => {
       import { toast } from 'sonner'
 
       export function Example() {
-        const fallbackTitle = '제목 없는 대화'
+        const fallbackTitle = '标题后备'
         toast.error('저장에 실패했어요')
         return (
           <section>
             <h1>모델</h1>
-            <input placeholder="검색어 입력" aria-label="검색" />
+            <input placeholder="搜索" aria-label="搜索" />
           </section>
         )
       }
     `
 
     expect(findStaticTextIssuesInSource(source, 'src/app/example/page.tsx')).toMatchObject([
-      { kind: 'string-literal', text: '제목 없는 대화' },
+      { kind: 'string-literal', text: '标题后备' },
       { kind: 'toast', text: '저장에 실패했어요' },
-      { kind: 'jsx-text', text: '모델' },
-      { kind: 'jsx-attribute', text: '검색어 입력' },
-      { kind: 'jsx-attribute', text: '검색' },
+      { kind: 'jsx-text', text: '模型' },
+      { kind: 'jsx-attribute', text: '搜索' },
+      { kind: 'jsx-attribute', text: '搜索' },
     ])
   })
 
@@ -57,7 +57,7 @@ describe('static i18n text scanner', () => {
     expect(shouldScanPath('src/app/models/page.tsx')).toBe(true)
     expect(shouldScanPath('tests/pages/models.test.tsx')).toBe(false)
     expect(shouldScanPath('src/components/example/example.test.tsx')).toBe(false)
-    expect(shouldScanPath('messages/ko.json')).toBe(false)
+    expect(shouldScanPath('messages/zh-CN.json')).toBe(false)
     expect(shouldScanPath('src/lib/types/index.ts')).toBe(false)
     // global-error renders outside the next-intl provider (crashed root layout).
     expect(shouldScanPath('src/app/global-error.tsx')).toBe(false)

@@ -197,24 +197,24 @@ test.describe('Chat token usage hover', () => {
       page.getByText('토큰 사용량 상세 팝오버가 정상적으로 표시되는 응답입니다.'),
     ).toBeVisible()
 
-    const tokenButton = page.getByRole('button', { name: '토큰 사용량 보기' })
+    const tokenButton = page.getByRole('button', { name: '切换咏叹调' })
     await expect(tokenButton).toBeVisible()
     await expect(tokenButton).toContainText('2,100')
 
     await tokenButton.hover()
 
-    const tooltip = page.getByRole('tooltip').filter({ hasText: '토큰 사용량' })
+    const tooltip = page.getByRole('tooltip').filter({ hasText: 'Token 用量' })
     await expect(tooltip).toBeVisible()
     await expect(tooltip).toContainText('2,100 합계')
-    await expect(tooltip).toContainText('입력')
+    await expect(tooltip).toContainText('输入')
     await expect(tooltip).toContainText('1,200')
-    await expect(tooltip).toContainText('출력')
+    await expect(tooltip).toContainText('输出')
     await expect(tooltip).toContainText('900')
-    await expect(tooltip).toContainText('캐시 생성')
+    await expect(tooltip).toContainText('缓存创建')
     await expect(tooltip).toContainText('400')
-    await expect(tooltip).toContainText('캐시 적중')
+    await expect(tooltip).toContainText('缓存读取')
     await expect(tooltip).toContainText('250')
-    await expect(tooltip).toContainText('추정 비용')
+    await expect(tooltip).toContainText('预计费用')
     await expect(tooltip).toContainText('$0.0123')
 
     await expect(page.locator('[data-base-ui-portal]').filter({ has: tooltip })).toHaveCount(1)

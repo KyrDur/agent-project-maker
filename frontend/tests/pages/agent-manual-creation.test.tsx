@@ -42,13 +42,13 @@ describe('ManualCreationPage model availability', () => {
 
     render(<ManualCreationPage />)
 
-    expect(screen.getByRole('heading', { name: '문제가 발생했습니다' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '出了点问题' })).toBeInTheDocument()
     expect(
-      screen.getByText('모델 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'),
+      screen.getByText('我们无法加载模型信息。请稍后重试。'),
     ).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText('에이전트 이름')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('智能体名称')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    await user.click(screen.getByRole('button', { name: '重试' }))
 
     expect(mockRefetchModels).toHaveBeenCalledOnce()
   })

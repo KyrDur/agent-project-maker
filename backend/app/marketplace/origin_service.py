@@ -57,7 +57,7 @@ _ORIGIN_LABELS: dict[str, str] = {
     "imported_by_me": "내가 가져온 리소스",
     "built_in_k_skill": "기본 제공 (k-skill)",
     "shared_with_me": "공유받은 리소스",
-    "community": "커뮤니티",
+    "community": "社区",
     "system_seed": "기본 제공",
 }
 

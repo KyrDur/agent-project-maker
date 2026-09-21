@@ -25,7 +25,7 @@ test.describe('Conversational builder', () => {
     // The builder (LiteLLM) responds and the multi-phase pipeline begins —
     // the progress tracker is template-driven, so it's a stable signal that the
     // real LLM produced a structured response (not just that a session exists).
-    await expect(page.getByText('진행 상황').first()).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByText('프로젝트 초기화').first()).toBeVisible()
+    await expect(page.getByText('阶段时间轴').first()).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('项目初始化').first()).toBeVisible()
   })
 })

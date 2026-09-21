@@ -45,9 +45,9 @@ describe('PinnedConversationSummary', () => {
   })
 
   it.each([
-    ['changed', '원본 메시지가 변경됨'],
-    ['deleted', '원본 메시지가 삭제됨'],
-    ['other_branch', '다른 대화 분기의 메시지'],
+    ['changed', '源消息已更改'],
+    ['deleted', '源消息已删除'],
+    ['other_branch', '消息位于另一个对话分支上'],
   ] as const)('renders the persisted snapshot and labels a %s source', (sourceStatus, label) => {
     // Given
     mocks.summary = {
@@ -75,7 +75,7 @@ describe('PinnedConversationSummary', () => {
     render(<PinnedConversationSummary conversationId="conversation-1" />)
 
     // When
-    await user.click(screen.getByRole('button', { name: '대화 요약 고정 해제' }))
+    await user.click(screen.getByRole('button', { name: '取消固定对话摘要' }))
 
     // Then
     expect(mocks.unpin).toHaveBeenCalledOnce()

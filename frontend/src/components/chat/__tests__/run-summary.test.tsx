@@ -51,12 +51,12 @@ describe('RunSummaryPanel', () => {
     expect(screen.getByText('서브 에이전트 총 3')).toBeInTheDocument()
     expect(screen.queryByText('search')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '활동 보기' }))
+    await user.click(screen.getByRole('button', { name: '显示活动' }))
 
-    expect(screen.getByText('메인 도구').nextElementSibling).toHaveTextContent('2')
-    expect(screen.getByText('하위 도구').nextElementSibling).toHaveTextContent('3')
-    expect(screen.getByText('메인 서브 에이전트').nextElementSibling).toHaveTextContent('1')
-    expect(screen.getByText('하위 서브 에이전트').nextElementSibling).toHaveTextContent('2')
+    expect(screen.getByText('主要工具').nextElementSibling).toHaveTextContent('2')
+    expect(screen.getByText('后代工具').nextElementSibling).toHaveTextContent('3')
+    expect(screen.getByText('主子智能体').nextElementSibling).toHaveTextContent('1')
+    expect(screen.getByText('后代子智能体').nextElementSibling).toHaveTextContent('2')
 
     const rows = screen.getAllByRole('listitem')
     expect(rows).toHaveLength(2)
@@ -99,22 +99,22 @@ describe('RunSummaryPanel', () => {
       />,
     )
 
-    expect(screen.getByText('시간 정보 없음')).toBeInTheDocument()
+    expect(screen.getByText('时间不可用')).toBeInTheDocument()
     expect(screen.getByText('도구 총 –')).toBeInTheDocument()
     expect(screen.getByText('서브 에이전트 총 –')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '활동 보기' }))
-    expect(screen.getByText('메인 도구').nextElementSibling).toHaveTextContent('–')
-    expect(screen.getByText('하위 도구').nextElementSibling).toHaveTextContent('–')
-    expect(screen.getByText('메인 서브 에이전트').nextElementSibling).toHaveTextContent('–')
-    expect(screen.getByText('하위 서브 에이전트').nextElementSibling).toHaveTextContent('–')
+    await user.click(screen.getByRole('button', { name: '显示活动' }))
+    expect(screen.getByText('主要工具').nextElementSibling).toHaveTextContent('–')
+    expect(screen.getByText('后代工具').nextElementSibling).toHaveTextContent('–')
+    expect(screen.getByText('主子智能体').nextElementSibling).toHaveTextContent('–')
+    expect(screen.getByText('后代子智能体').nextElementSibling).toHaveTextContent('–')
   })
 
   it('discloses when the persisted activity history was truncated', async () => {
     const user = userEvent.setup()
     render(<RunSummaryPanel summary={summary({ activityTruncated: true })} />)
 
-    await user.click(screen.getByRole('button', { name: '활동 보기' }))
+    await user.click(screen.getByRole('button', { name: '显示活动' }))
 
-    expect(screen.getByText('이전 활동 일부가 생략되었습니다.')).toBeInTheDocument()
+    expect(screen.getByText('一些早期的活动被省略了。')).toBeInTheDocument()
   })
 })

@@ -88,7 +88,7 @@ describe('AgentPage (redirect)', () => {
     render(<AgentPage params={{ agentId: 'agent-1' } as unknown as Promise<{ agentId: string }>} />)
 
     await waitFor(() => {
-      expect(screen.getByText('대화를 불러오는 데 실패했습니다.')).toBeInTheDocument()
+      expect(screen.getByText('无法加载对话。')).toBeInTheDocument()
     })
   })
 })

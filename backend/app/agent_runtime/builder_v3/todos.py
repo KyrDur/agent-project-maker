@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import AIMessage, ToolMessage
 
@@ -29,11 +29,15 @@ def update_phase_status(
     todos: list[PhaseTodo] | None, phase_id: int, status: str
 ) -> list[PhaseTodo]:
     """단일 phase의 status를 갱신한 새 todos 리스트를 반환한다 (불변)."""
-    base = [{**t, "name": get_phase_name(t["id"])} for t in todos] if todos else initial_todos()
+    base: list[PhaseTodo] = (
+        [cast(PhaseTodo, {**t, "name": get_phase_name(t["id"])}) for t in todos]
+        if todos
+        else initial_todos()
+    )
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] == phase_id:
-            new_todos.append({**t, "status": status})  # type: ignore[typeddict-item]
+            new_todos.append(cast(PhaseTodo, {**t, "status": status}))
         else:
             new_todos.append(t)
     return new_todos
@@ -41,11 +45,15 @@ def update_phase_status(
 
 def mark_completed_through(todos: list[PhaseTodo] | None, phase_id: int) -> list[PhaseTodo]:
     """1..phase_id 까지를 completed, phase_id+1을 pending(기본값) 유지한 todos 반환."""
-    base = [{**t, "name": get_phase_name(t["id"])} for t in todos] if todos else initial_todos()
+    base: list[PhaseTodo] = (
+        [cast(PhaseTodo, {**t, "name": get_phase_name(t["id"])}) for t in todos]
+        if todos
+        else initial_todos()
+    )
     new_todos: list[PhaseTodo] = []
     for t in base:
         if t["id"] <= phase_id:
-            new_todos.append({**t, "status": "completed"})  # type: ignore[typeddict-item]
+            new_todos.append(cast(PhaseTodo, {**t, "status": "completed"}))
         else:
             new_todos.append(t)
     return new_todos
@@ -83,7 +91,7 @@ def build_timeline_messages(
         tool_call_id=tool_call_id,
         name=PHASE_TIMELINE_TOOL,
     )
-    return [ai_msg, tool_msg], todos
+    return [ai_msg, tool_msg], cast(list[PhaseTodo], todos)
 
 
 def get_phase_meta(phase_id: int) -> dict[str, Any]:

@@ -76,7 +76,7 @@ describe('TemplateSelectionPage', () => {
 
   it('renders page header', () => {
     render(<TemplateSelectionPage />)
-    expect(screen.getByText('템플릿으로 시작하기')).toBeInTheDocument()
+    expect(screen.getByText('从模板开始')).toBeInTheDocument()
   })
 
   it('renders loading state with skeletons', () => {
@@ -120,16 +120,16 @@ describe('TemplateSelectionPage', () => {
 
   it('renders category tabs', () => {
     render(<TemplateSelectionPage />)
-    expect(screen.getByText('전체')).toBeInTheDocument()
-    expect(screen.getByText('생산성')).toBeInTheDocument()
-    expect(screen.getByText('커뮤니케이션')).toBeInTheDocument()
-    expect(screen.getByText('데이터')).toBeInTheDocument()
+    expect(screen.getByText('所有时间')).toBeInTheDocument()
+    expect(screen.getByText('生产力')).toBeInTheDocument()
+    expect(screen.getByText('通讯')).toBeInTheDocument()
+    expect(screen.getByText('数据')).toBeInTheDocument()
   })
 
   it('shows empty state when no templates in category', async () => {
     mockUseTemplates.mockReturnValue({ data: [], isLoading: false })
     render(<TemplateSelectionPage />)
-    expect(await screen.findByText('이 카테고리에 템플릿이 없습니다.')).toBeInTheDocument()
+    expect(await screen.findByText('此类别中没有模板。')).toBeInTheDocument()
   })
 
   it('calls createAgent when template create button is clicked', async () => {
@@ -243,7 +243,7 @@ describe('TemplateSelectionPage', () => {
       isLoading: false,
     })
     render(<TemplateSelectionPage />)
-    const createButtons = await screen.findAllByText('시작')
+    const createButtons = await screen.findAllByText('来自')
     expect(createButtons.length).toBe(mockTemplateList.length)
   })
 
@@ -256,6 +256,6 @@ describe('TemplateSelectionPage', () => {
 
     expect(screen.getAllByText(`${mockTemplateList.length}개`)).toHaveLength(1)
     expect(screen.queryByText('Agent Gallery')).not.toBeInTheDocument()
-    expect(screen.getByText('원하는 템플릿이 없나요?').closest('a')).toHaveClass('mt-auto')
+    expect(screen.getByText('找不到合适的模板？').closest('a')).toHaveClass('mt-auto')
   })
 })

@@ -112,7 +112,7 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User:
         await asyncio.to_thread(verify_password, password, _DUMMY_PASSWORD_HASH)
         raise AppError(
             code="invalid_credentials",
-            message="이메일 또는 비밀번호가 올바르지 않습니다",
+            message="电子邮件或密码不正确。",
             status=401,
         )
     if not user.is_active:
@@ -136,7 +136,7 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User:
         await db.commit()
         raise AppError(
             code="invalid_credentials",
-            message="이메일 또는 비밀번호가 올바르지 않습니다",
+            message="电子邮件或密码不正确。",
             status=401,
         )
     return user
@@ -200,7 +200,7 @@ def _aware(dt: datetime) -> datetime:
 
 
 def _invalid_refresh() -> AppError:
-    return AppError(code="invalid_refresh", message="세션이 만료되었습니다", status=401)
+    return AppError(code="invalid_refresh", message="会话已过期", status=401)
 
 
 async def _find_race_chain_head(

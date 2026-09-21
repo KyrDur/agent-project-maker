@@ -74,8 +74,8 @@ test.describe('Chat export + search captures', () => {
     }
 
     // G5 — navigator session menu (dropdown with the 내보내기 item) → export dialog.
-    await page.getByRole('button', { name: '대화 메뉴' }).first().click()
-    const exportItem = page.getByRole('menuitem', { name: '내보내기' })
+    await page.getByRole('button', { name: '对话菜单' }).first().click()
+    const exportItem = page.getByRole('menuitem', { name: '导出' })
     await expect(exportItem).toBeVisible({ timeout: 10_000 })
     await settle(page)
     await capture(page, WAVE, '00-export-menu.png')

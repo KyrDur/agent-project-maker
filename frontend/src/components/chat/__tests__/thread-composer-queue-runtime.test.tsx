@@ -124,9 +124,9 @@ describe('ThreadComposer queue runtime controls', () => {
       </RunningQueueRuntime>,
     )
 
-    expect(screen.getByRole('button', { name: '중단' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '停止' })).toBeVisible()
     const steer = screen.getByRole('button', {
-      name: '현재 응답을 중단하고 바로 전송',
+      name: '停止当前响应并立即发送',
     })
     expect(steer).toBeVisible()
     expect(steer).toHaveAttribute('data-moldy-queue-steer-new')
@@ -147,16 +147,16 @@ describe('ThreadComposer queue runtime controls', () => {
     )
 
     await user.type(screen.getByRole('textbox'), 'change direction')
-    await user.click(screen.getByRole('button', { name: '현재 응답을 중단하고 바로 전송' }))
+    await user.click(screen.getByRole('button', { name: '停止当前响应并立即发送' }))
 
     expect(onSteer).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: '지금 보내기' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '立即发送' })).toBeVisible()
 
-    await user.click(screen.getByRole('button', { name: '즉시 전송 취소' }))
+    await user.click(screen.getByRole('button', { name: '取消立即发送' }))
     expect(onSteer).not.toHaveBeenCalled()
 
-    await user.click(screen.getByRole('button', { name: '현재 응답을 중단하고 바로 전송' }))
-    await user.click(screen.getByRole('button', { name: '지금 보내기' }))
+    await user.click(screen.getByRole('button', { name: '停止当前响应并立即发送' }))
+    await user.click(screen.getByRole('button', { name: '立即发送' }))
 
     expect(onSteer).toHaveBeenCalledOnce()
   })
@@ -170,7 +170,7 @@ describe('ThreadComposer queue runtime controls', () => {
 
     expect(document.querySelectorAll('[data-moldy-queue-item="input-steer"]')).toHaveLength(1)
     expect(
-      screen.queryByRole('button', { name: '현재 응답을 중단하고 먼저 실행' }),
+      screen.queryByRole('button', { name: '停止当前响应并运行下一步' }),
     ).not.toBeInTheDocument()
   })
 })

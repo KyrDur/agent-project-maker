@@ -65,7 +65,7 @@ test.describe('Agent schedule triggers', () => {
 
   test('a created interval trigger renders in the settings triggers tab', async ({ page }) => {
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('tab', { name: '스케줄' }).click()
+    await page.getByRole('tab', { name: '定时任务' }).click()
 
     // The interval trigger renders with its "매 N분" schedule summary.
     await expect(page.getByText('매 30분').first()).toBeVisible()

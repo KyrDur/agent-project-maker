@@ -87,7 +87,7 @@ const item: MarketplaceItem = {
   is_listed: true,
   tags: [],
   categories: [],
-  locale: 'ko-KR',
+  locale: 'zh-CN',
   created_at: '2026-05-01T00:00:00Z',
   updated_at: '2026-05-02T00:00:00Z',
   latest_version: versions[0],
@@ -138,7 +138,7 @@ describe('MarketplaceItemDetailPage', () => {
     await renderDetailPage()
 
     expect(await screen.findByText('#2')).toBeInTheDocument()
-    expect(screen.getByText('최신')).toBeInTheDocument()
+    expect(screen.getByText('最新')).toBeInTheDocument()
     expect(screen.getByText('abcdef1')).toBeInTheDocument()
     expect(screen.getByText('#1')).toBeInTheDocument()
     expect(screen.getByText('1234567')).toBeInTheDocument()
@@ -147,12 +147,12 @@ describe('MarketplaceItemDetailPage', () => {
   it('renders execution profile with Korean labels instead of raw keys', async () => {
     await renderDetailPage()
 
-    expect(await screen.findByText('지원 방식')).toBeInTheDocument()
-    expect(screen.getAllByText('프록시 필요').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('실행기')).toBeInTheDocument()
+    expect(await screen.findByText('支持')).toBeInTheDocument()
+    expect(screen.getAllByText('需要代理').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('执行器')).toBeInTheDocument()
     expect(screen.getByText('python')).toBeInTheDocument()
-    expect(screen.getByText('네트워크')).toBeInTheDocument()
-    expect(screen.getByText('필요')).toBeInTheDocument()
+    expect(screen.getByText('需要网络')).toBeInTheDocument()
+    expect(screen.getByText('必填')).toBeInTheDocument()
     expect(screen.queryByText('support_level')).not.toBeInTheDocument()
   })
 
@@ -188,7 +188,7 @@ describe('MarketplaceItemDetailPage', () => {
       })
 
       await renderDetailPage()
-      await userEvent.click(await screen.findByRole('button', { name: '열기' }))
+      await userEvent.click(await screen.findByRole('button', { name: '打开' }))
 
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith(expected_href)

@@ -59,6 +59,8 @@ export interface AssistantThreadProps {
   agentName?: string
   user?: User | null
   modelName?: string
+  runtimeCredentialName?: string | null
+  runtimeReady?: boolean
   showTokenBar?: boolean
   showContextGauge?: boolean
   contextWindow?: number | null
@@ -90,6 +92,8 @@ export function AssistantThread({
   agentName,
   user,
   modelName,
+  runtimeCredentialName,
+  runtimeReady,
   showTokenBar = false,
   showContextGauge = false,
   contextWindow,
@@ -229,6 +233,8 @@ export function AssistantThread({
               {composerHint}
               <ThreadComposer
                 modelName={modelName}
+                runtimeCredentialName={runtimeCredentialName}
+                runtimeReady={runtimeReady}
                 showTokenBar={showTokenBar}
                 showContextGauge={showContextGauge}
                 contextWindow={contextWindow}
