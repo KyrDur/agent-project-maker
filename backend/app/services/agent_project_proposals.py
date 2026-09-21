@@ -205,7 +205,7 @@ async def generate(
                     request_id=request_id,
                     parent_id=parent.id,
                     run=run,
-                    parent_hash=parent.config_hash,
+                    parent_hash=parent.config_hash or canonical_json_hash(parent.snapshot_json),
                     profile=profile,
                     draft=draft,
                     groups=analysis["groups"],
