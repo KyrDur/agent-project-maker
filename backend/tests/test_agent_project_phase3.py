@@ -1,5 +1,8 @@
 """Controlled Phase 3 tests. No live model or external tool is contacted."""
 
+# pyright: reportArgumentType=false
+
+
 from __future__ import annotations
 
 import json
