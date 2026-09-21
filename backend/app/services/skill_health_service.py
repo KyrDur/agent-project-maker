@@ -36,7 +36,12 @@ def calculate_skill_health(
     if latest_run is None:
         return _health("needs_evaluation", "未评价", "No evaluation run exists.", "neutral")
     if latest_run.status in RUNNING_STATUSES:
-        return _health("evaluation_running", "评估运行", "An evaluation run is in progress.", "info")
+        return _health(
+            "evaluation_running",
+            "评估运行",
+            "An evaluation run is in progress.",
+            "info",
+        )
     if latest_run.status in FAILED_STATUSES:
         return _health(
             "evaluation_failed",
