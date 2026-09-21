@@ -49,13 +49,29 @@ def _run_ruff(paths: tuple[Path, ...]) -> int:
     status = "passed" if result.returncode == 0 else "failed"
     print(f"changed-python-format selected={len(paths)} status={status}")
     if status == "failed":
-        for stream in (result.stdout, result.stderr):
-            for line in stream.decode(errors="replace").splitlines():
-                if "reformat" in line.lower():
-                    print(
-                        "changed-python-format detail="
-                        + json.dumps(line, ensure_ascii=True)
-                    )
+        for path in paths:
+            detail = subprocess.run(  # noqa: S603 - fixed venv executable and argv
+                [
+                    str(executable),
+                    "format",
+                    "--check",
+                    "--config",
+                    str(backend / "pyproject.toml"),
+                    "--",
+                    str(path),
+                ],
+                cwd=backend,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=TOOL_TIMEOUT_SECONDS,
+                check=False,
+            )
+            if detail.returncode != 0:
+                print(
+                    "changed-python-format would-reformat="
+                    + json.dumps(path.as_posix(), ensure_ascii=True)
+                )
     return 0 if status == "passed" else 1
 
 
