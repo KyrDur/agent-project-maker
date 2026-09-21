@@ -293,10 +293,18 @@ async def get_builder_system_runtime(db: AsyncSession):
 
     _, setting = await get_effective_setting(db, "builder")
     if setting is None or setting.credential_id is None or not setting.model_name:
-        raise AppError(code="builder_runtime_setup", message=tr("builder_runtime_setup"), status=422)
+        raise AppError(
+            code="builder_runtime_setup",
+            message=tr("builder_runtime_setup"),
+            status=422,
+        )
     credential = await credential_service.get_system(db, setting.credential_id)
     if credential is None:
-        raise AppError(code="builder_runtime_setup", message=tr("builder_runtime_setup"), status=422)
+        raise AppError(
+            code="builder_runtime_setup",
+            message=tr("builder_runtime_setup"),
+            status=422,
+        )
 
     result = await db.execute(
         select(Model).where(
