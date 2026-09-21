@@ -81,7 +81,9 @@ def main() -> None:
                 {
                     **body,
                     "evaluation_focus": ["tool_correctness", "groundedness"],
-                    "evaluation_focus_reason": "Demo baseline: verify tool use and grounded answers.",
+                    "evaluation_focus_reason": (
+                        "Demo baseline: verify tool use and grounded answers."
+                    ),
                 },
             )
             quality = call("POST", f"{path}/eval-sets/{dataset['id']}/quality")
