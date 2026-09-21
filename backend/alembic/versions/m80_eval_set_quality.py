@@ -1,7 +1,8 @@
 """Add quality report storage for Agent Project EvalSets."""
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "m80_eval_set_quality"
 down_revision = "m79_project_evaluation"
