@@ -175,7 +175,6 @@ async def test_confirm_build_success(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "날씨 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Weather Bot",
         "name": "날씨 봇",
         "description": "날씨를 알려주는 봇",
         "system_prompt": "You are a weather bot.",
@@ -208,7 +207,6 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "스케줄 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Scheduler",
         "name": "스케줄 봇",
         "description": "정해진 시간에 실행되는 봇",
         "system_prompt": "Run on schedule.",
@@ -243,7 +241,6 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "조직도 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "OrgChart",
         "name": "조직도 봇",
         "description": "조직도 QA",
         "system_prompt": "you are an org chart assistant",
@@ -274,7 +271,6 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Mixed",
         "name": "혼합",
         "description": "d",
         "system_prompt": "p",
@@ -308,7 +304,6 @@ async def test_confirm_build_links_skills(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "위치 안내 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Locate",
         "name": "위치 봇",
         "description": "직원 좌석 안내",
         "system_prompt": "p",
@@ -338,7 +333,6 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "All",
         "name": "所有时间",
         "description": "d",
         "system_prompt": "p",
@@ -381,7 +375,6 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_skill"],
@@ -423,7 +416,6 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_tool"],
@@ -448,7 +440,6 @@ async def test_confirm_build_no_model(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Test Agent",
         "name": "테스트 에이전트",
         "description": "desc",
         "system_prompt": "prompt",
@@ -475,7 +466,6 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
         "name": "봇",
         "description": "d",
         "system_prompt": "p",
@@ -628,7 +618,6 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
         "name": "봇",
         "description": "d",
         "system_prompt": "p",
