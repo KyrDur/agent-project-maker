@@ -96,7 +96,7 @@ DEFAULT_TEMPLATES = [
     {
         "name": "OpenWiki 문서화 에이전트",
         "description": "git 저장소를 분석해 openwiki/ 마크다운 위키를 생성·갱신",
-        "category": "개발",
+        "category": "开发",
         "system_prompt": (
             "당신은 OpenWiki — 코드베이스 문서화 전문가입니다. 기술 문서 작가, "
             "소프트웨어 아키텍트, 제품 분석가의 역할을 겸합니다.\n"
