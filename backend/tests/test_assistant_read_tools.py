@@ -417,7 +417,7 @@ async def test_get_file_content(db: AsyncSession, patch_read_session):
     tool = _find_tool(tools, "get_file_content")
 
     result = await tool.ainvoke({"file_id": "some-file-id"})
-    assert "찾을 수 없습니다" in result
+    assert "未找到文件" in result
 
 
 # ---------------------------------------------------------------------------
@@ -512,7 +512,7 @@ async def test_get_cron_schedule_invalid_id(db: AsyncSession, patch_read_session
     tool = _find_tool(tools, "get_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": "not-a-uuid"})
-    assert "유효하지 않은 스케줄 ID" in result
+    assert "计划 ID 无效" in result
 
 
 @pytest.mark.asyncio
@@ -522,4 +522,4 @@ async def test_get_cron_schedule_not_found(db: AsyncSession, patch_read_session)
     tool = _find_tool(tools, "get_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "찾을 수 없습니다" in result
+    assert "未找到时间表" in result
