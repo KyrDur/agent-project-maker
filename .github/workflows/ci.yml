@@ -65,7 +65,7 @@ jobs:
           if [ "${#files[@]}" -eq 0 ]; then
             exit 0
           fi
-          uv run --directory backend ruff format -- "${files[@]}"
+          backend/.venv/bin/ruff format -- "${files[@]}"
           if git diff --quiet -- backend; then
             exit 0
           fi
