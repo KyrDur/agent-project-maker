@@ -39,6 +39,7 @@ from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
 from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
+from app.schemas.agent_project import EvalRunCreate
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
 from app.services import agent_project_portfolio as portfolio
@@ -248,9 +249,41 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
         lifecycle.bootstrap(agent.id, TEST_USER_ID), lifecycle.bootstrap(agent.id, TEST_USER_ID)
     )
     assert await db.scalar(select(func.count()).select_from(AgentProject)) == 1
+
+    # Builder bootstrap intentionally pauses at the human evaluation-focus checkpoint.
+    # Resume the same golden path by selecting two generated focus options, then
+    # generate, quality-check, freeze and execute the formal 20-case benchmark.
+    project = await projects.require_project(db, agent.id, TEST_USER_ID)
+    await db.refresh(project)
+    assert project.eval_spec_json is not None
+    assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 0
+    focus_ids = [item["id"] for item in project.eval_spec_json["focus_options"][:2]]
+    dataset = await semantic.generate(
+        db,
+        agent.id,
+        TEST_USER_ID,
+        versions[0].id,
+        cases=True,
+        evaluation_focus=focus_ids,
+        evaluation_focus_reason="P0 golden-path checkpoint selection",
+    )
+    dataset = await evaluation.judge_set(db, agent.id, TEST_USER_ID, dataset.id)
+    assert dataset.quality_report_json is not None
+    assert dataset.quality_report_json["status"] == "approved"
+    baseline = await evaluation.create_run(
+        db,
+        agent.id,
+        TEST_USER_ID,
+        EvalRunCreate(
+            version_id=versions[0].id,
+            eval_set_id=dataset.id,
+            request_id=uuid.uuid4(),
+        ),
+    )
+    await evaluation.execute_run(baseline.id, agent.id, TEST_USER_ID)
+
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 1
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalRun)) == 1
-    dataset = await db.scalar(select(AgentProjectEvalSet))
     await db.refresh(dataset)
     assert dataset.frozen and len(dataset.cases_json) == 20
     baseline = (await evaluation.list_runs(db, agent.id, TEST_USER_ID))[0]
