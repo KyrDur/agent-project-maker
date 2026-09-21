@@ -38,8 +38,8 @@ from app.models.agent_project import AgentProject, AgentProjectEvalRun, AgentPro
 from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
-from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
 from app.schemas.agent_project import EvalRunCreate
+from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
 from app.services import agent_project_portfolio as portfolio
