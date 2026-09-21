@@ -231,7 +231,10 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
     assert config["configurable"] == {"thread_id": str(session), "ui_locale": "en"}
     assert graph_input["todos"][0]["name"] == "Project initialization"
     result = [
-        c async for c in builder_service.run_v3_resume_stream(session, user, "answer", locale="zh-CN")
+        c
+        async for c in builder_service.run_v3_resume_stream(
+            session, user, "answer", locale="zh-CN"
+        )
     ]
     assert result == ["搜索智能体"]
     assert calls[-1][1]["configurable"]["ui_locale"] == "zh-CN"
