@@ -283,6 +283,17 @@ async def confirm_build(
         raise
 
 
+async def get_builder_personal_bindings(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+):
+    """Expose personal Builder runtime bindings through the service facade."""
+
+    from app.services.builder_runtime_readiness import usable_bindings
+
+    return await usable_bindings(db, user_id)
+
+
 async def get_builder_system_runtime(db: AsyncSession):
     """Return the operator-selected Builder runtime as a model/credential binding."""
 
