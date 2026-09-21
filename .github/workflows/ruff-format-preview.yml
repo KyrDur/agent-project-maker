@@ -20,7 +20,8 @@ jobs:
         working-directory: backend
         run: uv sync --frozen --all-extras
       - name: Format backend Python
-        run: uv run --directory backend ruff format backend
+        working-directory: backend
+        run: uv run ruff format .
       - name: Collect formatted files
         shell: bash
         run: |
