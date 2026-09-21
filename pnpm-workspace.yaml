@@ -1,10 +1,6 @@
 packages:
   - 'frontend'
   - 'backend/skill-node'
-ignoredOptionalDependencies:
-  - '@img/sharp-*'
-  - '@img/sharp-libvips-*'
-  - sharp
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
