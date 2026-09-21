@@ -1,3 +1,6 @@
+# pyright: reportArgumentType=false
+# pyright: reportOptionalSubscript=false
+
 import uuid
 from copy import deepcopy
 from datetime import timedelta
