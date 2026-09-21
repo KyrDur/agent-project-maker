@@ -3,6 +3,10 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
+  ignoredOptionalDependencies:
+    - '@img/sharp-*'
+    - '@img/sharp-libvips-*'
+    - sharp
 
 importers:
 
