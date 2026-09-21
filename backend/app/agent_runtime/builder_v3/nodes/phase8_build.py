@@ -26,7 +26,6 @@ from app.database import async_session as async_session_factory
 from app.exceptions import AppError
 from app.models.builder_session import BuilderSession
 from app.schemas.builder import BuilderStatus
-from app.services.builder_runtime_readiness import usable_bindings
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +109,14 @@ async def phase8_propose(state: BuilderState) -> dict:
     image_url = state.get("image_url") or draft.get("image_url")
 
     async with async_session_factory() as db:
-        from app.services.builder_service import get_builder_system_runtime
+        from app.services.builder_service import (
+            get_builder_personal_bindings,
+            get_builder_system_runtime,
+        )
 
         session_id = state.get("session_id")
         session = await db.get(BuilderSession, uuid.UUID(session_id)) if session_id else None
-        bindings = await usable_bindings(db, session.user_id) if session else []
+        bindings = await get_builder_personal_bindings(db, session.user_id) if session else []
         try:
             system_binding = await get_builder_system_runtime(db)
         except AppError:
