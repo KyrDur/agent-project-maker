@@ -539,9 +539,11 @@
       "publicTitle": "Agent Project Case Study",
       "shareUnavailable": "This project share is unavailable or has been revoked.",
       "reportOverview": "Evaluation overview",
+      "bestVersion": "Best Version",
       "bestEvidence": "Highest evaluation evidence",
       "failedCases": "Failed cases",
       "metricsTitle": "Metrics",
+      "scoredCases": "Scored cases: {count}",
       "failedCaseDetails": "Failed case details",
       "failureReasonUnavailable": "Failure reason unavailable",
       "toolCalls": "Tool calls",
@@ -4762,8 +4764,15 @@
       },
       "examples": {
         "title": "Call examples",
+        "agents": "List deployed agents",
+        "threads": "Create thread",
         "blocking": "Blocking run",
         "streaming": "Streaming run",
+        "threadBlocking": "Thread blocking run",
+        "threadStreaming": "Thread streaming run",
+        "openai": "OpenAI-compatible endpoint",
+        "difyChat": "Dify Chat-compatible endpoint",
+        "difyWorkflow": "Dify Workflow-compatible endpoint",
         "endpoint": "Endpoint"
       },
       "createDialog": {

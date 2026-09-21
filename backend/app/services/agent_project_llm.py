@@ -19,7 +19,6 @@ from app.models.credential import Credential
 from app.services.agent_project_service import snapshot_value
 from app.services.system_credential_resolver import resolve_system_model
 
-
 PROJECT_LLM_SYSTEM_ROLES: dict[str, str] = {
     "planner": "evaluation_generator",
     "case_generator": "evaluation_generator",
@@ -96,11 +95,14 @@ async def resolve_examinee_model(
                 )
             ).scalar_one_or_none()
         if cred is None:
-            raise LLMCredentialRequiredError()
-        payload = await credential_service.decrypt_with_external(cred.data_encrypted)
-        key = str(payload.get("api_key") or payload.get("token") or "")
-        if not key:
-            raise LLMCredentialRequiredError()
+            provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
+            model = {**model, "base_url": base_url}
+        else:
+            payload = await credential_service.decrypt_with_external(cred.data_encrypted)
+            key = str(payload.get("api_key") or payload.get("token") or "")
+            if not key:
+                provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
+                model = {**model, "base_url": base_url}
     llm = create_chat_model(
         provider,
         model_name,
@@ -109,6 +111,19 @@ async def resolve_examinee_model(
         allow_env_fallback=False,
     )
     return llm, key
+
+
+async def _resolve_project_examinee_fallback(db: AsyncSession) -> tuple[str, str, str, str | None]:
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
+
+    try:
+        resolved = await resolve_system_model(db, "evaluation_generator")
+    except Exception as exc:
+        raise LLMCredentialRequiredError() from exc
+    key = resolved.api_key or ""
+    if not key:
+        raise LLMCredentialRequiredError()
+    return resolved.provider, resolved.model_name, key, resolved.base_url
 
 
 def safe_value(value: Any, key: str) -> Any:

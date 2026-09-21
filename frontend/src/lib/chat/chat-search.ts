@@ -7,6 +7,7 @@
 
 const HIGHLIGHT_MATCH = 'moldy-search-match'
 const HIGHLIGHT_CURRENT = 'moldy-search-current'
+const HIGHLIGHT_STYLE_ID = 'moldy-search-highlight-style'
 
 /** 메시지 본문이 아닌 텍스트는 검색에서 제외한다: 메타행(복사/편집/브랜치 피커/
  *  타임스탬프/토큰 수)과 sr-only 라벨. 안 그러면 "复制"/"编辑"이 모든 메시지를,
@@ -70,6 +71,23 @@ function highlightApiSupported(): boolean {
   )
 }
 
+function ensureHighlightStyles(): void {
+  if (typeof document === 'undefined' || document.getElementById(HIGHLIGHT_STYLE_ID)) return
+  const style = document.createElement('style')
+  style.id = HIGHLIGHT_STYLE_ID
+  style.textContent = `
+::highlight(${HIGHLIGHT_MATCH}) {
+  background-color: color-mix(in srgb, var(--status-warn) 28%, transparent);
+}
+
+::highlight(${HIGHLIGHT_CURRENT}) {
+  background-color: var(--status-warn);
+  color: var(--background);
+}
+`
+  document.head.appendChild(style)
+}
+
 /**
  * CSS Custom Highlight API로 검색어를 인라인 하이라이트한다. 현재 매치 메시지의
  * Range는 ``moldy-search-current``, 나머지 매치는 ``moldy-search-match``로 등록한다.
@@ -80,6 +98,7 @@ export function applySearchHighlights(
   currentId: string | undefined,
 ): void {
   if (!highlightApiSupported()) return
+  ensureHighlightStyles()
   const matchHighlight = new Highlight()
   const currentHighlight = new Highlight()
   for (const [id, ranges] of rangeMap) {

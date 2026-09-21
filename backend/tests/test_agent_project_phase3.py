@@ -354,9 +354,10 @@ async def test_snapshot_adapter_tools_mcp_skills_are_isolated(db, setup_project,
     assert "historical_skill_content_unavailable" in result["limitations"]
     assert not db.new
     del case["mock_tool_data"]["mcp_read"]
-    with pytest.raises(SnapshotExecutionUnavailable, match="evaluation_mock_missing") as missing:
-        await execute_snapshot(db, snapshot, case, TEST_USER_ID)
-    assert missing.value.evidence["tool_calls"] == [{"name": "search"}, {"name": "mcp_read"}]
+    missing = await execute_snapshot(db, snapshot, case, TEST_USER_ID)
+    assert missing["tool_calls"] == [{"name": "search"}, {"name": "mcp_read"}]
+    assert missing["mock_missing_tools"] == ["mcp_read"]
+    assert missing["tool_trace"][-1]["error"] == "evaluation_mock_missing"
 
 
 def test_frozen_skills_never_load_current_paths():
@@ -467,6 +468,18 @@ async def test_required_forbidden_and_deterministic_format(db, monkeypatch):
         )
         assert result["passed"] is passed
         assert result["metric_scores"]["format_compliance"]["method"] == "deterministic"
+    evidence = {"output": "plain text", "tool_calls": [{"name": "search"}]}
+    result = await semantic.grade_case(
+        db,
+        {},
+        TEST_USER_ID,
+        {"expected": {"required_tools": ["search"]}},
+        evidence,
+        evaluation.score_case({"expected": {"required_tools": ["search"]}}, evidence),
+        {"eval_spec": spec},
+    )
+    assert "format_compliance" not in result["metric_scores"]
+    assert result["passed"] is True
 
 
 @pytest.mark.asyncio

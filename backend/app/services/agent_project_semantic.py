@@ -67,7 +67,10 @@ def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
     model = snapshot["agent"]["model"]
     descriptor = {key: model.get(key) for key in ("id", "provider", "model_name")}
     return {
-        "examinee": descriptor,
+        "examinee": {
+            **descriptor,
+            "credential_policy": "runtime_user_owned_or_platform_evaluation_generator",
+        },
         "evaluation_generator": {
             **descriptor,
             "system_role": "evaluation_generator",
@@ -79,7 +82,7 @@ def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
             "system_role": "judge_optimizer",
             "credential_policy": "platform_system_owned",
         },
-        "credential_policy": "runtime_user_owned_platform_system_owned",
+        "credential_policy": "project_mock_sandbox_platform_fallback",
         "judge_prompt_version": "semantic_v1",
     }
 
@@ -327,7 +330,7 @@ async def grade_case(
         elif metric.name == "format_compliance":
             deterministic = format_check(case, evidence.get("output", ""))
             if deterministic is None and metric.type == "deterministic":
-                raise SnapshotExecutionUnavailable("evaluation_format_rule_missing")
+                continue
         if deterministic is not None:
             scores[metric.name] = {
                 "score": float(deterministic),

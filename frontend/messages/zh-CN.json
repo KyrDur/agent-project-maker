@@ -539,9 +539,11 @@
       "publicTitle": "智能体项目案例",
       "shareUnavailable": "该项目共享不可用或已被撤销。",
       "reportOverview": "评测总览",
+      "bestVersion": "最佳版本",
       "bestEvidence": "基于最高评测分数",
       "failedCases": "失败用例",
       "metricsTitle": "指标",
+      "scoredCases": "已评分用例：{count}",
       "failedCaseDetails": "失败用例详情",
       "failureReasonUnavailable": "未提供失败原因",
       "toolCalls": "工具调用",
@@ -4762,8 +4764,15 @@
       },
       "examples": {
         "title": "调用示例",
+        "agents": "部署智能体列表",
+        "threads": "创建会话",
         "blocking": "阻塞运行",
         "streaming": "流式运行",
+        "threadBlocking": "会话内阻塞运行",
+        "threadStreaming": "会话内流式运行",
+        "openai": "OpenAI 兼容接口",
+        "difyChat": "Dify Chat 兼容接口",
+        "difyWorkflow": "Dify Workflow 兼容接口",
         "endpoint": "端点"
       },
       "createDialog": {

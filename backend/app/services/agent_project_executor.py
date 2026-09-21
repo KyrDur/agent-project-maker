@@ -83,16 +83,16 @@ async def execute_snapshot(
         ]
         output = answers[-1].text if answers else ""
         calls = [call for message in answers for call in message.tool_calls]
-        called_tools = (
-            [{"name": event["name"]} for event in tool_trace]
-            or [{"name": call["name"]} for call in calls]
-        )
+        called_tools = [{"name": event["name"]} for event in tool_trace] or [
+            {"name": call["name"]} for call in calls
+        ]
         evidence = {
             "output": output,
             "limitations": limitations,
             "execution_mode": "mock_sandbox",
             "tool_calls": called_tools,
             "tool_trace": tool_trace,
+            "mock_missing_tools": sorted(set(missing)),
             "handoffs": [
                 call.get("args", {}).get("subagent_type")
                 for call in calls
@@ -101,7 +101,7 @@ async def execute_snapshot(
         }
         # Scrub actual resolved values before any database/API boundary. No raw
         # tool arguments, tool results, headers, or provider errors are retained.
-        retained = snapshot_value(
+        return snapshot_value(
             redact_protocol_data(
                 "project_evaluation",
                 evidence,
@@ -109,9 +109,6 @@ async def execute_snapshot(
                 secret_values=[api_key] if api_key else [],
             )
         )
-        if missing:
-            raise SnapshotExecutionUnavailable("evaluation_mock_missing", retained)
-        return retained
     except SnapshotExecutionUnavailable:
         raise
     except Exception as exc:

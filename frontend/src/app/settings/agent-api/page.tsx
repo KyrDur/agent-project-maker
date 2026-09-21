@@ -62,8 +62,23 @@ export default function AgentApiSettingsPage() {
     toast.success(t('toasts.revoked'))
   }
 
-  const waitEndpoint = `${API_BASE}/v1/runs/wait`
-  const streamEndpoint = `${API_BASE}/v1/runs/stream`
+  const endpoints = [
+    { label: t('examples.agents'), value: `${API_BASE}/v1/agents` },
+    { label: t('examples.threads'), value: `${API_BASE}/v1/threads` },
+    { label: t('examples.blocking'), value: `${API_BASE}/v1/runs/wait` },
+    { label: t('examples.streaming'), value: `${API_BASE}/v1/runs/stream` },
+    {
+      label: t('examples.threadBlocking'),
+      value: `${API_BASE}/v1/threads/{thread_id}/runs/wait`,
+    },
+    {
+      label: t('examples.threadStreaming'),
+      value: `${API_BASE}/v1/threads/{thread_id}/runs/stream`,
+    },
+    { label: t('examples.openai'), value: `${API_BASE}/v1/chat/completions` },
+    { label: t('examples.difyChat'), value: `${API_BASE}/v1/agents/{agent_id}/chat-messages` },
+    { label: t('examples.difyWorkflow'), value: `${API_BASE}/v1/workflows/run` },
+  ]
 
   return (
     <SettingsShell>
@@ -233,20 +248,16 @@ export default function AgentApiSettingsPage() {
             <LinkIcon className="size-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold text-foreground">{t('examples.title')}</h3>
           </div>
-          <EndpointRow
-            label={t('examples.blocking')}
-            value={waitEndpoint}
-            copyLabel={t('examples.endpoint')}
-            copyAriaLabel={t('actions.copy')}
-            onCopy={copy}
-          />
-          <EndpointRow
-            label={t('examples.streaming')}
-            value={streamEndpoint}
-            copyLabel={t('examples.endpoint')}
-            copyAriaLabel={t('actions.copy')}
-            onCopy={copy}
-          />
+          {endpoints.map((endpoint) => (
+            <EndpointRow
+              key={endpoint.value}
+              label={endpoint.label}
+              value={endpoint.value}
+              copyLabel={t('examples.endpoint')}
+              copyAriaLabel={t('actions.copy')}
+              onCopy={copy}
+            />
+          ))}
         </section>
       </div>
 
