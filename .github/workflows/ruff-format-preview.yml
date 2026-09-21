@@ -1,0 +1,39 @@
+name: Ruff format preview
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install backend dev dependencies
+        working-directory: backend
+        run: uv sync --frozen --all-extras
+      - name: Format backend Python
+        run: uv run --directory backend ruff format backend
+      - name: Collect formatted files
+        shell: bash
+        run: |
+          mkdir -p format-artifact
+          git diff --name-only -z -- 'backend/**/*.py' 'backend/*.py' |
+            while IFS= read -r -d '' file; do
+              mkdir -p "format-artifact/$(dirname "$file")"
+              cp "$file" "format-artifact/$file"
+            done
+          git diff --name-only -- 'backend/**/*.py' 'backend/*.py' > format-artifact/changed-files.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruff-formatted-backend
+          path: format-artifact
+          if-no-files-found: error
+          retention-days: 1
