@@ -1,5 +1,9 @@
 """Customer-service lifecycle through real services, with controlled provider responses."""
 
+# pyright: reportArgumentType=false
+# pyright: reportOptionalSubscript=false
+
+
 import uuid
 from copy import deepcopy
 
