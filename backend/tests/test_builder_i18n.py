@@ -1,5 +1,8 @@
 """Builder locale contracts: payloads, LLM inputs and checkpoint resumes."""
 
+# pyright: reportArgumentType=false
+
+
 from __future__ import annotations
 
 import asyncio
