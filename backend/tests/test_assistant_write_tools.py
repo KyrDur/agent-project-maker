@@ -124,7 +124,7 @@ async def test_add_tool_to_agent(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "add_tool_to_agent")
 
     result = await tool.ainvoke({"tool_names": ["Web Scraper"]})
-    assert "추가 완료" in result
+    assert "完成工具添加" in result
     assert "Web Scraper" in result
 
 
@@ -140,7 +140,7 @@ async def test_remove_tool_from_agent(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "remove_tool_from_agent")
 
     result = await tool.ainvoke({"tool_names": ["Web Search"]})
-    assert "제거 완료" in result
+    assert "工具移除完成" in result
     assert "Web Search" in result
 
 
@@ -161,7 +161,7 @@ async def test_edit_system_prompt(db: AsyncSession, patch_write_session):
             "new_string": "expert analyst",
         }
     )
-    assert "수정 완료" in result
+    assert "系统提示修复完成" in result
 
     # Verify the change persisted via read tool
     read_tools = _build_read_tools(db, agent_id)
@@ -183,7 +183,7 @@ async def test_edit_system_prompt_not_found(db: AsyncSession, patch_write_sessio
             "new_string": "replacement",
         }
     )
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ async def test_update_agent_identity_mode(db: AsyncSession, patch_write_session)
     tool = _find_tool(tools, "update_agent_identity_mode")
 
     result = await tool.ainvoke({"identity_mode": "per_user"})
-    assert "credential 사용 모드 변경 완료" in result
+    assert "credential使用模式变更完成" in result
 
     read_tools = _build_read_tools(db, agent_id)
     config_tool = _find_tool(read_tools, "get_agent_config")
@@ -229,7 +229,7 @@ async def test_update_agent_identity_mode_rejects_per_user_with_active_schedule(
     tool = _find_tool(tools, "update_agent_identity_mode")
 
     result = await tool.ainvoke({"identity_mode": "per_user"})
-    assert "활성 스케줄" in result
+    assert "活动计划" in result
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +244,7 @@ async def test_update_system_prompt(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "update_system_prompt")
 
     result = await tool.ainvoke({"new_system_prompt": "Brand new prompt."})
-    assert "전체 교체 완료" in result
+    assert "完成系统提示更换" in result
 
     # Verify
     read_tools = _build_read_tools(db, agent_id)
@@ -266,7 +266,7 @@ async def test_update_model_config(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "update_model_config")
 
     result = await tool.ainvoke({"temperature": 1.5})
-    assert "변경 완료" in result
+    assert "模型设置变更完成" in result
     assert "temperature: 1.5" in result
 
 
@@ -306,7 +306,7 @@ async def test_add_middleware_to_agent(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "add_middleware_to_agent")
 
     result = await tool.ainvoke({"middleware_names": ["summarization"]})
-    assert "추가 완료" in result
+    assert "添加中间件" in result
     assert "summarization" in result
 
 
@@ -320,7 +320,7 @@ async def test_add_middleware_already_exists(db: AsyncSession, patch_write_sessi
     await tool.ainvoke({"middleware_names": ["summarization"]})
     # Second add should say already exists
     result = await tool.ainvoke({"middleware_names": ["summarization"]})
-    assert "추가할 미들웨어가 없습니다" in result
+    assert "没有要添加的中间件" in result
 
 
 @pytest.mark.asyncio
@@ -330,7 +330,7 @@ async def test_add_middleware_unknown(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "add_middleware_to_agent")
 
     result = await tool.ainvoke({"middleware_names": ["nonexistent_mw"]})
-    assert "추가할 미들웨어가 없습니다" in result
+    assert "没有要添加的中间件" in result
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@ async def test_remove_middleware_from_agent(db: AsyncSession, patch_write_sessio
 
     remove_tool = _find_tool(tools, "remove_middleware_from_agent")
     result = await remove_tool.ainvoke({"middleware_names": ["summarization"]})
-    assert "제거 완료" in result
+    assert "中间件删除完成" in result
     assert "summarization" in result
 
 
@@ -360,7 +360,7 @@ async def test_remove_middleware_not_found(db: AsyncSession, patch_write_session
     tool = _find_tool(tools, "remove_middleware_from_agent")
 
     result = await tool.ainvoke({"middleware_names": ["nonexistent"]})
-    assert "해당 미들웨어가 없습니다" in result
+    assert "没有这样的中间件" in result
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +399,7 @@ async def test_add_subagent_to_agent(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "add_subagent_to_agent")
 
     result = await tool.ainvoke({"agent_ids": [str(sibling_id)]})
-    assert "추가 완료" in result
+    assert "已添加" in result
     assert "Helper" in result
 
     # Verify DB state
@@ -423,7 +423,7 @@ async def test_add_subagent_self_reference_skipped(db: AsyncSession, patch_write
     tool = _find_tool(tools, "add_subagent_to_agent")
 
     result = await tool.ainvoke({"agent_ids": [str(agent_id)]})
-    assert "자기 참조" in result
+    assert "自引用" in result
 
 
 @pytest.mark.asyncio
@@ -433,7 +433,7 @@ async def test_add_subagent_invalid_uuid_skipped(db: AsyncSession, patch_write_s
     tool = _find_tool(tools, "add_subagent_to_agent")
 
     result = await tool.ainvoke({"agent_ids": ["not-a-uuid"]})
-    assert "잘못된 UUID" in result
+    assert "无效UUID" in result
 
 
 @pytest.mark.asyncio
@@ -447,7 +447,7 @@ async def test_remove_subagent_from_agent(db: AsyncSession, patch_write_session)
 
     remove_tool = _find_tool(tools, "remove_subagent_from_agent")
     result = await remove_tool.ainvoke({"agent_ids": [str(sibling_id)]})
-    assert "제거 완료" in result
+    assert "子智能体删除已完成" in result
     assert "ToRemove" in result
 
     # Verify DB
@@ -468,7 +468,7 @@ async def test_remove_subagent_not_linked(db: AsyncSession, patch_write_session)
     tool = _find_tool(tools, "remove_subagent_from_agent")
 
     result = await tool.ainvoke({"agent_ids": [str(uuid.uuid4())]})
-    assert "에이전트에 없습니다" in result
+    assert "智能体上不存在" in result
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +502,7 @@ async def test_add_skill_to_agent(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "add_skill_to_agent")
 
     result = await tool.ainvoke({"skill_names": ["MySkill"]})
-    assert "추가 완료" in result
+    assert "新增技能" in result
     assert "MySkill" in result
 
     # Verify DB
@@ -521,7 +521,7 @@ async def test_add_skill_to_agent_unknown(db: AsyncSession, patch_write_session)
     tool = _find_tool(tools, "add_skill_to_agent")
 
     result = await tool.ainvoke({"skill_names": ["DoesNotExist"]})
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 @pytest.mark.asyncio
@@ -535,7 +535,7 @@ async def test_remove_skill_from_agent(db: AsyncSession, patch_write_session):
 
     remove_tool = _find_tool(tools, "remove_skill_from_agent")
     result = await remove_tool.ainvoke({"skill_names": ["Removable"]})
-    assert "제거 완료" in result
+    assert "删除技能" in result
     assert "Removable" in result
 
 
@@ -546,7 +546,7 @@ async def test_remove_skill_not_linked(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "remove_skill_from_agent")
 
     result = await tool.ainvoke({"skill_names": ["NotLinked"]})
-    assert "에이전트에 없습니다" in result
+    assert "智能体上不存在" in result
 
 
 # ---------------------------------------------------------------------------
@@ -570,7 +570,7 @@ async def test_update_middleware_config(db: AsyncSession, patch_write_session):
             "params": {"trigger": ["tokens", 8000]},
         }
     )
-    assert "변경 완료" in result
+    assert "更改完成" in result
 
 
 @pytest.mark.asyncio
@@ -585,7 +585,7 @@ async def test_update_middleware_config_not_found(db: AsyncSession, patch_write_
             "params": {"key": "val"},
         }
     )
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -600,7 +600,7 @@ async def test_update_chat_openers(db: AsyncSession, patch_write_session):
     tool = _find_tool(tools, "update_chat_openers")
 
     result = await tool.ainvoke({"openers": ["안녕하세요", "도움이 필요하세요?"]})
-    assert "2개 설정 완료" in result
+    assert "开启器 2 设置完成" in result
 
 
 # ---------------------------------------------------------------------------
@@ -616,7 +616,7 @@ async def test_update_recursion_limit(db: AsyncSession, patch_write_session):
 
     result = await tool.ainvoke({"limit": 50})
     assert "50" in result
-    assert "변경" in result
+    assert "更改" in result
 
 
 @pytest.mark.asyncio
@@ -626,10 +626,10 @@ async def test_update_recursion_limit_out_of_range(db: AsyncSession, patch_write
     tool = _find_tool(tools, "update_recursion_limit")
 
     result = await tool.ainvoke({"limit": 5})
-    assert "10~200" in result
+    assert "10-200" in result
 
     result = await tool.ainvoke({"limit": 300})
-    assert "10~200" in result
+    assert "10-200" in result
 
 
 # ---------------------------------------------------------------------------
@@ -651,7 +651,7 @@ async def test_create_cron_schedule_recurring(db: AsyncSession, patch_write_sess
             "cron_expression": "0 * * * *",
         }
     )
-    assert "생성 완료" in result
+    assert "计划创建完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(_extract_schedule_id(result)))
     assert trigger is not None
@@ -680,7 +680,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
             "auto_pause_after_failures": 2,
         }
     )
-    assert "생성 완료" in result
+    assert "计划创建完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(_extract_schedule_id(result)))
     assert trigger is not None
@@ -708,7 +708,7 @@ async def test_create_cron_schedule_one_time(db: AsyncSession, patch_write_sessi
             "scheduled_at": future.isoformat(),
         }
     )
-    assert "생성 완료" in result
+    assert "计划创建完成" in result
 
 
 @pytest.mark.asyncio
@@ -723,7 +723,7 @@ async def test_create_cron_schedule_missing_cron(db: AsyncSession, patch_write_s
             "message": "test",
         }
     )
-    assert "cron_expression이 필요" in result
+    assert "需要 cron_expression" in result
 
 
 @pytest.mark.asyncio
@@ -738,7 +738,7 @@ async def test_create_cron_schedule_missing_scheduled_at(db: AsyncSession, patch
             "message": "test",
         }
     )
-    assert "scheduled_at이 필요" in result
+    assert "一次性计划" in result
 
 
 @pytest.mark.asyncio
@@ -753,7 +753,7 @@ async def test_create_cron_schedule_invalid_type(db: AsyncSession, patch_write_s
             "message": "test",
         }
     )
-    assert "'recurring' 또는 'one_time'" in result
+    assert "recurring" in result and "one_time" in result
 
 
 @pytest.mark.asyncio
@@ -769,7 +769,7 @@ async def test_create_cron_schedule_invalid_cron_expression(db: AsyncSession, pa
             "cron_expression": "invalid cron",
         }
     )
-    assert "유효하지 않은 cron 표현식" in result
+    assert "无效的 cron 表达式" in result
 
 
 # ---------------------------------------------------------------------------
@@ -802,7 +802,7 @@ async def test_update_cron_schedule(db: AsyncSession, patch_write_session):
             "message": "30분마다 검색",
         }
     )
-    assert "수정 완료" in result
+    assert "系统提示修复完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(schedule_id))
     assert trigger is not None
@@ -841,7 +841,7 @@ async def test_update_cron_schedule_validates_uuid_and_datetime_strings(
             "end_at": "2035-01-01T00:00:00+09:00",
         }
     )
-    assert "수정 완료" in result
+    assert "系统提示修复完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(schedule_id))
     assert trigger is not None
@@ -869,7 +869,7 @@ async def test_update_cron_schedule_by_name_requires_unique_match(
                 "cron_expression": "0 9 * * *",
             }
         )
-        assert "생성 완료" in result
+        assert "计划创建完成" in result
 
     result = await update_tool.ainvoke(
         {
@@ -877,7 +877,7 @@ async def test_update_cron_schedule_by_name_requires_unique_match(
             "cron_expression": "30 9 * * *",
         }
     )
-    assert "여러 개" in result
+    assert "多个" in result
     assert "ID" in result
 
 
@@ -888,7 +888,7 @@ async def test_update_cron_schedule_invalid_id(db: AsyncSession, patch_write_ses
     tool = _find_tool(tools, "update_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": "not-a-uuid"})
-    assert "유효하지 않은 스케줄 ID" in result
+    assert "计划 ID 无效" in result
 
 
 @pytest.mark.asyncio
@@ -898,7 +898,7 @@ async def test_update_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "update_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -923,7 +923,7 @@ async def test_delete_cron_schedule(db: AsyncSession, patch_write_session):
 
     delete_tool = _find_tool(tools, "delete_cron_schedule")
     result = await delete_tool.ainvoke({"schedule_id": schedule_id})
-    assert "삭제 완료" in result
+    assert "计划删除完成" in result
 
 
 @pytest.mark.asyncio
@@ -933,7 +933,7 @@ async def test_delete_cron_schedule_invalid_id(db: AsyncSession, patch_write_ses
     tool = _find_tool(tools, "delete_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": "bad-id"})
-    assert "유효하지 않은 스케줄 ID" in result
+    assert "计划 ID 无效" in result
 
 
 @pytest.mark.asyncio
@@ -943,7 +943,7 @@ async def test_delete_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "delete_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -968,7 +968,7 @@ async def test_enable_cron_schedule(db: AsyncSession, patch_write_session):
 
     tool = _find_tool(tools, "enable_cron_schedule")
     result = await tool.ainvoke({"schedule_id": schedule_id})
-    assert "활성화 완료" in result
+    assert "计划激活完成" in result
 
 
 @pytest.mark.asyncio
@@ -978,7 +978,7 @@ async def test_enable_cron_schedule_invalid_id(db: AsyncSession, patch_write_ses
     tool = _find_tool(tools, "enable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": "not-uuid"})
-    assert "유효하지 않은 스케줄 ID" in result
+    assert "计划 ID 无效" in result
 
 
 @pytest.mark.asyncio
@@ -988,7 +988,7 @@ async def test_enable_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "enable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
 
 
 @pytest.mark.asyncio
@@ -1015,7 +1015,7 @@ async def test_enable_cron_schedule_returns_fixed_identity_error(
     tool = _find_tool(tools, "enable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(trigger.id)})
-    assert "스케줄 설정이 올바르지 않습니다" in result
+    assert "时间表设置不正确" in result
     assert "identity_mode must be fixed" in result
 
 
@@ -1041,7 +1041,7 @@ async def test_disable_cron_schedule(db: AsyncSession, patch_write_session):
 
     tool = _find_tool(tools, "disable_cron_schedule")
     result = await tool.ainvoke({"schedule_id": schedule_id})
-    assert "项目已禁用" in result
+    assert "计划停用已完成" in result
 
 
 @pytest.mark.asyncio
@@ -1051,7 +1051,7 @@ async def test_disable_cron_schedule_invalid_id(db: AsyncSession, patch_write_se
     tool = _find_tool(tools, "disable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": "not-uuid"})
-    assert "유효하지 않은 스케줄 ID" in result
+    assert "计划 ID 无效" in result
 
 
 @pytest.mark.asyncio
@@ -1061,4 +1061,4 @@ async def test_disable_cron_schedule_not_found(db: AsyncSession, patch_write_ses
     tool = _find_tool(tools, "disable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "찾을 수 없습니다" in result
+    assert "找不到" in result
