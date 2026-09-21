@@ -17,7 +17,7 @@ import {
 /**
  * Wave — chat error + retry (G2). Drives the scripted-model ``E2E_ERROR`` marker
  * so a run genuinely fails (run.status="failed"), then screenshots the resulting
- * error bubble + "다시 시도" retry button, and the state after clicking retry.
+ * error bubble + "重试" retry button, and the state after clicking retry.
  * Gated by E2E_CAPTURE_TOUR=1.
  */
 
@@ -79,7 +79,7 @@ test.describe('Chat error + retry captures', () => {
 
     // The error bubble carries the always-visible retry button — gate on it so we
     // never screenshot a half-rendered notice.
-    const retryButton = page.getByRole('button', { name: '다시 시도' })
+    const retryButton = page.getByRole('button', { name: '重试' })
     await expect(retryButton).toBeVisible({ timeout: 30_000 })
     await settle(page)
     await capture(page, WAVE, '01-error-bubble.png')

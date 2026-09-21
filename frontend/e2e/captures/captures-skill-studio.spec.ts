@@ -125,17 +125,17 @@ test.describe('Skill studio captures', () => {
       await shot(page, '01-list-table.png')
 
       // ── 02. 검색 필터 유지 ──────────────────────────────────────────────
-      await page.getByPlaceholder('스킬 검색').fill('회의록')
+      await page.getByPlaceholder('搜索技巧').fill('회의록')
       await expect(page.getByText('주간 리포트 요약')).toBeHidden({ timeout: 15_000 })
       await expect(page.getByText('회의록 액션 아이템')).toBeVisible()
       await shot(page, '02-list-search.png')
-      await page.getByPlaceholder('스킬 검색').fill('')
+      await page.getByPlaceholder('搜索技巧').fill('')
       await expect(page.getByText('주간 리포트 요약')).toBeVisible({ timeout: 15_000 })
 
       // ── 03. 행 메뉴(소스/게시/내보내기 없음(text)/삭제) ────────────────
       await primaryRow.getByRole('button', { name: '회의록 액션 아이템 추가 작업' }).click()
-      await expect(page.getByRole('menuitem', { name: '소스 보기' })).toBeVisible()
-      await expect(page.getByRole('menuitem', { name: '공개하기' })).toBeVisible()
+      await expect(page.getByRole('menuitem', { name: '查看源码' })).toBeVisible()
+      await expect(page.getByRole('menuitem', { name: '发布' })).toBeVisible()
       await shot(page, '03-row-menu.png')
       await page.keyboard.press('Escape')
 
@@ -144,20 +144,20 @@ test.describe('Skill studio captures', () => {
         await page
           .getByRole('row')
           .filter({ hasText: name })
-          .getByRole('checkbox', { name: '행 선택' })
+          .getByRole('checkbox', { name: '选择行' })
           .check()
       }
       await expect(page.getByTestId('skill-bulk-bar')).toContainText('2개 선택됨')
       await shot(page, '04-bulk-bar.png')
 
-      await page.getByTestId('skill-bulk-bar').getByRole('button', { name: '삭제' }).click()
+      await page.getByTestId('skill-bulk-bar').getByRole('button', { name: '删除' }).click()
       const bulkDialog = page.getByRole('alertdialog')
       await expect(bulkDialog).toContainText('스킬 2개 삭제')
       await expect(bulkDialog).toContainText('벌크 삭제 대상 A')
       await expect(bulkDialog).toContainText('벌크 삭제 대상 B')
       await shot(page, '05-bulk-confirm.png')
 
-      await bulkDialog.getByRole('button', { name: '삭제' }).click()
+      await bulkDialog.getByRole('button', { name: '删除' }).click()
       await expect(page.getByText('스킬 2개를 삭제했습니다')).toBeVisible({ timeout: 20_000 })
       await expect(page.getByText('벌크 삭제 대상 A')).toBeHidden({ timeout: 15_000 })
       await expect(page.getByTestId('skill-bulk-bar')).toBeHidden()
@@ -168,7 +168,7 @@ test.describe('Skill studio captures', () => {
       await page.waitForURL(new RegExp(`/skills/${primary}/source`), { timeout: 30_000 })
       const contextBar = page.getByTestId('studio-context-bar')
       await expect(contextBar).toContainText('회의록 액션 아이템')
-      await expect(contextBar).toContainText('연결 에이전트')
+      await expect(contextBar).toContainText('已连接 智能体')
       await expect(contextBar).toContainText('1')
       await shot(page, '07-source-tab.png')
 
@@ -176,8 +176,8 @@ test.describe('Skill studio captures', () => {
       const editor = page.getByRole('textbox')
       await expect(editor).toHaveValue(/미정/, { timeout: 15_000 })
       await editor.fill(`${SKILL_BODY_V2}${SKILL_BODY_V3_LINE}\n`)
-      await page.getByRole('button', { name: '저장' }).click()
-      await expect(page.getByText('저장되었습니다')).toBeVisible({ timeout: 20_000 })
+      await page.getByRole('button', { name: '保存' }).click()
+      await expect(page.getByText('已保存')).toBeVisible({ timeout: 20_000 })
       await shot(page, '08-source-saved.png')
 
       // ── 09. 버전 탭 — 리비전 3개 + 방금 저장분 diff ─────────────────────
@@ -191,36 +191,36 @@ test.describe('Skill studio captures', () => {
       await shot(page, '09-versions-diff.png')
 
       // ── 10. 이 버전 소스 보기 → read-only 뷰어 ──────────────────────────
-      await diffCard.getByRole('link', { name: '이 버전 소스 보기' }).click()
+      await diffCard.getByRole('link', { name: '查看此版本的源代码' }).click()
       await page.waitForURL(/\/source\?revision=/)
-      await expect(page.getByText('읽기 전용')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText('只读')).toBeVisible({ timeout: 20_000 })
       await expect(page.getByText(SKILL_BODY_V3_LINE)).toBeVisible()
-      await expect(page.getByRole('button', { name: '파일 저장' })).toBeHidden()
+      await expect(page.getByRole('button', { name: '保存文件' })).toBeHidden()
       await shot(page, '10-revision-source.png')
-      await page.getByRole('link', { name: '현재 버전 보기' }).click()
+      await page.getByRole('link', { name: '查看当前版本' }).click()
       await page.waitForURL(new RegExp(`/skills/${primary}/source$`))
 
       // ── 11. 평가 탭 (빈 세트 상태) ──────────────────────────────────────
       await page.getByTestId('studio-tab-evaluation').click()
       await page.waitForURL(new RegExp(`/skills/${primary}/evaluation`))
-      await expect(page.getByText('아직 평가 세트가 없습니다')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText('尚未设置评估')).toBeVisible({ timeout: 20_000 })
       await shot(page, '11-evaluation-tab.png')
 
       // ── 12~13. 설정 탭 + 삭제 확인(연결 경고, D1) ───────────────────────
       await page.getByTestId('studio-tab-settings').click()
       await page.waitForURL(new RegExp(`/skills/${primary}/settings`))
-      await expect(page.getByText('메타데이터')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText('元数据')).toBeVisible({ timeout: 20_000 })
       await expect(page.getByText('연결된 에이전트 1개')).toBeVisible()
       await shot(page, '12-settings-tab.png')
 
-      await page.getByRole('button', { name: '스킬 삭제' }).click()
+      await page.getByRole('button', { name: '删除技能' }).click()
       const deleteDialog = page.getByRole('alertdialog')
       await expect(deleteDialog).toContainText('연결된 에이전트 1개')
       await shot(page, '13-settings-delete-confirm.png')
-      await deleteDialog.getByRole('button', { name: '취소' }).click()
+      await deleteDialog.getByRole('button', { name: '取消' }).click()
 
       // ── 14. 게시 진입(미게시 스킬 → 마법사 열림, canPublish 가드) ───────
-      await page.getByRole('button', { name: '공개하기' }).click()
+      await page.getByRole('button', { name: '发布' }).click()
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 20_000 })
       await shot(page, '14-publish-wizard.png')
       await page.keyboard.press('Escape')

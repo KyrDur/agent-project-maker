@@ -27,8 +27,8 @@ describe('ToolCatalog', () => {
       />,
     )
 
-    expect(screen.queryByText('카테고리')).not.toBeInTheDocument()
-    expect(screen.getByText('자격증명 필요')).toBeInTheDocument()
+    expect(screen.queryByText('类别标签')).not.toBeInTheDocument()
+    expect(screen.getByText('所需凭据')).toBeInTheDocument()
   })
 
   it('uses template-style card treatment for catalog tools', () => {
@@ -60,7 +60,7 @@ describe('ToolCatalog', () => {
       />,
     )
 
-    expect(screen.getByText('조건에 맞는 도구가 없어요')).toBeInTheDocument()
-    expect(screen.getByText('다른 카테고리나 검색어를 시도해 보세요.')).toBeInTheDocument()
+    expect(screen.getByText('空')).toBeInTheDocument()
+    expect(screen.getByText('没有工具与当前的过滤器相匹配。')).toBeInTheDocument()
   })
 })

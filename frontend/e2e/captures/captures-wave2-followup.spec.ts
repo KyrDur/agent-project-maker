@@ -14,12 +14,12 @@ import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-h
  *  5막 토글     : 컴포저 툴바에서 후속 제안 OFF → 런이 끝나도 고스트 없음
  *
  * scripted 모델 배포에선 followup 엔드포인트가 결정적 제안
- * ("방금 답변을 표로 정리해줘")을 돌려줘 전체 체인이 결정적이다.
+ * ("把刚才的回答整理成表格")을 돌려줘 전체 체인이 결정적이다.
  * Gated by E2E_CAPTURE_TOUR=1.
  */
 
 const WAVE = 'wave2-followup'
-const SUGGESTION = '방금 답변을 표로 정리해줘'
+const SUGGESTION = '把刚才的回答整理成表格'
 const SCRIPTED_READY = 'E2E scripted document model is ready.'
 const FIRST_MESSAGE = '오늘 할 일 정리해줘'
 const SECOND_MESSAGE = '어제 회의록 요약해줘'

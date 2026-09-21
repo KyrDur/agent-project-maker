@@ -85,7 +85,9 @@ async def require_project(
     return project
 
 
-async def build_snapshot(db: AsyncSession, agent: Agent) -> dict[str, Any]:
+async def build_snapshot(
+    db: AsyncSession, agent: Agent, planned_tools: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     await db.refresh(agent, ["model", "tool_links", "skill_links", "mcp_tool_links"])
     # Retain native Agent field names. This is an observation, not a runtime config format.
     config = {
@@ -164,6 +166,8 @@ async def build_snapshot(db: AsyncSession, agent: Agent) -> dict[str, Any]:
         {"sub_agent_id": link.sub_agent_id, "position": link.position}
         for link in agent.sub_agent_links
     ]
+    if planned_tools:
+        config["planned_tools"] = planned_tools
     return snapshot_value({"schema_version": 1, "agent": config})
 
 
@@ -172,13 +176,21 @@ async def create_project(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UU
     existing = await get_project(db, agent_id, user_id)
     if existing is not None:
         return existing
-    snapshot = await build_snapshot(db, agent)
     builder_id = await db.scalar(
         select(BuilderSession.id)
         .where(BuilderSession.agent_id == agent_id, BuilderSession.user_id == user_id)
         .order_by(BuilderSession.created_at.desc())
         .limit(1)
     )
+    planned_tools: list[dict[str, Any]] | None = None
+    if builder_id:
+        builder_session = await db.get(BuilderSession, builder_id)
+        planned_tools = (
+            (builder_session.draft_config or {}).get("planned_tools")
+            if builder_session
+            else None
+        )
+    snapshot = await build_snapshot(db, agent, planned_tools)
     # The unique agent_id constraint resolves concurrent creates. The savepoint
     # keeps project + V1 atomic and lets a losing request return the winner.
     try:
@@ -336,7 +348,15 @@ async def create_version(
     )
     agent = await owned_agent(db, agent_id, user_id)
     await db.refresh(agent)
-    snapshot = await build_snapshot(db, agent)
+    planned_tools: list[dict[str, Any]] | None = None
+    if project.builder_session_id:
+        builder_session = await db.get(BuilderSession, project.builder_session_id)
+        planned_tools = (
+            (builder_session.draft_config or {}).get("planned_tools")
+            if builder_session
+            else None
+        )
+    snapshot = await build_snapshot(db, agent, planned_tools)
     digest = canonical_json_hash(snapshot)
     if latest is not None and latest.config_hash == digest:
         await db.commit()

@@ -164,6 +164,6 @@ describe('SubAgentToolCard', () => {
     await userEvent.click(screen.getByRole('button', { name: /researcher/ }))
 
     expect(screen.getByText('검색 도구 실패')).toBeInTheDocument()
-    expect(screen.queryByText('문제가 발생했습니다')).not.toBeInTheDocument()
+    expect(screen.queryByText('出了点问题')).not.toBeInTheDocument()
   })
 })

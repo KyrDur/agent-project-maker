@@ -92,7 +92,9 @@ export function ProjectComparison({
                 ))}
               </ul>
               <p className="text-sm text-muted-foreground">
-                {comparison.data.same_dataset ? t('sameDataset') : t('differentDatasets')}
+                {(comparison.data.comparable ?? comparison.data.same_dataset)
+                  ? t('sameDataset')
+                  : t('differentDatasets')}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {comparison.data.evaluations.map((result, index) => (

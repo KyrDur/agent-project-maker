@@ -33,7 +33,7 @@ import { PhaseCard, PhaseCardFooter, PhaseCardHeader } from './phase-card'
 import { useApprovalForm, type ApprovalFormState } from './use-approval-form'
 
 type ItemKind = 'tool' | 'middleware'
-type RowKind = 'tool' | 'mcp' | 'skill' | 'middleware'
+type RowKind = 'tool' | 'mcp' | 'skill' | 'planned' | 'middleware'
 
 interface ToolItem {
   tool_name?: string
@@ -41,7 +41,7 @@ interface ToolItem {
   description?: string
   reason?: string
   path?: string
-  kind?: 'tool' | 'mcp' | 'skill'
+  kind?: 'tool' | 'mcp' | 'skill' | 'planned'
 }
 
 interface RecommendationArgs {
@@ -56,6 +56,7 @@ const ROW_PATH_PREFIX: Record<RowKind, string> = {
   tool: 'tools',
   mcp: 'mcp',
   skill: 'skills',
+  planned: 'planned-tools',
   middleware: 'middlewares',
 }
 
@@ -63,6 +64,7 @@ const ROW_ICON: Record<RowKind, typeof WrenchIcon> = {
   tool: WrenchIcon,
   mcp: PlugIcon,
   skill: BookOpenIcon,
+  planned: PlugIcon,
   middleware: BlocksIcon,
 }
 
@@ -123,7 +125,7 @@ function ToolRow({ item, cardKind }: { item: ToolItem; cardKind: ItemKind }) {
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2">
           <code className="moldy-builder-code font-mono">{name}</code>
-          <BuilderTag>{t('recommended')}</BuilderTag>
+          <BuilderTag>{rowKind === 'planned' ? t('planned') : t('recommended')}</BuilderTag>
         </div>
         <div className="mb-1.5 inline-flex items-center gap-1 moldy-builder-color-muted">
           <FolderIcon className="size-2.5" />

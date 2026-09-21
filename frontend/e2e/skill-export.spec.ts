@@ -79,7 +79,7 @@ test.describe('Skill package export', () => {
     await page.goto(`/skills/${packageSkill.id}/settings`)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Portable Export')
 
-    const exportAction = page.getByRole('button', { name: '.skill 내보내기' })
+    const exportAction = page.getByRole('button', { name: '导出.skill' })
     await expect(exportAction).toHaveAttribute(
       'href',
       new RegExp(`/api/skills/${packageSkill.id}/export$`),

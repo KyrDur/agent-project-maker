@@ -38,18 +38,15 @@ beforeEach(() => server.use(http.get(`${path}/report`, () => HttpResponse.json(r
 
 it('shows the measured best, rejected latest, report, live chat and ZIP links', async () => {
   render(<ProjectResults agentId="agent-id" />)
-  expect(await screen.findByText('최적 버전: 2')).toBeInTheDocument()
+  expect(await screen.findByText('最佳版本：2')).toBeInTheDocument()
   expect(screen.getByText(/V3.*rejected/)).toBeInTheDocument()
   expect(screen.getByText(/Mock evaluation/)).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: '실제 Agent 체험' })).toHaveAttribute(
+  expect(screen.getByRole('link', { name: '试用在线智能体' })).toHaveAttribute(
     'href',
     '/agents/agent-id',
   )
-  expect(screen.getByRole('link', { name: '프로젝트 다운로드' })).toHaveAttribute(
-    'href',
-    `${path}/export`,
-  )
-  await userEvent.click(screen.getByRole('button', { name: '보고서 보기 / 접기' }))
+  expect(screen.getByRole('link', { name: '下载项目' })).toHaveAttribute('href', `${path}/export`)
+  await userEvent.click(screen.getByRole('button', { name: '查看/隐藏报告' }))
   expect(screen.getByText(report.sections[0].body)).toBeInTheDocument()
 })
 
@@ -72,10 +69,10 @@ it.each(['ai_product', 'product', 'engineering'])(
       }),
     )
     render(<ProjectResults agentId="agent-id" />)
-    await userEvent.selectOptions(await screen.findByLabelText('이력서 스타일'), style)
-    await userEvent.click(screen.getByRole('button', { name: '이력서 문구 생성 / 다시 생성' }))
+    await userEvent.selectOptions(await screen.findByLabelText('简历风格'), style)
+    await userEvent.click(screen.getByRole('button', { name: '生成/重新生成简历' }))
     expect(await screen.findByText('Controlled evaluation: 75% to 90%.')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: '문구 복사' }))
+    await userEvent.click(screen.getByRole('button', { name: '复制项目要点' }))
     expect(copy).toHaveBeenCalledWith('Controlled evaluation: 75% to 90%.')
   },
 )
@@ -86,13 +83,12 @@ it('creates and revokes a fixed public link', async () => {
     http.delete(`${path}/share`, () => HttpResponse.json({ path: null })),
   )
   render(<ProjectResults agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: '공유 링크 생성 / 확인' }))
-  expect(await screen.findByRole('link', { name: '공개 사례 연구 열기' })).toHaveAttribute(
+  await userEvent.click(await screen.findByRole('button', { name: '创建/获取分享链接' }))
+  expect(await screen.findByRole('link', { name: '打开公开案例' })).toHaveAttribute(
     'href',
     '/shared/projects/p/t',
   )
-  await userEvent.click(screen.getByRole('button', { name: '공유 해제' }))
-  expect(await screen.findByText('공유를 해제했어요.')).toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: '공개 사례 연구 열기' })).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: '撤销分享' }))
+  expect(await screen.findByText('分享已撤销。')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: '打开公开案例' })).not.toBeInTheDocument()
 })
-

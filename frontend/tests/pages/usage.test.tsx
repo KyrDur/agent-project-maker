@@ -43,16 +43,16 @@ describe('UsagePage', () => {
 
   it('renders page header', () => {
     render(<UsagePage />)
-    expect(screen.getByText('사용량')).toBeInTheDocument()
+    expect(screen.getByText('用量')).toBeInTheDocument()
   })
 
   it('renders 4 summary cards (cost / tokens / requests / avg)', () => {
     mockUseUsageSummary.mockReturnValue({ data: mockUsageSummary, isLoading: false })
     render(<UsagePage />)
-    expect(screen.getByText('이번 달 비용')).toBeInTheDocument()
-    expect(screen.getByText('이번 달 토큰')).toBeInTheDocument()
-    expect(screen.getByText('이번 달 요청')).toBeInTheDocument()
-    expect(screen.getByText('평균 비용/요청')).toBeInTheDocument()
+    expect(screen.getByText('本月费用')).toBeInTheDocument()
+    expect(screen.getByText('本月Token')).toBeInTheDocument()
+    expect(screen.getByText('本月请求')).toBeInTheDocument()
+    expect(screen.getByText('平均成本/请求')).toBeInTheDocument()
   })
 
   it('renders filter bar with target-kind / group-by / metric tabs', () => {
@@ -74,7 +74,7 @@ describe('UsagePage', () => {
     mockUseDailyAggregate.mockReturnValue({ data: [], isLoading: false })
     render(<UsagePage />)
     // Chart + Table 두 군데에 동일 EmptyState가 노출됨 — 둘 다 존재하면 OK.
-    expect(screen.getAllByText('아직 사용 내역이 없습니다.').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('还没有使用。').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders chart when daily entries are present', () => {
@@ -96,6 +96,6 @@ describe('UsagePage', () => {
     })
     render(<UsagePage />)
     // 차트 컴포넌트 stub이 렌더되는지 확인 — 빈 상태 EmptyState가 노출되지 않음.
-    expect(screen.queryByText('아직 사용 내역이 없습니다.')).not.toBeInTheDocument()
+    expect(screen.queryByText('还没有使用。')).not.toBeInTheDocument()
   })
 })

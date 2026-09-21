@@ -73,7 +73,7 @@ describe('resizable sidebar rail', () => {
   it('commits expanded drag width to localStorage and the width cookie', () => {
     const { container } = render(<SidebarResizeHarness initialSidebarWidth={256} />)
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]')
-    const handle = screen.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整侧边栏大小' })
 
     fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
@@ -91,7 +91,7 @@ describe('resizable sidebar rail', () => {
   it('collapses below the threshold without storing the preview width', async () => {
     const { container } = render(<SidebarResizeHarness initialSidebarWidth={256} />)
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]')
-    const handle = screen.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整侧边栏大小' })
 
     fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: -20, pointerId: 1 })
@@ -110,7 +110,7 @@ describe('resizable sidebar rail', () => {
   it('reverts the transient preview width when pointer resize is canceled', () => {
     const { container } = render(<SidebarResizeHarness initialSidebarWidth={256} />)
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]')
-    const handle = screen.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整侧边栏大小' })
 
     fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 180, pointerId: 1 })
@@ -129,7 +129,7 @@ describe('resizable sidebar rail', () => {
       <SidebarResizeHarness defaultOpen={false} initialSidebarWidth={256} />,
     )
     const wrapper = container.querySelector('[data-slot="sidebar-wrapper"]')
-    const handle = screen.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整侧边栏大小' })
 
     fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(handle, { clientX: 360, pointerId: 1 })
@@ -150,11 +150,11 @@ describe('resizable sidebar rail', () => {
   it('keeps the collapsed rail separator value inside its announced aria bounds', () => {
     render(<SidebarResizeHarness defaultOpen={false} initialSidebarWidth={256} />)
 
-    const handle = screen.getByRole('separator', { name: '사이드바 크기 조절' })
+    const handle = screen.getByRole('separator', { name: '调整侧边栏大小' })
 
     expect(screen.getByTestId('sidebar-probe')).toHaveAttribute('data-state', 'collapsed')
     expect(handle).toHaveAttribute('aria-valuemin', '0')
     expect(handle).toHaveAttribute('aria-valuenow', '0')
-    expect(handle).toHaveAttribute('aria-valuetext', '접힘')
+    expect(handle).toHaveAttribute('aria-valuetext', '倒塌')
   })
 })

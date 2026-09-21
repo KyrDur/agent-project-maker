@@ -1,4 +1,4 @@
-"""User-owned snapshot model resolution for examinee, planner and judge roles."""
+"""System model resolution for Agent Project planner and judge roles."""
 
 from __future__ import annotations
 
@@ -8,61 +8,122 @@ import uuid
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime.protocol_redaction import redact_protocol_data
-from app.models.agent import Agent
-from app.models.model import Model
+from app.config import settings
+from app.credentials import service as credential_service
+from app.credentials.service import PROVIDER_TO_DEFINITION_KEY
+from app.models.credential import Credential
 from app.services.agent_project_service import snapshot_value
+from app.services.system_credential_resolver import resolve_system_model
+
+PROJECT_LLM_SYSTEM_ROLES: dict[str, str] = {
+    "planner": "evaluation_generator",
+    "case_generator": "evaluation_generator",
+    "judge": "judge_optimizer",
+    "bad_case_analyzer": "judge_optimizer",
+    "optimizer": "judge_optimizer",
+    "optimization_proposal": "judge_optimizer",
+}
 
 
 async def resolve_model(
+    db: AsyncSession,
+    snapshot: dict[str, Any],
+    user_id: uuid.UUID,
+    role: str = "judge",
+) -> tuple[BaseChatModel, str]:
+    from app.agent_runtime.model_factory import create_chat_model
+
+    if role == "examinee":
+        return await resolve_examinee_model(db, snapshot, user_id)
+    system_role = PROJECT_LLM_SYSTEM_ROLES.get(role, "judge_optimizer")
+    resolved = await resolve_system_model(db, system_role)
+    llm = create_chat_model(
+        resolved.provider,
+        resolved.model_name,
+        api_key=resolved.api_key,
+        base_url=resolved.base_url,
+        allow_env_fallback=False,
+    )
+    return llm, resolved.api_key or ""
+
+
+async def resolve_examinee_model(
     db: AsyncSession, snapshot: dict[str, Any], user_id: uuid.UUID
 ) -> tuple[BaseChatModel, str]:
-    from app.agent_runtime.credential_resolution import resolve_llm_api_key_for_agent
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
     from app.agent_runtime.model_factory import create_chat_model
-    from app.credentials.service import get_for_user
-    from app.services.agent_project_executor import SnapshotExecutionUnavailable
 
-    config = snapshot["agent"]
-    saved = config["model"]
-    model = Model(
-        id=uuid.UUID(saved["id"]),
-        provider=saved["provider"],
-        model_name=saved["model_name"],
-        display_name=saved["model_name"],
-        base_url=saved.get("base_url"),
-        context_window=saved.get("context_window"),
-        default_credential_id=uuid.UUID(saved["default_credential_id"])
-        if saved.get("default_credential_id")
-        else None,
-    )
-    agent = Agent(id=uuid.UUID(config["id"]), user_id=user_id, model=model)
-    reference = config.get("llm_credential_id")
-    agent.llm_credential = (
-        await get_for_user(db, uuid.UUID(reference), user_id) if reference else None
-    )
-    if reference and agent.llm_credential is None:
-        raise SnapshotExecutionUnavailable("snapshot_credential_unavailable")
-    if (
-        model.default_credential_id
-        and not reference
-        and await get_for_user(db, model.default_credential_id, user_id) is None
+    config = snapshot.get("agent", {})
+    model = config.get("model") or {}
+    provider = str(model.get("provider") or "")
+    model_name = str(model.get("model_name") or "")
+    if not provider or not model_name:
+        raise LLMCredentialRequiredError()
+    key = ""
+    if not (
+        provider == "e2e_scripted"
+        and settings.e2e_scripted_model_enabled
+        and settings.app_env.lower() != "production"
     ):
-        raise SnapshotExecutionUnavailable("snapshot_credential_unavailable")
-    key = await resolve_llm_api_key_for_agent(db, agent)
-    if not key:
-        raise SnapshotExecutionUnavailable("snapshot_credential_unavailable")
+        definition_key = PROVIDER_TO_DEFINITION_KEY.get(provider)
+        cred: Credential | None = None
+        credential_id = config.get("llm_credential_id") or model.get("default_credential_id")
+        if credential_id:
+            cred = await credential_service.get_for_user(db, uuid.UUID(str(credential_id)), user_id)
+            if (
+                cred is None
+                or cred.status != "active"
+                or (definition_key is not None and cred.definition_key != definition_key)
+            ):
+                cred = None
+        elif definition_key:
+            cred = (
+                await db.execute(
+                    select(Credential)
+                    .where(
+                        Credential.user_id == user_id,
+                        Credential.is_system.is_(False),
+                        Credential.definition_key == definition_key,
+                        Credential.status == "active",
+                    )
+                    .order_by(Credential.created_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+        if cred is None:
+            provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
+            model = {**model, "base_url": base_url}
+        else:
+            payload = await credential_service.decrypt_with_external(cred.data_encrypted)
+            key = str(payload.get("api_key") or payload.get("token") or "")
+            if not key:
+                provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
+                model = {**model, "base_url": base_url}
     llm = create_chat_model(
-        model.provider,
-        model.model_name,
-        key,
-        model.base_url,
+        provider,
+        model_name,
+        api_key=key or None,
+        base_url=model.get("base_url"),
         allow_env_fallback=False,
-        context_window=model.context_window,
-        **(config.get("model_params") or {}),
     )
     return llm, key
+
+
+async def _resolve_project_examinee_fallback(db: AsyncSession) -> tuple[str, str, str, str | None]:
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
+
+    try:
+        resolved = await resolve_system_model(db, "evaluation_generator")
+    except Exception as exc:
+        raise LLMCredentialRequiredError() from exc
+    key = resolved.api_key or ""
+    if not key:
+        raise LLMCredentialRequiredError()
+    return resolved.provider, resolved.model_name, key, resolved.base_url
 
 
 def safe_value(value: Any, key: str) -> Any:
@@ -71,7 +132,7 @@ def safe_value(value: Any, key: str) -> Any:
             "project_evaluation",
             value,
             redact_memory=False,
-            secret_values=[key],
+            secret_values=[key] if key else [],
         )
     )
 
@@ -94,7 +155,7 @@ async def json_call(
     try:
         async with asyncio.timeout(90):
             with tracing_context(enabled=False):
-                llm, key = await resolve_model(db, snapshot, user_id)
+                llm, key = await resolve_model(db, snapshot, user_id, role)
                 for _ in range(2):
                     response = await llm.ainvoke(
                         [

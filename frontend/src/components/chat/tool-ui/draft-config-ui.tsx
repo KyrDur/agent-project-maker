@@ -29,7 +29,6 @@ import { useApprovalForm } from './use-approval-form'
 
 interface DraftConfig {
   name?: string
-  name_ko?: string
   description?: string
   system_prompt?: string
   tools?: string[]
@@ -93,11 +92,8 @@ function DraftConfigSummary({
         )}
         <div className="min-w-0 flex-1">
           <div className="moldy-ui-card-title font-semibold moldy-builder-color-ink">
-            {draft.name_ko || draft.name}
+            {draft.name}
           </div>
-          {draft.name && draft.name_ko !== draft.name && (
-            <div className="moldy-ui-caption-plus moldy-builder-color-muted-soft">{draft.name}</div>
-          )}
           {draft.description && <p className="moldy-builder-copy mt-1">{draft.description}</p>}
         </div>
       </div>
@@ -286,3 +282,4 @@ export function DraftApprovalToolUI({
 }: ToolCallMessagePartProps<DraftConfigArgs, unknown>) {
   return <DraftApprovalView args={args} status={status.type} />
 }
+

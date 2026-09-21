@@ -249,7 +249,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(conversationId, '오늘 날씨 어때?')
           await settleStream(page)
-          await page.getByRole('button', { name: '재생성' }).first().click().catch(() => {})
+          await page.getByRole('button', { name: '再生' }).first().click().catch(() => {})
           await expect(page.getByText('2/2').first()).toBeVisible({ timeout: 40_000 }).catch(() => {})
           await page.waitForTimeout(600)
         },

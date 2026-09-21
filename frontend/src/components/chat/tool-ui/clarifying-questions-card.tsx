@@ -10,7 +10,7 @@ export interface ClarifyingQuestionsCardProps {
 }
 
 /**
- * Builder Phase 2 진행 중 표시되는 "확인이 필요해요" 카드.
+ * Builder Phase 2 진행 중 표시되는 "澄清标题" 카드.
  *
  * 봇 메시지 안 child block 으로 자리잡는 presentational 컴포넌트.
  * 백엔드가 별도 tool로 emit하기 시작하면 그 tool UI에서 이 컴포넌트를 wrap해 사용.

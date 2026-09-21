@@ -86,7 +86,7 @@ async def test_create_conversation_default_title(db: AsyncSession):
     await db.commit()
 
     conv = await create_conversation(db, agent_id)
-    assert conv.title == "새 대화"
+    assert conv.title == "备用标题"
     assert conv.agent_id == agent_id
     assert conv.id is not None
 
@@ -146,11 +146,11 @@ async def test_get_conversation_not_found(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auto_title_from_first_user_message(db: AsyncSession):
-    """First user message auto-generates conversation title from '새 대화'."""
+    """First user message auto-generates conversation title from '备用标题'."""
     agent_id = await _seed(db)
     await db.commit()
-    conv = await create_conversation(db, agent_id)  # title="새 대화"
-    assert conv.title == "새 대화"
+    conv = await create_conversation(db, agent_id)  # title="备用标题"
+    assert conv.title == "备用标题"
 
     await maybe_set_auto_title(db, conv.id, "오늘 날씨 어때?")
 
@@ -177,7 +177,7 @@ async def test_auto_title_long_content_truncated(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_auto_title_no_change_when_already_set(db: AsyncSession):
-    """Title is not overwritten if already set (not '새 대화')."""
+    """Title is not overwritten if already set (not '备用标题')."""
     agent_id = await _seed(db)
     await db.commit()
     conv = await create_conversation(db, agent_id, title="Custom Title")

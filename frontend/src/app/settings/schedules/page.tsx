@@ -92,7 +92,7 @@ export default function SchedulesPage() {
       options.set(trigger.agent_id, trigger.agent_name ?? t('agentFallback'))
     }
     return Array.from(options, ([id, name]) => ({ id, name })).sort((a, b) =>
-      a.name.localeCompare(b.name, 'ko'),
+      a.name.localeCompare(b.name, 'zh-CN'),
     )
   }, [t, triggers])
   const filteredTriggers = useMemo(() => {

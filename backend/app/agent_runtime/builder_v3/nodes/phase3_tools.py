@@ -18,6 +18,7 @@ from app.agent_runtime.builder_v3.nodes._helpers import (
     make_pending_tool_card,
     parse_approval_response,
 )
+from app.agent_runtime.builder_v3.nodes.phase2_intent import _complete_confirmed_intent
 from app.agent_runtime.builder_v3.state import BuilderState
 from app.schemas.builder import AgentCreationIntent, ToolRecommendation
 
@@ -36,7 +37,8 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
     revision = state.get("last_revision_message")
     previous = state.get("tools") or []
 
-    intent_obj = AgentCreationIntent(**intent_dict) if intent_dict else None
+    completed_intent = _complete_confirmed_intent(intent_dict, state) if intent_dict else {}
+    intent_obj = AgentCreationIntent(**completed_intent) if completed_intent else None
 
     if not intent_obj:
         return {
@@ -76,8 +78,10 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
 
     return {
         "messages": msgs,
+        "intent": intent_obj.model_dump(mode="json"),
         "tools": tools_data,
         "last_revision_message": None,
+        "error_message": None,
         "current_phase": 3,
         "pending_tool_call_id": tool_call_id,
     }

@@ -20,16 +20,31 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
-# Valid role slots. Kept in sync with the CHECK constraint below and the
-# Alembic m45 seed rows.
-SYSTEM_LLM_ROLES = ("text_primary", "text_fallback", "image")
+# Valid role slots. Kept in sync with the CHECK constraint below and Alembic
+# seed rows. ``text_primary``/``text_fallback`` remain for backward
+# compatibility; product flows use the explicit platform roles below.
+SYSTEM_LLM_ROLES = (
+    "builder",
+    "evaluation_generator",
+    "judge_optimizer",
+    "text_primary",
+    "text_fallback",
+    "image",
+)
+VISIBLE_SYSTEM_LLM_ROLES = (
+    "builder",
+    "evaluation_generator",
+    "judge_optimizer",
+    "image",
+)
 
 
 class SystemLlmSetting(Base):
     __tablename__ = "system_llm_settings"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('text_primary', 'text_fallback', 'image')",
+            "role IN ('builder', 'evaluation_generator', 'judge_optimizer', "
+            "'text_primary', 'text_fallback', 'image')",
             name="ck_system_llm_settings_role",
         ),
         # Tests rebuild the schema via ``Base.metadata.create_all``;

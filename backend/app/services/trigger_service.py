@@ -107,7 +107,7 @@ def _default_name(trigger_type: str, schedule_config: dict[str, Any]) -> str:
         return f"매 {schedule_config.get('interval_minutes', 10)}분마다"
     if trigger_type == "cron":
         return f"Cron {schedule_config.get('cron_expression', '')}".strip()
-    return "1회 실행"
+    return "运行一次"
 
 
 def _serialize_trigger(

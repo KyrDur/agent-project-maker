@@ -46,7 +46,7 @@ describe('chat command dispatch', () => {
       kind: 'handled',
       commandId: 'help',
     })
-    expect(openTranscriptSearch).toHaveBeenCalledWith('오류')
+    expect(openTranscriptSearch).toHaveBeenCalledWith('错误')
     expect(openHelp).toHaveBeenCalledWith('file')
   })
 

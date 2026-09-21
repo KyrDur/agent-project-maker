@@ -315,7 +315,7 @@ async def test_langgraph_streaming_orders_names_before_memory_recalled() -> None
             {"configurable": {"thread_id": "thread-both"}},
             run_id="run-both",
             subagent_display_names={"agent_12345678": "리서치 봇"},
-            recalled_memories=[{"id": "m1", "scope": "user", "content": "메모"}],
+            recalled_memories=[{"id": "m1", "scope": "user", "content": "注释"}],
         )
     ]
 

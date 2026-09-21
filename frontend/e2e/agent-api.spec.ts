@@ -83,11 +83,11 @@ test.describe('Agent API deployment & keys', () => {
     //    checkpointer pool serializes, slowing unrelated list queries.
     const candidate = page.locator('.moldy-card').filter({ hasText: agentName })
     await expect(candidate).toBeVisible({ timeout: 20_000 })
-    await candidate.getByRole('button', { name: '배포' }).click()
-    await expect(candidate.getByText('배포됨')).toBeVisible({ timeout: 15_000 })
+    await candidate.getByRole('button', { name: '部署' }).click()
+    await expect(candidate.getByText('已部署')).toBeVisible({ timeout: 15_000 })
 
     // 2. With a deployment present, the create-key action enables.
-    const createKeyBtn = page.getByRole('button', { name: 'API 키', exact: true })
+    const createKeyBtn = page.getByRole('button', { name: 'API 密钥', exact: true })
     await expect(createKeyBtn).toBeEnabled({ timeout: 15_000 })
     await createKeyBtn.click()
 
@@ -98,21 +98,21 @@ test.describe('Agent API deployment & keys', () => {
     await dialog.locator('input').first().fill(keyName)
     await dialog
       .locator('label')
-      .filter({ hasText: '배포된 모든 에이전트' })
+      .filter({ hasText: '全部部署智能体' })
       .getByRole('checkbox')
       .click()
-    await dialog.getByRole('button', { name: '만들기' }).click()
+    await dialog.getByRole('button', { name: '创建' }).click()
 
     // 4. The one-time secret is revealed; capture it and acknowledge.
-    const created = page.getByRole('dialog').filter({ hasText: 'API 키가 생성되었습니다' })
+    const created = page.getByRole('dialog').filter({ hasText: 'API 密钥已创建' })
     await expect(created).toBeVisible({ timeout: 15_000 })
     const secret = (await created.locator('code').innerText()).trim()
     expect(secret.length).toBeGreaterThan(10)
-    await created.getByRole('button', { name: '완료' }).click()
+    await created.getByRole('button', { name: '完成' }).click()
 
     // 5. The new key renders as active and persists via the API.
     const keyRow = page.locator('.moldy-card').filter({ hasText: keyName })
-    await expect(keyRow.getByText('활성')).toBeVisible({ timeout: 15_000 })
+    await expect(keyRow.getByText('启用')).toBeVisible({ timeout: 15_000 })
     await expect
       .poll(
         async () => {
@@ -124,8 +124,8 @@ test.describe('Agent API deployment & keys', () => {
       .toBe('active')
 
     // 6. Revoke it through the UI; the badge flips and the API reflects it.
-    await keyRow.getByRole('button', { name: 'API 키 폐기' }).click()
-    await expect(keyRow.getByText('폐기됨')).toBeVisible({ timeout: 15_000 })
+    await keyRow.getByRole('button', { name: '撤销 API 密钥' }).click()
+    await expect(keyRow.getByText('撤销')).toBeVisible({ timeout: 15_000 })
     await expect
       .poll(
         async () => {

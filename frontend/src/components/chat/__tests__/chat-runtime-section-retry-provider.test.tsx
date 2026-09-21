@@ -215,7 +215,7 @@ describe('ChatRuntimeSection failed-message recovery provider', () => {
     )
 
     render(<RetryProviderHarness terminalNotice={RUNTIME_FAILED_NOTICE} />)
-    const retryButton = screen.getByRole('button', { name: '다시 시도' })
+    const retryButton = screen.getByRole('button', { name: '重试' })
 
     await act(async () => {
       fireEvent.click(retryButton)
@@ -224,7 +224,7 @@ describe('ChatRuntimeSection failed-message recovery provider', () => {
 
     expect(mocks.retryFailedInput).toHaveBeenCalledExactlyOnceWith(FAILED_INPUT)
     await act(async () => resolveRetry?.())
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 
   it('uses the hydrated terminal failure over a stale page run for the matching durable input', async () => {
@@ -238,7 +238,7 @@ describe('ChatRuntimeSection failed-message recovery provider', () => {
       />,
     )
 
-    const retryButton = screen.getByRole('button', { name: '다시 시도' })
+    const retryButton = screen.getByRole('button', { name: '重试' })
     await act(async () => {
       fireEvent.click(retryButton)
       fireEvent.click(retryButton)
@@ -250,20 +250,20 @@ describe('ChatRuntimeSection failed-message recovery provider', () => {
   it('keeps a stale failed bubble unavailable after the current terminal notice is canceled', () => {
     render(<RetryProviderHarness terminalNotice={RUNTIME_CANCELED_NOTICE} />)
 
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 
   it('keeps a stale failed bubble unavailable while a newer run is active without a terminal notice', () => {
     render(<RetryProviderHarness isLoading terminalNotice={null} />)
 
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
     expect(mocks.retryFailedInput).not.toHaveBeenCalled()
   })
 
   it('does not expose generic reload when this recovery-aware main surface has no failed run', () => {
     render(<RetryProviderHarness latestRun={null} terminalNotice={null} />)
 
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 
   it('keeps pending and rejected retries unavailable without falling back to generic reload', async () => {
@@ -271,14 +271,14 @@ describe('ChatRuntimeSection failed-message recovery provider', () => {
       <RetryProviderHarness input={PENDING_INPUT} terminalNotice={RUNTIME_FAILED_NOTICE} />,
     )
 
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
 
     mocks.retryFailedInput.mockRejectedValueOnce(new Error('retry rejected'))
     rerender(<RetryProviderHarness terminalNotice={RUNTIME_FAILED_NOTICE} />)
-    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
 
     await act(async () => undefined)
     expect(mocks.retryFailedInput).toHaveBeenCalledExactlyOnceWith(FAILED_INPUT)
-    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 })

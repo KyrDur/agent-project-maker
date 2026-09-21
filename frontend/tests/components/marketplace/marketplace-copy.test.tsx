@@ -32,7 +32,7 @@ function item(overrides: Partial<MarketplaceItem> = {}): MarketplaceItem {
     is_listed: true,
     tags: [],
     categories: [],
-    locale: 'ko-KR',
+    locale: 'zh-CN',
     created_at: '2026-05-01T00:00:00Z',
     updated_at: '2026-05-02T00:00:00Z',
     latest_version: {
@@ -115,11 +115,11 @@ describe('marketplace Korean copy', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: '업데이트 검토' })).toBeInTheDocument()
-    expect(screen.getByText('설치됨')).toBeInTheDocument()
-    expect(screen.getByText('업데이트 가능')).toBeInTheDocument()
-    expect(screen.getByText('수정됨')).toBeInTheDocument()
-    expect(screen.getByText('프록시 필요')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '查看更新' })).toBeInTheDocument()
+    expect(screen.getByText('已安装')).toBeInTheDocument()
+    expect(screen.getByText('可用更新')).toBeInTheDocument()
+    expect(screen.getByText('修改')).toBeInTheDocument()
+    expect(screen.getByText('需要代理')).toBeInTheDocument()
   })
 
   it('uses the template-inspired pastel marketplace card treatment', () => {
@@ -136,15 +136,15 @@ describe('marketplace Korean copy', () => {
   it('renders Korean filter placeholders and actions', () => {
     render(<MarketplaceFilterBar filters={{}} onChange={vi.fn()} superUser />)
 
-    expect(screen.getByPlaceholderText('마켓플레이스 검색…')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: '출처 필터' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: '지원 방식 필터' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: '설치 상태 필터' })).toBeInTheDocument()
-    expect(screen.getByText('전체 출처')).toBeInTheDocument()
-    expect(screen.getByText('전체 지원 방식')).toBeInTheDocument()
-    expect(screen.getByText('전체 상태')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索市场...')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '源过滤器' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '支持过滤' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '安装状态过滤器' })).toBeInTheDocument()
+    expect(screen.getByText('所有来源')).toBeInTheDocument()
+    expect(screen.getByText('所有支持级别')).toBeInTheDocument()
+    expect(screen.getByText('所有州')).toBeInTheDocument()
     expect(screen.queryByText('__all__')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '대기 항목 보기' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '显示待处理项目' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重置' })).toBeInTheDocument()
   })
 })

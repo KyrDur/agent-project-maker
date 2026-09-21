@@ -134,7 +134,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
         _account_req(
             "srt_login",
             definition_key="srt_account",
-            label="SRT 계정",
+            label="SRT账户",
             description="SRT 예매에 사용할 회원 자격증명.",
             env_user="KSKILL_SRT_ID",
             env_pass="KSKILL_SRT_PASSWORD",  # noqa: S106 — env var *name*, not a value
@@ -154,7 +154,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
         _account_req(
             "foresttrip_login",
             definition_key="foresttrip_account",
-            label="숲나들e 계정",
+            label="森林旅行账户",
             description="국립휴양림 예약 조회용 회원 자격증명.",
             env_user="KSKILL_FORESTTRIP_ID",
             env_pass="KSKILL_FORESTTRIP_PASSWORD",  # noqa: S106 — env var *name*, not a value

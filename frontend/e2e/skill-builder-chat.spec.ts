@@ -3,7 +3,7 @@ import type { APIRequestContext } from '@playwright/test'
 
 // 스킬 빌더 챗 (skill-studio phase 1, M6) — 스펙 §2 성공 기준 E2E.
 // scripted 시퀀스: write_file(드래프트 2파일) → validate_skill →
-// test_skill_draft(승인 카드 → "이 세션에서 계속 허용" → 재실행 무카드) →
+// test_skill_draft(승인 카드 → "留出本次会议的剩余时间" → 재실행 무카드) →
 // finalize_skill(항상 승인 카드 → 승인 → skills row) + 리로드 replay.
 // 백엔드 E2E_SCRIPTED_MODEL_ENABLED=true가 system LLM(text_primary)을
 // scripted 모델로 시드한다 (seed_e2e_scripted_model).
@@ -83,7 +83,7 @@ test.describe('skill builder chat', () => {
       const currentComposer = page
         .locator('textarea[data-moldy-composer-input="true"]:visible')
         .last()
-      const sendButton = page.getByRole('button', { name: '전송' }).last()
+      const sendButton = page.getByRole('button', { name: '发送按钮' }).last()
       await expect(currentComposer).toBeVisible({ timeout: 45_000 })
       await expect(currentComposer).toBeEnabled({ timeout: 45_000 })
       // 응답 텍스트는 stream 종료보다 먼저 보일 수 있다. Builder 전송 버튼은
@@ -102,7 +102,7 @@ test.describe('skill builder chat', () => {
     // 한다 (재시도 문구가 뜨면 레이스 회귀).
     const approve = async () => {
       await page.getByTestId('approval-approve-button').last().click()
-      await expect(page.getByText('승인 응답을 전송하지 못했습니다. 다시 시도하세요.')).toHaveCount(
+      await expect(page.getByText('无法发送批准响应。再试一次。')).toHaveCount(
         0,
       )
     }

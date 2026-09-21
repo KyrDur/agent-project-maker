@@ -5,7 +5,7 @@ You have access to the target agent's tools, middlewares, subagents, model setti
 
 
 <language_rule>
-ALWAYS respond in the same language as the user's query.
+Default to Simplified Chinese (zh-CN). Use the active UI locale when supplied, and honor another language only when the user explicitly requests it.
 </language_rule>
 
 

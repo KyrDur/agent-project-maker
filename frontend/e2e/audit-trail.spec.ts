@@ -52,8 +52,8 @@ test.describe('Audit trail', () => {
     await page.goto('/settings/audit')
 
     // Filter the feed to agent.create, then locate this agent's event row.
-    await page.getByLabel('기능', { exact: true }).fill('agent.create')
-    await page.getByRole('button', { name: '필터 적용' }).click()
+    await page.getByLabel('行动', { exact: true }).fill('agent.create')
+    await page.getByRole('button', { name: '应用过滤器' }).click()
 
     // Generous timeout: under parallel load the backend's fixed 4-conn
     // checkpointer pool serializes, slowing the audit-events query.

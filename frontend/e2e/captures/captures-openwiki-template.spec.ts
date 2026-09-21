@@ -43,7 +43,7 @@ test.describe('OpenWiki skill + template captures', () => {
     await capture(page, WAVE, '00-marketplace-list-openwiki.png')
 
     // 2) Marketplace item detail — cards navigate via the 상세 보기 link.
-    await marketplaceCard.getByRole('link', { name: '상세 보기' }).click()
+    await marketplaceCard.getByRole('link', { name: '显示详情' }).click()
     await page.waitForURL(/\/marketplace\/[0-9a-f-]{36}/, { timeout: 60_000 })
     await expect(page.getByText('OpenWiki').first()).toBeVisible({ timeout: 60_000 })
     await settle(page)

@@ -91,16 +91,16 @@ describe('SkillCredentialBindingsPanel', () => {
     if (weatherRow === null) {
       throw new Error('Weather requirement row was not rendered')
     }
-    expect(within(weatherRow).getByText('필수')).toBeInTheDocument()
-    expect(within(weatherRow).getByText('미연결')).toBeInTheDocument()
+    expect(within(weatherRow).getByText('必填')).toBeInTheDocument()
+    expect(within(weatherRow).getByText('未连接')).toBeInTheDocument()
     expect(screen.getByText('weather_api')).toBeInTheDocument()
 
     const regionRow = screen.getByText('Region').closest('div')
     if (regionRow === null) {
       throw new Error('Region requirement row was not rendered')
     }
-    expect(within(regionRow).getByText('선택')).toBeInTheDocument()
-    expect(within(regionRow).getByText('연결됨')).toBeInTheDocument()
+    expect(within(regionRow).getByText('可选')).toBeInTheDocument()
+    expect(within(regionRow).getByText('已连接')).toBeInTheDocument()
     expect(screen.getByText('region_api')).toBeInTheDocument()
   })
 
@@ -116,7 +116,7 @@ describe('SkillCredentialBindingsPanel', () => {
 
     render(<SkillCredentialBindingsPanel skillId="skill-1" />)
 
-    expect(screen.getByText('필수 자격증명이 모두 연결되었습니다')).toBeInTheDocument()
-    expect(screen.getByText('연결됨')).toBeInTheDocument()
+    expect(screen.getByText('所有必需的凭据均已连接')).toBeInTheDocument()
+    expect(screen.getByText('已连接')).toBeInTheDocument()
   })
 })

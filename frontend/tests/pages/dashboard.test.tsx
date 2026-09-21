@@ -23,11 +23,11 @@ const mockUseSession = vi.fn()
 const mockToggleFavorite = vi.fn()
 
 const greetingCases = [
-  { hour: 4, minute: 59, expectedGreeting: '늦은 밤이네요' },
-  { hour: 5, minute: 0, expectedGreeting: '좋은 아침이에요' },
-  { hour: 12, minute: 0, expectedGreeting: '좋은 오후예요' },
-  { hour: 18, minute: 0, expectedGreeting: '좋은 저녁이에요' },
-  { hour: 22, minute: 0, expectedGreeting: '오늘도 수고하셨어요' },
+  { hour: 4, minute: 59, expectedGreeting: '今晚工作到很晚' },
+  { hour: 5, minute: 0, expectedGreeting: '早上好' },
+  { hour: 12, minute: 0, expectedGreeting: '下午好' },
+  { hour: 18, minute: 0, expectedGreeting: '晚上好' },
+  { hour: 22, minute: 0, expectedGreeting: '今天干得好' },
 ] as const
 
 vi.mock('@/lib/hooks/use-agents', () => ({
@@ -52,7 +52,7 @@ describe('DashboardPage', () => {
   it('renders loading skeletons when agents are loading', () => {
     mockUseAgentSummaries.mockReturnValue({ data: undefined, isLoading: true })
     render(<DashboardPage />)
-    expect(screen.getByText('내 에이전트')).toBeInTheDocument()
+    expect(screen.getByText('我的智能体')).toBeInTheDocument()
   })
 
   it('renders agent cards when data is loaded', () => {
@@ -68,18 +68,18 @@ describe('DashboardPage', () => {
   it('renders empty state when no agents', () => {
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
-    expect(screen.getByText('첫 에이전트를 만들어보세요')).toBeInTheDocument()
+    expect(screen.getByText('创建你的第一个智能体')).toBeInTheDocument()
   })
 
   it('shows quick action cards linking to creation pages', () => {
     render(<DashboardPage />)
-    expect(screen.getByText('대화로 만들기')).toBeInTheDocument()
-    expect(screen.getByText('템플릿으로 만들기')).toBeInTheDocument()
+    expect(screen.getByText('通过聊天构建')).toBeInTheDocument()
+    expect(screen.getByText('使用模板')).toBeInTheDocument()
 
-    const conversationalLink = screen.getByText('대화로 만들기').closest('a')
+    const conversationalLink = screen.getByText('通过聊天构建').closest('a')
     expect(conversationalLink).toHaveAttribute('href', '/agents/new')
 
-    const templateLink = screen.getByText('템플릿으로 만들기').closest('a')
+    const templateLink = screen.getByText('使用模板').closest('a')
     expect(templateLink).toHaveAttribute('href', '/agents/new/template')
   })
 
@@ -89,7 +89,7 @@ describe('DashboardPage', () => {
       vi.useFakeTimers()
       vi.setSystemTime(new Date(2026, 8, 6, hour, minute))
       mockUseAgentSummaries.mockReturnValue({ data: mockAgentSummaryList, isLoading: false })
-      mockUseSession.mockReturnValue({ data: { id: 'u1', name: '수화', email: 'a@b.c' } })
+      mockUseSession.mockReturnValue({ data: { id: 'u1', name: '用户', email: 'a@b.c' } })
       render(<DashboardPage />)
       expect(screen.getByText(`${expectedGreeting},`, { exact: true })).toBeInTheDocument()
       expect(screen.getByText(/수화님/)).toBeInTheDocument()
@@ -114,7 +114,7 @@ describe('DashboardPage', () => {
     expect(screen.queryByText(/가입이름님/)).not.toBeInTheDocument()
   })
 
-  it('falls back to "사용자" when session is null', () => {
+  it('falls back to "用户" when session is null', () => {
     mockUseSession.mockReturnValue({ data: null })
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
@@ -124,7 +124,7 @@ describe('DashboardPage', () => {
   it('does not render usage summary or tip line (removed in redesign)', () => {
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
-    expect(screen.queryByText('이번 달 사용량')).not.toBeInTheDocument()
+    expect(screen.queryByText('本月使用情况')).not.toBeInTheDocument()
     expect(screen.queryByText(/💡 팁/)).not.toBeInTheDocument()
   })
 
@@ -134,6 +134,6 @@ describe('DashboardPage', () => {
       isLoading: false,
     })
     render(<DashboardPage />)
-    expect(screen.getByText('내 에이전트')).toBeInTheDocument()
+    expect(screen.getByText('我的智能体')).toBeInTheDocument()
   })
 })

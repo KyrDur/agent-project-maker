@@ -80,10 +80,10 @@ test.describe('Spend Dashboard', () => {
     await page.goto('/usage')
 
     // Summary cards — 4 cards, current month rollup.
-    await expect(page.getByText('이번 달 비용')).toBeVisible()
-    await expect(page.getByText('이번 달 토큰')).toBeVisible()
-    await expect(page.getByText('이번 달 요청')).toBeVisible()
-    await expect(page.getByText('평균 비용/요청')).toBeVisible()
+    await expect(page.getByText('本月费用')).toBeVisible()
+    await expect(page.getByText('本月Token')).toBeVisible()
+    await expect(page.getByText('本月请求')).toBeVisible()
+    await expect(page.getByText('平均成本/请求')).toBeVisible()
 
     // Default group_by=date → line chart visible, bar chart not.
     await expect(page.getByTestId('spend-line-chart')).toBeVisible()
@@ -97,7 +97,7 @@ test.describe('Spend Dashboard', () => {
     await expect(page.getByTestId('group-by-tabs')).toBeVisible()
 
     // Toggle group_by → Target. Bar chart should now be visible.
-    await page.getByTestId('group-by-tabs').getByRole('tab', { name: '대상' }).click()
+    await page.getByTestId('group-by-tabs').getByRole('tab', { name: '目标' }).click()
 
     await expect(page.getByTestId('spend-bar-chart')).toBeVisible()
     await expect(page.getByTestId('spend-line-chart')).toHaveCount(0)
@@ -139,7 +139,7 @@ test.describe('Spend Dashboard', () => {
     await page.goto('/usage')
 
     // The chart and raw-data table each expose their own empty state.
-    const emptyStates = page.getByText('아직 사용 내역이 없습니다.')
+    const emptyStates = page.getByText('还没有使用。')
     await expect(emptyStates).toHaveCount(2)
     await expect(emptyStates.first()).toBeVisible()
     await expect(emptyStates.last()).toBeVisible()

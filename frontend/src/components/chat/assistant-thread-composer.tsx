@@ -52,6 +52,8 @@ import { toast } from 'sonner'
 
 export interface ThreadComposerProps {
   readonly modelName?: string
+  readonly runtimeCredentialName?: string | null
+  readonly runtimeReady?: boolean
   readonly showTokenBar?: boolean
   readonly showContextGauge?: boolean
   readonly contextWindow?: number | null
@@ -69,6 +71,8 @@ export interface ThreadComposerProps {
 
 export function ThreadComposer({
   modelName,
+  runtimeCredentialName,
+  runtimeReady,
   showTokenBar,
   showContextGauge = false,
   contextWindow,
@@ -342,6 +346,8 @@ export function ThreadComposer({
               usage={latestTurnUsage}
               contextWindow={contextWindow}
               modelName={modelName}
+              runtimeCredentialName={runtimeCredentialName}
+              runtimeReady={runtimeReady}
             />
           )}
           {showContextGauge && hasCost && (

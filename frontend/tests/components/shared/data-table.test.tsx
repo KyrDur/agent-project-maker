@@ -36,7 +36,7 @@ interface Row {
 const columns: ColumnDef<Row>[] = [
   {
     accessorKey: 'name',
-    header: '이름',
+    header: '名称',
     cell: ({ row }) => row.original.name,
   },
 ]
@@ -45,7 +45,7 @@ describe('DataTable', () => {
   it('uses Korean default empty text', () => {
     render(<DataTable columns={columns} data={[]} />)
 
-    expect(screen.getByText('항목이 없어요')).toBeInTheDocument()
+    expect(screen.getByText('没有找到物品')).toBeInTheDocument()
   })
 
   it('uses Korean pagination labels', () => {
@@ -83,7 +83,7 @@ describe('DataTable', () => {
       />,
     )
 
-    await userEvent.type(screen.getByPlaceholderText('검색...'), '첫')
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '첫')
     const callsAfterSearch = filterFn.mock.calls.length
 
     rerender(
@@ -141,7 +141,7 @@ describe('DataTable', () => {
     )
 
     // '첫 번째'(선택됨)를 가리는 검색 — 선택 키는 data prop 기준으로 유효하다.
-    await userEvent.type(screen.getByPlaceholderText('검색...'), '두')
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '두')
     expect(screen.queryByText('첫 번째')).not.toBeInTheDocument()
     expect(onStateChange).not.toHaveBeenCalled()
   })
@@ -168,7 +168,7 @@ describe('DataTable', () => {
 
     // 선택 행을 가리는 검색 — payload가 검색-스코프 row model 기준이면 여기서
     // []로 재통지돼 부모 상태(벌크 대상)와 체크박스가 발산한다.
-    await userEvent.type(screen.getByPlaceholderText('검색...'), '두')
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '두')
 
     expect(onSelectionChange).toHaveBeenCalledTimes(callsBeforeSearch)
     expect(onSelectionChange).toHaveBeenLastCalledWith([rows[0]])
@@ -183,7 +183,7 @@ describe('DataTable', () => {
     const rows: Anon[] = [{ name: 'A행' }, { name: 'B행' }, { name: 'C행' }]
     const onSelectionChange = vi.fn()
     const anonColumns: ColumnDef<Anon>[] = [
-      { accessorKey: 'name', header: '이름', cell: ({ row }) => row.original.name },
+      { accessorKey: 'name', header: '名称', cell: ({ row }) => row.original.name },
     ]
     render(
       <DataTable
@@ -195,8 +195,8 @@ describe('DataTable', () => {
       />,
     )
 
-    await userEvent.type(screen.getByPlaceholderText('검색...'), 'C행')
-    await userEvent.click(screen.getByRole('checkbox', { name: '행 선택' }))
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), 'C행')
+    await userEvent.click(screen.getByRole('checkbox', { name: '选择行' }))
 
     expect(onSelectionChange).toHaveBeenLastCalledWith([rows[2]])
   })
@@ -206,8 +206,8 @@ describe('DataTable', () => {
       type: string
     }
     const typedColumns: ColumnDef<TypedRow>[] = [
-      { accessorKey: 'name', header: '이름', cell: ({ row }) => row.original.name },
-      { accessorKey: 'type', header: '종류', cell: ({ row }) => row.original.type },
+      { accessorKey: 'name', header: '名称', cell: ({ row }) => row.original.name },
+      { accessorKey: 'type', header: '类型', cell: ({ row }) => row.original.type },
     ]
     const rows: TypedRow[] = [
       { id: '1', name: 'A행', type: 'x' },
@@ -220,7 +220,7 @@ describe('DataTable', () => {
         data={rows}
         pageSize={1}
         filters={[
-          { columnId: 'type', label: '종류', options: [{ value: 'x', label: 'X만' }] },
+          { columnId: 'type', label: '类型', options: [{ value: 'x', label: 'X만' }] },
         ]}
       />,
     )

@@ -119,7 +119,7 @@ async def test_trigger_guardrails_are_persisted(client: AsyncClient):
             "name": "제한 있는 스케줄",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
-            "input_message": "상태 확인",
+            "input_message": "立即查看",
             "max_runs": 3,
             "auto_pause_after_failures": 2,
             "end_at": "2026-06-30T00:00:00Z",
@@ -151,7 +151,7 @@ async def test_trigger_selected_conversation_policy_is_persisted(client: AsyncCl
             "name": "기존 세션에 쓰기",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
-            "input_message": "상태 확인",
+            "input_message": "立即查看",
             "conversation_policy": "selected_conversation",
             "target_conversation_id": conversation_id,
         },
@@ -210,7 +210,7 @@ async def test_global_trigger_runs_history(client: AsyncClient):
         json={
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 30},
-            "input_message": "상태 확인",
+            "input_message": "立即查看",
         },
     )
     assert resp.status_code == 201
@@ -223,7 +223,7 @@ async def test_global_trigger_runs_history(client: AsyncClient):
                 agent_id=uuid.UUID(agent_id),
                 user_id=TEST_USER_ID,
                 status="success",
-                input_message="상태 확인",
+                input_message="立即查看",
             )
         )
         await db.commit()

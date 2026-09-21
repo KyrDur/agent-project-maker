@@ -206,7 +206,7 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
             questions: [
               {
                 id: 'agent_name',
-                label: '에이전트 이름',
+                label: '智能体名称',
                 type: 'single_select',
                 options: [{ id: 'research', label: '리서치 에이전트' }],
                 required: true,
@@ -452,7 +452,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
       earlyDecision = result.current.registerDecision(
         1,
         { type: 'reject', message: '아니요' },
-        '거부',
+        '拒绝',
       )
     })
     expect(resume1).not.toHaveBeenCalled()
@@ -517,27 +517,27 @@ describe('useChatRuntime — onResumeDecisions', () => {
     })
 
     await act(async () => {
-      const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-      const second = result.current.registerDecision(1, { type: 'reject', message: '거부' }, '거부')
+      const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+      const second = result.current.registerDecision(1, { type: 'reject', message: '拒绝' }, '拒绝')
       await expect(Promise.all([first, second])).rejects.toThrow('resume rejected')
     })
 
     expect(resume).toHaveBeenCalledTimes(1)
     expect(resume.mock.calls[0]?.[0]).toEqual([
       { type: 'approve' },
-      { type: 'reject', message: '거부' },
+      { type: 'reject', message: '拒绝' },
     ])
 
     await act(async () => {
-      const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-      const second = result.current.registerDecision(1, { type: 'reject', message: '거부' }, '거부')
+      const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+      const second = result.current.registerDecision(1, { type: 'reject', message: '拒绝' }, '拒绝')
       await Promise.all([first, second])
     })
 
     expect(resume).toHaveBeenCalledTimes(2)
     expect(resume.mock.calls[1]?.[0]).toEqual([
       { type: 'approve' },
-      { type: 'reject', message: '거부' },
+      { type: 'reject', message: '拒绝' },
     ])
     expect(resume.mock.calls.every(([decisions]) => decisions.length === 2)).toBe(true)
   })
@@ -567,7 +567,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
 
     await act(async () => {
       await expect(
-        result.current.onResumeDecisions([{ type: 'approve' }], '승인', 'intr-dispatched'),
+        result.current.onResumeDecisions([{ type: 'approve' }], '批准', 'intr-dispatched'),
       ).resolves.toBeUndefined()
     })
 
@@ -589,7 +589,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
 
     await act(async () => {
       await expect(
-        result.current.onResumeDecisions([{ type: 'approve' }], '승인', 'intr-stale'),
+        result.current.onResumeDecisions([{ type: 'approve' }], '批准', 'intr-stale'),
       ).rejects.toThrow('stale interrupt')
     })
 
@@ -646,20 +646,20 @@ describe('useChatRuntime — onResumeDecisions', () => {
     })
 
     await act(async () => {
-      const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-      const second = result.current.registerDecision(1, { type: 'reject', message: '거부' }, '거부')
+      const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+      const second = result.current.registerDecision(1, { type: 'reject', message: '拒绝' }, '拒绝')
       await expect(Promise.all([first, second])).rejects.toThrow('resume request rejected')
     })
 
     await act(async () => {
-      const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-      const second = result.current.registerDecision(1, { type: 'reject', message: '거부' }, '거부')
+      const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+      const second = result.current.registerDecision(1, { type: 'reject', message: '拒绝' }, '拒绝')
       await Promise.all([first, second])
     })
 
     expect(streamResumeDecisionsMock).toHaveBeenCalledTimes(2)
     for (const call of streamResumeDecisionsMock.mock.calls) {
-      expect(call[1]).toEqual([{ type: 'approve' }, { type: 'reject', message: '거부' }])
+      expect(call[1]).toEqual([{ type: 'approve' }, { type: 'reject', message: '拒绝' }])
     }
   })
 
@@ -684,7 +684,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
     await act(async () => {
       await result.current.sendMessage('hi')
     })
-    const pending = result.current.registerDecision(0, { type: 'approve' }, '승인')
+    const pending = result.current.registerDecision(0, { type: 'approve' }, '批准')
     const pendingRejection = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
 
     await act(async () => {
@@ -811,8 +811,8 @@ describe('useChatRuntime — onResumeDecisions', () => {
     await act(async () => {
       await result.current.sendMessage('hi')
     })
-    const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-    const second = result.current.registerDecision(1, { type: 'approve' }, '승인')
+    const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+    const second = result.current.registerDecision(1, { type: 'approve' }, '批准')
     const batch = Promise.all([first, second])
     const batchRejection = expect(batch).rejects.toMatchObject({ name: 'AbortError' })
     await resumeStarted.promise
@@ -865,8 +865,8 @@ describe('useChatRuntime — onResumeDecisions', () => {
     await act(async () => {
       await result.current.sendMessage('hi')
     })
-    const first = result.current.registerDecision(0, { type: 'approve' }, '승인')
-    const second = result.current.registerDecision(1, { type: 'approve' }, '승인')
+    const first = result.current.registerDecision(0, { type: 'approve' }, '批准')
+    const second = result.current.registerDecision(1, { type: 'approve' }, '批准')
     const batch = Promise.all([first, second])
     const batchResolution = expect(batch).resolves.toEqual([undefined, undefined])
     await resumeStarted.promise

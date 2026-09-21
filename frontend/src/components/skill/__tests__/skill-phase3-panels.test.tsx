@@ -64,12 +64,12 @@ describe('SkillBenchmarkPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('benchmark-measured')).toHaveTextContent('실측')
+    expect(screen.getByTestId('benchmark-measured')).toHaveTextContent('测量的')
     const bars = screen.getAllByTestId('skill-metric-bar')
     expect(bars).toHaveLength(2)
-    expect(bars[0]).toHaveTextContent('스킬 사용')
+    expect(bars[0]).toHaveTextContent('有技巧')
     expect(bars[0]).toHaveTextContent('95%')
-    expect(bars[1]).toHaveTextContent('스킬 없이')
+    expect(bars[1]).toHaveTextContent('没有技巧')
     expect(bars[1]).toHaveTextContent('30%')
     expect(screen.getByText('통과율 차이 +65%')).toBeInTheDocument()
   })
@@ -103,7 +103,7 @@ describe('SkillBenchmarkPanel', () => {
       />,
     )
 
-    expect(screen.getByTestId('benchmark-estimated')).toHaveTextContent('추정')
+    expect(screen.getByTestId('benchmark-estimated')).toHaveTextContent('估计')
     expect(screen.getAllByTestId('skill-metric-bar')).toHaveLength(1)
   })
 
@@ -184,7 +184,7 @@ describe('SkillUsageSummaryCard', () => {
     const card = screen.getByTestId('skill-usage-summary-card')
     expect(card).toHaveTextContent('1,500')
     // priced_event_count 0 → cost must read "unknown", never $0 (모름 ≠ 무료).
-    expect(card).toHaveTextContent('단가 미설정')
+    expect(card).toHaveTextContent('无定价')
     expect(card).toHaveTextContent('단가가 없는 이벤트 2건은 비용에 포함되지 않았습니다.')
   })
 })

@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 def _get_image_prompt_seed(state: BuilderState) -> str:
     intent = state.get("intent") or {}
     return build_default_prompt(
-        agent_name=intent.get("agent_name_ko") or intent.get("agent_name", "Agent"),
+        agent_name=intent.get("agent_name", "Agent"),
         agent_description=intent.get("agent_description", ""),
         primary_task_type=intent.get("primary_task_type", ""),
     )
@@ -120,7 +120,7 @@ async def phase6_choice_wait(state: BuilderState) -> dict:
 
     pending_tc_id = state.get("pending_tool_call_id")
 
-    if choice in ("skip", "넘어가기", "넘어가"):
+    if choice in ("skip", "跳过", "넘어가"):
         close_msgs = close_pending_tool_card(pending_tc_id, "image_choice", "skip")
         complete_msgs = build_phase_complete(
             6,
@@ -220,7 +220,7 @@ async def phase6_image_approval(state: BuilderState) -> dict:
 
     pending_tc_id = state.get("pending_tool_call_id")
 
-    if choice in ("confirm", "확정"):
+    if choice in ("confirm", "确认"):
         close_msgs = close_pending_tool_card(
             pending_tc_id, "image_approval", tr("confirmed_568940")
         )
@@ -236,7 +236,7 @@ async def phase6_image_approval(state: BuilderState) -> dict:
             "pending_tool_call_id": None,
         }
 
-    if choice in ("skip", "넘어가기"):
+    if choice in ("skip", "跳过"):
         close_msgs = close_pending_tool_card(pending_tc_id, "image_approval", "skip")
         complete_msgs = build_phase_complete(
             6,
@@ -262,3 +262,4 @@ async def phase6_image_approval(state: BuilderState) -> dict:
         "image_skipped": False,
         "pending_tool_call_id": None,
     }
+

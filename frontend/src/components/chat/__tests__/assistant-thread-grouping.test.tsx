@@ -109,27 +109,27 @@ describe('groupAssistantParts (groupBy)', () => {
 describe('renderGroupedAssistantPart (group-tool node)', () => {
   it('N≥2: 컨테이너로 묶고 라벨 + 개수를 보여준다', () => {
     renderGroupNode('tavily_search', 2, false, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('웹 검색')).toBeInTheDocument()
+    expect(screen.getByText('默认标题')).toBeInTheDocument()
     expect(screen.getByText('2회')).toBeInTheDocument()
   })
 
   it('N=1: 컨테이너 없이 children만 패스스루(라벨/개수 없음)', () => {
     renderGroupNode('tavily_search', 1, false, <div data-testid="leaf">leaf</div>)
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
-    expect(screen.queryByText('웹 검색')).not.toBeInTheDocument()
-    expect(screen.queryByText('1회')).not.toBeInTheDocument()
+    expect(screen.queryByText('默认标题')).not.toBeInTheDocument()
+    expect(screen.queryByText('一次')).not.toBeInTheDocument()
   })
 
   it('running=true: 펼침 상태라 그룹 내부 children이 보인다', () => {
     renderGroupNode('read_file', 3, true, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.getByText('3회')).toBeInTheDocument()
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
   })
 
   it('done(running=false): 접힘 상태라 그룹 내부 children이 숨겨진다', () => {
     renderGroupNode('read_file', 3, false, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.queryByTestId('leaf')).not.toBeInTheDocument()
   })
 
@@ -140,10 +140,10 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('승인 그룹 N≥2: generic 컨테이너 대신 "승인 대기 N건" + "모두 승인"으로 묶고 카드는 항상 보인다', () => {
+  it('승인 그룹 N≥2: generic 컨테이너 대신 "승인 대기 N건" + "批准全部"으로 묶고 카드는 항상 보인다', () => {
     renderGroupNode('request_approval', 2, false, <div data-testid="approval-leaf">card</div>)
     expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
-    expect(screen.getByText('모두 승인')).toBeInTheDocument()
+    expect(screen.getByText('批准全部')).toBeInTheDocument()
     // 승인 카드는 접히지 않고 항상 렌더된다(사용자가 결정해야 하므로).
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
     // generic 그룹 라벨/개수 배지는 뜨지 않는다.

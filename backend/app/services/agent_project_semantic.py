@@ -24,15 +24,104 @@ def spec_value(stored: dict[str, Any]) -> EvalSpec:
     )
 
 
+def capability_profile(snapshot: dict[str, Any]) -> dict[str, Any]:
+    agent = snapshot.get("agent", {})
+    tools = [
+        *[item for item in agent.get("tool_links") or [] if isinstance(item, dict)],
+        *[item for item in agent.get("mcp_tool_links") or [] if isinstance(item, dict)],
+        *[item for item in agent.get("planned_tools") or [] if isinstance(item, dict)],
+    ]
+    skills = agent.get("skill_links") or []
+    middlewares = agent.get("middleware_configs") or []
+    prompt = str(agent.get("system_prompt") or "").lower()
+    capabilities = set()
+    if tools or "tool" in prompt or "workflow" in prompt:
+        capabilities.add("tool_calling")
+    if skills or "knowledge" in prompt or "retriev" in prompt:
+        capabilities.add("knowledge_retrieval")
+    if middlewares or "workflow" in prompt:
+        capabilities.add("workflow")
+    if not capabilities:
+        capabilities.add("conversation")
+    return {
+        "agent_type": "workflow"
+        if "workflow" in capabilities
+        else "knowledge"
+        if "knowledge_retrieval" in capabilities
+        else "general",
+        "capabilities": sorted(capabilities),
+        "tools": [
+            str(item.get("definition_key") or item.get("name") or item.get("tool_name"))
+            for item in tools
+            if isinstance(item, dict)
+        ],
+        "skills": [
+            str(item.get("slug") or item.get("skill_id"))
+            for item in skills
+            if isinstance(item, dict)
+        ],
+    }
+
+
 def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
     model = snapshot["agent"]["model"]
     descriptor = {key: model.get(key) for key in ("id", "provider", "model_name")}
     return {
-        "examinee": descriptor,
-        "judge": {**descriptor, "role": "evaluator"},
-        "credential_policy": "user_owned_at_execution",
+        "examinee": {
+            **descriptor,
+            "credential_policy": "runtime_user_owned_or_platform_evaluation_generator",
+        },
+        "evaluation_generator": {
+            **descriptor,
+            "system_role": "evaluation_generator",
+            "credential_policy": "platform_system_owned",
+        },
+        "judge": {
+            **descriptor,
+            "role": "evaluator",
+            "system_role": "judge_optimizer",
+            "credential_policy": "platform_system_owned",
+        },
+        "credential_policy": "project_mock_sandbox_platform_fallback",
         "judge_prompt_version": "semantic_v1",
     }
+
+
+def focus_options(spec: EvalSpec, profile: dict[str, Any]) -> list[dict[str, str]]:
+    labels = {
+        "task_completion": "任务完成",
+        "tool_correctness": "工具调用正确性",
+        "groundedness": "事实依据与证据",
+        "format_compliance": "输出格式",
+        "business_quality": "业务质量",
+        "ambiguous": "模糊需求处理",
+        "tool_failure": "工具异常处理",
+        "missing_information": "信息不足处理",
+    }
+    options: list[dict[str, str]] = []
+    for metric in spec.metrics:
+        options.append(
+            {
+                "id": metric.name,
+                "label": labels.get(metric.name, metric.name.replace("_", " ")),
+                "description": metric.criteria,
+            }
+        )
+    capabilities = set(profile.get("capabilities", [])) if isinstance(profile, dict) else set()
+    scenario_ids = ["ambiguous", "missing_information", "tool_failure"]
+    if "tool_calling" in capabilities:
+        scenario_ids.insert(0, "tool_correctness")
+    for scenario in scenario_ids:
+        if any(item["id"] == scenario for item in options):
+            continue
+        options.append(
+            {
+                "id": scenario,
+                "label": labels.get(scenario, scenario.replace("_", " ")),
+                "description": f"覆盖 {scenario} 类场景的失败风险。",
+            }
+        )
+    return options[:8]
 
 
 async def generate(
@@ -42,6 +131,9 @@ async def generate(
     version_id: uuid.UUID,
     *,
     cases: bool = False,
+    dataset_id: uuid.UUID | None = None,
+    evaluation_focus: list[str] | None = None,
+    evaluation_focus_reason: str | None = None,
 ) -> Any:
     project = await projects.require_project(db, agent_id, user_id)
     version = await projects.get_version(db, agent_id, user_id, version_id)
@@ -69,12 +161,15 @@ async def generate(
                 },
             )
             spec = EvalSpec.model_validate(raw)
+            profile = capability_profile(snapshot)
             value = {
                 **spec.model_dump(mode="json"),
                 "version_id": str(version_id),
                 "config_hash": version.config_hash,
                 "categories": list(SCENARIOS),
                 "case_count": 20,
+                "capability_profile": profile,
+                "focus_options": focus_options(spec, profile),
                 "roles": model_roles(snapshot),
             }
             await projects.lock_project(db, project)
@@ -83,17 +178,43 @@ async def generate(
             return project.eval_spec_json
         if not saved_spec or saved_spec.get("version_id") != str(version_id):
             raise SnapshotExecutionUnavailable("evaluation_plan_required")
-        spec_value(saved_spec)
+        stored_spec = spec_value(saved_spec)
+        if not saved_spec.get("focus_options"):
+            saved_spec = {
+                **saved_spec,
+                "focus_options": focus_options(
+                    stored_spec,
+                    saved_spec.get("capability_profile") or capability_profile(snapshot),
+                ),
+            }
+        available_focus = {
+            str(item.get("id")): item
+            for item in saved_spec.get("focus_options", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        selected_focus_ids = [str(item) for item in (evaluation_focus or [])]
+        if (
+            len(selected_focus_ids) < 2
+            or len(set(selected_focus_ids)) != len(selected_focus_ids)
+            or any(item not in available_focus for item in selected_focus_ids)
+        ):
+            raise SnapshotExecutionUnavailable("evaluation_focus_required")
+        selected_focus = [deepcopy(available_focus[item]) for item in selected_focus_ids]
         raw = await json_call(
             db,
             snapshot,
             user_id,
             "case_generator",
-            "Generate exactly 20 diverse evaluation cases covering ALL six scenario categories. "
+            "Generate exactly 20 diverse evaluation cases informed by the capability profile. "
+            "First honor the human-selected evaluation_focus by increasing coverage of those "
+            "risks; keep the total exactly 20 and do not overfit to the reason text. "
+            "Include normal, edge, and failure cases and cover relevant scenario categories. "
             "Use only synthetic invented source data, never request external integration data. "
             "Return name and cases matching the supplied schema. Each case must have an id UUID, "
             "name,input,context,expected.answer describing expected behavior, required_tools, "
             "forbidden_tools,tags,enabled=true. Include exactly one scenario category in tags. "
+            "Also tag each case with the capability names it actually tests, taken from "
+            "capability_profile.capabilities. Cover every listed capability across the set. "
             "mock_tool_data for each required tool: {tool_name:{description,result,error}}. "
             "Tool failures are simulated with error text. Use only useful tool names from snapshot "
             "or explicitly case-defined synthetic tools. No production tool execution. "
@@ -103,7 +224,10 @@ async def generate(
             {
                 "snapshot": snapshot,
                 "eval_spec": saved_spec,
+                "evaluation_focus": selected_focus,
+                "evaluation_focus_reason": evaluation_focus_reason,
                 "categories": list(SCENARIOS),
+                "capability_profile": saved_spec.get("capability_profile", {}),
                 "schema": EvalSetWrite.model_json_schema(),
             },
         )
@@ -114,6 +238,8 @@ async def generate(
         if len({case.id for case in body.cases}) != 20:
             raise ValueError("Duplicate case IDs")
         for case in body.cases:
+            if case.expected_behavior is None:
+                case.expected_behavior = case.expected.model_dump(mode="json")
             if not case.enabled or not case.expected.answer:
                 raise ValueError("Missing expected behavior")
             if len(set(case.tags) & set(SCENARIOS)) != 1:
@@ -123,7 +249,24 @@ async def generate(
         # One transaction for dataset and pinned rubric, using the existing writer.
         from app.services.agent_project_evaluation import write_set
 
-        return await write_set(db, agent_id, user_id, body, rubric=saved_spec)
+        # Backfill focus options for projects created before the human checkpoint
+        # was introduced. The generated set and updated plan commit together.
+        project.eval_spec_json = projects.snapshot_value(saved_spec)
+        return await write_set(
+            db,
+            agent_id,
+            user_id,
+            body,
+            rubric={
+                **saved_spec,
+                "formal_benchmark": True,
+                "evaluation_focus": selected_focus,
+                "evaluation_focus_reason": evaluation_focus_reason,
+            },
+            evaluation_focus=selected_focus,
+            evaluation_focus_reason=evaluation_focus_reason,
+            new_id=dataset_id,
+        )
     except (SnapshotExecutionUnavailable, ValueError) as exc:
         code = (
             str(exc)
@@ -144,6 +287,7 @@ def frozen_plan(
     return {
         "eval_spec": value,
         "spec_hash": canonical_json_hash(value),
+        "rubric_hash": canonical_json_hash(stored),
         "roles": model_roles(snapshot),
         "execution_mode": "mock_sandbox",
     }
@@ -186,7 +330,7 @@ async def grade_case(
         elif metric.name == "format_compliance":
             deterministic = format_check(case, evidence.get("output", ""))
             if deterministic is None and metric.type == "deterministic":
-                raise SnapshotExecutionUnavailable("evaluation_format_rule_missing")
+                continue
         if deterministic is not None:
             scores[metric.name] = {
                 "score": float(deterministic),

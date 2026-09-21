@@ -1,5 +1,8 @@
 """Builder locale contracts: payloads, LLM inputs and checkpoint resumes."""
 
+# pyright: reportArgumentType=false
+
+
 from __future__ import annotations
 
 import asyncio
@@ -35,7 +38,6 @@ HANGUL = re.compile(r"[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]")
     [
         ("zh-CN", "智能体设置确认", "搜索智能体"),
         ("en", "Confirm Agent settings", "Search Agent"),
-        ("ko", "에이전트 설정 확인", "검색 에이전트"),
     ],
 )
 def test_phase2_question_flow_locale(locale, title, first):
@@ -51,8 +53,7 @@ def test_phase2_question_flow_locale(locale, title, first):
             "output_style",
         ]
         assert payload["questions"][1]["options"][0]["id"] == "friendly"
-        if locale != "ko":
-            assert not HANGUL.search(json.dumps(payload, ensure_ascii=False))
+        assert not HANGUL.search(json.dumps(payload, ensure_ascii=False))
         if locale == "zh-CN":
             assert payload["questions"][0]["label"] == "智能体名称"
             assert payload["questions"][0]["question"] == "你想给这个智能体取什么名字？"
@@ -60,7 +61,7 @@ def test_phase2_question_flow_locale(locale, title, first):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("locale", "language"), [("zh-CN", "Simplified Chinese"), ("en", "English"), ("ko", "Korean")]
+    ("locale", "language"), [("zh-CN", "Simplified Chinese"), ("en", "English")]
 )
 async def test_naming_prompt_and_failure_fallback(monkeypatch, locale, language):
     invoke = AsyncMock(side_effect=ValueError("unavailable"))
@@ -70,28 +71,23 @@ async def test_naming_prompt_and_failure_fallback(monkeypatch, locale, language)
         prompt, task = invoke.call_args.args
         assert language in prompt
         assert "JSON" in prompt
-        if locale != "ko":
-            assert "Korean" not in prompt + task
-            assert not HANGUL.search(prompt + task + json.dumps(names, ensure_ascii=False))
+        assert "Korean" not in prompt + task
+        assert not HANGUL.search(prompt + task + json.dumps(names, ensure_ascii=False))
         assert len(names) == 3
 
 
 @pytest.mark.asyncio
-async def test_unrequested_korean_model_names_fall_back(monkeypatch):
+async def test_explicit_model_names_are_preserved(monkeypatch):
     monkeypatch.setattr(
-        phase2_intent, "invoke_with_json_retry", AsyncMock(return_value=["검색봇", "도우미"])
+        phase2_intent, "invoke_with_json_retry", AsyncMock(return_value=["搜索助手", "智能助手"])
     )
     with locale_scope("zh-CN"):
-        assert await phase2_intent._suggest_name_options("Search web pages") == [
-            "搜索智能体",
-            "助手机器人",
-            "智能助手",
-        ]
-        assert phase2_intent._name_matches_locale("검색봇", "Please name it 검색봇")
+        assert await phase2_intent._suggest_name_options("搜索网页") == ["搜索助手", "智能助手"]
+        assert phase2_intent._name_matches_locale("SearchBot", "请取名为 SearchBot")
 
 
 def test_catalog_coverage_slots_and_prompt_language():
-    original = catalog("ko")
+    original = catalog("zh-CN")
     for locale in ("zh-CN", "en"):
         translated = catalog(locale)
         assert translated.keys() == original.keys()
@@ -110,7 +106,7 @@ def test_catalog_coverage_slots_and_prompt_language():
 
 @pytest.mark.asyncio
 async def test_new_timeline_localizes_without_changing_old_state():
-    with locale_scope("ko"):
+    with locale_scope("zh-CN"):
         old_todos = initial_todos()
     before = json.dumps(old_todos, ensure_ascii=False)
     with locale_scope("zh-CN"):
@@ -126,15 +122,15 @@ async def test_new_timeline_localizes_without_changing_old_state():
 async def test_request_scopes_do_not_leak_across_streams():
     @localized_stream
     async def stream(*, locale):
-        yield localize("검색 에이전트")
+        yield localize("搜索智能体")
         await asyncio.sleep(0)
-        yield localize("검색 에이전트")
+        yield localize("搜索智能体")
 
     async def consume(locale):
         return [value async for value in stream(locale=locale)]
 
-    results = await asyncio.gather(consume("en"), consume("ko"), consume("zh-CN"))
-    assert results == [["Search Agent"] * 2, ["검색 에이전트"] * 2, ["搜索智能体"] * 2]
+    results = await asyncio.gather(consume("en"), consume("zh-CN"), consume("en"))
+    assert results == [["Search Agent"] * 2, ["搜索智能体"] * 2, ["Search Agent"] * 2]
     assert get_locale() == "zh-CN"
 
 
@@ -162,8 +158,7 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
     from app.agent_runtime.builder_v3.nodes import phase3_tools
 
     intent = AgentCreationIntent(
-        agent_name="Search",
-        agent_name_ko="搜索智能体",
+        agent_name="搜索智能体",
         agent_description="Search pages",
         primary_task_type="search",
         use_cases=["Search pages"],
@@ -201,7 +196,7 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
 def test_explicit_prompt_locale_does_not_translate_identifiers():
     with locale_scope("zh-CN"):
         rule = language_instruction()
-        assert "agent_name_ko/name_ko" in rule
+        assert "agent_name/name" in rule
         assert "Simplified Chinese" in rule
 
 
@@ -224,7 +219,7 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
 
     async def capture(graph, graph_input, config):
         calls.append((graph_input, config))
-        yield localize("검색 에이전트")
+        yield localize("搜索智能体")
 
     monkeypatch.setattr(streaming, "stream_agent_response", capture)
     session, user = uuid4(), uuid4()
@@ -236,10 +231,13 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
     assert config["configurable"] == {"thread_id": str(session), "ui_locale": "en"}
     assert graph_input["todos"][0]["name"] == "Project initialization"
     result = [
-        c async for c in builder_service.run_v3_resume_stream(session, user, "answer", locale="ko")
+        c
+        async for c in builder_service.run_v3_resume_stream(
+            session, user, "answer", locale="zh-CN"
+        )
     ]
-    assert result == ["검색 에이전트"]
-    assert calls[-1][1]["configurable"]["ui_locale"] == "ko"
+    assert result == ["搜索智能体"]
+    assert calls[-1][1]["configurable"]["ui_locale"] == "zh-CN"
     assert isinstance(calls[-1][0], Command)
     assert calls[-1][0].resume == "answer"
 
@@ -247,7 +245,7 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("locale", "other"),
-    [("zh-CN", "自行输入"), ("en", "Enter your own answer"), ("ko", "직접 입력")],
+    [("zh-CN", "自行输入"), ("en", "Enter your own answer")],
 )
 async def test_assistant_clarifying_fallback_is_localized(locale, other):
     from app.agent_runtime.assistant.tools.clarify_tools import build_clarify_tools
@@ -260,8 +258,7 @@ async def test_assistant_clarifying_fallback_is_localized(locale, other):
             )
         )
         assert result["options"][-1] == other
-        if locale != "ko":
-            assert not HANGUL.search(json.dumps(result, ensure_ascii=False))
+        assert not HANGUL.search(json.dumps(result, ensure_ascii=False))
 
 
 @pytest.mark.asyncio
@@ -293,7 +290,6 @@ async def test_text_retry_uses_locale_and_preserves_character_count(monkeypatch)
     [
         ("zh-CN", "默认使用简体中文"),
         ("en", "Respond in English"),
-        ("ko", "한국어로 응답"),
     ],
 )
 async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
@@ -303,7 +299,6 @@ async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
     with locale_scope(locale):
         intent = AgentCreationIntent(
             agent_name="Search",
-            agent_name_ko="Search",
             agent_description="Search pages",
             primary_task_type="search",
             use_cases=["Search pages"],
@@ -312,8 +307,7 @@ async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
         result = await prompt_generator.generate_system_prompt(intent, [], [])
     assert rule in result
     assert prompt_generator._has_required_sections(result)
-    if locale != "ko":
-        assert not HANGUL.search(result)
+    assert not HANGUL.search(result)
 
 
 @pytest.mark.parametrize(
@@ -321,7 +315,6 @@ async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
     [
         ("zh-CN", "模型服务请求失败"),
         ("en", "The model provider request failed"),
-        ("ko", "모델 제공자 요청이 실패"),
     ],
 )
 def test_builder_stream_errors_are_localized_without_provider_details(locale, expected):
@@ -332,7 +325,7 @@ def test_builder_stream_errors_are_localized_without_provider_details(locale, ex
     )
     assert expected in message
     assert "secret" not in message
-    if locale != "ko":
-        assert not HANGUL.search(message)
-        assert not HANGUL.search(public_stream_error_message(RuntimeError("오류"), locale=locale))
+    assert not HANGUL.search(message)
+    assert not HANGUL.search(public_stream_error_message(RuntimeError("错误"), locale=locale))
     assert public_stream_error_message(RuntimeError("plain error")) == "plain error"
+

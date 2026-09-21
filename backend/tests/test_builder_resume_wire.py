@@ -279,7 +279,7 @@ class TestPhase6JsonStringFallback:
             "messages": [],
             "session_id": "s1",
             "intent": {
-                "agent_name_ko": "테스트",
+                "agent_name": "测试",
                 "agent_description": "d",
                 "primary_task_type": "x",
             },
@@ -291,3 +291,4 @@ class TestPhase6JsonStringFallback:
         assert result["current_phase"] == 7
         assert result["image_skipped"] is True
         assert result["pending_tool_call_id"] is None
+

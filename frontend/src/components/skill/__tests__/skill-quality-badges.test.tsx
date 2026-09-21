@@ -10,14 +10,14 @@ describe('skill quality badges', () => {
       <SkillHealthBadge
         health={{
           state: 'needs_credentials',
-          label: '자격증명 필요',
+          label: '所需凭据',
           reason: 'Missing required credential bindings.',
           severity: 'warning',
         }}
       />,
     )
 
-    expect(screen.getByText('자격증명 필요')).toBeInTheDocument()
+    expect(screen.getByText('所需凭据')).toBeInTheDocument()
   })
 
   it('renders pass rates as compact evaluation summaries', () => {
@@ -53,7 +53,7 @@ describe('skill quality badges', () => {
       />,
     )
 
-    expect(screen.getByText('평가 없음')).toBeInTheDocument()
+    expect(screen.getByText('未评价')).toBeInTheDocument()
   })
 
   it('prioritizes cancelled state over stale pass-rate data', () => {
@@ -71,7 +71,7 @@ describe('skill quality badges', () => {
       />,
     )
 
-    expect(screen.getByText('평가 취소')).toBeInTheDocument()
+    expect(screen.getByText('评估取消')).toBeInTheDocument()
     expect(screen.queryByText('평가 100%')).not.toBeInTheDocument()
   })
 })

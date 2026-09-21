@@ -11,8 +11,8 @@ describe('StatusChip', () => {
       </>,
     )
 
-    expect(screen.getByText('활성')).toBeInTheDocument()
-    expect(screen.getByText('인증 필요')).toBeInTheDocument()
-    expect(screen.getByText('연결 불가')).toBeInTheDocument()
+    expect(screen.getByText('启用')).toBeInTheDocument()
+    expect(screen.getByText('需要身份验证')).toBeInTheDocument()
+    expect(screen.getByText('无法到达')).toBeInTheDocument()
   })
 })

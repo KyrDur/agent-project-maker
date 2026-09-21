@@ -28,3 +28,11 @@ class SystemLlmSettingUpdate(BaseModel):
 
     credential_id: uuid.UUID | None = None
     model_name: str | None = None
+
+
+class SystemLlmTestRequest(BaseModel):
+    """POST body for testing one selected platform AI provider/credential/model."""
+
+    provider: str
+    credential_id: uuid.UUID
+    model_name: str

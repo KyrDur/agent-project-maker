@@ -36,12 +36,12 @@ test.describe('Skills page', () => {
       .first()
       .click()
 
-    await page.getByRole('tab', { name: '텍스트' }).click()
+    await page.getByRole('tab', { name: '文字' }).click()
     await page.getByLabel(/이름/).fill('Greeting snippet')
     await page.getByLabel(/내용 \(마크다운\)/).fill('# Hello\nThis is a snippet.')
 
-    await page.getByRole('button', { name: '저장' }).click()
-    await expect(page.getByText('스킬이 생성되었습니다')).toBeVisible()
+    await page.getByRole('button', { name: '保存' }).click()
+    await expect(page.getByText('已创建')).toBeVisible()
     await expect(page.getByText('Greeting snippet')).toBeVisible()
   })
 
@@ -93,18 +93,18 @@ test.describe('Skills page', () => {
       await page
         .getByRole('row')
         .filter({ hasText: name })
-        .getByRole('checkbox', { name: '행 선택' })
+        .getByRole('checkbox', { name: '选择行' })
         .check()
     }
     await expect(page).toHaveURL(/\/skills$/)
     await expect(page.getByTestId('skill-bulk-bar')).toContainText('2개 선택됨')
-    await page.getByTestId('skill-bulk-bar').getByRole('button', { name: '삭제' }).click()
+    await page.getByTestId('skill-bulk-bar').getByRole('button', { name: '删除' }).click()
 
     const dialog = page.getByRole('alertdialog')
     await expect(dialog).toContainText('스킬 2개 삭제')
     await expect(dialog).toContainText('Bulk Target A')
     await expect(dialog).toContainText('연결된 에이전트 1개')
-    await dialog.getByRole('button', { name: '삭제' }).click()
+    await dialog.getByRole('button', { name: '删除' }).click()
 
     await expect.poll(() => deleted.length, { timeout: 15_000 }).toBe(2)
     await expect(page.getByText('스킬 2개를 삭제했습니다')).toBeVisible()

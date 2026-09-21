@@ -36,6 +36,8 @@ def test_resolve_empty_raises(monkeypatch, tmp_path):
 
 def test_ensure_relative_accepts_relative():
     assert ensure_relative("skills/abc") == "skills/abc"
+    assert ensure_relative("marketplace/system-skills/abc") == "marketplace/system-skills/abc"
+    assert ensure_relative("skills/../skills/abc") == "skills/../skills/abc"
 
 
 def test_ensure_relative_rejects_absolute():

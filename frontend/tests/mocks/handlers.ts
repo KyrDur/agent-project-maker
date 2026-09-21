@@ -28,6 +28,9 @@ import {
 const API_BASE = 'http://localhost:8001'
 
 export const handlers = [
+  http.get(`${API_BASE}/api/agents/:agentId/project/evaluation-reports`, () =>
+    HttpResponse.json({ reports: [], best_run_ids: {}, active: false }),
+  ),
   // ── Agents ─────────────────────────────────────────────────────
   http.get(`${API_BASE}/api/agents`, () => {
     return HttpResponse.json(mockAgentList)

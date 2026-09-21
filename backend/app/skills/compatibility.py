@@ -24,7 +24,7 @@ MOLDY_ONLY_FRONTMATTER = frozenset(
 LOCAL_REFERENCE_RE = re.compile(
     r"(?i)(/Users/|/home/|/var/|[A-Z]:\\|localhost|127\.0\.0\.1|data/skills/|backend/|\\.env|/api/)"
 )
-CHANGELOG_RE = re.compile(r"(?i)(^|\n)#{1,3}\s*(change\s*log|changelog|변경\s*이력|eval results?)")
+CHANGELOG_RE = re.compile(r"(?i)(^|\n)#{1,3}\s*(change\s*log|changelog|变更\s*记录|eval results?)")
 
 
 def check_portable_compatibility(files: Sequence[SkillDraftFile]) -> dict[str, Any]:

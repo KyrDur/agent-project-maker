@@ -19,7 +19,7 @@ function selectedText() {
   text.dataset.chatQuoteText = ''
   text.textContent = '선택한 문장'
   const tool = document.createElement('button')
-  tool.textContent = '도구'
+  tool.textContent = '工具'
   message.append(text, tool)
   thread.append(message)
   root.append(thread)

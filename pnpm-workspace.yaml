@@ -1,6 +1,9 @@
 packages:
   - 'frontend'
   - 'backend/skill-node'
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  msw: true
+  sharp: true
+  unrs-resolver: true

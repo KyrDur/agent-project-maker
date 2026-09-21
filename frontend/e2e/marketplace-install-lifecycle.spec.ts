@@ -56,7 +56,7 @@ function skillDraft(name: string, slug: string) {
         key: 'srt_login',
         definition_key: 'srt_account',
         required: true,
-        label: 'SRT 계정',
+        label: 'SRT账户',
         description: '설치 후 실행에 사용할 테스트 계정입니다.',
         fields: ['username', 'password'],
         injection: 'env',
@@ -138,51 +138,51 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
 
     await page.goto(`/marketplace/${itemId}`)
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
-    await page.getByRole('button', { name: '설치', exact: true }).click()
+    await page.getByRole('button', { name: '安装', exact: true }).click()
     let dialog = page.getByRole('dialog', { name: `${name} 설치` })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: '다음', exact: true }).click()
-    await expect(dialog.getByRole('listitem').filter({ hasText: 'SRT 계정' })).toBeVisible()
+    await dialog.getByRole('button', { name: '下一步', exact: true }).click()
+    await expect(dialog.getByRole('listitem').filter({ hasText: 'SRT账户' })).toBeVisible()
     await expect(dialog.getByText(/연결하지 않으면 설치 후/)).toBeVisible()
-    await dialog.getByRole('button', { name: '다음', exact: true }).click()
+    await dialog.getByRole('button', { name: '下一步', exact: true }).click()
     const needsSetupResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/marketplace/items/${itemId}/install`) &&
         response.request().method() === 'POST',
     )
-    await dialog.getByRole('button', { name: '설치', exact: true }).click()
+    await dialog.getByRole('button', { name: '安装', exact: true }).click()
     const needsSetup = installationSchema.parse(
       await apiJson(await needsSetupResponse, 'Install marketplace item without credential'),
     )
     expect(needsSetup.install_status).toBe('needs_setup')
     installationId = needsSetup.id
     installedSkillId = needsSetup.installed_skill_id
-    await dialog.getByRole('button', { name: '닫기', exact: true }).last().click()
+    await dialog.getByRole('button', { name: '关闭', exact: true }).last().click()
 
     await page.reload()
-    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('button', { name: '设置', exact: true }).click()
     dialog = page.getByRole('dialog', { name: `${name} 설치` })
-    const requirement = dialog.getByRole('listitem').filter({ hasText: 'SRT 계정' })
+    const requirement = dialog.getByRole('listitem').filter({ hasText: 'SRT账户' })
     await expect(requirement).toBeVisible()
     await requirement.getByRole('combobox').click()
     await page.getByRole('option', { name: credentialName, exact: true }).click()
-    await dialog.getByRole('button', { name: '다음', exact: true }).click()
+    await dialog.getByRole('button', { name: '下一步', exact: true }).click()
     const configuredResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/marketplace/items/${itemId}/install`) &&
         response.request().method() === 'POST',
     )
-    await dialog.getByRole('button', { name: '설치', exact: true }).click()
+    await dialog.getByRole('button', { name: '安装', exact: true }).click()
     const configured = installationSchema.parse(
       await apiJson(await configuredResponse, 'Configure marketplace installation'),
     )
     expect(configured.id).toBe(installationId)
     expect(configured.installed_skill_id).toBe(installedSkillId)
     expect(configured.install_status).toBe('active')
-    await dialog.getByRole('button', { name: '닫기', exact: true }).last().click()
+    await dialog.getByRole('button', { name: '关闭', exact: true }).last().click()
 
     await page.reload()
-    await expect(page.getByRole('button', { name: '열기', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '打开', exact: true })).toBeVisible()
 
     await apiJson(
       await page.request.put(`${API_BASE}/api/skills/${installedSkillId}/files/SKILL.md`, {
@@ -225,8 +225,8 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     expect(updatedItem.latest_version.version_label).toBe('2.0.0')
 
     await page.reload()
-    await expect(page.getByRole('button', { name: '업데이트 검토', exact: true })).toBeVisible()
-    await page.getByRole('button', { name: '업데이트 검토', exact: true }).click()
+    await expect(page.getByRole('button', { name: '查看更新', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '查看更新', exact: true }).click()
     const updateDialog = page.getByRole('dialog', { name: `${name} 업데이트` })
     const safeDefault = updateDialog.getByRole('radio', { name: /Install as a new copy/ })
     await expect(safeDefault).toBeChecked()
@@ -236,7 +236,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
         response.url().endsWith(`/api/marketplace/installations/${installationId}/update`) &&
         response.request().method() === 'POST',
     )
-    await updateDialog.getByRole('button', { name: '확인', exact: true }).click()
+    await updateDialog.getByRole('button', { name: '确认', exact: true }).click()
     const overwritten = installationSchema.parse(
       await apiJson(await updateResponse, 'Overwrite dirty marketplace installation'),
     )
@@ -245,7 +245,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     expect(overwritten.is_dirty).toBe(false)
 
     await page.reload()
-    await expect(page.getByRole('button', { name: '열기', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: '打开', exact: true })).toBeVisible()
     const finalItem = marketplaceItemSchema.parse(
       await apiGetJson(page.request, `${API_BASE}/api/marketplace/items/${itemId}`),
     )

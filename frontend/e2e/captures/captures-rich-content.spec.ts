@@ -162,13 +162,13 @@ test.describe('Wave 7 — rich content captures', () => {
       try {
         // Gate on composer hydration BEFORE touching it — the dedicated spec's key
         // step; this also absorbs the chat route's one-time cold compile.
-        const composer = page.getByPlaceholder('메시지 입력...')
+        const composer = page.getByPlaceholder('占位符')
         await composer.waitFor({ state: 'visible', timeout: 90_000 })
 
         // Attach an image in the composer → capture the staged chip.
         const [chooser] = await Promise.all([
           page.waitForEvent('filechooser'),
-          page.getByRole('button', { name: '파일 첨부' }).click(),
+          page.getByRole('button', { name: '附加' }).click(),
         ])
         await chooser.setFiles({
           name: 'membership-card.png',
@@ -243,7 +243,7 @@ test.describe('Wave 7 — rich content captures', () => {
     try {
       const cid = await createConversation(request, csrf, agent.id, '트레이스 대화')
       await page.goto(`/agents/${agent.id}/conversations/${cid}`, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
-      await page.getByPlaceholder('메시지 입력...').waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
+      await page.getByPlaceholder('占位符').waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
       await sendMessage(page, 'E2E_TOOL_GROUP')
       const traceRunId = await waitForActiveRun(request, cid).catch(() => '')
       await settleStream(page)
@@ -277,7 +277,7 @@ test.describe('Wave 7 — rich content captures', () => {
       // Capture the trace page as loaded first (proves it rendered).
       await capture(page, WAVE, '18-trace.png')
       // Span selection MUST be scoped to the trace grid — an unscoped getByText
-      // matched the sidebar's "새 에이전트" and navigated to the creation hub.
+      // matched the sidebar's "新建智能体" and navigated to the creation hub.
       const grid = page.locator('.moldy-trace-grid')
       const selectSpan = async (pattern: RegExp): Promise<boolean> => {
         const node = grid.getByText(pattern).first()

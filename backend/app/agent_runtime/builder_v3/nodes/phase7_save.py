@@ -37,12 +37,15 @@ def _build_draft(state: BuilderState) -> DraftAgentConfig:
     intent = AgentCreationIntent(**intent_dict)
     tools = [ToolRecommendation(**t) for t in state.get("tools") or []]
     mws = [MiddlewareRecommendation(**m) for m in state.get("middlewares") or []]
+    planned_tools = [
+        item.model_dump(mode="json") for item in tools if item.kind == "planned"
+    ]
     return DraftAgentConfig(
         name=intent.agent_name,
-        name_ko=intent.agent_name_ko,
         description=intent.agent_description,
         system_prompt=state.get("system_prompt") or "",
-        tools=[t.tool_name for t in tools],
+        tools=[t.tool_name for t in tools if t.kind != "planned"],
+        planned_tools=planned_tools,
         middlewares=[m.middleware_name for m in mws],
         model_name=state.get("default_model_name", ""),
         primary_task_type=intent.primary_task_type,
@@ -126,3 +129,4 @@ async def phase7_save(state: BuilderState) -> dict:
         "draft_config": draft_dict,
         "current_phase": 8,
     }
+

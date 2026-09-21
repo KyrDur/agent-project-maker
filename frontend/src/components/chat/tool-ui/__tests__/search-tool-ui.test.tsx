@@ -16,7 +16,7 @@ describe('SearchRender', () => {
         args={{ query: 'agentic os' }}
         result={{
           answer: '에이전틱 OS는 이런 것이다.',
-          results: [{ title: '문서', url: 'https://docs.example' }],
+          results: [{ title: '文件', url: 'https://docs.example' }],
         }}
         status={DONE}
       />,
@@ -24,7 +24,7 @@ describe('SearchRender', () => {
     const box = document.querySelector('[data-moldy-search-answer]')
     expect(box).not.toBeNull()
     expect(screen.getByText('에이전틱 OS는 이런 것이다.')).toBeInTheDocument()
-    expect(screen.getByText('문서')).toBeInTheDocument()
+    expect(screen.getByText('文件')).toBeInTheDocument()
   })
 
   it('Naver items shape를 카드로 렌더한다 (description → 스니펫)', () => {

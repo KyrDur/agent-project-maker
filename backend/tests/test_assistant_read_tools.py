@@ -462,7 +462,7 @@ async def test_list_cron_schedules_with_trigger(db: AsyncSession, patch_read_ses
     assert len(data) == 1
     assert data[0]["type"] == "cron"
     assert data[0]["message"] == "테스트 메시지"
-    assert data[0]["name"] == "스케줄"
+    assert data[0]["name"] == "定时任务"
     assert data[0]["timezone"] == "Asia/Seoul"
     assert data[0]["conversation_policy"] == "schedule_thread"
     assert data[0]["max_runs"] is None

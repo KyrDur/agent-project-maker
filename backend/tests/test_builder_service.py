@@ -122,11 +122,11 @@ async def test_get_session(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    created = await create_session(db, TEST_USER_ID, "검색 에이전트")
+    created = await create_session(db, TEST_USER_ID, "搜索智能体")
     found = await get_session(db, created.id, TEST_USER_ID)
     assert found is not None
     assert found.id == created.id
-    assert found.user_request == "검색 에이전트"
+    assert found.user_request == "搜索智能体"
 
 
 @pytest.mark.asyncio
@@ -146,7 +146,7 @@ async def test_claim_for_confirming(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     # Manually set status to PREVIEW
     session.status = BuilderStatus.PREVIEW
     await db.commit()
@@ -175,8 +175,7 @@ async def test_confirm_build_success(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "날씨 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Weather Bot",
-        "name_ko": "날씨 봇",
+        "name": "날씨 봇",
         "description": "날씨를 알려주는 봇",
         "system_prompt": "You are a weather bot.",
         "tools": ["Web Search"],
@@ -208,8 +207,7 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "스케줄 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Scheduler",
-        "name_ko": "스케줄 봇",
+        "name": "스케줄 봇",
         "description": "정해진 시간에 실행되는 봇",
         "system_prompt": "Run on schedule.",
         "tools": [],
@@ -243,8 +241,7 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "조직도 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "OrgChart",
-        "name_ko": "조직도 봇",
+        "name": "조직도 봇",
         "description": "조직도 QA",
         "system_prompt": "you are an org chart assistant",
         "tools": ["list_departments", "search_employees"],
@@ -274,8 +271,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Mixed",
-        "name_ko": "혼합",
+        "name": "혼합",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments"],
@@ -308,8 +304,7 @@ async def test_confirm_build_links_skills(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "위치 안내 봇")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Locate",
-        "name_ko": "위치 봇",
+        "name": "위치 봇",
         "description": "직원 좌석 안내",
         "system_prompt": "p",
         "tools": ["seat_layout_guide", "evac_procedure"],
@@ -338,8 +333,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "혼합")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "All",
-        "name_ko": "전체",
+        "name": "所有时间",
         "description": "d",
         "system_prompt": "p",
         "tools": ["Web Search", "list_departments", "seat_layout_guide"],
@@ -377,11 +371,10 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     )
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_skill"],
@@ -419,11 +412,10 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     db.add(McpTool(server_id=other_server.id, name="cross_user_tool"))
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "차단")
+    session = await create_session(db, TEST_USER_ID, "被拒绝")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "X",
-        "name_ko": "X",
         "description": "d",
         "system_prompt": "p",
         "tools": ["cross_user_tool"],
@@ -445,11 +437,10 @@ async def test_confirm_build_no_model(db: AsyncSession):
     model = await _seed_model(db, is_default=True)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Test Agent",
-        "name_ko": "테스트 에이전트",
+        "name": "테스트 에이전트",
         "description": "desc",
         "system_prompt": "prompt",
         "tools": [],
@@ -472,11 +463,10 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     await db.commit()
 
     # Create session and confirm
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -605,7 +595,7 @@ async def test_confirm_build_no_draft_config(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = None
     await db.commit()
@@ -625,11 +615,10 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "테스트")
+    session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "Bot",
-        "name_ko": "봇",
+        "name": "봇",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -682,3 +671,4 @@ async def test_get_agent_by_id_not_found(db: AsyncSession):
 
     found = await get_agent_by_id(db, _uuid.uuid4())
     assert found is None
+

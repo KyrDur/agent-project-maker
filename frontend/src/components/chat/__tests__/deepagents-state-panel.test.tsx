@@ -16,12 +16,12 @@ describe('DeepAgentsStatePanel', () => {
   it('characterizes grouped task state and collapsed file count rendering', () => {
     render(<DeepAgentsStatePanel state={state} />)
 
-    expect(screen.getByText('작업 계획')).toBeInTheDocument()
+    expect(screen.getByText('任务计划')).toBeInTheDocument()
     expect(screen.getByText('1/3 완료')).toBeInTheDocument()
     expect(screen.getByText('Plan work')).toBeInTheDocument()
     expect(screen.getByText('Write draft')).toBeInTheDocument()
     expect(screen.getByText('Review result')).toBeInTheDocument()
-    expect(screen.getByText('파일')).toBeInTheDocument()
+    expect(screen.getByText('文件')).toBeInTheDocument()
     expect(screen.getByText('1개')).toBeInTheDocument()
     expect(screen.queryByText('brief.md')).not.toBeInTheDocument()
   })
@@ -73,9 +73,9 @@ describe('DeepAgentsStatePanel', () => {
     )
 
     await screen.findByText('최종 보고서')
-    expect(screen.getByText('마크다운')).toBeInTheDocument()
-    expect(screen.getByText('코드')).toBeInTheDocument()
-    expect(screen.getByText('텍스트')).toBeInTheDocument()
+    expect(screen.getByText('降价')).toBeInTheDocument()
+    expect(screen.getByText('代码')).toBeInTheDocument()
+    expect(screen.getByText('文字')).toBeInTheDocument()
     const previewButton = screen.getByRole('button', { name: '최종 보고서 미리보기 열기' })
     const copyButton = screen.getByRole('button', { name: '최종 보고서 복사' })
     const downloadLink = screen.getByRole('link', { name: '최종 보고서 다운로드' })
@@ -110,7 +110,7 @@ describe('DeepAgentsStatePanel', () => {
     )
 
     expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
-    expect(screen.getByText('파일')).toBeInTheDocument()
+    expect(screen.getByText('文件')).toBeInTheDocument()
   })
 
   it('hides the todos section but keeps files when showTodos is false', () => {
@@ -120,7 +120,7 @@ describe('DeepAgentsStatePanel', () => {
     expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
     expect(screen.queryByText('Plan work')).not.toBeInTheDocument()
     // Files stay live-only and remain visible.
-    expect(screen.getByText('파일')).toBeInTheDocument()
+    expect(screen.getByText('文件')).toBeInTheDocument()
   })
 
   it('renders nothing when showTodos is false and there are only todos', () => {
@@ -157,6 +157,6 @@ describe('DeepAgentsStatePanel', () => {
     await screen.findByText('최종 보고서')
     expect(screen.getByRole('button', { name: '최종 보고서 편집' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '최종 보고서 저장' })).toBeDisabled()
-    expect(screen.getByText('실행 중에는 편집할 수 없습니다')).toBeInTheDocument()
+    expect(screen.getByText('运行期间无法编辑文件')).toBeInTheDocument()
   })
 })

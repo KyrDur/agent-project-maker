@@ -84,7 +84,7 @@ test.describe('Durable chat run summary', () => {
       ).toHaveCount(1)
       await expect(summary).toContainText('도구 총 0')
       await expect(summary).toContainText('서브 에이전트 총 0')
-      await summary.getByRole('button', { name: '활동 보기' }).click()
+      await summary.getByRole('button', { name: '显示活动' }).click()
       await expect(summary.getByRole('listitem').first()).toBeVisible()
       await page.screenshot({
         path: testInfo.outputPath('expanded-completed-timeline.png'),
@@ -126,7 +126,7 @@ test.describe('Durable chat run summary', () => {
       ).toBeVisible({ timeout: 20_000 })
       const restored = page.locator(`[data-testid="run-summary"][data-run-id="${completedRunId}"]`)
       await expect(restored).toBeVisible({ timeout: 15_000 })
-      await restored.getByRole('button', { name: '활동 보기' }).click()
+      await restored.getByRole('button', { name: '显示活动' }).click()
       await expect(restored.getByRole('listitem').first()).toBeVisible()
       await expect(
         page.locator(`[data-testid="run-summary"][data-run-id="${canceledRunId}"]`),

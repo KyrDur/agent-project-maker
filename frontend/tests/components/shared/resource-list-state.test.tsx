@@ -8,7 +8,7 @@ describe('ResourceListState', () => {
         loading
         skeleton={<div data-testid="skeleton">loading</div>}
         emptyTitle="비어 있음"
-        filteredEmptyTitle="검색 결과 없음"
+        filteredEmptyTitle="搜索空"
       />,
     )
 
@@ -22,7 +22,7 @@ describe('ResourceListState', () => {
         skeleton={<div />}
         emptyTitle="아직 항목이 없습니다"
         emptyDescription="첫 항목을 만들어 보세요."
-        filteredEmptyTitle="검색 결과 없음"
+        filteredEmptyTitle="搜索空"
       />,
     )
 
@@ -41,14 +41,14 @@ describe('ResourceListState', () => {
         emptyTitle="비어 있음"
         filteredEmptyTitle="조건에 맞는 항목이 없습니다"
         filteredEmptyDescription="필터를 조정해 보세요."
-        retryLabel="필터 초기화"
+        retryLabel="重置过滤器"
         onRetry={() => {
           retryCount += 1
         }}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '필터 초기화' }))
+    await user.click(screen.getByRole('button', { name: '重置过滤器' }))
 
     expect(screen.getByText('조건에 맞는 항목이 없습니다')).toBeInTheDocument()
     expect(screen.getByText('필터를 조정해 보세요.')).toBeInTheDocument()
@@ -64,7 +64,7 @@ describe('ResourceListState', () => {
         error
         skeleton={<div />}
         emptyTitle="비어 있음"
-        filteredEmptyTitle="검색 결과 없음"
+        filteredEmptyTitle="搜索空"
         errorTitle="불러오기 실패"
         errorDescription="다시 시도해 주세요."
         onRetry={() => {
@@ -73,7 +73,7 @@ describe('ResourceListState', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '다시 시도' }))
+    await user.click(screen.getByRole('button', { name: '重试' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('불러오기 실패')
     expect(screen.getByText('다시 시도해 주세요.')).toBeInTheDocument()

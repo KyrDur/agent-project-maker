@@ -149,8 +149,8 @@ test.describe('Live chat surface captures', () => {
         })
         .toBeGreaterThan(0)
 
-      await page.getByRole('button', { name: '재생성' }).first().click()
-      await expect(page.getByRole('button', { name: '이전 분기' })).toBeVisible({
+      await page.getByRole('button', { name: '再生' }).first().click()
+      await expect(page.getByRole('button', { name: '上一页' })).toBeVisible({
         timeout: 60_000,
       })
       await expect(page.getByText('2/2').first()).toBeVisible()

@@ -1,0 +1,48 @@
+name: Ruff format changed backend
+
+on:
+  push:
+    branches:
+      - codex/agent-project-release
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format-changed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/agent-project-release
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install backend dev dependencies
+        working-directory: backend
+        run: uv sync --frozen --all-extras
+      - name: Format Python changed from main
+        shell: bash
+        run: |
+          git fetch origin main
+          mapfile -d '' files < <(git diff --name-only -z origin/main...HEAD -- 'backend/**/*.py' 'backend/*.py')
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed Python files."
+            exit 0
+          fi
+          uv run --directory backend ruff format -- "${files[@]}"
+      - name: Commit formatting
+        shell: bash
+        run: |
+          if git diff --quiet -- backend; then
+            echo "No formatting changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git commit -m "style: apply ruff format to changed backend files"
+          git push origin HEAD:codex/agent-project-release

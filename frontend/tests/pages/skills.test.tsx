@@ -62,7 +62,7 @@ const skill: Skill = {
   package_metadata: null,
   health: {
     state: 'ready',
-    label: '검증됨',
+    label: '已验证',
     reason: 'Latest evaluation passed for the current skill.',
     severity: 'success',
   },
@@ -113,7 +113,7 @@ describe('SkillsPage', () => {
     render(<SkillsPageClient />)
 
     expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('스킬 검색')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索技巧')).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: /스킬/ })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: /에이전트/ })).toBeInTheDocument()
@@ -126,23 +126,23 @@ describe('SkillsPage', () => {
   it('표 행에 상태·평가 요약 배지를 보여준다', () => {
     render(<SkillsPageClient />)
 
-    expect(screen.getByText('검증됨')).toBeInTheDocument()
+    expect(screen.getByText('已验证')).toBeInTheDocument()
     expect(screen.getByText('평가 92%')).toBeInTheDocument()
   })
 
-  it("'선택 해제'가 controlled 선택(rowSelection+selected)을 함께 리셋한다", async () => {
+  it("'清除选择'가 controlled 선택(rowSelection+selected)을 함께 리셋한다", async () => {
     const user = userEvent.setup()
     render(<SkillsPageClient />)
 
     // 행 단위 체크박스 경로(프로젝트 규칙 — 헤더 전체선택만 쓰면 행 클릭
     // 전파 클래스를 못 잡는다).
-    await user.click(screen.getByRole('checkbox', { name: '행 선택' }))
+    await user.click(screen.getByRole('checkbox', { name: '选择行' }))
     expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1개 선택됨')
 
-    await user.click(screen.getByRole('button', { name: '선택 해제' }))
+    await user.click(screen.getByRole('button', { name: '清除选择' }))
 
     expect(screen.queryByTestId('skill-bulk-bar')).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: '행 선택' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '选择行' })).not.toBeChecked()
   })
 
   it('행 선택 시 벌크 바가 뜨고 일괄 삭제 확인에 이름을 열거한다', async () => {
@@ -151,12 +151,12 @@ describe('SkillsPage', () => {
     render(<SkillsPageClient />)
 
     expect(screen.queryByTestId('skill-bulk-bar')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: '모든 행 선택' }))
+    await user.click(screen.getByRole('checkbox', { name: '选择所有行' }))
 
     expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1개 선택됨')
 
     await user.click(
-      within(screen.getByTestId('skill-bulk-bar')).getByRole('button', { name: '삭제' }),
+      within(screen.getByTestId('skill-bulk-bar')).getByRole('button', { name: '删除' }),
     )
 
     // 확인 다이얼로그 — 검색으로 숨은 선택 행 방어를 위해 대상 이름을 명시한다.
@@ -166,7 +166,7 @@ describe('SkillsPage', () => {
     // AD-4.1 — 영향받는 에이전트 이름 역도출 표시.
     expect(dialog).toHaveTextContent('영향받는 에이전트: 회의 비서')
 
-    await user.click(within(dialog).getByRole('button', { name: '삭제' }))
+    await user.click(within(dialog).getByRole('button', { name: '删除' }))
 
     expect(mockDeleteSkill).toHaveBeenCalledWith('skill-1')
   })
@@ -180,11 +180,11 @@ describe('SkillsPage', () => {
     mockDeleteSkill.mockRejectedValue(new ApiError(404, 'SKILL_NOT_FOUND', 'not found'))
     render(<SkillsPageClient />)
 
-    await user.click(screen.getByRole('checkbox', { name: '모든 행 선택' }))
+    await user.click(screen.getByRole('checkbox', { name: '选择所有行' }))
     await user.click(
-      within(screen.getByTestId('skill-bulk-bar')).getByRole('button', { name: '삭제' }),
+      within(screen.getByTestId('skill-bulk-bar')).getByRole('button', { name: '删除' }),
     )
-    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '삭제' }))
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: '删除' }))
 
     expect(mockToastError).not.toHaveBeenCalled()
     expect(mockToastSuccess).toHaveBeenCalled()
@@ -209,7 +209,7 @@ describe('SkillsPage', () => {
           name: 'Credential Setup',
           health: {
             state: 'needs_credentials',
-            label: '자격증명 필요',
+            label: '所需凭据',
             reason: '필수 자격증명이 없습니다.',
             severity: 'warning',
           },
@@ -220,7 +220,7 @@ describe('SkillsPage', () => {
           name: 'Rerun Needed',
           health: {
             state: 'needs_rerun',
-            label: '재평가 필요',
+            label: '需要重新运行',
             reason: '콘텐츠가 바뀌었습니다.',
             severity: 'warning',
           },
@@ -231,7 +231,7 @@ describe('SkillsPage', () => {
           name: 'Failed Eval',
           health: {
             state: 'evaluation_failed',
-            label: '평가 실패',
+            label: '评估失败',
             reason: '마지막 평가가 실패했습니다.',
             severity: 'error',
           },
@@ -275,7 +275,7 @@ describe('SkillsPage', () => {
     const user = userEvent.setup()
     render(<SkillsPageClient />)
 
-    await user.click(screen.getByRole('button', { name: '대화로 만들기' }))
+    await user.click(screen.getByRole('button', { name: '通过聊天构建' }))
 
     expect(screen.getByTestId('skill-create-dialog')).toHaveTextContent('chat')
     expect(mockCreateDialog).toHaveBeenLastCalledWith(

@@ -185,12 +185,12 @@ describe('AppSidebar', () => {
 
   it('renders navigation items', () => {
     render(<AppSidebar />)
-    expect(screen.getByText('에이전트 템플릿')).toBeInTheDocument()
-    expect(screen.getByText('마켓플레이스')).toBeInTheDocument()
-    expect(screen.getByText('기능')).toBeInTheDocument()
-    expect(screen.getByText('도구')).toBeInTheDocument()
-    expect(screen.getByText('MCP 서버')).toBeInTheDocument()
-    expect(screen.getByText('스킬')).toBeInTheDocument()
+    expect(screen.getByText('智能体模板')).toBeInTheDocument()
+    expect(screen.getByText('市场')).toBeInTheDocument()
+    expect(screen.getByText('行动')).toBeInTheDocument()
+    expect(screen.getByText('工具')).toBeInTheDocument()
+    expect(screen.getByText('MCP服务器')).toBeInTheDocument()
+    expect(screen.getByText('技能')).toBeInTheDocument()
   })
 
   it('keeps schedule unread badge out of the main sidebar', () => {
@@ -201,7 +201,7 @@ describe('AppSidebar', () => {
 
   it('renders new agent button', () => {
     render(<AppSidebar />)
-    expect(screen.getByText('새 에이전트')).toBeInTheDocument()
+    expect(screen.getByText('新建智能体')).toBeInTheDocument()
   })
 
   it('expands the collapsed sidebar when a rail menu icon is clicked', async () => {
@@ -220,7 +220,7 @@ describe('AppSidebar', () => {
 
     render(<AppSidebar />)
 
-    await user.click(screen.getByRole('link', { name: '새 에이전트' }))
+    await user.click(screen.getByRole('link', { name: '新建智能体' }))
 
     expect(sidebarMocks.setOpen).toHaveBeenCalledWith(true)
   })
@@ -241,7 +241,7 @@ describe('AppSidebar', () => {
 
     render(<AppSidebar />)
 
-    await user.click(screen.getByRole('button', { name: '기능' }))
+    await user.click(screen.getByRole('button', { name: '行动' }))
 
     expect(sidebarMocks.setOpen).toHaveBeenCalledWith(true)
   })
@@ -249,14 +249,14 @@ describe('AppSidebar', () => {
   it('renders marketplace as a single sidebar link for regular users', () => {
     render(<AppSidebar />)
 
-    expect(screen.getByRole('link', { name: '마켓플레이스' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '市场' })).toHaveAttribute(
       'href',
       '/marketplace',
     )
-    expect(screen.queryByText('둘러보기')).not.toBeInTheDocument()
-    expect(screen.queryByText('운영자 관리')).not.toBeInTheDocument()
-    expect(screen.queryByText('시스템 자격증명')).not.toBeInTheDocument()
-    expect(screen.queryByText('시스템 LLM 설정')).not.toBeInTheDocument()
+    expect(screen.queryByText('探索')).not.toBeInTheDocument()
+    expect(screen.queryByText('市场管理员')).not.toBeInTheDocument()
+    expect(screen.queryByText('系统凭据')).not.toBeInTheDocument()
+    expect(screen.queryByText('系统大模型设置')).not.toBeInTheDocument()
   })
 
   it('keeps admin-only links out of the main sidebar for super users', () => {
@@ -271,14 +271,14 @@ describe('AppSidebar', () => {
 
     render(<AppSidebar />)
 
-    expect(screen.getByRole('link', { name: '마켓플레이스' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '市场' })).toHaveAttribute(
       'href',
       '/marketplace',
     )
-    expect(screen.queryByText('둘러보기')).not.toBeInTheDocument()
-    expect(screen.queryByText('운영자 관리')).not.toBeInTheDocument()
-    expect(screen.queryByText('시스템 자격증명')).not.toBeInTheDocument()
-    expect(screen.queryByText('시스템 LLM 설정')).not.toBeInTheDocument()
+    expect(screen.queryByText('探索')).not.toBeInTheDocument()
+    expect(screen.queryByText('市场管理员')).not.toBeInTheDocument()
+    expect(screen.queryByText('系统凭据')).not.toBeInTheDocument()
+    expect(screen.queryByText('系统大模型设置')).not.toBeInTheDocument()
   })
 
   it('renders the consolidated agent navigator', () => {
@@ -287,14 +287,14 @@ describe('AppSidebar', () => {
       isLoading: false,
     })
     render(<AppSidebar />)
-    expect(screen.getByText('에이전트')).toBeInTheDocument()
+    expect(screen.getByText('智能体')).toBeInTheDocument()
   })
 
   it('places the agent navigator above secondary resource links', () => {
     render(<AppSidebar />)
 
     const navigator = screen.getByTestId('chat-navigator')
-    const templates = screen.getByRole('link', { name: '에이전트 템플릿' })
+    const templates = screen.getByRole('link', { name: '智能体模板' })
 
     expect(navigator.compareDocumentPosition(templates) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -316,6 +316,6 @@ describe('AppSidebar', () => {
   it('keeps the agent navigator mounted when empty', () => {
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<AppSidebar />)
-    expect(screen.getByText('에이전트')).toBeInTheDocument()
+    expect(screen.getByText('智能体')).toBeInTheDocument()
   })
 })

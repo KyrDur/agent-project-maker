@@ -102,12 +102,12 @@ test.describe('Chat interactions', () => {
     // Regenerate → a second sibling forks; the <n/2> branch picker appears.
     // (The messages API returns only the active branch — siblings show as
     // branch_total=2 metadata, not as extra messages — so assert on the picker.)
-    await page.getByRole('button', { name: '재생성' }).first().click()
-    await expect(page.getByRole('button', { name: '이전 분기' })).toBeVisible({ timeout: 60_000 })
+    await page.getByRole('button', { name: '再生' }).first().click()
+    await expect(page.getByRole('button', { name: '上一页' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('2/2').first()).toBeVisible()
 
     // Navigate to the earlier sibling.
-    await page.getByRole('button', { name: '이전 분기' }).click()
+    await page.getByRole('button', { name: '上一页' }).click()
     await expect(page.getByText('1/2').first()).toBeVisible()
   })
 
@@ -115,13 +115,13 @@ test.describe('Chat interactions', () => {
     test.setTimeout(90_000)
     await startTurn(page, request, 'Original user message')
 
-    await page.getByRole('button', { name: '편집' }).first().click()
+    await page.getByRole('button', { name: '编辑' }).first().click()
     // The inline edit composer is the (autofocused) textarea with no placeholder.
     await page.locator('textarea:not([placeholder])').fill('Edited user message')
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
 
     // The edited message forks a sibling branch (picker on the user message).
-    await expect(page.getByRole('button', { name: '이전 분기' })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByRole('button', { name: '上一页' })).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText('2/2').first()).toBeVisible()
   })
 
@@ -135,7 +135,7 @@ test.describe('Chat interactions', () => {
     const feedbackPost = page.waitForResponse(
       (r) => /feedback/i.test(r.url()) && r.request().method() === 'POST',
     )
-    await page.getByRole('button', { name: '도움이 됨' }).first().click()
+    await page.getByRole('button', { name: '反馈向上' }).first().click()
     const res = await feedbackPost
     expect(res.ok()).toBeTruthy()
   })

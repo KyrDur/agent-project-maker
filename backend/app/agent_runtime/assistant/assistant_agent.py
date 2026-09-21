@@ -71,10 +71,10 @@ async def build_assistant_agent(
     Returns:
         CompiledStateGraph — build_agent의 반환값
     """
-    # ADR-019: the assistant text model is the operator-selected ``text_primary``
+    # ADR-019: the assistant text model is the operator-selected ``builder``
     # role. Raises ``SystemModelNotConfiguredError`` if unset (surfaced by the
     # caller) — no silent ``.env`` fallback.
-    resolved = await resolve_system_model(db, "text_primary")
+    resolved = await resolve_system_model(db, "builder")
     model: BaseChatModel = create_chat_model(
         resolved.provider,
         resolved.model_name,

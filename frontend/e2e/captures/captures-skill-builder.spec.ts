@@ -41,20 +41,20 @@ test.describe('스킬 빌더 챗 — 전 화면 캡처 투어', () => {
     const approve = async () => {
       await page.getByTestId('approval-approve-button').last().click()
       await expect(
-        page.getByText('승인 응답을 전송하지 못했습니다. 다시 시도하세요.'),
+        page.getByText('无法发送批准响应。再试一次。'),
       ).toHaveCount(0)
     }
 
     // ── 1. 진입점: 스킬 목록 ────────────────────────────────────────────
     await page.goto('/skills', { waitUntil: 'domcontentloaded', timeout: 120_000 })
-    await expect(page.getByRole('button', { name: '대화로 만들기' }).first()).toBeVisible({
+    await expect(page.getByRole('button', { name: '通过聊天构建' }).first()).toBeVisible({
       timeout: 60_000,
     })
     await settle(page)
     await capture(page, WAVE, '01-skills-entry.png')
 
     // ── 2. 대화로 만들기 다이얼로그 (chat 탭) ──────────────────────────
-    await page.getByRole('button', { name: '대화로 만들기' }).first().click()
+    await page.getByRole('button', { name: '通过聊天构建' }).first().click()
     const requestBox = page.locator('#skill-chat-request')
     await expect(requestBox).toBeVisible({ timeout: 15_000 })
     await requestBox.fill('회의록에서 담당자, 할 일, 마감일을 표로 정리하는 스킬을 만들어줘')
@@ -62,7 +62,7 @@ test.describe('스킬 빌더 챗 — 전 화면 캡처 투어', () => {
     await capture(page, WAVE, '02-create-dialog-chat.png')
 
     // ── 3. 대화 시작 → 빌더 라우트 리다이렉트 ──────────────────────────
-    await page.getByRole('button', { name: '대화 시작' }).click()
+    await page.getByRole('button', { name: '开始聊天' }).click()
     await page.waitForURL(/\/skills\/builder\/[0-9a-f-]{36}/, { timeout: 120_000 })
     const sessionId = new URL(page.url()).pathname.split('/').pop() as string
     await expect(page.getByTestId('skill-builder-rail')).toBeVisible({ timeout: 60_000 })
@@ -112,7 +112,7 @@ test.describe('스킬 빌더 챗 — 전 화면 캡처 투어', () => {
     await page.getByTestId('builder-open-source').click()
     await expect(rail.getByTestId('builder-status-rows')).toBeVisible({ timeout: 15_000 })
 
-    // ── 6. 시험 승인 카드 + "이 세션에서 계속 허용" ────────────────────
+    // ── 6. 시험 승인 카드 + "留出本次会议的剩余时间" ────────────────────
     await sendMessage('E2E_SKILL_BUILDER_TEST run=1')
     await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 45_000 })
     const consent = page.getByTestId('approval-session-consent').last()
@@ -161,20 +161,20 @@ test.describe('스킬 빌더 챗 — 전 화면 캡처 투어', () => {
     await capture(page, WAVE, '11-reload-replay.png')
 
     // ── 12. 딥링크 → 생성된 스킬 소스 탭 (Phase 2 스튜디오) ────────────
-    await page.getByRole('link', { name: '스킬 열기' }).click()
+    await page.getByRole('link', { name: '开放技能' }).click()
     await page.waitForURL(/\/skills\/[^/]+\/source/, { timeout: 60_000 })
-    await expect(page.getByRole('button', { name: '대화로 개선' })).toBeVisible({
+    await expect(page.getByRole('button', { name: '通过聊天改进' })).toBeVisible({
       timeout: 30_000,
     })
     await settle(page)
     await capture(page, WAVE, '12-created-skill-detail.png')
 
     // ── 13. 대화로 개선 → improve 세션 (원본 시드) ─────────────────────
-    await page.getByRole('button', { name: '대화로 개선' }).click()
+    await page.getByRole('button', { name: '通过聊天改进' }).click()
     await page.waitForURL(/\/skills\/builder\/[0-9a-f-]{36}/, { timeout: 120_000 })
     await expect(page.getByTestId('skill-builder-rail')).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByText('개선', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
-    // Phase 1.5 — improve 기본 요청("기존 스킬을 개선하고 싶어요.")도 자동 발화.
+    await expect(page.getByText('改善', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    // Phase 1.5 — improve 기본 요청("我想提高这项现有的技能。")도 자동 발화.
     await expect(page.getByText('E2E scripted document model is ready.').last()).toBeVisible({
       timeout: 60_000,
     })
@@ -196,7 +196,7 @@ test.describe('스킬 빌더 챗 — 전 화면 캡처 투어', () => {
     await page.goto('/skills/builder/00000000-0000-4000-8000-000000000000', {
       waitUntil: 'domcontentloaded',
     })
-    await expect(page.getByText('빌더 세션을 열 수 없습니다')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('构建器会话不可用')).toBeVisible({ timeout: 30_000 })
     await settle(page)
     await capture(page, WAVE, '15-session-unavailable.png')
   })

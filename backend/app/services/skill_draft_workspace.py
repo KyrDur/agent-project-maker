@@ -470,7 +470,7 @@ def build_skill_draft_brief(session: SkillBuilderSession) -> dict[str, object]:
         except SkillMetadataError:
             slug = None
 
-    # 검증 레일 상태 카드용 요약 (M7 — 목업 "Credential 필요 여부" 행).
+    # 검증 레일 상태 카드용 요약 (M7 — 목업 "所需凭据" 행).
     from app.skills.moldy_metadata import (
         credential_requirements_from_metadata,
         load_moldy_metadata,

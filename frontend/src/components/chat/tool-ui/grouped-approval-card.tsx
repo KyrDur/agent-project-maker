@@ -9,7 +9,7 @@ import { MultiApprovalContext, type MultiApprovalContextValue } from './multi-ap
 
 /**
  * Groups the N `request_approval` cards of ONE multi-action interrupt into a
- * single container: a "승인 대기 N건" header + a "모두 승인" (approve all) button,
+ * single container: a "승인 대기 N건" header + a "批准全部" (approve all) button,
  * with each action rendered below as a compact, headerless `ApprovalCard`
  * (`children`). Approving all fires every undecided card's registered approve
  * callback; the HiTL coordinator already batches the N decisions and resumes
@@ -20,7 +20,7 @@ export function GroupedApprovalCard({ count, children }: { count: number; childr
   const t = useTranslations('chat.approval')
   const hitl = useHiTL()
   // Each compact card registers its approve callback here (keyed by action index)
-  // and unregisters when a row enters another decision flow, so "모두 승인"
+  // and unregisters when a row enters another decision flow, so "批准全部"
   // only drives rows that are still eligible for automatic approval.
   const approversRef = useRef(new Map<number, () => Promise<boolean>>())
   const [resolvedActionIndexes, setResolvedActionIndexes] = useState<ReadonlySet<number>>(

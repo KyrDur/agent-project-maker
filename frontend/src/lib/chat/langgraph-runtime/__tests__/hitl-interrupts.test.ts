@@ -31,7 +31,7 @@ describe('standardPayloadFromInterrupt', () => {
 
   it('세션 동의 플래그(session_consent_eligible)를 review_config에 보존한다', () => {
     // 스킬 빌더 AD-4 — 백엔드 wire가 주입한 플래그가 파서에서 유실되면
-    // 승인 카드의 "이 세션에서 계속 허용" 옵션이 렌더되지 않는다.
+    // 승인 카드의 "留出本次会议的剩余时间" 옵션이 렌더되지 않는다.
     const payload = standardPayloadFromInterrupt({
       id: 'intr-consent',
       value: {

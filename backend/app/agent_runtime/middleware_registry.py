@@ -210,7 +210,7 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "file_search": {
         "name": "FilesystemFileSearchMiddleware",
-        "display_name": "파일 검색",
+        "display_name": "搜索文件",
         "description": "대용량 문서에서 glob/grep 검색 기능을 제공합니다",
         "category": "reliability",
         "config_schema": {},
@@ -397,6 +397,9 @@ def build_middleware_instances(middleware_configs: list[dict[str, Any]]) -> list
         for key, schema in registry_entry.get("config_schema", {}).items():
             if key not in coerced and "default" in schema:
                 coerced[key] = schema["default"]
+
+        if middleware_type == "tool_call_limit" and "limit" in coerced:
+            coerced.setdefault("run_limit", coerced.pop("limit"))
 
         # tool_retry: GraphInterrupt는 정상적인 HiTL 시그널이므로
         # 재시도하지 않고 re-raise하여 그래프 일시정지가 정상 전파되도록 함

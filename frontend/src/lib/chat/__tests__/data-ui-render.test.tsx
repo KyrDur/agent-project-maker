@@ -85,7 +85,7 @@ describe('generative UI render (path A)', () => {
         uiType="data_table"
         props={{
           title: '캡쳐 테이블',
-          columns: [{ key: 'name', header: '이름' }],
+          columns: [{ key: 'name', header: '名称' }],
           rows: [{ name: 'Zed' }],
         }}
       />,

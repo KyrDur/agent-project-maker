@@ -340,7 +340,7 @@ describe('useHitlDecisionController', () => {
     const second = result.current.registerDecision(
       1,
       { type: 'approve' },
-      '승인',
+      '批准',
       nextPayload.interrupt_id,
     )
     await Promise.all([first, second])

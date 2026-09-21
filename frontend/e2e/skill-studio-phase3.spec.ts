@@ -333,8 +333,8 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     // A/B 벤치마크 — 실측 배지 + with/without 바.
     const benchmark = page.getByTestId('skill-benchmark-panel')
     await expect(benchmark.getByTestId('benchmark-measured')).toBeVisible()
-    await expect(benchmark).toContainText('스킬 사용')
-    await expect(benchmark).toContainText('스킬 없이')
+    await expect(benchmark).toContainText('有技巧')
+    await expect(benchmark).toContainText('没有技巧')
     await expect(benchmark).toContainText('30%')
 
     // 런 실측 usage 라인.

@@ -27,18 +27,18 @@ logger = logging.getLogger(__name__)
 
 # E2E scripted 배포에선 system credential 없이도 파이프라인 전체(엔드포인트 →
 # 훅 → 고스트 → 수락)를 결정적으로 검증할 수 있도록 고정 제안을 돌려준다.
-E2E_FOLLOWUP_SUGGESTION = "방금 답변을 표로 정리해줘"
+E2E_FOLLOWUP_SUGGESTION = "把刚才的回答整理成表格"
 
 _MAX_TAIL_MESSAGES = 6
 _MAX_MESSAGE_CHARS = 1500
 _MAX_SUGGESTION_CHARS = 120
 
 _SYSTEM_PROMPT = (
-    "너는 채팅 입력창의 자동 제안 기능이다. 대화 기록을 보고 사용자가 다음에 "
-    "보낼 법한 후속 요청을 정확히 한 문장, 한국어로 제안한다.\n"
-    "- 따옴표·번호·불릿 없이 제안 문장만 출력한다.\n"
-    "- 60자 이내로 짧고 실행 가능한 요청이어야 한다.\n"
-    "- 방금 어시스턴트가 한 작업을 자연스럽게 잇는 요청이어야 한다."
+    "你是聊天输入框的后续请求建议助手。根据对话记录，用简体中文（zh-CN）"
+    "给出一句用户接下来可能提出的请求。\n"
+    "- 只输出建议本身，不加引号、编号或项目符号。\n"
+    "- 控制在 60 个字以内，简短、明确且可执行。\n"
+    "- 自然衔接助手刚刚完成的工作。"
 )
 
 
@@ -93,7 +93,7 @@ def _transcript_tail(messages: list[Any]) -> str | None:
         return None
     lines = []
     for message in tail:
-        speaker = "사용자" if message.role == "user" else "어시스턴트"
+        speaker = "用户" if message.role == "user" else "助理"
         lines.append(f"{speaker}: {message.content[:_MAX_MESSAGE_CHARS]}")
     return "\n".join(lines)
 
@@ -109,7 +109,7 @@ async def generate_followup_suggestion(
         return E2E_FOLLOWUP_SUGGESTION
 
     try:
-        resolved = await resolve_system_model(db, "text_primary")
+        resolved = await resolve_system_model(db, "builder")
     except SystemModelNotConfiguredError:
         return None
 

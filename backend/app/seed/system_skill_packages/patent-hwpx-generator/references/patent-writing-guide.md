@@ -1,6 +1,6 @@
 # Patent Writing Guide
 
-Use concise Korean text. The generated sample should include:
+默认使用简洁的简体中文（zh-CN），除非用户明确指定其他语言。 The generated sample should include:
 
 - 발명의 명칭
 - 발명의 개요

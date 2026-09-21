@@ -15,7 +15,7 @@ describe('search command action', () => {
       </>,
     )
 
-    expect(screen.getByRole('textbox', { name: '대화 내 검색' })).toHaveValue('needle')
+    expect(screen.getByRole('textbox', { name: '在对话中搜索' })).toHaveValue('needle')
     await waitFor(() => expect(screen.getByText('1/1')).toBeVisible())
   })
 })

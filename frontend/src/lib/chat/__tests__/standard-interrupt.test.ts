@@ -50,7 +50,7 @@ describe('standardInterruptToToolCalls', () => {
                 id: 'tone',
                 label: '답변 톤',
                 type: 'single_select',
-                options: [{ id: 'concise', label: '간결하게' }],
+                options: [{ id: 'concise', label: '简洁明了' }],
                 required: true,
               },
             ],
@@ -267,7 +267,7 @@ describe('createHiTLDecisionCoordinator', () => {
     const earlyDecision = coordinator.registerDecision(
       1,
       { type: 'reject', message: '아니요' },
-      '거부',
+      '拒绝',
     )
     void earlyDecision.then(
       () => {
@@ -281,7 +281,7 @@ describe('createHiTLDecisionCoordinator', () => {
     expect(resume).not.toHaveBeenCalled()
     expect(earlyDecisionSettled).toBe(false)
 
-    const finalDecision = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const finalDecision = coordinator.registerDecision(0, { type: 'approve' }, '批准')
     await Promise.all([earlyDecision, finalDecision])
 
     expect(resume).toHaveBeenCalledTimes(1)
@@ -305,19 +305,19 @@ describe('createHiTLDecisionCoordinator', () => {
       resume,
     })
 
-    const firstAttempt = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const firstAttempt = coordinator.registerDecision(0, { type: 'approve' }, '批准')
     const finalAttempt = coordinator.registerDecision(
       1,
       { type: 'reject', message: '아니요' },
-      '거부',
+      '拒绝',
     )
     await expect(Promise.all([firstAttempt, finalAttempt])).rejects.toThrow('stale interrupt')
 
-    const retryFirst = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const retryFirst = coordinator.registerDecision(0, { type: 'approve' }, '批准')
     const retryFinal = coordinator.registerDecision(
       1,
       { type: 'reject', message: '아니요' },
-      '거부',
+      '拒绝',
     )
     await Promise.all([retryFirst, retryFinal])
 
@@ -350,8 +350,8 @@ describe('createHiTLDecisionCoordinator', () => {
       resume,
     })
 
-    const first = coordinator.registerDecision(0, { type: 'approve' }, '승인')
-    const second = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const first = coordinator.registerDecision(0, { type: 'approve' }, '批准')
+    const second = coordinator.registerDecision(0, { type: 'approve' }, '批准')
 
     await vi.waitFor(() => {
       expect(resume).toHaveBeenCalledTimes(1)
@@ -359,9 +359,9 @@ describe('createHiTLDecisionCoordinator', () => {
     resolveResume?.()
     await Promise.all([first, second])
 
-    await coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    await coordinator.registerDecision(0, { type: 'approve' }, '批准')
 
-    expect(resume).toHaveBeenCalledWith([{ type: 'approve' }], '승인', 'intr-concurrent')
+    expect(resume).toHaveBeenCalledWith([{ type: 'approve' }], '批准', 'intr-concurrent')
     expect(resume).toHaveBeenCalledTimes(1)
   })
 
@@ -375,9 +375,9 @@ describe('createHiTLDecisionCoordinator', () => {
       resume,
     })
 
-    const first = coordinator.registerDecision(0, { type: 'approve' }, '승인')
-    const conflicting = coordinator.registerDecision(0, { type: 'reject', message: '거부' }, '거부')
-    const final = coordinator.registerDecision(1, { type: 'approve' }, '승인')
+    const first = coordinator.registerDecision(0, { type: 'approve' }, '批准')
+    const conflicting = coordinator.registerDecision(0, { type: 'reject', message: '拒绝' }, '拒绝')
+    const final = coordinator.registerDecision(1, { type: 'approve' }, '批准')
     await Promise.all([first, conflicting, final])
 
     expect(resume).toHaveBeenCalledWith(
@@ -397,7 +397,7 @@ describe('createHiTLDecisionCoordinator', () => {
       resume,
     })
 
-    await expect(coordinator.registerDecision(2, { type: 'approve' }, '승인')).rejects.toThrow(
+    await expect(coordinator.registerDecision(2, { type: 'approve' }, '批准')).rejects.toThrow(
       RangeError,
     )
     expect(resume).not.toHaveBeenCalled()
@@ -413,14 +413,14 @@ describe('createHiTLDecisionCoordinator', () => {
       resume,
     })
     const reason = new DOMException('Pending HiTL decisions were replaced', 'AbortError')
-    const pending = coordinator.registerDecision(0, { type: 'approve' }, '승인')
+    const pending = coordinator.registerDecision(0, { type: 'approve' }, '批准')
     const pendingRejection = expect(pending).rejects.toBe(reason)
 
     coordinator.cancel(reason)
 
     await pendingRejection
     await expect(
-      coordinator.registerDecision(1, { type: 'reject', message: '거부' }, '거부'),
+      coordinator.registerDecision(1, { type: 'reject', message: '拒绝' }, '拒绝'),
     ).rejects.toBe(reason)
     expect(resume).not.toHaveBeenCalled()
   })

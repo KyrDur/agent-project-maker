@@ -110,8 +110,8 @@ describe('McpServersPage', () => {
     render(<McpServersPage />)
 
     expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('서버 검색')).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: '이름' })).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('搜索服务器')).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: '名称' })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.getByText('GitHub 이슈와 PR을 조회합니다.')).toBeInTheDocument()
     expect(screen.getByText('12개 도구')).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('McpServersPage', () => {
     // Manage the second card while the deep link still points at mcp-1.
     const otherCard = screen.getByText('Slack MCP').closest('article')
     if (!otherCard) throw new Error('Slack MCP card should render as an article')
-    await user.click(within(otherCard).getByRole('button', { name: '관리' }))
+    await user.click(within(otherCard).getByRole('button', { name: '管理' }))
 
     // URL is realigned to the manually opened card (no refresh mismatch).
     expect(mockReplace).toHaveBeenCalledWith('/mcp-servers?detailId=mcp-2')

@@ -141,8 +141,8 @@ describe('StreamingMessageLoadingIndicator', () => {
 
     expect(screen.queryByTestId('run-activity-strip')).not.toBeInTheDocument()
     expect(screen.getByTestId('witty-loading')).toBeInTheDocument()
-    expect(screen.queryByText('응답을 작성하는 중')).not.toBeInTheDocument()
-    expect(screen.queryByText('완료됨')).not.toBeInTheDocument()
+    expect(screen.queryByText('写回复')).not.toBeInTheDocument()
+    expect(screen.queryByText('完成')).not.toBeInTheDocument()
   })
 
   it('keeps witty loading once assistant text is visible while streaming', () => {
@@ -207,7 +207,7 @@ describe('StreamingMessageLoadingIndicator', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '활동 보기' }))
+    await user.click(screen.getByRole('button', { name: '显示活动' }))
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByText('completed_search')).toBeInTheDocument()
@@ -226,7 +226,7 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     // Files are live-only, so they render in the loading panel...
-    expect(screen.getByText('파일')).toBeInTheDocument()
+    expect(screen.getByText('文件')).toBeInTheDocument()
     // ...but the todos are not duplicated here — the assistant message's
     // persistent "Plan" card (write_todos tool-ui) is their single source.
     expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
@@ -328,7 +328,7 @@ describe('StreamingMessageLoadingIndicator', () => {
       'background_subagent',
     )
     expect(
-      screen.queryByRole('progressbar', { name: '서브 에이전트 진행률' }),
+      screen.queryByRole('progressbar', { name: '子智能体进度' }),
     ).not.toBeInTheDocument()
   })
 })

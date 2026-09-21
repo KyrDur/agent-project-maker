@@ -3,7 +3,7 @@ import { NextIntlClientProvider, useTranslations } from 'next-intl'
 
 import { ROOT_MESSAGE_NAMESPACES, pickMessageNamespaces } from '@/i18n/scoped-messages'
 import { render, screen } from '../../test-utils'
-import messages from '../../../messages/ko.json'
+import messages from '../../../messages/zh-CN.json'
 
 function RootAssistantTranslationProbe() {
   const assistant = useTranslations('agent.assistant')
@@ -49,11 +49,11 @@ describe('root message scope', () => {
     render(
       createElement(
         NextIntlClientProvider,
-        { locale: 'ko', messages: scoped },
+        { locale: 'zh-CN', messages: scoped },
         createElement(RootAssistantTranslationProbe),
       ),
     )
 
-    expect(screen.getByText(/AI Assistant/)).toBeInTheDocument()
+    expect(screen.getByText(/人工智能助手/)).toBeInTheDocument()
   })
 })

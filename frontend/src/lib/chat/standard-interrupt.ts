@@ -13,7 +13,7 @@ interface ToolUiMetadata {
   hitl_interrupt_id: string
   hitl_action_index: number
   hitl_total_actions: number
-  /** 스킬 빌더 AD-4 — "이 세션에서 계속 허용" 옵션 노출 (review_configs 플래그). */
+  /** 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 옵션 노출 (review_configs 플래그). */
   session_consent_eligible?: boolean
 }
 

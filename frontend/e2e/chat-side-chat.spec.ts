@@ -50,17 +50,17 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     await test.step('capture selection toolbar', () => capture(page, '01-selection-menu.png'))
     await page
       .getByTestId('chat-selection-actions')
-      .getByRole('button', { name: '채팅에 추가', exact: true })
+      .getByRole('button', { name: '添加到聊天', exact: true })
       .click()
     const note = main.getByRole('button', { name: '주석 1', exact: true })
     await expect(note).toBeVisible()
     await note.click()
-    const comment = page.getByRole('textbox', { name: '내 댓글' })
+    const comment = page.getByRole('textbox', { name: '您的评论' })
     await comment.fill('이 문장의 의미를 설명해 주세요.')
-    await page.getByRole('button', { name: '적용', exact: true }).click()
+    await page.getByRole('button', { name: '应用', exact: true }).click()
     await note.hover()
     await expect(page.getByRole('tooltip')).toContainText('이 문장의 의미를 설명해 주세요.')
-    await expect(page.getByRole('tooltip')).toContainText('에이전트 답변')
+    await expect(page.getByRole('tooltip')).toContainText('智能体 回复')
     await capture(page, '02-quote-comment-preview.png')
     await main
       .locator('textarea[data-moldy-composer-input]')
@@ -72,7 +72,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     )
     await page
       .getByTestId('chat-selection-actions')
-      .getByRole('button', { name: '사이드 채팅에 질문하기' })
+      .getByRole('button', { name: '在旁聊中询问' })
       .click()
     const createdResponse = await created
     expect(createdResponse.status()).toBe(201)
@@ -98,15 +98,15 @@ test('quotes, comments, independent side run and return to main', async ({ page,
       '본 채팅의 초안은 보존해 주세요.',
     )
     await expect(main.locator('[data-moldy-message-role="assistant"]')).toHaveCount(1)
-    await expect(side.getByRole('button', { name: '채팅에 추가', exact: true })).toBeEnabled({
+    await expect(side.getByRole('button', { name: '添加到聊天', exact: true })).toBeEnabled({
       timeout: 20_000,
     })
     await capture(page, '03-side-chat-desktop.png')
-    await side.getByRole('button', { name: '채팅에 추가', exact: true }).click()
+    await side.getByRole('button', { name: '添加到聊天', exact: true }).click()
     await expect(main.getByRole('button', { name: '주석 2', exact: true })).toBeVisible()
-    await side.getByRole('button', { name: '사이드 채팅 닫기', exact: true }).click()
+    await side.getByRole('button', { name: '关闭侧边聊天', exact: true }).click()
     await expect(side).toBeHidden()
-    await page.getByRole('button', { name: '사이드 채팅', exact: true }).click()
+    await page.getByRole('button', { name: '边聊', exact: true }).click()
     await expect(side.getByTestId('sent-quote-context')).toBeVisible()
     const listing = await apiGetJson(
       request,
@@ -115,9 +115,9 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     expect(
       Array.isArray(listing) && listing.some((item) => isRecord(item) && item.id === sideId),
     ).toBe(false)
-    await side.getByRole('button', { name: '대화 목록에 저장', exact: true }).click()
+    await side.getByRole('button', { name: '保存到对话', exact: true }).click()
     await expect(
-      side.getByRole('button', { name: '대화 목록에 저장했어요', exact: true }),
+      side.getByRole('button', { name: '已保存到您的对话中', exact: true }),
     ).toBeVisible()
     for (const [name, width, height] of [
       ['tablet', 768, 1024],
@@ -125,7 +125,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     ] as const) {
       await page.setViewportSize({ width, height })
       await expect(
-        page.getByRole('dialog').getByText('사이드 채팅', { exact: true }).first(),
+        page.getByRole('dialog').getByText('边聊', { exact: true }).first(),
       ).toBeAttached()
       await expect(side.locator('textarea[data-moldy-composer-input]')).toBeVisible({
         timeout: 20_000,
@@ -151,7 +151,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
       (response) =>
         response.request().method() === 'POST' && response.url().endsWith('/side-chats'),
     )
-    await page.getByRole('button', { name: '사이드 채팅', exact: true }).click()
+    await page.getByRole('button', { name: '边聊', exact: true }).click()
     const reopenedResponse = await reopened
     expect(reopenedResponse.status()).toBe(200)
     expect((await reopenedResponse.json()).id).toBe(sideId)

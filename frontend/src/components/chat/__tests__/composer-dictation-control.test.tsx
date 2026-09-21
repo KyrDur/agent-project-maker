@@ -32,7 +32,7 @@ describe('ComposerDictationControl', () => {
     render(<ComposerDictationControl availability="ready" onStart={onStart} />)
 
     expect(onStart).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: '음성 입력 시작' }))
+    await user.click(screen.getByRole('button', { name: '开始语音输入' }))
 
     expect(onStart).toHaveBeenCalledOnce()
   })
@@ -42,13 +42,13 @@ describe('ComposerDictationControl', () => {
       <ComposerDictationControl availability="unsupported" onStart={vi.fn()} />,
     )
 
-    expect(screen.getByText('이 브라우저에서는 음성 입력을 지원하지 않습니다.')).toBeVisible()
+    expect(screen.getByText('此浏览器不支持语音输入。')).toBeVisible()
 
     rerender(<ComposerDictationControl availability="failed" onStart={vi.fn()} />)
 
     expect(
       screen.getByText(
-        '음성 입력을 시작하지 못했습니다. 마이크 권한과 브라우저 상태를 확인한 뒤 다시 시도하세요.',
+        '语音输入无法启动。检查麦克风权限和浏览器状态，然后重试。',
       ),
     ).toBeVisible()
   })

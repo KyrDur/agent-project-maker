@@ -191,7 +191,7 @@ test.describe('Chat navigator live integration', () => {
       timeout: 120_000,
     })
 
-    await expect(page.getByRole('textbox', { name: '에이전트 또는 대화 검색' })).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: '搜索智能体或对话' })).toHaveCount(0)
     await expect(page.getByText(alpha.name).first()).toBeVisible()
     await expect(page.getByText(conversation.title).first()).toBeVisible()
 
@@ -199,19 +199,19 @@ test.describe('Chat navigator live integration', () => {
       `[data-chat-session-href="/agents/${alpha.id}/conversations/${conversation.id}"]`,
     )
     await activeRow.hover()
-    await activeRow.getByRole('button', { name: '대화 메뉴' }).click()
+    await activeRow.getByRole('button', { name: '对话菜单' }).click()
     await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
-    await page.getByRole('button', { name: '에이전트 검색' }).click()
-    await page.getByRole('textbox', { name: '에이전트 또는 대화 검색' }).fill('Beta roadmap')
-    await expect(page.getByText('검색 결과')).toBeVisible()
+    await page.getByRole('button', { name: '搜索智能体' }).click()
+    await page.getByRole('textbox', { name: '搜索智能体或对话' }).fill('Beta roadmap')
+    await expect(page.getByText('搜索结果')).toBeVisible()
     await expect(page.getByText('Navigator Beta roadmap').first()).toBeVisible()
-    await expect(page.getByText('검색 결과가 없습니다')).toHaveCount(0)
+    await expect(page.getByText('没有搜索结果')).toHaveCount(0)
     await capture(page, 'chat-navigator-live-search.png')
 
-    await page.getByRole('button', { name: '새 채팅' }).click()
+    await page.getByRole('button', { name: '新聊天' }).click()
     await expect(page).toHaveURL(new RegExp(`/agents/${alpha.id}/conversations/new$`))
 
     expect(errors.console).toEqual([])
@@ -250,7 +250,7 @@ test.describe('Chat navigator live integration', () => {
 
       const openRowMenu = async (row: typeof targetRow) => {
         await row.hover()
-        await row.getByRole('button', { name: '대화 메뉴' }).click()
+        await row.getByRole('button', { name: '对话菜单' }).click()
       }
       const conversationStatus = async (id: string) =>
         (await request.get(`${API_BASE}/api/conversations/${id}`)).status()
@@ -260,26 +260,26 @@ test.describe('Chat navigator live integration', () => {
         return (await readObject(response, 'conversation'))[field]
       }
 
-      // ── Pin ── exact:true so the '고정' menuitem is not matched by '고정 해제'.
+      // ── Pin ── exact:true so the '置顶' menuitem is not matched by '取消置顶'.
       await openRowMenu(targetRow)
-      await page.getByRole('menuitem', { name: '고정', exact: true }).click()
+      await page.getByRole('menuitem', { name: '置顶', exact: true }).click()
       await expect
         .poll(() => conversationField(target.id, 'is_pinned'), { timeout: 15_000 })
         .toBe(true)
       // The menu now offers Unpin — proves the optimistic + server pin landed.
       await openRowMenu(targetRow)
-      await expect(page.getByRole('menuitem', { name: '고정 해제', exact: true })).toBeVisible()
+      await expect(page.getByRole('menuitem', { name: '取消置顶', exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
 
       // ── Rename ──
       const newTitle = `Renamed mgmt ${Date.now()}`
       await openRowMenu(targetRow)
-      await page.getByRole('menuitem', { name: '이름 변경', exact: true }).click()
+      await page.getByRole('menuitem', { name: '重命名', exact: true }).click()
       const renameDialog = page.getByRole('dialog')
-      const renameInput = renameDialog.getByPlaceholder('대화 제목 입력')
+      const renameInput = renameDialog.getByPlaceholder('占位符')
       await expect(renameInput).toBeVisible({ timeout: 10_000 })
       await renameInput.fill(newTitle)
-      await renameDialog.getByRole('button', { name: '저장', exact: true }).click()
+      await renameDialog.getByRole('button', { name: '保存', exact: true }).click()
       await expect(page.getByText(newTitle).first()).toBeVisible({ timeout: 15_000 })
       await expect
         .poll(() => conversationField(target.id, 'title'), { timeout: 15_000 })
@@ -287,9 +287,9 @@ test.describe('Chat navigator live integration', () => {
 
       // ── Delete (the non-active `keep` row, so the page does not navigate away) ──
       await openRowMenu(keepRow)
-      await page.getByRole('menuitem', { name: '삭제', exact: true }).click()
+      await page.getByRole('menuitem', { name: '删除', exact: true }).click()
       const confirmDialog = page.getByRole('alertdialog')
-      await confirmDialog.getByRole('button', { name: '삭제', exact: true }).click()
+      await confirmDialog.getByRole('button', { name: '删除', exact: true }).click()
       await expect(keepRow).toHaveCount(0, { timeout: 15_000 })
       await expect.poll(() => conversationStatus(keep.id), { timeout: 15_000 }).toBe(404)
 
@@ -348,13 +348,13 @@ test.describe('Chat navigator live integration', () => {
       const oldestRow = page.locator(
         `[data-chat-session-href="/agents/${agent.id}/conversations/${oldestId}"]`,
       )
-      const loadMore = page.getByRole('button', { name: '더 보기' })
+      const loadMore = page.getByRole('button', { name: '加载更多' })
 
       // Expand this agent's group (scoped by its unique name) — collapsed groups do
       // not fetch conversations, so this triggers the first keyset page.
       await page
         .locator('div', { has: page.getByRole('link', { name: agentName, exact: true }) })
-        .getByRole('button', { name: '에이전트 펼치기' })
+        .getByRole('button', { name: '展开智能体' })
         .first()
         .click({ timeout: 20_000 })
 
@@ -362,21 +362,21 @@ test.describe('Chat navigator live integration', () => {
       await expect(agentRows).toHaveCount(5, { timeout: 20_000 })
       await expect(oldestRow).toHaveCount(0)
 
-      // 1st "더 보기" reveals the rest of the already-loaded first page (5 → 30,
+      // 1st "加载更多" reveals the rest of the already-loaded first page (5 → 30,
       // client-side only) — the page-2 conv is still not fetched.
       await loadMore.click({ timeout: 15_000 })
       await expect(agentRows).toHaveCount(30, { timeout: 15_000 })
       await expect(oldestRow).toHaveCount(0)
 
-      // 2nd "더 보기" fetches the next keyset page (30 → 31). The oldest conv, which
+      // 2nd "加载更多" fetches the next keyset page (30 → 31). The oldest conv, which
       // lives only on page 2, now renders — proving the cursor crossed the boundary.
       await loadMore.click({ timeout: 15_000 })
       await expect(agentRows).toHaveCount(31, { timeout: 15_000 })
       await expect(oldestRow).toBeVisible()
 
       // With no further pages the load-more control flips to Collapse. exact:true so
-      // it is not matched by the agent group's "에이전트 접기" chevron.
-      await expect(page.getByRole('button', { name: '접기', exact: true })).toBeVisible()
+      // it is not matched by the agent group's "折叠智能体" chevron.
+      await expect(page.getByRole('button', { name: '收起', exact: true })).toBeVisible()
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])
@@ -408,7 +408,7 @@ test.describe('Chat navigator live integration', () => {
       // Expand this agent's group (scoped by its unique name) to reveal its rows.
       await page
         .locator('div', { has: page.getByRole('link', { name: agentName, exact: true }) })
-        .getByRole('button', { name: '에이전트 펼치기' })
+        .getByRole('button', { name: '展开智能体' })
         .first()
         .click({ timeout: 20_000 })
 
@@ -419,12 +419,12 @@ test.describe('Chat navigator live integration', () => {
 
       // Open the row menu → 공유 → ShareDialog.
       await row.hover()
-      await row.getByRole('button', { name: '대화 메뉴' }).click()
-      await page.getByRole('menuitem', { name: '공유', exact: true }).click()
+      await row.getByRole('button', { name: '对话菜单' }).click()
+      await page.getByRole('menuitem', { name: '分享', exact: true }).click()
 
       const dialog = page.getByRole('dialog')
-      const createButton = dialog.getByRole('button', { name: '공유 링크 만들기', exact: true })
-      const revokeButton = dialog.getByRole('button', { name: '공유 해제', exact: true })
+      const createButton = dialog.getByRole('button', { name: '创建分享链接', exact: true })
+      const revokeButton = dialog.getByRole('button', { name: '禁用共享', exact: true })
 
       // A private conversation opens on the create action.
       await expect(createButton).toBeVisible({ timeout: 15_000 })
@@ -434,7 +434,7 @@ test.describe('Chat navigator live integration', () => {
       await expect(revokeButton).toBeVisible({ timeout: 15_000 })
 
       // The dialog surfaces the real public link; capture its token.
-      const shareUrl = await dialog.getByRole('textbox', { name: '공유 링크' }).inputValue()
+      const shareUrl = await dialog.getByRole('textbox', { name: '分享链接' }).inputValue()
       const token = shareUrl.split('/shared/')[1] ?? ''
       expect(token, 'share token in dialog link').toBeTruthy()
 

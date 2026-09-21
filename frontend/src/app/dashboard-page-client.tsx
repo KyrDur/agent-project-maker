@@ -11,9 +11,11 @@ import {
   StarIcon,
   ArrowUpDownIcon,
   ChevronRightIcon,
+  SlidersHorizontalIcon,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAgentSummaries } from '@/lib/hooks/use-agents'
+import { useSystemLlmReadiness } from '@/lib/hooks/use-system-llm-settings'
 import { useSession } from '@/lib/auth/session'
 import { displayUserName } from '@/components/auth/UserAvatar'
 import { Button } from '@/components/ui/button'
@@ -54,6 +56,7 @@ function pickGreetingKey(date: Date = new Date()): GreetingKey {
 export default function DashboardPage() {
   const t = useTranslations('dashboard')
   const { data: agents, isLoading: agentsLoading } = useAgentSummaries()
+  const { data: aiReadiness } = useSystemLlmReadiness()
   const { data: user } = useSession()
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SortKey>('latest')
@@ -63,6 +66,12 @@ export default function DashboardPage() {
   const greetingKey = pickGreetingKey()
   const userName = displayUserName(user) || t('userFallback')
   const agentCount = agents?.length ?? 0
+  const aiSetupNeeded = aiReadiness?.some((role) => !role.configured) ?? false
+  const aiRoleLabels: Record<string, string> = {
+    builder: t('aiSetup.roles.builder'),
+    evaluation_generator: t('aiSetup.roles.evaluationGenerator'),
+    judge_optimizer: t('aiSetup.roles.judgeOptimizer'),
+  }
 
   const SORT_LABELS: Record<SortKey, string> = {
     latest: t('sort.latest'),
@@ -88,7 +97,7 @@ export default function DashboardPage() {
     }
 
     result = [...result].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko')
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'zh-CN')
       if (sortBy === 'favorite') {
         if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1
       }
@@ -127,9 +136,53 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Quick actions — 1.4fr + 1fr asymmetric grid */}
+      {aiSetupNeeded ? (
+        <Card className="shrink-0 border-primary/20 bg-primary/5">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <SlidersHorizontalIcon className="size-5" />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <div>
+                  <p className="font-semibold">{t('aiSetup.title')}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {user?.is_super_user ? t('aiSetup.adminDescription') : t('aiSetup.userDescription')}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {aiReadiness?.map((role) => (
+                    <Badge
+                      key={role.role}
+                      variant={role.configured ? 'default' : 'outline'}
+                      className="gap-1"
+                    >
+                      <span>{aiRoleLabels[role.role] ?? role.role}</span>
+                      <span className="text-xs opacity-70">
+                        {role.configured ? role.model_name : t('aiSetup.notConfigured')}
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {user?.is_super_user ? (
+              <Button
+                render={<Link href="/settings/system-llm" />}
+                className="w-full sm:w-auto"
+                size="sm"
+              >
+                {t('aiSetup.action')}
+                <ChevronRightIcon className="size-4" />
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Quick actions - 1.4fr + 1fr asymmetric grid */}
       <div className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
-        {/* Primary: 대화로 만들기 */}
+        {/* Primary creation path */}
         <Link href="/agents/new" className="moldy-card-link group">
           <Card className={cn('moldy-dashboard-action-primary h-full min-h-40 gap-3 p-1.5 ring-0')}>
             <CardContent className="flex h-full flex-col gap-3 p-5">
@@ -155,7 +208,7 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        {/* Secondary stack: 직접 / 템플릿 */}
+        {/* Secondary stack: manual / template */}
         <div className="grid grid-rows-2 gap-4">
           <SecondaryActionCard
             href="/agents/new/manual"
@@ -174,7 +227,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* hero/quickActions는 fixed, 카드 그리드만 자체 스크롤. px-1은 카드 ring/border 잘림 방지 여백. */}
+      {/* Keep the agent card grid scrollable without clipping card borders. */}
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-1 pb-16">
         {agentsLoading ? (
           <div>

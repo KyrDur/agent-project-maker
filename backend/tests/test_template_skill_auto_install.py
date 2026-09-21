@@ -145,7 +145,7 @@ async def test_template_without_skill_slugs_keeps_legacy_behavior(
     model = _add_model(db)
     template = Template(
         name=f"tmpl-{uuid.uuid4().hex[:6]}",
-        category="생산성",
+        category="生产力",
         system_prompt="plain template",
     )
     db.add(template)

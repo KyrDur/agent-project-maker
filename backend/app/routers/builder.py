@@ -243,3 +243,44 @@ async def serve_builder_image(
         raise image_not_found()
 
     return FileResponse(path)
+
+
+@router.get("/{session_id}/snapshot")
+async def get_builder_snapshot(
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.agent_runtime.builder_v3.graph import compile_graph
+    from app.agent_runtime.checkpointer import get_checkpointer
+    from app.agent_runtime.message_utils import content_to_text
+
+    session = await builder_service.get_session(db, session_id, user.id)
+    if session is None:
+        raise session_not_found()
+    state = await compile_graph(get_checkpointer()).aget_state(
+        {"configurable": {"thread_id": str(session_id)}}
+    )
+    messages = []
+    for index, message in enumerate(state.values.get("messages", [])):
+        role = {"human": "user", "ai": "assistant", "tool": "tool"}.get(message.type)
+        if role is None:
+            continue
+        messages.append(
+            {
+                "id": message.id or str(uuid.uuid5(session_id, str(index))),
+                "conversation_id": str(session_id),
+                "role": role,
+                "content": content_to_text(message.content),
+                "tool_calls": getattr(message, "tool_calls", None),
+                "tool_call_id": getattr(message, "tool_call_id", None),
+                "created_at": session.updated_at.isoformat(),
+            }
+        )
+    interrupts = [item for task in state.tasks for item in task.interrupts]
+    return {
+        "messages": messages,
+        "interrupt_id": interrupts[0].id if interrupts else None,
+        "status": session.status,
+        "agent_id": session.agent_id,
+    }

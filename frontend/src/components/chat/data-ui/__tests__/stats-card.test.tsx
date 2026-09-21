@@ -21,8 +21,8 @@ describe('StatsCard', () => {
   })
 
   it('renders a string value without a delta', () => {
-    render(<StatsCard items={[{ label: '상태', value: '정상' }]} />)
-    expect(screen.getByText('상태')).toBeInTheDocument()
-    expect(screen.getByText('정상')).toBeInTheDocument()
+    render(<StatsCard items={[{ label: '状态', value: '健康' }]} />)
+    expect(screen.getByText('状态')).toBeInTheDocument()
+    expect(screen.getByText('健康')).toBeInTheDocument()
   })
 })

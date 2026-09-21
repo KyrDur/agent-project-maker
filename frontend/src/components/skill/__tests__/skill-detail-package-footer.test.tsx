@@ -23,15 +23,15 @@ describe('SkillDetailPackageFooter', () => {
 
     // usedBy 요약 라인이 상시 노출 — 패키지 총 크기의 유일한 표시처(리뷰 R).
     expect(screen.getByText(/1\.0\.0/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '파일 저장' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '保存文件' })).toBeEnabled()
     // 삭제/내보내기/닫기는 설정 탭·행 메뉴 소관 — 푸터에 없어야 한다.
-    expect(screen.queryByRole('button', { name: '.skill 내보내기' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '스킬 삭제' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '导出.skill' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '删除技能' })).not.toBeInTheDocument()
   })
 
   it('저장 비활성 상태를 반영한다', () => {
     renderFooter({ saveDisabled: true })
 
-    expect(screen.getByRole('button', { name: '파일 저장' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '保存文件' })).toBeDisabled()
   })
 })

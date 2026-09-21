@@ -82,7 +82,7 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
       await expect(table).toHaveCount(1, { timeout: 15_000 })
       // Headers + a cell value from the scripted fixture.
-      await expect(table.getByText('이름')).toBeVisible()
+      await expect(table.getByText('名称')).toBeVisible()
       await expect(table.getByText('Alice')).toBeVisible()
       await expect(table.getByText('95')).toBeVisible()
 

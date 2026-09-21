@@ -1,7 +1,13 @@
 export function getProviderIcon(providerType: string): string {
   switch (providerType) {
+    case 'deepseek':
+      return 'DS'
+    case 'moonshot':
+      return 'KIMI'
     case 'openai':
       return 'OAI'
+    case 'zhipu_glm':
+      return 'GLM'
     case 'anthropic':
       return 'ANT'
     case 'google':
@@ -17,8 +23,14 @@ export function getProviderIcon(providerType: string): string {
 
 export function getProviderLabel(providerType: string): string {
   switch (providerType) {
+    case 'deepseek':
+      return 'DeepSeek'
+    case 'moonshot':
+      return 'Kimi / Moonshot'
     case 'openai':
       return 'OpenAI'
+    case 'zhipu_glm':
+      return 'Zhipu GLM'
     case 'anthropic':
       return 'Anthropic'
     case 'google':

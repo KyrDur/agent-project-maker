@@ -13,7 +13,7 @@ async def test_list_templates(client: AsyncClient, db: AsyncSession):
         Template(
             name="Test Template",
             description="A test template",
-            category="생산성",
+            category="生产力",
             system_prompt="You are a test assistant.",
             recommended_tools=["Gmail"],
             usage_example="Test me",
@@ -30,8 +30,8 @@ async def test_list_templates(client: AsyncClient, db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_list_templates_by_category(client: AsyncClient, db: AsyncSession):
-    db.add(Template(name="T1", category="생산성", system_prompt="p1"))
-    db.add(Template(name="T2", category="데이터", system_prompt="p2"))
+    db.add(Template(name="T1", category="生产力", system_prompt="p1"))
+    db.add(Template(name="T2", category="数据", system_prompt="p2"))
     await db.commit()
 
     resp = await client.get("/api/templates?category=생산성")

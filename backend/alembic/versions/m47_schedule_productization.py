@@ -36,7 +36,7 @@ def upgrade() -> None:
 
     op.add_column(
         "agent_triggers",
-        sa.Column("name", sa.String(length=120), nullable=False, server_default="스케줄"),
+        sa.Column("name", sa.String(length=120), nullable=False, server_default="定时任务"),
     )
     op.add_column(
         "agent_triggers",

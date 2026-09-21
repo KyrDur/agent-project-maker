@@ -10,13 +10,13 @@ from functools import cache, wraps
 from pathlib import Path
 from typing import Any, Literal
 
-BuilderLocale = Literal["zh-CN", "en", "ko"]
+BuilderLocale = Literal["zh-CN", "en"]
 DEFAULT_LOCALE: BuilderLocale = "zh-CN"
 _locale: ContextVar[BuilderLocale] = ContextVar("builder_locale", default=DEFAULT_LOCALE)
 
 
 def normalize_locale(value: str | None) -> BuilderLocale:
-    return value if value in ("zh-CN", "en", "ko") else DEFAULT_LOCALE
+    return value if value in ("zh-CN", "en") else DEFAULT_LOCALE
 
 
 def get_locale() -> BuilderLocale:
@@ -68,7 +68,7 @@ def catalog(locale: BuilderLocale) -> dict[str, str]:
 @cache
 def source_keys() -> dict[str, str]:
     # Resolve legacy static constants only when used inside a request.
-    return {value: key for key, value in catalog("ko").items()}
+    return {value: key for key, value in catalog("zh-CN").items()}
 
 
 def tr(source: str, **values: Any) -> str:
@@ -92,7 +92,7 @@ def localize(value: Any) -> Any:
 
 
 def language_instruction() -> str:
-    language = {"zh-CN": "Simplified Chinese", "en": "English", "ko": "Korean"}[get_locale()]
+    language = {"zh-CN": "Simplified Chinese", "en": "English"}[get_locale()]
     return (
         f"Active UI locale: {get_locale()}. Write all user-visible questions, option labels, "
         f"names, descriptions, explanations, status and completion messages in {language}. "
@@ -100,10 +100,11 @@ def language_instruction() -> str:
         "use another language. Honor a different language only when the user "
         "explicitly requests it. "
         "Keep JSON keys, schema field names, tool IDs, internal identifiers and code unchanged. "
-        "The legacy agent_name_ko/name_ko fields carry the localized display name; their suffix "
+        "The legacy agent_name/name fields carry the localized display name; their suffix "
         "does not select the output language. Keep required Markdown section headings unchanged."
     )
 
 
 def localized_prompt(prompt: str) -> str:
     return localize(prompt) + "\n\n" + language_instruction()
+

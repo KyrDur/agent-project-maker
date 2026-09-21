@@ -28,10 +28,10 @@ describe('protocolMemoryRecall', () => {
     const parsed = protocolMemoryRecall({
       method: 'custom:moldy.memory_recalled',
       params: {
-        data: { payload: { memories: [{ scope: 'user', content: '메모' }] } },
+        data: { payload: { memories: [{ scope: 'user', content: '注释' }] } },
       },
     })
-    expect(parsed).toEqual([{ id: undefined, scope: 'user', content: '메모' }])
+    expect(parsed).toEqual([{ id: undefined, scope: 'user', content: '注释' }])
   })
 
   it('scope나 content가 invalid한 항목은 걸러낸다', () => {

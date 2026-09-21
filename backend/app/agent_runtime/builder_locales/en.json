@@ -260,5 +260,13 @@
   "confirmed_568940": "confirmed",
   "agents_with_active_schedules_cannot_30ae0e": "Agents with active schedules cannot change to per-user credential mode. Disable the schedule first.",
   "stream_model_error": "The model provider request failed. Check the model settings, credentials, and usage limits.",
-  "stream_generation_error": "An error occurred while generating the response. Please try again."
+  "stream_generation_error": "An error occurred while generating the response. Please try again.",
+  "builder_runtime_title": "Runtime model setup",
+  "builder_runtime_setup": "No usable personal runtime model. Add a personal credential and compatible model, then check again. Platform credentials cannot run your Agent.",
+  "builder_runtime_choose": "Choose the personal model that will run this Agent.",
+  "builder_runtime_model_unavailable": "The selected model or personal credential is unavailable or incompatible. Fix Credentials and Models, then retry the build.",
+  "builder_runtime_retry": "Check again",
+  "builder_runtime_links": "[Configure personal credentials](/credentials) · [Configure models](/models), then return here to continue.",
+  "builder_tool_unavailable": "A required tool is unavailable. Fix or remove it in Tools settings, then rebuild.",
+  "builder_tool_credential": "A required tool lacks a usable compatible personal credential. Bind one in Tools settings, then rebuild."
 }

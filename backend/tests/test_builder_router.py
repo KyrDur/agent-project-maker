@@ -61,12 +61,12 @@ async def test_start_build_empty_request(client: AsyncClient):
 async def test_get_session(client: AsyncClient, db: AsyncSession):
     await _seed(db)
 
-    create_resp = await client.post("/api/builder", json={"user_request": "검색 에이전트"})
+    create_resp = await client.post("/api/builder", json={"user_request": "搜索智能体"})
     session_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/builder/{session_id}")
     assert resp.status_code == 200
-    assert resp.json()["user_request"] == "검색 에이전트"
+    assert resp.json()["user_request"] == "搜索智能体"
 
 
 @pytest.mark.asyncio
@@ -93,8 +93,7 @@ async def test_confirm_build(client: AsyncClient, db: AsyncSession):
         user_request="날씨 봇",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "Weather Bot",
-            "name_ko": "날씨 봇",
+            "name": "날씨 봇",
             "description": "날씨를 알려주는 봇",
             "system_prompt": "You are a weather bot.",
             "tools": [],
@@ -119,7 +118,7 @@ async def test_confirm_not_preview(client: AsyncClient, db: AsyncSession):
     await _seed(db)
 
     # Create a session still in BUILDING state
-    resp = await client.post("/api/builder", json={"user_request": "테스트"})
+    resp = await client.post("/api/builder", json={"user_request": "测试"})
     session_id = resp.json()["id"]
 
     resp = await client.post(f"/api/builder/{session_id}/confirm")
@@ -210,8 +209,7 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
         user_request="test",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "Bot",
-            "name_ko": "봇",
+            "name": "봇",
             "description": "d",
             "system_prompt": "p",
             "tools": [],
@@ -226,3 +224,4 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
     resp = await client.post(f"/api/builder/{session.id}/confirm")
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "MODEL_NOT_FOUND"
+

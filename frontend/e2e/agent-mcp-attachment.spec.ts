@@ -54,27 +54,27 @@ test('discovered MCP tool attaches, survives reload and detaches from agent sett
     ).id
     const agentUrl = `${API_BASE}/api/agents/${agentId}`
     await page.goto(`/agents/${agentId}/settings`)
-    await page.getByRole('button', { name: '추가', exact: true }).first().click()
+    await page.getByRole('button', { name: '添加', exact: true }).first().click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('tab', { name: 'MCP', exact: true }).click()
     await dialog
       .getByRole('tabpanel', { name: 'MCP', exact: true })
-      .getByPlaceholder('검색', { exact: true })
+      .getByPlaceholder('搜索', { exact: true })
       .fill(serverName)
     await dialog.getByRole('button', { name: 'weather 추가', exact: true }).click()
     await expect(dialog.getByRole('button', { name: 'weather 제거', exact: true })).toBeVisible()
-    await dialog.getByRole('button', { name: '닫기', exact: true }).click()
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click()
     const saved = page.waitForResponse(
       (res) => res.url() === agentUrl && res.request().method() === 'PUT',
       { timeout: 15_000 },
     )
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
     expect(agentSchema.parse(await apiJson(await saved, 'Attach MCP')).mcp_tools).toEqual([
       expect.objectContaining({ id: weather.id }),
     ])
 
     await page.reload()
-    await page.getByRole('button', { name: '추가', exact: true }).first().click()
+    await page.getByRole('button', { name: '添加', exact: true }).first().click()
     await expect(dialog.getByRole('button', { name: 'weather 제거', exact: true })).toBeVisible()
     await captureResourcePage({
       page,
@@ -91,12 +91,12 @@ test('discovered MCP tool attaches, survives reload and detaches from agent sett
       },
     })
     await dialog.getByRole('button', { name: 'weather 제거', exact: true }).click()
-    await dialog.getByRole('button', { name: '닫기', exact: true }).click()
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click()
     const detached = page.waitForResponse(
       (res) => res.url() === agentUrl && res.request().method() === 'PUT',
       { timeout: 15_000 },
     )
-    await page.getByRole('button', { name: '저장', exact: true }).click()
+    await page.getByRole('button', { name: '保存', exact: true }).click()
     expect(agentSchema.parse(await apiJson(await detached, 'Detach MCP')).mcp_tools).toEqual([])
     expect(agentSchema.parse(await apiGetJson(request, agentUrl)).mcp_tools).toEqual([])
     expect(errors.console).toEqual([])

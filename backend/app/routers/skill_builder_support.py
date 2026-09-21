@@ -49,7 +49,7 @@ async def require_system_llm(
     request: Request,
 ) -> None:
     try:
-        await resolve_system_model(db, "text_primary")
+        await resolve_system_model(db, "builder")
     except SystemModelNotConfiguredError as exc:
         await record_builder_audit(
             db,

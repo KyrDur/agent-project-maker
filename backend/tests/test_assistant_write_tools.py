@@ -672,7 +672,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
         {
             "schedule_type": "interval",
             "name": "10분 모니터링",
-            "message": "상태 확인",
+            "message": "立即查看",
             "interval_minutes": 10,
             "timezone": "Asia/Seoul",
             "conversation_policy": "schedule_thread",
@@ -1041,7 +1041,7 @@ async def test_disable_cron_schedule(db: AsyncSession, patch_write_session):
 
     tool = _find_tool(tools, "disable_cron_schedule")
     result = await tool.ainvoke({"schedule_id": schedule_id})
-    assert "비활성화 완료" in result
+    assert "项目已禁用" in result
 
 
 @pytest.mark.asyncio

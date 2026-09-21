@@ -187,7 +187,7 @@ def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
         # drafts carry no persisted skill row — so they never reach this ledger.
         # Trigger/API runs whose thread_id is not a conversation UUID record with
         # conversation_id NULL (self-describing). A failed script (nonzero exit)
-        # is NOT counted — the "실행" stat reflects successful executions.
+        # is NOT counted — the "运行" stat reflects successful executions.
         if (
             proc.returncode == 0
             and ctx.audit_kind == "execute_in_skill"

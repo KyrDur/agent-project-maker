@@ -5,7 +5,7 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarTrigger: (props: Record<string, unknown>) => (
     <button
       data-testid="sidebar-trigger"
-      aria-label="사이드바 열기/닫기"
+      aria-label="打开或关闭侧边栏"
       className={props.className as string}
     />
   ),
@@ -32,7 +32,7 @@ describe('AppHeader', () => {
 
   it('renders sidebar trigger with correct aria label', () => {
     const { container } = render(<AppHeader />)
-    const trigger = container.querySelector('[aria-label="사이드바 열기/닫기"]')
+    const trigger = container.querySelector('[aria-label="打开或关闭侧边栏"]')
     expect(trigger).toBeInTheDocument()
   })
 

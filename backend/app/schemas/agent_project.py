@@ -33,6 +33,7 @@ class AgentProjectVersionSummary(BaseModel):
     change_summary: str | None
     config_hash: str | None
     created_at: datetime
+    created_from: dict[str, str] | None = None
 
 
 class AgentProjectVersionResponse(AgentProjectVersionSummary):
@@ -72,6 +73,10 @@ class MockToolBehavior(BaseModel):
 
 class EvaluationCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    evaluation_type: Literal["normal", "edge", "failure"] = "normal"
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
+    source: Literal["ai_generated", "imported", "official_benchmark"] = "ai_generated"
+    expected_behavior: dict[str, Any] | None = None
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     name: str = Field(min_length=1, max_length=200)
     input: str = Field(min_length=1, max_length=10000)
@@ -103,8 +108,11 @@ class EvalSetResponse(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID
     name: str
+    evaluation_focus_json: list[dict[str, Any]] | None = None
+    evaluation_focus_reason: str | None = None
     cases_json: list[dict[str, Any]]
     frozen: bool
+    quality_report_json: dict[str, Any] | None = None
     created_at: datetime
     rubric_json: dict[str, Any] | None = None
 
@@ -138,6 +146,11 @@ class EvalGenerationRequest(BaseModel):
     version_id: uuid.UUID
 
 
+class EvalCaseGenerationRequest(EvalGenerationRequest):
+    evaluation_focus: list[str] = Field(min_length=2, max_length=8)
+    evaluation_focus_reason: str | None = Field(default=None, max_length=1000)
+
+
 class EvalMetric(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")
@@ -165,6 +178,7 @@ METRICS = {
 
 class EvalSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    capability_profile: dict[str, Any] = Field(default_factory=dict)
     metrics: list[EvalMetric] = Field(min_length=3, max_length=5)
     pass_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
 

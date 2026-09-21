@@ -12,8 +12,8 @@ describe('CountedTabs', () => {
         value="all"
         onValueChange={(value) => values.push(value)}
         tabs={[
-          { value: 'all', label: '전체', count: 7 },
-          { value: 'active', label: '활성', countLabel: '2개' },
+          { value: 'all', label: '所有时间', count: 7 },
+          { value: 'active', label: '启用', countLabel: '2개' },
         ]}
       />,
     )
@@ -36,13 +36,13 @@ describe('CountedTabs', () => {
         value="all"
         onValueChange={(value) => values.push(value)}
         tabs={[
-          { value: 'all', label: '전체' },
-          { value: 'disabled', label: '비활성', disabled: true },
+          { value: 'all', label: '所有时间' },
+          { value: 'disabled', label: '停用', disabled: true },
         ]}
       />,
     )
 
-    await user.click(screen.getByRole('tab', { name: '비활성' }))
+    await user.click(screen.getByRole('tab', { name: '停用' }))
     expect(values).toEqual([])
   })
 })

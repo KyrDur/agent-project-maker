@@ -41,20 +41,20 @@ function renderGroupNode(toolName: string, count: number, running: boolean, chil
 describe('renderBuilderGroupedPart (group-tool 노드)', () => {
   it('N≥2: 그룹 컨테이너로 묶어 라벨 + 개수를 보여준다', () => {
     renderGroupNode('read_file', 2, false, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.getByText('2회')).toBeInTheDocument()
   })
 
   it('N=1: 컨테이너 없이 children만 패스스루(라벨/개수 없음)', () => {
     renderGroupNode('read_file', 1, false, <div data-testid="leaf">leaf</div>)
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
-    expect(screen.queryByText('파일 읽기')).not.toBeInTheDocument()
-    expect(screen.queryByText('1회')).not.toBeInTheDocument()
+    expect(screen.queryByText('读取文件')).not.toBeInTheDocument()
+    expect(screen.queryByText('一次')).not.toBeInTheDocument()
   })
 
   it('running=true: 펼침 상태라 그룹 내부 children이 보인다', () => {
     renderGroupNode('read_file', 3, true, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('파일 읽기')).toBeInTheDocument()
+    expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.getByText('3회')).toBeInTheDocument()
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
   })

@@ -2,7 +2,7 @@
 
 // Last-resort boundary: this replaces the crashed root layout, so the
 // next-intl provider is unavailable — copy stays static English (the base
-// i18n guard only flags Korean) and the stylesheet is imported directly
+// The i18n guard and stylesheet are imported directly
 // because the root layout's import no longer applies.
 import './globals.css'
 
@@ -15,7 +15,7 @@ type GlobalErrorProps = {
 
 export default function GlobalError({ reset }: GlobalErrorProps) {
   return (
-    <html lang="ko">
+    <html lang="zh-CN">
       <body>
         <div
           role="alert"

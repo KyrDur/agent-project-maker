@@ -116,10 +116,10 @@ async def get_current_user(
 
     token = _extract_access_token(request)
     if not token:
-        raise AppError(code="not_authenticated", message="인증이 필요합니다", status=401)
+        raise AppError(code="not_authenticated", message="需要登录后继续。", status=401)
     user = await _resolve_user(token, db)
     if user is None:
-        raise AppError(code="not_authenticated", message="인증이 필요합니다", status=401)
+        raise AppError(code="not_authenticated", message="需要登录后继续。", status=401)
     request.state.current_user = user
     return user
 
@@ -145,7 +145,7 @@ async def require_super_user(
     """Gate operator-only endpoints (system credentials, model catalog…)."""
 
     if not user.is_super_user:
-        raise AppError(code="forbidden", message="권한이 없습니다", status=403)
+        raise AppError(code="forbidden", message="没有权限执行此操作。", status=403)
     return user
 
 
@@ -200,10 +200,10 @@ async def verify_csrf(
     header = request.headers.get("x-csrf-token") or request.headers.get("X-CSRF-Token")
     cookie = request.cookies.get(settings.cookie_name_csrf)
     if not header or not cookie or not secrets.compare_digest(header, cookie):
-        raise AppError(code="csrf_mismatch", message="CSRF 검증 실패", status=403)
+        raise AppError(code="csrf_mismatch", message="CSRF 校验失败。", status=403)
     try:
         payload = decode_token(header, expected_type="csrf")
     except InvalidTokenError as exc:
-        raise AppError(code="csrf_mismatch", message="CSRF 검증 실패", status=403) from exc
+        raise AppError(code="csrf_mismatch", message="CSRF 校验失败。", status=403) from exc
     if payload.sub != str(user.id):
-        raise AppError(code="csrf_mismatch", message="CSRF 검증 실패", status=403)
+        raise AppError(code="csrf_mismatch", message="CSRF 校验失败。", status=403)

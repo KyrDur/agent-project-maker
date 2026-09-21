@@ -47,7 +47,7 @@ test.describe('Chat error retry (v3, G2)', () => {
 
     // The failed run renders an error bubble whose retry button is always visible
     // (it lives inside the bubble, not the hover meta row).
-    const retryButton = page.getByRole('button', { name: '다시 시도' })
+    const retryButton = page.getByRole('button', { name: '重试' })
     await expect(retryButton).toBeVisible({ timeout: 30_000 })
 
     // Clicking retry must send a fresh run command for the failed durable input. If
@@ -60,6 +60,6 @@ test.describe('Chat error retry (v3, G2)', () => {
 
     // The re-run hits E2E_ERROR again and fails, so the error bubble + retry button
     // persists — confirming retry actually drove a new run rather than clearing UI.
-    await expect(page.getByRole('button', { name: '다시 시도' })).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByRole('button', { name: '重试' })).toBeVisible({ timeout: 30_000 })
   })
 })

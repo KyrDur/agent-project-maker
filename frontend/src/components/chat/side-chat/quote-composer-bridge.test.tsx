@@ -100,7 +100,7 @@ describe('quote delivery through official composer', () => {
             id: 1,
             target: 'side',
             reference: quote,
-            prompt: '설명',
+            prompt: '描述',
           },
         }}
       />,

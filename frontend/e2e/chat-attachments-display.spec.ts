@@ -103,13 +103,13 @@ test.describe('Chat attachments display', () => {
       waitUntil: 'domcontentloaded',
     })
 
-    const composer = page.getByPlaceholder('메시지 입력...')
+    const composer = page.getByPlaceholder('占位符')
     await expect(composer).toBeVisible({ timeout: 60_000 })
 
     // Attach an image via the paperclip → native file chooser.
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: '파일 첨부' }).click(),
+      page.getByRole('button', { name: '附加' }).click(),
     ])
     await chooser.setFiles({ name: imageName, mimeType: 'image/png', buffer: PNG })
     await expect(page.getByText(imageName).first()).toBeVisible()
@@ -138,13 +138,13 @@ test.describe('Chat attachments display', () => {
     // to the thumbnail (the attachment rides its id, not body text).
     await expect(liveUserMsg).not.toContainText('[attachment:')
 
-    // fix 1 — the composer "파일 목록" button opens the file panel even though this
+    // fix 1 — the composer "文件列表" button opens the file panel even though this
     //         conversation has no generated artifact card to click; the attachment
-    //         shows there under "내가 보낸 파일" with the 첨부 badge.
-    await page.getByRole('button', { name: '파일 목록' }).click()
+    //         shows there under "您发送的文件" with the 첨부 badge.
+    await page.getByRole('button', { name: '文件列表' }).click()
     // (the rail renders in both the desktop + overlay slots → match the first)
-    await expect(page.getByText('내가 보낸 파일').first()).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText('첨부').first()).toBeVisible()
+    await expect(page.getByText('您发送的文件').first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('附').first()).toBeVisible()
 
     // 1. Read path echoes the attachment on the user message (M1 backfill).
     const envelope = (await (

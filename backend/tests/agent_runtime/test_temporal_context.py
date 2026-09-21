@@ -66,7 +66,7 @@ def test_resolve_relative_date_expression_recent_news_window() -> None:
     result = resolve_relative_date_expression("한컴 최근 뉴스", now=now)
 
     assert result["success"] is True
-    assert result["label"] == "최근 7일"
+    assert result["label"] == "过去 7 天"
     assert result["start_date"] == "2026-05-23"
     assert result["end_date"] == "2026-05-29"
     assert result["timezone"] == "Asia/Seoul"
@@ -78,7 +78,7 @@ def test_resolve_relative_date_expression_recent_schedule_does_not_match_sunday(
     result = resolve_relative_date_expression("최근 일정", now=now)
 
     assert result["success"] is True
-    assert result["label"] == "최근 7일"
+    assert result["label"] == "过去 7 天"
     assert result["start_date"] == "2026-05-23"
     assert result["end_date"] == "2026-05-29"
 

@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
+import { Textarea } from '@/components/ui/textarea'
 import { useProjectGeneration } from '../_hooks/use-project-evaluation'
 
 export function ProjectEvalPlan({
@@ -18,6 +20,33 @@ export function ProjectEvalPlan({
   const { project, plan, cases } = useProjectGeneration(agentId)
   const spec = project.data?.eval_spec_json
   const busy = plan.isPending || cases.isPending
+  const [focus, setFocus] = useState<string[]>([])
+  const [reason, setReason] = useState('')
+  const options =
+    spec?.focus_options?.length
+      ? spec.focus_options
+      : spec
+        ? [
+            ...spec.metrics.map((metric) => ({
+              id: metric.name,
+              label: t.has(`metricNames.${metric.name}`)
+                ? t(`metricNames.${metric.name}`)
+                : metric.name,
+              description: metric.criteria,
+            })),
+            ...['ambiguous', 'missing_information', 'tool_failure']
+              .filter((id) => !spec.metrics.some((metric) => metric.name === id))
+              .map((id) => ({
+                id,
+                label: t.has(`scenarios.${id}`) ? t(`scenarios.${id}`) : id,
+                description: t('evaluationFocus.fallbackDescription'),
+              })),
+          ].slice(0, 8)
+        : []
+  const toggleFocus = (id: string) =>
+    setFocus((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    )
   return (
     <div className="my-4 space-y-3">
       <Button
@@ -52,9 +81,59 @@ export function ProjectEvalPlan({
             {spec.categories.map((name) => t(`scenarios.${name}`)).join(', ')}
           </p>
           {spec.version_id !== versionId && <p role="status">{t('planVersionMismatch')}</p>}
+          {!!options.length && (
+            <section className="space-y-3 rounded-lg border border-border/70 p-3">
+              <div>
+                <h4 className="font-medium">{t('evaluationFocus.title')}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {t('evaluationFocus.description')}
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {options.map((option) => (
+                  <label
+                    key={option.id}
+                    className="flex cursor-pointer gap-2 rounded-lg border border-border/70 p-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={focus.includes(option.id)}
+                      onChange={() => toggleFocus(option.id)}
+                    />
+                    <span>
+                      <span className="block font-medium">{option.label}</span>
+                      <span className="block text-sm text-muted-foreground">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium">{t('evaluationFocus.reason')}</span>
+                <Textarea
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder={t('evaluationFocus.reasonPlaceholder')}
+                />
+              </label>
+              {focus.length < 2 && (
+                <p className="text-sm text-destructive">{t('evaluationFocus.minimum')}</p>
+              )}
+            </section>
+          )}
           <Button
-            disabled={busy || spec.version_id !== versionId}
-            onClick={() => cases.mutate(versionId, { onSuccess: (row) => onGenerated(row.id) })}
+            disabled={busy || spec.version_id !== versionId || focus.length < 2}
+            onClick={() =>
+              cases.mutate(
+                {
+                  versionId,
+                  evaluation_focus: focus,
+                  evaluation_focus_reason: reason.trim() || null,
+                },
+                { onSuccess: (row) => onGenerated(row.id) },
+              )
+            }
           >
             {t('generateCases')}
           </Button>

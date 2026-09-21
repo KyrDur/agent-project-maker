@@ -105,7 +105,7 @@ class AgentConfig:
     # requires_network 상태로 재검증한 뒤** 채운다. prepare 분기가 interrupt
     # 정책에서 제외한다. finalize_skill 은 절대 포함되지 않는다.
     skill_builder_consented_tools: list[str] | None = None
-    # AD-4 — 승인 카드에 "이 세션에서 계속 허용" 옵션을 노출할 도구명.
+    # AD-4 — 승인 카드에 "留出本次会议的剩余时间" 옵션을 노출할 도구명.
     # eligible − consented − (requires_network 드래프트면 전부 제외).
     # 러너가 인터럽트 wire의 review_configs에 ``session_consent_eligible``
     # 플래그로 주석한다 (langchain ReviewConfig는 여분 키를 보존하지 않으므로

@@ -7,6 +7,7 @@ AgentCreationIntent를 분석하여 에이전트에 필요한 도구를 추천�
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from app.agent_runtime.builder.sub_agents.helpers import invoke_with_json_retry, load_prompt
@@ -17,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 _FALLBACK_PROMPT = (
     "AgentCreationIntent를 분석하여 에이전트에 적합한 도구를 추천한다. "
-    "카탈로그에 있는 도구만 추천하고, JSON 배열로만 응답한다."
+    "카탈로그에 있는 도구 또는 mock 환경에서 먼저 사용할 planned 도구를 추천하고, "
+    "JSON 배열로만 응답한다."
 )
 
 SYSTEM_PROMPT = load_prompt("tool_recommender.md") or _FALLBACK_PROMPT
@@ -79,10 +81,11 @@ async def recommend_tools(
     previous_recommendations: list[dict[str, Any]] | None = None,
     revision_message: str | None = None,
 ) -> list[ToolRecommendation]:
-    """Intent 기반으로 항목 (Tool / McpTool / Skill) 을 추천한다.
+    """Intent 기반으로 항목 (Tool / McpTool / Skill / planned) 을 추천한다.
 
     파싱 실패 시 빈 리스트. 카탈로그에 없는 이름이거나 (이름, kind) 조합이
-    카탈로그와 다르면 silent drop — LLM 환각 가드.
+    카탈로그와 다르면 silent drop 한다. 단, ``planned`` 는 아직 연결되지 않은
+    mock-ready 인터페이스이므로 안전한 이름을 가진 항목을 허용한다.
 
     ``previous_recommendations`` + ``revision_message`` 가 함께 주어지면
     수정 컨텍스트를 LLM 에 전달 — 사용자가 "이것만 / X 빼고" 같은 한정
@@ -112,13 +115,22 @@ async def recommend_tools(
 
         recommendations: list[ToolRecommendation] = []
         for item in raw_list:
+            if not isinstance(item, dict):
+                continue
             name = item.get("tool_name", "")
             canonical_kind = name_to_kind.get(name.lower())
-            if canonical_kind is None:
+            requested_kind = item.get("kind")
+            if canonical_kind is None and requested_kind == "planned":
+                if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name):
+                    logger.warning("Filtered out invalid planned item: %s", name)
+                    continue
+                item["kind"] = "planned"
+            elif canonical_kind is None:
                 logger.warning("Filtered out non-existent item: %s", name)
                 continue
-            # LLM 이 답한 kind 보다 카탈로그 정답 우선 — 환각 방지
-            item["kind"] = canonical_kind
+            else:
+                # LLM 이 답한 kind 보다 카탈로그 정답 우선 — 환각 방지
+                item["kind"] = canonical_kind
             recommendations.append(ToolRecommendation(**item))
         return recommendations
     except (ValueError, TypeError) as exc:

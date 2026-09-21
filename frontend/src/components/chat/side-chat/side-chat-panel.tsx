@@ -109,7 +109,11 @@ function SideChatRun({
       agentImageUrl={agent?.image_url}
       latestRun={envelope.data?.latest_run ?? null}
       messages={envelope.data?.messages ?? EMPTY_MESSAGES}
-      modelName={agent?.model?.display_name}
+      modelName={
+        agent?.model
+          ? `${agent.model.provider} · ${agent.model.display_name || agent.model.model_name}`
+          : undefined
+      }
       useLangGraphRuntime
       compact
       user={user}

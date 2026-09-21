@@ -84,12 +84,12 @@ test.describe('M11 — Model ranking column', () => {
     await page.goto('/models')
 
     // Page rendered with the catalog visible.
-    await expect(page.getByRole('heading', { name: '모델' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByText('Claude 3.5 Sonnet')).toBeVisible()
     await expect(page.getByRole('row', { name: /GPT-4o/ })).toBeVisible()
     await expect(page.getByText('Mystery Preview')).toBeVisible()
 
-    await expect(page.getByRole('button', { name: '벤치마크' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '基准测试' })).toBeVisible()
 
     // LMArena values format as integers.
     await expect(page.getByText('1287').first()).toBeVisible()
@@ -111,7 +111,7 @@ test.describe('M11 — Model ranking column', () => {
     await expect(page.getByText('Claude 3.5 Sonnet')).toBeVisible()
     await expect(page.getByText('Mystery Preview')).toBeVisible()
 
-    const benchmarkHeader = page.getByRole('button', { name: '벤치마크' })
+    const benchmarkHeader = page.getByRole('button', { name: '基准测试' })
     await benchmarkHeader.click()
 
     async function rankedOrder() {

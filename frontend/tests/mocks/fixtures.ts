@@ -28,7 +28,12 @@ export const mockAgent: Agent = {
   name: 'Test Agent',
   description: 'A test agent',
   system_prompt: 'You are a helpful assistant.',
-  model: { id: 'model-1', display_name: 'GPT-4o' },
+  model: {
+    id: 'model-1',
+    display_name: 'GPT-4o',
+    provider: 'openai',
+    model_name: 'gpt-4o',
+  },
   tools: [{ id: 'tool-1', name: 'Web Search' }],
   mcp_tools: [],
   skills: [],
@@ -391,8 +396,7 @@ export const mockUsageSummary: UsageSummary = {
 // ── Builder v2 ────────────────────────────────────────────────────
 
 export const mockBuilderDraftConfig: BuilderDraftConfig = {
-  name: 'News Agent',
-  name_ko: '뉴스 에이전트',
+  name: '뉴스 에이전트',
   description: 'Summarizes daily news',
   system_prompt: 'You are a news summarizer.',
   tools: ['Web Search', 'Web Scraper'],
@@ -408,8 +412,7 @@ export const mockBuilderSession: BuilderSession = {
   current_phase: 7,
   user_request: '뉴스 요약 에이전트',
   intent: {
-    agent_name: 'News Agent',
-    agent_name_ko: '뉴스 에이전트',
+    agent_name: '뉴스 에이전트',
     agent_description: 'Summarizes daily news',
     primary_task_type: 'research',
     tool_preferences: 'web search',
@@ -445,7 +448,7 @@ export const mockMarketplaceItem: MarketplaceItem = {
   is_listed: true,
   tags: [],
   categories: [],
-  locale: 'ko-KR',
+  locale: 'zh-CN',
   created_at: '2026-05-01T00:00:00Z',
   updated_at: '2026-05-02T00:00:00Z',
   latest_version: {
@@ -491,3 +494,4 @@ export const mockMarketplaceItemsPage: MarketplaceItemsPage = {
   has_more: false,
   next_offset: null,
 }
+

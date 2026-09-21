@@ -2,7 +2,7 @@
 
 Use this reference only when the image request needs shaping.
 
-Build the final prompt in the user's language. If the user asks in Korean, keep the prompt Korean so visible titles and labels are more likely to render in Korean. Preserve requested text exactly when the user asks for visible typography.
+最终提示词默认使用简体中文（zh-CN）。用户明确指定其他语言时遵从其要求；如果要求在图像中显示特定文字，必须准确保留。
 
 Include these elements when useful:
 
@@ -20,6 +20,6 @@ For common requests:
 - Product mockup: clear product geometry, studio lighting, realistic material, uncluttered background.
 - Portrait: describe age/style only if user supplied it; avoid inventing sensitive traits.
 - Concept art: name the visual metaphor, mood, environment, and focal point.
-- Travel guide map: use `[지역] 관광 가이드맵` as the title concept. Prefer a modern editorial illustration with minimal line-art characters, representative landmarks, local food icons, a light route/map composition, bright refined colors, and generous whitespace. Ask for only Korean title text and short Korean labels; avoid English captions.
+- Travel guide map: use `[地区] 旅游指南地图` as the title concept. Prefer a modern editorial illustration with minimal line-art characters, representative landmarks, local food icons, a light route/map composition, bright refined colors, and generous whitespace. Ask for Simplified Chinese titles and short labels; avoid English captions.
 
 Keep prompts specific but not bloated. A good default is 80-180 words.

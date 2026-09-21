@@ -125,7 +125,7 @@ describe('AssistantPanel', () => {
   it('초기 렌더 시 hero title을 표시한다', () => {
     render(<AssistantPanel agentId="agent-1" agentName="Test Agent" />)
 
-    // EmptyContent의 FixHero가 ``fixHeroTitle({ agentName })`` 키 ("{agentName} 수정")로 렌더.
+    // EmptyContent의 FixHero가 ``fixHeroTitle({ agentName })`` 키 ("修复{agentName}")로 렌더.
     expect(screen.getByText('Test Agent 수정')).toBeInTheDocument()
   })
 
@@ -152,7 +152,7 @@ describe('AssistantPanel', () => {
     if (!resumeFn) throw new Error('Assistant resume function should be registered')
 
     const signal = new AbortController().signal
-    for await (const _event of resumeFn([decision], signal, '승인됨', 'intr-1')) {
+    for await (const _event of resumeFn([decision], signal, '已批准', 'intr-1')) {
       void _event
     }
 
@@ -160,7 +160,7 @@ describe('AssistantPanel', () => {
       'agent-1',
       [decision],
       signal,
-      '승인됨',
+      '已批准',
       'intr-1',
       expect.any(String),
     )

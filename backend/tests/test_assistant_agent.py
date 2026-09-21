@@ -44,7 +44,7 @@ def test_load_system_prompt_fallback(tmp_path):
     with patch.object(mod, "_PROMPT_PATH", nonexistent):
         result = mod._load_system_prompt()
 
-    assert "Moldy Agent Assistant" in result
+    assert "Agent Project Maker Assistant" in result
     assert "VERIFY" in result
     mod._load_system_prompt.cache_clear()
 
@@ -153,7 +153,7 @@ async def test_build_assistant_agent_requires_approval_for_write_tools_only():
     mock_build.assert_called_once()
     call_kwargs = mock_build.call_args
     assert call_kwargs.kwargs["model"] is mock_model
-    assert call_kwargs.kwargs["system_prompt"] == "Test prompt"
+    assert call_kwargs.kwargs["system_prompt"].startswith("Test prompt")
     assert call_kwargs.kwargs["checkpointer"] is mock_checkpointer
     assert len(call_kwargs.kwargs["tools"]) == 3
 

@@ -52,7 +52,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": {
                     "code": "VALIDATION_ERROR",
-                    "message": "입력값 검증에 실패했습니다",
+                    "message": "请求参数验证失败",
                     "details": jsonable_encoder(exc.errors()),
                 }
             },
@@ -61,7 +61,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = f"HTTP_{exc.status_code}"
-        message = "HTTP 오류가 발생했습니다"
+        message = "发生 HTTP 错误"
         details = None
 
         if isinstance(exc.detail, str):
@@ -94,7 +94,8 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "error": {
                     "code": "INTERNAL_ERROR",
-                    "message": "서버 오류가 발생했습니다",
+                    "message": "服务器发生错误",
                 }
             },
         )
+
