@@ -7,7 +7,9 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.credentials.service import encrypt_data
 from app.models.agent import Agent
+from app.models.credential import Credential
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import McpTool
 from app.models.model import Model
@@ -34,11 +36,25 @@ async def _seed_user(db: AsyncSession) -> User:
 
 
 async def _seed_model(db: AsyncSession, *, is_default: bool = True) -> Model:
+    encrypted, key_id, field_keys = encrypt_data({"api_key": "sk-test-builder"})
+    credential = Credential(
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Builder test key",
+        data_encrypted=encrypted,
+        key_id=key_id,
+        field_keys=field_keys,
+        is_system=False,
+        status="active",
+    )
+    db.add(credential)
+    await db.flush()
     model = Model(
         provider="openai",
         model_name="gpt-4o",
         display_name="GPT-4o",
         is_default=is_default,
+        default_credential_id=credential.id,
     )
     db.add(model)
     await db.flush()
@@ -503,77 +519,43 @@ def test_get_middlewares_catalog():
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_settings(db: AsyncSession):
-    """When settings.default_agent_model is set, it is returned."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_requires_user_context(db: AsyncSession):
+    """Builder never falls back to operator/global model settings."""
     from app.services.builder_service import _get_default_model_name
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = "anthropic:claude-3"
-        result = await _get_default_model_name(db)
-        assert result == "anthropic:claude-3"
+    assert await _get_default_model_name(db) == ""
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_db_default(db: AsyncSession):
-    """When no env var, returns is_default=True model from DB."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_from_personal_binding(db: AsyncSession):
+    """Exactly one usable personal model binding is selected for Builder."""
     from app.services.builder_service import _get_default_model_name
 
-    user = User(id=TEST_USER_ID, email="test@test.com", name="Test")
-    db.add(user)
-    model = Model(
-        provider="openai",
-        model_name="gpt-4o",
-        display_name="GPT-4o",
-        is_default=True,
-    )
-    db.add(model)
+    await _seed_user(db)
+    await _seed_model(db)
     await db.commit()
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == "openai:gpt-4o"
+    result = await _get_default_model_name(db, TEST_USER_ID)
+    assert result == "openai:gpt-4o"
 
 
 @pytest.mark.asyncio
-async def test_get_default_model_name_from_db_any(db: AsyncSession):
-    """When no default model, returns first model from DB."""
-    from unittest.mock import patch as _patch
-
+async def test_get_default_model_name_ignores_unbound_model(db: AsyncSession):
+    """A catalog model without a personal credential is not runnable."""
     from app.services.builder_service import _get_default_model_name
 
-    user = User(id=TEST_USER_ID, email="test@test.com", name="Test")
-    db.add(user)
-    model = Model(
-        provider="anthropic",
-        model_name="claude-3-sonnet",
-        display_name="Claude 3 Sonnet",
-        is_default=False,
+    await _seed_user(db)
+    db.add(
+        Model(
+            provider="openai",
+            model_name="gpt-4o",
+            display_name="GPT-4o",
+            is_default=True,
+        )
     )
-    db.add(model)
     await db.commit()
 
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == "anthropic:claude-3-sonnet"
-
-
-@pytest.mark.asyncio
-async def test_get_default_model_name_empty(db: AsyncSession):
-    """When no models in DB, returns empty string."""
-    from unittest.mock import patch as _patch
-
-    from app.services.builder_service import _get_default_model_name
-
-    with _patch("app.config.settings") as mock_settings:
-        mock_settings.default_agent_model = ""
-        result = await _get_default_model_name(db)
-        assert result == ""
+    assert await _get_default_model_name(db, TEST_USER_ID) == ""
 
 
 # ---------------------------------------------------------------------------
