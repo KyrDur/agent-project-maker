@@ -34,7 +34,7 @@ async def test_list_templates_by_category(client: AsyncClient, db: AsyncSession)
     db.add(Template(name="T2", category="数据", system_prompt="p2"))
     await db.commit()
 
-    resp = await client.get("/api/templates?category=생산성")
+    resp = await client.get("/api/templates?category=生产力")
     assert resp.status_code == 200
     assert len(resp.json()) == 1
     assert resp.json()[0]["name"] == "T1"
