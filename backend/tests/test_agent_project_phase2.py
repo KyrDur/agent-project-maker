@@ -1,3 +1,9 @@
+# pyright: reportArgumentType=false
+# pyright: reportOptionalSubscript=false
+# pyright: reportOptionalMemberAccess=false
+# pyright: reportAttributeAccessIssue=false
+# pyright: reportIndexIssue=false
+
 from __future__ import annotations
 
 import asyncio
