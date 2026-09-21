@@ -131,6 +131,9 @@ documents:
   - path: docs/agent-api.md
     lifecycle: canonical-current
     status: current
+  - path: docs/agent-project-demo.md
+    lifecycle: reference/spec
+    status: reference
   - path: docs/browser-e2e-porting-guide.md
     lifecycle: canonical-current
     status: current
