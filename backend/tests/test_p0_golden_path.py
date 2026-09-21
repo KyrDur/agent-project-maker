@@ -88,7 +88,12 @@ async def model_json(_db, _snapshot, _user, role, _instruction, payload):
     if role == "planner":
         return plan()
     if role == "case_generator":
-        return generated_cases()
+        data = generated_cases()
+        capabilities = payload.get("capability_profile", {}).get("capabilities", [])
+        if capabilities:
+            for case in data["cases"]:
+                case["tags"] = [case["tags"][0], *capabilities]
+        return data
     if role == "judge":
         passed = payload["actual_output"] == "Login reviewed"
         return {
