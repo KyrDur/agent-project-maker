@@ -644,8 +644,17 @@ def _is_rich_output_request(human_text: str) -> bool:
         return True
 
     lowered = human_text.lower()
-    requested_surfaces = ("체크리스트", "표", "代码", "수식", "图片", "링크")
-    mentions_required_surfaces = all(surface in human_text for surface in requested_surfaces)
+    surface_groups = (
+        ("체크리스트", "清单", "checklist"),
+        ("표", "表格", "table"),
+        ("代码", "코드", "code"),
+        ("수식", "公式", "math"),
+        ("图片", "이미지", "image"),
+        ("링크", "链接", "link"),
+    )
+    mentions_required_surfaces = all(
+        any(surface.lower() in lowered for surface in group) for group in surface_groups
+    )
     mentions_quote = "인용" in human_text or "blockquote" in lowered
     mentions_mermaid = "mermaid" in lowered or "머메이드" in human_text
     return mentions_required_surfaces and mentions_quote and mentions_mermaid
@@ -676,7 +685,12 @@ def _is_hitl_approval_request(human_text: str) -> bool:
     # approval-triggering request. Backward compatible with existing specs that
     # phrase the prompt as "도구 사용 승인" / "tool ... HITL".
     mentions_execution = (
-        "已启用" in human_text or "运行" in human_text or "use" in lowered or "run" in lowered
+        "已启用" in human_text
+        or "运行" in human_text
+        or "사용" in human_text
+        or "실행" in human_text
+        or "use" in lowered
+        or "run" in lowered
     )
     return mentions_tool and mentions_hitl and mentions_execution
 
@@ -850,9 +864,7 @@ class E2EScriptedChatModel(BaseChatModel):
             if ARTIFACT_SLOW_FINAL_MARKER in human_text:
                 message = AIMessage(content="".join(ARTIFACT_SLOW_FINAL_PARTS))
                 return ChatResult(generations=[ChatGeneration(message=message)])
-            message = AIMessage(
-                content="문서 파일 생성이 완료되었습니다. 오른쪽 파일 패널에서 확인하세요."
-            )
+            message = AIMessage(content="文档文件生成完成。请在右侧文件面板中查看。")
             return ChatResult(generations=[ChatGeneration(message=message)])
 
         if SLOW_STREAM_MARKER in human_text:
