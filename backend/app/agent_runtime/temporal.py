@@ -200,10 +200,14 @@ def _resolve_weekday(
             label_prefix = "지난 주"
         else:
             base = today + timedelta(days=(weekday_index - today.weekday()) % 7)
-            return f"{token if token.endswith('天数') else token + '天数'}", base
+            if token.endswith(("요일", "天")):
+                weekday_label = token
+            else:
+                weekday_label = f"{token}요일"
+            return weekday_label, base
 
         start = _week_start(today) + timedelta(days=7 * week_offset)
-        weekday_label = token if token.endswith("天数") else f"{token}요일"
+        weekday_label = token if token.endswith(("요일", "天")) else f"{token}요일"
         return f"{label_prefix} {weekday_label}", start + timedelta(days=weekday_index)
     return None
 
