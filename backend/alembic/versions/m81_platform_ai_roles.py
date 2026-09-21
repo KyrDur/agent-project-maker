@@ -49,8 +49,7 @@ def upgrade() -> None:
             )
 
     existing = {
-        row[0]
-        for row in bind.execute(sa.text("select role from system_llm_settings")).all()
+        row[0] for row in bind.execute(sa.text("select role from system_llm_settings")).all()
     }
     rows = [
         {

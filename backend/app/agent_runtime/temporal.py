@@ -300,4 +300,3 @@ def resolve_relative_date_expression(
         "reference_date": today.isoformat(),
         "reference_weekday": _weekday_ko(today),
     }
-

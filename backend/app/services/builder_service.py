@@ -573,4 +573,3 @@ async def run_v3_resume_stream(
 
     async for chunk in stream_agent_response(graph_compiled, Command(resume=response), config):
         yield chunk
-

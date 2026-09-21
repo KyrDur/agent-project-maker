@@ -602,9 +602,7 @@ def test_format_middlewares_items():
     from app.agent_runtime.builder.sub_agents.prompt_generator import _format_middlewares
 
     mws = [
-        MiddlewareRecommendation(
-            middleware_name="tool_retry", description="重试", reason="可靠性"
-        )
+        MiddlewareRecommendation(middleware_name="tool_retry", description="重试", reason="可靠性")
     ]
     result = _format_middlewares(mws)
     assert "tool_retry" in result
@@ -616,4 +614,3 @@ def explicit_korean_locale():
 
     with locale_scope("zh-CN"):
         yield
-

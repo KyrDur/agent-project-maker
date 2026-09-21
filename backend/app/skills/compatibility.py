@@ -29,10 +29,7 @@ CHANGELOG_RE = re.compile(r"(?i)(^|\n)#{1,3}\s*(change\s*log|changelog|变更\s*
 
 def check_portable_compatibility(files: Sequence[SkillDraftFile]) -> dict[str, Any]:
     by_path = {_normalize_path(file.path): file for file in files}
-    targets = {
-        target: {"status": "pass", "issues": []}
-        for target in TARGETS
-    }
+    targets = {target: {"status": "pass", "issues": []} for target in TARGETS}
     skill_file = by_path.get("SKILL.md")
     if skill_file is None:
         _add_all(targets, "SKILL_MD_MISSING", "error", "SKILL.md is required.")

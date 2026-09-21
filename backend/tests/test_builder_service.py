@@ -56,9 +56,7 @@ async def _seed_tool(db: AsyncSession) -> Tool:
     return tool
 
 
-async def _seed_mcp_tools(
-    db: AsyncSession, *, names: list[str]
-) -> tuple[McpServer, list[McpTool]]:
+async def _seed_mcp_tools(db: AsyncSession, *, names: list[str]) -> tuple[McpServer, list[McpTool]]:
     """McpServer 한 개 + names 만큼의 McpTool 생성."""
     server = McpServer(
         user_id=TEST_USER_ID,
@@ -233,9 +231,7 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
     """
     await _seed_user(db)
     await _seed_model(db)
-    _, mcp_tools = await _seed_mcp_tools(
-        db, names=["list_departments", "search_employees"]
-    )
+    _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments", "search_employees"])
     await db.commit()
 
     session = await create_session(db, TEST_USER_ID, "조직도 봇")
@@ -283,9 +279,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     agent = await confirm_build(db, session)
     assert agent is not None
     assert {link.tool_id for link in agent.tool_links} == {tool.id}
-    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {
-        mt.id for mt in mcp_tools
-    }
+    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {mt.id for mt in mcp_tools}
 
 
 @pytest.mark.asyncio
@@ -345,9 +339,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     agent = await confirm_build(db, session)
     assert agent is not None
     assert {link.tool_id for link in agent.tool_links} == {tool.id}
-    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {
-        mt.id for mt in mcp_tools
-    }
+    assert {link.mcp_tool_id for link in agent.mcp_tool_links} == {mt.id for mt in mcp_tools}
     assert {link.skill_id for link in agent.skill_links} == {s.id for s in skills}
 
 
@@ -671,4 +663,3 @@ async def test_get_agent_by_id_not_found(db: AsyncSession):
 
     found = await get_agent_by_id(db, _uuid.uuid4())
     assert found is None
-

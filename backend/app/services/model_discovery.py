@@ -121,14 +121,10 @@ class DiscoveredModel:
             "context_window": self.context_window,
             "max_output_tokens": self.max_output_tokens,
             "cost_per_input_token": (
-                str(self.cost_per_input_token)
-                if self.cost_per_input_token is not None
-                else None
+                str(self.cost_per_input_token) if self.cost_per_input_token is not None else None
             ),
             "cost_per_output_token": (
-                str(self.cost_per_output_token)
-                if self.cost_per_output_token is not None
-                else None
+                str(self.cost_per_output_token) if self.cost_per_output_token is not None else None
             ),
             "input_modalities": self.input_modalities,
             "output_modalities": self.output_modalities,
@@ -238,9 +234,7 @@ async def _discover_anthropic(data: dict[str, Any]) -> list[DiscoveredModel]:
 
 async def _discover_google(data: dict[str, Any]) -> list[DiscoveredModel]:
     api_key = data.get("api_key")
-    base_url = (
-        data.get("base_url") or "https://generativelanguage.googleapis.com/v1beta"
-    )
+    base_url = data.get("base_url") or "https://generativelanguage.googleapis.com/v1beta"
     url = f"{base_url.rstrip('/')}/models"
     params: dict[str, str] = {}
     if api_key:
@@ -389,8 +383,7 @@ async def _discover_openai_compatible_provider(
                 response = await client.get(fallback_url, headers=headers)
                 response.raise_for_status()
                 items = [
-                    {"id": m.get("name") or ""}
-                    for m in (response.json().get("models", []) or [])
+                    {"id": m.get("name") or ""} for m in (response.json().get("models", []) or [])
                 ]
     except (httpx.HTTPError, httpx.TimeoutException) as exc:
         items = _fallback_items_for_provider(provider, exc)
@@ -502,9 +495,7 @@ def _from_enriched(
 ) -> DiscoveredModel:
     cost_in = _to_decimal(enriched.get("cost_per_input_token"))
     cost_out = _to_decimal(enriched.get("cost_per_output_token"))
-    source: PricingSource = (
-        "litellm" if (cost_in is not None or cost_out is not None) else "manual"
-    )
+    source: PricingSource = "litellm" if (cost_in is not None or cost_out is not None) else "manual"
     return DiscoveredModel(
         model_name=model_id,
         display_name=enriched.get("display_name") or model_id,
@@ -537,9 +528,7 @@ async def _mark_already_registered(
         return
     names = [m.model_name for m in discovered]
     result = await db.execute(
-        select(Model.model_name).where(
-            Model.provider == provider, Model.model_name.in_(names)
-        )
+        select(Model.model_name).where(Model.provider == provider, Model.model_name.in_(names))
     )
     seen = {row[0] for row in result.all()}
     for model in discovered:

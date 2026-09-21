@@ -219,4 +219,3 @@ class BuilderStateSchema(BaseModel):
 
 # Pydantic v2 모델 재구성 (forward references 해결)
 BuilderSessionResponse.model_rebuild()
-

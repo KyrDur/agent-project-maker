@@ -3,7 +3,6 @@
 # pyright: reportArgumentType=false
 # pyright: reportOptionalSubscript=false
 
-
 import uuid
 from copy import deepcopy
 
@@ -340,9 +339,7 @@ async def test_no_supported_patch_cannot_be_accepted(client, db, refund_project,
 
 
 @pytest.mark.asyncio
-async def test_builder_bootstrap_stops_before_focus_checkpoint(
-    db, refund_project, monkeypatch
-):
+async def test_builder_bootstrap_stops_before_focus_checkpoint(db, refund_project, monkeypatch):
     from sqlalchemy import select
 
     from app.models.agent_project import AgentProjectEvalRun

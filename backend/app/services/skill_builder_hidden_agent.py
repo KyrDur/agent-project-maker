@@ -32,9 +32,7 @@ _PLACEHOLDER_PROMPT = (
 )
 
 
-async def get_or_create_skill_builder_agent(
-    db: AsyncSession, user_id: uuid.UUID
-) -> Agent:
+async def get_or_create_skill_builder_agent(db: AsyncSession, user_id: uuid.UUID) -> Agent:
     """사용자의 히든 빌더 에이전트를 반환한다 (없으면 생성, flush까지만)."""
 
     result = await db.execute(
@@ -68,9 +66,7 @@ async def get_or_create_skill_builder_agent(
 async def _seed_model_id(db: AsyncSession, model_name: str) -> uuid.UUID:
     """FK 충족용 모델 id — 시스템 모델과 같은 ``model_name`` 우선, 없으면 카탈로그 첫 행."""
 
-    result = await db.execute(
-        select(Model.id).where(Model.model_name == model_name).limit(1)
-    )
+    result = await db.execute(select(Model.id).where(Model.model_name == model_name).limit(1))
     model_id = result.scalar_one_or_none()
     if model_id is not None:
         return model_id

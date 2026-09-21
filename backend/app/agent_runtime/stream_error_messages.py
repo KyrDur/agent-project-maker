@@ -23,9 +23,7 @@ _SECRETISH_RE = re.compile(
     r"(?i)(api[_-]?key|access[_-]?token|refresh[_-]?token|secret|authorization|bearer)"
 )
 
-_DEFAULT_MODEL_ERROR_MESSAGE = (
-    "模型提供商请求失败。请检查模型设置、凭据和使用量限制。"
-)
+_DEFAULT_MODEL_ERROR_MESSAGE = "模型提供商请求失败。请检查模型设置、凭据和使用量限制。"
 
 
 def public_stream_error_message(error: Exception, *, locale: str | None = None) -> str:
@@ -48,4 +46,3 @@ def public_stream_error_message(error: Exception, *, locale: str | None = None) 
 
 
 __all__ = ["public_stream_error_message"]
-

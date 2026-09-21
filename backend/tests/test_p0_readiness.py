@@ -349,9 +349,7 @@ def test_first_party_catalog_locale_and_external_content(locale):
         )
         display = template_display(row, locale)
         assert display.content_key and display.category_key
-        assert not HANGUL.search(
-            json.dumps(display.model_dump(mode="json"), ensure_ascii=False)
-        )
+        assert not HANGUL.search(json.dumps(display.model_dump(mode="json"), ensure_ascii=False))
         external = SimpleNamespace(**{**vars(row), "system_prompt": "외부 사용자 콘텐츠"})
         assert template_display(external, locale).name == row.name
     for item in get_middleware_registry():

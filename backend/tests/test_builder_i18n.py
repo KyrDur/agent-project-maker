@@ -2,7 +2,6 @@
 
 # pyright: reportArgumentType=false
 
-
 from __future__ import annotations
 
 import asyncio
@@ -232,9 +231,7 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
     assert graph_input["todos"][0]["name"] == "Project initialization"
     result = [
         c
-        async for c in builder_service.run_v3_resume_stream(
-            session, user, "answer", locale="zh-CN"
-        )
+        async for c in builder_service.run_v3_resume_stream(session, user, "answer", locale="zh-CN")
     ]
     assert result == ["搜索智能体"]
     assert calls[-1][1]["configurable"]["ui_locale"] == "zh-CN"
@@ -328,4 +325,3 @@ def test_builder_stream_errors_are_localized_without_provider_details(locale, ex
     assert not HANGUL.search(message)
     assert not HANGUL.search(public_stream_error_message(RuntimeError("错误"), locale=locale))
     assert public_stream_error_message(RuntimeError("plain error")) == "plain error"
-

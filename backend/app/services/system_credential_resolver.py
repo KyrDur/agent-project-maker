@@ -65,9 +65,7 @@ class ResolvedSystemModel:
     base_url: str | None
 
 
-async def resolve_system_api_key(
-    db: AsyncSession, provider: str
-) -> str | None:
+async def resolve_system_api_key(db: AsyncSession, provider: str) -> str | None:
     """ENV → ``is_system=True`` Credential lookup → ``None``."""
 
     env_key = PROVIDER_API_KEY_MAP.get(provider)
@@ -78,9 +76,7 @@ async def resolve_system_api_key(
     if cred is None:
         return None
     try:
-        payload = await credential_service.decrypt_with_external(
-            cred.data_encrypted
-        )
+        payload = await credential_service.decrypt_with_external(cred.data_encrypted)
     except Exception:  # noqa: BLE001
         logger.exception("System credential %s decryption failed", cred.id)
         return None
@@ -88,19 +84,13 @@ async def resolve_system_api_key(
     return str(api_key) if api_key else None
 
 
-async def get_setting(
-    db: AsyncSession, role: str
-) -> SystemLlmSetting | None:
+async def get_setting(db: AsyncSession, role: str) -> SystemLlmSetting | None:
     """Fetch the ``system_llm_settings`` row for ``role`` (or ``None``)."""
-    result = await db.execute(
-        select(SystemLlmSetting).where(SystemLlmSetting.role == role)
-    )
+    result = await db.execute(select(SystemLlmSetting).where(SystemLlmSetting.role == role))
     return result.scalar_one_or_none()
 
 
-async def get_effective_setting(
-    db: AsyncSession, role: str
-) -> tuple[str, SystemLlmSetting | None]:
+async def get_effective_setting(db: AsyncSession, role: str) -> tuple[str, SystemLlmSetting | None]:
     """Fetch the configured row for ``role``, falling back to legacy slots."""
 
     setting = await get_setting(db, role)
@@ -108,18 +98,12 @@ async def get_effective_setting(
         return role, setting
     for fallback_role in SYSTEM_LLM_ROLE_FALLBACKS.get(role, ()):
         fallback = await get_setting(db, fallback_role)
-        if (
-            fallback is not None
-            and fallback.credential_id is not None
-            and fallback.model_name
-        ):
+        if fallback is not None and fallback.credential_id is not None and fallback.model_name:
             return fallback_role, fallback
     return role, setting
 
 
-async def resolve_system_model(
-    db: AsyncSession, role: str
-) -> ResolvedSystemModel:
+async def resolve_system_model(db: AsyncSession, role: str) -> ResolvedSystemModel:
     """Resolve the operator-selected model for a system ``role``.
 
     ADR-019 §결정3. Reads the role's ``system_llm_settings`` row, loads the

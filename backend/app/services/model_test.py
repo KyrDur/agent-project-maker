@@ -461,15 +461,9 @@ def _build_curl(request: dict[str, Any]) -> str:
 
     body_str = _json.dumps(body, ensure_ascii=False, indent=2)
     header_lines = "".join(
-        f"  -H '{name}: {value}' \\\n"
-        for name, value in headers.items()
-        if value
+        f"  -H '{name}: {value}' \\\n" for name, value in headers.items() if value
     )
-    return (
-        f"curl -X {method} '{url}' \\\n"
-        f"{header_lines}"
-        f"  -d '{body_str}'"
-    )
+    return f"curl -X {method} '{url}' \\\n{header_lines}  -d '{body_str}'"
 
 
 # ---- Misc helpers ----------------------------------------------------------

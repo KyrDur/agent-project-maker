@@ -57,9 +57,7 @@ async def test_get_returns_platform_roles(client: AsyncClient) -> None:
         assert row["model_name"] is None
 
 
-async def test_readiness_returns_platform_text_roles(
-    client: AsyncClient, db: AsyncSession
-) -> None:
+async def test_readiness_returns_platform_text_roles(client: AsyncClient, db: AsyncSession) -> None:
     cred_id = await _make_system_credential(
         db, definition_key="openai", data={"api_key": "sk-test"}
     )

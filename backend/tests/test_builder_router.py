@@ -224,4 +224,3 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
     resp = await client.post(f"/api/builder/{session.id}/confirm")
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "MODEL_NOT_FOUND"
-

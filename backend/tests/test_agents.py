@@ -403,9 +403,7 @@ def test_builder_sessions_agent_id_fk_set_null():
     """
     from app.models.builder_session import BuilderSession
 
-    fk = next(
-        c for c in BuilderSession.__table__.foreign_keys if c.column.table.name == "agents"
-    )
+    fk = next(c for c in BuilderSession.__table__.foreign_keys if c.column.table.name == "agents")
     assert fk.ondelete == "SET NULL"
 
 

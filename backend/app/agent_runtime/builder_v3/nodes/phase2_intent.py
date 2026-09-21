@@ -174,11 +174,7 @@ def _build_combined_request(state: BuilderState) -> str:
 
 def _name_matches_locale(name: str, request: str) -> bool:
     # Explicit foreign names supplied/requested by the user remain valid.
-    return (
-        not re.search(r"[\uac00-\ud7af]", name)
-        or name in request
-
-    )
+    return not re.search(r"[\uac00-\ud7af]", name) or name in request
 
 
 async def _suggest_name_options(user_request: str) -> list[str]:
@@ -376,4 +372,3 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
         "last_revision_message": None,  # router로 들어왔던 revision 소비 완료
         "pending_tool_call_id": None,
     }
-

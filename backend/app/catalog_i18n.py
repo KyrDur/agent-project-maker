@@ -71,4 +71,3 @@ def middleware_display(item: dict, locale: str) -> dict:
         for key, field in result.get("config_schema", {}).items():
             field["description"] = key.replace("_", " ")
     return result
-

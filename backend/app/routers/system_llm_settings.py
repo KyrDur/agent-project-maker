@@ -59,18 +59,14 @@ _LLM_DEFINITION_KEYS = frozenset(
 # Unified message for any invalid credential selection. Distinguishing
 # "missing" from "wrong type" only in the server log avoids leaking which
 # system credentials exist (enumeration oracle, security.md).
-_INVALID_CREDENTIAL_DETAIL = (
-    "credential_id must reference an existing system LLM credential"
-)
+_INVALID_CREDENTIAL_DETAIL = "credential_id must reference an existing system LLM credential"
 
 _PROVIDER_MISMATCH_DETAIL = (
     "credential_id must reference a system credential for the selected provider"
 )
 
 
-async def _load_valid_system_llm_credential(
-    db: AsyncSession, credential_id: uuid.UUID
-):
+async def _load_valid_system_llm_credential(db: AsyncSession, credential_id: uuid.UUID):
     cred = await credential_service.get_system(db, credential_id)
     if cred is None:
         logger.info(
@@ -88,9 +84,7 @@ async def _load_valid_system_llm_credential(
     return cred
 
 
-async def _build_out(
-    db: AsyncSession, setting: SystemLlmSetting
-) -> SystemLlmSettingOut:
+async def _build_out(db: AsyncSession, setting: SystemLlmSetting) -> SystemLlmSettingOut:
     """Materialize a settings row into the API shape.
 
     ``provider`` comes from ``credential.definition_key`` (no decrypt).
@@ -109,15 +103,11 @@ async def _build_out(
             credential_name = cred.name
             provider = cred.definition_key
             try:
-                payload = await credential_service.decrypt_with_external(
-                    cred.data_encrypted
-                )
+                payload = await credential_service.decrypt_with_external(cred.data_encrypted)
                 raw = payload.get("base_url")
                 base_url = str(raw) if raw else None
             except Exception:  # noqa: BLE001
-                logger.exception(
-                    "System LLM credential %s decryption failed", cred.id
-                )
+                logger.exception("System LLM credential %s decryption failed", cred.id)
 
     configured = setting.credential_id is not None and bool(setting.model_name)
     return SystemLlmSettingOut(
@@ -246,9 +236,7 @@ async def update_system_llm_setting(
     if payload.credential_id is not None:
         await _load_valid_system_llm_credential(db, payload.credential_id)
 
-    result = await db.execute(
-        select(SystemLlmSetting).where(SystemLlmSetting.role == role)
-    )
+    result = await db.execute(select(SystemLlmSetting).where(SystemLlmSetting.role == role))
     setting = result.scalar_one_or_none()
     if setting is None:
         setting = SystemLlmSetting(role=role)

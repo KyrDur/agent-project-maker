@@ -107,4 +107,3 @@ def language_instruction() -> str:
 
 def localized_prompt(prompt: str) -> str:
     return localize(prompt) + "\n\n" + language_instruction()
-

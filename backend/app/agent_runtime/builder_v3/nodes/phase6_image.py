@@ -262,4 +262,3 @@ async def phase6_image_approval(state: BuilderState) -> dict:
         "image_skipped": False,
         "pending_tool_call_id": None,
     }
-

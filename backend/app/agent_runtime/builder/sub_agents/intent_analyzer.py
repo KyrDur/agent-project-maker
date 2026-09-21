@@ -48,4 +48,3 @@ async def analyze_intent(user_request: str) -> AgentCreationIntent:
         use_cases=[tr("handling_user_requests_b68392")],
         required_capabilities=[tr("normal_conversation_fb5742")],
     )
-

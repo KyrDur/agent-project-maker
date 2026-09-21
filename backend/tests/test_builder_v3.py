@@ -454,4 +454,3 @@ def test_route_after_approval_factory():
     assert route({"last_revision_message": "다시"}) == "phase3_recommend"
     assert route({"last_revision_message": None}) == "phase4"
     assert route({}) == "phase4"
-

@@ -186,9 +186,7 @@ async def create_project(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UU
     if builder_id:
         builder_session = await db.get(BuilderSession, builder_id)
         planned_tools = (
-            (builder_session.draft_config or {}).get("planned_tools")
-            if builder_session
-            else None
+            (builder_session.draft_config or {}).get("planned_tools") if builder_session else None
         )
     snapshot = await build_snapshot(db, agent, planned_tools)
     # The unique agent_id constraint resolves concurrent creates. The savepoint
@@ -352,9 +350,7 @@ async def create_version(
     if project.builder_session_id:
         builder_session = await db.get(BuilderSession, project.builder_session_id)
         planned_tools = (
-            (builder_session.draft_config or {}).get("planned_tools")
-            if builder_session
-            else None
+            (builder_session.draft_config or {}).get("planned_tools") if builder_session else None
         )
     snapshot = await build_snapshot(db, agent, planned_tools)
     digest = canonical_json_hash(snapshot)

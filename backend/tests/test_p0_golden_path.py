@@ -320,4 +320,3 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
 
     assert (await export_zip(db, agent.id, TEST_USER_ID)).startswith(b"PK")
     key_provider.reset_cache()
-
