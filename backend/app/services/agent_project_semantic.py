@@ -69,21 +69,20 @@ def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
         "examinee": {
             **descriptor,
-            "credential_policy": "runtime_user_owned_or_platform_evaluation_generator",
+            "credential_policy": "runtime_user_owned",
+            "model_params": snapshot["agent"].get("model_params") or {},
         },
         "evaluation_generator": {
-            **descriptor,
             "system_role": "evaluation_generator",
             "credential_policy": "platform_system_owned",
         },
         "judge": {
-            **descriptor,
             "role": "evaluator",
             "system_role": "judge_optimizer",
             "credential_policy": "platform_system_owned",
         },
-        "credential_policy": "project_mock_sandbox_platform_fallback",
-        "judge_prompt_version": "semantic_v1",
+        "credential_policy": "project_mock_sandbox",
+        "judge_prompt_version": "semantic_v2",
     }
 
 
@@ -215,9 +214,13 @@ async def generate(
             "forbidden_tools,tags,enabled=true. Include exactly one scenario category in tags. "
             "Also tag each case with the capability names it actually tests, taken from "
             "capability_profile.capabilities. Cover every listed capability across the set. "
-            "mock_tool_data for each required tool: {tool_name:{description,result,error}}. "
-            "Tool failures are simulated with error text. Use only useful tool names from snapshot "
-            "or explicitly case-defined synthetic tools. No production tool execution. "
+            "Use ONLY enabled tool names and input schemas from the frozen snapshot. "
+            "Never add case-defined tools. For parameter-sensitive tools use mock_tool_data rules "
+            "with exact arguments and ordered responses (result or error). Separate rules cover "
+            "each page; sequential responses cover timeout then retry. Add tool_assertions for "
+            "date range, group/document IDs, min_calls/max_calls and tool_sequence for order. "
+            "For publishing, check argument_equals for target and argument_contains for body. "
+            "Include total call count assertions to reject extra calls. No production tools. "
             "Use expected.format_rule json_object/json_array only where appropriate. "
             "Do not invent exact answers for open-ended tasks. Represent hallucination scenarios "
             "with mock source evidence that makes unsupported claims detectable.",
@@ -246,6 +249,9 @@ async def generate(
                 raise ValueError("Invalid case category")
             if set(case.expected.required_tools) - case.mock_tool_data.keys():
                 raise ValueError("Missing required mock")
+            from app.services.agent_project_mock_tools import mock_tools
+
+            mock_tools(snapshot["agent"], case.model_dump(mode="json"))
         # One transaction for dataset and pinned rubric, using the existing writer.
         from app.services.agent_project_evaluation import write_set
 
@@ -324,12 +330,48 @@ async def grade_case(
         deterministic = None
         if metric.name == "tool_correctness":
             tool_checks = [
-                c for c in checks if c["kind"] in {"required_tool", "forbidden_tool", "handoff"}
+                c
+                for c in checks
+                if c["kind"]
+                in {
+                    "required_tool",
+                    "forbidden_tool",
+                    "handoff",
+                    "tool_assertion",
+                    "tool_sequence",
+                    "tool_mock_contract",
+                }
             ]
+            expected = case.get("expected") or {}
+            required = set(expected.get("required_tools", []))
+            asserted = {a["name"] for a in expected.get("tool_assertions", [])}
+            missing_assertions = bool(required - asserted)
+            if not tool_checks or (missing_assertions and all(c["passed"] for c in tool_checks)):
+                config = snapshot.get("agent", {})
+                applicable = bool(required or evidence.get("tool_calls")) or any(
+                    item.get("enabled", True)
+                    for field in ("tool_links", "mcp_tool_links", "planned_tools")
+                    for item in config.get(field, [])
+                )
+                scores[metric.name] = {
+                    "score": None,
+                    "passed": None,
+                    "reason": "No verifiable tool assertions were supplied"
+                    if applicable
+                    else "This case has no available or called tools",
+                    "method": "not_evaluated" if applicable else "not_applicable",
+                }
+                continue
             deterministic = all(c["passed"] for c in tool_checks)
         elif metric.name == "format_compliance":
             deterministic = format_check(case, evidence.get("output", ""))
             if deterministic is None and metric.type == "deterministic":
+                scores[metric.name] = {
+                    "score": None,
+                    "passed": None,
+                    "method": "not_evaluated",
+                    "reason": "No verifiable format assertion was supplied",
+                }
                 continue
         if deterministic is not None:
             scores[metric.name] = {
@@ -343,7 +385,7 @@ async def grade_case(
     if semantic:
         raw = await json_call(
             db,
-            snapshot,
+            {**snapshot, "evaluation_roles": plan.get("roles", {})},
             user_id,
             "judge",
             "Evaluate the supplied evidence against each metric independently. "
@@ -357,6 +399,7 @@ async def grade_case(
                 "case": {key: case.get(key) for key in ("input", "context", "expected")},
                 "actual_output": evidence.get("output", ""),
                 "called_tools": evidence.get("tool_calls", []),
+                "tool_trace": evidence.get("tool_trace", []),
                 "mock_source_data": case.get("mock_tool_data", {}),
                 "metrics": [m.model_dump() for m in semantic],
                 "pass_threshold": spec.pass_threshold,
@@ -373,12 +416,16 @@ async def grade_case(
                 scores[metric.name] = {**score.model_dump(), "method": "llm_judge"}
         except (KeyError, TypeError, ValueError) as exc:
             raise SnapshotExecutionUnavailable("evaluation_judge_invalid") from exc
-    passed = all(c["passed"] for c in checks) and all(v["passed"] for v in scores.values())
+    failed = any(not c["passed"] for c in checks) or any(
+        v["passed"] is False for v in scores.values()
+    )
+    incomplete = any(v["method"] == "not_evaluated" for v in scores.values())
+    status = "failed" if failed else "not_evaluated" if incomplete else "passed"
     return {
         "metric_scores": scores,
         "judge_reasons": {k: v["reason"] for k, v in scores.items()},
-        "passed": passed,
-        "status": "passed" if passed else "failed",
+        "passed": status == "passed",
+        "status": status,
     }
 
 
@@ -395,6 +442,7 @@ def metric_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
                 r["metric_scores"][name]["score"]
                 for r in results
                 if name in r.get("metric_scores", {})
+                and r["metric_scores"][name]["score"] is not None
             ]
         )
     }

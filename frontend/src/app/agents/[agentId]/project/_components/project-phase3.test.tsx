@@ -98,10 +98,7 @@ it('generates a plan then cases and edits mocks using the existing editor', asyn
   expect(generate).toBeDisabled()
   await userEvent.click(screen.getByLabelText(/工具调用正确性/))
   await userEvent.click(screen.getByLabelText(/事实依据与证据/))
-  await userEvent.type(
-    screen.getByPlaceholderText(/正式使用前必须确认/),
-    '重点确认工具和依据',
-  )
+  await userEvent.type(screen.getByPlaceholderText(/正式使用前必须确认/), '重点确认工具和依据')
   await userEvent.click(generate)
   await userEvent.click(
     await screen.findByRole('button', { name: /Generated example.*编辑|编辑.*Generated example/ }),
@@ -172,4 +169,55 @@ it('reports generation failure without inserting sample scores or cases', async 
   await userEvent.click(await screen.findByRole('button', { name: '生成评测计划' }))
   expect(await screen.findByText('生成失败，请检查模型凭据后重试。')).toBeInTheDocument()
   expect(screen.queryByText('20 个测试用例')).not.toBeInTheDocument()
+})
+
+it('shows missing scoring evidence as unevaluated rather than zero percent', async () => {
+  server.use(
+    http.get(`${path}/eval-runs`, () =>
+      HttpResponse.json([
+        {
+          id: 'r1',
+          version_id: 'v1',
+          status: 'completed',
+          created_at: '2026-09-12T01:00:00',
+          metrics_json: {
+            total: 1,
+            passed: 0,
+            failed: 0,
+            errored: 0,
+            not_evaluated: 1,
+            pass_rate: null,
+            quality_complete: false,
+          },
+          results_json: [
+            {
+              case_id: 'c1',
+              name: 'Missing assertions',
+              input: 'Read',
+              output: 'Done',
+              expected: {},
+              status: 'not_evaluated',
+              tool_calls: [],
+              assertions: [],
+              latency_ms: 10,
+              error: null,
+              metric_scores: {
+                tool_correctness: {
+                  score: null,
+                  passed: null,
+                  method: 'not_evaluated',
+                  reason: 'No verifiable assertions',
+                },
+              },
+            },
+          ],
+        },
+      ]),
+    ),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  await openEvaluationTab()
+  expect(await screen.findByText(/No verifiable assertions/)).toBeInTheDocument()
+  expect(screen.queryByText('通过率0%')).not.toBeInTheDocument()
+  expect(screen.queryByText('工具调用正确性: 0%')).not.toBeInTheDocument()
 })

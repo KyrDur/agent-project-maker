@@ -317,7 +317,8 @@
     "caseStatuses": {
       "passed": "Passed",
       "failed": "Failed",
-      "errored": "Errored"
+      "errored": "Errored",
+      "not_evaluated": "Not evaluated"
     },
     "assertions": {
       "execution_succeeded": "Execution succeeded",
@@ -326,7 +327,10 @@
       "required_tool": "Required tool",
       "forbidden_tool": "Forbidden tool",
       "handoff": "Expected handoff",
-      "format_compliance": "Format Compliance"
+      "format_compliance": "Format Compliance",
+      "tool_assertion": "Tool arguments and call count",
+      "tool_sequence": "Tool call order",
+      "tool_mock_contract": "Mock tool contract"
     },
     "executionErrors": {
       "snapshot_invalid": "The snapshot is incomplete.",
@@ -345,7 +349,14 @@
       "evaluation_model_failed": "The user-owned model call failed.",
       "evaluation_format_rule_missing": "The deterministic format metric requires a rule.",
       "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
-      "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted."
+      "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted.",
+      "evaluation_mock_tool_not_in_snapshot": "The case references a tool outside this Agent version. Update the Agent and create a new version.",
+      "evaluation_mock_arguments_unmatched": "Tool arguments do not match a mock rule.",
+      "evaluation_mock_responses_exhausted": "The tool was called more times than the mock permits.",
+      "evaluation_judge_not_configured": "Configure a judge model and active credential first.",
+      "evaluation_judge_pin_required": "This historical run has no frozen judge. Start a new evaluation.",
+      "evaluation_judge_credential_unavailable": "The frozen judge credential is unavailable. Restore it or start a new evaluation.",
+      "evaluation_judge_endpoint_changed": "The frozen judge endpoint has changed. This run cannot continue as a comparable regression."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -566,6 +577,11 @@
       "credentials": "Personal credentials",
       "models": "Model settings",
       "retry": "Retry workflow"
+    },
+    "notEvaluated": "Not evaluated",
+    "notApplicable": "Not applicable",
+    "resultStatus": {
+      "not_evaluated": "Not evaluated"
     }
   },
   "metadata": {
@@ -652,7 +668,7 @@
       "accountLocked": "Your account is temporarily locked. Try again in 15 minutes.",
       "accountInactive": "This account is inactive. Contact an administrator.",
       "rateLimit": "Please try again in a moment.",
-      "network": "Check your network connection.",
+      "network": "Unable to reach the project service. Start the backend service and try again.",
       "serverError": "Please try again in a moment. If the problem persists, contact an administrator.",
       "sessionExpired": "Session expired",
       "sessionExpiredDesc": "Please log in again.",
@@ -662,19 +678,20 @@
     },
     "onboarding": {
       "title": "Welcome to Agent Project Maker",
-      "subtitle": "You're almost ready to build AI agents.",
-      "body": "Create an agent, evaluate it with structured test cases, improve failed cases, compare versions, and package the best result. Register an LLM API key to get started.",
-      "providers": "Register one of the following.",
+      "subtitle": "Configure an AI model API before you start building.",
+      "body": "Add an API credential from one or more model providers. Then create an agent, run evaluations, and iterate from Bad Cases.",
+      "providers": "Supported model providers",
       "providerList": {
-        "openai": "OpenAI API Key",
-        "anthropic": "Anthropic API Key",
-        "google": "Google AI Studio API Key"
+        "openai": "OpenAI API key",
+        "anthropic": "Anthropic API key",
+        "google": "Google AI Studio API key"
       },
-      "encryptedNote": "Keys are encrypted at rest and visible only to you.",
+      "encryptedNote": "API keys are encrypted by the backend; super users can also assign models to the Builder, Evaluation Generator, and Judge & Optimizer roles.",
       "later": "Later",
-      "register": "Register now",
+      "register": "Configure platform AIs",
       "superUserToast": "Registered as a Super User",
-      "superUserToastDesc": "You can manage system credentials."
+      "superUserToastDesc": "You can manage system credentials.",
+      "registerPlatform": "Configure platform AIs"
     },
     "userMenu": {
       "settings": "Settings",
@@ -999,7 +1016,8 @@
       "skills": "Skills",
       "unknown": "Unset",
       "newChat": "New chat",
-      "settings": "Settings"
+      "settings": "Settings",
+      "project": "Project / Evaluation"
     },
     "new": {
       "pageTitle": "Create New Agent",
@@ -5234,5 +5252,37 @@
       "saveFailedToast": "Failed to save fallback models.",
       "badge": "Fallback +{count}"
     }
+  },
+  "demo": {
+    "configure": "Configure models",
+    "credentials": "01 · API credentials",
+    "configureDescription": "Add providers and select models for each role.",
+    "providers": "OpenAI · Anthropic · Google",
+    "build": "Build an Agent",
+    "builder": "02 · Agent Builder",
+    "buildDescription": "Describe your goal to create an Agent configuration and first version.",
+    "buildDetail": "Goals · Tools · Instructions",
+    "evaluate": "Run evaluations",
+    "evaluation": "03 · Evaluation",
+    "evaluateDescription": "Generate test cases and inspect scores and failure evidence.",
+    "evaluateDetail": "Example: 20 cases · 80% passed",
+    "optimize": "Improve versions",
+    "optimization": "04 · Optimization",
+    "optimizeDescription": "Review proposals, create a new version and compare results.",
+    "optimizeDetail": "Example: v1 → v2 · +10 percentage points",
+    "brand": "Agent Project Maker",
+    "subtitle": "Product walkthrough",
+    "enter": "Open app",
+    "tagline": "From an idea to a testable Agent",
+    "headline": "Build, evaluate, improve.",
+    "headlineAccent": " Repeat with evidence.",
+    "description": "Follow the Agent lifecycle and use evaluation evidence to improve the next version.",
+    "next": "Next step",
+    "register": "Create an account",
+    "walkthrough": "Interactive walkthrough",
+    "stepsTitle": "Explore each step",
+    "imageAlt": "Configure, build, evaluate and improve workflow",
+    "currentStep": "Step {current} / {total}",
+    "exampleNotice": "Illustrative workflow and fictional figures; these are not actual evaluation results."
   }
 }

@@ -206,6 +206,13 @@ async def create_run(
     if not dataset.quality_report_json or dataset.quality_report_json.get("status") != "approved":
         raise error("agent_project_eval_set_quality_required", 409)
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
+    if plan:
+        from app.services.agent_project_model_pins import pin_judge
+
+        try:
+            plan["roles"]["judge"] = await pin_judge(db)
+        except SnapshotExecutionUnavailable as exc:
+            raise error(str(exc)) from exc
     dataset.frozen = True
     return await insert_frozen_run(
         db,
@@ -305,6 +312,60 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
         checks.append({"kind": "required_tool", "target": name, "passed": name in names})
     for name in expected.get("forbidden_tools", []):
         checks.append({"kind": "forbidden_tool", "target": name, "passed": name not in names})
+    trace = evidence.get("tool_trace", [])
+    if evidence.get("mock_missing_tools") or any(
+        event.get("error") == "evaluation_mock_missing" for event in trace
+    ):
+        checks.append(
+            {
+                "kind": "tool_mock_contract",
+                "passed": False,
+                "missing_tools": evidence.get("mock_missing_tools", []),
+            }
+        )
+    for assertion in expected.get("tool_assertions", []):
+        calls = [event for event in trace if event["name"] == assertion["name"]]
+        arguments = assertion.get("arguments")
+        equals = assertion.get("argument_equals") or {}
+        contains = assertion.get("argument_contains") or {}
+        matching = [
+            event
+            for event in calls
+            if (arguments is None or event.get("arguments") == arguments)
+            and all(
+                key in event.get("arguments", {}) and event.get("arguments", {}).get(key) == value
+                for key, value in equals.items()
+            )
+            and all(
+                fragment in str(event.get("arguments", {}).get(key, ""))
+                for key, fragment in contains.items()
+            )
+        ]
+        checks.append(
+            {
+                "kind": "tool_assertion",
+                "target": assertion["name"],
+                "passed": assertion.get("min_calls", 1)
+                <= len(matching)
+                <= assertion.get("max_calls", 1),
+                "actual_matching_calls": len(matching),
+                "actual_total_calls": len(calls),
+                "expected": assertion,
+            }
+        )
+    if expected.get("tool_sequence"):
+        checks.append(
+            {
+                "kind": "tool_sequence",
+                "passed": [event["name"] for event in trace] == expected["tool_sequence"],
+            }
+        )
+    if any(
+        event.get("error")
+        in {"evaluation_mock_arguments_unmatched", "evaluation_mock_responses_exhausted"}
+        for event in trace
+    ):
+        checks.append({"kind": "tool_mock_contract", "passed": False})
     if expected.get("handoff"):
         checks.append(
             {
@@ -407,16 +468,24 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 await db.commit()
             passed = sum(result["status"] == "passed" for result in results)
             errored = sum(result["status"] == "errored" for result in results)
+            unevaluated = sum(result["status"] == "not_evaluated" for result in results)
+            incomplete = any(
+                score.get("method") == "not_evaluated"
+                for result in results
+                for score in result.get("metric_scores", {}).values()
+            )
             row.metrics_json = {
                 "total": len(results),
                 "passed": passed,
-                "failed": len(results) - passed - errored,
+                "failed": len(results) - passed - errored - unevaluated,
+                "not_evaluated": unevaluated,
                 "errored": errored,
-                "pass_rate": passed / len(results),
+                "pass_rate": None if incomplete else passed / len(results),
+                "quality_complete": not incomplete,
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
             }
-            row.pass_rate = passed / len(results)
+            row.pass_rate = None if incomplete else passed / len(results)
             row.status = "failed" if errored else "completed"
             row.error = "evaluation_case_errors" if errored else None
         except (Exception, asyncio.CancelledError):

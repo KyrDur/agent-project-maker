@@ -55,13 +55,43 @@ class CaseContext(BaseModel):
     content: str = Field(max_length=10000)
 
 
+class ToolAssertion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
+    arguments: dict[str, Any] | None = None
+    argument_equals: dict[str, Any] | None = None
+    argument_contains: dict[str, str] | None = None
+    min_calls: int = Field(default=1, ge=0, le=60)
+    max_calls: int = Field(default=1, ge=0, le=60)
+
+    @model_validator(mode="after")
+    def valid_counts(self) -> Self:
+        if self.max_calls < self.min_calls:
+            raise ValueError("max_calls must be >= min_calls")
+        return self
+
+
 class CaseExpected(BaseModel):
     answer: str | None = Field(default=None, max_length=10000)
     exact_answer: str | None = Field(default=None, max_length=10000)
     required_tools: list[str] = Field(default_factory=list, max_length=30)
     forbidden_tools: list[str] = Field(default_factory=list, max_length=30)
+    tool_assertions: list[ToolAssertion] = Field(default_factory=list, max_length=60)
+    tool_sequence: list[str] = Field(default_factory=list, max_length=60)
     handoff: str | None = Field(default=None, max_length=100)
     format_rule: Literal["json_object", "json_array"] | None = None
+
+
+class MockToolResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    result: Any = None
+    error: str | None = Field(default=None, max_length=500)
+
+
+class MockToolRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    arguments: dict[str, Any]
+    responses: list[MockToolResponse] = Field(min_length=1, max_length=30)
 
 
 class MockToolBehavior(BaseModel):
@@ -69,6 +99,18 @@ class MockToolBehavior(BaseModel):
     description: str = Field(default="Frozen evaluation mock", max_length=1000)
     result: Any = None
     error: str | None = Field(default=None, max_length=500)
+    rules: list[MockToolRule] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="after")
+    def unique_rules(self) -> Self:
+        import json
+
+        keys = [json.dumps(rule.arguments, sort_keys=True) for rule in self.rules]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Duplicate mock arguments: use sequential responses in one rule")
+        if self.rules and (self.error is not None or self.result is not None):
+            raise ValueError("Use rules or a fixed response, not both")
+        return self
 
 
 class EvaluationCase(BaseModel):

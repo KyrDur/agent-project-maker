@@ -84,6 +84,7 @@ async def experiment(db, monkeypatch):
         return {
             "output": "Supported answer" if passes else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 
@@ -398,6 +399,7 @@ async def test_no_improvement_stops_after_one_candidate(db, experiment, monkeypa
             if int(case["name"].split()[-1]) < 15
             else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 
@@ -422,6 +424,7 @@ async def test_two_round_limit_even_when_both_rounds_improve(db, experiment, mon
             if int(case["name"].split()[-1]) < count
             else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 

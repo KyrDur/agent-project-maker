@@ -46,6 +46,25 @@ async def db():
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
     async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+        from app.credentials import service as credentials
+        from app.models.system_llm_setting import SystemLlmSetting
+
+        cred = await credentials.create(
+            session,
+            user_id=None,
+            definition_key="openai",
+            name="Test judge",
+            data={"api_key": "test-only-not-a-live-key"},
+            is_system=True,
+        )
+        session.add(
+            SystemLlmSetting(
+                role="judge_optimizer",
+                credential_id=cred.id,
+                model_name="test-judge",
+            )
+        )
+        await session.commit()
         yield session
     await engine.dispose()
 

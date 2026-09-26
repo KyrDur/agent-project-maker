@@ -30,11 +30,11 @@ def mock_tools(
             name = item.get("name") or item.get("tool_name")
             if item.get("enabled", True) and name:
                 definitions[str(name)] = item
-    names: list[str] = []
-    for source in (definitions, behaviors, required):
-        for name in source:
-            if name not in names:
-                names.append(name)
+    asserted = [a["name"] for a in case.get("expected", {}).get("tool_assertions", [])]
+    sequence = case.get("expected", {}).get("tool_sequence", [])
+    if (set(behaviors) | set(required) | set(asserted) | set(sequence)) - definitions.keys():
+        raise SnapshotExecutionUnavailable("evaluation_mock_tool_not_in_snapshot")
+    names = list(definitions)
     if len(names) > 60 or any(not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", n) for n in names):
         raise SnapshotExecutionUnavailable("evaluation_mock_definition_invalid")
     missing: list[str] = []
@@ -43,6 +43,9 @@ def mock_tools(
         behavior = behaviors.get(name)
 
         def make_invoke(tool_name: str, frozen: dict[str, Any] | None) -> Callable[..., str]:
+            frozen = deepcopy(frozen)
+            cursors: dict[int, int] = {}
+
             def invoke(**_kwargs: Any) -> str:
                 started = perf_counter()
                 event: dict[str, Any] = {
@@ -57,13 +60,34 @@ def mock_tools(
                             output=None,
                         )
                         return "Evaluation mock unavailable; no external tool was executed."
-                    if frozen.get("error"):
-                        event.update(
-                            error=frozen["error"],
-                            output={"error": frozen["error"]},
+                    response = frozen
+                    if frozen.get("rules"):
+                        matched = next(
+                            (
+                                i
+                                for i, rule in enumerate(frozen["rules"])
+                                if rule["arguments"] == _kwargs
+                            ),
+                            None,
                         )
-                        return json.dumps({"error": frozen["error"]})
-                    output = deepcopy(frozen.get("result"))
+                        if matched is None:
+                            response = {"error": "evaluation_mock_arguments_unmatched"}
+                        else:
+                            rule = frozen["rules"][matched]
+                            cursor = cursors.get(matched, 0)
+                            cursors[matched] = cursor + 1
+                            response = (
+                                rule["responses"][cursor]
+                                if cursor < len(rule["responses"])
+                                else {"error": "evaluation_mock_responses_exhausted"}
+                            )
+                    if response.get("error"):
+                        event.update(
+                            error=response["error"],
+                            output={"error": response["error"]},
+                        )
+                        return json.dumps({"error": response["error"]})
+                    output = deepcopy(response.get("result"))
                     event["output"] = output
                     return json.dumps(output, ensure_ascii=False)
                 except Exception:
@@ -81,9 +105,7 @@ def mock_tools(
         tools.append(
             StructuredTool(
                 name=name,
-                description=definition.get("description")
-                or (behavior or {}).get("description")
-                or f"Frozen evaluation mock for {name}",
+                description=definition.get("description") or f"Frozen evaluation mock for {name}",
                 args_schema=definition.get("input_schema")
                 or {
                     "type": "object",

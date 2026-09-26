@@ -416,7 +416,7 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
 
 
 @pytest.mark.asyncio
-async def test_project_examinee_falls_back_to_platform_model_without_user_credential(
+async def test_project_examinee_rejects_missing_credential_without_changing_model(
     db, setup_project, monkeypatch
 ):
     from app.services import agent_project_llm
@@ -443,18 +443,11 @@ async def test_project_examinee_falls_back_to_platform_model_without_user_creden
     monkeypatch.setattr(agent_project_llm, "resolve_system_model", resolve_system_model)
     monkeypatch.setattr("app.agent_runtime.model_factory.create_chat_model", create_chat_model)
 
-    model, key = await agent_project_llm.resolve_examinee_model(
-        db, version.snapshot_json, TEST_USER_ID
-    )
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
 
-    assert model is sentinel
-    assert key == "sk-platform"
-    assert seen["role"] == "evaluation_generator"
-    assert seen["provider"] == "deepseek"
-    assert seen["model_name"] == "deepseek-flash"
-    assert seen["kwargs"]["api_key"] == "sk-platform"
-    assert seen["kwargs"]["base_url"] == "https://api.deepseek.com/v1"
-    assert seen["kwargs"]["allow_env_fallback"] is False
+    with pytest.raises(LLMCredentialRequiredError):
+        await agent_project_llm.resolve_examinee_model(db, version.snapshot_json, TEST_USER_ID)
+    assert seen == {}
 
 
 @pytest.mark.asyncio

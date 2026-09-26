@@ -132,6 +132,7 @@ async def build_snapshot(
             "tool_id": link.tool_id,
             "definition_key": link.tool.definition_key,
             "name": link.tool.name,
+            "description": link.tool.description,
             "parameters": link.tool.parameters,
             "credential_id": link.tool.credential_id,
             "enabled": link.tool.enabled,
@@ -157,6 +158,7 @@ async def build_snapshot(
             "mcp_tool_id": link.mcp_tool_id,
             "server_id": link.mcp_tool.server_id,
             "name": link.mcp_tool.name,
+            "description": link.mcp_tool.description,
             "input_schema": link.mcp_tool.input_schema,
             "enabled": link.mcp_tool.enabled,
         }

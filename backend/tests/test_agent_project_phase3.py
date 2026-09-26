@@ -75,9 +75,10 @@ def generated_cases():
                 "expected": {
                     "answer": "Report login review only.",
                     "required_tools": ["search"],
+                    "tool_assertions": [{"name": "search", "arguments": {}}],
                     "forbidden_tools": ["delete"],
                 },
-                "tags": [SCENARIOS[i % 6], "conversation"],
+                "tags": [SCENARIOS[i % 6], "conversation", "tool_calling"],
                 "enabled": True,
                 "mock_tool_data": {"search": {"result": ["Login reviewed"]}},
             }
@@ -166,7 +167,18 @@ def test_capability_profile_includes_mcp_and_planned_tools():
 @pytest.mark.asyncio
 async def test_generation_editing_freeze_and_ownership(client, db, setup_project, monkeypatch):
     agent = setup_project
-    version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
+    from app.models.tool import AgentToolLink, Tool
+    from app.schemas.agent_project import VersionCreate
+
+    tool = Tool(user_id=TEST_USER_ID, definition_key="test", name="search")
+    db.add(tool)
+    await db.flush()
+    db.add(AgentToolLink(agent_id=agent.id, tool_id=tool.id))
+    await db.commit()
+    created = await projects.create_version(
+        db, agent.id, TEST_USER_ID, VersionCreate(request_id=uuid.uuid4())
+    )
+    version = await projects.get_version(db, agent.id, TEST_USER_ID, created.version.id)
     original = deepcopy(version.snapshot_json)
 
     async def generate_json(_db, snapshot, user, role, instruction, payload):
@@ -300,7 +312,10 @@ async def test_mock_invocation_never_uses_production_or_model_arguments():
     tools, missing = mock_tools({"tool_links": [{"name": "unmocked"}]}, {})
     await tools[0].ainvoke({})
     assert missing == ["unmocked"]
-    tools, _ = mock_tools({}, {"mock_tool_data": {"search": {"error": "Simulated outage"}}})
+    tools, _ = mock_tools(
+        {"planned_tools": [{"name": "search"}]},
+        {"mock_tool_data": {"search": {"error": "Simulated outage"}}},
+    )
     assert json.loads(await tools[0].ainvoke({})) == {"error": "Simulated outage"}
 
 
@@ -387,6 +402,7 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
         return {
             "output": "Login reviewed" if case["name"] == "Case 0" else "Revenue doubled",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 
@@ -449,6 +465,7 @@ async def test_required_forbidden_and_deterministic_format(db, monkeypatch):
     case = {
         "expected": {
             "required_tools": ["search"],
+            "tool_assertions": [{"name": "search", "arguments": {}}],
             "forbidden_tools": ["delete"],
             "format_rule": "json_object",
         }
@@ -458,7 +475,11 @@ async def test_required_forbidden_and_deterministic_format(db, monkeypatch):
         ("{}", ["search", "delete"], False),
         ("invalid", ["search"], False),
     ]:
-        evidence = {"output": output, "tool_calls": [{"name": name} for name in calls]}
+        evidence = {
+            "output": output,
+            "tool_calls": [{"name": name} for name in calls],
+            "tool_trace": [{"name": name, "arguments": {}} for name in calls],
+        }
         result = await semantic.grade_case(
             db,
             {},
@@ -480,8 +501,8 @@ async def test_required_forbidden_and_deterministic_format(db, monkeypatch):
         evaluation.score_case({"expected": {"required_tools": ["search"]}}, evidence),
         {"eval_spec": spec},
     )
-    assert "format_compliance" not in result["metric_scores"]
-    assert result["passed"] is True
+    assert result["metric_scores"]["format_compliance"]["score"] is None
+    assert result["status"] == "not_evaluated"
 
 
 @pytest.mark.asyncio
