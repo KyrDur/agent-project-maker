@@ -5,10 +5,10 @@ from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select
 
 from app.credentials import service as credentials
-from app.models.system_llm_setting import SystemLlmSetting
+from app.models.user import User
+from app.models.user_llm_setting import UserLlmSetting
 from app.services import agent_project_llm as llm
 from app.services import agent_project_semantic as semantic
 from app.services.agent_project_executor import SnapshotExecutionUnavailable
@@ -25,9 +25,26 @@ db = phase1.db
 
 @pytest.mark.asyncio
 async def test_judge_pin_survives_settings_change_and_rejects_endpoint_change(db, monkeypatch):
-    pin = await pin_judge(db)
-    setting = await db.scalar(select(SystemLlmSetting))
-    assert setting is not None
+    with pytest.raises(SnapshotExecutionUnavailable, match="judge_not_configured"):
+        await pin_judge(db, TEST_USER_ID)
+    db.add(User(id=TEST_USER_ID, email="judge@example.invalid", name="Judge"))
+    await db.flush()
+    cred = await credentials.create(
+        db,
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Private judge",
+        data={"api_key": "private-test-key"},
+    )
+    setting = UserLlmSetting(
+        user_id=TEST_USER_ID,
+        role="judge_optimizer",
+        credential_id=cred.id,
+        model_name="test-judge",
+    )
+    db.add(setting)
+    await db.commit()
+    pin = await pin_judge(db, TEST_USER_ID)
     setting.model_name = "different-judge"
     await db.commit()
     calls = []
@@ -35,13 +52,13 @@ async def test_judge_pin_survives_settings_change_and_rejects_endpoint_change(db
         "app.agent_runtime.model_factory.create_chat_model",
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
-    await resolve_pinned_judge(db, pin)
+    await resolve_pinned_judge(db, pin, TEST_USER_ID)
     assert calls[0][0] == ("openai", "test-judge")
     assert calls[0][1]["temperature"] == 0
     assert "api_key" not in pin
     changed = {**pin, "base_url": "https://changed.example.invalid"}
     with pytest.raises(SnapshotExecutionUnavailable, match="endpoint_changed"):
-        await resolve_pinned_judge(db, changed)
+        await resolve_pinned_judge(db, changed, TEST_USER_ID)
 
 
 @pytest.mark.asyncio

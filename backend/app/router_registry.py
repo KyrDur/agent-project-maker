@@ -42,6 +42,7 @@ def include_app_routers(app: FastAPI) -> None:
         triggers,
         uploads,
         usage,
+        user_llm_settings,
     )
 
     app.include_router(audit.router)
@@ -77,6 +78,7 @@ def include_app_routers(app: FastAPI) -> None:
     app.include_router(skill_credentials.router)
     app.include_router(skill_revisions.router)
     app.include_router(system_llm_settings.router)
+    app.include_router(user_llm_settings.router)
     app.include_router(tools.router)
     app.include_router(triggers.router)
     app.include_router(uploads.router)

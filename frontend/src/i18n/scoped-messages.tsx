@@ -25,6 +25,8 @@ export const ROOT_MESSAGE_NAMESPACES = [
   // page's own message scope — see chat-navigator / use-conversation-row-actions.
   'share',
   'sidebar',
+  // SetupNotice is mounted by AppLayout, above route-scoped providers.
+  'systemLlm',
 ] as const
 
 export type MessageNamespace = string

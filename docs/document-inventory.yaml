@@ -134,6 +134,33 @@ documents:
   - path: docs/agent-project-demo.md
     lifecycle: reference/spec
     status: reference
+  - path: docs/agent-project-evaluation-report-mvp.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-lifecycle-mvp.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-phase2.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-phase3.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-phase4.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-phase5.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-release.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-setup.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/alibaba-2c2g-deployment.md
+    lifecycle: reference/spec
+    status: reference
   - path: docs/browser-e2e-porting-guide.md
     lifecycle: canonical-current
     status: current
@@ -353,6 +380,9 @@ documents:
   - path: docs/operator-setup.md
     lifecycle: canonical-current
     status: current
+  - path: docs/p0-stabilization.md
+    lifecycle: reference/spec
+    status: reference
   - path: docs/prompt/1.md/1.md
     lifecycle: canonical-current
     status: current
@@ -401,6 +431,9 @@ documents:
   - path: docs/references/index.md
     lifecycle: canonical-current
     status: current
+  - path: docs/reliable-evaluation-acceptance.md
+    lifecycle: reference/spec
+    status: reference
   - path: docs/superpowers/plans/2026-05-31-deep-research-tavily.md
     lifecycle: active-plan
     status: active

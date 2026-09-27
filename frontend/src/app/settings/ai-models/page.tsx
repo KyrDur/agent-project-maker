@@ -4,7 +4,7 @@ import { SettingsShell } from '../_components/settings-shell'
 export default function Page() {
   return (
     <SettingsShell>
-      <AiModelSettings />
+      <AiModelSettings personal />
     </SettingsShell>
   )
 }

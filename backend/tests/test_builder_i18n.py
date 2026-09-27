@@ -227,7 +227,11 @@ async def test_builder_service_message_and_resume_propagate_locale(monkeypatch):
     ]
     assert result == ["Search Agent"]
     graph_input, config = calls[-1]
-    assert config["configurable"] == {"thread_id": str(session), "ui_locale": "en"}
+    assert config["configurable"] == {
+        "thread_id": str(session),
+        "ui_locale": "en",
+        "user_id": str(user),
+    }
     assert graph_input["todos"][0]["name"] == "Project initialization"
     result = [
         c

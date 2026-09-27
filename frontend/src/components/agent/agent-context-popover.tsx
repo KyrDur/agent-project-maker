@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { InfoIcon, Settings2Icon, SquarePenIcon } from 'lucide-react'
+import { ClipboardCheckIcon, InfoIcon, Settings2Icon, SquarePenIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { AgentAvatar } from '@/components/agent/agent-avatar'
 import { Button } from '@/components/ui/button'
@@ -76,6 +76,10 @@ export function AgentContextPopover({ agent, agentId }: AgentContextPopoverProps
         >
           <SquarePenIcon />
           {t('newChat')}
+        </DropdownMenuItem>
+        <DropdownMenuItem render={<Link href={`/agents/${agentId}/project`} />}>
+          <ClipboardCheckIcon />
+          {t('project')}
         </DropdownMenuItem>
         <DropdownMenuItem render={<Link href={`/agents/${agentId}/settings`} />}>
           <Settings2Icon />

@@ -88,22 +88,23 @@ def generated_cases():
 
 
 @pytest.mark.asyncio
-async def test_project_llm_roles_use_platform_system_slots(monkeypatch):
+async def test_project_llm_roles_use_private_user_slots(db, monkeypatch):
     seen_roles: list[str] = []
 
-    async def resolve_system_model(_db, role: str):
+    async def resolve_user_model(_db, role: str, user_id):
+        assert user_id == TEST_USER_ID
         seen_roles.append(role)
         return ResolvedSystemModel(
             provider="openai",
             model_name="gpt-5.4-mini",
-            api_key="sk-platform",
+            api_key="sk-private",
             base_url=None,
         )
 
     def create_chat_model(*_args, **_kwargs):
         return object()
 
-    monkeypatch.setattr(llm, "resolve_system_model", resolve_system_model)
+    monkeypatch.setattr("app.services.user_llm_settings.resolve_user_model", resolve_user_model)
     monkeypatch.setattr("app.agent_runtime.model_factory.create_chat_model", create_chat_model)
 
     for role in (

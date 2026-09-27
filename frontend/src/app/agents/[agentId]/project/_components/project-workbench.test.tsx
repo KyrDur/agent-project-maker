@@ -24,6 +24,12 @@ const create = vi.fn()
 beforeEach(() => {
   create.mockReset()
   server.use(
+    http.get('http://localhost:8001/api/user-llm-settings/readiness', () =>
+      HttpResponse.json([]),
+    ),
+    http.get('http://localhost:8001/api/agents/agent-id/runtime-readiness', () =>
+      HttpResponse.json({ ready: false, model: null, credential: null }),
+    ),
     http.get(`${path}/report`, () => HttpResponse.json({ evidence: null, sections: [] })),
     http.get(`${path}/evaluation-reports`, () =>
       HttpResponse.json({ reports: [], best_run_ids: {}, active: false }),

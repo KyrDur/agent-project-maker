@@ -646,6 +646,10 @@ image
 
 # 🐳 Docker Compose
 
+`docker-compose.yml` is development-only and binds all ports to `127.0.0.1`.
+Production uses the single canonical file `compose.production.yml` together
+with `.env.production`; do not combine the two Compose files.
+
 ```bash
 cp backend/.env.example backend/.env
 
@@ -657,6 +661,13 @@ Backend 会在启动时执行数据库 migration。
 ---
 
 # ✅ 开发检查
+
+从仓库根目录串行运行完整检查（会先安装锁定依赖）：
+
+```bash
+bash scripts/check.sh
+# 或：make check（依赖已安装时）
+```
 
 ## Backend
 

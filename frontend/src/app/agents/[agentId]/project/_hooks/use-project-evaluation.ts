@@ -69,7 +69,16 @@ export function useProjectEvaluation(agentId: string) {
       agentProjectApi.createRun(agentId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
   })
-  return { sets, runs, save, start, quality }
+  const cancel = useMutation({
+    mutationFn: (runId: string) => agentProjectApi.cancelRun(agentId, runId),
+    onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
+  })
+  const retry = useMutation({
+    mutationFn: (data: { runId: string; requestId: string }) =>
+      agentProjectApi.retryRun(agentId, data.runId, data.requestId),
+    onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
+  })
+  return { sets, runs, save, start, quality, cancel, retry }
 }
 
 export function useProjectProposals(agentId: string, runId: string) {

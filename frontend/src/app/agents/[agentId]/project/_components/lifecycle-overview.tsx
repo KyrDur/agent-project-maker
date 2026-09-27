@@ -127,7 +127,7 @@ function lifecycleSteps({
   )
   const hasComparableReports = reports.some((report) => report.comparison_key)
 
-  return [
+  const steps: { key: string; state: StepState }[] = [
     {
       key: 'v1Ready',
       state: versions.length ? 'completed' : 'current',
@@ -182,6 +182,10 @@ function lifecycleSteps({
         hasRegression && hasComparableReports ? 'completed' : hasRegression ? 'current' : 'pending',
     },
   ]
+  // Manual evaluation sets skip the AI generation and focus-selection checkpoints.
+  return hasSet && !hasSpec
+    ? steps.filter((step) => step.key !== 'generatorAnalyzing' && step.key !== 'focusCheckpoint')
+    : steps
 }
 
 function nextAction({
@@ -288,9 +292,9 @@ export function LifecycleOverview({
     null
   const noData = workspaceT('noData')
   const noVersion = workspaceT('noVersion')
-  const platformRoles = useMemo(() => systemModels.data ?? [], [systemModels.data])
-  const platformReady =
-    platformRoles.length > 0 && platformRoles.every((setting) => setting.configured)
+  const personalRoles = useMemo(() => systemModels.data ?? [], [systemModels.data])
+  const personalReady =
+    personalRoles.length > 0 && personalRoles.every((setting) => setting.configured)
   const runtimeModel = runtimeReadiness.data?.model
   const runtimeCredential = runtimeReadiness.data?.credential
 
@@ -358,19 +362,19 @@ export function LifecycleOverview({
           actions={
             <span
               className={
-                platformReady
+                personalReady
                   ? 'moldy-status-surface moldy-status-success rounded-full px-2 py-1 text-xs font-medium'
                   : 'moldy-status-surface moldy-status-warn rounded-full px-2 py-1 text-xs font-medium'
               }
             >
               {workspaceT(
-                platformReady ? 'aiReadiness.status.ready' : 'aiReadiness.status.needsSetup',
+                personalReady ? 'aiReadiness.status.ready' : 'aiReadiness.status.needsSetup',
               )}
             </span>
           }
         >
           <dl className="grid gap-3 text-sm">
-            {platformRoles.map((role) => (
+            {personalRoles.map((role) => (
               <div key={role.role} className="flex items-center justify-between gap-3">
                 <dt className="text-muted-foreground">
                   {workspaceT(`aiReadiness.pipeline.roles.${role.role}`)}

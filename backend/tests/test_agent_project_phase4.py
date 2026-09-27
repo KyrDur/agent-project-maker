@@ -31,7 +31,25 @@ SKILL_ID = str(uuid.UUID(int=123))
 
 @pytest.fixture
 async def experiment(db, monkeypatch):
+    from app.credentials import service as credentials
+    from app.models.user_llm_setting import UserLlmSetting
+
     _, _, agent = await phase3.phase2.seed_agent(db)
+    judge_credential = await credentials.create(
+        db,
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Private judge",
+        data={"api_key": "test-only-private-key"},
+    )
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="judge_optimizer",
+            credential_id=judge_credential.id,
+            model_name="test-judge",
+        )
+    )
     await db.commit()
     await db.refresh(agent, ["sub_agent_links"])
     snapshot = await projects.build_snapshot(db, agent)

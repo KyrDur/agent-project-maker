@@ -173,7 +173,7 @@ def test_frontend_ci_provisions_backend_python_before_script_tests() -> None:
     assert "- uses: astral-sh/setup-uv@v5" in frontend
     assert "cache-dependency-glob: backend/uv.lock" in frontend
     assert backend_sync in frontend
-    assert frontend.index(backend_sync) < frontend.index("- run: pnpm exec vitest run")
+    assert frontend.index(backend_sync) < frontend.index("        run: pnpm exec vitest run")
 
 
 def test_backend_ci_provisions_frontend_dependencies_before_isolated_pytest() -> None:

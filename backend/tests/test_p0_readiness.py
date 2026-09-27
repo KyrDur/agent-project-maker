@@ -19,8 +19,8 @@ from app.dependencies import CurrentUser
 from app.exceptions import AppError
 from app.models.credential import Credential
 from app.models.model import Model
-from app.models.system_llm_setting import SystemLlmSetting
 from app.models.user import User
+from app.models.user_llm_setting import UserLlmSetting
 from app.seed.default_templates import DEFAULT_TEMPLATES
 from app.services import builder_runtime_readiness as readiness
 from app.services import builder_service
@@ -266,7 +266,7 @@ async def test_confirm_build_uses_runtime_model_id_from_draft(db, encrypted, mon
 
 
 @pytest.mark.asyncio
-async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monkeypatch):
+async def test_phase8_and_confirm_use_builder_private_runtime(db, encrypted, monkeypatch):
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.orm import selectinload
@@ -278,19 +278,20 @@ async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monk
     blob, key, fields = encrypted
     db.add(User(id=TEST_USER_ID, name="P0", email="p0@example.test"))
     system_credential = Credential(
-        user_id=None,
+        user_id=TEST_USER_ID,
         name="Builder DeepSeek",
         definition_key="deepseek",
         data_encrypted=blob,
         key_id=key,
         field_keys=fields,
         status="active",
-        is_system=True,
+        is_system=False,
     )
     db.add(system_credential)
     await db.flush()
     db.add(
-        SystemLlmSetting(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
             role="builder",
             credential_id=system_credential.id,
             model_name="deepseek-chat",

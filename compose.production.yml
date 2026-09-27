@@ -1,4 +1,4 @@
-# Standalone production file. Do NOT merge with docker-compose.yml (public ports).
+# Canonical production file. Use it alone with .env.production.
 name: agent-project-maker
 
 x-logging: &rotating-logs

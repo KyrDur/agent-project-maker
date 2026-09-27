@@ -73,6 +73,7 @@ from app.models.template import Template
 from app.models.token_usage import TokenUsage
 from app.models.tool import AgentToolLink, Tool
 from app.models.user import User
+from app.models.user_llm_setting import UserLlmSetting
 
 __all__ = [
     "Agent",
@@ -137,6 +138,7 @@ __all__ = [
     "SkillRevision",
     "SkillUsageEvent",
     "SystemLlmSetting",
+    "UserLlmSetting",
     "Template",
     "TokenUsage",
     "Tool",

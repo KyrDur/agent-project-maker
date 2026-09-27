@@ -63,7 +63,7 @@ export function ProjectEvaluation({
 }) {
   const t = useTranslations('agentProject')
   const locale = useLocale()
-  const { sets, runs, save, start, quality } = useProjectEvaluation(agentId)
+  const { sets, runs, save, start, quality, cancel, retry } = useProjectEvaluation(agentId)
   const lifecycleT = useTranslations('agentProject.lifecycle')
   const workspaceT = useTranslations('agentProject.workspace.evaluation')
   const [datasetId, setDatasetId] = useState('')
@@ -369,6 +369,28 @@ export function ProjectEvaluation({
                   <div className="mt-3 space-y-3">
                     <p role="status">{t(`runStatuses.${run.status}`)}</p>
                     <ProjectMetrics metrics={run.metrics_json} />
+                    {['pending', 'running'].includes(run.status) && (
+                      <Button
+                        variant="outline"
+                        disabled={cancel.isPending}
+                        onClick={() => cancel.mutate(run.id)}
+                      >
+                        {t('cancelRun')}
+                      </Button>
+                    )}
+                    {run.status === 'failed' && (
+                      <Button
+                        variant="outline"
+                        disabled={retry.isPending}
+                        onClick={() =>
+                          retry.mutate({ runId: run.id, requestId: crypto.randomUUID() })
+                        }
+                      >
+                        {t('retryRun')}
+                      </Button>
+                    )}
+                    {(cancel.isError || retry.isError) && <ErrorState />}
+
                     {['completed', 'failed'].includes(run.status) &&
                       run.comparison_json?.eval_spec && (
                         <ProjectOptimization

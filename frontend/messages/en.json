@@ -119,7 +119,7 @@
             "notConfigured": "Not configured"
           },
           "pipeline": {
-            "title": "Platform AI pipeline",
+            "title": "My AI settings",
             "roles": {
               "builder": "Builder AI",
               "evaluation_generator": "Evaluation Generator AI",
@@ -137,7 +137,7 @@
           "v1Ready": "Agent V1 Ready",
           "generatorAnalyzing": "Evaluation Generator Analysis",
           "focusCheckpoint": "Evaluation Focus Checkpoint",
-          "benchmarkGenerating": "Generate 20 Cases",
+          "benchmarkGenerating": "Generate evaluation cases",
           "benchmarkFrozen": "Mock Environment Frozen",
           "evaluationRunning": "V1 Evaluation Running",
           "resultsBadCases": "Results and Bad Cases",
@@ -356,7 +356,8 @@
       "evaluation_judge_not_configured": "Configure a judge model and active credential first.",
       "evaluation_judge_pin_required": "This historical run has no frozen judge. Start a new evaluation.",
       "evaluation_judge_credential_unavailable": "The frozen judge credential is unavailable. Restore it or start a new evaluation.",
-      "evaluation_judge_endpoint_changed": "The frozen judge endpoint has changed. This run cannot continue as a comparable regression."
+      "evaluation_judge_endpoint_changed": "The frozen judge endpoint has changed. This run cannot continue as a comparable regression.",
+      "evaluation_cancelled": "Evaluation cancelled. Completed case results are preserved."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -582,7 +583,9 @@
     "notApplicable": "Not applicable",
     "resultStatus": {
       "not_evaluated": "Not evaluated"
-    }
+    },
+    "cancelRun": "Cancel evaluation",
+    "retryRun": "Retry frozen evaluation"
   },
   "metadata": {
     "title": "Agent Project Maker",
@@ -686,12 +689,12 @@
         "anthropic": "Anthropic API key",
         "google": "Google AI Studio API key"
       },
-      "encryptedNote": "API keys are encrypted by the backend; super users can also assign models to the Builder, Evaluation Generator, and Judge & Optimizer roles.",
+      "encryptedNote": "API keys are encrypted by the backend. Choose your own models for Builder, Evaluation Generator, and Judge & Optimizer.",
       "later": "Later",
-      "register": "Configure platform AIs",
+      "register": "Configure my AI models",
       "superUserToast": "Registered as a Super User",
       "superUserToastDesc": "You can manage system credentials.",
-      "registerPlatform": "Configure platform AIs"
+      "registerPlatform": "Configure my AI models"
     },
     "userMenu": {
       "settings": "Settings",
@@ -3148,6 +3151,7 @@
     "selectCredential": "Select Credential",
     "selectModel": "Select model",
     "emptyCredentials": "No system credentials are available yet.",
+    "emptyPersonalCredentials": "No personal credentials are available yet.",
     "loadModels": "Load Models",
     "selectCredentialFirst": "Select Credential First",
     "modelLoadFailed": "Model Load Failed",
@@ -3163,9 +3167,13 @@
     "quickSetup": {
       "title": "Quick setup",
       "description": "Use one provider, system credential, and model for Builder, evaluation generation, and judge/optimizer roles.",
+      "personalDescription": "Use one provider, personal credential, and model for your Builder, evaluation generator, and judge/optimizer roles.",
       "addCredential": "Add system credential",
+      "addPersonalCredential": "Add personal credential",
       "apply": "Apply to three platform roles",
-      "note": "Only credential references and model names are saved; API keys stay encrypted on the backend and are never stored in the browser."
+      "applyPersonal": "Apply to three personal AI roles",
+      "note": "Only credential references and model names are saved; API keys stay encrypted on the backend and are never stored in the browser.",
+      "personalNote": "Only personal credential references and model names are saved; API keys stay encrypted on the backend and are never stored in the browser."
     },
     "roles": {
       "builder": {
@@ -3192,7 +3200,11 @@
       "testSucceeded": "Test passed.",
       "testFailed": "Test failed.",
       "saveFailed": "Operation failed."
-    }
+    },
+    "personalTitle": "My AI settings",
+    "personalDescription": "Select your credentials and models for building, evaluation generation, and judging. Roles may share a credential; configure them before use.",
+    "personalCredential": "Personal credential",
+    "setupMissing": "{count} AI roles still need setup."
   },
   "skill": {
     "pageTitle": "Skill Management",
@@ -4576,7 +4588,8 @@
       "marketplaceAdmin": "Marketplace Admin",
       "systemCredentials": "System Credentials",
       "systemLlm": "Platform AI",
-      "adminAudit": "All Activity"
+      "adminAudit": "All Activity",
+      "personalAi": "My AI"
     },
     "profile": {
       "title": "Profile",

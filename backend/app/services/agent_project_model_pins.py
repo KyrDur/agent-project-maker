@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.credentials import service as credentials
 from app.services.agent_project_executor import SnapshotExecutionUnavailable
-from app.services.system_credential_resolver import get_effective_setting
 
 
-async def pin_judge(db: AsyncSession) -> dict[str, Any]:
-    _, setting = await get_effective_setting(db, "judge_optimizer")
+async def pin_judge(db: AsyncSession, user_id: uuid.UUID) -> dict[str, Any]:
+    from app.services.user_llm_settings import get_setting, private_credential
+
+    setting = await get_setting(db, user_id, "judge_optimizer")
     if setting is None or not setting.credential_id or not setting.model_name:
         raise SnapshotExecutionUnavailable("evaluation_judge_not_configured")
-    cred = await credentials.get_system(db, setting.credential_id)
+    cred = await private_credential(db, user_id, setting.credential_id)
     if cred is None or cred.status != "active":
         raise SnapshotExecutionUnavailable("evaluation_judge_not_configured")
     payload = await credentials.decrypt_with_external(cred.data_encrypted)
@@ -26,15 +27,22 @@ async def pin_judge(db: AsyncSession) -> dict[str, Any]:
         "credential_id": str(cred.id),
         "model_params": {"temperature": 0},
         "pinned": True,
+        "user_id": str(user_id),
     }
 
 
-async def resolve_pinned_judge(db: AsyncSession, pin: dict[str, Any]) -> tuple[Any, str]:
+async def resolve_pinned_judge(
+    db: AsyncSession, pin: dict[str, Any], user_id: uuid.UUID
+) -> tuple[Any, str]:
     from app.agent_runtime.model_factory import create_chat_model
 
     if not pin.get("pinned"):
         raise SnapshotExecutionUnavailable("evaluation_judge_pin_required")
-    cred = await credentials.get_system(db, uuid.UUID(pin["credential_id"]))
+    from app.services.user_llm_settings import private_credential
+
+    if pin.get("user_id") != str(user_id):
+        raise SnapshotExecutionUnavailable("evaluation_judge_credential_unavailable")
+    cred = await private_credential(db, user_id, uuid.UUID(pin["credential_id"]))
     if cred is None or cred.status != "active" or cred.definition_key != pin["provider"]:
         raise SnapshotExecutionUnavailable("evaluation_judge_credential_unavailable")
     payload = await credentials.decrypt_with_external(cred.data_encrypted)

@@ -202,6 +202,10 @@ async def _lifespan_started(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await recover_conversation_queue()
 
+    from app.services.agent_project_worker import evaluation_worker
+
+    await evaluation_worker.start()
+
     if settings.skill_evaluation_enabled:
         await skill_evaluation_worker.start(async_session, reconcile_stale=True)
 

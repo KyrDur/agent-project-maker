@@ -22,6 +22,7 @@ the operator, not whichever user happens to be logged in.
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -32,6 +33,15 @@ from app.credentials import service as credential_service
 from app.models.system_llm_setting import SystemLlmSetting
 
 logger = logging.getLogger(__name__)
+
+
+async def resolve_private_role_model(
+    db: AsyncSession, role: str, user_id: uuid.UUID
+) -> ResolvedSystemModel:
+    """Resolve a user's private role without consulting operator settings."""
+    from app.services.user_llm_settings import resolve_user_model
+
+    return await resolve_user_model(db, role, user_id)
 
 SYSTEM_LLM_ROLE_FALLBACKS: dict[str, tuple[str, ...]] = {
     "builder": ("text_primary",),
@@ -73,7 +83,7 @@ async def resolve_system_api_key(db: AsyncSession, provider: str) -> str | None:
         return env_key
 
     cred = await credential_service.find_system_by_definition(db, provider)
-    if cred is None:
+    if cred is None or cred.status != "active":
         return None
     try:
         payload = await credential_service.decrypt_with_external(cred.data_encrypted)
@@ -118,13 +128,15 @@ async def resolve_system_model(db: AsyncSession, role: str) -> ResolvedSystemMod
         raise SystemModelNotConfiguredError(role)
 
     cred = await credential_service.get_system(db, setting.credential_id)
-    if cred is None:
+    if cred is None or cred.status != "active":
         # Credential deleted between selection and use (SET NULL not yet
         # applied, or race). Treat as unconfigured.
         raise SystemModelNotConfiguredError(role)
 
     payload = await credential_service.decrypt_with_external(cred.data_encrypted)
     api_key = payload.get("api_key") or payload.get("token")
+    if not api_key:
+        raise SystemModelNotConfiguredError(role)
     base_url = payload.get("base_url")
     return ResolvedSystemModel(
         provider=cred.definition_key,

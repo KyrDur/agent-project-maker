@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.credentials.service import encrypt_data
+from app.exceptions import AppError
 from app.models.agent import Agent
 from app.models.credential import Credential
 from app.models.mcp_server import McpServer
@@ -391,11 +392,10 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
-    assert len(agent.skill_links) == 0
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
+    assert session.agent_id is None
 
 
 @pytest.mark.asyncio
@@ -432,10 +432,10 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
+    assert session.agent_id is None
 
 
 @pytest.mark.asyncio
@@ -601,8 +601,9 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     }
     await db.commit()
 
-    with pytest.raises(ValueError, match="사용 가능한 모델이 없습니다"):
+    with pytest.raises(AppError) as exc:
         await confirm_build(db, session)
+    assert exc.value.code == "builder_runtime_setup"
 
     # Session should be rolled back to PREVIEW
     reloaded = await get_session(db, session.id, TEST_USER_ID)

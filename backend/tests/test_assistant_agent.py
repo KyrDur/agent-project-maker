@@ -186,7 +186,7 @@ async def test_resolve_system_api_key_falls_back_to_system_credential():
 
     import app.services.system_credential_resolver as resolver
 
-    fake_cred = MagicMock(id="cred-1", data_encrypted="blob")
+    fake_cred = MagicMock(id="cred-1", data_encrypted="blob", status="active")
     with (
         patch.object(resolver, "PROVIDER_API_KEY_MAP", {}),
         patch.object(

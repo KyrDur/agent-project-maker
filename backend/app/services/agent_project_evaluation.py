@@ -210,7 +210,7 @@ async def create_run(
         from app.services.agent_project_model_pins import pin_judge
 
         try:
-            plan["roles"]["judge"] = await pin_judge(db)
+            plan["roles"]["judge"] = await pin_judge(db, user_id)
         except SnapshotExecutionUnavailable as exc:
             raise error(str(exc)) from exc
     dataset.frozen = True
@@ -384,6 +384,7 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
 
 
 async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    lease = uuid.uuid4()
     async with async_session() as db:
         project = await projects.require_project(db, agent_id, user_id)
         claimed = await db.execute(
@@ -393,7 +394,12 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 AgentProjectEvalRun.project_id == project.id,
                 AgentProjectEvalRun.status == "pending",
             )
-            .values(status="running", started_at=utcnow())
+            .values(
+                status="running",
+                started_at=utcnow(),
+                lease_id=lease,
+                lease_expires_at=utcnow() + timedelta(minutes=3),
+            )
             .returning(AgentProjectEvalRun.id)
         )
         if claimed.scalar_one_or_none() is None:
@@ -440,7 +446,7 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                         assertions=checks,
                         status="passed" if all(c["passed"] for c in checks) else "failed",
                     )
-                    if plan:
+                    if plan and plan.get("eval_spec"):
                         async with asyncio.timeout(95):
                             result.update(
                                 await grade_case(
@@ -464,8 +470,22 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 )
                 result["latency_ms"] = round((perf_counter() - start) * 1000)
                 results.append(projects.snapshot_value(result))
-                row.results_json = list(results)
+                saved = await db.execute(
+                    update(AgentProjectEvalRun)
+                    .where(
+                        AgentProjectEvalRun.id == run_id,
+                        AgentProjectEvalRun.lease_id == lease,
+                        AgentProjectEvalRun.status == "running",
+                    )
+                    .values(
+                        results_json=list(results), lease_expires_at=utcnow() + timedelta(minutes=3)
+                    )
+                    .returning(AgentProjectEvalRun.id)
+                )
+                saved_id = saved.scalar_one_or_none()
                 await db.commit()
+                if saved_id is None:
+                    return
             passed = sum(result["status"] == "passed" for result in results)
             errored = sum(result["status"] == "errored" for result in results)
             unevaluated = sum(result["status"] == "not_evaluated" for result in results)
@@ -474,7 +494,7 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 for result in results
                 for score in result.get("metric_scores", {}).values()
             )
-            row.metrics_json = {
+            metrics = {
                 "total": len(results),
                 "passed": passed,
                 "failed": len(results) - passed - errored - unevaluated,
@@ -485,17 +505,104 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
             }
-            row.pass_rate = None if incomplete else passed / len(results)
-            row.status = "failed" if errored else "completed"
-            row.error = "evaluation_case_errors" if errored else None
-        except (Exception, asyncio.CancelledError):
+            terminal = {
+                "metrics_json": metrics,
+                "pass_rate": None if incomplete else passed / len(results),
+                "status": "failed" if errored else "completed",
+                "error": "evaluation_case_errors" if errored else None,
+            }
+        except asyncio.CancelledError:
             await db.rollback()
-            row = await db.get(AgentProjectEvalRun, run_id)
-            if row is None:
-                return
-            row.status, row.error = "failed", "evaluation_execution_failed"
-        row.completed_at = utcnow()
+            await db.execute(
+                update(AgentProjectEvalRun)
+                .where(
+                    AgentProjectEvalRun.id == run_id,
+                    AgentProjectEvalRun.lease_id == lease,
+                    AgentProjectEvalRun.status == "running",
+                )
+                .values(
+                    status="failed",
+                    error="evaluation_worker_expired",
+                    completed_at=utcnow(),
+                    lease_id=None,
+                    lease_expires_at=None,
+                )
+            )
+            await db.commit()
+            raise
+        except Exception:
+            await db.rollback()
+            terminal = {"status": "failed", "error": "evaluation_execution_failed"}
+        await db.execute(
+            update(AgentProjectEvalRun)
+            .where(
+                AgentProjectEvalRun.id == run_id,
+                AgentProjectEvalRun.lease_id == lease,
+                AgentProjectEvalRun.status == "running",
+            )
+            .values(**terminal, completed_at=utcnow(), lease_id=None, lease_expires_at=None)
+        )
         await db.commit()
+
+
+async def cancel_run(
+    db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, run_id: uuid.UUID
+) -> AgentProjectEvalRun:
+    row = await get_run(db, agent_id, user_id, run_id)
+    await db.execute(
+        update(AgentProjectEvalRun)
+        .where(
+            AgentProjectEvalRun.id == row.id,
+            AgentProjectEvalRun.status.in_(["pending", "running"]),
+        )
+        .values(
+            status="failed",
+            error="evaluation_cancelled",
+            completed_at=utcnow(),
+            lease_id=None,
+            lease_expires_at=None,
+        )
+    )
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+async def retry_run(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+    user_id: uuid.UUID,
+    run_id: uuid.UUID,
+    request_id: uuid.UUID,
+) -> AgentProjectEvalRun:
+    project = await projects.require_project(db, agent_id, user_id)
+    await projects.lock_project(db, project)
+    old = await get_run(db, agent_id, user_id, run_id)
+    existing = await db.scalar(
+        select(AgentProjectEvalRun).where(
+            AgentProjectEvalRun.project_id == project.id,
+            AgentProjectEvalRun.request_id == request_id,
+        )
+    )
+    if existing:
+        if (existing.comparison_json or {}).get("retry_of") != str(old.id):
+            raise error("evaluation_request_conflict", 409)
+        return existing
+    if old.status != "failed":
+        raise error("evaluation_retry_requires_failure", 409)
+    plan = deepcopy(old.comparison_json or {})
+    plan.pop("optimization", None)
+    plan.pop("proposals", None)
+    plan["retry_of"] = str(old.id)
+    return await insert_frozen_run(
+        db,
+        project.id,
+        old.version_id,
+        old.eval_set_id,
+        request_id,
+        old.cases_snapshot_json or [],
+        plan,
+    )
 
 
 async def compare_versions(
