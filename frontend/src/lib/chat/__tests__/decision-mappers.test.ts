@@ -93,7 +93,7 @@ describe('serializeQuestionFlowResponse', () => {
         tools: ['Web Search', 'Calendar'],
       },
     })
-    expect(result.displayText).toBe('답변 톤: 간결하게 | 도구: Web Search, Calendar')
+    expect(result.displayText).toBe('답변 톤: 简洁明了 | 工具: Web Search, Calendar')
   })
 })
 

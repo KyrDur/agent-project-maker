@@ -147,7 +147,7 @@ describe('MarketplaceItemDetailPage', () => {
   it('renders execution profile with Korean labels instead of raw keys', async () => {
     await renderDetailPage()
 
-    expect(await screen.findByText('支持')).toBeInTheDocument()
+    expect(await screen.findByText('支持级别')).toBeInTheDocument()
     expect(screen.getAllByText('需要代理').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('执行器')).toBeInTheDocument()
     expect(screen.getByText('python')).toBeInTheDocument()

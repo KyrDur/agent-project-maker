@@ -28,7 +28,7 @@ describe('ToolCatalog', () => {
     )
 
     expect(screen.queryByText('类别标签')).not.toBeInTheDocument()
-    expect(screen.getByText('所需凭据')).toBeInTheDocument()
+    expect(screen.getByText('需要凭据')).toBeInTheDocument()
   })
 
   it('uses template-style card treatment for catalog tools', () => {

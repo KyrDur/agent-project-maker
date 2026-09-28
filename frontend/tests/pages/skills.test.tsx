@@ -252,13 +252,13 @@ describe('SkillsPage', () => {
 
     render(<SkillsPageClient />)
 
-    expect(screen.getByRole('button', { name: '所需证件 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '所需凭据 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '需要重新运行 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '评估失败 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '已发表 3' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '本地/草稿 1' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '所需证件 1' }))
+    await user.click(screen.getByRole('button', { name: '所需凭据 1' }))
 
     expect(screen.getByText('Credential Setup')).toBeInTheDocument()
     expect(screen.queryByText('Rerun Needed')).not.toBeInTheDocument()

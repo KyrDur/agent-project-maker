@@ -14,7 +14,7 @@ describe('ReasoningDataUI', () => {
 
     expect(screen.getByText('推理总结')).toBeInTheDocument()
     expect(screen.getByText('검토한 내용을 요약합니다.')).toBeInTheDocument()
-    expect(screen.getByText('准备好了')).toBeInTheDocument()
+    expect(screen.getByText('准备好')).toBeInTheDocument()
   })
 
   it('does not render raw reasoning fields', () => {

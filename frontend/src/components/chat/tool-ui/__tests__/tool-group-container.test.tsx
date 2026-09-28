@@ -39,8 +39,8 @@ describe('ToolGroupContainer', () => {
         <div data-testid="child">leaf</div>
       </ToolGroupContainer>,
     )
-    expect(screen.getByText('默认标题')).toBeInTheDocument()
-    expect(screen.getByText('10회')).toBeInTheDocument()
+    expect(screen.getByText('网页搜索')).toBeInTheDocument()
+    expect(screen.getByText('10 次调用')).toBeInTheDocument()
   })
 
   it('라벨 매핑이 없는 도구는 toolName 자체를 라벨로 쓴다', () => {
@@ -50,7 +50,7 @@ describe('ToolGroupContainer', () => {
       </ToolGroupContainer>,
     )
     expect(screen.getByText('some_custom_tool')).toBeInTheDocument()
-    expect(screen.getByText('3회')).toBeInTheDocument()
+    expect(screen.getByText('3 次调用')).toBeInTheDocument()
   })
 
   it('running=true면 기본 펼침이라 children이 보인다', () => {
@@ -87,13 +87,13 @@ describe('ToolGroupContainer', () => {
         </ToolGroupContainer>,
       )
       // 고유 URL 9개 → "출처 9개"
-      expect(screen.getByText('출처 9개')).toBeInTheDocument()
+      expect(screen.getByText('9 个来源')).toBeInTheDocument()
       // 고유 도메인 4종 → 배지는 최대 3개만(S/R/V — s가 3회로 최빈)
       expect(screen.getByText('S')).toBeInTheDocument()
       expect(screen.getByText('R')).toBeInTheDocument()
       expect(screen.getByText('V')).toBeInTheDocument()
       // 개수 라벨도 함께
-      expect(screen.getByText('3회')).toBeInTheDocument()
+      expect(screen.getByText('3 次调用')).toBeInTheDocument()
     })
 
     it('URL 중복은 dedup되어 출처 수가 정확하다', () => {
@@ -106,7 +106,7 @@ describe('ToolGroupContainer', () => {
           <div>leaf</div>
         </ToolGroupContainer>,
       )
-      expect(screen.getByText('출처 2개')).toBeInTheDocument()
+      expect(screen.getByText('2 个来源')).toBeInTheDocument()
     })
 
     it('running=true(진행 중)면 출처 행을 띄우지 않는다', () => {
@@ -116,7 +116,7 @@ describe('ToolGroupContainer', () => {
           <div>leaf</div>
         </ToolGroupContainer>,
       )
-      expect(screen.queryByText(/출처/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/来源/)).not.toBeInTheDocument()
     })
 
     it('비-검색 그룹(read_file)은 출처 행을 띄우지 않는다', () => {
@@ -131,7 +131,7 @@ describe('ToolGroupContainer', () => {
         </ToolGroupContainer>,
       )
       expect(screen.getByText('读取文件')).toBeInTheDocument()
-      expect(screen.queryByText(/출처/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/来源/)).not.toBeInTheDocument()
       // 도메인 배지도 없어야 한다
       expect(screen.queryByText('A')).not.toBeInTheDocument()
     })

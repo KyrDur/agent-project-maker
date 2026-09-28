@@ -18,8 +18,8 @@ describe('CountedTabs', () => {
       />,
     )
 
-    const allTab = screen.getByRole('tab', { name: '전체 7' })
-    const activeTab = screen.getByRole('tab', { name: '활성 2개' })
+    const allTab = screen.getByRole('tab', { name: '所有时间 7' })
+    const activeTab = screen.getByRole('tab', { name: '启用 2개' })
 
     expect(within(allTab).getByText('7')).toBeInTheDocument()
     await user.click(activeTab)

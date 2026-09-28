@@ -728,9 +728,9 @@
       "selectAll": "选择所有行",
       "selectRow": "选择行",
       "allFilter": "全部 {label}",
-      "pagination": "{totalPages} 的页面 {page} · {count} 项目",
+      "pagination": "第 {page} / {totalPages} 页 · 共 {count} 项",
       "previous": "上一页",
-      "next": "下一步"
+      "next": "下一页"
     },
     "relativeTime": {
       "justNow": "刚才",
@@ -1970,8 +1970,8 @@
       "conversation": "对话"
     },
     "toolGroup": {
-      "count": "{count} 通话",
-      "sourceCount": "{count} 来源",
+      "count": "{count} 次调用",
+      "sourceCount": "{count} 个来源",
       "labels": {
         "webSearch": "网页搜索",
         "naverBlog": "Naver博客",
@@ -2073,7 +2073,7 @@
       "actionN": "{total} 的操作 {index}",
       "lockedSecretHint": "秘密值无法编辑",
       "invalidFieldValue": "值格式无效",
-      "pendingCount": "{count} 待批准",
+      "pendingCount": "待批准 {count} 项",
       "approveAll": "批准全部",
       "allowForSession": "留出本次会议的剩余时间"
     },
@@ -2188,7 +2188,7 @@
       "toolResult": "工具结果",
       "copy": "复制",
       "copied": "已复制",
-      "copyLabel": "复制标签",
+      "copyLabel": "复制",
       "tokens": "Token 数",
       "edit": "编辑",
       "editSave": "保存",
@@ -2495,7 +2495,7 @@
       "summary": "对较旧的消息进行了总结以释放上下文"
     },
     "subagents": {
-      "progress": "{completed}/{total} 子 智能体 完成",
+      "progress": "{completed}/{total} 个子智能体已完成",
       "progressLabel": "子智能体进度",
       "running": "{count} 运行中",
       "failed": "{count} 失败"
@@ -2531,7 +2531,7 @@
         "editDisabledRunning": "运行期间无法编辑文件",
         "editDisabledUnsupported": "该文件还不能直接在面板中编辑",
         "kinds": {
-          "markdown": "降价",
+          "markdown": "Markdown",
           "code": "代码",
           "plainText": "文字",
           "file": "文件"
@@ -3064,7 +3064,7 @@
       "files": "文件",
       "addFile": "添加文件",
       "add": "添加",
-      "newPathPlaceholder": "路径/to/new-file.md",
+      "newPathPlaceholder": "path/to/new-file.md",
       "create": "创建",
       "cancel": "取消",
       "unsavedCount": "{count} 未保存",
@@ -3243,7 +3243,7 @@
     "stateFilter": {
       "label": "技能状态过滤器",
       "all": "所有州",
-      "needs_credentials": "所需证件",
+      "needs_credentials": "所需凭据",
       "needs_rerun": "需要重新运行",
       "evaluation_failed": "评估失败",
       "published": "已发表",
@@ -3333,7 +3333,7 @@
       "ready": "已验证",
       "needs_evaluation": "未评价",
       "needs_rerun": "需要重新运行",
-      "needs_credentials": "所需证件",
+      "needs_credentials": "所需凭据",
       "evaluation_running": "评估运行",
       "evaluation_failed": "评估失败",
       "low_confidence": "通过率低"
@@ -3359,12 +3359,12 @@
       "targetCount": "{count} 目标",
       "noIssues": "没有记录兼容性问题。",
       "target": {
-        "openaiCodex": "OpenAI/法典",
-        "claudeCode": "Claude·科德",
-        "vercelAgentSkills": "Vercel 智能体 技能"
+        "openaiCodex": "OpenAI/Codex",
+        "claudeCode": "Claude Code",
+        "vercelAgentSkills": "Vercel Agent Skills"
       },
       "status": {
-        "pass": "通行证",
+        "pass": "通过",
         "warning": "警告",
         "error": "错误",
         "unknown": "未知"
@@ -3389,7 +3389,7 @@
       "files": "文件",
       "addFile": "添加文件",
       "add": "添加",
-      "newPathPlaceholder": "路径/to/new-file.md",
+      "newPathPlaceholder": "path/to/new-file.md",
       "create": "创建",
       "cancel": "取消",
       "unsavedCount": "{count} 未保存",

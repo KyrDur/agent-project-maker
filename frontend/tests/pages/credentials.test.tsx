@@ -55,12 +55,12 @@ describe('CredentialsPage', () => {
   it('uses a tabbed card panel instead of the old credential table', () => {
     render(<CredentialsPage />)
 
-    expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全部 1' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('搜索凭据')).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: '名称' })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.getByText('운영용 OpenAI')).toBeInTheDocument()
-    expect(screen.getByText('2개 필드')).toBeInTheDocument()
+    expect(screen.getByText('2 字段')).toBeInTheDocument()
   })
 
   it('renders credentials as quiet management cards by default', () => {
@@ -69,15 +69,15 @@ describe('CredentialsPage', () => {
     const card = screen.getByText('운영용 OpenAI').closest('button')
     expect(card).toHaveClass('moldy-resource-card')
     expect(card?.className).toMatch(/\bmoldy-tone-card-mint\b/)
-    expect(screen.getByText('OpenAI')).toBeInTheDocument()
+    expect(screen.getByText('开放人工智能')).toBeInTheDocument()
   })
 
   it('filters credentials from the shared status tabs', async () => {
     const user = userEvent.setup()
     render(<CredentialsPage />)
 
-    await user.click(screen.getByRole('tab', { name: /^활성$/ }))
+    await user.click(screen.getByRole('tab', { name: /^启用$/ }))
 
-    expect(screen.getByRole('tab', { name: '활성 1개' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '启用 1' })).toHaveAttribute('aria-selected', 'true')
   })
 })

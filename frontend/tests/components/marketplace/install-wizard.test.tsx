@@ -114,7 +114,7 @@ describe('InstallWizard', () => {
     await waitFor(() => {
       expect(mockInstall).toHaveBeenCalled()
     })
-    expect(await screen.findByText('Research Blueprint 설치 완료')).toBeInTheDocument()
+    expect(await screen.findByText('Research Blueprint已安装')).toBeInTheDocument()
     expect(screen.queryByText('打开蓝图')).not.toBeInTheDocument()
   })
 
@@ -174,9 +174,7 @@ describe('InstallWizard', () => {
     render(<InstallWizard item={agentItem()} open onOpenChange={vi.fn()} />)
 
     // Error UI is shown — no install/next progression, no infinite loading.
-    expect(
-      screen.getByText('无法加载版本详细信息。重试设置其凭据。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('无法加载版本详细信息。重试设置其凭据。')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument()
     expect(screen.queryByText('正在加载版本详细信息...')).not.toBeInTheDocument()
 

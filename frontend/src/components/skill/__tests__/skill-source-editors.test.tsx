@@ -127,12 +127,12 @@ describe('PackageSkillEditor (소스 탭)', () => {
 
     // 중복 경로 거부 — 기존 파일이 빈 내용으로 덮이면 안 된다.
     await user.type(pathInput, 'SKILL.md')
-    await user.click(screen.getByRole('button', { name: '已创建' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
     expect(mockSetFile).not.toHaveBeenCalled()
 
     await user.clear(pathInput)
     await user.type(pathInput, '/references/new.md')
-    await user.click(screen.getByRole('button', { name: '已创建' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
     expect(mockSetFile).toHaveBeenCalledWith({ path: 'references/new.md', content: '' })
   })
 

@@ -126,7 +126,7 @@ describe('AssistantPanel', () => {
     render(<AssistantPanel agentId="agent-1" agentName="Test Agent" />)
 
     // EmptyContent의 FixHero가 ``fixHeroTitle({ agentName })`` 키 ("修复{agentName}")로 렌더.
-    expect(screen.getByText('Test Agent 수정')).toBeInTheDocument()
+    expect(screen.getByText('修复Test Agent')).toBeInTheDocument()
   })
 
   it('쓰기 도구 승인 UI와 HiTL resume 컨텍스트를 AssistantThread에 제공한다', () => {

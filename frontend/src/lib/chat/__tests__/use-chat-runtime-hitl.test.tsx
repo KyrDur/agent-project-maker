@@ -473,7 +473,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
       { type: 'respond', message: '네' },
       { type: 'reject', message: '아니요' },
     ])
-    expect(resume2.mock.calls[0]?.[2]).toBe('네 | 거부')
+    expect(resume2.mock.calls[0]?.[2]).toBe('네 | 拒绝')
     expect(resume2.mock.calls[0]?.[3]).toBe('ns-multi-latest')
   })
 

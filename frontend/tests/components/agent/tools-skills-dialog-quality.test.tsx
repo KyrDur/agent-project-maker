@@ -48,16 +48,12 @@ const evaluatedSkill: Skill = {
 describe('ToolsSkillsDialog skill quality summaries', () => {
   it('shows compact skill quality in the available skill picker without rerun controls', () => {
     render(
-      <SkillsPanel
-        allSkills={[evaluatedSkill]}
-        selectedSkillIds={new Set()}
-        onToggle={vi.fn()}
-      />,
+      <SkillsPanel allSkills={[evaluatedSkill]} selectedSkillIds={new Set()} onToggle={vi.fn()} />,
     )
 
     expect(screen.getByText('회의록 정리')).toBeInTheDocument()
     expect(screen.getByText('所需凭据')).toBeInTheDocument()
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 취소/ })).not.toBeInTheDocument()
   })
@@ -77,8 +73,8 @@ describe('ToolsSkillsDialog skill quality summaries', () => {
 
     expect(screen.getByText('회의록 정리')).toBeInTheDocument()
     expect(screen.getByText('所需凭据')).toBeInTheDocument()
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '회의록 정리 제거' })).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '删除회의록 정리' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 취소/ })).not.toBeInTheDocument()
   })

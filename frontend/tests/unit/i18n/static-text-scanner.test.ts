@@ -25,7 +25,7 @@ describe('static i18n text scanner', () => {
     expect(findStaticTextIssuesInSource(source, 'src/app/example/page.tsx')).toMatchObject([
       { kind: 'string-literal', text: '标题后备' },
       { kind: 'toast', text: '저장에 실패했어요' },
-      { kind: 'jsx-text', text: '模型' },
+      { kind: 'jsx-text', text: '모델' },
       { kind: 'jsx-attribute', text: '搜索' },
       { kind: 'jsx-attribute', text: '搜索' },
     ])

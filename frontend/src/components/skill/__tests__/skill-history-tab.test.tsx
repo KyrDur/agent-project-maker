@@ -113,12 +113,12 @@ describe('SkillHistoryTab', () => {
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
     const revisions = screen.getAllByRole('article')
-    expect(within(revisions[0]).getByText('리비전 3')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('修订版 3')).toBeInTheDocument()
     expect(within(revisions[0]).getByText('当前')).toBeInTheDocument()
-    expect(within(revisions[0]).getByText(/빌더 개선/)).toBeInTheDocument()
-    expect(within(revisions[0]).getByText('3개 파일')).toBeInTheDocument()
-    expect(within(revisions[1]).getByText('리비전 2')).toBeInTheDocument()
-    expect(within(revisions[2]).getByText('리비전 1')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText(/建设者改进/)).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('3 文件')).toBeInTheDocument()
+    expect(within(revisions[1]).getByText('修订版 2')).toBeInTheDocument()
+    expect(within(revisions[2]).getByText('修订版 1')).toBeInTheDocument()
   })
 
   it('shows selected revision detail and disables rollback for the current revision', async () => {
@@ -161,18 +161,18 @@ describe('SkillHistoryTab', () => {
 
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
-    expect(screen.getByText('리비전 3 상세')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '리비전 3 되돌리기' })).toBeDisabled()
+    expect(screen.getByText('修订版 3 详细信息')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '回滚到修订版 3' })).toBeDisabled()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: '리비전 2 보기' }))
+    await user.click(screen.getByRole('button', { name: '查看修订版 2' }))
 
-    expect(screen.getByText('리비전 2 상세')).toBeInTheDocument()
+    expect(screen.getByText('修订版 2 详细信息')).toBeInTheDocument()
     expect(screen.getByText('지침을 더 구체화 · SKILL.md')).toBeInTheDocument()
     expect(screen.getByText('SKILL.md · modified')).toBeInTheDocument()
     expect(screen.getByText('便携兼容性')).toBeInTheDocument()
     expect(screen.getByText('OpenAI/Codex')).toBeInTheDocument()
-    expect(screen.getByText('通行证')).toBeInTheDocument()
+    expect(screen.getByText('通过')).toBeInTheDocument()
     expect(screen.getByText('mean_score: 0.82')).toBeInTheDocument()
   })
 
@@ -203,12 +203,10 @@ describe('SkillHistoryTab', () => {
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: '리비전 1 보기' }))
-    await user.click(screen.getByRole('button', { name: '리비전 1 되돌리기' }))
+    await user.click(screen.getByRole('button', { name: '查看修订版 1' }))
+    await user.click(screen.getByRole('button', { name: '回滚到修订版 1' }))
 
-    expect(
-      screen.getByText('回滚会将当前内容保留为新的历史记录条目。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('回滚会将当前内容保留为新的历史记录条目。')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '回滚' }))
 

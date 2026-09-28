@@ -153,13 +153,11 @@ describe('ChatNavigator', () => {
       'group-data-[collapsible=icon]:hidden',
     )
     expect(screen.getByText('Test Agent')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('link', { name: /새 대화/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /新对话/ })).toBeInTheDocument())
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
-    expect(
-      screen.queryByRole('textbox', { name: '搜索智能体或对话' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: '搜索智能体或对话' })).not.toBeInTheDocument()
 
-    const activeAgentNewChat = screen.getByRole('button', { name: 'Test Agent 새 채팅' })
+    const activeAgentNewChat = screen.getByRole('button', { name: '与 Test Agent 的新聊天' })
     const activeAgentControls = activeAgentNewChat.closest('div')
     if (!activeAgentControls) {
       throw new TypeError('active agent controls container was missing')
@@ -171,14 +169,14 @@ describe('ChatNavigator', () => {
   it('promotes a remountless draft route replacement to the real active session', async () => {
     render(<ChatNavigator />)
 
-    await waitFor(() => expect(screen.getByRole('link', { name: /새 대화/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /新对话/ })).toBeInTheDocument())
 
     act(() => {
       replaceChatRouteWithoutRemount('/agents/agent-1/conversations/conv-1')
     })
 
     await waitFor(() => {
-      expect(screen.queryByRole('link', { name: /새 대화/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /新对话/ })).not.toBeInTheDocument()
       expect(screen.getByText('Test Conversation').closest('[data-chat-session-href]')).toHaveClass(
         'bg-primary',
       )

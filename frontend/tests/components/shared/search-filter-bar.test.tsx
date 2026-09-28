@@ -21,7 +21,7 @@ describe('SearchFilterBar', () => {
 
     expect(changes).toEqual(['a', 'b', 'c'])
     expect(screen.getByText('filter')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '创建' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '새로 만들기' })).toBeInTheDocument()
   })
 
   it('renders reset action when reset props are provided', async () => {

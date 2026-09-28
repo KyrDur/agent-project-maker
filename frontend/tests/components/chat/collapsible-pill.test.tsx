@@ -42,7 +42,7 @@ describe('CollapsiblePill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Expand' }))
 
-    expect(screen.getByText(/직렬화할 수 없는 결과/)).toBeInTheDocument()
+    expect(screen.getByText('序列化失败')).toBeInTheDocument()
   })
 
   it('memoizes heavy tool value formatting while expanded for stable payloads', async () => {

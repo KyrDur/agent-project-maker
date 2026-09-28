@@ -190,7 +190,7 @@ describe('ArtifactPanelContent', () => {
     renderPanel('list')
 
     expect(screen.getByText('生成的文件')).toBeInTheDocument()
-    expect(screen.getAllByText('已创建').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('生成').length).toBeGreaterThanOrEqual(2)
   })
 
   it('renders an attached file with the 첨부 badge as a read-only card', () => {
