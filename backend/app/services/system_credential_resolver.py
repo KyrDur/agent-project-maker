@@ -43,6 +43,7 @@ async def resolve_private_role_model(
 
     return await resolve_user_model(db, role, user_id)
 
+
 SYSTEM_LLM_ROLE_FALLBACKS: dict[str, tuple[str, ...]] = {
     "builder": ("text_primary",),
     "evaluation_generator": ("text_primary",),

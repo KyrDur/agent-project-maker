@@ -26,5 +26,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
       - run: uv sync --frozen --all-extras
+      - name: Configure ephemeral test secrets
+        run: |
+          printf 'ENCRYPTION_KEYS=%s\nJWT_SECRET=%s\n' \
+            "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       # Own fixtures: do not inherit the general suite's credential bypass.
       - run: uv run pytest --noconftest tests/test_p0_readiness.py tests/test_p0_golden_path.py -q
