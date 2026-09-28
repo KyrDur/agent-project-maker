@@ -46,9 +46,9 @@ describe('RunSummaryPanel', () => {
     const user = userEvent.setup()
     render(<RunSummaryPanel summary={summary()} />)
 
-    expect(screen.getByText('2.4초')).toBeInTheDocument()
-    expect(screen.getByText('도구 총 5')).toBeInTheDocument()
-    expect(screen.getByText('서브 에이전트 총 3')).toBeInTheDocument()
+    expect(screen.getByText('2.4 秒')).toBeInTheDocument()
+    expect(screen.getByText('工具总计 5')).toBeInTheDocument()
+    expect(screen.getByText('子智能体总计 3')).toBeInTheDocument()
     expect(screen.queryByText('search')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '显示活动' }))
@@ -75,9 +75,9 @@ describe('RunSummaryPanel', () => {
   })
 
   it.each([
-    [59_999, '60초'],
-    [60_000, '1분 0초'],
-    [119_600, '2분 0초'],
+    [59_999, '60 秒'],
+    [60_000, '1 分 0 秒'],
+    [119_600, '2 分 0 秒'],
   ])('renders %dms as %s at the minute boundary', (elapsedMs, expected) => {
     render(<RunSummaryPanel summary={summary({ elapsedMs })} />)
 
@@ -100,8 +100,8 @@ describe('RunSummaryPanel', () => {
     )
 
     expect(screen.getByText('时间不可用')).toBeInTheDocument()
-    expect(screen.getByText('도구 총 –')).toBeInTheDocument()
-    expect(screen.getByText('서브 에이전트 총 –')).toBeInTheDocument()
+    expect(screen.getByText('工具总计 –')).toBeInTheDocument()
+    expect(screen.getByText('子智能体总计 –')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '显示活动' }))
     expect(screen.getByText('主要工具').nextElementSibling).toHaveTextContent('–')
     expect(screen.getByText('后代工具').nextElementSibling).toHaveTextContent('–')
