@@ -328,6 +328,7 @@ async def get_builder_system_runtime(db: AsyncSession, user_id: uuid.UUID | None
     base_url = payload.get("base_url")
     result = await db.execute(
         select(Model).where(
+            Model.visible_to(user_id),
             Model.provider == credential.definition_key,
             Model.model_name == setting.model_name,
             Model.base_url == base_url,
@@ -336,6 +337,7 @@ async def get_builder_system_runtime(db: AsyncSession, user_id: uuid.UUID | None
     model = result.scalar_one_or_none()
     if model is None:
         model = Model(
+            owner_user_id=user_id,
             provider=credential.definition_key,
             model_name=setting.model_name,
             display_name=setting.model_name,

@@ -181,7 +181,22 @@ class EvalRunResponse(BaseModel):
     results_json: list[dict[str, Any]] | None
     pass_rate: float | None
     comparison_json: dict[str, Any] | None = None
+    credential_policy_note: str | None = None
     bad_cases_json: list[dict[str, Any]] | None = None
+
+    @model_validator(mode="after")
+    def explain_legacy_credential_policy(self) -> Self:
+        roles = (self.comparison_json or {}).get("roles") or {}
+        if roles.get("policy_version") != 2 and any(
+            isinstance(roles.get(role), dict)
+            and roles[role].get("credential_policy") == "platform_system_owned"
+            for role in ("evaluation_generator", "judge")
+        ):
+            self.credential_policy_note = (
+                "Legacy role labels described platform ownership incorrectly; "
+                "the frozen plan is unchanged. Verify the pinned Judge identity in this run."
+            )
+        return self
 
 
 class EvalGenerationRequest(BaseModel):

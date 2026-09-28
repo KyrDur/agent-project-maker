@@ -68,7 +68,7 @@ async def list_models(
 ):
     if include_hidden and not user.is_super_user:
         raise super_user_required()
-    return await model_service.list_models(db, include_hidden=include_hidden)
+    return await model_service.list_models(db, user_id=user.id, include_hidden=include_hidden)
 
 
 @router.get("/{model_id}")
@@ -77,7 +77,7 @@ async def get_model(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    model = await model_service.get_model(db, model_id)
+    model = await model_service.get_model(db, model_id, user_id=user.id)
     if not model:
         raise model_not_found()
     return serialize_model(model)
@@ -206,7 +206,7 @@ async def test_registered_model(
     credential for this model).
     """
 
-    model = await model_service.get_model(db, model_id)
+    model = await model_service.get_model(db, model_id, user_id=user.id)
     if model is None:
         raise model_not_found()
 

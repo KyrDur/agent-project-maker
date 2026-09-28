@@ -329,17 +329,31 @@ async def _validate_tool_ids_owned(
         )
 
 
-async def _validate_model_fallback_ids(db: AsyncSession, fallback_ids: list[uuid.UUID]) -> None:
-    """Every fallback id must reference a model row in the catalog.
+async def _validate_model_ids_owned(
+    db: AsyncSession, model_ids: list[uuid.UUID], user_id: uuid.UUID
+) -> None:
+    """Model IDs must be global catalog entries or owned by the caller."""
 
-    The catalog is shared across users (no per-user ownership), so we only
-    check existence here. Ordering and deduplication are the caller's
-    responsibility — we treat the list as opaque.
-    """
+    if not model_ids:
+        return
+    result = await db.execute(
+        select(Model.id).where(Model.id.in_(model_ids), Model.visible_to(user_id))
+    )
+    valid = {row[0] for row in result.all()}
+    if len(valid) != len(set(model_ids)):
+        raise HTTPException(status_code=400, detail="Unknown or unauthorized model_id")
+
+
+async def _validate_model_fallback_ids(
+    db: AsyncSession, fallback_ids: list[uuid.UUID], user_id: uuid.UUID
+) -> None:
+    """Every fallback model must be global or owned by the caller."""
 
     if not fallback_ids:
         return
-    result = await db.execute(select(Model.id).where(Model.id.in_(fallback_ids)))
+    result = await db.execute(
+        select(Model.id).where(Model.id.in_(fallback_ids), Model.visible_to(user_id))
+    )
     valid = {row[0] for row in result.all()}
     invalid = [str(i) for i in fallback_ids if i not in valid]
     if invalid:
@@ -462,9 +476,10 @@ async def toggle_favorite(db: AsyncSession, agent: Agent) -> Agent:
 
 
 async def create_agent(db: AsyncSession, data: AgentCreate, user_id: uuid.UUID) -> Agent:
+    await _validate_model_ids_owned(db, [data.model_id], user_id)
     fallback_ids = data.model_fallback_ids or []
     if fallback_ids:
-        await _validate_model_fallback_ids(db, fallback_ids)
+        await _validate_model_fallback_ids(db, fallback_ids, user_id)
 
     agent_id = uuid.uuid4()
     agent = Agent(
@@ -562,6 +577,7 @@ async def update_agent(db: AsyncSession, agent: Agent, data: AgentUpdate) -> Age
     if data.system_prompt is not None:
         agent.system_prompt = data.system_prompt
     if data.model_id is not None:
+        await _validate_model_ids_owned(db, [data.model_id], agent.user_id)
         agent.model_id = data.model_id
     if data.is_favorite is not None:
         agent.is_favorite = data.is_favorite
@@ -576,7 +592,7 @@ async def update_agent(db: AsyncSession, agent: Agent, data: AgentUpdate) -> Age
     if data.opener_questions is not None:
         agent.opener_questions = data.opener_questions
     if data.model_fallback_ids is not None:
-        await _validate_model_fallback_ids(db, data.model_fallback_ids)
+        await _validate_model_fallback_ids(db, data.model_fallback_ids, agent.user_id)
         agent.model_fallback_list = (
             [str(fid) for fid in data.model_fallback_ids] if data.model_fallback_ids else None
         )

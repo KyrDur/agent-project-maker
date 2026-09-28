@@ -109,7 +109,13 @@ async def build_snapshot(
         )
     }
     fallback_ids = [uuid.UUID(value) for value in (agent.model_fallback_list or [])]
-    models = list((await db.scalars(select(Model).where(Model.id.in_(fallback_ids)))).all())
+    models = list(
+        (
+            await db.scalars(
+                select(Model).where(Model.id.in_(fallback_ids), Model.visible_to(agent.user_id))
+            )
+        ).all()
+    )
 
     def model_config(model: Model) -> dict[str, Any]:
         return {

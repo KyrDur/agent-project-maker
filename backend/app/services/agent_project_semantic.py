@@ -67,22 +67,44 @@ def model_roles(snapshot: dict[str, Any]) -> dict[str, Any]:
     model = snapshot["agent"]["model"]
     descriptor = {key: model.get(key) for key in ("id", "provider", "model_name")}
     return {
+        "policy_version": 2,
         "examinee": {
             **descriptor,
             "credential_policy": "runtime_user_owned",
             "model_params": snapshot["agent"].get("model_params") or {},
         },
         "evaluation_generator": {
-            "system_role": "evaluation_generator",
-            "credential_policy": "platform_system_owned",
+            "user_role": "evaluation_generator",
+            "credential_policy": "user_private_owned",
+            "selection_stage": "generation",
         },
         "judge": {
             "role": "evaluator",
-            "system_role": "judge_optimizer",
-            "credential_policy": "platform_system_owned",
+            "user_role": "judge_optimizer",
+            "credential_policy": "user_private_owned",
+            "selection_stage": "run_creation",
         },
         "credential_policy": "project_mock_sandbox",
         "judge_prompt_version": "semantic_v2",
+    }
+
+
+async def generation_model_identity(db: AsyncSession, user_id: uuid.UUID) -> dict[str, str]:
+    """Describe the personal model used to generate evidence, without its secret."""
+
+    from app.services.user_llm_settings import get_setting, private_credential
+
+    setting = await get_setting(db, user_id, "evaluation_generator")
+    if setting is None or not setting.credential_id or not setting.model_name:
+        return {}
+    credential = await private_credential(db, user_id, setting.credential_id)
+    if credential is None:
+        return {}
+    return {
+        "provider": credential.definition_key,
+        "model_name": setting.model_name,
+        "credential_id": str(credential.id),
+        "user_id": str(user_id),
     }
 
 
@@ -161,6 +183,8 @@ async def generate(
             )
             spec = EvalSpec.model_validate(raw)
             profile = capability_profile(snapshot)
+            roles = model_roles(snapshot)
+            roles["evaluation_generator"].update(await generation_model_identity(db, user_id))
             value = {
                 **spec.model_dump(mode="json"),
                 "version_id": str(version_id),
@@ -169,7 +193,7 @@ async def generate(
                 "case_count": 20,
                 "capability_profile": profile,
                 "focus_options": focus_options(spec, profile),
-                "roles": model_roles(snapshot),
+                "roles": roles,
             }
             await projects.lock_project(db, project)
             project.eval_spec_json = projects.snapshot_value(value)
@@ -290,11 +314,18 @@ def frozen_plan(
         return None
     spec = spec_value(stored)
     value = spec.model_dump(mode="json")
+    roles = model_roles(snapshot)
+    generated_role = (stored.get("roles") or {}).get("evaluation_generator")
+    if (
+        isinstance(generated_role, dict)
+        and generated_role.get("credential_policy") == "user_private_owned"
+    ):
+        roles["evaluation_generator"] = deepcopy(generated_role)
     return {
         "eval_spec": value,
         "spec_hash": canonical_json_hash(value),
         "rubric_hash": canonical_json_hash(stored),
-        "roles": model_roles(snapshot),
+        "roles": roles,
         "execution_mode": "mock_sandbox",
     }
 

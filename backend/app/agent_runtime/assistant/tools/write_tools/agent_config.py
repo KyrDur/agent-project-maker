@@ -103,7 +103,7 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
 
             changes: list[str] = []
             if model_name:
-                model = await resolve_model(session, model_name, strict=True)
+                model = await resolve_model(session, model_name, strict=True, user_id=ctx.user_id)
                 if model:
                     agent.model_id = model.id
                     changes.append(tr("model_v_0dd9d6", v0=f"{model.display_name}"))

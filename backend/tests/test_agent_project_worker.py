@@ -33,19 +33,22 @@ async def test_cancel_fences_late_result_and_retry_keeps_frozen_inputs(
 ):
     agent = setup_project
     row = await make_run(db, agent)
-    started, release = asyncio.Event(), asyncio.Event()
+    started, cancelled = asyncio.Event(), asyncio.Event()
 
     async def execute(*args):
         started.set()
-        await release.wait()
-        return {"output": "ok", "tool_calls": []}
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
 
     monkeypatch.setattr(evaluation, "execute_snapshot", execute)
     task = asyncio.create_task(evaluation.execute_run(row.id, agent.id, phase2.TEST_USER_ID))
     await asyncio.wait_for(started.wait(), timeout=5)
     await evaluation.cancel_run(db, agent.id, phase2.TEST_USER_ID, row.id)
-    release.set()
-    await task
+    await asyncio.wait_for(task, timeout=3)
+    assert cancelled.is_set()
     await db.refresh(row)
     assert row.status == "failed" and row.error == "evaluation_cancelled"
     assert not row.results_json
@@ -55,7 +58,38 @@ async def test_cancel_fences_late_result_and_retry_keeps_frozen_inputs(
     assert retry.id == replay.id and retry.id != row.id
     assert retry.cases_snapshot_json == row.cases_snapshot_json
     assert retry.version_id == row.version_id
+    assert retry.comparison_json is not None
     assert retry.comparison_json.get("roles") == (row.comparison_json or {}).get("roles")
+
+
+async def test_cancel_interrupts_in_flight_judge(db, setup_project, monkeypatch):
+    agent = setup_project
+    row = await make_run(db, agent)
+    row.comparison_json = {"eval_spec": {"metrics": []}}
+    await db.commit()
+    started, cancelled = asyncio.Event(), asyncio.Event()
+
+    async def execute(*args):
+        return {"output": "ok", "tool_calls": []}
+
+    async def judge(*args):
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    monkeypatch.setattr(evaluation, "execute_snapshot", execute)
+    monkeypatch.setattr("app.services.agent_project_semantic.grade_case", judge)
+    task = asyncio.create_task(evaluation.execute_run(row.id, agent.id, phase2.TEST_USER_ID))
+    await asyncio.wait_for(started.wait(), timeout=5)
+    await evaluation.cancel_run(db, agent.id, phase2.TEST_USER_ID, row.id)
+    await asyncio.wait_for(task, timeout=3)
+    await db.refresh(row)
+    assert cancelled.is_set()
+    assert row.status == "failed" and row.error == "evaluation_cancelled"
+    assert not row.results_json
 
 
 async def test_recovery_expires_only_abandoned_leases(db, setup_project):

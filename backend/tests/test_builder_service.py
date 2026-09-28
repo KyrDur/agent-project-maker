@@ -24,9 +24,45 @@ from app.services.builder_service import (
     confirm_build,
     create_session,
     get_agent_by_id,
+    get_builder_system_runtime,
     get_session,
 )
 from tests.conftest import TEST_USER_ID
+
+
+@pytest.mark.asyncio
+async def test_personal_builder_custom_model_is_owned(db: AsyncSession):
+    from app.models.user_llm_setting import UserLlmSetting
+
+    await _seed_user(db)
+    encrypted, key_id, field_keys = encrypt_data(
+        {"api_key": "sk-private-builder", "base_url": "https://private.example.test/v1"}
+    )
+    credential = Credential(
+        user_id=TEST_USER_ID,
+        definition_key="openai_compatible",
+        name="Private Builder",
+        data_encrypted=encrypted,
+        key_id=key_id,
+        field_keys=field_keys,
+        is_system=False,
+        status="active",
+    )
+    db.add(credential)
+    await db.flush()
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="builder",
+            credential_id=credential.id,
+            model_name="my-private-model",
+        )
+    )
+    await db.commit()
+
+    binding = await get_builder_system_runtime(db, TEST_USER_ID)
+    assert binding.model.owner_user_id == TEST_USER_ID
+    assert binding.model.base_url == "https://private.example.test/v1"
 
 
 async def _seed_user(db: AsyncSession) -> User:

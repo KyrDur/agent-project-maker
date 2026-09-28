@@ -85,7 +85,7 @@ Conversational Builder 会逐步理解用户意图，并协助完成 Agent 的�
 
 用户不需要从一大堆技术参数开始搭建。
 
-> Builder 属于平台级能力，需要管理员先配置 System LLM 才能正常调用模型。
+> 首次使用时，在 AI 设置中分别配置个人 Builder AI、评测生成 AI、评判与优化 AI 的模型与个人 Credential。Builder 使用当前用户的凭据；真实模型调用可能产生提供商费用。
 
 ---
 
@@ -118,7 +118,7 @@ Project 用来保存这个 Agent 从初始版本到最终版本的完整演进�
 
 Agent Project Maker 可以围绕一个 Project 建立固定评测集。
 
-当前项目评测流程使用 **20 个测试 Case**，覆盖多类场景，例如：
+手工评测可先用少量 Case 验证流程；正式基准评测要求 **20 个启用的 Case**，覆盖多类场景，例如：
 
 - 正常请求
 - 信息缺失
@@ -442,33 +442,26 @@ Credential 与用户作用域隔离，并以加密形式保存。
 
 ---
 
-# 🧠 System LLM 与用户模型
+# 🧠 平台模型与个人模型
 
 Agent Project Maker 区分两类模型调用。
 
-### System LLM
+### 平台 System LLM
 
 用于平台自身能力，例如：
 
 ```text
-Builder
 Assistant
 Image Generation
 ```
 
 由平台管理员统一配置。
 
-当前系统提供三个 System LLM Slot：
+Assistant 和图片生成仍有平台配置路径；它们不代表个人 Builder 的凭据来源。
 
-```text
-text_primary
-text_fallback
-image
-```
+### 个人模型 / BYOK
 
-### User Model / BYOK
-
-用户真正运行自己创建的 Agent 时，可以绑定自己的：
+用户可为 Builder AI、评测生成 AI、评判与优化 AI 分别选择自己的模型与 Credential；运行自己创建的 Agent 时也可以绑定：
 
 ```text
 Model + Credential
@@ -477,14 +470,14 @@ Model + Credential
 因此架构上可以实现：
 
 ```text
-平台帮助用户造 Agent
-→ 平台 System LLM
+个人 Builder / 评测生成 / Judge 与优化
+→ 用户自己的 BYOK
 
 用户运行自己的 Agent
 → 用户自己的 BYOK
 ```
 
-平台内部模型配置与用户 Agent 的模型配置彼此分离。
+个人 Builder 创建的模型目录项只对其所有者可见；评测中的外部业务工具默认使用受控 Mock，Mock 结果不能证明真实工具可用。
 
 ---
 
@@ -626,21 +619,13 @@ http://localhost:3000
 /settings/system-llm
 ```
 
-为以下 Slot 选择模型：
-
-```text
-text_primary
-text_fallback
-image
-```
-
-如果 `text_primary` 没有配置，Conversational Builder 无法正常调用 LLM。
+平台 Assistant 与图片生成仍可能需要管理员配置；个人 Builder 不依赖这里的设置。
 
 ## 用户 Credential
 
 普通用户可以添加自己的模型 API Key。
 
-这些 Credential 用于用户自己的 Agent Runtime。
+在 AI 设置中为 Builder AI、评测生成 AI、评判与优化 AI 分别绑定个人 Credential 与模型；这些凭据也可用于用户自己的 Agent Runtime。真实模型调用由凭据所属账户承担提供商费用。
 
 ---
 
@@ -721,7 +706,7 @@ Nginx Reverse Proxy
 
 Agent Project Maker 仍处于持续开发阶段，目前需要注意：
 
-- Conversational Builder 依赖管理员配置 System LLM
+- Conversational Builder 需要用户配置个人 Builder AI 模型与 Credential
 - Eval 中的外部 Tool 默认使用 Mock 环境进行受控评测
 - Mock Eval 结果不能等价于真实 Provider 的生产验证
 - Optimizer 当前使用受约束的修改策略

@@ -21,6 +21,10 @@ async def pin_judge(db: AsyncSession, user_id: uuid.UUID) -> dict[str, Any]:
     payload = await credentials.decrypt_with_external(cred.data_encrypted)
     return {
         "role": "evaluator",
+        "user_role": "judge_optimizer",
+        "credential_policy": "user_private_owned",
+        "policy_version": 2,
+        "selection_stage": "run_creation",
         "provider": cred.definition_key,
         "model_name": setting.model_name,
         "base_url": payload.get("base_url"),

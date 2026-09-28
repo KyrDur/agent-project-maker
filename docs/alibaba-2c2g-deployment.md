@@ -347,11 +347,14 @@ create an Agent through the existing manual creation path, and create its Agent
 Project. Agent runtime and project planner/judge/examinee resolve user-owned keys;
 no provider key is provisioned in this deployment template.
 
-**Existing limitation:** some Builder/Assistant/image flows use operator System
-LLM configuration and do not consume arbitrary user BYOK. They remain unconfigured
-here; do not promise that conversational creation/image generation works with BYOK
-alone. Manual Agent creation and project workflows are the baseline acceptance
-path. Any later operator-funded service configuration is a separate decision.
+Configure each user's personal Builder AI, Evaluation Generator AI, and Judge &
+Optimizer AI model and credential in AI Settings before using those workflows.
+Builder-created model entries are private to their owner. Assistant and image
+generation still have operator System LLM paths and may remain unconfigured here;
+do not promise those flows work with personal BYOK alone. Real provider calls
+can charge the credential owner's account. Project evaluation uses controlled
+Mock responses for external business tools; verify live integrations separately.
+Any later operator-funded service configuration is a separate decision.
 Email verification/password recovery are not provided by adding SMTP/OAuth values
 to this template; do not claim those flows are deployment-enabled.
 
@@ -440,8 +443,11 @@ free -h
 df -h
 ```
 
-At this release, the single Alembic head is `m79_project_evaluation`; both commands
-must agree. A manual migration during maintenance, with frontend/backend stopped:
+At this release, the single Alembic head is `m85_private_builder_models`;
+`alembic current` and `alembic heads` must agree. The migration scopes
+identifiable legacy personal-Builder models; inspect any old custom endpoint
+catalog entries without a completed Builder session before allowing access.
+A manual migration during maintenance, with frontend/backend stopped:
 
 ```bash
 dc stop frontend backend

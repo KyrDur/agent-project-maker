@@ -37,7 +37,7 @@ from app.tools.risk import format_trigger_block_reason
 logger = logging.getLogger(__name__)
 
 
-async def _resolve_fallback_chain(db, fallback_list):
+async def _resolve_fallback_chain(db, fallback_list, user_id):
     """Resolve ``Agent.model_fallback_list`` (UUID strings) into chain dicts.
 
     Mirrors the conversations router helper so trigger runs and chat use the
@@ -54,7 +54,9 @@ async def _resolve_fallback_chain(db, fallback_list):
             continue
     if not fallback_uuids:
         return None
-    result = await db.execute(select(Model).where(Model.id.in_(fallback_uuids)))
+    result = await db.execute(
+        select(Model).where(Model.id.in_(fallback_uuids), Model.visible_to(user_id))
+    )
     rows = {row.id: row for row in result.scalars().all()}
     chain = []
     for fid in fallback_uuids:
@@ -267,7 +269,7 @@ async def execute_trigger(trigger_id: str, *, force: bool = False) -> AgentTrigg
         api_key = await resolve_llm_api_key_for_agent(db, agent, identity=identity)
         base_url = agent.model.base_url
 
-        fallback_chain = await _resolve_fallback_chain(db, agent.model_fallback_list)
+        fallback_chain = await _resolve_fallback_chain(db, agent.model_fallback_list, agent.user_id)
         provider_api_keys: dict[str, str | None] | None = (
             {agent.model.provider: api_key} if api_key else None
         )

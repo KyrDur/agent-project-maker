@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import uuid
+from collections.abc import Awaitable
 from copy import deepcopy
 from datetime import timedelta
 from time import perf_counter
@@ -383,6 +385,42 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
     return checks
 
 
+class _RunStopped(BaseException):
+    """The run lost its lease or was cancelled while a provider call was in flight."""
+
+
+async def _assert_run_active(run_id: uuid.UUID, lease: uuid.UUID) -> None:
+    async with async_session() as probe:
+        active = await probe.scalar(
+            select(AgentProjectEvalRun.id).where(
+                AgentProjectEvalRun.id == run_id,
+                AgentProjectEvalRun.status == "running",
+                AgentProjectEvalRun.lease_id == lease,
+            )
+        )
+    if active is None:
+        raise _RunStopped()
+
+
+async def _while_run_active[T](run_id: uuid.UUID, lease: uuid.UUID, operation: Awaitable[T]) -> T:
+    """Abort an in-flight model call promptly when another process cancels the run."""
+
+    task = asyncio.ensure_future(operation)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=0.5)
+            if done:
+                result = await task
+                await _assert_run_active(run_id, lease)
+                return result
+            await _assert_run_active(run_id, lease)
+    finally:
+        if not task.done():
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+
 async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID) -> None:
     lease = uuid.uuid4()
     async with async_session() as db:
@@ -438,7 +476,9 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 }
                 try:
                     async with asyncio.timeout(30):
-                        evidence = await execute_snapshot(db, snapshot, case, user_id)
+                        evidence = await _while_run_active(
+                            run_id, lease, execute_snapshot(db, snapshot, case, user_id)
+                        )
                     checks = score_case(case, evidence)
                     result.update(
                         evidence,
@@ -449,8 +489,10 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     if plan and plan.get("eval_spec"):
                         async with asyncio.timeout(95):
                             result.update(
-                                await grade_case(
-                                    db, snapshot, user_id, case, evidence, checks, plan
+                                await _while_run_active(
+                                    run_id,
+                                    lease,
+                                    grade_case(db, snapshot, user_id, case, evidence, checks, plan),
                                 )
                             )
                 except SnapshotExecutionUnavailable as exc:
@@ -511,6 +553,9 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "status": "failed" if errored else "completed",
                 "error": "evaluation_case_errors" if errored else None,
             }
+        except _RunStopped:
+            await db.rollback()
+            return
         except asyncio.CancelledError:
             await db.rollback()
             await db.execute(

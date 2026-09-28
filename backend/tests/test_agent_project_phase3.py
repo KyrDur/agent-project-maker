@@ -13,7 +13,13 @@ from types import ModuleType
 import pytest
 from langchain_core.messages import AIMessage
 
-from app.schemas.agent_project import SCENARIOS, EvalRunCreate, EvalSetWrite, EvalSpec
+from app.schemas.agent_project import (
+    SCENARIOS,
+    EvalRunCreate,
+    EvalRunResponse,
+    EvalSetWrite,
+    EvalSpec,
+)
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_llm as llm
 from app.services import agent_project_semantic as semantic
@@ -27,6 +33,38 @@ TEST_USER_ID = phase2.TEST_USER_ID
 db = phase2.db
 client = phase2.client
 setup_project = phase2.setup_project
+
+
+def test_legacy_run_response_explains_incorrect_credential_label() -> None:
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC)
+    payload = {
+        "id": uuid.uuid4(),
+        "project_id": uuid.uuid4(),
+        "version_id": uuid.uuid4(),
+        "eval_set_id": uuid.uuid4(),
+        "status": "completed",
+        "dataset_hash": None,
+        "created_at": now,
+        "started_at": now,
+        "completed_at": now,
+        "error": None,
+        "metrics_json": None,
+        "results_json": None,
+        "pass_rate": None,
+        "comparison_json": {"roles": {"judge": {"credential_policy": "platform_system_owned"}}},
+        "bad_cases_json": None,
+    }
+    response = EvalRunResponse.model_validate(payload)
+    assert response.credential_policy_note is not None
+    assert payload["comparison_json"]["roles"]["judge"]["credential_policy"] == (
+        "platform_system_owned"
+    )
+    current = EvalRunResponse.model_validate(
+        {**payload, "comparison_json": {"roles": {"policy_version": 2}}}
+    )
+    assert current.credential_policy_note is None
 
 
 def plan():
@@ -390,7 +428,20 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
     agent = setup_project
     version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
     project = await projects.require_project(db, agent.id, TEST_USER_ID)
-    project.eval_spec_json = plan()
+    project.eval_spec_json = {
+        **plan(),
+        "roles": {
+            "evaluation_generator": {
+                "user_role": "evaluation_generator",
+                "credential_policy": "user_private_owned",
+                "selection_stage": "generation",
+                "provider": "openai",
+                "model_name": "generator-at-creation",
+                "credential_id": str(uuid.uuid4()),
+                "user_id": str(TEST_USER_ID),
+            }
+        },
+    }
     await db.commit()
     body = generated_cases()
     body["cases"] = body["cases"][:2]
@@ -443,6 +494,14 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
     assert run.metrics_json["metric_scores"]["tool_correctness"]["score"] == 1
     assert run.metrics_json["metric_scores"]["groundedness"]["score"] == pytest.approx(0.55)
     assert run.comparison_json["roles"]["judge"]["role"] == "evaluator"
+    assert run.comparison_json["roles"]["judge"]["credential_policy"] == "user_private_owned"
+    assert run.comparison_json["roles"]["judge"]["user_id"] == str(TEST_USER_ID)
+    assert run.comparison_json["roles"]["evaluation_generator"]["credential_policy"] == (
+        "user_private_owned"
+    )
+    assert run.comparison_json["roles"]["evaluation_generator"]["model_name"] == (
+        "generator-at-creation"
+    )
 
 
 @pytest.mark.asyncio

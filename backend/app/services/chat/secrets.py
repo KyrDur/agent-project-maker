@@ -109,7 +109,7 @@ async def collect_conversation_secret_values(
     # the live run masks these (collect_cfg_secret_values walks the chain), so a
     # read/poll path must match. One bounded ``select(Model) where id in (...)``.
     try:
-        fallback_chain = await resolve_fallback_chain(db, agent.model_fallback_list)
+        fallback_chain = await resolve_fallback_chain(db, agent.model_fallback_list, agent.user_id)
         for entry in fallback_chain or []:
             if isinstance(entry, dict):
                 collect_url_userinfo(entry.get("base_url"), secrets)

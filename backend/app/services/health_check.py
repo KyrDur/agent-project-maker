@@ -222,7 +222,15 @@ async def check_all_active(
     }
 
     model_ids = list(
-        (await db.execute(select(Model.id).order_by(Model.created_at.asc()))).scalars().all()
+        (
+            await db.execute(
+                select(Model.id)
+                .where(Model.owner_user_id.is_(None))
+                .order_by(Model.created_at.asc())
+            )
+        )
+        .scalars()
+        .all()
     )
     server_ids = list(
         (await db.execute(select(McpServer.id).where(McpServer.status != "disabled")))
