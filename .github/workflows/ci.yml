@@ -69,11 +69,15 @@ jobs:
       # forces INTEGRATION_DATABASE_URL, verifies exact node execution, and
       # proves owned-resource cleanup from its immutable manifest.
       - name: Run backend unit suite
+        id: backend_unit
         run: bash scripts/run-isolated-command.sh --cwd backend -- uv run pytest -q -n 4 --ignore=tests/integration
         working-directory: .
       - name: Enforce reviewed backend coverage floor
         run: uv run python ../scripts/run_coverage_gate.py backend
       - name: Run disposable PostgreSQL integration lane
+        # Preserve an independent integration result when unit tests reach the
+        # suite but fail; a failed unit gate still fails the backend job.
+        if: ${{ !cancelled() && steps.backend_unit.outcome != 'skipped' }}
         id: postgres_lane
         working-directory: .
         run: |
@@ -144,10 +148,15 @@ jobs:
       - run: pnpm lint:design-system
       - run: pnpm lint:frontend-architecture:strict
       - name: Run frontend unit tests
+        id: frontend_units
         run: pnpm exec vitest run
       - name: Enforce reviewed frontend coverage floor
         run: python3 ../scripts/run_coverage_gate.py frontend
-      - run: pnpm build
+      - name: Build frontend
+        # The reviewed coverage baseline can fail provenance checks independently
+        # of build correctness; keep that failure blocking while still testing build.
+        if: ${{ !cancelled() && steps.frontend_units.outcome == 'success' }}
+        run: pnpm build
 
   pr-scripted-smoke:
     if: github.event_name == 'pull_request'
