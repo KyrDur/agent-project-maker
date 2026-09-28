@@ -92,9 +92,9 @@ describe('DashboardPage', () => {
       mockUseSession.mockReturnValue({ data: { id: 'u1', name: '用户', email: 'a@b.c' } })
       render(<DashboardPage />)
       expect(screen.getByText(`${expectedGreeting},`, { exact: true })).toBeInTheDocument()
-      expect(screen.getByText(/수화님/)).toBeInTheDocument()
+      expect(screen.getByText(/你好，用户/)).toBeInTheDocument()
       expect(
-        screen.getByText(new RegExp(`현재 ${mockAgentSummaryList.length}개의 에이전트가 있어요`)),
+        screen.getByText(new RegExp(`你目前有 ${mockAgentSummaryList.length} 个智能体`)),
       ).toBeInTheDocument()
     },
   )
@@ -110,7 +110,7 @@ describe('DashboardPage', () => {
       },
     })
     render(<DashboardPage />)
-    expect(screen.getByText(/표시이름님/)).toBeInTheDocument()
+    expect(screen.getByText(/你好，표시이름/)).toBeInTheDocument()
     expect(screen.queryByText(/가입이름님/)).not.toBeInTheDocument()
   })
 
@@ -118,7 +118,7 @@ describe('DashboardPage', () => {
     mockUseSession.mockReturnValue({ data: null })
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
-    expect(screen.getByText(/사용자님/)).toBeInTheDocument()
+    expect(screen.getByText(/你好，用户/)).toBeInTheDocument()
   })
 
   it('does not render usage summary or tip line (removed in redesign)', () => {

@@ -247,9 +247,7 @@ describe('AgentSettingsPage', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('出了点问题')
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '找不到 智能体 或您无权访问它。',
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('找不到 智能体 或您无权访问它。')
     expect(screen.queryByRole('tab', { name: '形式' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '重试' }))
@@ -279,8 +277,8 @@ describe('AgentSettingsPage', () => {
       />,
     )
     // ``tabs.form`` = "形式", ``tabs.visual`` = "视觉"
-    expect(screen.getByRole('tab', { name: /폼/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /비주얼/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /形式/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /视觉/ })).toBeInTheDocument()
   })
 
   it('renders save + delete + back buttons in header', () => {
@@ -412,12 +410,10 @@ describe('AgentSettingsPage', () => {
 
     expect(screen.getByText('推荐设置')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。',
-      ),
+      screen.getByText('这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。'),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
     await user.click(screen.getByRole('switch', { name: '使用任务列表' }))
     await user.click(screen.getByRole('button', { name: '仅供审核' }))
     const balancedButton = screen.getByRole('button', { name: '平衡' })
@@ -487,7 +483,7 @@ describe('AgentSettingsPage', () => {
     )
 
     await user.click(screen.getByRole('tab', { name: '设置' }))
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
     const balancedButton = screen.getByRole('button', { name: '平衡' })
     expect(balancedButton).toBeEnabled()
     await user.click(balancedButton)
@@ -532,7 +528,7 @@ describe('AgentSettingsPage', () => {
       await user.click(saveButton)
       expect(mockUpdateAgent).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: '汽车' }))
+      await user.click(screen.getByRole('button', { name: '自动' }))
       expect(saveButton).toBeEnabled()
       await user.click(saveButton)
       expect(mockUpdateAgent).toHaveBeenCalledWith(
