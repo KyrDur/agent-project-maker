@@ -71,7 +71,7 @@ describe('SkillBenchmarkPanel', () => {
     expect(bars[0]).toHaveTextContent('95%')
     expect(bars[1]).toHaveTextContent('没有技巧')
     expect(bars[1]).toHaveTextContent('30%')
-    expect(screen.getByText('통과율 차이 +65%')).toBeInTheDocument()
+    expect(screen.getByText('通过率增量 +65%')).toBeInTheDocument()
   })
 
   it('renders a negative pass-rate delta as a regression, not clamped to 0%', () => {
@@ -89,7 +89,7 @@ describe('SkillBenchmarkPanel', () => {
 
     // A skill that performs WORSE than baseline must show the negative delta,
     // never a clamped "0%" that hides the regression (review finding).
-    expect(screen.getByText('통과율 차이 -30%')).toBeInTheDocument()
+    expect(screen.getByText('通过率增量 -30%')).toBeInTheDocument()
   })
 
   it('labels legacy runs as estimated and hides missing baseline', () => {
@@ -149,7 +149,7 @@ describe('SkillVersionPassRatePanel', () => {
     expect(bars).toHaveLength(2)
     expect(bars[0]).toHaveTextContent('1.0.0')
     expect(bars[0]).toHaveTextContent('50%')
-    expect(bars[0]).toHaveTextContent('런 2회')
+    expect(bars[0]).toHaveTextContent('2 运行')
     expect(bars[1]).toHaveTextContent('1.1.0')
     expect(bars[1]).toHaveTextContent('100%')
   })
@@ -185,7 +185,7 @@ describe('SkillUsageSummaryCard', () => {
     expect(card).toHaveTextContent('1,500')
     // priced_event_count 0 → cost must read "unknown", never $0 (모름 ≠ 무료).
     expect(card).toHaveTextContent('无定价')
-    expect(card).toHaveTextContent('단가가 없는 이벤트 2건은 비용에 포함되지 않았습니다.')
+    expect(card).toHaveTextContent('2 活动没有定价，不包含在成本中。')
   })
 })
 

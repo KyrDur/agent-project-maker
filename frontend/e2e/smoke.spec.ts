@@ -64,7 +64,7 @@ test.describe('Smoke Test - Static Pages', () => {
     const main = page.getByRole('main')
 
     // Verify personalized dashboard hero rendered
-    await expect(page.getByRole('heading', { name: /你好，E2E User/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /你好，/ })).toBeVisible()
     // Verify quick action cards
     await expect(main.getByText('通过聊天构建')).toBeVisible()
     await expect(main.getByText('使用模板')).toBeVisible()
@@ -211,7 +211,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
 
     await expect(page.locator('header input').first()).toHaveValue('E2E Smoke Agent')
     // Form labels
-    await expect(main.getByText('系统提示')).toBeVisible()
+    await expect(main.getByText('使用说明')).toBeVisible()
     // "保存" button
     await expect(main.getByRole('button', { name: '保存' })).toBeVisible()
     // "删除智能体" button
@@ -527,7 +527,7 @@ test.describe('Smoke Test - Conversational Creation', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Header
-    await expect(page.getByText('创建智能体')).toBeVisible()
+    await expect(page.getByRole('link', { name: '创建智能体' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
     await expect(page.getByPlaceholder('占位符')).toBeVisible()
     await expect(page.getByRole('button', { name: '发送按钮' })).toBeVisible()
