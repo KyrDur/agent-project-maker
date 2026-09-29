@@ -261,6 +261,7 @@
         "title": "Optimization",
         "description": "Review AI optimization proposals from evaluation failures, then verify them with the same frozen eval set.",
         "loading": "Loading optimization evidence...",
+        "runNumber": "Evaluation {number}",
         "empty": "No optimizable evaluation evidence yet. Run Evaluation first, then generate proposals from failed cases."
       }
     },
