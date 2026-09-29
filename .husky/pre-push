@@ -16,6 +16,22 @@ GIT_LOCAL_ENV_VARS="$(git rev-parse --local-env-vars)"
 # Git emits one trusted variable name per line; word splitting is intentional.
 unset $GIT_LOCAL_ENV_VARS
 
+# The runner uses POSIX process groups and fcntl. Verify the same commit on
+# WSL's native filesystem when Git is running on Windows, then let Git push.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    if [ -n "${APM_WSL_DISTRO:-}" ]; then
+      set -- --distribution "$APM_WSL_DISTRO"
+    else
+      set --
+    fi
+    MSYS_NO_PATHCONV=1 wsl.exe "$@" --exec bash -c \
+      'source_root=$(wslpath -u "$1"); exec bash "$source_root/scripts/pre-push-wsl.sh" "$source_root"' \
+      pre-push-wsl "$(cygpath -w "$ROOT")"
+    exit $?
+    ;;
+esac
+
 PYTEST_BASETEMP="$(mktemp -d "${TMPDIR:-/tmp}/moldy-pre-push-pytest.XXXXXX")"
 cleanup_pytest_basetemp() {
   rm -rf -- "$PYTEST_BASETEMP"

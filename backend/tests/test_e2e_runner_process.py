@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import socket
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -31,6 +32,7 @@ def test_port_preflight_preserves_foreign_listener(
     listener.bind(("127.0.0.1", 0))
     port = listener.getsockname()[1]
     listener.listen()
+    real_sleep = time.sleep
     monkeypatch.setattr(
         process_module.time,
         "sleep",
@@ -42,6 +44,13 @@ def test_port_preflight_preserves_foreign_listener(
         assert ports_have_no_listener((port,)) is False
     finally:
         listener.close()
+    # WSL can briefly retain a loopback forwarding endpoint after close.
+    # Keep the no-retry assertion while the foreign listener is alive, then
+    # allow its networking layer to finish releasing the test-owned socket.
+    monkeypatch.setattr(process_module.time, "sleep", real_sleep)
+    deadline = time.monotonic() + 2
+    while not ports_have_no_listener((port,)) and time.monotonic() < deadline:
+        real_sleep(0.01)
     assert ports_have_no_listener((port,)) is True
 
 
