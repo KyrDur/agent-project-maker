@@ -14,6 +14,7 @@ import type { ResumeStyle } from '../_lib/agent-project-types'
 
 export function ProjectResults({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject.portfolio')
+  const projectT = useTranslations('agentProject')
   const locale = useLocale()
   const { report, generate, resume, share } = useProjectPortfolio(agentId)
   const evaluation = useProjectEvaluation(agentId)
@@ -65,7 +66,11 @@ export function ProjectResults({ agentId }: { agentId: string }) {
             <dl className="grid gap-2 sm:grid-cols-2">
               {Object.entries(results.best?.metrics ?? {}).map(([name, metric]) => (
                 <div key={name}>
-                  <dt>{name}</dt>
+                  <dt>
+                    {projectT.has(`metricNames.${name}`)
+                      ? projectT(`metricNames.${name}`)
+                      : t('otherMetric')}
+                  </dt>
                   <dd>
                     {t('metric', {
                       score: formatDisplayNumber(metric.score, {
@@ -82,7 +87,9 @@ export function ProjectResults({ agentId }: { agentId: string }) {
               {data.versions.map((v) => (
                 <li key={v.version}>
                   {t('version', { version: v.version })} · {percent(v.evaluation?.pass_rate)} ·{' '}
-                  {v.decision}
+                  {projectT.has(`statuses.${v.decision}`)
+                    ? projectT(`statuses.${v.decision}`)
+                    : t('unavailable')}
                   {v.best && ` · ${t('bestLabel')}`}
                 </li>
               ))}
@@ -112,7 +119,7 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 <p className="text-2xl font-semibold">
                   {latestRun?.results_json?.filter((item) => item.status !== 'passed').length ?? 0}
                 </p>
-                <p className="text-sm">{latestRun?.eval_set_id ?? t('unavailable')}</p>
+                <p className="text-sm">{t('fixedEvaluationSet')}</p>
               </div>
             </div>
             <section className="space-y-3">
@@ -121,7 +128,11 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 {Object.entries(results.best?.metrics ?? {}).map(([name, metric]) => (
                   <div key={name} className="rounded-lg border p-3">
                     <div className="flex justify-between">
-                      <span>{name}</span>
+                      <span>
+                        {projectT.has(`metricNames.${name}`)
+                          ? projectT(`metricNames.${name}`)
+                          : t('otherMetric')}
+                      </span>
                       <strong>{percent(metric.score)}</strong>
                     </div>
                     <p className="text-sm text-muted-foreground">

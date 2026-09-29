@@ -531,7 +531,9 @@
       "tryLive": "Try Live Agent",
       "viewReport": "View / hide report",
       "refresh": "Regenerate report",
-      "download": "Download Project",
+      "download": "Download case study and evaluation materials",
+      "fixedEvaluationSet": "Based on a fixed test set",
+      "otherMetric": "Other metric",
       "style": "Resume style",
       "styles": {
         "ai_product": "AI Product Manager",

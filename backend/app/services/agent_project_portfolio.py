@@ -20,6 +20,48 @@ from app.schemas.agent_project import SCENARIOS
 from app.services import agent_project_service as projects
 
 UNAVAILABLE = "Unavailable"
+NO_EVIDENCE = "暂无证据"
+SCENARIO_LABELS = {
+    "normal": "常规任务",
+    "missing_information": "信息缺失",
+    "ambiguous": "表达不清",
+    "tool_failure": "工具异常",
+    "edge_case": "边界情况",
+    "hallucination": "事实编造风险",
+}
+CAUSE_LABELS = {
+    "instruction_issue": "指令不够明确",
+    "skill_issue": "技能流程问题",
+    "tool_selection_issue": "工具选择问题",
+    "tool_description_issue": "工具说明问题",
+    "output_issue": "输出格式或内容问题",
+    "external_unfixable": "外部环境问题",
+}
+TARGET_LABELS = {
+    "instructions": "智能体指令",
+    "output_instructions": "输出要求",
+    "skill_content": "技能内容",
+    "tool_description": "工具说明",
+}
+DECISION_LABELS = {
+    "original": "原始版本",
+    "candidate": "候选版本",
+    "accepted": "已接受",
+    "rejected": "未采纳",
+}
+LIMITATION_LABELS = {
+    "mock_tools": "评测中的外部工具使用预设模拟结果，不能证明真实工具可用。",
+    "no_production": "线上使用与部署效果尚未验证。",
+    "live_difference": "项目最佳版本不一定是当前在线智能体的配置，也不会自动部署。",
+    "private_sources": "公开材料不包含原始用例、私人来源资料、工具输出或隐藏推理。",
+    "not_runnable": "下载包是项目案例与评测快照，不能直接作为智能体运行。",
+    "no_best": "尚不能确定最佳版本；不会用最新版本代替。",
+    "no_evaluation": "缺少完整的评测设计或结果，暂不能判断效果。",
+    "missing_skill": "部分历史技能内容不可用，未用当前在线技能替代。",
+    "optimization_incomplete": "优化流程尚未完成，当前结果仍需复核。",
+    "execution_error": "部分用例发生执行或评判错误，不能据此判断模型质量。",
+    "runtime_error": "部分记录存在运行环境错误，需在受支持的环境中复核。",
+}
 PRIVATE_KEYS = {
     "input",
     "context",
@@ -273,32 +315,25 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     ][:3]
     groups = (frozen.get("analysis") or {}).get("groups", [])
     limitations = [
-        "Evaluation uses frozen mock external tools; live provider behavior may differ.",
-        "No production traffic or deployment validation is stored.",
-        "Project Best Version may differ from the live Agent; "
-        "live configuration equivalence is unverified.",
-        "Raw cases, private source data, tool outputs and hidden reasoning "
-        "are omitted from portfolio artifacts.",
-        "Export is a portfolio snapshot, not a runnable deployment package.",
+        LIMITATION_LABELS[key]
+        for key in (
+            "mock_tools",
+            "no_production",
+            "live_difference",
+            "private_sources",
+            "not_runnable",
+        )
     ]
     if not selected:
-        limitations.append(
-            "Best Version selection is unavailable; latest version is not assumed best."
-        )
+        limitations.append(LIMITATION_LABELS["no_best"])
     if not baseline or not spec:
-        limitations.append("Frozen evaluation design or completed results are unavailable.")
+        limitations.append(LIMITATION_LABELS["no_evaluation"])
     if any(not s.get("historical_content_available") for s in config.get("skills", [])):
-        limitations.append(
-            "Historical Skill content is unavailable; current live Skills are not substituted."
-        )
+        limitations.append(LIMITATION_LABELS["missing_skill"])
     if state.get("state") in {"pending", "running", "failed"}:
-        limitations.append(
-            "Optimization is incomplete; background tasks do not recover after process restart."
-        )
+        limitations.append(LIMITATION_LABELS["optimization_incomplete"])
     if any((run.metrics_json or {}).get("errored", 0) for run in runs):
-        limitations.append(
-            "Execution or judge errors occurred; they are not evidence of model quality."
-        )
+        limitations.append(LIMITATION_LABELS["execution_error"])
     if any(
         r.get("error") == "runtime_platform_unavailable"
         or "runtime_import" in str(r.get("error", ""))
@@ -306,7 +341,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
         for run in runs
         for r in run.results_json or []
     ):
-        limitations.append("Stored runtime import failures may require a supported Linux runtime.")
+        limitations.append(LIMITATION_LABELS["runtime_error"])
     baseline_summary = run_summary(baseline) if baseline else None
     best_summary = run_summary(best) if best else None
     deltas = {}
@@ -360,7 +395,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                     for g in groups
                 ],
                 "examples": examples,
-                "basis": "Root causes are analysis of observable evidence, not hidden reasoning.",
+                "basis": "失败原因基于可观察的输出和评分推断，不代表模型内部推理。",
             },
             "results": {
                 "best_version": selected.version_number if selected else None,
@@ -375,129 +410,185 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
 
 
 def display(value: Any) -> str:
-    if value is None:
-        return UNAVAILABLE
+    if value is None or value == UNAVAILABLE:
+        return NO_EVIDENCE
     if isinstance(value, bool):
-        return "Recorded" if value else UNAVAILABLE
+        return "已完成" if value else "尚未完成"
     if isinstance(value, float):
         return f"{value:.4f}".rstrip("0").rstrip(".")
     return str(value)
 
 
 def rate(value: Any) -> str:
-    return f"{value * 100:.1f}%" if isinstance(value, (int, float)) else UNAVAILABLE
+    return f"{value * 100:.1f}%" if isinstance(value, (int, float)) else NO_EVIDENCE
+
+
+def _labels(items: dict[str, Any], labels: dict[str, str]) -> str:
+    return (
+        "、".join(f"{labels.get(key, '其他')} {value} 条" for key, value in items.items())
+        or NO_EVIDENCE
+    )
+
+
+def _evaluation_conclusion(data: dict[str, Any]) -> str:
+    results = data["results"]
+    baseline, best = results["baseline"] or {}, results["best"] or {}
+    if best.get("total") is None or best.get("passed") is None:
+        return "尚无完整评测结果，不能判断智能体效果。"
+    current = f"{best['passed']}/{best['total']} 条（{rate(best.get('pass_rate'))}）"
+    if baseline.get("pass_rate") is None:
+        return f"项目最佳版本通过 {current}；缺少可比较的初始结果。"
+    original = f"{baseline['passed']}/{baseline['total']} 条（{rate(baseline['pass_rate'])}）"
+    before, after = baseline["pass_rate"], best["pass_rate"]
+    if after > before:
+        comparison = "在这组固定用例上有所提高；真实使用效果仍需验证。"
+    elif after == before:
+        comparison = "通过率与初始版本相同，尚未证明效果提升。"
+    else:
+        comparison = "通过率低于初始版本，需要继续复核。"
+    return f"初始版本通过 {original}，项目最佳版本通过 {current}。{comparison}"
+
+
+def render_readme(data: dict[str, Any]) -> str:
+    """Short reader-facing entry point; detailed evidence stays in the technical folder."""
+    project = data["project"]
+    goal = str(project.get("goal") or "").strip()
+    if not goal or goal == UNAVAILABLE:
+        goal = "尚未填写用途说明。"
+    elif len(goal) > 220:
+        goal = goal[:219].rstrip() + "…"
+    audience_match = re.search(r"适用于([^。；，]{2,80})", goal)
+    audience = (
+        f"适合{audience_match.group(1)}。"
+        if audience_match
+        else "适合有上述需求、希望用自己的输入验证效果的人。"
+    )
+    best_version = data["results"].get("best_version")
+    best_label = f"V{best_version}" if best_version is not None else "尚未确定"
+    return (
+        f"# {project['name']}\n\n"
+        "这是一份智能体项目案例与评测材料，不是可直接运行的安装包。\n\n"
+        f"## 它能做什么\n\n{goal}\n\n"
+        "## 适合谁、怎么试用\n\n"
+        f"{audience}"
+        "请回到 Agent Project Maker，打开这个项目并点击「试用在线智能体」。"
+        "在线智能体的配置可能与项目最佳版本不同。\n\n"
+        f"## 目前评测结果\n\n{_evaluation_conclusion(data)}"
+        f"项目评测选出的最佳版本：{best_label}。\n\n"
+        "## 使用前须知\n\n"
+        "- 评测使用固定用例；外部工具结果可能由模拟数据提供，不能代表真实服务。\n"
+        "- 尚无线上使用或部署效果的验证数据，项目最佳版本不会自动部署。\n\n"
+        "## 想进一步核查\n\n"
+        "《项目报告.md》说明评测、失败原因和版本结论；"
+        "「技术资料」目录保留评测数据、历史配置、完整指令和版本差异。"
+        "技术资料中的 JSON 字段名供程序核查，普通阅读从本文件开始即可。\n"
+    )
 
 
 def render_report(data: dict[str, Any]) -> dict[str, Any]:
     results, config = data["results"], data["architecture"]
-    spec = data["eval_spec"] or {}
     design, bad = data["evaluation_design"], data["bad_cases"]
 
     def names(items: list[dict[str, Any]]) -> str:
-        return ", ".join(str(item.get("name") or UNAVAILABLE) for item in items) or UNAVAILABLE
+        return "、".join(str(item.get("name") or "未命名") for item in items) or "未配置"
 
     architecture_text = (
-        f"Provider: {display(config.get('model', {}).get('provider'))}\n"
-        f"Model: {display(config.get('model', {}).get('model_name'))}\n"
-        f"Tools: {names(config.get('tools', []))}\n"
-        f"Skills: {names(config.get('skills', []))}\n"
-        f"MCP tools: {names(config.get('mcp', []))}\n"
-        f"Instructions: {display(config.get('instructions_summary'))}"
+        f"使用模型：{display(config.get('model', {}).get('provider'))} / "
+        f"{display(config.get('model', {}).get('model_name'))}\n"
+        f"工具：{names(config.get('tools', []))}；技能：{names(config.get('skills', []))}；"
+        f"外部工具连接：{names(config.get('mcp', []))}。\n"
+        "完整指令与历史配置仅放在下载包的「技术资料」中。"
+    )
+    process_labels = {
+        "project_v1": "保存初始版本",
+        "builder_linked": "关联创建对话",
+        "requirement": "记录需求",
+        "eval_plan": "制定评测计划",
+        "eval_set": "建立固定测试集",
+        "evaluation": "执行评测",
+        "optimization": "记录优化版本",
+    }
+    process_text = (
+        "、".join(
+            label
+            for key, label in process_labels.items()
+            if data["build_process"].get(key) and data["build_process"][key] != UNAVAILABLE
+        )
+        or NO_EVIDENCE
     )
     evaluation_text = (
-        f"Frozen cases: {display(design['case_count'])}\n"
-        "Scenarios: "
-        + (", ".join(f"{k} ({v})" for k, v in design["scenarios"].items()) or UNAVAILABLE)
-        + "\n"
-        + f"Case pass threshold: {display(spec.get('pass_threshold'))}\n"
-        "External tool responses come from the frozen mocks, not production services.\n"
-        + "\n".join(
-            f"- {m['name']}: {m['type']}; weight {m['weight']}; "
-            f"criteria: {m.get('criteria', 'Private rubric text omitted.')}"
-            for m in spec.get("metrics", [])
+        (
+            f"使用 {design['case_count']} 条固定测试用例，覆盖"
+            f"{_labels(design['scenarios'], SCENARIO_LABELS)}。\n"
+            "同一组用例用于比较版本；外部工具在评测中可能使用预设模拟结果。"
+            "完整评分标准保存在「技术资料/评测标准.json」。\n"
         )
+        if design["case_count"] is not None
+        else "尚未建立可复核的固定测试集。\n"
+    ) + (
+        f"项目最佳版本在这组用例中通过 {results['best']['passed']}/{results['best']['total']} 条。"
+        if results["best"] and results["best"].get("passed") is not None
+        else "目前还没有完整评测结果。"
+    )
+    causes = (
+        "\n".join(
+            f"- {CAUSE_LABELS.get(g['category'], '其他问题')}（{g['case_count']} 条）："
+            f"{display(g.get('root_cause'))}"
+            for g in bad["groups"]
+        )
+        or "暂无可复核的失败原因分析。"
     )
     bad_text = (
-        f"Failed cases: {display(bad['failed_count'])}; "
-        f"execution/judge errors: {display(bad['errored_count'])}; "
-        f"analyzed: {bad['analyzed_count']}.\n{bad['basis']}\n"
-        + "\n".join(f"- {k}: {v}" for k, v in bad["categories"].items())
-        + "\nGrouped causes:\n"
-        + (
-            "\n".join(
-                f"- {g['category']} → {g['target']} ({g['case_count']} cases): "
-                f"{g.get('root_cause', 'Detailed analysis omitted from public share.')}"
-                for g in bad["groups"]
-            )
-            or UNAVAILABLE
+        (
+            f"初始评测未通过 {bad['failed_count']} 条；已分析 {bad['analyzed_count']} 条。"
+            if bad["failed_count"] is not None
+            else "尚无完整评测结果，暂不能分析失败用例。"
         )
-        + "\nRepresentative observable results:\n"
         + (
-            "\n".join(
-                f"- Frozen case {r['case_number']}: {r['status']}; "
-                + ", ".join(f"{k}={v['score']}" for k, v in r["metric_scores"].items())
-                for r in bad["examples"]
-            )
-            or UNAVAILABLE
+            f"另有 {bad['errored_count']} 条执行或评判错误，不计作智能体质量问题。"
+            if bad["errored_count"]
+            else ""
         )
+        + f"\n{bad['basis']}\n{causes}"
     )
     journey = []
     for version in data["versions"]:
         run, comparison = version["evaluation"] or {}, version["comparison"]
-        metric_changes = (
-            ", ".join(
-                f"{name}: {display(change.get('delta'))}"
-                for name, change in comparison.get("metrics", {}).items()
-            )
-            or UNAVAILABLE
+        status = DECISION_LABELS.get(version["decision"], "待评估")
+        score = (
+            f"通过 {run['passed']}/{run['total']} 条（{rate(run.get('pass_rate'))}）"
+            if run.get("passed") is not None and run.get("total") is not None
+            else "暂无完整评测结果"
         )
+        fixes = "、".join(TARGET_LABELS.get(fix.get("target"), "配置") for fix in version["fixes"])
+        details = f"；调整了{fixes}" if fixes else ""
+        if comparison.get("fixed_cases") is not None:
+            details += (
+                f"；相对上一版修复 {comparison['fixed_cases']} 条，"
+                f"退化 {display(comparison.get('regressed_cases'))} 条"
+            )
         journey.append(
-            f"V{version['version']} — {version['decision']}"
-            + (" — Best" if version["best"] else "")
-            + f"\nPassed: {display(run.get('passed'))} / {display(run.get('total'))} "
-            f"({rate(run.get('pass_rate'))})\n"
-            + "Fixes: "
-            + (
-                ", ".join(f"{fix['operation']} {fix['target']}" for fix in version["fixes"])
-                or UNAVAILABLE
-            )
-            + "\n"
-            + "; ".join(
-                f"{key.replace('_', ' ')}: {display(comparison.get(key))}"
-                for key in ("fixed_cases", "regressed_cases", "still_failing_cases")
-            )
-            + f"\nMetric deltas versus parent: {metric_changes}\n"
-            + "Decision evidence: "
-            + (", ".join(comparison.get("reasons", [])) or UNAVAILABLE)
+            f"- V{version['version']}（{status}{'、当前最佳' if version['best'] else ''}）："
+            f"{score}{details}。"
         )
+    best_version = results["best_version"]
+    best_label = f"V{best_version}" if best_version is not None else NO_EVIDENCE
     sections = [
         {
-            "title": "Project Overview",
-            "body": f"{data['project']['name']}\nGoal: {data['project']['goal']}\n"
-            f"Intended use: {data['project']['intended_use']}\n"
-            f"Best Version: {display(results['best_version'])}",
+            "title": "项目简介",
+            "body": f"项目：{data['project']['name']}\n用途：{display(data['project']['goal'])}",
         },
-        {"title": "Agent Architecture", "body": architecture_text},
+        {"title": "智能体配置", "body": architecture_text},
+        {"title": "建设过程", "body": process_text},
+        {"title": "评测方式与结果", "body": evaluation_text},
+        {"title": "失败原因", "body": bad_text},
+        {"title": "版本迭代", "body": "\n".join(journey) or NO_EVIDENCE},
         {
-            "title": "Build Process",
-            "body": "User requirement → Agent Build → Project V1 → Eval Plan → EvalSet "
-            "→ Evaluation → Optimization\nOnly stages marked Recorded have evidence.\n"
-            + "\n".join(f"{k}: {display(v)}" for k, v in data["build_process"].items()),
-        },
-        {"title": "Evaluation Design", "body": evaluation_text},
-        {"title": "Bad Case Analysis", "body": bad_text},
-        {"title": "Optimization & Regression", "body": "\n\n".join(journey) or UNAVAILABLE},
-        {
-            "title": "Final Results",
-            "body": f"Best Version: {display(results['best_version'])}\nControlled evaluation: "
-            f"{rate((results['baseline'] or {}).get('pass_rate'))} → "
-            f"{rate((results['best'] or {}).get('pass_rate'))}\nMetric deltas versus baseline:\n"
-            + (
-                "\n".join(f"- {k}: {v:.4f}" for k, v in results["metric_deltas"].items())
-                or UNAVAILABLE
-            )
-            + "\n\n"
-            + "\n".join(data["limitations"]),
+            "title": "结论与限制",
+            "body": f"项目评测选出的最佳版本：{best_label}。\n"
+            + _evaluation_conclusion(data)
+            + "\n"
+            + "\n".join(f"- {item}" for item in data["limitations"]),
         },
     ]
     return {
@@ -529,31 +620,62 @@ async def report(
     return result
 
 
+def resume_bullets(data: dict[str, Any], style: str) -> list[str]:
+    name = data["project"]["name"]
+    starts = {
+        "ai_product": (
+            f"围绕「{name}」梳理智能体的用户需求、使用场景与交付边界，形成可评测的产品方案。"
+        ),
+        "product": (
+            f"将「{name}」的需求、评测和版本迭代整理为可追溯的项目案例，明确当前能力与限制。"
+        ),
+        "engineering": f"为「{name}」建立配置快照和版本记录，保留可复核的评测证据与改动历史。",
+    }
+    bullets = [starts[style]]
+    design, results = data["evaluation_design"], data["results"]
+    if design["case_count"]:
+        scenario_names = [SCENARIO_LABELS.get(item, "其他场景") for item in design["scenarios"]]
+        scenarios = "、".join(scenario_names[:3]) or "多类场景"
+        if len(scenario_names) > 3:
+            scenarios += f"等 {len(scenario_names)} 类场景"
+        activity = {
+            "ai_product": "设计",
+            "product": "组织",
+            "engineering": "运行",
+        }[style]
+        bullets.append(
+            f"{activity}覆盖{scenarios}的 {design['case_count']} 条固定测试用例，"
+            "在受控环境中比较不同版本的表现。"
+        )
+    else:
+        bullets.append("记录智能体配置与项目目标，为后续评测和改进保留依据。")
+    baseline, best = results["baseline"] or {}, results["best"] or {}
+    before, after = baseline.get("pass_rate"), best.get("pass_rate")
+    if before is not None and after is not None and best.get("total"):
+        if after > before:
+            comparison = (
+                f"受控评测通过率从 {rate(before)} 提高到 {rate(after)}"
+                f"（{best['passed']}/{best['total']} 条通过）"
+            )
+        elif after == before:
+            comparison = (
+                f"初始版本与项目最佳版本均通过 {best['passed']}/{best['total']} 条"
+                f"（{rate(after)}），尚未证明效果提升"
+            )
+        else:
+            comparison = (
+                f"项目最佳版本通过 {best['passed']}/{best['total']} 条（{rate(after)}），"
+                "低于初始结果，需继续复核"
+            )
+        bullets.append(f"{comparison}；真实线上效果尚未验证。")
+    return bullets
+
+
 async def resume(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, style: str
 ) -> dict[str, Any]:
     data = await evidence(db, agent_id, user_id)
-    starts = {
-        "ai_product": "Developed an evidence-based Agent product case study",
-        "product": "Documented an Agent project's requirements, evaluation and iteration outcomes",
-        "engineering": "Documented immutable Agent configuration "
-        "and reproducible mock evaluation evidence",
-    }
-    bullets = [f"{starts[style]} for {data['project']['name']}."]
-    design, results = data["evaluation_design"], data["results"]
-    if design["case_count"]:
-        bullets.append(
-            f"Evaluated a frozen {design['case_count']}-case dataset covering "
-            f"{', '.join(design['scenarios']) or 'stored scenarios'} using mock external tools."
-        )
-    before = (results["baseline"] or {}).get("pass_rate")
-    after = (results["best"] or {}).get("pass_rate")
-    if before is not None and after is not None:
-        bullets.append(
-            f"Recorded controlled evaluation pass rates of {rate(before)} at baseline "
-            f"and {rate(after)} for selected V{results['best_version']}; "
-            "production impact remains unvalidated."
-        )
+    bullets = resume_bullets(data, style)
     result = {"style": style, "bullets": bullets, "evidence_hash": canonical_json_hash(data)}
     await save_content(
         db, await projects.require_project(db, agent_id, user_id), "portfolio_resume", result

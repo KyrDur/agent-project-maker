@@ -531,7 +531,9 @@
       "tryLive": "试用在线智能体",
       "viewReport": "查看/隐藏报告",
       "refresh": "重新生成报告",
-      "download": "下载项目",
+      "download": "下载项目案例与评测材料",
+      "fixedEvaluationSet": "基于固定测试集",
+      "otherMetric": "其他指标",
       "style": "简历风格",
       "styles": {
         "ai_product": "人工智能产品经理",

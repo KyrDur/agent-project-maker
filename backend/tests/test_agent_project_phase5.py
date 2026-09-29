@@ -57,8 +57,10 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert data["versions"][1]["comparison"]["regressed_cases"] == 1
     assert data["bad_cases"]["analyzed_count"] == 5
     assert data["bad_cases"]["groups"][0]["root_cause"]
-    assert "mock" in report["markdown"] and "production" in report["markdown"]
-    assert "unverified" in report["markdown"]
+    assert "模拟" in report["markdown"] and "线上" in report["markdown"]
+    assert "尚未验证" in report["markdown"]
+    assert "## 评测方式与结果" in report["markdown"]
+    assert "output_issue" not in report["markdown"]
     await db.refresh(ex.project)
     assert ex.project.report_json["portfolio_report"]["evidence_hash"] == report["evidence_hash"]
     assert ex.project.report_json["optimization"]["best_version_id"]
@@ -81,20 +83,35 @@ async def test_unavailable_never_fabricated(db, experiment):
         "best": None,
         "metric_deltas": {},
     }
-    assert "Unavailable" in report["markdown"]
+    assert "暂无证据" in report["markdown"]
+    assert "Unavailable" not in report["markdown"]
     assert "90.0%" not in report["markdown"]
     resume = await portfolio.resume(db, ex.agent.id, USER, "product")
-    assert len(resume["bullets"]) == 1
+    assert len(resume["bullets"]) == 2
     assert "%" not in " ".join(resume["bullets"])
+
+
+@pytest.mark.asyncio
+async def test_equal_pass_rates_are_described_without_improvement(db, completed):
+    data = deepcopy(await portfolio.evidence(db, completed.agent.id, USER))
+    for label in ("baseline", "best"):
+        data["results"][label].update(total=20, passed=10, pass_rate=0.5)
+    data["results"]["best_version"] = 1
+    readme = portfolio.render_readme(data)
+    report = portfolio.render_report(data)["markdown"]
+    assert "初始版本通过 10/20 条（50.0%）" in readme
+    assert "通过率与初始版本相同，尚未证明效果提升" in readme
+    assert "通过率与初始版本相同，尚未证明效果提升" in report
+    assert "提高" not in readme
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("style", "start"),
     [
-        ("ai_product", "Developed an evidence-based"),
-        ("product", "Documented an Agent project's"),
-        ("engineering", "Documented immutable"),
+        ("ai_product", "围绕"),
+        ("product", "将"),
+        ("engineering", "为"),
     ],
 )
 async def test_resume_styles_only_real_numbers(client, db, completed, style, start):
@@ -105,9 +122,10 @@ async def test_resume_styles_only_real_numbers(client, db, completed, style, sta
     assert data["style"] == style and 1 <= len(data["bullets"]) <= 3
     assert data["bullets"][0].startswith(start)
     text = " ".join(data["bullets"])
-    assert "20-case" in text and "75.0%" in text and "90.0%" in text
+    assert "20 条" in text and "75.0%" in text and "90.0%" in text
     assert "85.0%" not in text and "revenue" not in text
-    assert "unvalidated" in text
+    assert "线上效果尚未验证" in text
+    assert "Developed" not in text and "Documented" not in text
     assert (await client.post(path, json={"style": style})).json() == data
     assert (await client.post(path, json={"style": style, "metrics": 100})).status_code == 422
 
@@ -167,29 +185,32 @@ async def test_export_structure_frozen_skills_results_and_no_live_mutation(db, c
             f"agent-project/{name}"
             for name in [
                 "README.md",
-                "agent.json",
-                "instructions.md",
-                "eval_spec.json",
-                "eval_results.json",
-                "report/project_report.md",
-                "skills/README.md",
-                "skills/skill-1/SKILL.md",
-                "versions/v1/agent.json",
-                "versions/v2/diff.json",
-                "versions/v3/agent.json",
+                "项目报告.md",
+                "技术资料/agent.json",
+                "技术资料/完整指令.md",
+                "技术资料/评测标准.json",
+                "技术资料/评测结果.json",
+                "技术资料/README.md",
+                "技术资料/skills/README.md",
+                "技术资料/skills/skill-1/SKILL.md",
+                "技术资料/versions/v1/agent.json",
+                "技术资料/versions/v2/diff.json",
+                "技术资料/versions/v3/agent.json",
             ]
         } <= names
         readme = archive.read("agent-project/README.md").decode()
-        assert "75.0%" in readme and "90.0%" in readme and "85.0%" in readme
-        assert "## Limitations" in readme and "## Tools & Skills" in readme
-        instructions = archive.read("agent-project/instructions.md").decode()
+        assert "75.0%" in readme and "90.0%" in readme and "85.0%" not in readme
+        assert "怎么试用" in readme and "不是可直接运行的安装包" in readme
+        assert "## Limitations" not in readme and len(readme) < 2500
+        assert "85.0%" in archive.read("agent-project/项目报告.md").decode()
+        instructions = archive.read("agent-project/技术资料/完整指令.md").decode()
         assert "Retrieve sources before answering." in instructions
         assert "Verify every requested section" not in instructions  # V3 rejected
-        exported = json.loads(archive.read("agent-project/agent.json"))
+        exported = json.loads(archive.read("agent-project/技术资料/agent.json"))
         assert "model" in exported and "llm_credential_id" not in exported
         assert (
             "Separate facts from assumptions."
-            in archive.read("agent-project/skills/skill-1/SKILL.md").decode()
+            in archive.read("agent-project/技术资料/skills/skill-1/SKILL.md").decode()
         )
         assert all(".." not in name and not name.startswith("/") for name in names)
     await db.refresh(ex.agent)
@@ -247,7 +268,7 @@ async def test_secrets_paths_hidden_data_and_missing_skills(db, experiment, monk
 
     monkeypatch.setattr(portfolio, "architecture", missing_architecture)
     report = await portfolio.report(db, ex.agent.id, USER)
-    assert "Historical Skill content is unavailable" in report["markdown"]
+    assert "历史技能内容不可用" in report["markdown"]
     assert "x" * 40 not in json.dumps(report) and "secret-id" not in json.dumps(report)
     shared = await portfolio.share(db, ex.agent.id, USER)
     public = await portfolio.public_share(db, ex.project.id, shared["path"].split("/")[-1])
@@ -255,10 +276,7 @@ async def test_secrets_paths_hidden_data_and_missing_skills(db, experiment, monk
     with zipfile.ZipFile(io.BytesIO(await export_zip(db, ex.agent.id, USER))) as archive:
         all_text = "\n".join(archive.read(name).decode() for name in archive.namelist())
         assert "x" * 40 not in all_text and "secret-id" not in all_text
-        assert (
-            "Historical content unavailable"
-            in archive.read("agent-project/skills/README.md").decode()
-        )
+        assert "历史内容不可用" in archive.read("agent-project/技术资料/skills/README.md").decode()
 
 
 @pytest.mark.asyncio
