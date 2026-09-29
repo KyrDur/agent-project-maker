@@ -34,7 +34,7 @@ fi
   echo 'Verification checkout has local changes; inspect it before retrying.' >&2
   exit 1
 }
-git -C "$checkout" fetch --quiet --no-tags "$source_root" "$commit"
+git -C "$checkout" fetch --quiet --no-tags --update-shallow "$source_root" "$commit"
 git -C "$checkout" checkout --quiet --detach "$commit"
 cd "$checkout"
 printf 'Verifying commit %s in WSL\n' "$commit"
