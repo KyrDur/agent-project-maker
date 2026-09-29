@@ -83,7 +83,7 @@ describe('ImeSafeComposerInput', () => {
   })
 
   it('inserts an IME syllable before a final dictated transcript that arrives during composition', () => {
-    mocks.composerText = '吃水'
+    mocks.composerText = '초안'
     const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
     const textarea = screen.getByPlaceholderText('占位符')
 

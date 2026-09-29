@@ -89,6 +89,42 @@ async function openEvaluationTab() {
   await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
 }
 
+it('labels optimization runs by version and evaluation order instead of internal IDs', async () => {
+  const failed = (caseId: string) => ({ ...run.results_json[0], case_id: caseId })
+  server.use(
+    http.get(`${path}/versions`, () =>
+      HttpResponse.json([{ ...version, id: 'v2', version_number: 2 }, version]),
+    ),
+    http.get(`${path}/eval-runs`, () =>
+      HttpResponse.json([
+        { ...run, id: '12cbfbc4', created_at: '2026-09-12T01:00:00', results_json: [failed('c1')] },
+        {
+          ...run,
+          id: '950ab021',
+          created_at: '2026-09-12T02:00:00',
+          results_json: [failed('c1'), failed('c2')],
+        },
+        {
+          ...run,
+          id: '97003b96',
+          version_id: 'v2',
+          created_at: '2026-09-12T03:00:00',
+          results_json: [failed('c1'), failed('c2'), failed('c3')],
+        },
+      ]),
+    ),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  await userEvent.click(await screen.findByRole('button', { name: /Optimization/ }))
+
+  expect(await screen.findByRole('button', { name: 'V2 · 第1次评测' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'V1 · 第2次评测' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'V1 · 第1次评测' })).toBeInTheDocument()
+  expect(screen.queryByText('12cbfbc4')).not.toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'V1 · 第2次评测' }))
+  expect(screen.getByText('失败用例：2')).toBeInTheDocument()
+})
+
 it('reads retained optimization outcomes and patch evidence after analysis', async () => {
   server.use(
     http.post(`${path}/eval-runs/r1/analyze`, () => {

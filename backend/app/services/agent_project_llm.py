@@ -1,4 +1,4 @@
-"""System model resolution for Agent Project planner and judge roles."""
+"""Private role and frozen examinee model resolution for Agent Projects."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import uuid
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_runtime.protocol_redaction import redact_protocol_data
@@ -17,9 +16,8 @@ from app.credentials import service as credential_service
 from app.credentials.service import PROVIDER_TO_DEFINITION_KEY
 from app.models.credential import Credential
 from app.services.agent_project_service import snapshot_value
-from app.services.system_credential_resolver import resolve_system_model
 
-PROJECT_LLM_SYSTEM_ROLES: dict[str, str] = {
+PROJECT_LLM_USER_ROLES: dict[str, str] = {
     "planner": "evaluation_generator",
     "case_generator": "evaluation_generator",
     "judge": "judge_optimizer",
@@ -39,8 +37,16 @@ async def resolve_model(
 
     if role == "examinee":
         return await resolve_examinee_model(db, snapshot, user_id)
-    system_role = PROJECT_LLM_SYSTEM_ROLES.get(role, "judge_optimizer")
-    resolved = await resolve_system_model(db, system_role)
+    if role == "judge" and "evaluation_roles" in snapshot:
+        from app.services.agent_project_model_pins import resolve_pinned_judge
+
+        return await resolve_pinned_judge(
+            db, snapshot["evaluation_roles"].get("judge", {}), user_id
+        )
+    user_role = PROJECT_LLM_USER_ROLES.get(role, "judge_optimizer")
+    from app.services.user_llm_settings import resolve_user_model
+
+    resolved = await resolve_user_model(db, user_role, user_id)
     llm = create_chat_model(
         resolved.provider,
         resolved.model_name,
@@ -80,50 +86,21 @@ async def resolve_examinee_model(
                 or (definition_key is not None and cred.definition_key != definition_key)
             ):
                 cred = None
-        elif definition_key:
-            cred = (
-                await db.execute(
-                    select(Credential)
-                    .where(
-                        Credential.user_id == user_id,
-                        Credential.is_system.is_(False),
-                        Credential.definition_key == definition_key,
-                        Credential.status == "active",
-                    )
-                    .order_by(Credential.created_at.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
         if cred is None:
-            provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
-            model = {**model, "base_url": base_url}
-        else:
-            payload = await credential_service.decrypt_with_external(cred.data_encrypted)
-            key = str(payload.get("api_key") or payload.get("token") or "")
-            if not key:
-                provider, model_name, key, base_url = await _resolve_project_examinee_fallback(db)
-                model = {**model, "base_url": base_url}
+            raise LLMCredentialRequiredError()
+        payload = await credential_service.decrypt_with_external(cred.data_encrypted)
+        key = str(payload.get("api_key") or payload.get("token") or "")
+        if not key:
+            raise LLMCredentialRequiredError()
     llm = create_chat_model(
         provider,
         model_name,
         api_key=key or None,
         base_url=model.get("base_url"),
         allow_env_fallback=False,
+        **(config.get("model_params") or {}),
     )
     return llm, key
-
-
-async def _resolve_project_examinee_fallback(db: AsyncSession) -> tuple[str, str, str, str | None]:
-    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
-
-    try:
-        resolved = await resolve_system_model(db, "evaluation_generator")
-    except Exception as exc:
-        raise LLMCredentialRequiredError() from exc
-    key = resolved.api_key or ""
-    if not key:
-        raise LLMCredentialRequiredError()
-    return resolved.provider, resolved.model_name, key, resolved.base_url
 
 
 def safe_value(value: Any, key: str) -> Any:

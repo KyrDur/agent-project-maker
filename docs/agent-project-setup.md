@@ -33,7 +33,9 @@ docker compose exec backend uv run alembic current
 ```
 
 The backend runs `alembic upgrade head` before serving. Expected head:
-`m79_project_evaluation`, following `m78_agent_projects`. PostgreSQL and backend
+`m85_private_builder_models`, following `m84_project_eval_leases`. Verify with
+`docker compose exec backend uv run alembic current` and
+`docker compose exec backend uv run alembic heads`. PostgreSQL and backend
 data use volumes scoped to this disposable Compose project. Default ports 5432,
 8001 and 3000 must be free. Open `http://localhost:3000`; the backend is at
 `http://localhost:8001`. Keep the chosen Compose project name for later commands.
@@ -84,18 +86,27 @@ pnpm build
 
 Register the first account on the disposable instance; the existing development
 setting `ALLOW_FIRST_USER_AS_ADMIN=true` grants first-user administration. Add a
-credential through the existing Credentials UI, bind it to the appropriate model
-and Agent, and confirm ownership. Never paste keys into source, logs or reports.
+credential through the existing Credentials UI. In AI Settings, bind personal
+credentials and models for Builder AI, Evaluation Generator AI, and Judge &
+Optimizer AI. Create an Agent with Builder, then confirm its model and credential
+are visible to that account only. Never paste keys into source, logs or reports.
 
 For a minimal smoke test, use the existing project routes/UI to generate one Eval
-Spec and one 20-case EvalSet. A single semantic judge invocation through the existing
+Spec and a small manually curated EvalSet (for example, 3 enabled cases). Formal
+benchmark runs require exactly 20 enabled cases. A single semantic judge invocation through the existing
 `grade_case` service can verify provider JSON parsing using one frozen case and
 synthetic evidence. This is an operator validation step, not a new judge implementation.
 Record only success/failure, role, provider/model descriptor and sanitized errors.
 
-Do not click Run Evaluation or Optimize for a paid 20-case loop as part of this small
-smoke test. The complete demo can use the controlled command below. Environment keys
+Real provider generation, execution, Judge, and optimization can incur charges on
+the user's credential. Obtain the account owner's approval before a paid formal
+20-case loop. The complete demo can use the controlled command below. Environment keys
 alone are not proof of a user-owned credential in the BYOK database.
+
+External business tools in project evaluation use controlled Mock responses; a
+successful Mock run does not validate live third-party integrations. Existing frozen
+plans retain their original labels. The run API adds `credential_policy_note` to
+legacy plans whose platform-ownership label was incorrect, without rewriting evidence.
 
 ## Validation commands
 

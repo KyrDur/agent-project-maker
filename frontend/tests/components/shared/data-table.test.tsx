@@ -60,9 +60,9 @@ describe('DataTable', () => {
       />,
     )
 
-    expect(screen.getByText('1페이지 / 2페이지 · 2개 항목')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /이전/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /다음/ })).toBeInTheDocument()
+    expect(screen.getByText('第 1 / 2 页 · 共 2 项')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /上一页/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /下一页/ })).toBeInTheDocument()
   })
 
   it('does not recompute global search results on same-prop rerenders', async () => {
@@ -70,30 +70,16 @@ describe('DataTable', () => {
       { id: '1', name: '첫 번째' },
       { id: '2', name: '두 번째' },
     ]
-    const filterFn = vi.fn((row: Row, query: string) =>
-      row.name.toLowerCase().includes(query),
-    )
+    const filterFn = vi.fn((row: Row, query: string) => row.name.toLowerCase().includes(query))
 
     const { rerender } = render(
-      <DataTable
-        columns={columns}
-        data={data}
-        searchable
-        globalFilterFn={filterFn}
-      />,
+      <DataTable columns={columns} data={data} searchable globalFilterFn={filterFn} />,
     )
 
     await userEvent.type(screen.getByPlaceholderText('搜索...'), '첫')
     const callsAfterSearch = filterFn.mock.calls.length
 
-    rerender(
-      <DataTable
-        columns={columns}
-        data={data}
-        searchable
-        globalFilterFn={filterFn}
-      />,
-    )
+    rerender(<DataTable columns={columns} data={data} searchable globalFilterFn={filterFn} />)
 
     expect(filterFn).toHaveBeenCalledTimes(callsAfterSearch)
   })
@@ -219,15 +205,13 @@ describe('DataTable', () => {
         columns={typedColumns}
         data={rows}
         pageSize={1}
-        filters={[
-          { columnId: 'type', label: '类型', options: [{ value: 'x', label: 'X만' }] },
-        ]}
+        filters={[{ columnId: 'type', label: '类型', options: [{ value: 'x', label: 'X만' }] }]}
       />,
     )
 
     // 3페이지(C행)로 이동 후 필터로 2행(x)만 남긴다.
-    await userEvent.click(screen.getByRole('button', { name: /다음/ }))
-    await userEvent.click(screen.getByRole('button', { name: /다음/ }))
+    await userEvent.click(screen.getByRole('button', { name: /下一页/ }))
+    await userEvent.click(screen.getByRole('button', { name: /下一页/ }))
     expect(screen.getByText('C행')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'X만' }))
@@ -235,6 +219,6 @@ describe('DataTable', () => {
     // 클램프가 없으면 pageIndex=2가 pageCount=2 밖에 남아 빈 바디 + 페이지네이션
     // 숨김의 dead-end가 된다 — 마지막 유효 페이지(B행)로 수렴해야 한다.
     expect(screen.getByText('B행')).toBeInTheDocument()
-    expect(screen.getByText('2페이지 / 2페이지 · 2개 항목')).toBeInTheDocument()
+    expect(screen.getByText('第 2 / 2 页 · 共 2 项')).toBeInTheDocument()
   })
 })

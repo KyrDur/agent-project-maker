@@ -287,7 +287,7 @@ describe('createHiTLDecisionCoordinator', () => {
     expect(resume).toHaveBeenCalledTimes(1)
     expect(resume).toHaveBeenCalledWith(
       [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      '批准 | 拒绝',
       'intr-multi',
     )
   })
@@ -324,13 +324,13 @@ describe('createHiTLDecisionCoordinator', () => {
     expect(resume).toHaveBeenNthCalledWith(
       1,
       [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      '批准 | 拒绝',
       'intr-retry',
     )
     expect(resume).toHaveBeenNthCalledWith(
       2,
       [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      '批准 | 拒绝',
       'intr-retry',
     )
     expect(resume).toHaveBeenCalledTimes(2)
@@ -382,7 +382,7 @@ describe('createHiTLDecisionCoordinator', () => {
 
     expect(resume).toHaveBeenCalledWith(
       [{ type: 'approve' }, { type: 'approve' }],
-      '승인 | 승인',
+      '批准 | 批准',
       'intr-duplicate',
     )
   })

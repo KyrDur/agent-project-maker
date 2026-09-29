@@ -6,7 +6,8 @@ import { once } from 'node:events'
 import { mkdtempSync, readFileSync, watch } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { getDefaultHighWaterMark, setDefaultHighWaterMark } from 'node:stream'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { startE2EEgressGuard } from './e2e-egress-guard.mjs'
 import { validateConfiguredBaseUrl } from './e2e-egress-policy.mjs'
@@ -14,8 +15,13 @@ import { server as mockServiceWorker } from '../tests/setup.ts'
 
 const guards = []
 const servers = []
+const originalHighWaterMark = getDefaultHighWaterMark(false)
 
 beforeAll(() => mockServiceWorker.close())
+// Induce backpressure deterministically across Node versions (Node 22 raised
+// the default byte-stream buffer size). Restore it for the next test file.
+beforeEach(() => setDefaultHighWaterMark(false, 16_384))
+afterEach(() => setDefaultHighWaterMark(false, originalHighWaterMark))
 
 async function listen(handler) {
   const server = createServer(handler)
@@ -66,7 +72,7 @@ describe('live E2E egress guard', () => {
     const backpressure = []
     const upstream = await listen((_request, response) => {
       response.writeHead(200, { 'content-type': 'application/octet-stream' })
-      for (let index = 0; index < 128; index += 1) response.write(Buffer.alloc(32_768, index))
+      for (let index = 0; index < 16; index += 1) response.write(Buffer.alloc(32_768, index))
       response.end()
     })
     let resolvePaused
@@ -95,6 +101,7 @@ describe('live E2E egress guard', () => {
     })
     proxied.end('{}')
     const [response] = await once(proxied, 'response')
+    const responseEnded = once(response, 'end')
     let forwardedBytes = 0
     response.on('data', (chunk) => {
       forwardedBytes += chunk.length
@@ -113,12 +120,12 @@ describe('live E2E egress guard', () => {
         setTimeout(() => reject(new Error('response was not resumed')), 2_000),
       ),
     ])
-    await once(response, 'end')
+    await responseEnded
 
     // Then: the proxy applies true reverse-direction flow control before resuming the upstream read.
     expect(backpressure).toContain('response_paused')
     expect(backpressure).toContain('response_resumed')
-    expect(forwardedBytes).toBe(4_194_304)
+    expect(forwardedBytes).toBe(524_288)
   })
 
   it('pauses and resumes the client request for a slow upstream consumer', async () => {

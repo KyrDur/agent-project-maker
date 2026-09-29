@@ -93,6 +93,7 @@ def _source_to_agent_run_source(source: InvocationSource) -> AgentRunSource:
 async def resolve_fallback_chain(
     db: AsyncSession,
     fallback_list: list[str] | None,
+    user_id: uuid.UUID,
 ) -> list[dict[str, str | None]] | None:
     if not fallback_list:
         return None
@@ -104,7 +105,9 @@ async def resolve_fallback_chain(
             continue
     if not fallback_uuids:
         return None
-    result = await db.execute(select(Model).where(Model.id.in_(fallback_uuids)))
+    result = await db.execute(
+        select(Model).where(Model.id.in_(fallback_uuids), Model.visible_to(user_id))
+    )
     rows = {row.id: row for row in result.scalars().all()}
     chain: list[dict[str, str | None]] = []
     for fid in fallback_uuids:
@@ -188,7 +191,7 @@ async def build_agent_config_for_loaded_agent(
         conversation_id=thread_id,
         identity=identity,
     )
-    fallback_chain = await resolve_fallback_chain(db, agent.model_fallback_list)
+    fallback_chain = await resolve_fallback_chain(db, agent.model_fallback_list, agent.user_id)
     effective_prompt = _with_user_display_name_context(
         chat_service.build_effective_prompt(agent),
         current_user,

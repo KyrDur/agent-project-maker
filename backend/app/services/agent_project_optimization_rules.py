@@ -136,7 +136,10 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
         values = [
             [r.get("metric_scores", {}).get(name) for r in side.values()] for side in (left, right)
         ]
-        if any(v is None for row in values for v in row):
+        if all(v and v.get("method") == "not_applicable" for row in values for v in row):
+            deltas[name] = {"before": None, "after": None, "delta": None}
+            continue
+        if any(v is None or v.get("score") is None for row in values for v in row):
             complete = False
             deltas[name] = {"before": None, "after": None, "delta": None}
             continue
@@ -194,6 +197,7 @@ def observation(data: dict[str, Any], pointer: str) -> Any:
         "expected",
         "actual_output",
         "called_tools",
+        "tool_trace",
         "deterministic_assertions",
         "metric_scores",
         "judge_reasons",

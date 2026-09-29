@@ -182,7 +182,7 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(screen.getByTestId('run-activity-strip')).toBeInTheDocument()
-    expect(screen.getByText('web_search 실행 중')).toBeInTheDocument()
+    expect(screen.getByText('运行web_search')).toBeInTheDocument()
     expect(screen.queryByTestId('witty-loading')).not.toBeInTheDocument()
   })
 
@@ -303,8 +303,8 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(mocks.useSubagentProgressSummary).toHaveBeenCalledWith(['tc-current'])
-    expect(screen.getByText('서브 에이전트 1/1 완료')).toBeInTheDocument()
-    expect(screen.queryByText('서브 에이전트 2/2 완료')).not.toBeInTheDocument()
+    expect(screen.getByText('1/1 个子智能体已完成')).toBeInTheDocument()
+    expect(screen.queryByText('2/2 个子智能体已完成')).not.toBeInTheDocument()
   })
 
   it('renders background subagent tasks as activity rows distinct from inline progress cards', () => {
@@ -322,13 +322,11 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(screen.getByTestId('run-activity-strip')).toBeInTheDocument()
-    expect(screen.getByText('Background writer 작업 중')).toBeInTheDocument()
-    expect(screen.getByText('Background writer 작업 중').closest('[data-kind]')).toHaveAttribute(
+    expect(screen.getByText('Background writer 正在工作')).toBeInTheDocument()
+    expect(screen.getByText('Background writer 正在工作').closest('[data-kind]')).toHaveAttribute(
       'data-kind',
       'background_subagent',
     )
-    expect(
-      screen.queryByRole('progressbar', { name: '子智能体进度' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar', { name: '子智能体进度' })).not.toBeInTheDocument()
   })
 })

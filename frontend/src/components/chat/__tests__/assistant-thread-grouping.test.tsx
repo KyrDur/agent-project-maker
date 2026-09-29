@@ -109,21 +109,21 @@ describe('groupAssistantParts (groupBy)', () => {
 describe('renderGroupedAssistantPart (group-tool node)', () => {
   it('N≥2: 컨테이너로 묶고 라벨 + 개수를 보여준다', () => {
     renderGroupNode('tavily_search', 2, false, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('默认标题')).toBeInTheDocument()
-    expect(screen.getByText('2회')).toBeInTheDocument()
+    expect(screen.getByText('网页搜索')).toBeInTheDocument()
+    expect(screen.getByText('2 次调用')).toBeInTheDocument()
   })
 
   it('N=1: 컨테이너 없이 children만 패스스루(라벨/개수 없음)', () => {
     renderGroupNode('tavily_search', 1, false, <div data-testid="leaf">leaf</div>)
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
-    expect(screen.queryByText('默认标题')).not.toBeInTheDocument()
+    expect(screen.queryByText('网页搜索')).not.toBeInTheDocument()
     expect(screen.queryByText('一次')).not.toBeInTheDocument()
   })
 
   it('running=true: 펼침 상태라 그룹 내부 children이 보인다', () => {
     renderGroupNode('read_file', 3, true, <div data-testid="leaf">leaf</div>)
     expect(screen.getByText('读取文件')).toBeInTheDocument()
-    expect(screen.getByText('3회')).toBeInTheDocument()
+    expect(screen.getByText('3 次调用')).toBeInTheDocument()
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
   })
 
@@ -142,12 +142,12 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
 
   it('승인 그룹 N≥2: generic 컨테이너 대신 "승인 대기 N건" + "批准全部"으로 묶고 카드는 항상 보인다', () => {
     renderGroupNode('request_approval', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByText('批准全部')).toBeInTheDocument()
     // 승인 카드는 접히지 않고 항상 렌더된다(사용자가 결정해야 하므로).
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
     // generic 그룹 라벨/개수 배지는 뜨지 않는다.
-    expect(screen.queryByText('2회')).not.toBeInTheDocument()
+    expect(screen.queryByText('2 次调用')).not.toBeInTheDocument()
   })
 
   it('승인 그룹 N=1: 컨테이너 없이 단일 승인 카드 패스스루', () => {
@@ -160,7 +160,7 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
     // groupBy가 `request_approval:<interruptId>`로 키를 세분화해도 render 경로는
     // groupToolName으로 도구명을 복원해 전용 승인 컨테이너를 유지해야 한다.
     renderGroupNode('request_approval:int-b', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
   })
 })

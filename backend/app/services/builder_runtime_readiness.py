@@ -46,7 +46,11 @@ async def usable_bindings(db: AsyncSession, user_id: uuid.UUID) -> list[RuntimeB
         )
     )
     usable = [c for c in credentials if await _decrypt_api_key(c)]
-    models = await db.scalars(select(Model).where(Model.is_visible.is_(True)).order_by(Model.id))
+    models = await db.scalars(
+        select(Model)
+        .where(Model.is_visible.is_(True), Model.visible_to(user_id))
+        .order_by(Model.id)
+    )
     result = []
     for model in models:
         matches = [c for c in usable if compatible(model, c, user_id)]
@@ -79,6 +83,11 @@ async def validate_tools(db: AsyncSession, user_id: uuid.UUID, tools: Sequence[T
     from app.tools.registry import registry
 
     for tool in tools:
+        if tool.enabled and tool.definition_key.startswith("builtin:"):
+            from app.agent_runtime.tool_factory import create_builtin_tool
+
+            if create_builtin_tool(tool.definition_key) is not None:
+                continue
         definition = registry.get(tool.definition_key)
         if definition is None or not tool.enabled:
             raise AppError(

@@ -109,12 +109,12 @@ describe('McpServersPage', () => {
   it('uses a tabbed card panel instead of the old server table', () => {
     render(<McpServersPage />)
 
-    expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全部 1' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('搜索服务器')).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: '名称' })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.getByText('GitHub 이슈와 PR을 조회합니다.')).toBeInTheDocument()
-    expect(screen.getByText('12개 도구')).toBeInTheDocument()
+    expect(screen.getByText('12工具')).toBeInTheDocument()
   })
 
   it('renders MCP servers as status cards by default', () => {
@@ -130,9 +130,9 @@ describe('McpServersPage', () => {
     const user = userEvent.setup()
     render(<McpServersPage />)
 
-    await user.click(screen.getByRole('tab', { name: /연결됨/ }))
+    await user.click(screen.getByRole('tab', { name: /已连接/ }))
 
-    expect(screen.getByRole('tab', { name: '연결됨 1개' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '已连接 1' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('opens the detail dialog from the detailId deep link', () => {

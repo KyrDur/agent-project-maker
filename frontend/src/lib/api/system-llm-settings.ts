@@ -30,3 +30,18 @@ export const systemLlmSettingsApi = {
       body: JSON.stringify(data),
     }),
 }
+
+export const userLlmSettingsApi = {
+  list: () => apiFetch<SystemLlmSettingOut[]>('/api/user-llm-settings'),
+  readiness: () => apiFetch<SystemLlmReadiness[]>('/api/user-llm-settings/readiness'),
+  test: (data: SystemLlmTestRequest) =>
+    apiFetch<ModelTestResponse>('/api/user-llm-settings/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (role: SystemLlmRole, data: SystemLlmSettingUpdate) =>
+    apiFetch<SystemLlmSettingOut>(`/api/user-llm-settings/${role}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+}

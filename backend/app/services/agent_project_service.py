@@ -109,7 +109,13 @@ async def build_snapshot(
         )
     }
     fallback_ids = [uuid.UUID(value) for value in (agent.model_fallback_list or [])]
-    models = list((await db.scalars(select(Model).where(Model.id.in_(fallback_ids)))).all())
+    models = list(
+        (
+            await db.scalars(
+                select(Model).where(Model.id.in_(fallback_ids), Model.visible_to(agent.user_id))
+            )
+        ).all()
+    )
 
     def model_config(model: Model) -> dict[str, Any]:
         return {
@@ -132,6 +138,7 @@ async def build_snapshot(
             "tool_id": link.tool_id,
             "definition_key": link.tool.definition_key,
             "name": link.tool.name,
+            "description": link.tool.description,
             "parameters": link.tool.parameters,
             "credential_id": link.tool.credential_id,
             "enabled": link.tool.enabled,
@@ -157,6 +164,7 @@ async def build_snapshot(
             "mcp_tool_id": link.mcp_tool_id,
             "server_id": link.mcp_tool.server_id,
             "name": link.mcp_tool.name,
+            "description": link.mcp_tool.description,
             "input_schema": link.mcp_tool.input_schema,
             "enabled": link.mcp_tool.enabled,
         }

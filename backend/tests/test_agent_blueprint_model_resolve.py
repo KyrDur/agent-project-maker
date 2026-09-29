@@ -143,6 +143,28 @@ async def test_missing_model_override_rejected_422(db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
+async def test_other_users_private_model_override_rejected(db: AsyncSession) -> None:
+    await _ensure_test_user(db)
+    other_id = uuid.uuid4()
+    db.add(User(id=other_id, email="private-blueprint@test", name="Other"))
+    private = _model(is_visible=True, model_name="private-model")
+    private.owner_user_id = other_id
+    db.add(private)
+    blueprint = await _make_blueprint(db)
+    await db.flush()
+
+    with pytest.raises(AppError) as exc:
+        await agent_blueprint_service.create_agent_from_blueprint(
+            db,
+            blueprint_id=blueprint.id,
+            user_id=TEST_USER_ID,
+            body=CreateAgentFromBlueprintIn(model_id=private.id),
+        )
+
+    assert exc.value.code == "MARKETPLACE_INVALID_PACKAGE"
+
+
+@pytest.mark.asyncio
 async def test_visible_model_override_materializes_agent(db: AsyncSession) -> None:
     await _ensure_test_user(db)
     visible = _model(is_visible=True, model_name="gpt-5-mini")

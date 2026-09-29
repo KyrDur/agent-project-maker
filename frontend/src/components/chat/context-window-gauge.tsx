@@ -197,7 +197,7 @@ function RuntimeDetails({
       {ready !== undefined ? (
         <div className="flex items-center justify-between gap-3">
           <span>{t('runtimeReadiness')}</span>
-          <span className={ready ? 'text-emerald-700' : 'text-amber-700'}>
+          <span className={ready ? 'moldy-status-success moldy-status-text' : 'moldy-status-warn moldy-status-text'}>
             {ready ? t('ready') : t('needsSetup')}
           </span>
         </div>

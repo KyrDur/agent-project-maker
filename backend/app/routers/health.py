@@ -143,9 +143,9 @@ def _summary_from(
 @router.get("/models", response_model=list[HealthSummaryEntry])
 async def list_model_health(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
 ):
-    models = (await db.execute(select(Model))).scalars().all()
+    models = (await db.execute(select(Model).where(Model.visible_to(user.id)))).scalars().all()
     latest = await _latest_for(db, "model", [m.id for m in models])
     return [_summary_from("model", m.id, m.display_name, latest.get(m.id)) for m in models]
 
@@ -168,8 +168,20 @@ async def get_history(
     target_id: uuid.UUID = Query(...),
     limit: int = Query(30, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
 ):
+    if target_kind == "model":
+        allowed = await db.scalar(
+            select(Model.id).where(Model.id == target_id, Model.visible_to(user.id))
+        )
+        if allowed is None:
+            raise model_not_found()
+    else:
+        allowed = await db.scalar(
+            select(McpServer.id).where(McpServer.id == target_id, McpServer.user_id == user.id)
+        )
+        if allowed is None:
+            raise mcp_server_not_found()
     return (
         (
             await db.execute(
@@ -206,7 +218,7 @@ async def check_now(
 
     if target_kind == "model":
         model = await db.get(Model, target_id)
-        if model is None:
+        if model is None or model.owner_user_id not in (None, user.id):
             raise model_not_found()
         credential = await resolve_credential_for_model(db, model, credential_id, user.id)
         if credential is None:

@@ -1,0 +1,606 @@
+{
+  "base_sha": "7a9cee88c772e29c830cd84fb5578d06d753e080",
+  "head_sha": "87b0d1490b4bf5bbced34680298dd176948566d7",
+  "commits": [
+    {
+      "sha": "a42a33c55a8de2bf8f4f239eb33695487f69cac0",
+      "parents": [
+        "7a9cee88c772e29c830cd84fb5578d06d753e080"
+      ],
+      "tree_sha": "11ca2e7d556e229dab6a3166615879cbce4b0cdc",
+      "message": "feat(testing): isolate env and lane-owned storage\n\nPlan-Item: 02"
+    },
+    {
+      "sha": "42dfa916f866766571462242cfe037acc49a78c6",
+      "parents": [
+        "a42a33c55a8de2bf8f4f239eb33695487f69cac0"
+      ],
+      "tree_sha": "f669110101b70971babe507b1ccc1fa8a698da19",
+      "message": "ci(backend): pin parallel tests and changed-file ratchets\n\nPlan-Item: 01"
+    },
+    {
+      "sha": "8dc5f76ab0bc5da60b7632eb99d05c7d1377356d",
+      "parents": [
+        "42dfa916f866766571462242cfe037acc49a78c6"
+      ],
+      "tree_sha": "374047128475decd9fa5405ba18b4f27c531f2d3",
+      "message": "test(postgres): add disposable integration lifecycle\n\nPlan-Item: 03"
+    },
+    {
+      "sha": "0c2036f8cdf0ed4a24b0dcc69048b63a468bc6e8",
+      "parents": [
+        "8dc5f76ab0bc5da60b7632eb99d05c7d1377356d"
+      ],
+      "tree_sha": "c1d29d38b42635c3685e27d352a468d3e907a1c0",
+      "message": "test(e2e): own isolated lane lifecycle\n\nPlan-Item: 04"
+    },
+    {
+      "sha": "8ba49564869d726c719f87b5eee7dccb2e8e4a96",
+      "parents": [
+        "0c2036f8cdf0ed4a24b0dcc69048b63a468bc6e8"
+      ],
+      "tree_sha": "2fd96a0ae4f7bc75d6687e33d17a056f1644a242",
+      "message": "feat(runtime): scope internal offload storage\n\nPlan-Item: 05"
+    },
+    {
+      "sha": "72e2e4f7ee3a339fc3f186b627e4b3df862bb938",
+      "parents": [
+        "8ba49564869d726c719f87b5eee7dccb2e8e4a96"
+      ],
+      "tree_sha": "aaf30df2844a219f75b72387130b98766ca068cf",
+      "message": "fix(security): fail closed on runtime filesystem access\n\nPlan-Item: 06"
+    },
+    {
+      "sha": "6e11343f304101f671002c3d70004f69ea103aba",
+      "parents": [
+        "72e2e4f7ee3a339fc3f186b627e4b3df862bb938"
+      ],
+      "tree_sha": "577033ec19a94887049bc25963436c5698c91aea",
+      "message": "docs(architecture): reconcile canonical source facts\n\nPlan-Item: 07"
+    },
+    {
+      "sha": "4615923bca84ad9c829876e58c20add63a8a3e84",
+      "parents": [
+        "6e11343f304101f671002c3d70004f69ea103aba"
+      ],
+      "tree_sha": "04af1c8beafdfceaf630ce37ec8ea6a4ba09e17b",
+      "message": "test(runtime): freeze backend execution contracts\n\nPlan-Item: 08"
+    },
+    {
+      "sha": "6ea0e2212eef8b61f6252e2f8c63e23405d9d33d",
+      "parents": [
+        "4615923bca84ad9c829876e58c20add63a8a3e84"
+      ],
+      "tree_sha": "0664c446b807a1eacb3a644892fb4b8cca0e18ed",
+      "message": "ci(backend): guard runtime dependency direction\n\nPlan-Item: 09"
+    },
+    {
+      "sha": "ee624b6272140567672f29a184daa7abf869df0d",
+      "parents": [
+        "6ea0e2212eef8b61f6252e2f8c63e23405d9d33d"
+      ],
+      "tree_sha": "6a6f763098d485b310d30705012278f5a53a8aa6",
+      "message": "test(e2e): honor scripted capture policy\n\nKeep lifecycle assertions in the scripted-full lane while removing obsolete manual PNG side effects that the capture-only exporter must reject. Equivalent visual coverage remains in the dedicated capture tour.\n\nPlan-Repair: 04\n\nDiscovered-By: 10\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "3d1f6eefee3d6c91e4dd1541dc65c329082fc148",
+      "parents": [
+        "ee624b6272140567672f29a184daa7abf869df0d"
+      ],
+      "tree_sha": "18c1dc4f4f62b2ab91d31fb7fe38a4c9772cf3d1",
+      "message": "refactor(runtime): extract deep-agent preparation\n\nKeep runtime_component_builder as the stable compatibility facade while moving graph construction and runtime preparation into typed responsibility-specific modules. Preserve live monkeypatch bindings, middleware order, filesystem permissions, skills, subagents, and public execution contracts.\n\nPlan-Item: 10\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "6e3d3da8f41dd7b3deefdd8f9e8d2843ada72f23",
+      "parents": [
+        "3d1f6eefee3d6c91e4dd1541dc65c329082fc148"
+      ],
+      "tree_sha": "f3ebf2b6dd7a244e724c576c288a7a8f19ddf11b",
+      "message": "test(postgres): add stream-resume profile\n\nAdd a focused disposable PostgreSQL lane for the exact stream-resume contract and harden successful receipt validation.\n\nPlan-Fix: 03\nInvalidates-Receipt: 962ed9359dbf8d51ca9f80167ed6387b4604e2e680a32d47cde3dd737a8ed097\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "8cf2e7e634ca9ca76b07aa67c71d020ce1c55f3d",
+      "parents": [
+        "6e3d3da8f41dd7b3deefdd8f9e8d2843ada72f23"
+      ],
+      "tree_sha": "068f7513b4de8cc3747d05c72ebce9ee3f18952f",
+      "message": "refactor(streaming): isolate stable event projection\n\nSeparate LangGraph ingestion, stable projection, and delivery while preserving public wire, replay, redaction, and persistence contracts.\n\nPlan-Item: 11\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "50f44280dd2259e7451fd8adf7dff040e4d1fcf9",
+      "parents": [
+        "8cf2e7e634ca9ca76b07aa67c71d020ce1c55f3d"
+      ],
+      "tree_sha": "d69fa865055ef0ecaadfd6d715a40252bd91cc2a",
+      "message": "test(frontend): freeze chat runtime contracts\n\nPlan-Item: 12\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "8a90693376a175f22577ea1780a442a309f9e856",
+      "parents": [
+        "50f44280dd2259e7451fd8adf7dff040e4d1fcf9"
+      ],
+      "tree_sha": "592c23850dbd17d1bb11002202eef3b498174c13",
+      "message": "refactor(frontend): decompose chat stream runtime\n\nPlan-Item: 13\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "e45655c30baad6f08a6a153215eda33f0dcac2c6",
+      "parents": [
+        "8a90693376a175f22577ea1780a442a309f9e856"
+      ],
+      "tree_sha": "f539e6b2a1944d47c474a9b9b700f3d1860a1555",
+      "message": "refactor(chat): split assistant thread responsibilities\n\nPlan-Item: 14\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "674b791dcad5f71108ebe9c9d13e05bf7a8fef30",
+      "parents": [
+        "e45655c30baad6f08a6a153215eda33f0dcac2c6"
+      ],
+      "tree_sha": "140fad12ff828b9495be85bded39a81c22bae216",
+      "message": "feat(project-gate): add canonical cumulative wave gates\n\nPlan-Fix: 04\nInvalidates-Receipt: 30f309a48b90ff6d1696b456c0aa9c675442a39816468bccddaaefa28b7d1848\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "15ad5d481df57cc44b8f5b317aaf7b7621c7faf8",
+      "parents": [
+        "674b791dcad5f71108ebe9c9d13e05bf7a8fef30"
+      ],
+      "tree_sha": "ff1c594683da3aaf64a2675bd49c99557fab3154",
+      "message": "fix(project-gate): canonicalize system temp root\n\nPlan-Fix: 04\nInvalidates-Receipt: 2bd553b03642f2464b619db1d51658c9065f2b9a52be80cdf8f45d27a037aca0\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "fed5622c2c326007da91f4cc14d878325c929125",
+      "parents": [
+        "15ad5d481df57cc44b8f5b317aaf7b7621c7faf8"
+      ],
+      "tree_sha": "100a4b3b928bf7e5bf336feb473276146aa519c0",
+      "message": "fix(e2e): use fixed Python runner\n\nPlan-Fix: 04\nInvalidates-Receipt: 45c79e6f17d8153fea0e7f1ec8928a7c97043c224c20faf050903f14e6fe463b\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "a8baf2c2c67282cac0cf13536b693534e698c8c1",
+      "parents": [
+        "fed5622c2c326007da91f4cc14d878325c929125"
+      ],
+      "tree_sha": "78d309251eefda8d71990fabba442fc3282c8bc2",
+      "message": "fix(e2e): isolate live specs and failure artifacts\n\nPlan-Fix: 04\nInvalidates-Receipt: b32201537183df79a8b39bfa2b60e887af6bed2d8a5fab1fd6ce75a6561a8cc2\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "1118f60966495d89102ce49961525c1460040672",
+      "parents": [
+        "a8baf2c2c67282cac0cf13536b693534e698c8c1"
+      ],
+      "tree_sha": "4c7800fa8df92cd0b6279ecb25d46514bfcc97a5",
+      "message": "fix(e2e): isolate capture project selection\n\nPlan-Fix: 04\n\nInvalidates-Receipt: 0a327a190bde73718d714700b95f3e098d7af67216463215c07d960e0f8f5823\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "174ced586343e3cecfc178881fb4697d11494285",
+      "parents": [
+        "1118f60966495d89102ce49961525c1460040672"
+      ],
+      "tree_sha": "ee1267157e90e5b45db2848b365847af3bbdd1a7",
+      "message": "fix(e2e): reconcile runtime state and receipts\n\nPlan-Fix: 04\n\nInvalidates-Receipt: f857554c256fb3ce72cb1f80294dfe21363bb434c5a6fdd863a793ebe9ff488a\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "c241a581a663073c1cf1506f705aa56efe17a07e",
+      "parents": [
+        "174ced586343e3cecfc178881fb4697d11494285"
+      ],
+      "tree_sha": "2289d4e55f7c8bf6d6bb99f59171b879d53ce699",
+      "message": "test(e2e): align lifecycle receipt fixture\n\nPlan-Fix: 04\n\nInvalidates-Receipt: eeef164376ec2a7221b1aaded6e7fba45567e93c74628bcfa042a16d1ba7f6b8\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "685f674b079b82d0bb249ca1e04b9621caad1482",
+      "parents": [
+        "c241a581a663073c1cf1506f705aa56efe17a07e"
+      ],
+      "tree_sha": "9c62538fc1b48185d81803c3f969e3d750429af3",
+      "message": "test(skill-eval): synchronize worker completion\n\nReplace timing-sensitive polling with a causal evaluator handshake and durable state read. Tighten test result type boundaries so the changed-file type ratchet stays clean.\n\nPlan-Fix: 01\n\nInvalidates-Receipt: 068834b2b343599055688ff894a2eb6562c80222058d53ba147f09509ddf4561\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "d068370a755fa56f537237ef5c6ee4c1696bc831",
+      "parents": [
+        "685f674b079b82d0bb249ca1e04b9621caad1482"
+      ],
+      "tree_sha": "180c7a4edea6972911cdcc73dd3b69c3194a16d3",
+      "message": "fix(e2e): retain sanitized failure diagnostics\n\nPlan-Fix: 04\nInvalidates-Receipt: b00abdba0a502f75a09d4e5bd4c1ab05336de754529b5a3b66c33a0d59d34575\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "e4dd69f141d3cdedbff2d9a5747c538187b9aa21",
+      "parents": [
+        "d068370a755fa56f537237ef5c6ee4c1696bc831"
+      ],
+      "tree_sha": "f6f9a2b1db604980a2d91074b57c1aa794dc2bdd",
+      "message": "fix(e2e): align port preflight with server reuse\n\nPlan-Fix: 04\nInvalidates-Receipt: 64eea9bacd0f920cfb27df1ccc902e529845162e87dafd9cc017553324ef38fa\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "68d77e5f5fbd7d463d66ae11767be0111fab3707",
+      "parents": [
+        "e4dd69f141d3cdedbff2d9a5747c538187b9aa21"
+      ],
+      "tree_sha": "22d842e13ab10a4c76f2688b7712324bb308b24b",
+      "message": "fix(e2e): validate normal Playwright failure receipts\n\nPlan-Fix: 04\nInvalidates-Receipt: 30ca77dccdef765f0de8883781ff12fb00780cd1e025864c7f3ec48bfa8e9b98\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "abc706fb252789161a98bbc7bbf04f8981970632",
+      "parents": [
+        "68d77e5f5fbd7d463d66ae11767be0111fab3707"
+      ],
+      "tree_sha": "fe1f53ac88881b39e702353daaa20c058f746344",
+      "message": "fix(e2e): classify navigation-aborted Next chunks\n\nPlan-Fix: 04\nInvalidates-Receipt: d502312b8ac4a68cbfb2d1ec88cb0bbc5a7779b7c563345b078a5dfad711c722\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "245d90dc3978f16bccbbc125cc1f4f3ec4c2c31c",
+      "parents": [
+        "abc706fb252789161a98bbc7bbf04f8981970632"
+      ],
+      "tree_sha": "d10a09f66fa17f3c00c4c90b25983999ff78a9ef",
+      "message": "fix(e2e): preserve request provenance across reloads\n\nPlan-Fix: 04\nInvalidates-Receipt: 16fd89654c01f2ae8615c35f4ea716fd09b553d5e504c198a01aafb2e948ea65\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "5b4c0516174d89778d59b4aff0792c2ee963d787",
+      "parents": [
+        "245d90dc3978f16bccbbc125cc1f4f3ec4c2c31c"
+      ],
+      "tree_sha": "c7ea81911651dfd30797a5f807d57efb7f4bf512",
+      "message": "fix(e2e): preserve safe Playwright failure locations\n\nPlan-Fix: 04\nInvalidates-Receipt: 0522e6136d5e8b457a4b8599614d5a309d932da47b7555d15ff45671035559b4\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "92a27d7de68ec8f4fecc92f7e9d16ba669825d0f",
+      "parents": [
+        "5b4c0516174d89778d59b4aff0792c2ee963d787"
+      ],
+      "tree_sha": "75ef41d4ce598fb321d1f6ac57df9c1a990f83e0",
+      "message": "fix(e2e): classify prior-document chunk aborts\n\nPlan-Fix: 04\nInvalidates-Receipt: 7afe6670c168119b58352532efdbb995a3a6b7eaa205e188e22c7c8f7f1668c2\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "982960401f93dc6b70786b88a45a0474b04b0854",
+      "parents": [
+        "92a27d7de68ec8f4fecc92f7e9d16ba669825d0f"
+      ],
+      "tree_sha": "a066461a4d38be13dc5aa924e5af27eccd22ef50",
+      "message": "fix(e2e): capture accepted retry run ids\n\nPlan-Fix: 04\nInvalidates-Receipt: f9c93c55a4b236dda9a78251b1a18b0db6b892febbc98a525beb55fc62ebd281\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "e69aff1673d0ddaaa319f2757f2ce7cb912bd592",
+      "parents": [
+        "982960401f93dc6b70786b88a45a0474b04b0854"
+      ],
+      "tree_sha": "f57e32aea6cca0a7b06a965895076dbcd738642e",
+      "message": "fix(e2e): sanitize network failure diagnostics\n\nPlan-Fix: 04\n\nInvalidates-Receipt: 1f83548686f4b8d35cbeae31c90277821a7db42b1a0d89e9b87d5fbc29fbc523\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "540e4731753fac24940205b1f339de59bbb3cdd7",
+      "parents": [
+        "e69aff1673d0ddaaa319f2757f2ce7cb912bd592"
+      ],
+      "tree_sha": "f1325a9417a6b2097fb0985fba5fa7ae2c0eb3fa",
+      "message": "fix(e2e): preserve timeout failure phases\n\nPlan-Fix: 04\n\nInvalidates-Receipt: a70362485a8168fb50a701fc86d4f5bf6b26c21ae4a8421cb92e02ee49d8975d\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "02833d7df67a9fe4d01ebff3f2c09cf68be7cee5",
+      "parents": [
+        "540e4731753fac24940205b1f339de59bbb3cdd7"
+      ],
+      "tree_sha": "9cf0d7fa20893aa07fb526d52e558a8fa5932c0e",
+      "message": "test(e2e): wait for rich output completion\n\nPlan-Fix: 04\n\nInvalidates-Receipt: c7fcc1e531c9b6cc02d94291b57ed49bf7c9b130eeff7740ed591b69a496981f\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "2990d2df830298ef4764813bd36b943dd31a9036",
+      "parents": [
+        "02833d7df67a9fe4d01ebff3f2c09cf68be7cee5"
+      ],
+      "tree_sha": "a76d2baa96b96287e5e753c01fe1ca71b36ba56c",
+      "message": "test(e2e): correlate promoted ask user runs\n\nPlan-Fix: 04\n\nInvalidates-Receipt: 506dba926f244b5717a43dbef24155b04fbbb814bdecd08546ea5aadbe6b5696\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "d20f9c0ae72f6f888c9a21836f10f6746898a364",
+      "parents": [
+        "2990d2df830298ef4764813bd36b943dd31a9036"
+      ],
+      "tree_sha": "e964eed1c40f7db2483bcb82c6b53b37ffc62b49",
+      "message": "fix(e2e): retain artifact scan rejection diagnostics\n\nPlan-Fix: 04\n\nInvalidates-Receipt: 005037046d1c467ddb315e3c06a56e508fe59da2e2730500b61b94c20d2e151d\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "c1f630acd0621925c148ff5c3bc49a88628b01d9",
+      "parents": [
+        "d20f9c0ae72f6f888c9a21836f10f6746898a364"
+      ],
+      "tree_sha": "45ba0ded005ff8fab16fb44e86ffce0c7fd43510",
+      "message": "feat(agent): add versioned runtime policy\n\nPlan-Item: 15\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "9850d92cc6a4a5a3a827fc7870cafb9bbc490a62",
+      "parents": [
+        "c1f630acd0621925c148ff5c3bc49a88628b01d9"
+      ],
+      "tree_sha": "7a6b8e0ad493a52b86338c58d29fdb5dc626c2e7",
+      "message": "feat(runtime): snapshot policy across executions\n\nPlan-Item: 16\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "bf9b9c129c0a071104b18f0806f59eed4bce79b0",
+      "parents": [
+        "9850d92cc6a4a5a3a827fc7870cafb9bbc490a62"
+      ],
+      "tree_sha": "dc8220fc0f9ebd3310fdb70e11df33352b64bcb0",
+      "message": "feat(marketplace): preserve runtime policy metadata\n\nPlan-Item: 17\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "4cf29b826c3e1e9250cc55a9001ff337dcb4fc25",
+      "parents": [
+        "bf9b9c129c0a071104b18f0806f59eed4bce79b0"
+      ],
+      "tree_sha": "7f3f3b3e9c6fd94739747706ccaffa227305e259",
+      "message": "fix(runtime): preserve policy boundary contracts\n\nPlan-Fix: 16\n\nInvalidates-Receipt: 5fd561f9749536f81dfabdd2abf3ff35234e3797df8c31e812372fc05e8f0126"
+    },
+    {
+      "sha": "02d7b908d02dee74d14dae7e7bd214a55804020d",
+      "parents": [
+        "4cf29b826c3e1e9250cc55a9001ff337dcb4fc25"
+      ],
+      "tree_sha": "71559468f60e5a15dd69de233dbc6d1a36ad0771",
+      "message": "fix(runtime): avoid policy preparation deadlock\n\nPlan-Fix: 16\n\nInvalidates-Receipt: 05834c9a3764cd7e80cefff1d6b8e49a16dd4fb1eb9f080eb1a4854b3b4b9c83"
+    },
+    {
+      "sha": "1024beab13a914cd78c98cfa552c6a76cc9e3237",
+      "parents": [
+        "02d7b908d02dee74d14dae7e7bd214a55804020d"
+      ],
+      "tree_sha": "e2b343f1002df2f90bb51c2fd77398021e7c934a",
+      "message": "fix(test): accept migration-only gate receipts\n\nPlan-Fix: 4\nInvalidates-Receipt: cae48f3fcc44cb7a0e8d8de0aa7ba764ee8fe2db3db1661827db79a1e44a9f03"
+    },
+    {
+      "sha": "3d74e41fefcb02fecb207bba2895a61746a894d0",
+      "parents": [
+        "1024beab13a914cd78c98cfa552c6a76cc9e3237"
+      ],
+      "tree_sha": "bf7e1736812ccb2f78e8f43dc0968c3d95e56c78",
+      "message": "feat(runtime): add restricted filesystem modes\n\nPlan-Item: 18"
+    },
+    {
+      "sha": "4a62643c99a6df660cc59902b2ea321c78aa4f67",
+      "parents": [
+        "3d74e41fefcb02fecb207bba2895a61746a894d0"
+      ],
+      "tree_sha": "f6f4ab7637beaf9a12bf1b93d4fbc739a3ccf4ec",
+      "message": "feat(runtime): add opt-in todo selection\n\nPlan-Item: 19"
+    },
+    {
+      "sha": "3846b6b4e05fbed479fd9d0521bc9b757550cbd3",
+      "parents": [
+        "4a62643c99a6df660cc59902b2ea321c78aa4f67"
+      ],
+      "tree_sha": "c14fb67e4787b37060856093d35306b7f7c0c30b",
+      "message": "fix(runtime): preserve todo policy facade\n\nPlan-Fix: 19"
+    },
+    {
+      "sha": "e348dc49af7c09ddcefa35d4eea4532863243408",
+      "parents": [
+        "3846b6b4e05fbed479fd9d0521bc9b757550cbd3"
+      ],
+      "tree_sha": "7ecb91db3440537af13e87671dee1127a275289b",
+      "message": "feat(runtime): add summarization presets\n\nPlan-Item: 20"
+    },
+    {
+      "sha": "f812d88526142200332987032c18e4b7caae8b8f",
+      "parents": [
+        "e348dc49af7c09ddcefa35d4eea4532863243408"
+      ],
+      "tree_sha": "a84b195669bac39605cb5ebd9f75772a5fdaab29",
+      "message": "feat(ui): add runtime behavior settings\n\nPlan-Item: 21"
+    },
+    {
+      "sha": "88526fafb2a19961c71e30f6b2418c233fe33abe",
+      "parents": [
+        "f812d88526142200332987032c18e4b7caae8b8f"
+      ],
+      "tree_sha": "624e8ba5a9b3459a39a462d58cb97eb09c81aa56",
+      "message": "fix(project-gate): add canonical wave four\n\nPlan-Fix: 21\nInvalidates-Receipt: d65b0da5ffd88ece57945ab53b9a556ef6bc992a5bb58c78a4f081e0b329028e\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "8cf24ea08279c913c1706bd5ac7c362b5e405105",
+      "parents": [
+        "88526fafb2a19961c71e30f6b2418c233fe33abe"
+      ],
+      "tree_sha": "2ef40748f102cb5618f29bc2486461418cd3fc86",
+      "message": "fix(project-gate): accept exported capture paths\n\nPlan-Fix: 21\n\nInvalidates-Receipt: 1002631623a1e4c96e469fc66a407fa44349adf9f3d2a77db609dafe9c571cad\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "4d2f645e6958239eb487d4891b58a62cf99f40eb",
+      "parents": [
+        "8cf24ea08279c913c1706bd5ac7c362b5e405105"
+      ],
+      "tree_sha": "1c6fac883aa4620b06a936c7c66842eba36a714d",
+      "message": "fix(e2e): disambiguate builder session prop\n\nPlan-Fix: 21\nInvalidates-Receipt: 2ca460b3c03049aec9c4f0bba32795c67774a1b49b410fd6e96d803f1d7bc7e0\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "bb18a64015086dd2c666442d2620f76cc65a5221",
+      "parents": [
+        "4d2f645e6958239eb487d4891b58a62cf99f40eb"
+      ],
+      "tree_sha": "e196f36b2d22e3dc1e1db923ba4b32e01b46e1da",
+      "message": "fix(e2e): preserve capture project during provisioning\n\nPlan-Fix: 04\nInvalidates-Receipt: 3ce597d38a9649fe70dd228b2e384a0c0fcd9fa8950be6db4ed07830cd260114\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "a7abda470873ef45f291cf7f176c8b3d54445cf2",
+      "parents": [
+        "bb18a64015086dd2c666442d2620f76cc65a5221"
+      ],
+      "tree_sha": "b92a2da29dbee79c8be5a593086657eb75b4db27",
+      "message": "fix(frontend): clear bounded quality blockers\n\nPlan-Item: 22"
+    },
+    {
+      "sha": "29aba3e4e1704360c7e0a098ccf117959cccadc7",
+      "parents": [
+        "a7abda470873ef45f291cf7f176c8b3d54445cf2"
+      ],
+      "tree_sha": "85daa849236aecdfb3c4d162b0009d2aed467c2d",
+      "message": "ci(test): govern coverage skips and artifacts\n\nPlan-Item: 23\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "ea253c19de5549f79987e51fefde8a4ba017cb9e",
+      "parents": [
+        "29aba3e4e1704360c7e0a098ccf117959cccadc7"
+      ],
+      "tree_sha": "06ce31a3a6cde08d954239a1391940c940d45b20",
+      "message": "fix(test): align postcommit contract fixtures\n\nPlan-Fix: 23\nInvalidates-Receipt: 71a382e1d838aa7b85535030238e1b01da8b215913f0b76a47b58e1e01f31f9d\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "9ed4a6809f0022934921ae3ec82424c41ad5a98b",
+      "parents": [
+        "ea253c19de5549f79987e51fefde8a4ba017cb9e"
+      ],
+      "tree_sha": "37bc6dc1a08c1c45fad9282c233c6e4ee1f55f04",
+      "message": "fix(test): bind reviewed coverage baselines\n\nPlan-Fix: 23\nInvalidates-Receipt: 7f136ce135f18aec0f91a644dfad95bbca7bc33c5f2db91a9a3c094d29e9a25c\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "f2ded51ebf3fdfab33aae4436f73d0dbc777c027",
+      "parents": [
+        "9ed4a6809f0022934921ae3ec82424c41ad5a98b"
+      ],
+      "tree_sha": "77df16f1d3c4177d8f0bb620180faeb801c461c6",
+      "message": "docs: classify and index project documentation\n\nPlan-Item: 24\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "4c26eede87eaed8fad0b6894923432dfae941044",
+      "parents": [
+        "f2ded51ebf3fdfab33aae4436f73d0dbc777c027"
+      ],
+      "tree_sha": "56ea66482fa894036a054730a915cd80699e340e",
+      "message": "docs(architecture): document runtime policy lifecycle\n\nPlan-Item: 25\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "e2e6630d4c0d9ac3f664a176f1a7cacffffb3af6",
+      "parents": [
+        "4c26eede87eaed8fad0b6894923432dfae941044"
+      ],
+      "tree_sha": "8a639640c55dffff6323cec7349d8c8c4cf2deca",
+      "message": "fix(project-gate): attest uv for coverage\n\nPlan-Fix: 23\nInvalidates-Receipt: 984d14a3f72cde55a7413b8e8642182843509cdcd7305564a18ce934635f694a\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "01738f16472b6908d5a41b22cb9230d3e02eddcc",
+      "parents": [
+        "e2e6630d4c0d9ac3f664a176f1a7cacffffb3af6"
+      ],
+      "tree_sha": "1d913176a3692da9ea0a04f1f75a0eeb5e52f282",
+      "message": "test(e2e): align grouped HITL lifecycle\n\nPlan-Fix: 22\n\nInvalidates-Receipt: f91b5b2a347ae7ce02594a05eb2848b143d9721b5bc670f6830fd178a0a2b0e0\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "b676825c542f99b123c12dc29ea862983952c08d",
+      "parents": [
+        "01738f16472b6908d5a41b22cb9230d3e02eddcc"
+      ],
+      "tree_sha": "e5b6e061a942ab715d7d3ae13b9b0ea6dc78adc6",
+      "message": "fix(e2e): canonicalize isolated run root\n\nPlan-Fix: 02\n\nInvalidates-Receipt: 150249a4d668bb86dc07d30e408605572f833f1b88302e8f9cec72e12ee5201f\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "fbec686cfc6ad21f25fec233f288a72df4970329",
+      "parents": [
+        "b676825c542f99b123c12dc29ea862983952c08d"
+      ],
+      "tree_sha": "1157903faedf4da245c882544da9d22a990dc5d9",
+      "message": "fix(test): preserve failed capture receipts\n\nPlan-Fix: 23\nInvalidates-Receipt: 28a7f298ae48a5ec4f8906c03e92efb888de3e59eb254b38b9e1ebdd082bbb00\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "dcba9d06c6d8855fff915a4b57ed27b43a53e74c",
+      "parents": [
+        "fbec686cfc6ad21f25fec233f288a72df4970329"
+      ],
+      "tree_sha": "e79bbf77a7550638228f0cf04911d1c34f04610b",
+      "message": "test(e2e): wait for durable reconnect run\n\nPlan-Fix: 13\nInvalidates-Receipt: 6b32a5bc42f035b8273db255f39dbca19700c2b5c56663e8a24c6ed0b5529efc\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "68b4782b71a096e47204c973771b04dc5793cfe3",
+      "parents": [
+        "dcba9d06c6d8855fff915a4b57ed27b43a53e74c"
+      ],
+      "tree_sha": "b2f43b180d569d1b242a2ef435061cbc62836f52",
+      "message": "fix(test): recover final-attempt abandonment\n\nPlan-Fix: 23\nInvalidates-Receipt: b6db429c018d15e56612866dd2c17e61141bc604149a91cb8dfa0ceea76936c8\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "e3f8fd05d59c2c9c7611ce950d2dda336b512f92",
+      "parents": [
+        "68b4782b71a096e47204c973771b04dc5793cfe3"
+      ],
+      "tree_sha": "93262b0074314750e125cb199806f934cb8d81f3",
+      "message": "fix(test): canonicalize static gate receipts\n\nPlan-Fix: 02\nInvalidates-Receipt: b6db429c018d15e56612866dd2c17e61141bc604149a91cb8dfa0ceea76936c8\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "f33db0efb3ba94dd8f32137decc5096271c10347",
+      "parents": [
+        "e3f8fd05d59c2c9c7611ce950d2dda336b512f92"
+      ],
+      "tree_sha": "c7aaad685f7b0fba3df3d57d07656972872f2377",
+      "message": "fix(test): isolate active final-attempt fixtures\n\nPlan-Fix: 23\nInvalidates-Receipt: b6db429c018d15e56612866dd2c17e61141bc604149a91cb8dfa0ceea76936c8\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "9d60650c8a138d9f60783cc10dcb7dd1dea89eb1",
+      "parents": [
+        "f33db0efb3ba94dd8f32137decc5096271c10347"
+      ],
+      "tree_sha": "417cbbcb8b83824576efa7d8622b38740ef0298e",
+      "message": "fix(test): make frontend coverage non-interactive\n\nPlan-Fix: 23\n\nInvalidates-Receipt: ebb8a6e038a48dfe101a8231cc1f5341304732f6495f15996a825ef956be70e5\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "2f3b3a9d0f357294fece96af897165409f2dd192",
+      "parents": [
+        "9d60650c8a138d9f60783cc10dcb7dd1dea89eb1"
+      ],
+      "tree_sha": "9a55f99a63ca13adda3a4b334c4d03f201ba0f71",
+      "message": "fix(test): support cleanup receipt discovery\n\nPlan-Fix: 23\n\nInvalidates-Receipt: 4ab271f7be2b0d3bce624fb36764e3d2f05803808faf6d1e3fcff96993d3c3ae\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "ae47d6cdfc9386aff32b669e3d870a862ee16f71",
+      "parents": [
+        "2f3b3a9d0f357294fece96af897165409f2dd192"
+      ],
+      "tree_sha": "1be104e9dabf680b7d1f12870eef9656797ab8fc",
+      "message": "fix(test): isolate cleanup gate environment\n\nPlan-Fix: 23\n\nInvalidates-Receipt: 47775ebcee83e487c18f9d8d5a04b6f28201f0a24b7120c96752766f4734af70\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "19655e3ec32b516dbf917a701776f0aebced9b33",
+      "parents": [
+        "ae47d6cdfc9386aff32b669e3d870a862ee16f71"
+      ],
+      "tree_sha": "19856cf37f69c6457e6bc22143161510bec61ba6",
+      "message": "test(frontend): stabilize coverage timing\n\nPlan-Fix: 23\nInvalidates-Receipt: 4a1c11f798fa072ac6b967e8c453b7a33cce6f0c701a2e90ce0fb0e4183f474c\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "23a1202e30c18ed9ea5f6e6175476ade4dcee5a9",
+      "parents": [
+        "19655e3ec32b516dbf917a701776f0aebced9b33"
+      ],
+      "tree_sha": "4e0da62212eddf6931108764886785d5dbc1116e",
+      "message": "fix(test): isolate coverage temp roots\n\nPlan-Fix: 23\nInvalidates-Receipt: e84ce2bed34439e7867483f3501d0b2c39ba09e1b8d3a278aa0f7f889e08232a\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "b83a662de27809a4a3e0e1adf31bfc13c1683bb6",
+      "parents": [
+        "23a1202e30c18ed9ea5f6e6175476ade4dcee5a9"
+      ],
+      "tree_sha": "c665a3c2bdb21f4aab4f88d9965fe13b120904ed",
+      "message": "fix(test): support nested coverage temp roots\n\nPlan-Fix: 23\n\nInvalidates-Receipt: e083b7bbb4eb180128e046439dc0d1c0c63972929c92fce538bb60237ae7b466\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "df834626ef5e904738dbc11e31be2e224cd2266c",
+      "parents": [
+        "b83a662de27809a4a3e0e1adf31bfc13c1683bb6"
+      ],
+      "tree_sha": "279ce19f0fbd27329ed5d07a31db0af3de1c676b",
+      "message": "test(skill-eval): stabilize payload coverage\n\nPlan-Fix: 23\n\nInvalidates-Receipt: 10e1178593f09b7c2565a70f50819abccf9fd1a2a6a574957152639da2d8b5a7\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "f0b974930ed016ec94d04f173d74aca7cb774981",
+      "parents": [
+        "df834626ef5e904738dbc11e31be2e224cd2266c"
+      ],
+      "tree_sha": "4fd8c221e9694fa4caeb9da0cf002871913651d2",
+      "message": "fix(skill-eval): secure preview path filtering\n\nPlan-Fix: 23\n\nInvalidates-Receipt: 4fd0233588fe519a39b63687d6546fa9a8b115501e7224bcb6934705ee8d07b0\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    },
+    {
+      "sha": "87b0d1490b4bf5bbced34680298dd176948566d7",
+      "parents": [
+        "f0b974930ed016ec94d04f173d74aca7cb774981"
+      ],
+      "tree_sha": "c0f4c65d71b2a985221cdb861970bef28a269efa",
+      "message": "fix(test): isolate coverage pytest basetemp\n\nPlan-Fix: 23\n\nInvalidates-Receipt: deb52e2e82abaf9c34b8264594464bc0494c5367b09e67707a5119c2e97ff2af\n\nPlan: .omo/plans/project-restart-consolidated-roadmap.md"
+    }
+  ]
+}

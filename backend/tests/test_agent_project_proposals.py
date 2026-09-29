@@ -27,7 +27,25 @@ USER = phase1.TEST_USER_ID
 
 @pytest.fixture
 async def refund_project(db, client, monkeypatch):
+    from app.credentials import service as credentials
+    from app.models.user_llm_setting import UserLlmSetting
+
     _, _, agent = await phase1.seed_agent(db)
+    judge_credential = await credentials.create(
+        db,
+        user_id=USER,
+        definition_key="openai",
+        name="Private judge",
+        data={"api_key": "test-only-private-key"},
+    )
+    db.add(
+        UserLlmSetting(
+            user_id=USER,
+            role="judge_optimizer",
+            credential_id=judge_credential.id,
+            model_name="test-judge",
+        )
+    )
     agent.name = "Customer Service Agent"
     agent.system_prompt = "Help customers with the refund workflow."
     await db.commit()
@@ -181,6 +199,8 @@ async def refund_project(db, client, monkeypatch):
     )
     assert response.status_code == 202
     run = await evaluation.get_run(db, agent.id, USER, uuid.UUID(response.json()["id"]))
+    await evaluation.execute_run(run.id, agent.id, USER)
+    await db.refresh(run)
     assert run.pass_rate == 0.5
     return agent, project, v1, dataset, run, path
 
@@ -228,6 +248,8 @@ async def test_proposal_review_regression_best_and_immutable_history(client, db,
     response = await client.post(proposal_path + "/regression", json=regression_request)
     assert response.status_code == 202
     regression = await evaluation.get_run(db, agent.id, USER, uuid.UUID(response.json()["id"]))
+    await evaluation.execute_run(regression.id, agent.id, USER)
+    await db.refresh(regression)
     assert regression.pass_rate == 1
     assert regression.cases_snapshot_json == frozen_cases
     assert regression.comparison_json["eval_spec"] == frozen_plan["eval_spec"]

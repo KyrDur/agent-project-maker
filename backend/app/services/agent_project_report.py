@@ -46,6 +46,8 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
         )
     # Errors/partial runs are visible, but cannot masquerade as a quality score.
     score = summary["pass_rate"] if summary["complete"] and run.status == "completed" else None
+    if any(item.get("status") == "not_evaluated" for item in results):
+        score = None
     key = (
         canonical_json_hash(
             {

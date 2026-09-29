@@ -48,6 +48,7 @@ async def shutdown_runtime_resources() -> list[BaseException]:
     from app.agent_runtime.tool_factory import close_tool_http_client
     from app.database import shutdown_database
     from app.scheduler import release_scheduler_leader, stop_scheduler
+    from app.services.agent_project_worker import evaluation_worker
     from app.services.conversation_run_worker import get_run_task_registry
     from app.services.skill_evaluation_worker import skill_evaluation_worker
     from app.services.spend_writer import spend_queue
@@ -70,6 +71,7 @@ async def shutdown_runtime_resources() -> list[BaseException]:
 
     return await run_shutdown_steps(
         (
+            ("project_evaluation_worker", evaluation_worker.stop),
             ("skill_worker", close_skill_worker),
             ("run_registry", close_run_registry),
             ("brokers", close_brokers),

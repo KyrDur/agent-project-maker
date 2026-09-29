@@ -8,8 +8,8 @@ validation is recorded in [agent-project-release.md](agent-project-release.md).
 
 ## A. Before deployment
 
-Use `compose.alibaba-2c2g.yml` **alone**, never combined with the development
-`docker-compose.yml`, which publishes PostgreSQL and binds application ports publicly.
+Use `compose.production.yml` **alone**, never combined with the development
+`docker-compose.yml`, which is configured for loopback-only development use.
 The source release is `7aa8a5e0f48e8c5717f8c652d19c8ba424bd7dd5`.
 Use the deployment files from the same reviewed GitHub commit as the published
 images. The production target is `https://agent.softcue.xyz`, `linux/amd64`.
@@ -261,7 +261,7 @@ tool integrations have their own existing setup and are not required for basic u
 Define this wrapper in each operational shell (it pins the production file):
 
 ```bash
-dc() { docker compose --env-file .env.production -f compose.alibaba-2c2g.yml "$@"; }
+dc() { docker compose --env-file .env.production -f compose.production.yml "$@"; }
 dc config --quiet
 ```
 
@@ -347,11 +347,14 @@ create an Agent through the existing manual creation path, and create its Agent
 Project. Agent runtime and project planner/judge/examinee resolve user-owned keys;
 no provider key is provisioned in this deployment template.
 
-**Existing limitation:** some Builder/Assistant/image flows use operator System
-LLM configuration and do not consume arbitrary user BYOK. They remain unconfigured
-here; do not promise that conversational creation/image generation works with BYOK
-alone. Manual Agent creation and project workflows are the baseline acceptance
-path. Any later operator-funded service configuration is a separate decision.
+Configure each user's personal Builder AI, Evaluation Generator AI, and Judge &
+Optimizer AI model and credential in AI Settings before using those workflows.
+Builder-created model entries are private to their owner. Assistant and image
+generation still have operator System LLM paths and may remain unconfigured here;
+do not promise those flows work with personal BYOK alone. Real provider calls
+can charge the credential owner's account. Project evaluation uses controlled
+Mock responses for external business tools; verify live integrations separately.
+Any later operator-funded service configuration is a separate decision.
 Email verification/password recovery are not provided by adding SMTP/OAuth values
 to this template; do not claim those flows are deployment-enabled.
 
@@ -440,8 +443,11 @@ free -h
 df -h
 ```
 
-At this release, the single Alembic head is `m79_project_evaluation`; both commands
-must agree. A manual migration during maintenance, with frontend/backend stopped:
+At this release, the single Alembic head is `m85_private_builder_models`;
+`alembic current` and `alembic heads` must agree. The migration scopes
+identifiable legacy personal-Builder models; inspect any old custom endpoint
+catalog entries without a completed Builder session before allowing access.
+A manual migration during maintenance, with frontend/backend stopped:
 
 ```bash
 dc stop frontend backend
@@ -524,7 +530,7 @@ dc exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > 
 test -s "$backup_dir/database.dump"
 dc run --rm --no-deps --entrypoint tar backend -C /app/data -czf - . > "$backup_dir/backend-data.tar.gz"
 test -s "$backup_dir/backend-data.tar.gz"
-cp .env.production compose.alibaba-2c2g.yml "$backup_dir/"
+cp .env.production compose.production.yml "$backup_dir/"
 docker image inspect --format '{{.Id}} {{json .RepoTags}} {{json .RepoDigests}}' \
   "$(dc images -q backend)" "$(dc images -q frontend)" > "$backup_dir/images.txt"
 tar -tzf "$backup_dir/backend-data.tar.gz" > /dev/null
@@ -546,7 +552,7 @@ the original stack, using copied deployment config and matching old images:
 ```bash
 dc down  # downtime, preserves original volumes
 cd /opt/agent-project-backups/YOUR_BACKUP_DIRECTORY
-rc() { docker compose -p agent-project-maker-recovery --env-file .env.production -f compose.alibaba-2c2g.yml "$@"; }
+rc() { docker compose -p agent-project-maker-recovery --env-file .env.production -f compose.production.yml "$@"; }
 # STOP if these names already exist; choose a fresh recovery project name.
 docker volume ls --filter name=agent-project-maker-recovery
 rc up -d postgres

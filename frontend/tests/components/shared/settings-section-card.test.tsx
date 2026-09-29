@@ -15,7 +15,7 @@ describe('SettingsSectionCard', () => {
 
     expect(screen.getByRole('heading', { name: '配置模型' })).toBeInTheDocument()
     expect(screen.getByText('기본 모델과 자격증명을 관리합니다.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument()
     expect(screen.getByText('section body')).toBeInTheDocument()
   })
 

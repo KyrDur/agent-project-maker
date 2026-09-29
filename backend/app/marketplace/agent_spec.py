@@ -381,7 +381,15 @@ async def _load_fallback_models(db: AsyncSession, *, agent: Agent) -> list[Model
     fallback_ids = _fallback_model_ids(agent)
     if not fallback_ids:
         return []
-    rows = (await db.execute(select(Model).where(Model.id.in_(fallback_ids)))).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(Model).where(Model.id.in_(fallback_ids), Model.visible_to(agent.user_id))
+            )
+        )
+        .scalars()
+        .all()
+    )
     by_id = {model.id: model for model in rows}
     return [by_id[model_id] for model_id in fallback_ids if model_id in by_id]
 

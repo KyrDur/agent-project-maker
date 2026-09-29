@@ -1,23 +1,17 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PartyPopperIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/button'
 import { DialogShell } from '@/components/shared/dialog-shell'
+import { useSystemLlmReadiness } from '@/lib/hooks/use-system-llm-settings'
 import { useSession } from '@/lib/auth/session'
 import { dismissOnboarding, isOnboardingDismissed } from '@/lib/auth/session-flags'
 import { useSuperUserWelcomeToast } from './use-super-user-welcome-toast'
 import type { User } from '@/lib/types/user'
-
-function shouldShow(user: User): boolean {
-  if (typeof window === 'undefined') return false
-  if (isOnboardingDismissed()) return false
-  const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0
-  return Date.now() - createdAt < 5 * 60 * 1000
-}
 
 /**
  * Self-deciding root — reads session and only mounts the inner dialog when
@@ -27,7 +21,8 @@ function shouldShow(user: User): boolean {
  */
 export function OnboardingDialog() {
   const { data: user } = useSession()
-  if (!user) return null
+  const readiness = useSystemLlmReadiness()
+  if (!user || !readiness.data || readiness.data.every((role) => role.configured)) return null
   return <OnboardingDialogInner key={user.id} user={user} />
 }
 
@@ -35,8 +30,7 @@ function OnboardingDialogInner({ user }: { user: User }) {
   const t = useTranslations('auth.onboarding')
   const router = useRouter()
   // Initial visibility computed once — no effect-driven setState.
-  const initialOpen = useMemo(() => shouldShow(user), [user])
-  const [open, setOpen] = useState(initialOpen)
+  const [open, setOpen] = useState(() => !isOnboardingDismissed())
 
   useSuperUserWelcomeToast(user)
 
@@ -47,7 +41,7 @@ function OnboardingDialogInner({ user }: { user: User }) {
 
   function handleRegister() {
     dismiss()
-    router.push('/settings/credentials')
+    router.push('/settings/ai-models')
   }
 
   return (
@@ -84,7 +78,9 @@ function OnboardingDialogInner({ user }: { user: User }) {
         <Button variant="ghost" onClick={dismiss}>
           {t('later')}
         </Button>
-        <Button onClick={handleRegister}>{t('register')}</Button>
+        <Button onClick={handleRegister}>
+          {user.is_super_user ? t('registerPlatform') : t('register')}
+        </Button>
       </DialogShell.Footer>
     </DialogShell>
   )

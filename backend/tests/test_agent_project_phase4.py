@@ -31,7 +31,25 @@ SKILL_ID = str(uuid.UUID(int=123))
 
 @pytest.fixture
 async def experiment(db, monkeypatch):
+    from app.credentials import service as credentials
+    from app.models.user_llm_setting import UserLlmSetting
+
     _, _, agent = await phase3.phase2.seed_agent(db)
+    judge_credential = await credentials.create(
+        db,
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Private judge",
+        data={"api_key": "test-only-private-key"},
+    )
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="judge_optimizer",
+            credential_id=judge_credential.id,
+            model_name="test-judge",
+        )
+    )
     await db.commit()
     await db.refresh(agent, ["sub_agent_links"])
     snapshot = await projects.build_snapshot(db, agent)
@@ -84,6 +102,7 @@ async def experiment(db, monkeypatch):
         return {
             "output": "Supported answer" if passes else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 
@@ -398,6 +417,7 @@ async def test_no_improvement_stops_after_one_candidate(db, experiment, monkeypa
             if int(case["name"].split()[-1]) < 15
             else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 
@@ -422,6 +442,7 @@ async def test_two_round_limit_even_when_both_rounds_improve(db, experiment, mon
             if int(case["name"].split()[-1]) < count
             else "Incomplete answer",
             "tool_calls": [{"name": "search"}],
+            "tool_trace": [{"name": "search", "arguments": {}}],
             "handoffs": [],
         }
 

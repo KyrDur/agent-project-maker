@@ -45,7 +45,7 @@ describe('PortableCompatibilityPanel', () => {
     expect(screen.getByText('OpenAI/Codex')).toBeInTheDocument()
     expect(screen.getByText('Claude Code')).toBeInTheDocument()
     expect(screen.getByText('Vercel Agent Skills')).toBeInTheDocument()
-    expect(screen.getByText('通行证')).toBeInTheDocument()
+    expect(screen.getByText('通过')).toBeInTheDocument()
     expect(screen.getByText('警告')).toBeInTheDocument()
     expect(screen.getByText('错误')).toBeInTheDocument()
     expect(

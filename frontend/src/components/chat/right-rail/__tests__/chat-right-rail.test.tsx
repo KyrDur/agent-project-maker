@@ -427,7 +427,7 @@ describe('ChatRightRail', () => {
 
     const listHeader = listContainer.querySelector('[role="dialog"] header')
     const listCloseButtons = Array.from(
-      listHeader?.querySelectorAll('button[aria-label="Close panel"]') ?? [],
+      listHeader?.querySelectorAll('button[aria-label="关闭面板"]') ?? [],
     )
     expect(listCloseButtons[0]).toHaveClass('xl:hidden')
     expect(listHeader?.firstElementChild).toBe(listCloseButtons[0])
@@ -457,7 +457,7 @@ describe('ChatRightRail', () => {
 
     const previewHeader = previewContainer.querySelector('[role="dialog"] header')
     const previewCloseButtons = Array.from(
-      previewHeader?.querySelectorAll('button[aria-label="Close panel"]') ?? [],
+      previewHeader?.querySelectorAll('button[aria-label="关闭面板"]') ?? [],
     )
     expect(previewCloseButtons[0]).toHaveClass('xl:hidden')
     expect(previewHeader?.firstElementChild).toBe(previewCloseButtons[0])

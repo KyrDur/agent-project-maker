@@ -188,10 +188,8 @@ async def create_eval_run(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    row = await evaluation.create_run(db, agent_id, user.id, body)
-    if row.status == "pending":
-        background.add_task(evaluation.execute_run, row.id, agent_id, user.id)
-    return row
+    return await evaluation.create_run(db, agent_id, user.id, body)
+    # Persisted pending jobs are dispatched by the lifespan-owned worker.
 
 
 @router.get("/eval-runs", response_model=list[EvalRunResponse])
@@ -201,6 +199,27 @@ async def list_eval_runs(
     user: CurrentUser = Depends(get_current_user),
 ):
     return await evaluation.list_runs(db, agent_id, user.id)
+
+
+@router.post("/eval-runs/{run_id}/cancel", response_model=EvalRunResponse)
+async def cancel_eval_run(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await evaluation.cancel_run(db, agent_id, user.id, run_id)
+
+
+@router.post("/eval-runs/{run_id}/retry", response_model=EvalRunResponse, status_code=202)
+async def retry_eval_run(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: VersionCreate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await evaluation.retry_run(db, agent_id, user.id, run_id, body.request_id)
 
 
 @router.get("/eval-runs/{run_id}", response_model=EvalRunResponse)
@@ -325,7 +344,7 @@ async def run_proposal_regression(
 ):
     from app.services import agent_project_proposals
 
-    row = await agent_project_proposals.regression(
+    return await agent_project_proposals.regression(
         db,
         agent_id,
         user.id,
@@ -333,9 +352,7 @@ async def run_proposal_regression(
         proposal_id,
         body.request_id,
     )
-    if row.status == "pending":
-        background.add_task(evaluation.execute_run, row.id, agent_id, user.id)
-    return row
+    # Persisted pending jobs are dispatched by the lifespan-owned worker.
 
 
 @router.get("/report")

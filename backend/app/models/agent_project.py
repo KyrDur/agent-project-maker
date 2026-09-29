@@ -126,6 +126,8 @@ class AgentProjectEvalRun(Base):
     request_id: Mapped[uuid.UUID | None]
     cases_snapshot_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
     dataset_hash: Mapped[str | None] = mapped_column(String(64))
+    lease_id: Mapped[uuid.UUID | None]
+    lease_expires_at: Mapped[datetime | None]
     started_at: Mapped[datetime | None]
     error: Mapped[str | None] = mapped_column(Text)
     results_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)

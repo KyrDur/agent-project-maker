@@ -213,7 +213,7 @@ def build_read_tools(
     async def list_available_models() -> str:
         """사용 가능한 모델 목록을 조회합니다."""
         async with async_session_factory() as session:
-            result = await session.execute(select(Model))
+            result = await session.execute(select(Model).where(Model.visible_to(user_id)))
             models = result.scalars().all()
             items = [
                 {

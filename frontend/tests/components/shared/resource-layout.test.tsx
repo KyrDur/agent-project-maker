@@ -15,7 +15,7 @@ describe('resource layout primitives', () => {
       />,
     )
 
-    const activeTab = screen.getByRole('tab', { name: '전체 7개' })
+    const activeTab = screen.getByRole('tab', { name: '所有时间 7개' })
     const inactiveTab = screen.getByRole('tab', { name: '数据' })
 
     expect(activeTab).toHaveAttribute('aria-selected', 'true')

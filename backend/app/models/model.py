@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, Numeric, String
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, Numeric, String, or_
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -22,6 +22,9 @@ class Model(Base):
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     model_name: Mapped[str] = mapped_column(String(200), nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -68,3 +71,8 @@ class Model(Base):
         foreign_keys=[default_credential_id],
         lazy="select",
     )
+
+    @classmethod
+    def visible_to(cls, user_id: uuid.UUID):
+        """Global catalog entries and the caller's private Builder entries."""
+        return or_(cls.owner_user_id.is_(None), cls.owner_user_id == user_id)

@@ -52,6 +52,7 @@ const mockInvalidateConversationNavigators = vi.fn()
 
 vi.mock('@/lib/hooks/use-agents', () => ({
   useAgent: (...args: unknown[]) => mockUseAgent(...args),
+  useAgentRuntimeReadiness: () => ({ data: undefined }),
 }))
 
 vi.mock('@/lib/auth/session', () => ({
@@ -336,7 +337,7 @@ describe('ChatPage', () => {
 
     const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Test message')
-    const sendButton = screen.getByRole('button', { name: /전송/ })
+    const sendButton = screen.getByRole('button', { name: /发送按钮/ })
     await user.click(sendButton)
 
     // streamChat: (conversationId, content, signal, options).
@@ -405,7 +406,7 @@ describe('ChatPage', () => {
     )
 
     await user.type(screen.getByPlaceholderText('占位符'), 'Draft message')
-    await user.click(screen.getByRole('button', { name: /전송/ }))
+    await user.click(screen.getByRole('button', { name: /发送按钮/ }))
 
     expect(mockStreamStartConversation).toHaveBeenCalledWith(
       'agent-1',
@@ -461,7 +462,7 @@ describe('ChatPage', () => {
 
     const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Search for something')
-    const sendButton = screen.getByRole('button', { name: /전송/ })
+    const sendButton = screen.getByRole('button', { name: /发送按钮/ })
     await user.click(sendButton)
 
     expect(mockStreamChat).toHaveBeenCalled()

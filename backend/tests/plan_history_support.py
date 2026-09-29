@@ -29,7 +29,6 @@ from plan_history_contract import (  # noqa: E402
     PlanContract,
     load_contract,
     load_verified_operations,
-    read_git_history,
 )
 from project_gate_catalog import CATALOG, FINAL_STATIC  # noqa: E402
 from project_gate_receipts import (  # noqa: E402
@@ -604,7 +603,15 @@ def _complete_history() -> tuple[
     PlanContract, tuple[CommitRecord, ...], list[dict[str, JSONValue]]
 ]:
     contract = load_contract(CONTRACT_PATH)
-    commits = list(read_git_history(REPO_ROOT, contract.base_sha, FIXTURE_HISTORY_HEAD))
+    # A fork or shallow clone need not contain the original upstream Git objects.
+    # Keep the reviewed records with the ledger that binds their exact identities.
+    history = json.loads((EVIDENCE / "history.json").read_text(encoding="utf-8"))
+    assert history["base_sha"] == contract.base_sha
+    assert history["head_sha"] == FIXTURE_HISTORY_HEAD
+    commits = [
+        CommitRecord(item["sha"], tuple(item["parents"]), item["tree_sha"], item["message"])
+        for item in history["commits"]
+    ]
     entries = load_verified_operations(EVIDENCE / "operations.ndjson")
     observed_primary = {
         item for commit in commits for item in PRIMARY_TRAILER.findall(commit.message)

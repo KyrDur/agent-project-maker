@@ -25,7 +25,7 @@ from app.database import async_session
 from app.services.system_credential_resolver import (
     ResolvedSystemModel,
     SystemModelNotConfiguredError,
-    resolve_system_model,
+    resolve_private_role_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,23 +71,30 @@ def strip_code_fences(text: str) -> str:
     return text
 
 
-# ADR-019: builder text models come from the operator-selected system LLM
-# settings (``builder`` / ``text_fallback``), not ``.env``. The old
-# ``@functools.cache`` singletons hid runtime setting changes, so we cache by
-# the *resolved selection* instead: when the operator changes the credential or
-# model, the ``ResolvedSystemModel`` value differs and the chat model is rebuilt.
+# Builder text models use each user's private Builder selection. Cache by
+# the resolved selection so credential or model changes rebuild the chat model.
 # This keeps the ~5-10ms ``create_chat_model`` (httpx + SSL) cost off the hot
 # path without pinning a stale model across setting changes.
 _MODEL_CACHE: dict[str, tuple[ResolvedSystemModel, BaseChatModel]] = {}
 
 
 async def _resolve_cached_model(role: str) -> BaseChatModel:
-    """Resolve + build (or reuse) the chat model for a system ``role``.
+    """Resolve + build (or reuse) the user's Builder chat model.
 
     Raises ``SystemModelNotConfiguredError`` when the role is unconfigured.
     """
+    import uuid
+
+    from langgraph.config import get_config
+
+    try:
+        owner = get_config().get("configurable", {}).get("user_id")
+    except RuntimeError:
+        owner = None
+    if not owner or role != "builder":
+        raise SystemModelNotConfiguredError(role)
     async with async_session() as db:
-        resolved = await resolve_system_model(db, role)
+        resolved = await resolve_private_role_model(db, role, uuid.UUID(owner))
     cached = _MODEL_CACHE.get(role)
     if cached is not None and cached[0] == resolved:
         return cached[1]
@@ -104,12 +111,12 @@ async def _resolve_cached_model(role: str) -> BaseChatModel:
 
 
 async def _get_builder_model() -> BaseChatModel:
-    """Builder primary model (system role ``builder``)."""
+    """Builder primary model from the current user's private selection."""
     return await _resolve_cached_model("builder")
 
 
 async def _get_fallback_model() -> BaseChatModel | None:
-    """Builder fallback model (system role ``text_fallback``). None if unset."""
+    """No operator fallback is available for a private Builder run."""
     try:
         return await _resolve_cached_model("text_fallback")
     except SystemModelNotConfiguredError:

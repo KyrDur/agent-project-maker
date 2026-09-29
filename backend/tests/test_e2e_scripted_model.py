@@ -384,7 +384,7 @@ def test_e2e_scripted_model_returns_final_message_after_tool_result() -> None:
         ]
     )
 
-    assert "문서 파일 생성이 완료" in str(result.content)
+    assert "文档文件生成完成" in str(result.content)
 
 
 def test_e2e_scripted_model_streams_slow_marker_in_chunks() -> None:
@@ -794,7 +794,7 @@ def test_e2e_scripted_model_returns_final_message_after_hitl_multi_tool_results(
     )
 
     assert result.tool_calls == []
-    assert "문서 파일 생성이 완료" in str(result.content)
+    assert "文档文件生成完成" in str(result.content)
 
 
 def test_e2e_scripted_model_emits_edit_file_tool_call_for_hitl_edit() -> None:

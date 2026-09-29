@@ -3,6 +3,7 @@ import { render, screen } from '../../../../tests/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 
 import AgentsLayout from '../layout'
+import AgentSettingsLayout from '../[agentId]/settings/layout'
 
 vi.mock('@/i18n/scoped-messages', () => ({
   ScopedIntlProvider({
@@ -31,5 +32,17 @@ describe('AgentsLayout', () => {
       'data-namespaces',
       expect.stringContaining('skill'),
     )
+  })
+})
+
+describe('AgentSettingsLayout', () => {
+  it('provides project messages used by the settings page', () => {
+    render(
+      <AgentSettingsLayout>
+        <span>agent settings</span>
+      </AgentSettingsLayout>,
+    )
+
+    expect(screen.getByTestId('scoped-provider')).toHaveAttribute('data-namespaces', 'agentProject')
   })
 })

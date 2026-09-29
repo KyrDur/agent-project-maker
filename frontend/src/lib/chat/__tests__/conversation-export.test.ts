@@ -39,9 +39,9 @@ describe('conversationToMarkdown', () => {
       { title: '테스트 대화', exportedAt: '2026-07-02T00:00:00Z', labels },
     )
     expect(md).toContain('# 테스트 대화')
-    expect(md).toContain('## 사용자 · 2026-07-02T00:00:00Z')
+    expect(md).toContain('## 用户 · 2026-07-02T00:00:00Z')
     expect(md).toContain('안녕')
-    expect(md).toContain('## 어시스턴트')
+    expect(md).toContain('## 助理')
     expect(md).toContain('반가워요')
   })
 

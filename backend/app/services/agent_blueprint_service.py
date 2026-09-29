@@ -35,6 +35,7 @@ from app.tools.registry import registry as tool_registry
 async def _resolve_model_id(
     db: AsyncSession,
     *,
+    user_id: uuid.UUID,
     spec: dict[str, Any],
     requested_model_id: uuid.UUID | None,
 ) -> uuid.UUID:
@@ -45,7 +46,7 @@ async def _resolve_model_id(
         # as an enumeration oracle (existence vs visibility vs other publish
         # failures all 4xx the same way) and a hidden model can't be forced.
         model = await db.get(Model, requested_model_id)
-        if model is None or not model.is_visible:
+        if model is None or not model.is_visible or model.owner_user_id not in (None, user_id):
             raise marketplace_invalid_package("requested model is not available")
         return model.id
 
@@ -53,7 +54,7 @@ async def _resolve_model_id(
     agent_spec = raw_agent_spec if isinstance(raw_agent_spec, dict) else {}
     raw_model_spec = agent_spec.get("model")
     model_spec = raw_model_spec if isinstance(raw_model_spec, dict) else {}
-    model_id = await _resolve_model_descriptor(db, model_spec=model_spec)
+    model_id = await _resolve_model_descriptor(db, model_spec=model_spec, user_id=user_id)
     if model_id is not None:
         return model_id
 
@@ -63,6 +64,7 @@ async def _resolve_model_id(
 async def _resolve_model_descriptor(
     db: AsyncSession,
     *,
+    user_id: uuid.UUID,
     model_spec: dict[str, Any],
 ) -> uuid.UUID | None:
     preferred_id = model_spec.get("preferred_model_id")
@@ -75,7 +77,7 @@ async def _resolve_model_descriptor(
         # so it must not silently pull an operator-hidden model into a
         # materialized agent. Only honor a visible model; otherwise fall
         # through to provider/model_name matching below.
-        if model is not None and model.is_visible:
+        if model is not None and model.is_visible and model.owner_user_id in (None, user_id):
             return model.id
 
     provider = model_spec.get("provider")
@@ -83,6 +85,7 @@ async def _resolve_model_descriptor(
     base_url = model_spec.get("base_url")
     if provider and model_name:
         stmt = select(Model).where(
+            Model.visible_to(user_id),
             Model.provider == str(provider),
             Model.model_name == str(model_name),
             Model.is_visible.is_(True),
@@ -101,6 +104,7 @@ async def _resolve_model_descriptor(
 async def _resolve_model_fallback_ids(
     db: AsyncSession,
     *,
+    user_id: uuid.UUID,
     spec: dict[str, Any],
     requested_model_fallback_ids: list[uuid.UUID] | None,
 ) -> list[uuid.UUID] | None:
@@ -115,7 +119,7 @@ async def _resolve_model_fallback_ids(
     for row in rows:
         if not isinstance(row, dict):
             raise marketplace_invalid_package("model fallback is malformed")
-        model_id = await _resolve_model_descriptor(db, model_spec=row)
+        model_id = await _resolve_model_descriptor(db, model_spec=row, user_id=user_id)
         if model_id is None:
             raise model_not_found()
         if model_id not in fallback_ids:
@@ -732,11 +736,13 @@ async def create_agent_from_blueprint(
     agent_spec = raw_agent_spec if isinstance(raw_agent_spec, dict) else {}
     model_id = await _resolve_model_id(
         db,
+        user_id=user_id,
         spec=spec,
         requested_model_id=body.model_id,
     )
     model_fallback_ids = await _resolve_model_fallback_ids(
         db,
+        user_id=user_id,
         spec=spec,
         requested_model_fallback_ids=body.model_fallback_ids,
     )

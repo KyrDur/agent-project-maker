@@ -38,8 +38,9 @@ from app.models.agent_project import AgentProject, AgentProjectEvalRun, AgentPro
 from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
+from app.models.user_llm_setting import UserLlmSetting
 from app.schemas.agent_project import EvalRunCreate
-from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
+from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation, ToolRecommendation
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
 from app.services import agent_project_portfolio as portfolio
@@ -170,6 +171,14 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     )
     db.add(credential)
     await db.flush()
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="judge_optimizer",
+            credential_id=credential.id,
+            model_name="p0-fake",
+        )
+    )
     model = Model(
         provider="openai",
         model_name="p0-fake",
@@ -200,7 +209,20 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     monkeypatch.setattr(
         phase2_intent, "_suggest_name_options", AsyncMock(return_value=["周报整理助手", "周报助手"])
     )
-    monkeypatch.setattr(phase3_tools, "recommend_tools", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        phase3_tools,
+        "recommend_tools",
+        AsyncMock(
+            return_value=[
+                ToolRecommendation(
+                    tool_name="search",
+                    description="Synthetic source lookup for the frozen evaluation sandbox",
+                    reason="Ground the report in invented source evidence",
+                    kind="planned",
+                )
+            ]
+        ),
+    )
     monkeypatch.setattr(
         phase4_middlewares,
         "recommend_middlewares",

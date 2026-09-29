@@ -127,6 +127,13 @@ export const agentProjectApi = {
   runs: (agentId: string) => apiFetch<EvaluationRun[]>(`${projectPath(agentId)}/eval-runs`),
   run: (agentId: string, runId: string) =>
     apiFetch<EvaluationRun>(`${projectPath(agentId)}/eval-runs/${runId}`),
+  cancelRun: (agentId: string, runId: string) =>
+    apiFetch(`${projectPath(agentId)}/eval-runs/${runId}/cancel`, { method: 'POST' }),
+  retryRun: (agentId: string, runId: string, requestId: string) =>
+    apiFetch(`${projectPath(agentId)}/eval-runs/${runId}/retry`, {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId }),
+    }),
   createRun: (
     agentId: string,
     data: { request_id: string; version_id: string; eval_set_id: string },

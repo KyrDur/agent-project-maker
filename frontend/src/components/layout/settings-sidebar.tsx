@@ -73,6 +73,11 @@ export function SettingsSidebar() {
         { href: '/settings/credentials', label: tSettings('nav.credentials'), icon: KeyRoundIcon },
         { href: '/settings/models', label: tSettings('nav.models'), icon: BrainIcon },
         {
+          href: '/settings/ai-models',
+          label: tSettings('nav.personalAi'),
+          icon: SlidersHorizontalIcon,
+        },
+        {
           href: '/settings/schedules',
           label: tSettings('nav.schedules'),
           icon: CalendarClockIcon,

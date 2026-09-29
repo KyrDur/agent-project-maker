@@ -64,7 +64,7 @@ test.describe('Smoke Test - Static Pages', () => {
     const main = page.getByRole('main')
 
     // Verify personalized dashboard hero rendered
-    await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /你好，/ })).toBeVisible()
     // Verify quick action cards
     await expect(main.getByText('通过聊天构建')).toBeVisible()
     await expect(main.getByText('使用模板')).toBeVisible()
@@ -90,11 +90,9 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.goto('/agents/new/template')
     await page.waitForLoadState('domcontentloaded')
 
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: '从模板开始' }),
-    ).toBeVisible()
+    await expect(page.getByRole('main').getByRole('heading', { name: '从模板开始' })).toBeVisible()
     // Category tabs (custom pill-group with role="tab")
-    await expect(page.getByRole('tab', { name: '所有时间' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '全部' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -106,7 +104,7 @@ test.describe('Smoke Test - Static Pages', () => {
 
     await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
     await expect(page.getByRole('tablist', { name: '查看模式' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /전체/ })).toBeVisible()
+    await expect(page.getByRole('tab', { name: /全部/ })).toBeVisible()
     await expect(page.getByPlaceholder('搜索占位符')).toBeVisible()
 
     expect(errors.console).toEqual([])
@@ -119,7 +117,7 @@ test.describe('Smoke Test - Static Pages', () => {
 
     await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByTestId('show-hidden')).toBeVisible()
-    await expect(page.getByRole('button', { name: /새 모델|모델 추가/ }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: '新' }).first()).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -194,9 +192,9 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await expect(main.getByRole('heading', { name: 'E2E Smoke Agent' }).first()).toBeVisible()
     // New Conversation and Settings are available from the chat header menu.
     // The menu is rendered in a portal, so locate its items at page level.
-    await main.getByRole('button', { name: 'Menu' }).click()
-    await expect(page.getByRole('menuitem', { name: 'New Conversation' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible()
+    await main.getByRole('button', { name: '菜单' }).click()
+    await expect(page.getByRole('menuitem', { name: '新的对话' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '设置' })).toBeVisible()
     await page.keyboard.press('Escape')
     // Empty conversation prompt
     await expect(main.getByText('空状态')).toBeVisible()
@@ -213,7 +211,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
 
     await expect(page.locator('header input').first()).toHaveValue('E2E Smoke Agent')
     // Form labels
-    await expect(main.getByText('系统提示')).toBeVisible()
+    await expect(main.getByText('使用说明')).toBeVisible()
     // "保存" button
     await expect(main.getByRole('button', { name: '保存' })).toBeVisible()
     // "删除智能体" button
@@ -302,8 +300,8 @@ test.describe('Smoke Test - Chat Navigator', () => {
     // 행 메뉴는 hover 시 노출되고, 메뉴 항목은 portal로 렌더된다
     await sessionRow.hover()
     await sessionRow.getByRole('button', { name: '对话菜单' }).click()
-    await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '重命名' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '分享' })).toBeVisible()
     await page.keyboard.press('Escape')
 
     expect(errors.console).toEqual([])
@@ -331,9 +329,7 @@ test.describe('Smoke Test - Chat Navigator', () => {
     await expect(page.getByText('E2E Navigator Smoke Agent').first()).toBeVisible()
 
     await page.getByRole('button', { name: '搜索智能体' }).click()
-    await page
-      .getByRole('textbox', { name: '搜索智能体或对话' })
-      .fill('Navigator smoke session')
+    await page.getByRole('textbox', { name: '搜索智能体或对话' }).fill('Navigator smoke session')
     await expect(page.getByText('搜索结果')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Navigator smoke session').first()).toBeVisible()
     await expect(page.getByText('没有搜索结果')).toHaveCount(0)
@@ -388,11 +384,7 @@ test.describe('Smoke Test - Dialogs', () => {
     // Verify dialog content
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('heading', { name: '添加对话框' })).toBeVisible()
-    await expect(
-      dialog.getByText(
-        '注册模型并配置定价和功能。',
-      ),
-    ).toBeVisible()
+    await expect(dialog.getByText('注册模型并配置定价和功能。')).toBeVisible()
     // Close by pressing Escape
     await page.keyboard.press('Escape')
 
@@ -409,7 +401,7 @@ test.describe('Smoke Test - Dialogs', () => {
       .first()
       .click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('heading', { name: /새 (HTTP 요청|HTTP Request)/ })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: '创建对话框' })).toBeVisible()
     // Close
     await page.keyboard.press('Escape')
 
@@ -481,7 +473,7 @@ test.describe('Smoke Test - Dialogs', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByRole('tab', { name: '修复智能体' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'E2E Dialog Agent 수정' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '修复E2E Dialog Agent' })).toBeVisible()
     await expect(page.getByText('修复英雄字幕')).toBeVisible()
 
     expect(errors.console).toEqual([])
@@ -496,9 +488,7 @@ test.describe('Smoke Test - Dialogs', () => {
     // Verify alert dialog content
     const dialog = page.getByRole('alertdialog')
     await expect(dialog.getByText('删除对话框')).toBeVisible()
-    await expect(
-      dialog.getByText('此智能体 及其对话将被删除。此操作无法撤消。'),
-    ).toBeVisible()
+    await expect(dialog.getByText('此智能体 及其对话将被删除。此操作无法撤消。')).toBeVisible()
     // Cancel and confirm buttons inside dialog
     await expect(dialog.getByRole('button', { name: '取消' })).toBeVisible()
     await expect(dialog.getByRole('button', { name: '删除' })).toBeVisible()
@@ -537,7 +527,7 @@ test.describe('Smoke Test - Conversational Creation', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Header
-    await expect(page.getByRole('heading', { name: '创建智能体' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '创建智能体' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
     await expect(page.getByPlaceholder('占位符')).toBeVisible()
     await expect(page.getByRole('button', { name: '发送按钮' })).toBeVisible()
@@ -546,4 +536,3 @@ test.describe('Smoke Test - Conversational Creation', () => {
     expect(errors.network).toEqual([])
   })
 })
-

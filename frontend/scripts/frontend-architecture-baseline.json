@@ -26,7 +26,6 @@
     "client-page:src/app/settings/page.tsx",
     "client-page:src/app/settings/schedules/page.tsx",
     "client-page:src/app/settings/system-credentials/page.tsx",
-    "client-page:src/app/settings/system-llm/page.tsx",
     "client-page:src/app/settings/usage/page.tsx",
     "client-page:src/app/shared/[shareId]/page.tsx",
     "common-page-header:src/app/agents/new/page.tsx",

@@ -162,7 +162,7 @@ describe('settings pages', () => {
 
     expect(screen.getByRole('heading', { name: '公司简介' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('用户')).toBeInTheDocument()
-    expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
+    expect(screen.getByLabelText('用户 个人资料图标')).toHaveTextContent('체')
     expect(screen.getByDisplayValue('체')).toBeInTheDocument()
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
     expect(screen.getAllByText('管理员').length).toBeGreaterThanOrEqual(1)
@@ -199,20 +199,18 @@ describe('settings pages', () => {
     render(<AppearanceSettingsPage />)
 
     expect(screen.getByRole('heading', { name: '外貌与语言' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /라이트/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /다크/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /시스템/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /한국어/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /光/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /黑暗/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /系统/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /简体中文/ })).toBeInTheDocument()
   })
 
   it('renders the Agent API management page', () => {
     render(<AgentApiSettingsPage />)
 
-    expect(screen.getByRole('heading', { name: 'Agent API' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '智能体 API' })).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '部署智能体，颁发服务器端API密钥，并从外部系统调用Agent Project Maker。',
-      ),
+      screen.getByText('部署智能体，颁发服务器端API密钥，并从外部系统调用Agent Project Maker。'),
     ).toBeInTheDocument()
     expect(screen.getByText('部署候选版本')).toBeInTheDocument()
     expect(screen.getAllByText('API 密钥').length).toBeGreaterThanOrEqual(1)
@@ -238,9 +236,7 @@ describe('settings pages', () => {
 
     render(<AgentApiSettingsPage />)
 
-    expect(
-      screen.getByText('API 部署需要使用 智能体 固定凭据。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('API 部署需要使用 智能体 固定凭据。')).toBeInTheDocument()
     expect(screen.queryByText('API deployment requires fixed identity.')).not.toBeInTheDocument()
   })
 
@@ -280,7 +276,7 @@ describe('settings pages', () => {
   it('renders memory policy controls and recorded memories', () => {
     render(<MemorySettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '记忆' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '内存' })).toBeInTheDocument()
     expect(screen.getByLabelText('启用内存')).toBeChecked()
     expect(screen.getByLabelText('在回答中使用记忆')).toBeChecked()
     expect(screen.getByText('保存前询问')).toBeInTheDocument()

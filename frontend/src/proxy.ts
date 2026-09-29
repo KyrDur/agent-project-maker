@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 const REFRESH_COOKIE = 'moldy_rt'
-const PUBLIC_ROUTES = new Set<string>(['/login', '/register'])
+const PUBLIC_ROUTES = new Set<string>(['/login', '/register', '/demo'])
 const PUBLIC_PREFIXES = ['/shared/'] as const
 
 function isPublic(pathname: string): boolean {

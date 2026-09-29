@@ -52,6 +52,6 @@ describe('FormFieldShell', () => {
     )
 
     expect(screen.getByLabelText('启用内存')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '提交' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '불러오기' })).toBeInTheDocument()
   })
 })

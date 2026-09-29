@@ -63,9 +63,7 @@ describe('PublishWizard ACL validation', () => {
       skillId: 'skill-1',
       body: expect.objectContaining({ visibility: 'public', acl_user_ids: [] }),
     })
-    expect(
-      screen.queryByText(/유효하지 않은 사용자 ID/),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/유효하지 않은 사용자 ID/)).not.toBeInTheDocument()
     expect(mockPush).toHaveBeenCalledWith('/marketplace/item-1')
   })
 
@@ -82,7 +80,7 @@ describe('PublishWizard ACL validation', () => {
     await user.click(screen.getByRole('button', { name: '下一步' })) // visibility → confirm
     await user.click(screen.getByRole('button', { name: '发布' }))
 
-    expect(await screen.findByText(/유효하지 않은 사용자 ID/)).toBeInTheDocument()
+    expect(await screen.findByText(/某些用户 ID 无效/)).toBeInTheDocument()
     expect(mockPublishSkill).not.toHaveBeenCalled()
   })
 })

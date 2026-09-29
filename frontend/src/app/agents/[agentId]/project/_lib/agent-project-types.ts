@@ -66,12 +66,32 @@ export interface EvaluationCase {
     exact_answer?: string | null
     required_tools: string[]
     forbidden_tools: string[]
+    tool_assertions?: {
+      name: string
+      arguments?: Record<string, unknown> | null
+      argument_equals?: Record<string, unknown> | null
+      argument_contains?: Record<string, string> | null
+      min_calls?: number
+      max_calls?: number
+    }[]
+    tool_sequence?: string[]
     handoff?: string | null
     format_rule?: 'json_object' | 'json_array' | null
   }
   tags: string[]
   enabled: boolean
-  mock_tool_data?: Record<string, { description?: string; result?: unknown; error?: string | null }>
+  mock_tool_data?: Record<
+    string,
+    {
+      description?: string
+      result?: unknown
+      error?: string | null
+      rules?: {
+        arguments: Record<string, unknown>
+        responses: { result?: unknown; error?: string | null }[]
+      }[]
+    }
+  >
 }
 
 export interface EvaluationSet {
@@ -92,7 +112,7 @@ export interface EvaluationResult {
   input: string
   output: string
   expected: EvaluationCase['expected']
-  status: 'passed' | 'failed' | 'errored'
+  status: 'passed' | 'failed' | 'errored' | 'not_evaluated'
   tool_calls: { name: string }[]
   tool_trace?: {
     name: string
@@ -104,7 +124,10 @@ export interface EvaluationResult {
   }[]
   assertions: { kind: string; target?: string; passed: boolean }[]
   error: string | null
-  metric_scores?: Record<string, { score: number; passed: boolean; reason: string; method: string }>
+  metric_scores?: Record<
+    string,
+    { score: number | null; passed: boolean | null; reason: string; method: string }
+  >
   limitations?: string[]
   latency_ms: number
 }
@@ -114,7 +137,9 @@ export interface EvaluationMetrics {
   passed?: number
   failed?: number
   errored?: number
-  pass_rate?: number
+  not_evaluated?: number
+  pass_rate?: number | null
+  quality_complete?: boolean
   metric_scores?: Record<string, { score: number; evaluated_cases: number }>
 }
 

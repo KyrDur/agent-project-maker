@@ -71,3 +71,42 @@ def test_pre_push_hook_isolates_nested_git_and_installs_locked_dev_tools(
     pytest_basetemp = pytest_basetemp_argument.removeprefix("--basetemp=")
     assert pytest_basetemp.startswith(f"{private_tmp}/moldy-pre-push-pytest.")
     assert not Path(pytest_basetemp).exists()
+
+
+def test_windows_push_delegates_to_wsl_and_preserves_failure(tmp_path: Path) -> None:
+    stub_bin = tmp_path / "bin"
+    stub_bin.mkdir()
+    capture = tmp_path / "wsl-args"
+    stubs = {
+        "uname": "#!/bin/sh\necho MINGW64_NT\n",
+        "cygpath": "#!/bin/sh\nprintf '%s\\n' 'C:\\Workspace with spaces'\n",
+        "wsl.exe": (
+            "#!/bin/sh\n"
+            'test "$MSYS_NO_PATHCONV" = 1 || exit 99\n'
+            'printf \'%s\\n\' "$@" > "$WSL_CAPTURE"\n'
+            "exit 7\n"
+        ),
+    }
+    for name, content in stubs.items():
+        path = stub_bin / name
+        path.write_text(content)
+        path.chmod(0o755)
+    result = subprocess.run(
+        ["/bin/sh", str(PRE_PUSH_HOOK)],
+        cwd=REPO_ROOT,
+        env={
+            **os.environ,
+            "PATH": f"{stub_bin}{os.pathsep}{os.environ['PATH']}",
+            "APM_WSL_DISTRO": "Ubuntu-24.04",
+            "WSL_CAPTURE": str(capture),
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 7, result.stderr
+    arguments = capture.read_text().splitlines()
+    assert arguments[:5] == ["--distribution", "Ubuntu-24.04", "--exec", "bash", "-c"]
+    assert arguments[-2:] == ["pre-push-wsl", "C:\\Workspace with spaces"]
+    assert "pre-push-wsl.sh" in arguments[5]

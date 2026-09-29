@@ -17,9 +17,9 @@ function sortNewest(runs: readonly EvaluationRun[]): EvaluationRun[] {
 function needsOptimization(run: EvaluationRun): boolean {
   return Boolean(
     run.results_json?.some((item) => item.status !== 'passed') ||
-      run.bad_cases_json?.length ||
-      run.comparison_json?.analysis ||
-      run.comparison_json?.proposals?.length,
+    run.bad_cases_json?.length ||
+    run.comparison_json?.analysis ||
+    run.comparison_json?.proposals?.length,
   )
 }
 
@@ -31,9 +31,25 @@ export function OptimizationWorkspace({
   readonly versions: AgentProjectVersionSummary[]
 }) {
   const workspaceT = useTranslations('agentProject.workspace.optimization')
+  const projectT = useTranslations('agentProject')
   const evaluation = useProjectEvaluation(agentId)
   const runs = useMemo(() => sortNewest(evaluation.runs.data ?? []), [evaluation.runs.data])
   const candidates = runs.filter(needsOptimization)
+  const runNumbers = new Map<string, number>()
+  const countsByVersion = new Map<string, number>()
+  for (const run of [...runs].reverse()) {
+    const number = (countsByVersion.get(run.version_id) ?? 0) + 1
+    countsByVersion.set(run.version_id, number)
+    runNumbers.set(run.id, number)
+  }
+  const runLabel = (run: EvaluationRun) => {
+    const number = runNumbers.get(run.id) ?? 1
+    const version = versions.find((item) => item.id === run.version_id)
+    const evaluationLabel = workspaceT('runNumber', { number })
+    return version
+      ? `${projectT('version', { number: version.version_number })} · ${evaluationLabel}`
+      : evaluationLabel
+  }
   const [selectedRunId, setSelectedRunId] = useState('')
   const selected = candidates.find((run) => run.id === selectedRunId) ?? candidates[0]
 
@@ -56,14 +72,12 @@ export function OptimizationWorkspace({
                 variant={selected?.id === run.id ? 'secondary' : 'outline'}
                 onClick={() => setSelectedRunId(run.id)}
               >
-                {run.id.slice(0, 8)}
+                {runLabel(run)}
               </Button>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            {workspaceT('empty')}
-          </p>
+          <p className="text-sm text-muted-foreground">{workspaceT('empty')}</p>
         )}
       </SettingsSectionCard>
 

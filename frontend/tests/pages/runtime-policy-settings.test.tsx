@@ -30,7 +30,7 @@ describe('RuntimePolicySettings', () => {
 
     render(<RuntimePolicySettings {...DEFAULT_PROPS} onValueChange={onValueChange} />)
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
 
     expect(onValueChange).toHaveBeenCalledWith({
       version: 1,
@@ -79,7 +79,7 @@ describe('RuntimePolicySettings', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
 
     expect(onValueChange).not.toHaveBeenCalled()
   })
@@ -89,7 +89,7 @@ describe('RuntimePolicySettings', () => {
 
     render(<ControlledRuntimePolicySettings {...DEFAULT_PROPS} />)
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
     await user.click(screen.getByRole('button', { name: '仅供审核' }))
     await user.click(screen.getByRole('switch', { name: '使用任务列表' }))
     await user.click(screen.getByRole('button', { name: '平衡' }))
@@ -111,13 +111,13 @@ describe('RuntimePolicySettings', () => {
       screen.getByRole('button', { name: '使用推荐设置' }),
     )
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
 
     expect(screen.getByRole('group', { name: '档案工作' })).toContainElement(
       screen.getByRole('button', { name: '仅供审核' }),
     )
     expect(screen.getByRole('group', { name: '长对话上下文' })).toContainElement(
-      screen.getByRole('button', { name: '汽车' }),
+      screen.getByRole('button', { name: '自动' }),
     )
   })
 
@@ -126,12 +126,10 @@ describe('RuntimePolicySettings', () => {
 
     render(<ControlledRuntimePolicySettings {...DEFAULT_PROPS} contextWindow={null} />)
 
-    await user.click(screen.getByRole('button', { name: '自定义设置' }))
+    await user.click(screen.getByRole('button', { name: '定制' }))
 
     expect(screen.getByRole('button', { name: '平衡' })).toBeDisabled()
-    expect(
-      screen.getByText('平衡模式需要所选模型的上下文长度信息。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('平衡模式需要所选模型的上下文长度信息。')).toBeInTheDocument()
   })
 
   it('warns about an already invalid balanced policy without replacing it', () => {
@@ -152,11 +150,7 @@ describe('RuntimePolicySettings', () => {
     )
 
     expect(screen.getByRole('button', { name: '平衡' })).toBeDisabled()
-    expect(
-      screen.getByText(
-        '当前的选择不适用于该模型。更改模型或切换为自动。',
-      ),
-    ).toBeInTheDocument()
+    expect(screen.getByText('当前的选择不适用于该模型。更改模型或切换为自动。')).toBeInTheDocument()
     expect(onValueChange).not.toHaveBeenCalled()
   })
 
@@ -165,9 +159,9 @@ describe('RuntimePolicySettings', () => {
 
     render(<RuntimePolicySettings {...DEFAULT_PROPS} surface="new-agent" collapsible />)
 
-    expect(screen.getByRole('button', { name: '自定义设置' })).not.toBeVisible()
+    expect(screen.getByRole('button', { name: '定制' })).not.toBeVisible()
     await user.click(screen.getByText('高级运行时设置'))
-    expect(screen.getByRole('button', { name: '自定义设置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '定制' })).toBeInTheDocument()
     expect(screen.getByText('该设置适用于新对话。')).toBeInTheDocument()
   })
 
@@ -176,9 +170,7 @@ describe('RuntimePolicySettings', () => {
 
     expect(screen.getByText('推荐设置')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        '这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。',
-      ),
+      screen.getByText('这不会影响已经运行的对话。更新的设置适用于尚未运行的对话和新对话。'),
     ).toBeInTheDocument()
     expect(screen.queryByText(/legacy_compat|stored/i)).not.toBeInTheDocument()
   })

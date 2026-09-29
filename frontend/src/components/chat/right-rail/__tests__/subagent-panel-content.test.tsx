@@ -59,9 +59,7 @@ describe('SubagentPanelContent', () => {
       />,
     )
 
-    expect(
-      screen.getByText('Sub-agent execution detail will appear here as it streams.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('子 智能体 执行详细信息将在流式传输时显示在此处。')).toBeInTheDocument()
     expect(mocks.useMessages).not.toHaveBeenCalled()
   })
 

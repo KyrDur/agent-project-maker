@@ -122,7 +122,7 @@ describe('ToolsPage', () => {
     })
 
     render(<ToolsPage />)
-    expect(screen.getByRole('tab', { name: '전체 2개' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全部 2工具' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '搜索' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '自动化' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '已安装' })).toBeInTheDocument()
@@ -159,9 +159,9 @@ describe('ToolsPage', () => {
 
     render(<ToolsPage />)
 
-    const activeTab = screen.getByRole('tab', { name: '전체 2개' })
+    const activeTab = screen.getByRole('tab', { name: '全部 2工具' })
     expect(activeTab).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getAllByText('2개')).toHaveLength(1)
+    expect(screen.getAllByText('2工具')).toHaveLength(1)
   })
 
   it('mounts the ToolCatalog stub on the catalog tab', () => {
@@ -173,7 +173,7 @@ describe('ToolsPage', () => {
     mockUseTools.mockReturnValue({ data: [], isLoading: false })
     const user = userEvent.setup()
     render(<ToolsPage />)
-    await user.click(screen.getByRole('tab', { name: /설치됨/ }))
+    await user.click(screen.getByRole('tab', { name: /已安装/ }))
     expect(screen.getByText('空')).toBeInTheDocument()
   })
 
@@ -214,9 +214,9 @@ describe('ToolsPage', () => {
 
     const user = userEvent.setup()
     render(<ToolsPage />)
-    await user.click(screen.getByRole('tab', { name: /설치됨/ }))
+    await user.click(screen.getByRole('tab', { name: /已安装/ }))
 
-    const card = screen.getByRole('button', { name: /웹 검색/ })
+    const card = screen.getByRole('button', { name: /默认标题/ })
     expect(card).toHaveClass('moldy-resource-card')
     expect(card).toHaveClass('moldy-tone-card-sky')
     expect(screen.queryByRole('table')).not.toBeInTheDocument()

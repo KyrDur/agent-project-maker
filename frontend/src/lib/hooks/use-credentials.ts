@@ -113,3 +113,11 @@ export function useDeleteSystemCredential() {
     onSuccess: () => qc.invalidateQueries({ queryKey: credentialQueryKeys.systemAll }),
   })
 }
+
+export function useRoleCredentials(personal: boolean) {
+  return useQuery({
+    queryKey: personal ? credentialQueryKeys.all : credentialQueryKeys.systemAll,
+    queryFn: personal ? credentialsApi.list : systemCredentialsApi.list,
+    staleTime: 30_000,
+  })
+}

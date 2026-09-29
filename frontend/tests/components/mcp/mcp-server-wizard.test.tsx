@@ -57,19 +57,19 @@ describe('McpServerWizard', () => {
 
     render(<McpServerWizard open onOpenChange={vi.fn()} />)
 
-    await user.type(screen.getByLabelText(/이름/), 'GitHub MCP')
-    await user.type(screen.getByLabelText(/URL/), 'https://old.example.com/mcp')
-    await user.click(screen.getByRole('tab', { name: /도구/ }))
+    await user.type(screen.getByLabelText(/名称/), 'GitHub MCP')
+    await user.type(screen.getByLabelText(/网址/), 'https://old.example.com/mcp')
+    await user.click(screen.getByRole('tab', { name: /工具/ }))
 
     await waitFor(() => expect(hookMocks.probe).toHaveBeenCalledTimes(1))
     expect(hookMocks.probe).toHaveBeenLastCalledWith(
       expect.objectContaining({ url: 'https://old.example.com/mcp' }),
     )
 
-    await user.click(screen.getByRole('tab', { name: /기본/ }))
-    await user.clear(screen.getByLabelText(/URL/))
-    await user.type(screen.getByLabelText(/URL/), 'https://new.example.com/mcp')
-    await user.click(screen.getByRole('tab', { name: /도구/ }))
+    await user.click(screen.getByRole('tab', { name: /基础知识/ }))
+    await user.clear(screen.getByLabelText(/网址/))
+    await user.type(screen.getByLabelText(/网址/), 'https://new.example.com/mcp')
+    await user.click(screen.getByRole('tab', { name: /工具/ }))
 
     await waitFor(() => expect(hookMocks.probe).toHaveBeenCalledTimes(2))
     expect(hookMocks.probe).toHaveBeenLastCalledWith(
@@ -82,9 +82,9 @@ describe('McpServerWizard', () => {
 
     render(<McpServerWizard open onOpenChange={vi.fn()} />)
 
-    await user.type(screen.getByLabelText(/이름/), 'GitHub MCP')
-    await user.type(screen.getByLabelText(/URL/), 'https://example.com/mcp')
-    await user.click(screen.getByRole('tab', { name: /도구/ }))
+    await user.type(screen.getByLabelText(/名称/), 'GitHub MCP')
+    await user.type(screen.getByLabelText(/网址/), 'https://example.com/mcp')
+    await user.click(screen.getByRole('tab', { name: /工具/ }))
 
     await screen.findByText('repo_search')
 

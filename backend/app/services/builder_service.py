@@ -265,6 +265,7 @@ async def confirm_build(
             .where(Agent.id == agent.id)
             .options(
                 selectinload(Agent.model),
+                selectinload(Agent.llm_credential),
                 selectinload(Agent.tool_links).selectinload(AgentToolLink.tool),
                 selectinload(Agent.mcp_tool_links).selectinload(AgentMcpToolLink.mcp_tool),
                 selectinload(Agent.skill_links).selectinload(AgentSkillLink.skill),
@@ -294,41 +295,53 @@ async def get_builder_personal_bindings(
     return await usable_bindings(db, user_id)
 
 
-async def get_builder_system_runtime(db: AsyncSession):
-    """Return the operator-selected Builder runtime as a model/credential binding."""
+async def get_builder_system_runtime(db: AsyncSession, user_id: uuid.UUID | None = None):
+    """Return the user's configured Builder runtime as a model/credential binding."""
 
     from app.credentials import service as credential_service
     from app.exceptions import AppError
     from app.services.builder_runtime_readiness import RuntimeBinding
-    from app.services.system_credential_resolver import get_effective_setting
+    from app.services.user_llm_settings import get_setting, private_credential
 
-    _, setting = await get_effective_setting(db, "builder")
-    if setting is None or setting.credential_id is None or not setting.model_name:
+    private = await get_setting(db, user_id, "builder") if user_id else None
+    setting = private
+    if (
+        user_id is None
+        or setting is None
+        or setting.credential_id is None
+        or not setting.model_name
+    ):
         raise AppError(
             code="builder_runtime_setup",
             message=tr("builder_runtime_setup"),
             status=422,
         )
-    credential = await credential_service.get_system(db, setting.credential_id)
-    if credential is None:
+    credential = await private_credential(db, user_id, setting.credential_id)
+    if credential is None or credential.status != "active":
         raise AppError(
             code="builder_runtime_setup",
             message=tr("builder_runtime_setup"),
             status=422,
         )
 
+    payload = await credential_service.decrypt_with_external(credential.data_encrypted)
+    base_url = payload.get("base_url")
     result = await db.execute(
         select(Model).where(
+            Model.visible_to(user_id),
             Model.provider == credential.definition_key,
             Model.model_name == setting.model_name,
+            Model.base_url == base_url,
         )
     )
     model = result.scalar_one_or_none()
     if model is None:
         model = Model(
+            owner_user_id=user_id,
             provider=credential.definition_key,
             model_name=setting.model_name,
             display_name=setting.model_name,
+            base_url=base_url,
             is_visible=True,
         )
         db.add(model)
@@ -347,13 +360,13 @@ async def _resolve_confirm_runtime_binding(
     from app.services.builder_runtime_readiness import require_binding
 
     if runtime_source == "system_builder":
-        return await get_builder_system_runtime(db)
+        return await get_builder_system_runtime(db, user_id)
     try:
         return await require_binding(db, user_id, selected_model_id)
     except AppError:
         if selected_model_id:
             raise
-        return await get_builder_system_runtime(db)
+        return await get_builder_system_runtime(db, user_id)
 
 
 async def _resolve_tools(
@@ -502,7 +515,11 @@ async def run_v3_message_stream(
     checkpointer = get_checkpointer()
     graph_compiled = compile_graph(checkpointer)
     config: dict[str, Any] = {
-        "configurable": {"thread_id": str(session_id), "ui_locale": get_locale()}
+        "configurable": {
+            "thread_id": str(session_id),
+            "ui_locale": get_locale(),
+            "user_id": str(user_id),
+        }
     }
 
     state_snapshot = await graph_compiled.aget_state(config)
@@ -554,7 +571,11 @@ async def run_v3_resume_stream(
     checkpointer = get_checkpointer()
     graph_compiled = compile_graph(checkpointer)
     config: dict[str, Any] = {
-        "configurable": {"thread_id": str(session_id), "ui_locale": get_locale()}
+        "configurable": {
+            "thread_id": str(session_id),
+            "ui_locale": get_locale(),
+            "user_id": str(user_id),
+        }
     }
 
     # interrupt_id stale 검증

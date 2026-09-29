@@ -6,6 +6,7 @@ import uuid
 from collections.abc import AsyncGenerator
 
 import pytest
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,8 @@ from app.main import create_app
 from app.models.agent import Agent
 from app.models.model import Model
 from app.models.user import User
+from app.schemas.agent import AgentCreate
+from app.services.agent_service import create_agent
 from tests.conftest import (
     TEST_USER_ID,
     _bypass_verify_csrf,
@@ -146,6 +149,63 @@ async def test_list_models_returns_agent_count(client: AsyncClient, db: AsyncSes
     body = response.json()
     matching = [m for m in body if m["model_name"] == "gpt-4o"]
     assert matching and matching[0]["agent_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_private_model_is_visible_only_to_owner(
+    client: AsyncClient, db: AsyncSession, test_app
+) -> None:
+    other_id = uuid.uuid4()
+    db.add(User(id=other_id, email="other-model@test", name="Other"))
+    private = Model(
+        owner_user_id=TEST_USER_ID,
+        provider="openai_compatible",
+        model_name="private-model",
+        display_name="Private model",
+        base_url="https://private.example.test/v1",
+        is_visible=True,
+    )
+    db.add(private)
+    await db.commit()
+    assert (await client.get(f"/api/models/{private.id}")).status_code == 200
+
+    original = test_app.dependency_overrides[get_current_user]
+
+    async def other_user() -> CurrentUser:
+        return CurrentUser(id=other_id, email="other-model@test", name="Other", is_super_user=False)
+
+    test_app.dependency_overrides[get_current_user] = other_user
+    try:
+        listing = (await client.get("/api/models")).json()
+        assert all(row["id"] != str(private.id) for row in listing)
+        assert (await client.get(f"/api/models/{private.id}")).status_code == 404
+        assert (await client.post(f"/api/models/{private.id}/test")).status_code == 404
+        assert (await client.get("/api/health/models")).status_code == 200
+        assert all(
+            row["target_id"] != str(private.id)
+            for row in (await client.get("/api/health/models")).json()
+        )
+        assert (
+            await client.get(
+                "/api/health/history",
+                params={"target_kind": "model", "target_id": str(private.id)},
+            )
+        ).status_code == 404
+        assert (
+            await client.post(
+                "/api/health/check",
+                params={"target_kind": "model", "target_id": str(private.id)},
+            )
+        ).status_code == 404
+        with pytest.raises(HTTPException) as denied:
+            await create_agent(
+                db,
+                AgentCreate(name="No", system_prompt="No", model_id=private.id),
+                other_id,
+            )
+        assert denied.value.status_code == 400
+    finally:
+        test_app.dependency_overrides[get_current_user] = original
 
 
 # -- PATCH -------------------------------------------------------------------

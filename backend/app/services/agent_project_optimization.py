@@ -52,6 +52,7 @@ def case_evidence(case: dict[str, Any], result: dict[str, Any]) -> dict[str, Any
         "mock_tool_data": case.get("mock_tool_data", {}),
         "actual_output": result.get("actual_output", result.get("output", "")),
         "called_tools": result.get("called_tools", result.get("tool_calls", [])),
+        "tool_trace": result.get("tool_trace", []),
         "deterministic_assertions": result.get(
             "deterministic_assertions", result.get("assertions", [])
         ),
@@ -81,15 +82,23 @@ async def analyze(
     eligible = {}
     for case_id, item in evidence.items():
         result = next(r for r in run.results_json or [] if r["case_id"] == case_id)
-        if item["error_code"] or result["status"] == "errored":
+        missing_evidence = any(
+            score.get("method") == "not_evaluated"
+            for score in item.get("metric_scores", {}).values()
+        )
+        if item["error_code"] or result["status"] == "errored" or missing_evidence:
             external.append(
                 {
                     "case_id": case_id,
                     "category": "external_unfixable",
-                    "root_cause": "Infrastructure failure, not an Agent quality diagnosis.",
-                    "evidence": ["/error_code"],
+                    "root_cause": "Evaluation assertions are missing. Fix the evaluation inputs."
+                    if missing_evidence
+                    else "Infrastructure failure, not an Agent quality diagnosis.",
+                    "evidence": ["/metric_scores"] if missing_evidence else ["/error_code"],
                     "recommended_target": "none",
-                    "suggested_fix": "Resolve the infrastructure failure outside optimization.",
+                    "suggested_fix": "Add verifiable assertions and run a new evaluation set."
+                    if missing_evidence
+                    else "Resolve the infrastructure failure outside optimization.",
                 }
             )
         else:

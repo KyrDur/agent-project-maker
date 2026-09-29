@@ -49,7 +49,7 @@ describe('selected message provenance', () => {
       quote: '선택한 문장',
       label: '원문 대화',
     })
-    expect(root.textContent).toBe('선택한 문장도구')
+    expect(root.textContent).toBe('선택한 문장工具')
   })
   it('excludes unrelated roots, in-progress text, and cross-element selections', () => {
     const { root, paragraph, selection } = selectedText()

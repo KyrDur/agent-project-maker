@@ -1,12 +1,19 @@
+name: agent-project-maker-dev
+
+# This file is development-only. Production deployments use compose.production.yml.
+x-environment: &environment-label development-only
+
 services:
   postgres:
+    labels:
+      com.agent-project-maker.environment: *environment-label
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: moldy
       POSTGRES_PASSWORD: moldy
       POSTGRES_DB: moldy
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +23,8 @@ services:
       retries: 5
 
   backend:
+    labels:
+      com.agent-project-maker.environment: *environment-label
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -27,7 +36,7 @@ services:
       - -c
       - uv run alembic upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       APP_ENV: ${APP_ENV:-dev}
       # Point at the `postgres` service, not localhost — these override whatever
@@ -52,6 +61,8 @@ services:
         condition: service_healthy
 
   frontend:
+    labels:
+      com.agent-project-maker.environment: *environment-label
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -62,7 +73,7 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8001}
         NEXT_PUBLIC_CHAT_RUNTIME: ${NEXT_PUBLIC_CHAT_RUNTIME:-langgraph_v3}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       # Runtime value for server-side (SSR) fetches; the client bundle uses the
       # build arg above.

@@ -189,7 +189,7 @@ describe('AssistantThread message actions', () => {
     const actionButtons = [
       ...screen.getAllByRole('button', { name: '复制' }),
       screen.getByRole('button', { name: '编辑' }),
-      screen.getByRole('button', { name: '再生' }),
+      screen.getByRole('button', { name: '重新生成' }),
       screen.getByRole('button', { name: '反馈向上' }),
       screen.getByRole('button', { name: '反馈向下' }),
     ]

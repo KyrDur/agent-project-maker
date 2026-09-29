@@ -22,27 +22,26 @@ export function ProjectEvalPlan({
   const busy = plan.isPending || cases.isPending
   const [focus, setFocus] = useState<string[]>([])
   const [reason, setReason] = useState('')
-  const options =
-    spec?.focus_options?.length
-      ? spec.focus_options
-      : spec
-        ? [
-            ...spec.metrics.map((metric) => ({
-              id: metric.name,
-              label: t.has(`metricNames.${metric.name}`)
-                ? t(`metricNames.${metric.name}`)
-                : metric.name,
-              description: metric.criteria,
+  const options = spec?.focus_options?.length
+    ? spec.focus_options
+    : spec
+      ? [
+          ...spec.metrics.map((metric) => ({
+            id: metric.name,
+            label: t.has(`metricNames.${metric.name}`)
+              ? t(`metricNames.${metric.name}`)
+              : metric.name,
+            description: metric.criteria,
+          })),
+          ...['ambiguous', 'missing_information', 'tool_failure']
+            .filter((id) => !spec.metrics.some((metric) => metric.name === id))
+            .map((id) => ({
+              id,
+              label: t.has(`scenarios.${id}`) ? t(`scenarios.${id}`) : id,
+              description: t('evaluationFocus.fallbackDescription'),
             })),
-            ...['ambiguous', 'missing_information', 'tool_failure']
-              .filter((id) => !spec.metrics.some((metric) => metric.name === id))
-              .map((id) => ({
-                id,
-                label: t.has(`scenarios.${id}`) ? t(`scenarios.${id}`) : id,
-                description: t('evaluationFocus.fallbackDescription'),
-              })),
-          ].slice(0, 8)
-        : []
+        ].slice(0, 8)
+      : []
   const toggleFocus = (id: string) =>
     setFocus((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
@@ -85,28 +84,33 @@ export function ProjectEvalPlan({
             <section className="space-y-3 rounded-lg border border-border/70 p-3">
               <div>
                 <h4 className="font-medium">{t('evaluationFocus.title')}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {t('evaluationFocus.description')}
-                </p>
+                <p className="text-sm text-muted-foreground">{t('evaluationFocus.description')}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {options.map((option) => (
-                  <label
+                  <div
                     key={option.id}
                     className="flex cursor-pointer gap-2 rounded-lg border border-border/70 p-3"
                   >
                     <input
+                      id={`evaluation-focus-${option.id}`}
+                      aria-label={option.label}
                       type="checkbox"
                       checked={focus.includes(option.id)}
                       onChange={() => toggleFocus(option.id)}
                     />
                     <span>
-                      <span className="block font-medium">{option.label}</span>
+                      <label
+                        htmlFor={`evaluation-focus-${option.id}`}
+                        className="block font-medium"
+                      >
+                        {option.label}
+                      </label>
                       <span className="block text-sm text-muted-foreground">
                         {option.description}
                       </span>
                     </span>
-                  </label>
+                  </div>
                 ))}
               </div>
               <label className="block space-y-1">

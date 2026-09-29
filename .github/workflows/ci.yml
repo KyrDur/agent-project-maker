@@ -52,10 +52,6 @@ jobs:
         continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 300 }}
         run: uv run python scripts/check_changed_python_types.py --base "$QUALITY_BASE_SHA"
       - name: Changed Python format ratchet
-        # PR #1 is an accumulated stabilization branch with a pre-existing
-        # formatter backlog across many touched files. Keep the signal visible
-        # while allowing release validation to proceed to runtime/tests.
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 1 }}
         run: uv run python scripts/check_changed_python_format.py --base "$QUALITY_BASE_SHA"
       # Test suite runs on aiosqlite in-memory — no Postgres service needed.
       # tests/integration/ drives background run workers via asyncio timing;
@@ -73,16 +69,15 @@ jobs:
       # forces INTEGRATION_DATABASE_URL, verifies exact node execution, and
       # proves owned-resource cleanup from its immutable manifest.
       - name: Run backend unit suite
-        # PR #1 carries legacy locale/history assertions from the upstream
-        # project. Keep the full 4.7k-test signal visible, while P0/type/lint
-        # and PostgreSQL release gates remain blocking for this stabilization PR.
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 1 }}
+        id: backend_unit
         run: bash scripts/run-isolated-command.sh --cwd backend -- uv run pytest -q -n 4 --ignore=tests/integration
         working-directory: .
       - name: Enforce reviewed backend coverage floor
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 1 }}
         run: uv run python ../scripts/run_coverage_gate.py backend
       - name: Run disposable PostgreSQL integration lane
+        # Preserve an independent integration result when unit tests reach the
+        # suite but fail; a failed unit gate still fails the backend job.
+        if: ${{ !cancelled() && steps.backend_unit.outcome != 'skipped' }}
         id: postgres_lane
         working-directory: .
         run: |
@@ -144,27 +139,24 @@ jobs:
       - run: uv sync --frozen --all-extras
         working-directory: backend
       - run: pnpm lint
-      # Custom guards (docs/lint-hardening-plan.md §A) — only guards whose
-      # ENFORCING mode is green are wired. Not wired yet: lint:a11y and
-      # lint:design-system carry real violations needing component fixes
-      # (A-2 / FE-D2 / FE-D4), and lint:frontend-architecture's non-strict
-      # mode always exits 0 (no gate value) while its strict mode is red
-      # (7 blocking issues in the current baseline) — wire it once those are fixed.
+      # All frontend quality guards are blocking. Keep the CI contract aligned
+      # with the local `make check` command.
       - run: pnpm lint:i18n
       - run: pnpm lint:type-safety
       - run: pnpm lint:e2e-hygiene
+      - run: pnpm lint:a11y
+      - run: pnpm lint:design-system
+      - run: pnpm lint:frontend-architecture:strict
       - name: Run frontend unit tests
-        # PR #1 intentionally removed Korean product UI. A large inherited
-        # suite still asserts Korean copy; keep it visible but non-blocking
-        # only on this accumulated migration PR so build validation can run.
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 1 }}
+        id: frontend_units
         run: pnpm exec vitest run
       - name: Enforce reviewed frontend coverage floor
-        # The accumulated PR predates the coverage gate's recorded base commit.
-        # Keep the gate visible; do not block the one-time stabilization PR.
-        continue-on-error: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 1 }}
         run: python3 ../scripts/run_coverage_gate.py frontend
-      - run: pnpm build
+      - name: Build frontend
+        # The reviewed coverage baseline can fail provenance checks independently
+        # of build correctness; keep that failure blocking while still testing build.
+        if: ${{ !cancelled() && steps.frontend_units.outcome == 'success' }}
+        run: pnpm build
 
   pr-scripted-smoke:
     if: github.event_name == 'pull_request'
@@ -186,9 +178,6 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --dir frontend exec playwright install --with-deps chromium
       - name: Govern skips and run deterministic PR smoke
-        # The scripted smoke baseline still contains legacy locale assertions.
-        # Preserve artifacts and failure visibility without blocking PR #1.
-        continue-on-error: ${{ github.event.pull_request.number == 1 }}
         run: |
           pnpm --dir frontend lint:e2e-skips
           E2E_RUN_MANIFEST="$PWD/.omo/evidence/project-restart-consolidated-roadmap/ci-pr-smoke.json" \

@@ -9,13 +9,14 @@ import { QueryProvider } from '@/lib/providers/query-provider'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SettingsSidebar } from '@/components/layout/settings-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
+import { SetupNotice } from '@/features/ai-settings/setup-notice'
 import { OnboardingDialog } from '@/components/auth/OnboardingDialog'
 import { AssistantSideChatProvider } from '@/components/agent/assistant-side-chat-provider'
 
 /** Routes that must render bare (no sidebar/header) — public visitor pages. */
 const BARE_ROUTE_PREFIXES = ['/shared/'] as const
 /** Auth pages render their own centered layout — no sidebar/header. */
-const BARE_ROUTES = new Set<string>(['/login', '/register'])
+const BARE_ROUTES = new Set<string>(['/login', '/register', '/demo'])
 
 export function AppLayout({
   children,
@@ -52,6 +53,7 @@ export function AppLayout({
               {isSettingsRoute ? <SettingsSidebar /> : <AppSidebar />}
               <SidebarInset id="main-content" tabIndex={-1}>
                 <AppHeader />
+                <SetupNotice />
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
                 <OnboardingDialog />
               </SidebarInset>

@@ -37,7 +37,25 @@ client = phase1.client
 
 @pytest.fixture
 async def setup_project(db, monkeypatch):
+    from app.credentials import service as credentials
+    from app.models.user_llm_setting import UserLlmSetting
+
     _, _, agent = await seed_agent(db)
+    judge_credential = await credentials.create(
+        db,
+        user_id=TEST_USER_ID,
+        definition_key="openai",
+        name="Private judge",
+        data={"api_key": "test-only-private-key"},
+    )
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="judge_optimizer",
+            credential_id=judge_credential.id,
+            model_name="test-judge",
+        )
+    )
     await db.commit()
     await projects.create_project(db, agent.id, TEST_USER_ID)
     monkeypatch.setattr(
@@ -216,6 +234,8 @@ async def test_run_api_and_cross_project_boundaries(client, db, setup_project, m
     response = await client.post(f"{path}/eval-runs", json=body)
     assert response.status_code == 202
     run_id = response.json()["id"]
+    assert response.json()["status"] == "pending"
+    await evaluation.execute_run(uuid.UUID(run_id), agent.id, TEST_USER_ID)
     assert (await client.get(f"{path}/eval-runs/{run_id}")).json()["status"] == "failed"
     assert len((await client.get(f"{path}/eval-runs")).json()) == 1
     _, _, other = await seed_agent(db)
@@ -416,45 +436,27 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
 
 
 @pytest.mark.asyncio
-async def test_project_examinee_falls_back_to_platform_model_without_user_credential(
+async def test_project_examinee_rejects_missing_credential_without_changing_model(
     db, setup_project, monkeypatch
 ):
     from app.services import agent_project_llm
-    from app.services.system_credential_resolver import ResolvedSystemModel
 
     agent = setup_project
     version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
     sentinel = object()
     seen: dict[str, object] = {}
 
-    async def resolve_system_model(_db, role: str):
-        seen["role"] = role
-        return ResolvedSystemModel(
-            provider="deepseek",
-            model_name="deepseek-flash",
-            api_key="sk-platform",
-            base_url="https://api.deepseek.com/v1",
-        )
-
     def create_chat_model(provider, model_name, **kwargs):
         seen.update(provider=provider, model_name=model_name, kwargs=kwargs)
         return sentinel
 
-    monkeypatch.setattr(agent_project_llm, "resolve_system_model", resolve_system_model)
     monkeypatch.setattr("app.agent_runtime.model_factory.create_chat_model", create_chat_model)
 
-    model, key = await agent_project_llm.resolve_examinee_model(
-        db, version.snapshot_json, TEST_USER_ID
-    )
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
 
-    assert model is sentinel
-    assert key == "sk-platform"
-    assert seen["role"] == "evaluation_generator"
-    assert seen["provider"] == "deepseek"
-    assert seen["model_name"] == "deepseek-flash"
-    assert seen["kwargs"]["api_key"] == "sk-platform"
-    assert seen["kwargs"]["base_url"] == "https://api.deepseek.com/v1"
-    assert seen["kwargs"]["allow_env_fallback"] is False
+    with pytest.raises(LLMCredentialRequiredError):
+        await agent_project_llm.resolve_examinee_model(db, version.snapshot_json, TEST_USER_ID)
+    assert seen == {}
 
 
 @pytest.mark.asyncio

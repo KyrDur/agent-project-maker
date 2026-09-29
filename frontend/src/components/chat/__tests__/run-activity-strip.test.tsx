@@ -42,8 +42,8 @@ describe('RunActivityStrip', () => {
       />,
     )
 
-    expect(screen.getByText('도구 총 1')).toBeInTheDocument()
-    expect(screen.getByText('서브 에이전트 총 1')).toBeInTheDocument()
+    expect(screen.getByText('工具总计 1')).toBeInTheDocument()
+    expect(screen.getByText('子智能体总计 1')).toBeInTheDocument()
 
     await screen.getByRole('button', { name: '显示活动' }).click()
 
@@ -76,11 +76,11 @@ describe('RunActivityStrip', () => {
     })
     const { rerender } = render(<RunActivityStrip activities={[running]} />)
 
-    expect(screen.getByText('2초')).toBeInTheDocument()
+    expect(screen.getByText('2 秒')).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(1_000)
     })
-    expect(screen.getByText('3초')).toBeInTheDocument()
+    expect(screen.getByText('3 秒')).toBeInTheDocument()
 
     rerender(
       <RunActivityStrip
@@ -93,10 +93,10 @@ describe('RunActivityStrip', () => {
         ]}
       />,
     )
-    expect(screen.getByText('3.5초')).toBeInTheDocument()
+    expect(screen.getByText('3.5 秒')).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(5_000)
     })
-    expect(screen.getByText('3.5초')).toBeInTheDocument()
+    expect(screen.getByText('3.5 秒')).toBeInTheDocument()
   })
 })

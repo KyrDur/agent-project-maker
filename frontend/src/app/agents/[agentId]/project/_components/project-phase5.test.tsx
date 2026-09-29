@@ -39,13 +39,16 @@ beforeEach(() => server.use(http.get(`${path}/report`, () => HttpResponse.json(r
 it('shows the measured best, rejected latest, report, live chat and ZIP links', async () => {
   render(<ProjectResults agentId="agent-id" />)
   expect(await screen.findByText('最佳版本：2')).toBeInTheDocument()
-  expect(screen.getByText(/V3.*rejected/)).toBeInTheDocument()
+  expect(screen.getByText(/V3.*被拒绝/)).toBeInTheDocument()
   expect(screen.getByText(/Mock evaluation/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '试用在线智能体' })).toHaveAttribute(
     'href',
     '/agents/agent-id',
   )
-  expect(screen.getByRole('link', { name: '下载项目' })).toHaveAttribute('href', `${path}/export`)
+  expect(screen.getByRole('link', { name: '下载项目案例与评测材料' })).toHaveAttribute(
+    'href',
+    `${path}/export`,
+  )
   await userEvent.click(screen.getByRole('button', { name: '查看/隐藏报告' }))
   expect(screen.getByText(report.sections[0].body)).toBeInTheDocument()
 })

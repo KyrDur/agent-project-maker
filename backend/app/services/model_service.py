@@ -25,7 +25,9 @@ from app.services import audit_service
 from app.services.model_metadata import enrich_model
 
 
-async def resolve_model(db: AsyncSession, model_name: str, *, strict: bool = False) -> Model | None:
+async def resolve_model(
+    db: AsyncSession, model_name: str, *, strict: bool = False, user_id: uuid.UUID | None = None
+) -> Model | None:
     """Look up a ``Model`` row by display name or ``provider:model_name``.
 
     ``strict=True`` skips the default-model fallback so the caller can detect
@@ -42,8 +44,9 @@ async def resolve_model(db: AsyncSession, model_name: str, *, strict: bool = Fal
 
     order = (Model.is_default.desc(), Model.created_at.asc())
 
+    scope = Model.visible_to(user_id) if user_id is not None else Model.owner_user_id.is_(None)
     result = await db.execute(
-        select(Model).where(Model.display_name == model_name).order_by(*order).limit(1)
+        select(Model).where(Model.display_name == model_name, scope).order_by(*order).limit(1)
     )
     model = result.scalars().first()
     if model:
@@ -53,7 +56,7 @@ async def resolve_model(db: AsyncSession, model_name: str, *, strict: bool = Fal
         provider_part, parsed = model_name.split(":", 1)
         result = await db.execute(
             select(Model)
-            .where(Model.provider == provider_part, Model.model_name == parsed)
+            .where(Model.provider == provider_part, Model.model_name == parsed, scope)
             .order_by(*order)
             .limit(1)
         )
@@ -65,12 +68,14 @@ async def resolve_model(db: AsyncSession, model_name: str, *, strict: bool = Fal
         return None
 
     result = await db.execute(
-        select(Model).where(Model.is_default.is_(True)).order_by(*order).limit(1)
+        select(Model).where(Model.is_default.is_(True), scope).order_by(*order).limit(1)
     )
     return result.scalars().first()
 
 
-async def list_models(db: AsyncSession, *, include_hidden: bool = False) -> list[dict]:
+async def list_models(
+    db: AsyncSession, *, user_id: uuid.UUID, include_hidden: bool = False
+) -> list[dict]:
     """List models with agent_count. Filters hidden rows by default — only
     super_user surfaces (the ``/models`` admin page) should pass
     ``include_hidden=True``."""
@@ -78,6 +83,7 @@ async def list_models(db: AsyncSession, *, include_hidden: bool = False) -> list
     stmt = (
         select(Model, func.count(Agent.id).label("agent_count"))
         .outerjoin(Agent, Agent.model_id == Model.id)
+        .where(Model.visible_to(user_id))
         .group_by(Model.id)
         .order_by(Model.is_default.desc(), Model.display_name)
     )
@@ -87,8 +93,11 @@ async def list_models(db: AsyncSession, *, include_hidden: bool = False) -> list
     return [serialize_model(row[0], agent_count=row[1]) for row in result.all()]
 
 
-async def get_model(db: AsyncSession, model_id: uuid.UUID) -> Model | None:
-    result = await db.execute(select(Model).where(Model.id == model_id))
+async def get_model(
+    db: AsyncSession, model_id: uuid.UUID, *, user_id: uuid.UUID | None = None
+) -> Model | None:
+    scope = Model.visible_to(user_id) if user_id is not None else Model.owner_user_id.is_(None)
+    result = await db.execute(select(Model).where(Model.id == model_id, scope))
     return result.scalar_one_or_none()
 
 

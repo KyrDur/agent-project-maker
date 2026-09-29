@@ -45,8 +45,15 @@ async function loadBaseline() {
 }
 
 const eslintResult = spawnSync(
-  'pnpm',
-  ['exec', 'eslint', '-c', 'eslint.a11y.config.mjs', '--format', 'json', 'src/**/*.{tsx,jsx}'],
+  process.execPath,
+  [
+    path.join(rootDir, 'node_modules/eslint/bin/eslint.js'),
+    '-c',
+    'eslint.a11y.config.mjs',
+    '--format',
+    'json',
+    'src/**/*.{tsx,jsx}',
+  ],
   {
     cwd: rootDir,
     encoding: 'utf8',
@@ -54,6 +61,10 @@ const eslintResult = spawnSync(
 )
 
 let eslintReports
+if (eslintResult.error || eslintResult.status === null) {
+  console.error('Could not start ESLint:', eslintResult.error?.message ?? eslintResult.signal)
+  process.exit(1)
+}
 try {
   eslintReports = JSON.parse(eslintResult.stdout || '[]')
 } catch {

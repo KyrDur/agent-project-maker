@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.credentials.service import encrypt_data
+from app.exceptions import AppError
 from app.models.agent import Agent
 from app.models.credential import Credential
 from app.models.mcp_server import McpServer
@@ -23,9 +24,45 @@ from app.services.builder_service import (
     confirm_build,
     create_session,
     get_agent_by_id,
+    get_builder_system_runtime,
     get_session,
 )
 from tests.conftest import TEST_USER_ID
+
+
+@pytest.mark.asyncio
+async def test_personal_builder_custom_model_is_owned(db: AsyncSession):
+    from app.models.user_llm_setting import UserLlmSetting
+
+    await _seed_user(db)
+    encrypted, key_id, field_keys = encrypt_data(
+        {"api_key": "sk-private-builder", "base_url": "https://private.example.test/v1"}
+    )
+    credential = Credential(
+        user_id=TEST_USER_ID,
+        definition_key="openai_compatible",
+        name="Private Builder",
+        data_encrypted=encrypted,
+        key_id=key_id,
+        field_keys=field_keys,
+        is_system=False,
+        status="active",
+    )
+    db.add(credential)
+    await db.flush()
+    db.add(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="builder",
+            credential_id=credential.id,
+            model_name="my-private-model",
+        )
+    )
+    await db.commit()
+
+    binding = await get_builder_system_runtime(db, TEST_USER_ID)
+    assert binding.model.owner_user_id == TEST_USER_ID
+    assert binding.model.base_url == "https://private.example.test/v1"
 
 
 async def _seed_user(db: AsyncSession) -> User:
@@ -391,11 +428,10 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
-    assert len(agent.skill_links) == 0
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
+    assert session.agent_id is None
 
 
 @pytest.mark.asyncio
@@ -432,10 +468,10 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
+    assert session.agent_id is None
 
 
 @pytest.mark.asyncio
@@ -601,8 +637,9 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     }
     await db.commit()
 
-    with pytest.raises(ValueError, match="사용 가능한 모델이 없습니다"):
+    with pytest.raises(AppError) as exc:
         await confirm_build(db, session)
+    assert exc.value.code == "builder_runtime_setup"
 
     # Session should be rolled back to PREVIEW
     reloaded = await get_session(db, session.id, TEST_USER_ID)

@@ -133,7 +133,7 @@ describe('ModelsPage', () => {
   it('renders page header with title + 새 모델 action', () => {
     render(<ModelsPage />)
     expect(screen.getByText('模型')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /새 모델/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /新/ })).toBeInTheDocument()
   })
 
   it('shows empty state when no models', () => {
@@ -153,10 +153,10 @@ describe('ModelsPage', () => {
     mockUseModels.mockReturnValue({ data: modelsWithNewFields, isLoading: false })
     render(<ModelsPage />)
 
-    expect(screen.getByRole('columnheader', { name: /단가/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /价格/ })).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: '입력 단가' })).not.toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: '출력 단가' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /상태 확인/ })[0]).toHaveClass('px-2')
+    expect(screen.getAllByRole('button', { name: /立即查看/ })[0]).toHaveClass('px-2')
   })
 
   // 페이지 안의 DataTable / 모델 detail / provider 카드 / delete 흐름은

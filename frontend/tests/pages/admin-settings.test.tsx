@@ -82,6 +82,7 @@ const systemLlmSettings: SystemLlmSettingOut[] = [
 
 vi.mock('@/lib/hooks/use-credentials', () => ({
   useSystemCredentials: () => ({ data: [credential], isLoading: false }),
+  useRoleCredentials: () => ({ data: [credential], isLoading: false }),
   useCredentialTypes: () => ({ data: definitions }),
   useDeleteSystemCredential: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
