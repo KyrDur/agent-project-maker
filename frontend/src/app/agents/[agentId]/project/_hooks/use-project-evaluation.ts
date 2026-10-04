@@ -89,8 +89,20 @@ export function useProjectProposals(agentId: string, runId: string) {
     onSuccess: refresh,
   })
   const decide = useMutation({
-    mutationFn: (data: { id: string; decision: 'accepted' | 'rejected'; reason?: string }) =>
-      agentProjectApi.decideProposal(agentId, runId, data.id, data.decision, data.reason),
+    mutationFn: (data: {
+      id: string
+      decision: 'accepted' | 'rejected'
+      reason?: string
+      reasonSource?: 'ai_confirmed' | 'user_authored'
+    }) =>
+      agentProjectApi.decideProposal(
+        agentId,
+        runId,
+        data.id,
+        data.decision,
+        data.reason,
+        data.reasonSource,
+      ),
     onSuccess: refresh,
   })
   const regression = useMutation({

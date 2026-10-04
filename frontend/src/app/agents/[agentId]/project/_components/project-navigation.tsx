@@ -3,9 +3,15 @@
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
-export type ProjectWorkspaceTab = 'overview' | 'versions' | 'evaluation' | 'optimization' | 'settings'
+export type ProjectWorkspaceTab =
+  | 'overview'
+  | 'versions'
+  | 'evaluation'
+  | 'optimization'
+  | 'settings'
+  | 'results'
 
-const tabs: ProjectWorkspaceTab[] = ['overview', 'versions', 'evaluation', 'optimization', 'settings']
+const tabs: ProjectWorkspaceTab[] = ['overview', 'evaluation', 'optimization', 'results']
 
 export function ProjectNavigation({
   active,
@@ -34,6 +40,19 @@ export function ProjectNavigation({
           >
             <span className="block text-sm font-medium">{t(`tabs.${tab}.label`)}</span>
             <span className="block text-xs opacity-80">{t(`tabs.${tab}.description`)}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-3 pb-2">
+        {(['versions', 'settings'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className="text-sm text-muted-foreground underline"
+            aria-current={active === tab ? 'page' : undefined}
+            onClick={() => onChange(tab)}
+          >
+            {t(`tabs.${tab}.label`)}
           </button>
         ))}
       </div>

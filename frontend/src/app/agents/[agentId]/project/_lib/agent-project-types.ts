@@ -19,7 +19,11 @@ export interface AgentProject {
   builder_session_id: string | null
   title: string
   requirements_json:
-    | (JsonObject & { bootstrap?: { stage: string; error: string | null; run_id: string | null } })
+    | (JsonObject & {
+        bootstrap?: { stage: string; error: string | null; run_id: string | null }
+        learning_brief?: LearningBrief
+        brief_draft?: LearningBrief
+      })
     | null
   eval_spec_json: EvaluationSpec | null
   report_json: (JsonObject & { optimization?: OptimizationState }) | null
@@ -95,6 +99,13 @@ export interface EvaluationCase {
 }
 
 export interface EvaluationSet {
+  rubric_json?: {
+    version_id?: string
+    purpose?: string
+    development_set_id?: string
+    source_version_id?: string
+    business_contract?: { content_hash?: string }
+  } | null
   id: string
   project_id: string
   name: string
@@ -157,6 +168,15 @@ export interface EvaluationRun {
   results_json: EvaluationResult[] | null
   bad_cases_json?: BadCase[] | null
   comparison_json?: {
+    purpose?: string
+    reliability?: {
+      group_id: string
+      kind: string
+      repetitions: number
+      index: number
+      source_run_id: string
+    }
+    case_reviews?: Record<string, { passed: boolean; reason: string }>
     proposals?: OptimizationProposal[]
     regression?: { source_run_id: string; proposal_id: string }
     eval_spec?: EvaluationSpec
@@ -296,6 +316,7 @@ export interface EvaluationReports {
 }
 
 export interface OptimizationProposal {
+  decision_reason_source?: 'ai_confirmed' | 'user_authored'
   id: string
   proposal_request_id?: string
   source_version_id: string
@@ -318,4 +339,57 @@ export interface OptimizationProposal {
   diffs: { target: string; before: string; after: string; reason: string }[]
   deferred_changes: { target: string; content: string; limitation: string }[]
   can_accept: boolean
+}
+
+export interface BriefContent {
+  audience: string
+  problem: string
+  workflow: string
+  success_criteria: string[]
+}
+export interface LearningBrief {
+  version_id: string
+  draft_hash: string
+  content_hash?: string
+  content: BriefContent
+  status: 'draft' | 'confirmed'
+  contribution?: 'user_edited' | 'user_confirmed'
+}
+export interface InterviewMaterial {
+  status: 'ai_draft'
+  evidence_hash: string
+  draft: {
+    short_intro: string
+    long_intro: string
+    answers: { topic: string; answer: string; evidence_refs: string[] }[]
+  }
+  evidence: Record<string, unknown>
+}
+export interface TrialSummary {
+  scheduled: number
+  completed: number
+  incomplete: number
+  comparable: boolean
+  mean: number | null
+  min: number | null
+  max: number | null
+  stddev: number | null
+  run_ids: string[]
+}
+export interface ReliabilitySummary {
+  trials: { group_id: string; kind: string; versions: Record<string, TrialSummary> }[]
+  calibration: {
+    reviewed: number
+    disagreements: number
+    agreement_rate: number | null
+    reviews: {
+      run_id: string
+      case_id: string
+      judge_passed: boolean
+      human_passed: boolean
+      reason: string
+      agreed: boolean
+    }[]
+  }
+  limitations: string[]
 }

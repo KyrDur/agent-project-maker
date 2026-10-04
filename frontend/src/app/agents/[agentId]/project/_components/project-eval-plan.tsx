@@ -18,7 +18,8 @@ export function ProjectEvalPlan({
 }) {
   const t = useTranslations('agentProject')
   const { project, plan, cases } = useProjectGeneration(agentId)
-  const spec = project.data?.eval_spec_json
+  const storedSpec = project.data?.eval_spec_json
+  const spec = storedSpec?.version_id === versionId ? storedSpec : null
   const busy = plan.isPending || cases.isPending
   const [focus, setFocus] = useState<string[]>([])
   const [reason, setReason] = useState('')
@@ -61,24 +62,27 @@ export function ProjectEvalPlan({
           <h3 className="font-medium">{t('evalPlan')}</h3>
           <p>{t('planCount', { count: spec.case_count })}</p>
           <p>{t('passThreshold', { value: Math.round(spec.pass_threshold * 100) })}</p>
-          <ul className="space-y-2">
-            {spec.metrics.map((metric) => (
-              <li key={metric.name}>
-                <strong>
-                  {t.has(`metricNames.${metric.name}`)
-                    ? t(`metricNames.${metric.name}`)
-                    : metric.name}
-                </strong>
-                {' · '}
-                {t('metricWeight', { value: Math.round(metric.weight * 100) })}
-                <p>{metric.criteria}</p>
-              </li>
-            ))}
-          </ul>
-          <p>
-            {t('scenarioCategories')}:{' '}
-            {spec.categories.map((name) => t(`scenarios.${name}`)).join(', ')}
-          </p>
+          <details>
+            <summary className="cursor-pointer">{t('evalPlan')}</summary>
+            <ul className="space-y-2">
+              {spec.metrics.map((metric) => (
+                <li key={metric.name}>
+                  <strong>
+                    {t.has(`metricNames.${metric.name}`)
+                      ? t(`metricNames.${metric.name}`)
+                      : metric.name}
+                  </strong>
+                  {' · '}
+                  {t('metricWeight', { value: Math.round(metric.weight * 100) })}
+                  <p>{metric.criteria}</p>
+                </li>
+              ))}
+            </ul>
+            <p>
+              {t('scenarioCategories')}:{' '}
+              {spec.categories.map((name) => t(`scenarios.${name}`)).join(', ')}
+            </p>
+          </details>
           {spec.version_id !== versionId && <p role="status">{t('planVersionMismatch')}</p>}
           {!!options.length && (
             <section className="space-y-3 rounded-lg border border-border/70 p-3">

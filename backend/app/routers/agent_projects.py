@@ -22,6 +22,14 @@ from app.schemas.agent_project import (
     VersionCreate,
     VersionCreated,
 )
+from app.schemas.agent_project_learning import (
+    BriefConfirm,
+    BriefGenerate,
+    CaseReview,
+    HoldoutGenerate,
+    RepeatRequest,
+    ValidationRequest,
+)
 from app.schemas.agent_project_optimization import OptimizeRequest, ProposalDecision
 from app.schemas.agent_project_portfolio import ResumeRequest
 from app.schemas.agent_project_report import EvaluationReports
@@ -325,6 +333,7 @@ async def decide_optimization_proposal(
         proposal_id,
         body.decision,
         body.decision_reason,
+        body.reason_source,
     )
 
 
@@ -443,3 +452,102 @@ async def bootstrap_builder_project(
     if project.builder_session_id:
         background.add_task(builder_project_lifecycle.bootstrap, agent_id, user.id)
     return {"accepted": bool(project.builder_session_id)}
+
+
+@router.post("/learning/brief/generate")
+async def generate_learning_brief(
+    agent_id: uuid.UUID,
+    body: BriefGenerate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_learning as learning
+
+    return await learning.generate_brief(db, agent_id, user.id, body)
+
+
+@router.post("/learning/brief/confirm")
+async def confirm_learning_brief(
+    agent_id: uuid.UUID,
+    body: BriefConfirm,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_learning as learning
+
+    return await learning.confirm_brief(db, agent_id, user.id, body)
+
+
+@router.post("/learning/interview")
+async def generate_learning_interview(
+    agent_id: uuid.UUID,
+    body: BriefGenerate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_learning as learning
+
+    return await learning.interview(db, agent_id, user.id, body)
+
+
+@router.post("/eval-runs/{run_id}/cases/{case_id}/review")
+async def review_learning_case(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    case_id: uuid.UUID,
+    body: CaseReview,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_learning as learning
+
+    return await learning.review_case(db, agent_id, user.id, run_id, case_id, body)
+
+
+@router.post("/reliability/holdout", response_model=EvalSetResponse)
+async def generate_reserved_cases(
+    agent_id: uuid.UUID,
+    body: HoldoutGenerate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_reliability as reliability
+
+    return await reliability.generate_holdout(db, agent_id, user.id, body)
+
+
+@router.post("/eval-runs/{run_id}/repeat", response_model=list[EvalRunResponse])
+async def repeat_evaluation(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: RepeatRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_reliability as reliability
+
+    return await reliability.repeat(db, agent_id, user.id, run_id, body)
+
+
+@router.post("/reliability/validate", response_model=list[EvalRunResponse])
+async def validate_reserved_cases(
+    agent_id: uuid.UUID,
+    body: ValidationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_reliability as reliability
+
+    return await reliability.validate(db, agent_id, user.id, body)
+
+
+@router.get("/reliability/{version_id}")
+async def read_reliability(
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services import agent_project_reliability as reliability
+
+    return await reliability.summary(db, agent_id, user.id, version_id)

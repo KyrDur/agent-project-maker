@@ -79,5 +79,6 @@ class OptimizationProposalSet(BaseModel):
 
 
 class ProposalDecision(BaseModel):
+    reason_source: Literal["user_authored", "ai_confirmed"] = "user_authored"
     decision: Literal["accepted", "rejected"]
     decision_reason: str | None = Field(default=None, max_length=1000)

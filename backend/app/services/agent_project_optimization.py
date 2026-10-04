@@ -24,6 +24,8 @@ def fail(code: str, status: int = 422) -> AppError:
 
 
 def terminal_semantic(run: AgentProjectEvalRun) -> None:
+    if (run.comparison_json or {}).get("purpose") == "holdout":
+        raise fail("reliability_holdout_not_for_optimization", 409)
     if (
         run.status not in {"completed", "failed"}
         or not run.completed_at

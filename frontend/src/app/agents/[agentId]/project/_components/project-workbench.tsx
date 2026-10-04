@@ -13,13 +13,27 @@ import { ProjectEvaluation } from './project-evaluation'
 import { ProjectComparison } from './project-comparison'
 import { ProjectEvaluationReport } from './project-evaluation-report'
 import { LifecycleOverview } from './lifecycle-overview'
+import { GuidedEvaluation } from './guided-evaluation'
+import { GuidedOptimization } from './guided-optimization'
+import { ProjectResults } from './project-results'
+import { ProjectInterview } from './project-interview'
+import { ProjectReliability } from './project-reliability'
+import { ProjectIterationJournal } from './project-iteration-journal'
 import { OptimizationWorkspace } from './optimization-workspace'
 import { ProjectNavigation, type ProjectWorkspaceTab } from './project-navigation'
 
 export function ProjectWorkbench({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject')
+  const guided = useTranslations('agentProject.guided')
   const { project, versions, create, bootstrap } = useAgentProject(agentId)
-  const currentVersion = versions.data?.[0]
+  const [selectedVersion, setSelectedVersion] = useState('')
+  const currentVersion =
+    versions.data?.find((v) => v.id === selectedVersion) ??
+    versions.data?.find((v) => v.status === 'accepted') ??
+    versions.data?.[0]
+  const versionId = currentVersion?.id ?? ''
+  const [advancedTests, setAdvancedTests] = useState(false)
+  const [advancedImprovements, setAdvancedImprovements] = useState(false)
   const bootstrapError = project.data?.requirements_json?.bootstrap?.error
   const [activeTab, setActiveTab] = useState<ProjectWorkspaceTab>('overview')
 
@@ -54,12 +68,27 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
             <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
               <ProjectNavigation active={activeTab} onChange={setActiveTab} />
               <div className="p-4 sm:p-5">
+                <label className="mb-5 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{guided('selectedVersion')}</span>
+                  <select
+                    className="rounded-md border border-border bg-background p-2"
+                    value={versionId}
+                    onChange={(e) => setSelectedVersion(e.target.value)}
+                  >
+                    {versions.data.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {t('version', { number: v.version_number })}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 {activeTab === 'overview' ? (
                   <LifecycleOverview
                     agentId={agentId}
                     project={project.data}
                     versions={versions.data}
                     onNavigate={setActiveTab}
+                    versionId={versionId}
                   />
                 ) : null}
                 {activeTab === 'versions' ? (
@@ -70,12 +99,64 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                 ) : null}
                 {activeTab === 'evaluation' ? (
                   <div className="space-y-5">
-                    <ProjectEvaluation agentId={agentId} versions={versions.data} />
-                    <ProjectEvaluationReport agentId={agentId} versions={versions.data} />
+                    {!advancedTests && (
+                      <GuidedEvaluation
+                        key={versionId}
+                        agentId={agentId}
+                        versionId={versionId}
+                        onImprove={() => setActiveTab('optimization')}
+                      />
+                    )}
+                    <details onToggle={(e) => setAdvancedTests(e.currentTarget.open)}>
+                      <summary className="cursor-pointer">{guided('advancedTests')}</summary>
+                      {advancedTests && (
+                        <div className="mt-4 space-y-5">
+                          <ProjectEvaluation agentId={agentId} versions={versions.data} />
+                          <ProjectEvaluationReport agentId={agentId} versions={versions.data} />
+                        </div>
+                      )}
+                    </details>
                   </div>
                 ) : null}
                 {activeTab === 'optimization' ? (
-                  <OptimizationWorkspace agentId={agentId} versions={versions.data} />
+                  <div className="space-y-5">
+                    {!advancedImprovements && (
+                      <GuidedOptimization
+                        key={versionId}
+                        agentId={agentId}
+                        versionId={versionId}
+                        versions={versions.data}
+                      />
+                    )}
+                    <details onToggle={(e) => setAdvancedImprovements(e.currentTarget.open)}>
+                      <summary className="cursor-pointer">{guided('advancedImprovements')}</summary>
+                      {advancedImprovements && (
+                        <OptimizationWorkspace agentId={agentId} versions={versions.data} />
+                      )}
+                    </details>
+                  </div>
+                ) : null}
+                {activeTab === 'results' ? (
+                  <div className="space-y-6">
+                    <ProjectIterationJournal agentId={agentId} versions={versions.data} />
+                    <ProjectReliability
+                      key={versionId}
+                      agentId={agentId}
+                      versionId={versionId}
+                      versions={versions.data}
+                    />
+                    <ProjectInterview
+                      key={`interview:${versionId}`}
+                      agentId={agentId}
+                      versionId={versionId}
+                    />
+                    <details>
+                      <summary className="cursor-pointer">{guided('exportMaterials')}</summary>
+                      <div className="mt-4">
+                        <ProjectResults agentId={agentId} />
+                      </div>
+                    </details>
+                  </div>
                 ) : null}
                 {activeTab === 'settings' ? (
                   <div className="space-y-5">
@@ -89,7 +170,8 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                             ),
                           })}
                         </p>
-                        {(project.data.requirements_json?.bootstrap?.error || bootstrap.isError) && (
+                        {(project.data.requirements_json?.bootstrap?.error ||
+                          bootstrap.isError) && (
                           <div role="alert" className="space-y-2">
                             <p>{t('bootstrap.blocked')}</p>
                             <p>

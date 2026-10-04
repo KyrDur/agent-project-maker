@@ -121,13 +121,10 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
   expect(accepted).toBe(false)
   await userEvent.click(screen.getByText('查看 instructions 变更'))
   expect(screen.getByText('Help customers. Verify identity.')).toBeVisible()
-  await userEvent.type(
-    screen.getByPlaceholderText(/优先修复工具调用/),
-    '先修复身份校验',
-  )
+  await userEvent.type(screen.getByPlaceholderText(/优先修复工具调用/), '先修复身份校验')
   await userEvent.click(screen.getByRole('button', { name: '接受建议并创建新版本' }))
   expect(await screen.findByText('已从 V1 创建 V2，原版本保持不变。')).toBeInTheDocument()
-  expect(screen.getByText('选择理由：先修复身份校验')).toBeInTheDocument()
+  expect(screen.getByText('用户填写的理由 · 先修复身份校验')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: '运行同一评测集回归' }))
   expect(await screen.findByRole('link', { name: '查看报告和版本比较' })).toHaveAttribute(
     'href',

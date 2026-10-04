@@ -83,24 +83,28 @@
       "navAria": "Agent lifecycle workspace",
       "tabs": {
         "overview": {
-          "label": "Overview",
-          "description": "Lifecycle status"
+          "label": "1. Create project",
+          "description": "Confirm audience, problem and success criteria"
         },
         "versions": {
           "label": "Versions",
           "description": "Version evolution"
         },
         "evaluation": {
-          "label": "Evaluation",
-          "description": "Evaluation evidence"
+          "label": "2. Test performance",
+          "description": "Review typical cases and actual behavior"
         },
         "optimization": {
-          "label": "Optimization",
-          "description": "Improvement loop"
+          "label": "3. Improve version",
+          "description": "Choose a proposal, save and retest"
         },
         "settings": {
           "label": "Settings",
           "description": "Project settings"
+        },
+        "results": {
+          "label": "4. Project materials",
+          "description": "Review evidence and prepare for interviews"
         }
       },
       "overview": {
@@ -588,7 +592,161 @@
       "not_evaluated": "Not evaluated"
     },
     "cancelRun": "Cancel evaluation",
-    "retryRun": "Retry frozen evaluation"
+    "retryRun": "Retry frozen evaluation",
+    "guided": {
+      "briefTitle": "Define what your Agent should solve",
+      "briefDescription": "AI drafts the brief. Your confirmations and edits become project records.",
+      "aiBrief": "AI draft · Check against your actual requirements",
+      "audience": "Who it serves",
+      "problem": "Problem to solve",
+      "workflow": "How the task works",
+      "criteria": "What counts as success",
+      "criteriaHelp": "One criterion per line, 2–6 total. Use verifiable behavior, such as saying when evidence is insufficient.",
+      "generateBrief": "Draft my project brief",
+      "confirmBrief": "Confirm these requirements",
+      "reviseBrief": "Revise the brief",
+      "briefEdited": "Recorded: you edited and confirmed the AI draft.",
+      "briefConfirmed": "Recorded: you confirmed the AI draft; no personal edits recorded.",
+      "working": "Working…",
+      "loading": "Loading…",
+      "saved": "Saved to project records",
+      "overviewDescription": "Start with a working first version, review failures, choose changes, and prepare explainable project materials.",
+      "created": "First version saved",
+      "tested": "Tests recorded",
+      "iterated": "Changes recorded",
+      "todo": "Continue",
+      "nextStep": "Your next step",
+      "selectedVersion": "Selected version",
+      "advancedTests": "Advanced: edit cases and inspect evaluations",
+      "advancedImprovements": "Advanced: full optimization workspace",
+      "exportMaterials": "Resume, report and downloads",
+      "requirement": "Task requirement",
+      "actual": "Actual Agent behavior",
+      "evidence": "Result evidence",
+      "noOutput": "No usable answer",
+      "noFailureEvidence": "No failed checks shown. Inspect the raw records to verify.",
+      "hypothesis": "AI analysis · Hypothesis requiring verification",
+      "humanJudgment": "Record your judgment and reason",
+      "humanPassed": "I judge that this answer completed the task",
+      "judgmentReason": "Why? Refer to specific behavior or evidence",
+      "saveJudgment": "Save my judgment",
+      "rawEvidence": "Inspect raw evidence",
+      "testTitle": "Test whether it completes the task",
+      "testDescription": "Review typical cases before running the full test. External software actions use simulated data.",
+      "previewHelp": "Read these tasks and expected behaviors, then confirm that the test matches your requirements.",
+      "expected": "Expected behavior: {value}",
+      "showAll": "View all {count} cases",
+      "showLess": "Show fewer cases",
+      "confirmAndTest": "Confirm cases and start testing",
+      "rerun": "Run the full test again",
+      "testRunning": "Executing and grading tasks. You can cancel.",
+      "cancel": "Cancel this test",
+      "retry": "Retry this test",
+      "executionFailed": "Execution or grading was incomplete. Check model settings and retry. This is not an Agent quality conclusion.",
+      "structureRejected": "Case structure checks failed. Generate a new set before testing. Structure checks do not establish that expected answers are correct.",
+      "resultCount": "Passed {passed}/{total} cases",
+      "scoreBoundary": "Results apply to this simulated test set. They do not establish production performance or success on all new tasks.",
+      "improveAction": "Review suggested improvements",
+      "passedCases": "Inspect passing cases and review grades",
+      "improveTitle": "Choose a change with a reason",
+      "improveDescription": "AI provides hypotheses, changes and risks. Accepting a proposal saves a new version and automatically runs a regression test.",
+      "noFixableFailure": "No complete, fixable failure record yet. Complete a test or inspect previous iterations in materials.",
+      "aiReasonDraft": "AI suggested reason · You can edit it",
+      "aiReasonConfirmed": "AI reason confirmed by user",
+      "userReason": "User-authored reason",
+      "acceptAndTest": "Accept and verify this proposal",
+      "reliabilityTitle": "Verify stability and transfer to new cases",
+      "reliabilityDescription": "Development cases guide changes; reserved cases test new scenarios; repeated runs show variation.",
+      "repetitions": "Runs per version",
+      "repeatCost": "Adds {count} full evaluations using your model quota.",
+      "repeatAction": "Repeat tests for this version",
+      "reservedTitle": "Check transfer with new cases",
+      "reservedDescription": "Generate and freeze 20 new cases from the original contract and rubric after deduplication. Results do not feed the optimizer. AI generation and deduplication do not guarantee independence from real tasks.",
+      "reserveAction": "Generate reserved validation cases",
+      "regenerateReserved": "Regenerate validation cases",
+      "previewReserved": "Read typical validation cases",
+      "validationCost": "Adds {count} evaluations, split equally between baseline and current version with the same cases and grading configuration.",
+      "validateAction": "Confirm cases and compare versions",
+      "candidateRequired": "Accept a change before comparing baseline and candidate.",
+      "validationResult": "Validation results on new cases",
+      "repeatResult": "Repeated-run results",
+      "incompleteScore": "No complete, comparable scores yet",
+      "excludedTrials": "Incomplete or failed runs: {count}, excluded from the mean.",
+      "statisticsBoundary": "Mean and spread describe these runs; they are not confidence intervals. Repeating a case does not add independent cases.",
+      "calibrationTitle": "Human review: do you agree with the AI grades?",
+      "calibrationHelp": "Review task evidence, label completion and explain why. Disagreements are recorded without changing AI scores. A small review sample does not establish Judge reliability.",
+      "calibrationCount": "Reviewed {reviewed} cases, with {disagreements} disagreements.",
+      "disagreement": "Grading disagreement",
+      "testFirst": "Complete a development test first.",
+      "interviewTitle": "Explain your project",
+      "interviewDescription": "AI drafts explanations and interview answers from actual records with evidence links. Unfinished work is marked unverified.",
+      "generateInterview": "Generate my project explanation",
+      "aiReference": "AI reference draft · Understand and check it before use. Platform implementation, AI suggestions and your contributions are distinguished.",
+      "shortIntro": "30-second introduction",
+      "longIntro": "2-minute introduction",
+      "supportingRecords": "Project evidence for this answer",
+      "practiceNote": "Practice in your own words (not automatically saved)",
+      "practicePlaceholder": "Note anything unclear and compare with the evidence and explanation above.",
+      "copyMaterial": "Copy explanation materials",
+      "copied": "Copied",
+      "copyFailed": "Copy failed. Select the text manually.",
+      "journalTitle": "My iteration history",
+      "noIterations": "No accepted proposals yet. Test and choose a change to record your decision and results here.",
+      "noReason": "No reason recorded",
+      "changes": "Inspect before and after",
+      "incompleteComparison": "Regression incomplete or grading conditions differ; comparison unavailable.",
+      "trialProgress": "V{version}: {completed}/{scheduled} runs complete",
+      "trialSpread": "Mean pass rate {mean}%; range {min}%–{max}%; standard deviation {spread} percentage points",
+      "cancelTrial": "Cancel this V{version} run",
+      "versionChange": "V{before} → V{after}",
+      "scoreChange": "Under the same grading conditions: {before}% → {after}%",
+      "steps": {
+        "create": {
+          "title": "1. Create project",
+          "description": "Confirm audience, problem and success criteria"
+        },
+        "test": {
+          "title": "2. Test performance",
+          "description": "Review typical cases and actual behavior"
+        },
+        "improve": {
+          "title": "3. Improve version",
+          "description": "Choose a proposal, save and retest"
+        },
+        "materials": {
+          "title": "4. Project materials",
+          "description": "Review evidence and prepare for interviews"
+        }
+      },
+      "next": {
+        "brief": "Confirm project requirements before testing.",
+        "test": "Run a first test to find failure evidence.",
+        "regression": "New version saved. Inspect or retry its regression.",
+        "wait": "Tests are running. Wait for results.",
+        "retry": "Execution incomplete. Retry testing.",
+        "review": "Review benefits and risks before choosing a proposal.",
+        "improve": "Failure cases are available for improvement.",
+        "materials": "Review what this iteration shows, then draft an explanation."
+      },
+      "nextActions": {
+        "brief": "Confirm requirements",
+        "test": "Start testing",
+        "regression": "Inspect regression",
+        "wait": "Tests running",
+        "retry": "Retry testing",
+        "review": "Choose proposal",
+        "improve": "Review improvements",
+        "materials": "View materials"
+      },
+      "questions": {
+        "contribution": "What did you contribute, and what did the platform provide?",
+        "failure": "What was the most representative failure?",
+        "decision": "Why did you accept this change?",
+        "results": "What does a higher pass rate establish, and what remains unverified?",
+        "next_step": "What would you validate next?"
+      }
+    },
+    "qualityTitle": "Case structure checks"
   },
   "metadata": {
     "title": "Agent Project Maker",
@@ -1030,43 +1188,28 @@
       "backToHome": "Back to Home",
       "hero": {
         "title": "What do you want to build?",
-        "subtitle": "Describe it in natural language, and Agent Project Maker will suggest tools, models, and triggers step by step."
+        "subtitle": "Describe your project. The platform generates a first Agent; confirm requirements, test performance and choose changes to create an explainable project history."
       },
-      "chatPlaceholder": "Example: Search for news about my tracked keywords every morning at 8 and send it to Slack.",
+      "chatPlaceholder": "Example: build a course evidence Agent that cites sources and says when information is missing.",
       "startButtonAria": "Start creating an agent",
       "altDivider": "Start another way",
       "examples": {
         "heading": "Try one of these",
         "items": [
           {
-            "emoji": "📰",
-            "label": "Daily morning news brief for tracked keywords",
-            "text": "Every morning at 8, search for AI and semiconductor news and summarize the highlights in three lines."
+            "emoji": "🎓",
+            "label": "Internship matching assistant",
+            "text": "Match synthetic internships to student experience, explain fit, ask about missing information and never invent experience. Use simulated external data."
           },
           {
-            "emoji": "👀",
-            "label": "Automatic GitHub PR review",
-            "text": "When a new PR is opened, review the diff and comment on convention issues, possible bugs, and missing tests."
+            "emoji": "📚",
+            "label": "Course evidence assistant",
+            "text": "Answer from synthetic course notes with citations. Say when evidence is insufficient; never invent sources."
           },
           {
-            "emoji": "📊",
-            "label": "Competitor price monitoring",
-            "text": "Crawl competitor product pages once a day and notify Slack when prices change."
-          },
-          {
-            "emoji": "✉️",
-            "label": "Customer inquiry classification",
-            "text": "Classify incoming email as refund, technical, or general inquiries, and draft replies for refunds."
-          },
-          {
-            "emoji": "📝",
-            "label": "Meeting notes to action items",
-            "text": "Turn meeting notes into key decisions and action items with owners and due dates."
-          },
-          {
-            "emoji": "🍜",
-            "label": "Nearby restaurant curation",
-            "text": "Recommend highly rated restaurants near me by category, including hours and distance."
+            "emoji": "🛍️",
+            "label": "Simulated support assistant",
+            "text": "Handle support questions using mock orders and refund rules. Verify information before promising refunds. Simulate external systems only."
           }
         ]
       },

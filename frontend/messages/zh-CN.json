@@ -83,24 +83,28 @@
       "navAria": "Agent 生命周期工作区",
       "tabs": {
         "overview": {
-          "label": "Overview",
-          "description": "生命周期状态"
+          "label": "1. 创建项目",
+          "description": "确认服务对象、问题和成功标准"
         },
         "versions": {
           "label": "Versions",
           "description": "版本演进"
         },
         "evaluation": {
-          "label": "Evaluation",
-          "description": "评测证据"
+          "label": "2. 测试表现",
+          "description": "阅读典型案例，再看实际表现"
         },
         "optimization": {
-          "label": "Optimization",
-          "description": "优化闭环"
+          "label": "3. 改进版本",
+          "description": "选择建议，自动保存并回测"
         },
         "settings": {
           "label": "Settings",
           "description": "项目设置"
+        },
+        "results": {
+          "label": "4. 项目材料",
+          "description": "查看迭代证据，准备简历与面试"
         }
       },
       "overview": {
@@ -588,7 +592,161 @@
       "not_evaluated": "未评估"
     },
     "cancelRun": "取消评测",
-    "retryRun": "使用冻结配置重试"
+    "retryRun": "使用冻结配置重试",
+    "guided": {
+      "briefTitle": "先说清楚：这个 Agent 要解决什么问题",
+      "briefDescription": "AI 帮你整理草稿。阅读后确认或修改，这些选择会成为你的项目记录。",
+      "aiBrief": "AI 生成的草稿 · 请核对实际需求",
+      "audience": "为谁服务",
+      "problem": "解决什么问题",
+      "workflow": "如何完成任务",
+      "criteria": "做到什么算成功",
+      "criteriaHelp": "每行一条，共 2–6 条。写具体可检查的行为，例如“资料没有答案时说明不知道”。",
+      "generateBrief": "帮我整理项目需求",
+      "confirmBrief": "我已阅读，确认这些需求",
+      "reviseBrief": "重新整理并修改需求",
+      "briefEdited": "已记录：你修改并确认了 AI 草稿。",
+      "briefConfirmed": "已记录：你确认了 AI 草稿；尚未记录个人编辑。",
+      "working": "正在处理…",
+      "loading": "正在加载…",
+      "saved": "已保存到项目记录",
+      "overviewDescription": "从一个可运行的初版开始，查看失败、选择改进，再生成能讲清楚的项目材料。",
+      "created": "初版已保存",
+      "tested": "已有测试记录",
+      "iterated": "已有改进记录",
+      "todo": "继续完成",
+      "nextStep": "你现在可以做什么",
+      "selectedVersion": "正在查看的版本",
+      "advancedTests": "高级：编辑案例与查看详细评测",
+      "advancedImprovements": "高级：查看完整优化工作台",
+      "exportMaterials": "简历、报告与下载",
+      "requirement": "任务要求",
+      "actual": "Agent 实际行为",
+      "evidence": "结果证据",
+      "noOutput": "没有产生可用回答",
+      "noFailureEvidence": "本次记录没有显示失败检查。可展开原始记录复核。",
+      "hypothesis": "AI 分析 · 原因假设，仍需验证",
+      "humanJudgment": "记录你的判断与理由",
+      "humanPassed": "我判断这个回答完成了任务",
+      "judgmentReason": "为什么这样判断？请引用具体行为或证据",
+      "saveJudgment": "保存我的判断",
+      "rawEvidence": "展开原始证据",
+      "testTitle": "看看它能不能完成任务",
+      "testDescription": "先了解几条典型案例，再运行完整测试。外部软件操作使用模拟数据。",
+      "previewHelp": "先阅读这些任务及期望行为，确认测试方向符合你的需求。",
+      "expected": "期望行为：{value}",
+      "showAll": "查看全部 {count} 条案例",
+      "showLess": "收起更多案例",
+      "confirmAndTest": "案例方向符合需求，开始测试",
+      "rerun": "再次运行完整测试",
+      "testRunning": "正在执行任务和评分，可以取消。",
+      "cancel": "取消这次测试",
+      "retry": "重试这次测试",
+      "executionFailed": "执行或评分未完成，请检查模型设置后重试。不能将它当作 Agent 的质量结论。",
+      "structureRejected": "案例结构检查未通过，请生成新的案例集后再测试。结构检查不能证明答案标准正确。",
+      "resultCount": "通过 {passed}/{total} 条",
+      "scoreBoundary": "结果仅适用于这批模拟测试；不能证明真实业务效果，也不能代表所有新任务。",
+      "improveAction": "看看有哪些改进建议",
+      "passedCases": "查看通过案例与复核评分",
+      "improveTitle": "选择一次有理由的改进",
+      "improveDescription": "AI 提供原因假设、修改建议和风险。确认采纳后，平台保存新版本并自动回测。",
+      "noFixableFailure": "还没有可改进的完整失败记录。先完成测试，或到项目材料查看已完成的迭代。",
+      "aiReasonDraft": "AI 建议的理由 · 你可以修改",
+      "aiReasonConfirmed": "用户确认的 AI 理由",
+      "userReason": "用户填写的理由",
+      "acceptAndTest": "采纳这个建议并验证",
+      "reliabilityTitle": "再验证：改进是否稳定、能否迁移",
+      "reliabilityDescription": "原有案例用来改进；保留验证集用来检验新场景；重复运行展示结果波动。",
+      "repetitions": "每个版本运行次数",
+      "repeatCost": "将新增 {count} 次完整评测，使用你的模型额度。",
+      "repeatAction": "重复测试当前版本",
+      "reservedTitle": "用新案例检查迁移效果",
+      "reservedDescription": "从原始需求与评分规则生成 20 条新案例，检查重复后固定。验证结果不会传入优化器；AI 生成和去重不能保证与真实任务完全独立。",
+      "reserveAction": "生成并保留新验证案例",
+      "regenerateReserved": "重新生成验证案例",
+      "previewReserved": "阅读典型验证案例",
+      "validationCost": "将新增 {count} 次评测：原始版本和当前版本各运行一半，使用相同案例和评分配置。",
+      "validateAction": "确认案例，比较两个版本",
+      "candidateRequired": "先采纳一次改进，才能比较原始版与改进版。",
+      "validationResult": "新案例的验证结果",
+      "repeatResult": "重复运行的结果",
+      "incompleteScore": "尚无完整且可比较的分数",
+      "excludedTrials": "尚未完成或出错的运行：{count} 次，不计入均值。",
+      "statisticsBoundary": "均值与波动只是这批运行的描述，不是置信区间。同一案例多次运行，不能当作更多独立案例。",
+      "calibrationTitle": "人工复核：AI 评分和你的判断一致吗？",
+      "calibrationHelp": "展开案例，按任务证据填写“是否完成”与理由。平台记录分歧，不会修改原始 AI 分数；少量复核不能证明评分器已经可靠。",
+      "calibrationCount": "已复核 {reviewed} 条，其中 {disagreements} 条存在分歧。",
+      "disagreement": "评分分歧",
+      "testFirst": "先完成原有案例的测试。",
+      "interviewTitle": "把项目讲清楚",
+      "interviewDescription": "AI 根据真实记录生成讲解和面试参考答案，并附证据。没有完成的部分会说明尚未验证。",
+      "generateInterview": "生成我的项目讲解",
+      "aiReference": "AI 参考草稿 · 请理解并核对后使用。平台实现、AI 建议和你的贡献会分别说明。",
+      "shortIntro": "30 秒项目介绍",
+      "longIntro": "2 分钟项目介绍",
+      "supportingRecords": "这段回答的项目证据",
+      "practiceNote": "用自己的话练习（不会自动保存）",
+      "practicePlaceholder": "把不理解的地方记下来，对照上面的证据与解释。",
+      "copyMaterial": "复制讲解材料",
+      "copied": "已复制",
+      "copyFailed": "复制失败，请手动选取文本。",
+      "journalTitle": "我的迭代记录",
+      "noIterations": "还没有采纳记录。完成一次测试并选择改进后，这里会记录你的选择与结果。",
+      "noReason": "未记录理由",
+      "changes": "查看修改前后",
+      "incompleteComparison": "回测尚未完成，或评分条件不同，暂不能比较。",
+      "trialProgress": "V{version}：已完成 {completed}/{scheduled} 次",
+      "trialSpread": "平均通过率 {mean}%；范围 {min}%–{max}%；标准差 {spread} 个百分点",
+      "cancelTrial": "取消 V{version} 的这次运行",
+      "versionChange": "V{before} → V{after}",
+      "scoreChange": "相同评分条件下：{before}% → {after}%",
+      "steps": {
+        "create": {
+          "title": "1. 创建项目",
+          "description": "确认服务对象、问题和成功标准"
+        },
+        "test": {
+          "title": "2. 测试表现",
+          "description": "阅读典型案例，再看实际表现"
+        },
+        "improve": {
+          "title": "3. 改进版本",
+          "description": "选择建议，自动保存并回测"
+        },
+        "materials": {
+          "title": "4. 项目材料",
+          "description": "查看迭代证据，准备简历与面试"
+        }
+      },
+      "next": {
+        "brief": "先确认项目需求，再开始测试。",
+        "test": "运行第一轮测试，找到真实的失败证据。",
+        "regression": "新版本已保存，请检查回测或重试验证。",
+        "wait": "测试仍在进行，完成后再判断结果。",
+        "retry": "执行不完整，先重试测试。",
+        "review": "已有 AI 改进建议，阅读收益与风险后选择。",
+        "improve": "已有失败案例，可以查看改进建议。",
+        "materials": "查看这次迭代能证明什么，再生成项目讲解。"
+      },
+      "nextActions": {
+        "brief": "确认需求",
+        "test": "开始测试",
+        "regression": "查看回测",
+        "wait": "正在测试",
+        "retry": "重试测试",
+        "review": "选择建议",
+        "improve": "查看改进",
+        "materials": "查看项目材料"
+      },
+      "questions": {
+        "contribution": "你负责了哪些部分，平台完成了哪些部分？",
+        "failure": "最典型的失败案例是什么？",
+        "decision": "为什么接受这次优化？",
+        "results": "通过率上涨能证明什么，不能证明什么？",
+        "next_step": "如果继续做，下一步验证什么？"
+      }
+    },
+    "qualityTitle": "案例结构检查"
   },
   "metadata": {
     "title": "Agent Project Maker",
@@ -1030,43 +1188,28 @@
       "backToHome": "返回首页",
       "hero": {
         "title": "你想建造什么？",
-        "subtitle": "用自然语言描述它，Agent Project Maker会一步步建议工具、模型和触发器。"
+        "subtitle": "描述你想做的项目，平台生成 Agent 初版。你再确认需求、测试表现、选择改进，保留可讲述的项目经历。"
       },
-      "chatPlaceholder": "示例：每天早上 8 点搜索有关我跟踪的关键字的新闻并将其发送到 Slack。",
+      "chatPlaceholder": "示例：做一个根据课程资料回答问题的 Agent，引用依据，资料不足时说明不知道。",
       "startButtonAria": "开始创建智能体",
       "altDivider": "开始另一种方式",
       "examples": {
         "heading": "尝试其中之一",
         "items": [
           {
-            "emoji": "📰",
-            "label": "跟踪关键字的每日早间新闻简报",
-            "text": "每天早上8点，搜索AI和半导体新闻，三行总结亮点。"
+            "emoji": "🎓",
+            "label": "实习岗位匹配助手",
+            "text": "根据模拟岗位和学生经历匹配实习机会，解释匹配理由，信息不足时询问，不能编造经历。外部数据使用模拟资料。"
           },
           {
-            "emoji": "👀",
-            "label": "自动 GitHub PR 审核",
-            "text": "当打开新的 PR 时，查看差异并评论约定问题、可能的错误和缺少的测试。"
+            "emoji": "📚",
+            "label": "课程资料答疑助手",
+            "text": "根据模拟课程资料回答问题并引用依据，资料不足时说明不知道，不能编造来源。"
           },
           {
-            "emoji": "📊",
-            "label": "竞争对手价格监控",
-            "text": "每天抓取一次竞争对手的产品页面，并在价格发生变化时通知 Slack。"
-          },
-          {
-            "emoji": "✉️",
-            "label": "客户询价分类",
-            "text": "将收到的电子邮件分类为退款、技术或一般查询，并起草退款回复。"
-          },
-          {
-            "emoji": "📝",
-            "label": "行动项目的会议记录",
-            "text": "将会议记录转化为关键决策和行动项目，并注明负责人和截止日期。"
-          },
-          {
-            "emoji": "🍜",
-            "label": "附近餐厅策划",
-            "text": "按类别（包括营业时间和距离）推荐我附近评价较高的餐厅。"
+            "emoji": "🛍️",
+            "label": "模拟售后助手",
+            "text": "用模拟订单与退款规则处理售后咨询，先核对信息，不能在没有依据时承诺退款。只模拟外部系统。"
           }
         ]
       },
