@@ -1,5 +1,9 @@
 import { apiFetch, API_BASE } from '@/lib/api/client'
 import type {
+  BriefContent,
+  LearningBrief,
+  InterviewMaterial,
+  ReliabilitySummary,
   EvaluationReports,
   OptimizationProposal,
   PortfolioReport,
@@ -21,6 +25,56 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  generateBrief: (agentId: string, versionId: string, locale: string) =>
+    apiFetch<LearningBrief>(`${projectPath(agentId)}/learning/brief/generate`, {
+      method: 'POST',
+      body: JSON.stringify({ version_id: versionId, locale }),
+    }),
+  confirmBrief: (agentId: string, versionId: string, draftHash: string, content: BriefContent) =>
+    apiFetch<LearningBrief>(`${projectPath(agentId)}/learning/brief/confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ version_id: versionId, draft_hash: draftHash, content }),
+    }),
+  interview: (agentId: string, versionId: string, locale: string) =>
+    apiFetch<InterviewMaterial>(`${projectPath(agentId)}/learning/interview`, {
+      method: 'POST',
+      body: JSON.stringify({ version_id: versionId, locale }),
+    }),
+  reviewCase: (agentId: string, runId: string, caseId: string, passed: boolean, reason: string) =>
+    apiFetch(`${projectPath(agentId)}/eval-runs/${runId}/cases/${caseId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ passed, reason }),
+    }),
+  holdout: (agentId: string, developmentSetId: string, requestId: string) =>
+    apiFetch<EvaluationSet>(`${projectPath(agentId)}/reliability/holdout`, {
+      method: 'POST',
+      body: JSON.stringify({ development_set_id: developmentSetId, request_id: requestId }),
+    }),
+  repeat: (agentId: string, runId: string, requestId: string, repetitions: number) =>
+    apiFetch<EvaluationRun[]>(`${projectPath(agentId)}/eval-runs/${runId}/repeat`, {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId, repetitions }),
+    }),
+  validate: (
+    agentId: string,
+    baselineRunId: string,
+    candidateVersionId: string,
+    holdoutSetId: string,
+    requestId: string,
+    repetitions: number,
+  ) =>
+    apiFetch<EvaluationRun[]>(`${projectPath(agentId)}/reliability/validate`, {
+      method: 'POST',
+      body: JSON.stringify({
+        baseline_run_id: baselineRunId,
+        candidate_version_id: candidateVersionId,
+        holdout_set_id: holdoutSetId,
+        request_id: requestId,
+        repetitions,
+      }),
+    }),
+  reliability: (agentId: string, versionId: string) =>
+    apiFetch<ReliabilitySummary>(`${projectPath(agentId)}/reliability/${versionId}`),
   propose: (agentId: string, runId: string, requestId: string) =>
     apiFetch<OptimizationProposal>(`${projectPath(agentId)}/eval-runs/${runId}/proposals`, {
       method: 'POST',
@@ -32,12 +86,17 @@ export const agentProjectApi = {
     proposalId: string,
     decision: 'accepted' | 'rejected',
     decisionReason?: string,
+    reasonSource?: 'ai_confirmed' | 'user_authored',
   ) =>
     apiFetch<OptimizationProposal>(
       `${projectPath(agentId)}/eval-runs/${runId}/proposals/${proposalId}/decision`,
       {
         method: 'POST',
-        body: JSON.stringify({ decision, decision_reason: decisionReason || null }),
+        body: JSON.stringify({
+          decision,
+          decision_reason: decisionReason ?? null,
+          ...(reasonSource ? { reason_source: reasonSource } : {}),
+        }),
       },
     ),
   proposalRegression: (agentId: string, runId: string, proposalId: string, requestId: string) =>

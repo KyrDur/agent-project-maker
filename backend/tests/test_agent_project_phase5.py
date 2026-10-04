@@ -46,7 +46,8 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert response.status_code == 200
     report = response.json()
     data = report["evidence"]
-    assert len(report["sections"]) == 7
+    assert len(report["sections"]) == 8
+    assert report["sections"][-1]["title"] == "用户参与与平台支持"
     assert data["results"]["best_version"] == 2
     assert data["results"]["baseline"]["pass_rate"] == 0.75
     assert data["results"]["best"]["pass_rate"] == 0.9

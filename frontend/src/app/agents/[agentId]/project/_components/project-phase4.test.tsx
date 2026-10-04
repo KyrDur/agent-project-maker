@@ -86,7 +86,9 @@ beforeEach(() =>
 )
 
 async function openEvaluationTab() {
-  await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /2. 测试表现/ }))
+  await userEvent.click(screen.getByText('高级：编辑案例与查看详细评测'))
+  await screen.findByRole('button', { name: '运行评测' })
 }
 
 it('labels optimization runs by version and evaluation order instead of internal IDs', async () => {
@@ -115,7 +117,8 @@ it('labels optimization runs by version and evaluation order instead of internal
     ),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await userEvent.click(await screen.findByRole('button', { name: /Optimization/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /3. 改进版本/ }))
+  await userEvent.click(screen.getByText('高级：查看完整优化工作台'))
 
   expect(await screen.findByRole('button', { name: 'V2 · 第1次评测' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'V1 · 第2次评测' })).toBeInTheDocument()
@@ -176,7 +179,7 @@ it('reads retained optimization outcomes and patch evidence after analysis', asy
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
   await screen.findByText('Source evidence case · 失败')
-  const summary = container.querySelector('summary')
+  const summary = container.querySelector('#evaluation-run-r1 > summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
   await userEvent.click(screen.getByRole('button', { name: '分析失败用例' }))
@@ -210,7 +213,7 @@ it('keeps infrastructure-only analysis visible and disables optimization', async
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
   await screen.findByText('Judge unavailable')
-  const summary = container.querySelector('summary')
+  const summary = container.querySelector('#evaluation-run-r1 > summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
   expect(screen.getByRole('button', { name: '生成 AI 优化建议' })).toBeDisabled()
@@ -228,7 +231,7 @@ it('retains request identity on failure and shows a safe error', async () => {
   const { container } = render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
   await screen.findByText('Source evidence case · 失败')
-  const summary = container.querySelector('summary')
+  const summary = container.querySelector('#evaluation-run-r1 > summary')
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
   await userEvent.click(screen.getByRole('button', { name: '生成 AI 优化建议' }))

@@ -243,6 +243,7 @@ async def decide(
     proposal_id: uuid.UUID,
     decision: str,
     decision_reason: str | None = None,
+    reason_source: str = "user_authored",
 ) -> dict[str, Any]:
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
@@ -294,6 +295,10 @@ async def decide(
             summary="; ".join(change["reason"] for change in diffs)[:1000],
         )
         value["version_id"] = str(version.id)
+    if reason_source == "ai_confirmed":
+        decision_reason = value.get("why_it_may_work")
+    decision_reason = projects.snapshot_value(decision_reason)
+    value["decision_reason_source"] = reason_source
     decided_at = utcnow().isoformat()
     value.update(status=decision, decided_at=decided_at, decision_reason=decision_reason)
     if decision == "accepted":

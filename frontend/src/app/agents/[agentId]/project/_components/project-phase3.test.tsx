@@ -59,7 +59,9 @@ beforeEach(() =>
 )
 
 async function openEvaluationTab() {
-  await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /2. 测试表现/ }))
+  await userEvent.click(screen.getByText('高级：编辑案例与查看详细评测'))
+  await screen.findByRole('button', { name: '运行评测' })
 }
 
 it('generates a plan then cases and edits mocks using the existing editor', async () => {

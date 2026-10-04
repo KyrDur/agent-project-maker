@@ -14,21 +14,25 @@ export function ProjectProposals({
   run,
   versions,
   runs = [],
+  guided = false,
 }: {
   agentId: string
   run: EvaluationRun
   versions: AgentProjectVersionSummary[]
   runs?: EvaluationRun[]
+  guided?: boolean
 }) {
   const t = useTranslations('agentProject.lifecycle')
   const projectT = useTranslations('agentProject')
+  const guidedT = useTranslations('agentProject.guided')
   const locale = useLocale()
+  const [submitting, setSubmitting] = useState(false)
   const { generate, decide, regression } = useProjectProposals(agentId, run.id)
   const generationId = useRef<string | null>(null)
   const regressionIds = useRef<Record<string, string>>({})
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const items = run.comparison_json?.proposals ?? []
-  const busy = generate.isPending || decide.isPending || regression.isPending
+  const busy = submitting || generate.isPending || decide.isPending || regression.isPending
   const version = (id: string) =>
     projectT('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
   const hasFailures = run.results_json?.some((r) => r.status === 'failed')
@@ -67,10 +71,8 @@ export function ProjectProposals({
               {formatDisplayDateTime(item.created_at, { locale })}
             </p>
             {item.what_changes && <p>{t('whatChanges', { value: item.what_changes })}</p>}
-            {item.why_it_may_work && (
-              <p>{t('whyItMayWork', { value: item.why_it_may_work })}</p>
-            )}
-            {!!item.targeted_case_ids?.length && (
+            {item.why_it_may_work && <p>{t('whyItMayWork', { value: item.why_it_may_work })}</p>}
+            {!guided && !!item.targeted_case_ids?.length && (
               <p>{t('targetedCases', { value: item.targeted_case_ids.join(', ') })}</p>
             )}
             {!!item.benefits?.length && (
@@ -127,9 +129,13 @@ export function ProjectProposals({
             {item.status === 'pending' && (
               <div className="space-y-3">
                 <label className="block space-y-1">
-                  <span className="text-sm font-medium">{t('decisionReason')}</span>
+                  <span className="text-sm font-medium">
+                    {guided
+                      ? guidedT(reasons[item.id] === undefined ? 'aiReasonDraft' : 'userReason')
+                      : t('decisionReason')}
+                  </span>
                   <Textarea
-                    value={reasons[item.id] ?? ''}
+                    value={reasons[item.id] ?? (guided ? item.why_it_may_work : '')}
                     onChange={(event) =>
                       setReasons((current) => ({ ...current, [item.id]: event.target.value }))
                     }
@@ -137,38 +143,67 @@ export function ProjectProposals({
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={busy || !item.can_accept}
-                  onClick={() =>
-                    decide.mutate({
-                      id: item.id,
-                      decision: 'accepted',
-                      reason: reasons[item.id]?.trim(),
-                    })
-                  }
-                >
-                  {t('accept')}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    decide.mutate({
-                      id: item.id,
-                      decision: 'rejected',
-                      reason: reasons[item.id]?.trim(),
-                    })
-                  }
-                >
-                  {t('reject')}
-                </Button>
-                {!item.can_accept && <p>{t('cannotApply')}</p>}
+                  <Button
+                    disabled={busy || !item.can_accept}
+                    onClick={() => {
+                      if (!guided) {
+                        decide.mutate({
+                          id: item.id,
+                          decision: 'accepted',
+                          reason: reasons[item.id]?.trim(),
+                        })
+                        return
+                      }
+                      setSubmitting(true)
+                      regressionIds.current[item.id] ??= crypto.randomUUID()
+                      void decide
+                        .mutateAsync({
+                          id: item.id,
+                          decision: 'accepted',
+                          reason: reasons[item.id]?.trim(),
+                          reasonSource:
+                            reasons[item.id] === undefined ? 'ai_confirmed' : 'user_authored',
+                        })
+                        .then(() =>
+                          regression.mutateAsync({
+                            id: item.id,
+                            requestId: regressionIds.current[item.id],
+                          }),
+                        )
+                        .then(() => {
+                          delete regressionIds.current[item.id]
+                        })
+                        .catch(() => {})
+                        .finally(() => setSubmitting(false))
+                    }}
+                  >
+                    {guided ? guidedT('acceptAndTest') : t('accept')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      decide.mutate({
+                        id: item.id,
+                        decision: 'rejected',
+                        reason: reasons[item.id]?.trim(),
+                      })
+                    }
+                  >
+                    {t('reject')}
+                  </Button>
+                  {!item.can_accept && <p>{t('cannotApply')}</p>}
                 </div>
               </div>
             )}
             {item.decision_reason && (
               <p className="text-sm text-muted-foreground">
-                {t('savedDecisionReason', { value: item.decision_reason })}
+                {guidedT(
+                  item.decision_reason_source === 'ai_confirmed'
+                    ? 'aiReasonConfirmed'
+                    : 'userReason',
+                )}{' '}
+                · {item.decision_reason}
               </p>
             )}
             {item.status === 'accepted' && item.version_id && (

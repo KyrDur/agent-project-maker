@@ -229,6 +229,8 @@ async def generate(
             user_id,
             "case_generator",
             "Generate exactly 20 diverse evaluation cases informed by the capability profile. "
+            "Honor confirmed business requirements independently of implementation. "
+            "Only enforce tool order where required by the business contract. "
             "First honor the human-selected evaluation_focus by increasing coverage of those "
             "risks; keep the total exactly 20 and do not overfit to the reason text. "
             "Include normal, edge, and failure cases and cover relevant scenario categories. "
@@ -251,6 +253,9 @@ async def generate(
             {
                 "snapshot": snapshot,
                 "eval_spec": saved_spec,
+                "confirmed_business_requirements": (project.requirements_json or {}).get(
+                    "learning_brief"
+                ),
                 "evaluation_focus": selected_focus,
                 "evaluation_focus_reason": evaluation_focus_reason,
                 "categories": list(SCENARIOS),
@@ -290,6 +295,8 @@ async def generate(
             rubric={
                 **saved_spec,
                 "formal_benchmark": True,
+                "purpose": "development",
+                "business_contract": (project.requirements_json or {}).get("learning_brief"),
                 "evaluation_focus": selected_focus,
                 "evaluation_focus_reason": evaluation_focus_reason,
             },
@@ -327,6 +334,7 @@ def frozen_plan(
         "rubric_hash": canonical_json_hash(stored),
         "roles": roles,
         "execution_mode": "mock_sandbox",
+        "purpose": stored.get("purpose", "development"),
     }
 
 

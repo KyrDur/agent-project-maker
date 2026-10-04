@@ -255,7 +255,13 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     by_version = {str(v.id): v for v in versions}
     from app.services.agent_project_report import report_for_run
 
-    scored = [(run, report_for_run(run)) for run in runs if run.status == "completed"]
+    scored = [
+        (run, report_for_run(run))
+        for run in runs
+        if run.status == "completed"
+        and (run.comparison_json or {}).get("purpose") != "holdout"
+        and not (run.comparison_json or {}).get("reliability")
+    ]
     valid = [
         (run, report)
         for run, report in scored
@@ -354,12 +360,57 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                 and other.get("evaluated_cases") == best_summary["total"]
             ):
                 deltas[name] = other["score"] - metric["score"]
+    from app.services.agent_project_reliability import summarize_project_runs
+
+    reliability = []
+    for version in versions:
+        value = summarize_project_runs(runs, version.id)
+        if value["trials"] or value["calibration"]["reviewed"]:
+            reliability.append(
+                {
+                    "version": version.version_number,
+                    "trials": [
+                        {
+                            "kind": g["kind"],
+                            "result": {
+                                k: v
+                                for k, v in g["versions"][str(version.id)].items()
+                                if k != "run_ids"
+                            },
+                        }
+                        for g in value["trials"]
+                    ],
+                    "calibration": {
+                        k: v for k, v in value["calibration"].items() if k != "reviews"
+                    },
+                    "limitations": value["limitations"],
+                }
+            )
     payload = sanitize(
         {
             "project": {
                 "name": project.title,
                 "goal": config.get("description") or UNAVAILABLE,
                 "intended_use": config.get("description") or UNAVAILABLE,
+            },
+            "reliability": reliability,
+            "participation": {
+                "brief_confirmed": bool((project.requirements_json or {}).get("learning_brief")),
+                "brief_edited": (project.requirements_json or {})
+                .get("learning_brief", {})
+                .get("contribution")
+                == "user_edited",
+                "authored_reviews": sum(
+                    len((r.comparison_json or {}).get("case_reviews", {})) for r in runs
+                ),
+                "accepted_proposals": sum(
+                    p.get("status") == "accepted"
+                    for r in runs
+                    for p in (r.comparison_json or {}).get("proposals", [])
+                ),
+                "platform_scope": (
+                    "平台生成配置、测试与评分；AI 提供草稿，用户负责确认、修改和取舍。"
+                ),
             },
             "architecture": config,
             "build_process": {
@@ -591,6 +642,35 @@ def render_report(data: dict[str, Any]) -> dict[str, Any]:
             + "\n".join(f"- {item}" for item in data["limitations"]),
         },
     ]
+    if data.get("participation"):
+        contribution = data["participation"]
+        sections.append(
+            {
+                "title": "用户参与与平台支持",
+                "body": contribution["platform_scope"]
+                + f"\n需求已确认：{contribution['brief_confirmed']}；"
+                + f"需求有编辑：{contribution['brief_edited']}；"
+                + f"人工复核：{contribution['authored_reviews']}；"
+                + f"采纳建议：{contribution['accepted_proposals']}。",
+            }
+        )
+    if data.get("reliability"):
+        rows = ["重复运行只描述固定案例的波动；新验证案例仍是模拟数据，不证明线上效果。"]
+        for entry in data["reliability"]:
+            calibration = entry["calibration"]
+            rows.append(
+                f"V{entry['version']} 人工复核 {calibration['reviewed']} 条，"
+                f"分歧 {calibration['disagreements']} 条。"
+            )
+            for group in entry["trials"]:
+                kind = "保留验证集" if group["kind"] == "validation" else "重复测试"
+                value = group["result"]
+                rows.append(
+                    f"{kind}：完整 {value['completed']}/{value['scheduled']} 次，"
+                    f"均值 {rate(value['mean'])}，"
+                    f"范围 {rate(value['min'])}–{rate(value['max'])}。"
+                )
+        sections.append({"title": "额外验证与评分复核", "body": "\n".join(rows)})
     return {
         "evidence": data,
         "evidence_hash": canonical_json_hash(data),
@@ -624,14 +704,24 @@ def resume_bullets(data: dict[str, Any], style: str) -> list[str]:
     name = data["project"]["name"]
     starts = {
         "ai_product": (
-            f"围绕「{name}」梳理智能体的用户需求、使用场景与交付边界，形成可评测的产品方案。"
+            f"围绕「{name}」使用平台搭建智能体，并查看平台提供的需求、评测和交付边界记录。"
         ),
         "product": (
-            f"将「{name}」的需求、评测和版本迭代整理为可追溯的项目案例，明确当前能力与限制。"
+            f"将「{name}」在平台中的需求、评测和版本迭代整理为可追溯的项目案例，明确当前能力与限制。"
         ),
-        "engineering": f"为「{name}」建立配置快照和版本记录，保留可复核的评测证据与改动历史。",
+        "engineering": (
+            f"为「{name}」使用平台保存配置快照和版本记录，保留可复核的评测证据与改动历史。"
+        ),
     }
     bullets = [starts[style]]
+    participation = data.get("participation", {})
+    if participation.get("brief_confirmed"):
+        action = "编辑并确认" if participation.get("brief_edited") else "阅读并确认"
+        bullets.append(f"{action} AI 提供的需求草稿与成功标准，保留确认记录。")
+    if participation.get("accepted_proposals"):
+        bullets.append(
+            f"确认采纳 {participation['accepted_proposals']} 项 AI 改进建议，保留选择与回测记录。"
+        )
     design, results = data["evaluation_design"], data["results"]
     if design["case_count"]:
         scenario_names = [SCENARIO_LABELS.get(item, "其他场景") for item in design["scenarios"]]
@@ -639,9 +729,9 @@ def resume_bullets(data: dict[str, Any], style: str) -> list[str]:
         if len(scenario_names) > 3:
             scenarios += f"等 {len(scenario_names)} 类场景"
         activity = {
-            "ai_product": "设计",
-            "product": "组织",
-            "engineering": "运行",
+            "ai_product": "使用平台执行",
+            "product": "使用平台执行",
+            "engineering": "使用平台执行",
         }[style]
         bullets.append(
             f"{activity}覆盖{scenarios}的 {design['case_count']} 条固定测试用例，"

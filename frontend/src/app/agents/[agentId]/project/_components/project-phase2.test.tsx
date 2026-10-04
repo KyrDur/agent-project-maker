@@ -53,7 +53,13 @@ const run = {
 }
 
 async function openProjectTab(name: 'Versions' | 'Evaluation') {
-  await userEvent.click(await screen.findByRole('button', { name: new RegExp(name) }))
+  await userEvent.click(
+    await screen.findByRole('button', { name: name === 'Evaluation' ? /2. 测试表现/ : /Versions/ }),
+  )
+  if (name === 'Evaluation') {
+    await userEvent.click(screen.getByText('高级：编辑案例与查看详细评测'))
+    await screen.findByRole('button', { name: '运行评测' })
+  }
 }
 
 beforeEach(() => {
