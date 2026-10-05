@@ -101,7 +101,7 @@ async def list_deployment_candidates(
         select(Agent)
         .where(
             Agent.user_id == user_id,
-            # 히든 런타임 에이전트는 API 배포 후보에서 제외.
+            # 隐藏运行时智能体不纳入 API 部署候选。
             Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
         )
         .order_by(Agent.name.asc())

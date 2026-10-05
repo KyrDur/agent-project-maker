@@ -122,7 +122,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(
             conversationId,
-            '체크리스트, 표, TypeScript 코드, 수식, 이미지, 링크, 인용문, Mermaid 다이어그램을 모두 포함해서 채팅 출력 예시를 보여줘',
+            '请展示包含清单、表格、TypeScript 代码、公式、图片、链接、引用和 Mermaid 图表的聊天输出示例',
           )
           await settleStream(page)
           // Mermaid renders to SVG asynchronously after the text settles.

@@ -13,7 +13,7 @@ const FRONTEND =
   process.env.E2E_BASE_URL ?? `http://localhost:${process.env.E2E_FRONTEND_PORT ?? '3000'}`
 const ASK_USER_FINAL_TEXT = 'E2E ask_user fruit selection received.'
 const RICH_OUTPUT_PROMPT =
-  '체크리스트, 표, TypeScript 코드, 수식, 이미지, 링크, 인용문, Mermaid 다이어그램을 모두 포함해서 채팅 출력 예시를 보여줘'
+  '请展示包含清单、表格、TypeScript 代码、公式、图片、链接、引用和 Mermaid 图表的聊天输出示例'
 const RICH_OUTPUT_TITLE = 'E2E rich output contract'
 const RICH_OUTPUT_IMAGE_ALT = 'E2E rich output image'
 const RICH_OUTPUT_REFERENCE_URL = 'https://example.com/e2e-chat-rich-output'

@@ -102,16 +102,16 @@ async def _run_agent_stream(
     moldy_source: str = "chat",
     langfuse_sink: list[LangfuseTraceRecord] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """공용 stream runner — execute/resume의 prep + hook + 예외 처리 통합 (P0-B).
+    """公共 stream runner — 统一 execute/resume 的 prep + hook + 异常处理 (P0-B)。
 
-    - ``messages_history``는 ``_prepare_agent``에 전달 (lc_messages 변환에만 사용).
-    - ``stream_input``은 ``stream_agent_response``에 전달할 입력. ``None`` 이면
-      execute_agent_stream가 변환한 lc_messages를 그대로 쓴다 (즉 execute는
-      stream_input=None 또는 명시 list, resume은 ``Command(resume=...)``).
-    - ``hook_metadata_extra``: HookContext.metadata에 추가로 머지(resume용).
-    - ``broker`` / ``persist_callback`` / ``run_id`` (W3-out M2): SSE dual-write
-      + partial flush 파이프라인. router가 EventBroker, fresh-session-bound
-      append_events 콜백, run_id(=assistant_msg_id) 를 주입.
+    - ``messages_history`` 传给 ``_prepare_agent``（仅用于转换 lc_messages）。
+    - ``stream_input`` 是传给 ``stream_agent_response`` 的输入。若为 ``None``，
+      execute_agent_stream 会直接使用转换后的 lc_messages（即 execute 使用
+      stream_input=None 或显式 list，resume 使用 ``Command(resume=...)``）。
+    - ``hook_metadata_extra``：额外合并到 HookContext.metadata（供 resume 使用）。
+    - ``broker`` / ``persist_callback`` / ``run_id`` (W3-out M2)：SSE dual-write
+      + partial flush 流程。router 注入 EventBroker、fresh-session-bound
+      append_events 回调、run_id(=assistant_msg_id)。
     """
 
     # ADR-021 — install the run-scoped secret set BEFORE prepare so the lazy
@@ -175,9 +175,9 @@ async def _stream_with_secrets(
     langfuse try/finally inside an extra indentation level.
     """
 
-    # stream_input이 ``_USE_PREPPED_LC_MESSAGES`` sentinel이면 변환된 lc_messages를
-    # 그대로 입력으로 사용 (execute path). 빈 리스트는 None으로 폴백 — LangGraph
-    # time-travel resume 모드.
+    # 如果 stream_input 是 ``_USE_PREPPED_LC_MESSAGES`` sentinel，则使用转换后的 lc_messages
+    # 直接作为输入（execute path）。空列表会回退到 None — LangGraph
+    # time-travel resume 模式。
     actual_input = stream_input
     if actual_input is _USE_PREPPED_LC_MESSAGES:
         actual_input = lc_messages if lc_messages else None
@@ -272,24 +272,24 @@ async def execute_agent_stream(
     moldy_source: str = "chat",
     langfuse_sink: list[LangfuseTraceRecord] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """스트리밍 실행 (채팅용).
+    """流式执行（用于聊天）。
 
-    빈 ``messages_history``는 LangGraph time-travel resume 모드 — 새 입력
-    없이 ``cfg.checkpoint_id`` 시점 state에서 그래프를 다시 돌린다.
-    Regenerate가 부모 user 메시지를 중복 주입하지 않고 새 assistant sibling
-    만 만들어내는 데 사용한다.
+    空的 ``messages_history`` 表示 LangGraph time-travel resume 模式 — 新输入
+    不提供，从 ``cfg.checkpoint_id`` 时点的 state 重新运行图。
+    Regenerate 不会重复注入父级 user 消息，而只生成新的 assistant sibling，
+    用于实现这一行为。
 
-    ``trace_sink`` (W5): 호출자가 list를 넘기면 emit된 SSE 이벤트 dict가 차곡
-    차곡 누적된다. 스트림 종료 시점에 caller가 ``trace_storage.record_turn``
-    으로 영속화.
+    ``trace_sink`` (W5)：如果调用方传入 list，已 emit 的 SSE 事件 dict 会依次
+    累积。流结束时 caller 通过 ``trace_storage.record_turn``
+    持久化。
 
-    ``broker`` / ``persist_callback`` / ``run_id`` (W3-out M2): GET resume
-    파이프라인. router가 주입하면 dual-write + partial flush 활성화.
+    ``broker`` / ``persist_callback`` / ``run_id`` (W3-out M2)：GET resume
+    流程。由 router 注入时启用 dual-write + partial flush。
     """
 
-    # dict input — fork-edit가 Overwrite({"messages": [...]}) 같은 형태로
-    # state 채널을 직접 덮어쓸 때 사용. 이 경우 _prepare_agent는 lc_messages
-    # 변환을 건너뛰고(빈 리스트), stream_input으로 dict를 그대로 흘려보낸다.
+    # dict input — fork-edit 用于通过 Overwrite({"messages": [...]}) 这类形式
+    # 直接覆盖 state 通道。此时 _prepare_agent 会跳过 lc_messages
+    # 转换（空列表），通过 stream_input 将 dict 原样传递。
     if isinstance(messages_history, dict):
         async for chunk in _run_agent_stream(
             cfg,
@@ -339,7 +339,7 @@ async def resume_agent_stream(
     moldy_source: str = "resume",
     langfuse_sink: list[LangfuseTraceRecord] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """인터럽트 재개 스트리밍 (HiTL resume)."""
+    """中断恢复流式执行（HiTL resume）。"""
     from langgraph.types import Command
 
     async for chunk in _run_agent_stream(
@@ -367,7 +367,7 @@ async def execute_agent_invoke(
     run_id: str | None = None,
     moldy_source: str = "trigger",
 ) -> str:
-    """비스트리밍 실행 (트리거용). 최종 응답 텍스트만 반환."""
+    """非流式执行（用于触发器）。仅返回最终响应文本。"""
     # ADR-021 H1 — install the run-scoped secret set so the lazy skill-credential
     # union in ``_prepare_runtime_components`` works and any redaction during the
     # invoke (langfuse mask, persistence) sees the run's real secrets.

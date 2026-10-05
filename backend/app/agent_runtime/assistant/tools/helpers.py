@@ -1,4 +1,4 @@
-"""Assistant 도구 공통 헬퍼 — Agent eager-load 쿼리 중복 제거."""
+"""Assistant 工具公共辅助函数 — 去除 Agent eager-load 查询重复。"""
 
 from __future__ import annotations
 
@@ -19,12 +19,12 @@ async def get_agent_with_eager_load(
     agent_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> Agent | None:
-    """Agent를 연관 관계(model, tool/mcp/skill links, sub_agent_links)와 함께 조회한다.
+    """查询 Agent，并一并加载关联关系（model、tool/mcp/skill links、sub_agent_links）。
 
-    read_tools, write_tools 양쪽에서 공통으로 사용한다.
+    read_tools、write_tools 两侧共同使用。
     """
-    # AgentSubAgentLink.sub_agent는 lazy="joined"라 link 로드 시 자동으로 함께 옴 —
-    # 여기서 추가 selectinload는 중복.
+    # AgentSubAgentLink.sub_agent 为 lazy="joined"，因此加载 link 时会自动一并加载 —
+    # 此处额外 selectinload 属于重复。
     result = await db.execute(
         select(Agent)
         .where(Agent.id == agent_id, Agent.user_id == user_id)

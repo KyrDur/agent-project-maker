@@ -37,7 +37,7 @@ async def init_checkpointer(
     min_size: int | None = None,
     max_size: int | None = None,
 ) -> None:
-    """앱 시작 시 checkpointer 초기화. lifespan에서 호출."""
+    """应用启动时初始化 checkpointer。由 lifespan 调用。"""
     global _pool, _checkpointer
 
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -56,7 +56,7 @@ async def init_checkpointer(
     try:
         await candidate_pool.open()
         candidate_checkpointer = AsyncPostgresSaver(
-            conn=candidate_pool  # type: ignore[arg-type]  # Pool도 Conn 인터페이스 호환
+            conn=candidate_pool  # type: ignore[arg-type]  # Pool 也兼容 Conn 接口
         )
         await candidate_checkpointer.setup()
     except BaseException:  # noqa: BLE001 - ownership boundary must close on cancellation too
@@ -75,7 +75,7 @@ async def init_checkpointer(
 
 
 async def shutdown_checkpointer() -> None:
-    """앱 종료 시 connection pool 정리. lifespan에서 호출."""
+    """应用关闭时清理 connection pool。由 lifespan 调用。"""
     global _pool, _checkpointer
     pool = _pool
     if pool:
@@ -86,14 +86,14 @@ async def shutdown_checkpointer() -> None:
 
 
 def get_checkpointer() -> AsyncPostgresSaver:
-    """checkpointer 싱글턴 반환. 초기화 전 호출 시 RuntimeError."""
+    """返回 checkpointer 单例。初始化前调用时抛出 RuntimeError."""
     if _checkpointer is None:
         raise RuntimeError("Checkpointer not initialized. Call init_checkpointer() first.")
     return _checkpointer
 
 
 async def delete_thread(thread_id: str) -> None:
-    """thread의 모든 checkpoint 데이터를 삭제."""
+    """删除 thread 的所有 checkpoint 数据。"""
     if _pool is None:
         return
     async with _pool.connection() as conn, conn.transaction():

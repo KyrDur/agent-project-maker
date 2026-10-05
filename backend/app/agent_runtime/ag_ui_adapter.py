@@ -100,10 +100,10 @@ def moldy_event_to_ag_ui_events(
         return [
             started,
             {
-                # TEXT_MESSAGE_{START,CONTENT,END} 는 반드시 같은 messageId 를
-                # 공유해야 표준 AG-UI client 가 메시지를 매칭한다. CONTENT/END
-                # 이벤트는 원본 data 에 메시지 id 가 없어 run_id 만이 안정적인
-                # 공통 키다 (원본 id 는 rawEvent 로 보존).
+                # TEXT_MESSAGE_{START,CONTENT,END} 必须共享相同的 messageId
+                # 标准 AG-UI client 才能匹配消息。CONTENT/END
+                # 事件的原始 data 中没有消息 id，因此只有 run_id 是稳定的
+                # 公共键（原始 id 保留在 rawEvent 中）。
                 "type": "TEXT_MESSAGE_START",
                 "messageId": run_id,
                 "role": "assistant",
@@ -158,8 +158,8 @@ def moldy_event_to_ag_ui_events(
             "message": _str_or_none(data.get("message")) or "Run failed.",
             "rawEvent": data,
         }
-        # AG-UI 스키마에서 code 는 optional — None 값 대신 키 자체를 생략해
-        # 표준 client 호환을 지킨다 (message_end failed 분기와 동일한 규칙).
+        # 在 AG-UI 架构中 code 是 optional — 不要写入 None 值，而是直接省略该键，
+        # 以保持标准 client 兼容性（与 message_end failed 分支规则相同）。
         code = _str_or_none(data.get("code"))
         if code:
             error_event["code"] = code

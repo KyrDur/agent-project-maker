@@ -1,4 +1,4 @@
-"""Assistant 쓰기 도구 — 크론 스케줄 그룹 (create/update/delete/enable/disable)."""
+"""Assistant 写入工具 — 定时计划组（create/update/delete/enable/disable）。"""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ async def _resolve_trigger_for_write(
 
 
 def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
-    """크론 스케줄 도구 5개를 생성한다."""
+    """创建 5 个定时计划工具。"""
 
     # ------ 14. create_cron_schedule ------
 
@@ -98,21 +98,21 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         end_at: str | None = None,
         auto_pause_after_failures: int | None = None,
     ) -> str:
-        """크론 스케줄을 생성합니다.
+        """创建定时计划。
 
         Args:
-            schedule_type: "recurring", "cron", "interval" 또는 "one_time"
-            message: 실행 시 전달할 메시지
-            name: 스케줄 이름
-            cron_expression: 반복 스케줄의 cron 표현식 (recurring/cron일 때 필수)
-            interval_minutes: 간격 분 수 (interval일 때 필수)
-            scheduled_at: 1회 실행 시점 ISO 8601 (one_time일 때 필수)
-            timezone: IANA timezone (기본 Asia/Seoul)
-            conversation_policy: 결과 저장 정책 (기본 schedule_thread)
-            target_conversation_id: selected_conversation 정책에서 사용할 대화 ID
-            max_runs: 최대 성공 실행 횟수
-            end_at: 종료 시각 ISO 8601
-            auto_pause_after_failures: 연속 실패 자동 일시정지 임계치
+            schedule_type: "recurring", "cron", "interval" 或 "one_time"
+            message: 执行时传递的消息
+            name: 计划名称
+            cron_expression: 重复计划的 cron 表达式（recurring/cron 时必填）
+            interval_minutes: 间隔分钟数（interval 时必填）
+            scheduled_at: 单次执行时间 ISO 8601（one_time 时必填）
+            timezone: IANA timezone（默认 Asia/Seoul）
+            conversation_policy: 结果保存策略（默认 schedule_thread）
+            target_conversation_id: selected_conversation 策略使用的对话 ID
+            max_runs: 最大成功执行次数
+            end_at: 结束时间 ISO 8601
+            auto_pause_after_failures: 连续失败自动暂停阈值
         """
         normalized_type = schedule_type.strip().lower()
         trigger_type = "cron" if normalized_type in {"recurring", "cron"} else normalized_type
@@ -182,23 +182,23 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         end_at: str | None = None,
         auto_pause_after_failures: int | None = None,
     ) -> str:
-        """크론 스케줄을 수정합니다.
+        """修改定时计划。
 
         Args:
-            schedule_id: 스케줄 UUID
-            schedule_name: 스케줄 이름 (동명이인이 있으면 ID 필요)
-            cron_expression: 새 cron 표현식
-            interval_minutes: 새 interval 분 수
-            scheduled_at: 새 1회 실행 시점
-            message: 새 실행 메시지
-            name: 새 스케줄 이름
-            timezone: 새 timezone
-            conversation_policy: 새 결과 저장 정책
-            target_conversation_id: selected_conversation 정책에서 사용할 대화 ID
-            status: 새 상태
-            max_runs: 새 최대 성공 실행 횟수
-            end_at: 새 종료 시각 ISO 8601
-            auto_pause_after_failures: 새 연속 실패 자동 일시정지 임계치
+            schedule_id: 计划 UUID
+            schedule_name: 计划名称（存在同名项时需要 ID）
+            cron_expression: 新 cron 表达式
+            interval_minutes: 新 interval 分钟数
+            scheduled_at: 新单次执行时间
+            message: 新执行消息
+            name: 新计划名称
+            timezone: 新 timezone
+            conversation_policy: 新结果保存策略
+            target_conversation_id: selected_conversation 策略使用的对话 ID
+            status: 新状态
+            max_runs: 新最大成功执行次数
+            end_at: 新结束时间 ISO 8601
+            auto_pause_after_failures: 新连续失败自动暂停阈值
         """
         async with ctx.session_factory() as session:
             trigger, error = await _resolve_trigger_for_write(
@@ -248,11 +248,11 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         schedule_id: str | None = None,
         schedule_name: str | None = None,
     ) -> str:
-        """크론 스케줄을 삭제합니다.
+        """删除定时计划。
 
         Args:
-            schedule_id: 스케줄 UUID
-            schedule_name: 스케줄 이름
+            schedule_id: 计划 UUID
+            schedule_name: 计划名称
         """
         async with ctx.session_factory() as session:
             trigger, error = await _resolve_trigger_for_write(
@@ -269,11 +269,11 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         schedule_id: str | None = None,
         schedule_name: str | None = None,
     ) -> str:
-        """크론 스케줄을 활성화합니다.
+        """启用定时计划。
 
         Args:
-            schedule_id: 스케줄 UUID
-            schedule_name: 스케줄 이름
+            schedule_id: 计划 UUID
+            schedule_name: 计划名称
         """
         async with ctx.session_factory() as session:
             trigger, error = await _resolve_trigger_for_write(
@@ -297,11 +297,11 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         schedule_id: str | None = None,
         schedule_name: str | None = None,
     ) -> str:
-        """크론 스케줄을 비활성화합니다.
+        """禁用定时计划。
 
         Args:
-            schedule_id: 스케줄 UUID
-            schedule_name: 스케줄 이름
+            schedule_id: 计划 UUID
+            schedule_name: 计划名称
         """
         async with ctx.session_factory() as session:
             trigger, error = await _resolve_trigger_for_write(

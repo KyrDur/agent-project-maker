@@ -127,7 +127,7 @@ def build_temporal_context(
         "weekday": _weekday_ko(today),
         "timezone": timezone,
         "today": _date_payload(
-            label="오늘",
+            label="今天",
             start=today,
             end=today,
             now=current,
@@ -234,8 +234,8 @@ def resolve_relative_date_expression(
     if "昨天" in compact:
         target = today - timedelta(days=1)
         return _date_payload(label="昨天", start=target, end=target, now=current, timezone=timezone)
-    if "오늘" in compact:
-        return _date_payload(label="오늘", start=today, end=today, now=current, timezone=timezone)
+    if "今天" in compact:
+        return _date_payload(label="今天", start=today, end=today, now=current, timezone=timezone)
     if "모레" in compact:
         target = today + timedelta(days=2)
         return _date_payload(label="모레", start=target, end=target, now=current, timezone=timezone)

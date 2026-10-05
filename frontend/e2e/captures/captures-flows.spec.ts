@@ -95,7 +95,7 @@ test.describe('Wave 1 — hero flow captures', () => {
       // Turn 1 — a rich, formatted answer (natural-language trigger).
       await sendMessage(
         page,
-        '이번 주 홈트 루틴을 체크리스트, 표, 코드, 수식, 이미지, 링크, 인용문, Mermaid 다이어그램으로 정리해줘',
+        '请用清单、表格、代码、公式、图片、链接、引用和 Mermaid 图表整理本周居家训练计划',
       )
       await settleStream()
       await page.locator('svg').first().waitFor({ state: 'visible', timeout: 12_000 }).catch(() => {})

@@ -1,7 +1,7 @@
-"""Assistant v2 에이전트 — build_agent + 35개 도구 바인딩.
+"""Assistant v2 智能体 — build_agent + 绑定 35 个工具。
 
-assistant/prompt.md를 시스템 프롬프트로 로드하고,
-read/write/clarify 도구를 바인딩한다.
+将 assistant/prompt.md 加载为系统提示词，
+并绑定 read/write/clarify 工具。
 """
 
 from __future__ import annotations
@@ -27,15 +27,15 @@ from app.services.system_credential_resolver import resolve_system_model
 
 logger = logging.getLogger(__name__)
 
-# Assistant 시스템 프롬프트 파일 경로
+# Assistant 系统提示词文件路径
 # __file__ = backend/app/agent_runtime/assistant/assistant_agent.py
-# .parent = assistant/ (prompt.md와 같은 디렉토리)
+# .parent = assistant/（与 prompt.md 位于同一目录）
 _PROMPT_PATH = Path(__file__).resolve().parent / "prompt.md"
 
 
 @functools.cache
 def _load_system_prompt() -> str:
-    """Assistant 시스템 프롬프트를 파일에서 로드한다 (캐시됨)."""
+    """从文件加载 Assistant 系统提示词（已缓存）。"""
     try:
         return _PROMPT_PATH.read_text(encoding="utf-8")
     except FileNotFoundError:
@@ -60,16 +60,16 @@ async def build_assistant_agent(
     user_id: uuid.UUID,
     thread_id: str,
 ) -> Any:
-    """Assistant 에이전트를 생성한다.
+    """创建 Assistant 智能体。
 
     Args:
-        db: DB 세션 (도구가 DB에 직접 접근)
-        agent_id: 대상 에이전트 ID
-        user_id: 사용자 ID
-        thread_id: 대화 스레드 ID (checkpointer용)
+        db: DB 会话（工具直接访问 DB）
+        agent_id: 目标智能体 ID
+        user_id: 用户 ID
+        thread_id: 对话线程 ID（供 checkpointer 使用）
 
     Returns:
-        CompiledStateGraph — build_agent의 반환값
+        CompiledStateGraph — build_agent 的返回值
     """
     # ADR-019: the assistant text model is the operator-selected ``builder``
     # role. Raises ``SystemModelNotConfiguredError`` if unset (surfaced by the
@@ -83,7 +83,7 @@ async def build_assistant_agent(
         base_url=resolved.base_url,
     )
 
-    # 도구 35개 = 16 read + 18 write + 1 clarify
+    # 35 个工具 = 16 read + 18 write + 1 clarify
     read_tools = build_read_tools(db, agent_id, user_id)
     write_tools = build_write_tools(db, agent_id, user_id)
     clarify_tools = build_clarify_tools()
@@ -93,7 +93,7 @@ async def build_assistant_agent(
 
     return build_agent(
         model=model,
-        tools=tools,  # type: ignore[arg-type]  # StructuredTool은 BaseTool 호환 (langchain runtime 동작 OK)
+        tools=tools,  # type: ignore[arg-type]  # StructuredTool 与 BaseTool 兼容（langchain runtime 运行 OK）
         system_prompt=system_prompt,
         middleware=[],
         interrupt_on=_assistant_write_interrupt_on(write_tools),
