@@ -47,9 +47,7 @@ async def get_usage_summary(
 
     spend_query = select(
         func.coalesce(func.sum(DailySpendUser.total_tokens_in), 0).label("prompt_tokens"),
-        func.coalesce(func.sum(DailySpendUser.total_tokens_out), 0).label(
-            "completion_tokens"
-        ),
+        func.coalesce(func.sum(DailySpendUser.total_tokens_out), 0).label("completion_tokens"),
         func.coalesce(
             func.sum(DailySpendUser.total_tokens_in + DailySpendUser.total_tokens_out),
             0,
@@ -70,21 +68,18 @@ async def get_usage_summary(
             DailySpendAgent.agent_id,
             Agent.name.label("agent_name"),
             func.coalesce(
-                func.sum(
-                    DailySpendAgent.total_tokens_in
-                    + DailySpendAgent.total_tokens_out
-                ),
+                func.sum(DailySpendAgent.total_tokens_in + DailySpendAgent.total_tokens_out),
                 0,
             ).label("total_tokens"),
-            func.coalesce(
-                func.sum(DailySpendAgent.total_cost_usd), Decimal("0")
-            ).label("estimated_cost"),
+            func.coalesce(func.sum(DailySpendAgent.total_cost_usd), Decimal("0")).label(
+                "estimated_cost"
+            ),
         )
         .join(Agent, DailySpendAgent.agent_id == Agent.id)
         .where(
             Agent.user_id == user_id,
-            # 히든 런타임 에이전트는 per-agent breakdown에서 제외. 사용자 총합
-            # (DailySpendUser)에는 그대로 포함된다 — 비용은 실제 발생분이다.
+            # 隐藏运行时 Agent 从 per-agent breakdown 中排除。用户总计
+            # （DailySpendUser）仍照常包含 — 成本确实已经发生。
             Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
         )
         .group_by(DailySpendAgent.agent_id, Agent.name)

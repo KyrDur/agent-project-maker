@@ -1,17 +1,17 @@
 # ADR-007: Credentials `field_keys` 비암호화 캐시 컬럼
 
-## 상태: 승인됨
+## 状态：已批准
 
 ## 날짜: 2026-04-17
 
-## 맥락
+## 背景
 
 `GET /api/credentials`는 각 credential에 대해 `data_encrypted`를 Fernet으로 복호화하고 JSON 파싱하여 `field_keys` 목록(키 이름만)을 응답에 포함한다. 현재 `credential_service.extract_field_keys()` → `resolve_credential_data()` → `decrypt_api_key()` 경로가 list 결과를 순회하며 호출되어 **N+1 복호화**가 발생한다. DB 쿼리는 1회지만 Fernet 연산이 row 수만큼 반복된다.
 
 - 100 credential 기준 응답 추정 지연: ~1–2초 (CPU 바운드)
 - 복호화 비용이 credential 증가에 선형 비례
 
-## 결정
+## 决定
 
 `credentials` 테이블에 `field_keys` 컬럼을 추가한다:
 
@@ -23,14 +23,14 @@
 
 Alembic 마이그레이션(`m7_add_credential_field_keys`)의 `upgrade()`에서 기존 row에 대해 일회성 backfill을 수행한다(ENCRYPTION_KEY 미설정 시 스킵).
 
-## 대안
+## 替代方案
 
 - **A. Runtime lazy write-through**: 컬럼만 추가하고 read 경로에서 NULL → 복호화 → 저장. 단순하지만 read에 write 부작용 발생, 동시성 주의 필요.
 - **B. Runtime lazy fallback만**: 마이그레이션에서 backfill 없이 NULL로 두고 생성/갱신 시점에만 캐시. 기존 row는 영영 fallback 경로로만 서빙됨 (성능 개선 불완전).
 - **C. 별도 테이블 `credential_meta`**: 메타데이터 분리. 과도한 구조화 — 이 케이스에는 불필요.
 - **D. 응답 스키마에서 `field_keys` 제거**: 클라이언트 호환성 깨짐. UI가 이 목록으로 form UI를 구성 중이므로 기각.
 
-## 결과
+## 结果
 
 ### 긍정
 

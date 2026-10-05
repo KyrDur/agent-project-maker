@@ -4,7 +4,7 @@ import { computeCappedRevisionDiffLines, countInputLines } from '../skill-revisi
 import { computeRevisionDiffLines, hasRevisionDiffChanges } from '../skill-revision-diff-lines'
 
 describe('computeRevisionDiffLines', () => {
-  it('추가/삭제/문맥 라인을 평탄화한다', () => {
+  it('将新增/删除/上下文行扁平化', () => {
     const before = 'line-1\nline-2\nline-3\n'
     const after = 'line-1\nline-2-changed\nline-3\n'
 
@@ -19,7 +19,7 @@ describe('computeRevisionDiffLines', () => {
     expect(hasRevisionDiffChanges(lines)).toBe(true)
   })
 
-  it('동일 콘텐츠는 문맥 라인만 반환한다', () => {
+  it('内容相同时只返回上下文行', () => {
     const text = 'same\ncontent\n'
     const lines = computeRevisionDiffLines(text, text)
 
@@ -27,7 +27,7 @@ describe('computeRevisionDiffLines', () => {
     expect(hasRevisionDiffChanges(lines)).toBe(false)
   })
 
-  it('빈 원본 대비는 전부 추가 라인 (최초 리비전 계약)', () => {
+  it('与空原文对比时全部为新增行（首个修订版契约）', () => {
     const lines = computeRevisionDiffLines('', 'a\nb\n')
 
     expect(lines).toEqual([
@@ -36,20 +36,20 @@ describe('computeRevisionDiffLines', () => {
     ])
   })
 
-  it('CRLF↔LF 개행 차이는 변경으로 세지 않는다 (stripTrailingCr)', () => {
+  it('CRLF↔LF 换行差异不计为变更 (stripTrailingCr)', () => {
     const lines = computeRevisionDiffLines('a\r\nb\r\n', 'a\nb\n')
 
     expect(hasRevisionDiffChanges(lines)).toBe(false)
   })
 
-  it('말미 개행 유무만 다른 파일은 마지막 라인을 유령 변경으로 만들지 않는다', () => {
-    // jsdiff는 'b'와 'b\n'을 같은 라인으로 취급(newline 차이는 변경 아님).
+  it('仅末尾换行有无不同的文件，不应把最后一行标成幽灵变更', () => {
+    // jsdiff 将 'b' 和 'b\n' 视为同一行（newline 差异不算变更）。
     const lines = computeRevisionDiffLines('a\nb', 'a\nb\n')
 
     expect(hasRevisionDiffChanges(lines)).toBe(false)
   })
 
-  it('멀티라인 chunk를 개별 라인으로 분해하고 말미 개행을 라인으로 세지 않는다', () => {
+  it('将多行 chunk 拆为单独行，末尾换行不计作一行', () => {
     const lines = computeRevisionDiffLines('x\n', 'x\ny\nz\n')
 
     expect(lines).toEqual([
@@ -60,17 +60,17 @@ describe('computeRevisionDiffLines', () => {
   })
 })
 
-describe('countInputLines (diff 사전 검사, R5)', () => {
-  // O(ND) Myers 이전의 싼 상한 검사 — diff 출력 라인 수는 max(입력 라인) 이상
-  // 이므로 한쪽 입력만으로 상한 초과가 확정이면 diff를 건너뛴다.
-  it('개행 기준 라인 수를 할당 없이 센다', () => {
+describe('countInputLines (diff 预检查, R5)', () => {
+  // 在 O(ND) Myers 之前做低成本上限检查 — diff 输出行数至少为 max(输入行数)，
+  // 因此若仅凭一侧输入就能确定超过上限，则跳过 diff。
+  it('按换行统计行数，不进行分配', () => {
     expect(countInputLines('')).toBe(1)
     expect(countInputLines('a')).toBe(1)
     expect(countInputLines('a\nb')).toBe(2)
     expect(countInputLines('a\nb\n')).toBe(3)
   })
 
-  it('병적 입력(수만 라인)도 즉시 계수한다', () => {
+  it('病态输入（数万行）也能立即计数', () => {
     const huge = 'x\n'.repeat(200_000)
     const start = performance.now()
     expect(countInputLines(huge)).toBe(200_001)
@@ -78,21 +78,21 @@ describe('countInputLines (diff 사전 검사, R5)', () => {
   })
 })
 
-describe('computeCappedRevisionDiffLines (검사 순서 계약, R6)', () => {
-  it('동일 텍스트는 상한 초과 크기여도 "변경 없음"(빈 배열)이다 — tooLarge 오표기 금지', () => {
-    // 6천 라인 무변경 롤백 리비전 — 사전 검사가 먼저면 "변경이 너무 큼"으로
-    // 거짓 표기된다.
+describe('computeCappedRevisionDiffLines (检查顺序契约, R6)', () => {
+  it('相同文本即使大小超过上限也应为 "无变更"（空数组）— 禁止误标 tooLarge', () => {
+    // 6千行无变更回滚修订版 — 如果预检查先执行，会被误标为"变更过大"
+    // 。
     const huge = 'line\n'.repeat(6_000)
     expect(computeCappedRevisionDiffLines(huge, huge)).toEqual([])
   })
 
-  it('한쪽 입력이 상한을 넘고 내용이 다르면 diff 없이 null(placeholder)', () => {
+  it('如果一侧输入超过上限且内容不同，则不做 diff，返回 null(placeholder)', () => {
     const huge = 'line\n'.repeat(6_000)
     expect(computeCappedRevisionDiffLines(huge, 'other\n')).toBeNull()
     expect(computeCappedRevisionDiffLines('other\n', huge)).toBeNull()
   })
 
-  it('상한 내 변경은 정상 diff 라인을 반환한다', () => {
+  it('上限内的变更正常返回 diff 行', () => {
     const lines = computeCappedRevisionDiffLines('a\n', 'b\n')
     expect(lines).toEqual([
       { type: 'removed', text: 'a' },
@@ -100,20 +100,20 @@ describe('computeCappedRevisionDiffLines (검사 순서 계약, R6)', () => {
     ])
   })
 
-  it('CRLF↔LF·말미 개행만 다른 상한 초과 쌍도 "변경 없음"이다 — 옵션이 노린 입력 클래스 (R7)', () => {
+  it('仅 CRLF↔LF·末尾换行不同的超上限对也应为 "无变更" — 该选项针对的输入类别 (R7)', () => {
     const lf = 'line\n'.repeat(6_000)
     const crlf = 'line\r\n'.repeat(6_000)
     expect(computeCappedRevisionDiffLines(crlf, lf)).toEqual([])
     expect(computeCappedRevisionDiffLines(lf, lf.slice(0, -1))).toEqual([])
   })
 
-  it("''↔'\\n'과 '\\n\\n'↔'\\n'은 실제 변경이다 — 정규화가 합치면 거짓 무변경 (R8)", () => {
-    // ''(0줄) vs '\n'(빈 줄 1개): jsdiff 기준 추가된 빈 줄 — strip 정규화가
-    // 둘 다 ''로 만들어 "변경 없음"으로 오표기했다.
+  it("''↔'\\n' 和 '\\n\\n'↔'\\n' 是真实变更 — 若规范化后合并，会产生错误的无变更 (R8)", () => {
+    // ''(0行) vs '\n'(1个空行)：按 jsdiff 标准属于新增空行 — strip 规范化会
+    // 把两者都变成 '',错误标记为"无变更"。
     const emptyVsNewline = computeCappedRevisionDiffLines('', '\n')
     expect(emptyVsNewline).not.toBeNull()
     expect(emptyVsNewline).not.toEqual([])
-    // '\n\n' vs '\n': 빈 줄 하나 제거 — strip 1회 정규화의 잔여 합침 클래스.
+    // '\n\n' vs '\n'：删除一个空行 — strip 1 次规范化后的残余合并类别。
     const doubleVsSingle = computeCappedRevisionDiffLines('\n\n', '\n')
     expect(doubleVsSingle).not.toBeNull()
     expect(doubleVsSingle).not.toEqual([])

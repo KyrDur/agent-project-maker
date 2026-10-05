@@ -58,9 +58,9 @@ async def list_messages_from_checkpointer(
     by message id (P1-7).
     """
 
-    # P0-D: tree를 호출자가 미리 만들어 넘기면 build_message_tree 중복 호출
-    # (= _collect_checkpoints + alist 전체 walk)을 피한다. 단독으로 부르면
-    # 하위호환 유지를 위해 직접 build.
+    # P0-D: 若调用方预先构建 tree 并传入，可避免重复调用 build_message_tree
+    # （= _collect_checkpoints + alist 全量 walk）。若单独调用，
+    # 为保持向后兼容会自行 build。
     if tree is None:
         from app.agent_runtime.checkpointer import get_checkpointer
         from app.services.thread_branch_service import build_message_tree
@@ -88,9 +88,9 @@ async def list_messages_from_checkpointer(
         ts = datetime.fromisoformat(iso) if iso else fallback_base + timedelta(milliseconds=idx)
         timestamps.append(ts)
 
-    # W7-4 — conversation의 agent에 연결된 model 단가를 한 번 조회해 넘긴다.
-    # 메시지마다 model이 다를 수 있으나(fallback chain) 단순화 — 95% 케이스인
-    # default model 단가만 사용해 근사. 정확한 누적은 Daily Spend가 별도로 추적.
+    # W7-4 — 一次查询 conversation 的 agent 所关联 model 的单价并传入。
+    # 每条消息可能使用不同 model（fallback chain），但这里简化处理 — 对 95% 的情况
+    # 仅用 default model 单价近似。精确累计由 Daily Spend 单独追踪。
     cost_per_input, cost_per_output = await _resolve_agent_model_pricing(db, conversation)
 
     responses = langchain_messages_to_response(

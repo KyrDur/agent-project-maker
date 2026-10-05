@@ -88,15 +88,13 @@ export function SubAgentToolCard({ toolCallId, args, statusType }: SubAgentToolC
 }
 
 /**
- * deepagents의 sub-agent 호출은 표준 `task` 도구로 들어온다.
- * (backend/app/agent_runtime/executor.py 참조 — task tool의 subagent_type 인자)
+ * deepagents 的 sub-agent 调用通过标准 `task` 工具进入。
+ * （参见 backend/app/agent_runtime/executor.py — task tool 的 subagent_type 参数）
  */
 export function SubAgentToolUI({
   args,
   status,
   toolCallId,
 }: ToolCallMessagePartProps<SubagentArgs, unknown>) {
-  return (
-    <SubAgentToolCard toolCallId={toolCallId} args={args} statusType={status?.type} />
-  )
+  return <SubAgentToolCard toolCallId={toolCallId} args={args} statusType={status?.type} />
 }

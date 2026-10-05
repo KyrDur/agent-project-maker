@@ -600,7 +600,7 @@ Office, PPT, CAD preview는 파일 타입별 dependency와 변환 서버가 필�
 
 1차 PR의 목표는 "생성된 파일이 우측 패널에 뜨고, 동시에 전역 Generated File Library에서 검색/필터/즐겨찾기/통계로 재사용 가능하다"까지로 잡는다. 이 기능은 MVP와 P2로 나누지 않는다. 파일 인덱스, 패널, 라이브러리 화면이 같은 `conversation_artifacts` source of truth를 공유해야 API와 DB를 두 번 갈아엎지 않는다.
 
-포함:
+包括：
 
 - local artifact storage
 - DB manifest/version

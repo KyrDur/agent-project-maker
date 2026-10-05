@@ -169,8 +169,8 @@ async def get_tools_catalog(db: AsyncSession, user_id: uuid.UUID) -> list[dict[s
     """Return personal MCP tools and skills; exclude legacy external tool instances.
 
     Each item carries a ``kind`` field (``"tool" | "mcp" | "skill"``) so the
-    builder phase3 추천기 LLM 이 상황에 맞는 종류를 선택할 수 있고, phase8
-    confirm 이 종류별로 적절한 link 테이블에 매칭한다.
+    builder phase3 推荐器 LLM 可以按场景选择合适种类，phase8
+    confirm 再按种类匹配到正确的 link 表。
     """
 
     # Bundled external tool instances are outside simulated project practice.

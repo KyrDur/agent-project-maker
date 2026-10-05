@@ -99,7 +99,7 @@ const CANCELED_TEXT = '응답이 중단되었습니다'
 describe('appendDurableCanceledNotice', () => {
   it('마지막 assistant 메시지 끝에 notice 텍스트를 덧붙이고 원본은 변경하지 않는다', () => {
     const original = [
-      message({ id: 'm1', role: 'user', content: '질문' }),
+      message({ id: 'm1', role: 'user', content: '问题' }),
       message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
     ]
 
@@ -130,7 +130,7 @@ describe('appendDurableCanceledNotice', () => {
   })
 
   it('마지막이 user 메시지면 run id로 키된 합성 assistant notice를 덧붙인다', () => {
-    const original = [message({ id: 'm1', role: 'user', content: '질문' })]
+    const original = [message({ id: 'm1', role: 'user', content: '问题' })]
     const run = conversationRun('canceled')
 
     const result = appendDurableCanceledNotice(original, CANCELED_TEXT, run)
@@ -145,7 +145,7 @@ describe('appendDurableCanceledNotice', () => {
   })
 
   it('합성 notice의 created_at은 completed_at → cancel_requested_at → updated_at 순으로 고른다', () => {
-    const original = [message({ id: 'm1', role: 'user', content: '질문' })]
+    const original = [message({ id: 'm1', role: 'user', content: '问题' })]
     const withoutCompleted = conversationRun('canceling', { completed_at: null })
     const withoutBoth = conversationRun('canceling', {
       completed_at: null,
@@ -174,7 +174,7 @@ describe('useChatRuntime durable canceled notice', () => {
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
             message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
           ],
           streamFn: emptyStream,
@@ -195,7 +195,7 @@ describe('useChatRuntime durable canceled notice', () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
-          messages: [message({ id: 'm1', role: 'user', content: '질문' })],
+          messages: [message({ id: 'm1', role: 'user', content: '问题' })],
           streamFn: emptyStream,
           conversationId: 'conversation-1',
           latestRun: conversationRun('canceled'),
@@ -215,7 +215,7 @@ describe('useChatRuntime durable canceled notice', () => {
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
             message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
           ],
           streamFn: emptyStream,
@@ -236,7 +236,7 @@ describe('useChatRuntime durable canceled notice', () => {
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
             message({ id: 'm2', role: 'assistant', content: '완성된 응답' }),
           ],
           streamFn: emptyStream,

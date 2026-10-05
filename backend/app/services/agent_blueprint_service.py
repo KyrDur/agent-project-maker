@@ -648,8 +648,8 @@ async def _resolve_sub_agent_ids(
                 .where(
                     Agent.user_id == user_id,
                     Agent.name.in_(set(names)),
-                    # 히든 런타임 에이전트("技能培养者" 등)가 이름 충돌로 일반
-                    # 에이전트의 서브에이전트로 조용히 결선되는 것을 차단.
+                    # 阻止隐藏运行时 Agent（"技能培养者"等）因名称冲突而与普通
+                    # Agent 静默连接为其子 Agent。
                     Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
                 )
                 .order_by(Agent.updated_at.desc())

@@ -6,8 +6,8 @@ import type { SkillDetailTabSlots } from '../skill-detail-tab-shell'
 import { TextSkillEditor } from '../skill-detail-text-editor'
 import { PackageSkillEditor } from '../skill-detail-package-editor'
 
-// 소스 탭 편집·저장 루프 회귀 가드 — 구 다이얼로그 테스트 삭제로 생긴
-// 커버리지 공백을 메운다 (리뷰 R / B3).
+// 源标签页编辑·保存循环回归防护 — 填补因删除旧对话框测试产生的
+// 覆盖率空白（审查 R / B3）。
 
 function renderTestSlots(slots: SkillDetailTabSlots) {
   return (
@@ -23,8 +23,8 @@ function renderTestSlots(slots: SkillDetailTabSlots) {
 const mockUpdateContent = vi.fn()
 const mockSetFile = vi.fn()
 const mockDeleteFile = vi.fn()
-// 서버 콘텐츠 변화(롤백 등) 시뮬레이션용 가변 홀더 — 렌더마다 최신 값을 읽는다.
-const textContentHolder = { content: '# 원본 본문' }
+// 用于模拟服务器内容变化（回滚等）的可变持有器 — 每次渲染读取最新值。
+const textContentHolder = { content: '# 原始正文' }
 
 vi.mock('@/lib/hooks/use-skills', () => ({
   useSkill: () => ({
@@ -52,51 +52,51 @@ vi.mock('@/lib/hooks/use-skills', () => ({
 vi.mock('../use-skill-file-remote-cache', () => ({
   useSkillFileRemoteCache: () => ({
     remoteCache: new Map([
-      ['SKILL.md', '# SKILL.md 원본'],
+      ['SKILL.md', '# SKILL.md 原文'],
       ['scripts/run.py', 'print("hi")'],
     ]),
     setRemoteCache: vi.fn(),
   }),
 }))
 
-describe('TextSkillEditor (소스 탭)', () => {
+describe('TextSkillEditor (源标签页)', () => {
   beforeEach(() => {
     mockUpdateContent.mockReset().mockResolvedValue(undefined)
-    textContentHolder.content = '# 원본 본문'
+    textContentHolder.content = '# 原始正文'
   })
 
-  it('본문을 수정하고 저장하면 PUT 페이로드에 편집 내용이 실린다', async () => {
+  it('修改正文并保存后，PUT 载荷中包含编辑内容', async () => {
     const user = userEvent.setup()
     render(<TextSkillEditor skillId="skill-1">{renderTestSlots}</TextSkillEditor>)
 
     const textarea = screen.getByRole('textbox')
-    expect(textarea).toHaveValue('# 원본 본문')
+    expect(textarea).toHaveValue('# 原始正文')
 
     await user.clear(textarea)
-    await user.type(textarea, '# 수정된 본문')
+    await user.type(textarea, '# 修改后的正文')
     await user.click(screen.getByRole('button', { name: '保存' }))
 
     expect(mockUpdateContent).toHaveBeenCalledWith({
       id: 'skill-1',
-      data: { content: '# 수정된 본문' },
+      data: { content: '# 修改后的正文' },
     })
   })
 
-  it('서버 콘텐츠가 바뀌면(롤백 후 refetch) 에디터를 재시드한다 — R5', () => {
+  it('服务器内容变化后（回滚后 refetch），重新为编辑器注入初始内容 — R5', () => {
     const { rerender } = render(
       <TextSkillEditor skillId="skill-1">{renderTestSlots}</TextSkillEditor>,
     )
-    expect(screen.getByRole('textbox')).toHaveValue('# 원본 본문')
+    expect(screen.getByRole('textbox')).toHaveValue('# 原始正文')
 
-    // 버전 탭 롤백 → content 쿼리 refetch가 새 본문으로 착지.
-    textContentHolder.content = '# 롤백된 본문'
+    // 版本标签页回滚 → content 查询 refetch 落到新正文。
+    textContentHolder.content = '# 回滚后的正文'
     rerender(<TextSkillEditor skillId="skill-1">{renderTestSlots}</TextSkillEditor>)
 
-    // hydrate-once였다면 stale '# 원본 본문'이 잠겨 저장 시 롤백을 되돌린다.
-    expect(screen.getByRole('textbox')).toHaveValue('# 롤백된 본문')
+    // 如果是 hydrate-once，会锁住 stale '# 原始正文'，保存时反向撤销回滚。
+    expect(screen.getByRole('textbox')).toHaveValue('# 回滚后的正文')
   })
 
-  it('dirty draft는 서버 콘텐츠 변화가 착지해도 덮이지 않는다', async () => {
+  it('dirty draft 即使服务器内容变化落地也不会被覆盖', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
       <TextSkillEditor skillId="skill-1">{renderTestSlots}</TextSkillEditor>,
@@ -104,44 +104,44 @@ describe('TextSkillEditor (소스 탭)', () => {
 
     const textarea = screen.getByRole('textbox')
     await user.clear(textarea)
-    await user.type(textarea, '# 편집 중')
+    await user.type(textarea, '# 编辑中')
 
-    textContentHolder.content = '# 백그라운드 갱신'
+    textContentHolder.content = '# 后台更新'
     rerender(<TextSkillEditor skillId="skill-1">{renderTestSlots}</TextSkillEditor>)
 
-    expect(screen.getByRole('textbox')).toHaveValue('# 편집 중')
+    expect(screen.getByRole('textbox')).toHaveValue('# 编辑中')
   })
 })
 
-describe('PackageSkillEditor (소스 탭)', () => {
+describe('PackageSkillEditor (源标签页)', () => {
   beforeEach(() => {
     mockSetFile.mockReset().mockResolvedValue(undefined)
   })
 
-  it('파일 추가는 중복 경로를 거부하고, 새 경로는 선행 슬래시를 벗겨 생성한다', async () => {
+  it('添加文件时拒绝重复路径，新路径会去掉前导斜杠后创建', async () => {
     const user = userEvent.setup()
     render(<PackageSkillEditor skillId="skill-1">{renderTestSlots}</PackageSkillEditor>)
 
     await user.click(screen.getByRole('button', { name: '添加文件' }))
     const pathInput = screen.getByPlaceholderText('path/to/new-file.md')
 
-    // 중복 경로 거부 — 기존 파일이 빈 내용으로 덮이면 안 된다.
+    // 拒绝重复路径 — 不能让现有文件被空内容覆盖。
     await user.type(pathInput, 'SKILL.md')
-    await user.click(screen.getByRole('button', { name: '已创建' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
     expect(mockSetFile).not.toHaveBeenCalled()
 
     await user.clear(pathInput)
     await user.type(pathInput, '/references/new.md')
-    await user.click(screen.getByRole('button', { name: '已创建' }))
+    await user.click(screen.getByRole('button', { name: '创建' }))
     expect(mockSetFile).toHaveBeenCalledWith({ path: 'references/new.md', content: '' })
   })
 
-  it('SKILL.md 외 파일은 삭제 확인 후 DELETE를 부른다', async () => {
+  it('SKILL.md 以外的文件在删除确认后调用 DELETE', async () => {
     const user = userEvent.setup()
     render(<PackageSkillEditor skillId="skill-1">{renderTestSlots}</PackageSkillEditor>)
 
-    // 삭제 버튼은 SKILL.md(보호됨) 외 파일에서만 노출된다. 트리는 leaf 이름만
-    // 표시하므로 run.py로 선택한다.
+    // 删除按钮只在 SKILL.md（受保护）以外的文件上显示。树只显示 leaf 名称，
+    // 因此通过 run.py 选择。
     await user.click(screen.getByRole('button', { name: /run\.py/ }))
     await user.click(screen.getByRole('button', { name: '删除文件' }))
     await user.click(screen.getByRole('button', { name: '确认删除' }))
@@ -149,21 +149,21 @@ describe('PackageSkillEditor (소스 탭)', () => {
     expect(mockDeleteFile).toHaveBeenCalledWith('scripts/run.py')
   })
 
-  it('파일을 수정하면 저장이 활성화되고 PUT에 경로·내용이 실린다', async () => {
+  it('修改文件后启用保存，并在 PUT 中包含路径和内容', async () => {
     const user = userEvent.setup()
     render(<PackageSkillEditor skillId="skill-1">{renderTestSlots}</PackageSkillEditor>)
 
-    // SKILL.md가 기본 선택 — 원본 내용 렌더.
+    // 默认选择 SKILL.md — 渲染原始内容。
     const textarea = screen.getByRole('textbox')
-    expect(textarea).toHaveValue('# SKILL.md 원본')
+    expect(textarea).toHaveValue('# SKILL.md 原文')
     const save = screen.getByRole('button', { name: '保存文件' })
     expect(save).toBeDisabled()
 
     await user.clear(textarea)
-    await user.type(textarea, '# 갱신')
+    await user.type(textarea, '# 更新')
     expect(save).toBeEnabled()
 
     await user.click(save)
-    expect(mockSetFile).toHaveBeenCalledWith({ path: 'SKILL.md', content: '# 갱신' })
+    expect(mockSetFile).toHaveBeenCalledWith({ path: 'SKILL.md', content: '# 更新' })
   })
 })

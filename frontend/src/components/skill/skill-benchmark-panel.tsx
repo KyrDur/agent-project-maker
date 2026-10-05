@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * 실측 A/B 벤치마크 비교 (Phase 3 §4) — run.benchmark의 with/without 지표를
- * 바 차트로 비교한다. llm-2(measured) 런은 "测量的" 배지, 레거시 런은 "估计"
- * 라벨로 정직하게 구분한다 (가짜 데이터 금지 원칙).
+ * 实测 A/B 基准比较 (Phase 3 §4) — 比较 run.benchmark 的 with/without 指标，
+ * 使用条形图表展示。llm-2(measured) 运行使用 "测量的" 徽标，旧版运行使用 "估计"
+ * 标签，诚实区分（禁止伪造数据原则）。
  */
 
 import { useTranslations } from 'next-intl'

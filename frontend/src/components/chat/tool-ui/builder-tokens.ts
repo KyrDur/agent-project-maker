@@ -1,8 +1,8 @@
 /**
- * Builder Conversational UI 한정 색 토큰.
+ * Builder Conversational UI 专用颜色令牌。
  *
- * 빌더 카드 군(ProgressRail, IntentSummary, ToolRecommendation 등)에서 공유.
- * 다른 화면에서도 재사용되면 globals.css `@theme`로 승격할 것.
+ * 在构建器卡片组(ProgressRail, IntentSummary, ToolRecommendation 等)中共享。
+ * 如果也在其他页面复用，则提升到 globals.css `@theme`。
  */
 export const BUILDER_TOKENS = {
   surface: 'var(--builder-surface)',

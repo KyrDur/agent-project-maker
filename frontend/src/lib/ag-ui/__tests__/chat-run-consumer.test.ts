@@ -122,7 +122,7 @@ describe('agUiEventToMoldyEvents', () => {
     ])
   })
 
-  it('RUN_ERROR의 code를 보존해 actionable error 분기가 동작하게 한다', () => {
+  it('保留 RUN_ERROR 的 code，使 actionable error 分支能够工作', () => {
     expect(
       agUiEventToMoldyEvents(
         { type: 'RUN_ERROR', message: 'no key', code: 'llm_credential_required' },
@@ -137,7 +137,7 @@ describe('agUiEventToMoldyEvents', () => {
     ])
   })
 
-  it('알 수 없는 이벤트 타입은 throw 하지 않고 빈 배열을 반환한다', () => {
+  it('未知事件类型不 throw，返回空数组', () => {
     const futureEvent = { type: 'FUTURE_EVENT' } as unknown as Parameters<
       typeof agUiEventToMoldyEvents
     >[0]

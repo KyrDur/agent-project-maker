@@ -5,7 +5,7 @@ import type { SkillRevisionDetail, SkillRevisionSummary } from '@/lib/types/skil
 
 import type { SkillDetailTabSlots } from '../skill-detail-tab-shell'
 
-// 구 DialogShell 렌더러 삭제(Phase 2) — 테스트는 슬롯을 평면 렌더한다.
+// 删除旧 DialogShell 渲染器（Phase 2）— 测试将插槽扁平渲染。
 function renderTestSlots(slots: SkillDetailTabSlots) {
   return (
     <>
@@ -27,12 +27,12 @@ vi.mock('@/lib/hooks/use-skill-revisions', () => ({
   useSkillRevisions: (...args: readonly unknown[]) => mockUseSkillRevisions(...args),
   useSkillRevision: (...args: readonly unknown[]) => mockUseSkillRevision(...args),
   useRollbackSkillRevision: (...args: readonly unknown[]) => mockUseRollbackSkillRevision(...args),
-  // M4 diff 카드 — 이 테스트의 관심사가 아니라 로딩 상태로 고정.
+  // M4 diff 卡片 — 不是该测试关注点，因此固定为加载中状态。
   useSkillRevisionFiles: () => ({ data: undefined, isLoading: true, isError: false }),
   useSkillRevisionFileContent: () => ({ data: undefined, isLoading: true, isError: false }),
 }))
 
-// Phase 3 — 히스토리 탭이 리비전 통과율 배지용으로 version-stats를 조회한다.
+// Phase 3 — 历史标签页为修订版通过率徽标查询 version-stats。
 vi.mock('@/lib/hooks/use-skill-evaluations', () => ({
   useSkillEvaluationVersionStats: () => ({ data: [], isLoading: false }),
 }))

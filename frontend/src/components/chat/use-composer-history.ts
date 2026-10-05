@@ -11,22 +11,22 @@ import {
 } from '@/lib/chat/composer-history'
 import { focusTextareaAtEnd } from './composer-focus'
 
-// useAuiState(useSyncExternalStore, Object.is)는 selector가 매 snapshot 새
-// 배열을 돌려주면 무한 리렌더가 난다(tool-group-container.tsx의 확립된 함정).
-// 히스토리는 구분자로 join한 시그니처 문자열로 안정화하고 useMemo로 되살린다.
-// U+0000은 채팅 입력에 나타날 수 없는 제어문자다.
+// useAuiState(useSyncExternalStore, Object.is) 若 selector 在每个 snapshot 返回新
+// 数组，就会产生无限重新渲染（tool-group-container.tsx 中已确认的陷阱）。
+// 历史通过分隔符 join 成签名字符串来稳定，再用 useMemo 还原。
+// U+0000 是不可能出现在聊天输入中的控制字符。
 const HISTORY_SEP = '\u0000'
 
 /**
- * ↑/↓ 컴포저 입력 히스토리 (readline 스타일).
+ * ↑/↓ 输入器输入历史（readline 风格）。
  *
- * - ↑는 캐럿이 첫 줄일 때만, ↓는 마지막 줄일 때만 히스토리로 승격 —
- *   그 외에는 일반 커서 이동을 그대로 둔다(멀티라인 안전).
- * - 탐색 진입 시 작성 중이던 draft를 보관하고, ↓로 최신을 지나 내려오면 복원.
- * - 불러온 항목을 편집하면(외부 setText 포함) 탐색 상태를 리셋한다.
- * - IME 조합 중(isComposing)에는 개입하지 않는다 — 한국어 입력 안전.
+ * - ↑ 仅在光标位于第一行时，↓ 仅在最后一行时进入历史 —
+ *   其他情况保留普通光标移动（多行安全）。
+ * - 进入浏览时保存正在编写的 draft，向下越过最新记录后恢复。
+ * - 编辑已调出的条目时（包括外部 setText）重置浏览状态。
+ * - IME 组合中(isComposing)不介入 — 确保韩文输入安全。
  *
- * 히스토리 소스는 현재 스레드의 user 메시지라 리로드 후에도 유지된다.
+ * 历史来源是当前线程的 user 消息，因此重新加载后仍保留。
  */
 export function useComposerHistory(conversationId: string | null): {
   handleHistoryKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void
@@ -42,14 +42,14 @@ export function useComposerHistory(conversationId: string | null): {
   const draftRef = useRef('')
   const lastAppliedRef = useRef<string | null>(null)
 
-  // 대화 전환 시 탐색 상태 초기화.
+  // 对话切换时初始化浏览状态。
   useEffect(() => {
     indexRef.current = -1
     draftRef.current = ''
     lastAppliedRef.current = null
   }, [conversationId])
 
-  // 사용자가 항목을 편집(또는 전송으로 비워짐)하면 탐색 이탈 — readline 단순형.
+  // 用户编辑条目（或发送后清空）时退出浏览 — readline 简化模式。
   useEffect(() => {
     if (lastAppliedRef.current !== null && composerText !== lastAppliedRef.current) {
       indexRef.current = -1
@@ -61,7 +61,7 @@ export function useComposerHistory(conversationId: string | null): {
     (textarea: HTMLTextAreaElement, next: string) => {
       lastAppliedRef.current = next
       aui.composer.setText(next)
-      // setText → 외부값 동기화 이후 캐럿을 끝으로.
+      // setText → 外部值同步后将光标移到末尾。
       requestAnimationFrame(() => focusTextareaAtEnd(textarea))
     },
     [aui],
@@ -85,7 +85,7 @@ export function useComposerHistory(conversationId: string | null): {
 
       event.preventDefault()
       if (indexRef.current === -1) {
-        // 탐색 진입 — 작성 중이던 내용을 보관.
+        // 进入浏览 — 保存正在编写的内容。
         draftRef.current = textarea.value
       }
       indexRef.current = nextIndex

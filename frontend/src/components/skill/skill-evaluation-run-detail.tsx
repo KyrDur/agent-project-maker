@@ -16,7 +16,7 @@ type SkillEvaluationRunDetailProps = {
   readonly currentSkillContentHash?: string | null
   readonly isLoading?: boolean
   readonly run: SkillEvaluationRun | null
-  /** 케이스 피드백 활성화용 — 없으면 피드백 컨트롤은 렌더하지 않는다. */
+  /** 用于启用用例反馈 — 缺失时不渲染反馈控件。 */
   readonly skillId?: string | null
 }
 

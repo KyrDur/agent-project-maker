@@ -17,7 +17,7 @@ describe('skill builder APIs', () => {
   it('starts a skill builder session through the dedicated builder endpoint', async () => {
     const request = {
       mode: 'create',
-      user_request: '회의록 액션 아이템 스킬을 만들어줘',
+      user_request: '帮我创建一个会议记录行动项技能',
     } as const
 
     await skillBuilderApi.start(request)
@@ -38,9 +38,9 @@ describe('skill builder APIs', () => {
 
   it('creates and reruns installed-skill evaluations under the skill resource', async () => {
     const request = {
-      name: '기본 평가',
+      name: '基础评估',
       description: null,
-      evals: [{ prompt: '회의록에서 할 일을 찾아줘' }],
+      evals: [{ prompt: '帮我从会议记录中找出待办事项' }],
     }
 
     await skillEvaluationsApi.createSet('skill-1', request)

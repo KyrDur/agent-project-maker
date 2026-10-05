@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * 스킬 축 usage 30일 요약 (Phase 3 §3.1/§5, D3 — 실측 귀속만).
- * 평가 런의 실제 LLM 토큰/비용 + 채팅 execute_in_skill 실행 횟수.
+ * 技能维度 usage 30天摘要 (Phase 3 §3.1/§5, D3 — 仅实测归因)。
+ * 评估运行的真实 LLM 令牌/费用 + 聊天 execute_in_skill 执行次数。
  */
 
 import { useTranslations } from 'next-intl'

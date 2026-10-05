@@ -10,7 +10,7 @@ const now = '2026-06-15T00:00:00.000Z'
 
 const evaluatedSkill: Skill = {
   id: 'skill-1',
-  name: '회의록 정리',
+  name: '会议纪要整理',
   slug: 'meeting-summary',
   description: '회의록에서 결정사항과 액션 아이템을 정리합니다.',
   kind: 'package',
@@ -55,9 +55,9 @@ describe('ToolsSkillsDialog skill quality summaries', () => {
       />,
     )
 
-    expect(screen.getByText('회의록 정리')).toBeInTheDocument()
+    expect(screen.getByText('会议纪要整理')).toBeInTheDocument()
     expect(screen.getByText('所需凭据')).toBeInTheDocument()
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 취소/ })).not.toBeInTheDocument()
   })
@@ -75,10 +75,10 @@ describe('ToolsSkillsDialog skill quality summaries', () => {
       />,
     )
 
-    expect(screen.getByText('회의록 정리')).toBeInTheDocument()
+    expect(screen.getByText('会议纪要整理')).toBeInTheDocument()
     expect(screen.getByText('所需凭据')).toBeInTheDocument()
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '회의록 정리 제거' })).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '删除会议纪要整理' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 다시 실행/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /평가 취소/ })).not.toBeInTheDocument()
   })

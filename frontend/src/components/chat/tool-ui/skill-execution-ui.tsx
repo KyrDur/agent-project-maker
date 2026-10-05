@@ -9,15 +9,15 @@ import { useChatConversationId } from '@/components/chat/conversation-context'
 import { API_BASE } from '@/lib/api/client'
 
 // ──────────────────────────────────────────────
-// SkillExecutionToolUI — execute_in_skill 전용 리치 pill (W2-4/6).
+// SkillExecutionToolUI — execute_in_skill 专用富媒体 pill (W2-4/6)。
 //
-// 역할 분담: stdout은 moldy.ui_data terminal 카드가, 생성 파일 미리보기는
-// artifact 카드가 담당한다. 이 pill은 "어떤 스킬이 무슨 커맨드를 실행했고
-// 어떤 파일을 냈는가"의 요약 + 파일 링크만 책임진다.
+// 职责划分：stdout 由 moldy.ui_data terminal 卡片负责，生成文件预览由
+// artifact 卡片负责。这个 pill 只负责"哪个技能执行了什么命令，
+// 产出了哪些文件"的摘要 + 文件链接。
 //
-// 라이브 런에서 HITL 승인 카드가 뜨는 동안 raw pill은
-// stripInterruptedRawToolCalls로 숨겨진다 — 이 카드가 주로 보이는 지점은
-// 리로드된 대화와 HITL이 꺼진(허용된) 실행이다.
+// 实时运行中 HITL 批准卡片显示期间，raw pill 会被
+// stripInterruptedRawToolCalls 隐藏 — 这个卡片主要会出现在
+// 重新加载后的对话以及 HITL 被关闭（允许）的执行中。
 // ──────────────────────────────────────────────
 
 interface SkillExecutionArgs {
@@ -26,7 +26,7 @@ interface SkillExecutionArgs {
   [key: string]: unknown
 }
 
-/** skill_directory 가상 경로에서 스킬 이름(마지막 세그먼트)을 뽑는다. */
+/** 从 skill_directory 虚拟路径中提取技能名称（最后一个片段）。 */
 export function skillNameFromDirectory(directory: unknown): string | null {
   if (typeof directory !== 'string') return null
   const segments = directory.split('/').filter(Boolean)
@@ -34,7 +34,7 @@ export function skillNameFromDirectory(directory: unknown): string | null {
   return last && last !== 'skills' ? last : null
 }
 
-/** 결과 문자열 끝의 `OUTPUT_FILES: a.md, b.png` 계약 라인에서 파일명 목록 추출. */
+/** 从结果字符串末尾的 `OUTPUT_FILES: a.md, b.png` 契约行中提取文件名列表。 */
 export function outputFilesFromResult(result: unknown): string[] {
   if (typeof result !== 'string') return []
   const marker = 'OUTPUT_FILES:'
@@ -128,8 +128,6 @@ function SkillExecutionRender({
   )
 }
 
-export function SkillExecutionToolUI(
-  props: ToolCallMessagePartProps<SkillExecutionArgs, unknown>,
-) {
+export function SkillExecutionToolUI(props: ToolCallMessagePartProps<SkillExecutionArgs, unknown>) {
   return <SkillExecutionRender {...props} />
 }

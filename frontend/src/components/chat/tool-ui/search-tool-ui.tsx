@@ -35,7 +35,7 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
   const title = item.title
   const snippet = searchItemSnippet(item)
 
-  // 구조 없이 텍스트만 있는 경우
+  // 只有文本、没有结构的情况
   if (!title && !url) {
     return (
       <div className="rounded-lg border border-border/40 bg-background p-2">
@@ -50,8 +50,8 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
     <div className="rounded-lg border border-border/40 bg-background p-2 transition-colors hover:bg-accent/50">
       <div className="flex items-start gap-2">
         {thumbnail ? (
-          // 검색 API 썸네일은 임의 원격 도메인이라 next/image 대신 일반 img를
-          // lazy 로드로 사용한다. (스킴은 sanitizeThumbnailUrl로 제한.)
+          // 搜索 API 缩略图来自任意远程域名，因此不用 next/image，而使用普通 img
+          // 并 lazy 加载。（协议由 sanitizeThumbnailUrl 限制。）
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={thumbnail}
@@ -105,7 +105,7 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
 }
 
 // ──────────────────────────────────────────────
-// 공유 render 함수 — GenericToolFallback의 shape 라우팅에서도 재사용된다.
+// 共享 render 函数 — 也复用于 GenericToolFallback 的 shape 路由。
 // ──────────────────────────────────────────────
 
 export function SearchRender({
@@ -118,8 +118,8 @@ export function SearchRender({
   status: { readonly type: string }
 }) {
   const t = useTranslations('chat.toolCall.search')
-  // 그룹 안의 검색 자식은 기본 접힘(쿼리 제목만) — N개가 모두 카드까지 펼쳐지면
-  // 너무 길어진다. 단독 검색(그룹 아님)은 지금처럼 결과를 바로 펼친다.
+  // 分组内的搜索子项默认折叠（只显示查询标题）— 如果 N 个都把卡片展开，
+  // 会过于冗长。单独搜索（非分组）仍像现在一样直接展开结果。
   const isGroupChild = useIsToolGroupChild()
   const isRunning = status.type === 'running'
   const items = parseSearchResults(result)
@@ -169,30 +169,30 @@ export function SearchRender({
 // ──────────────────────────────────────────────
 // SearchToolUI — web_search + Tavily + Naver + Google
 //
-// toolName은 런타임 이름과 일치해야 매칭된다. registry 도구의 런타임 이름은
+// toolName 必须与运行时名称一致才能匹配。registry 工具的运行时名称
 // `_safe_tool_name(Tool.name || display_name, fallback=definition_key)`
-// (backend tool_factory.py) — 한글 표시명은 새니타이즈에서 전부 소거되어
-// definition_key로 폴백하므로 실제로는 definition_key(naver_search_blog 등)가
-// 흐른다. 사용자가 도구 이름을 ASCII로 바꿔 이름이 어긋나는 경우는
-// GenericToolFallback의 shape 기반 라우팅(looksLikeSearchResults)이 받는다.
+// (backend tool_factory.py) — 韩文显示名会在清理时全部被移除，
+// 因而回退到 definition_key，所以实际流过来的是 definition_key(naver_search_blog 等)。
+// 如果用户将工具名改为 ASCII 导致名称不匹配，
+// 则由 GenericToolFallback 的基于 shape 的路由(looksLikeSearchResults)处理。
 // ──────────────────────────────────────────────
 
 export const SEARCH_TOOL_UI_NAMES = [
-  // builtin + 스킬 의존성(tavily_search) + E2E scripted
+  // builtin + 技能依赖(tavily_search) + E2E scripted
   'tavily_search',
   'web_search',
-  // registry definition_key (Naver 5종)
+  // registry definition_key (Naver 5 类)
   'naver_search_blog',
   'naver_search_news',
   'naver_search_image',
   'naver_search_shop',
   'naver_search_local',
-  // registry definition_key (Google 3종)
+  // registry definition_key (Google 3 类)
   'google_search_web',
   'google_search_image',
   'google_search_news',
-  // 과거 하드코딩 이름 — 실제 런타임 이름과 일치한 적은 없지만 기존 대화
-  // 스냅샷/테스트 fixture 호환을 위해 유지한다.
+  // 过去的硬编码名称 — 虽然从未与实际运行时名称匹配，但为兼容旧对话
+  // 快照/测试 fixture 而保留。
   'naver_blog_search',
   'naver_news_search',
   'google_search',

@@ -15,21 +15,21 @@ import {
 import { cn } from '@/lib/utils'
 
 // ──────────────────────────────────────────────
-// CollapsiblePill — tool/subagent/thinking 통일 표현
+// CollapsiblePill — tool/subagent/thinking 的统一表现
 //
-// 4상태(loading/success/error/cancelled) × 3종(tool/subagent/thinking)을
-// 하나의 컴포넌트로 그린다. 기존 generic-tool-ui / sub-agent-ui / search-tool-ui /
-// plan-tool-ui 등에서 반복되던 헤더 + status 아이콘 + 토글 패턴을 단일화.
+// 4 种状态(loading/success/error/cancelled) × 3 类(tool/subagent/thinking)
+// 由一个组件统一绘制。将原先 generic-tool-ui / sub-agent-ui / search-tool-ui /
+// plan-tool-ui 等中重复的标题区 + status 图标 + 开关模式统一起来。
 // ──────────────────────────────────────────────
 
 export type PillStatus = 'loading' | 'success' | 'error' | 'cancelled'
 export type PillKind = 'tool' | 'subagent' | 'thinking'
 
 /**
- * assistant-ui의 ``status.type``을 PillStatus로 매핑하는 표준 헬퍼.
+ * 将 assistant-ui 的 ``status.type`` 映射为 PillStatus 的标准辅助函数。
  *
- * 5개 tool-ui 파일에 흩어져 있던 매핑 함수를 통합 (PR #103 review에서 발견된
- * 미스매치). HiTL reject 등의 ``incomplete``는 의미상 cancelled가 정확.
+ * 合并分散在 5 个 tool-ui 文件中的映射函数（PR #103 review 中发现的
+ * 不匹配）。HiTL reject 等 ``incomplete`` 在语义上应准确映射为 cancelled。
  */
 export function pillStatusFromAssistantUi(
   statusType: 'running' | 'complete' | 'incomplete' | 'requires-action' | string | undefined,
@@ -44,30 +44,30 @@ export function pillStatusFromAssistantUi(
 interface CollapsiblePillProps {
   status: PillStatus
   kind?: PillKind
-  /** 헤더 좌측의 굵은 라벨 (도구명/서브에이전트명/사고 단계명). */
+  /** 标题区左侧的粗体标签（工具名/子智能体名/思考阶段名）。 */
   title: string
-  /** 라벨 우측의 보조 텍스트 또는 카운트 ("运行中", "5건" 등). */
+  /** 标签右侧的辅助文本或计数（"运行中", "5项" 等）。 */
   meta?: ReactNode
   /**
-   * kind 아이콘 자리에 표시할 커스텀 아이콘. file 도구 종류 구분
-   * (FileIcon/FileEditIcon/FilePlusIcon)처럼 같은 ``kind="tool"``이지만
-   * 시각적으로 더 좁히고 싶을 때. ``kind`` icon보다 우선 적용된다.
+   * 显示在 kind 图标位置的自定义图标。用于区分 file 工具类型
+   * （如 FileIcon/FileEditIcon/FilePlusIcon），即使同为 ``kind="tool"``，
+   * 也希望在视觉上进一步细分时使用。优先级高于 ``kind`` icon。
    */
   leadingIcon?: LucideIcon
-  /** 확장 시 보일 본문. 미지정 시 chevron 자체를 숨긴다. */
+  /** 展开后显示的正文。未指定时隐藏 chevron 本身。 */
   children?: ReactNode
-  /** 확장되기 전까지 만들 필요가 없는 무거운 본문. */
+  /** 展开前无需创建的重型正文。 */
   renderBody?: () => ReactNode
   defaultExpanded?: boolean
   /**
-   * Chevron 옆에 추가로 띄울 아이콘 버튼들 (예: 사이드 패널 펼치기).
-   * 제목 영역 클릭과 별개로 동작해야 하므로 호출 측에서 stopPropagation 처리.
+   * 在 Chevron 旁额外显示的图标按钮（例如：展开侧边面板）。
+   * 需要与点击标题区域分别工作，因此调用方需处理 stopPropagation。
    */
   trailing?: ReactNode
-  /** pill 전체를 버튼으로 쓸 때 (sub-agent 카드처럼). children 없을 때 권장. */
+  /** 将整个 pill 当作按钮使用时（如 sub-agent 卡片）。无 children 时推荐。 */
   onClick?: () => void
   className?: string
-  /** 좁은 레이아웃에서도 식별 라벨을 보존해야 하는 호출부용 제목 클래스. */
+  /** 供窄布局中也必须保留识别标签的调用方使用的标题类名。 */
   titleClassName?: string
 }
 
@@ -76,9 +76,9 @@ const STATUS_META: Record<
   {
     Icon: LucideIcon
     iconClass: string
-    /** 컨테이너 보더/배경 변형 (error/cancelled에 약한 틴트). */
+    /** 容器边框/背景变体（error/cancelled 使用轻微色调）。 */
     containerClass: string
-    /** 회전/스피너 동작이 필요한 상태인지. */
+    /** 是否为需要旋转/旋转指示器动画的状态。 */
     spin?: boolean
   }
 > = {
@@ -149,7 +149,7 @@ export function CollapsiblePill({
     setExpanded((value) => !value)
   }
   const { Icon: StatusIcon, iconClass, containerClass, spin } = STATUS_META[status]
-  // leadingIcon이 명시되면 그것을 사용, 없으면 kind 매핑 폴백
+  // 若显式指定 leadingIcon 则使用它，否则回退到 kind 映射
   const HeaderIcon = leadingIcon ?? (kind ? KIND_ICON[kind] : null)
   const expandable =
     renderBody !== undefined || (children !== undefined && children !== null && children !== false)
@@ -165,7 +165,7 @@ export function CollapsiblePill({
     </>
   )
 
-  // pill 전체를 버튼으로: children 없고 onClick만 주어진 케이스
+  // 将整个 pill 作为按钮：无 children 且仅提供 onClick 的情况
   if (!expandable && onClick) {
     if (trailing) {
       return (

@@ -314,13 +314,13 @@ async def _transition_to_running(
     *,
     worker_instance_id: str,
 ) -> tuple[ConversationRun | None, bool]:
-    """``queued -> running`` 전이 시도. ``(run, started)`` 반환.
+    """尝试 ``queued -> running`` 转换。返回 ``(run, started)``。
 
-    cancel API 가 워커 기동 전에 ``queued -> canceling`` 을 커밋했거나 sweep 이
-    먼저 terminal 로 보냈을 수 있다. 이때 무조건 전이하면 ``ValueError`` 가
-    runtime failure 로 오분류되므로(canceled 가 failed 로 보임), 상태 판정과
-    전이를 row lock 아래에서 함께 수행하고 시작 불가 사유는 호출자가 현재
-    status 로 분기한다.
+    cancel API 可能在 worker 启动前已提交 ``queued -> canceling``，或 sweep
+    可能先将其送到 terminal。此时若无条件转换，``ValueError`` 会被
+    误分类为 runtime failure（canceled 看起来像 failed），因此在 row lock 下
+    同时进行状态判断与转换，无法启动的原因由调用方根据当前
+    status 分支处理。
     """
     async with _session_factory()() as session:
         run = await session.get(ConversationRun, run_id, with_for_update=True)
@@ -383,11 +383,11 @@ async def _persist_shutdown_intent(run_ids: list[uuid.UUID]) -> None:
 
 
 def _redact_run_error_message(text: str, secret_values: set[str]) -> str | None:
-    """실패 런의 error_message를 값 기반 마스킹 후 저장용으로 정리한다.
+    """对失败 run 的 error_message 做基于值的脱敏后整理为存储内容。
 
-    run에 주입된 credential 값이 예외 텍스트에 echo되는 케이스를 exact-substring
-    치환으로 가린다(ADR-021 / CLAUDE.md redaction 규칙). run-secret ContextVar는
-    스트림 종료 시 이미 reset되므로 cfg.secret_values를 명시적으로 넘긴다.
+    若注入 run 的 credential 值被 echo 到异常文本中，则用 exact-substring
+    替换遮蔽（ADR-021 / CLAUDE.md redaction 规则）。run-secret ContextVar
+    在流结束时已经 reset，因此显式传入 cfg.secret_values。
     """
     masked = replace_secret_values(
         text, secret_values, placeholder=REDACTED_SENSITIVE_FIELD
@@ -412,8 +412,8 @@ async def _publish_error(ctx: StreamCtx, message: str) -> None:
 
 async def _publish_message_end(ctx: StreamCtx, *, status: str) -> None:
     event_id = f"{ctx.run_id}-{status}"
-    # cancel 직후 CancelledError 가 다시 도착하면 같은 terminal event 를 두 번
-    # publish/persist 할 수 있다 — 직전 event 와 같은 id 면 no-op.
+    # cancel 后 CancelledError 若再次到达，可能将同一个 terminal event 重复
+    # publish/persist 两次 — 若与上一个 event 的 id 相同则 no-op。
     if ctx.broker.last_event_id == event_id:
         return
     event: BrokeredEvent = {
@@ -606,9 +606,9 @@ async def _run_conversation(
     interrupt_id: str | None = None
     heartbeat_task: asyncio.Task[None] | None = None
     compat_seq = 0
-    # 워커가 run 을 시작하지 못한 경우(소멸/이미 terminal)에는 finally 의
-    # trace finalize + terminal 전이를 건너뛴다 — 다른 경로가 이미 끝낸 run 을
-    # 다시 finalize 하지 않기 위함.
+    # worker 无法启动 run 时（已消失/已 terminal），会跳过 finally 中的
+    # trace finalize + terminal 转换 — 这是为了不对已由其他路径结束的 run
+    # 再次 finalize。
     finalize_needed = True
     workerless_cancel_before_start = False
     executor_exhausted_normally = False
@@ -629,8 +629,8 @@ async def _run_conversation(
             return
         if not started:
             if run.status == "canceling" and run.worker_instance_id is None:
-                # Stop 요청이 워커 기동 전(queued)에 도착 — 실행 없이 canceled 로
-                # 종료한다. running 전이 실패를 failed 로 오분류하지 않는다.
+                # Stop 请求在 worker 启动前（queued）到达 — 不执行直接以 canceled
+                # 结束。不会将 running 转换失败误分类为 failed。
                 final_status = "canceled"
                 workerless_cancel_before_start = True
                 await _publish_message_end(ctx, status="canceled")
@@ -684,11 +684,11 @@ async def _run_conversation(
 
         if ctx.has_stream_error():
             final_status = "failed"
-            # 스트림 도중 실패는 예외로 전파되지 않고 error_sink에 기록된다
-            # (streaming.py에서 public_stream_error_message로 1차 블록리스트 마스킹).
-            # run에 주입된 credential 값 기반 마스킹을 한 번 더 적용해 채팅 에러
-            # 버블이 폴백 대신 구체적 원인을 안전하게 보이게 한다(G2 retry).
-            # _run_metadata는 failed일 때만 이를 노출한다.
+            # 流过程中失败不会以异常传播，而是记录到 error_sink
+            # （在 streaming.py 中通过 public_stream_error_message 做第一次 blocklist 脱敏）。
+            # 再次应用基于注入 run 的 credential 值的脱敏，使聊天错误
+            # 气泡能安全显示具体原因，而非 fallback（G2 retry）。
+            # _run_metadata 仅在 failed 时暴露该值。
             error_code = "stream_error"
             error_message = _redact_run_error_message(
                 ctx.error_sink[0].message or "", cfg.secret_values
@@ -710,18 +710,18 @@ async def _run_conversation(
         final_status = "failed"
         failure = exc
         error_code = "runtime_error"
-        # 스트림 바깥 예외(credential 해석/checkpointer/DB 등)는 어떤 마스킹도
-        # 거치지 않았다. public_stream_error_message(블록리스트) + 값 기반
-        # (cfg.secret_values) 2단 마스킹으로 주입된 credential 값 노출을 막는다.
-        # 단 파일경로/DB호스트 등 내부 토폴로지는 이 2단으로 가려지지 않으므로
-        # runtime_error의 error_message는 채팅 버블에 노출하지 않는다(_run_metadata가
-        # stream_error만 노출). 마스킹된 상세는 GET /runs/{id} 운영 경로에만 남고,
-        # 원본 예외는 서버 로그(logger.exception)에만 남는다.
+        # 流外异常（credential 解析/checkpointer/DB 等）尚未经过任何脱敏。
+        # 通过 public_stream_error_message（blocklist）+ 基于值
+        # （cfg.secret_values）的两阶段脱敏，防止注入的 credential 值泄露。
+        # 但文件路径/DB 主机等内部拓扑无法通过这两阶段完全遮蔽，因此
+        # runtime_error 的 error_message 不显示在聊天气泡中（_run_metadata
+        # 只暴露 stream_error）。脱敏后的详情仅保留在 GET /runs/{id} 运维路径中，
+        # 原始异常仅保留在服务器日志（logger.exception）中。
         error_message = _redact_run_error_message(
             public_stream_error_message(exc), cfg.secret_values
         )
         logger.exception("conversation run worker failed run_id=%s", run_id)
-        await _publish_error(ctx, "에이전트 실행 중 오류가 발생했습니다.")
+        await _publish_error(ctx, "Agent 执行过程中发生错误。")
     finally:
         if heartbeat_task is not None:
             heartbeat_task.cancel()

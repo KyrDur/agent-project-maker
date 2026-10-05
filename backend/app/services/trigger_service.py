@@ -104,7 +104,7 @@ def normalize_schedule_config(
 
 def _default_name(trigger_type: str, schedule_config: dict[str, Any]) -> str:
     if trigger_type == "interval":
-        return f"매 {schedule_config.get('interval_minutes', 10)}분마다"
+        return f"每 {schedule_config.get('interval_minutes', 10)} 分钟"
     if trigger_type == "cron":
         return f"Cron {schedule_config.get('cron_expression', '')}".strip()
     return "运行一次"
@@ -161,9 +161,9 @@ async def _ensure_agent_fixed_for_trigger(
     agent = await get_owned_agent(db, agent_id, user_id)
     if agent is None:
         raise ValueError("agent not found")
-    # 히든 런타임 에이전트(skill builder 등)는 트리거 대상 불가 — 트리거 실행은
-    # 빌더 분기·System LLM 재해석을 타지 않아 placeholder 프롬프트가 표준
-    # 에이전트로 스케줄 실행된다. not-found와 동일 응답(enumeration-safe).
+    # 隐藏运行时 Agent（skill builder 等）不能作为 trigger 目标 — trigger 执行
+    # 不经过 builder 分支·System LLM 重新解析，placeholder prompt 会按标准
+    # Agent 被调度执行。返回与 not-found 相同的响应（enumeration-safe）。
     if agent.runtime_profile != AGENT_RUNTIME_PROFILE_STANDARD:
         raise ValueError("agent not found")
     if agent.identity_mode != "fixed":
@@ -452,7 +452,7 @@ async def resolve_schedule_conversation(db: AsyncSession, trigger: AgentTrigger)
     if trigger.conversation_policy == "new_per_run":
         conversation = Conversation(
             agent_id=trigger.agent_id,
-            title=f"스케줄: {trigger.name}",
+            title=f"日程：{trigger.name}",
             last_activity_source="schedule",
         )
         db.add(conversation)
@@ -466,7 +466,7 @@ async def resolve_schedule_conversation(db: AsyncSession, trigger: AgentTrigger)
     if conversation is None:
         conversation = Conversation(
             agent_id=trigger.agent_id,
-            title=f"스케줄: {trigger.name}",
+            title=f"日程：{trigger.name}",
             last_activity_source="schedule",
         )
         db.add(conversation)

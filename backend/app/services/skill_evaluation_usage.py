@@ -109,7 +109,7 @@ class LlmUsageCollector:
             "measured": True,
             # False when calls were made but no response carried usage_metadata:
             # the 0 token totals are "unknown", not real (unknown ≠ zero, same
-            # principle applied to cost). The UI shows "미측정", not "0 토큰".
+            # principle applied to cost). The UI shows "未测量", not "0 token".
             "tokens_measured": measured_tokens,
             "model_calls": self.model_calls,
             "tokens_in": self.tokens_in,

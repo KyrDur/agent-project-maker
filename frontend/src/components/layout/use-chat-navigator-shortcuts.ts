@@ -12,7 +12,7 @@ interface ChatNavigatorShortcutsOptions {
 
 function isMacPlatform(): boolean {
   if (typeof navigator === 'undefined') return false
-  // navigator.platform은 deprecated — 빈 값을 주는 브라우저는 userAgent로 판별
+  // navigator.platform 已 deprecated — 对返回空值的浏览器用 userAgent 判断
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)
 }
 
@@ -26,7 +26,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 function sessionHrefAt(index: number): string | null {
-  // 접힌 그룹/숨은 패널의 행이 인덱스를 밀지 않도록 화면에 보이는 행만 센다
+  // 只计算屏幕上可见的行，避免折叠分组/隐藏面板的行推动索引
   const rows = Array.from(
     document.querySelectorAll<HTMLElement>('[data-chat-session-href]'),
   ).filter((row) => (typeof row.checkVisibility === 'function' ? row.checkVisibility() : true))
@@ -43,7 +43,7 @@ export function useChatNavigatorShortcuts({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      // IME 조합 중 키 입력은 단축키가 아니다 (한글 등 조합 입력 보호)
+      // IME 组合中的按键不是快捷键（保护韩文等组合输入）
       if (event.isComposing) return
       if (event.metaKey || event.ctrlKey) setShortcutPreviewActive(true)
       if ((event.metaKey || event.ctrlKey) && event.code === 'KeyK') {
@@ -51,10 +51,10 @@ export function useChatNavigatorShortcuts({
         onOpenQuickSwitcher()
         return
       }
-      // Shift 조합 시 event.key는 레이아웃별 문자('!')가 되므로 물리 키 코드로 판별
+      // Shift 组合时 event.key 会变成布局对应字符('!')，因此通过物理键代码判断
       const digitMatch = /^Digit([1-9])$/.exec(event.code)
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && digitMatch) {
-        // 입력 요소 포커스 중 내비게이션은 작성 중인 내용을 유실시킨다 (Cmd+K 팔레트는 전역 유지)
+        // 输入元素聚焦时进行导航会丢失正在编写的内容（Cmd+K 命令面板仍保持全局）
         if (isEditableTarget(event.target)) return
         const href = sessionHrefAt(Number(digitMatch[1]))
         if (href) {

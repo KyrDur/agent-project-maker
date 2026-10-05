@@ -37,7 +37,7 @@
 - [x] backend-typecheck 잡은 non-blocking — **전체 pyright 968 기존 에러** (초기 "통과" 판단은 파이프라인 exit 코드 착오였음; 계획 문서 교정 완료)
 - [ ] PR에서 잡 그린 실측 확인 (PR 생성 후)
 
-## 완료 조건
+## 完成条件
 - [x] backend: ruff clean / 수정 파일 pyright clean / **전체 pytest 2,558 통과** (1회 test_default_image_skill_seed 병렬 플레이크 — 단독·xdist 재실행 통과, 변경 무관)
 - [x] frontend: lint(에러 0, 기존 경고 4) / vitest 1,230 통과 / build 성공
 - [x] docs/refactoring-plan-2026-07.md 매트릭스 완료 표시 + pyright 오류 교정

@@ -1,6 +1,6 @@
 # Moldy Langfuse Trace Debugger 개발 기획서
 
-작성일: 2026-05-30
+编写日期：2026-05-30
 
 ## 1. 배경
 
@@ -333,7 +333,7 @@ Langfuse 장애는 Moldy 채팅 실행을 막지 않아야 한다.
 - Langfuse UI에서 user/session/metadata가 의도대로 보이는지 확인
 - chat/resume/edit/regenerate 각각 trace 생성 확인
 
-완료 기준:
+完成标准：
 
 - Langfuse `moldy` project에 trace가 생성된다.
 - `conversation_id`로 session grouping이 된다.
@@ -345,7 +345,7 @@ Langfuse 장애는 Moldy 채팅 실행을 막지 않아야 한다.
 - stream `run_id`와 Langfuse trace id 매핑
 - trace URL 생성 helper 추가
 
-완료 기준:
+完成标准：
 
 - Moldy 대화 turn에서 Langfuse 원본 trace로 이동할 수 있다.
 - `message_events`와 Langfuse trace가 1:1로 연결된다.
@@ -357,7 +357,7 @@ Langfuse 장애는 Moldy 채팅 실행을 막지 않아야 한다.
 - ownership 검증 추가
 - Langfuse API client wrapper 추가
 
-완료 기준:
+完成标准：
 
 - conversation page에서 해당 conversation의 trace 목록을 조회할 수 있다.
 - 다른 사용자의 conversation trace는 조회할 수 없다.
@@ -369,7 +369,7 @@ Langfuse 장애는 Moldy 채팅 실행을 막지 않아야 한다.
 - Agent Prism viewer POC 적용
 - span detail panel 연결
 
-완료 기준:
+完成标准：
 
 - 첨부 이미지와 유사한 3-pane trace debug 화면이 동작한다.
 - span 선택 시 input/output/metadata를 볼 수 있다.

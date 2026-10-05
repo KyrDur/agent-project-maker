@@ -1,4 +1,4 @@
-"""Builder 서비스 — 세션 관리, v3 메시지 스트리밍, confirm 로직."""
+"""Builder 服务 — 会话管理、v3 消息流、confirm 逻辑。"""
 
 from __future__ import annotations
 
@@ -32,23 +32,23 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Resume wire 어댑터 (router-only) — ADR-012
+# Resume wire 适配器（router-only）— ADR-012
 # ---------------------------------------------------------------------------
 
 
 def decisions_to_builder_response(decisions: list[Decision]) -> Any:
-    """표준 ``Decision[]`` → builder graph 가 기대하는 native shape.
+    """标准 ``Decision[]`` → builder graph 期望的 native shape。
 
-    builder v3 wait 노드들은 dict|str 응답을 처리한다
-    (``parse_approval_response``, phase6 ``image_choice``/``image_approval``).
-    frontend 는 표준 ``Decision[]`` wire 만 유지하고, builder native shape 으로
-    의 변환 책임은 router 경계의 본 helper 가 단일 책임으로 흡수한다.
+    builder v3 wait 节点处理 dict|str 响应
+    （``parse_approval_response``、phase6 ``image_choice``/``image_approval``）。
+    frontend 只保留标准 ``Decision[]`` wire，而转换为 builder native shape
+    的责任由 router 边界的本 helper 以单一职责承担。
 
     Mapping:
     - ``approve`` → ``{"approved": True}``
     - ``reject`` → ``{"approved": False, "revision_message": message or ""}``
     - ``respond`` → ``message or ""`` (string)
-    - ``edit`` → ``{"approved": True}`` (builder 는 edit args 를 사용하지 않음)
+    - ``edit`` → ``{"approved": True}`` (builder 不使用 edit args)
     - empty list → ``None``
     """
     if not decisions:
@@ -61,18 +61,18 @@ def decisions_to_builder_response(decisions: list[Decision]) -> Any:
     if first.type == "respond":
         return first.message or ""
     if first.type == "edit":
-        # builder edit 미사용 — approve fallback (graph 행동은 동일)
+        # builder 不使用 edit — approve fallback（graph 行为相同）
         return {"approved": True}
     return None
 
 
 # ---------------------------------------------------------------------------
-# 세션 CRUD
+# 会话 CRUD
 # ---------------------------------------------------------------------------
 
 
 async def create_session(db: AsyncSession, user_id: uuid.UUID, user_request: str) -> BuilderSession:
-    """빌드 세션을 생성한다."""
+    """创建构建会话。"""
     session = BuilderSession(
         user_id=user_id,
         user_request=user_request,
@@ -97,14 +97,14 @@ async def get_session(
 
 
 # ---------------------------------------------------------------------------
-# 원자적 상태 전환 (재진입 방지)
+# 原子状态转换（防止重复进入）
 # ---------------------------------------------------------------------------
 
 
 async def claim_for_confirming(db: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID) -> bool:
-    """PREVIEW → CONFIRMING 원자적 전환. 성공하면 True.
+    """PREVIEW → CONFIRMING 原子转换。成功则返回 True。
 
-    동시 confirm 요청이 오더라도 하나만 성공한다.
+    即使同时收到多个 confirm 请求，也只会有一个成功。
     """
     result = await db.execute(
         update(BuilderSession)
@@ -120,21 +120,21 @@ async def claim_for_confirming(db: AsyncSession, session_id: uuid.UUID, user_id:
 
 
 async def get_agent_by_id(db: AsyncSession, agent_id: uuid.UUID) -> Agent | None:
-    """Agent를 ID로 조회한다 (멱등 confirm 반환용)."""
+    """按 ID 查询 Agent（用于幂等 confirm 返回）。"""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     return result.scalar_one_or_none()
 
 
 # ---------------------------------------------------------------------------
-# 카탈로그 조회 (서브에이전트 동적 주입용, AD-7)
+# 查询目录（用于动态注入子 Agent，AD-7）
 # ---------------------------------------------------------------------------
 
 
 def _get_middlewares_catalog() -> list[dict[str, Any]]:
-    """사용 가능한 미들웨어 카탈로그를 조회한다.
+    """查询可用的中间件目录。
 
-    deepagents가 자동 추가하는 빌트인 미들웨어는 제외하여
-    중복 추가로 인한 오류를 방지한다.
+    排除 deepagents 自动添加的内置中间件，
+    防止重复添加导致错误。
     """
     from app.catalog_i18n import middleware_display
     from app.services.builder_runtime_readiness import BUILDER_MIDDLEWARE_TYPES
@@ -147,7 +147,7 @@ def _get_middlewares_catalog() -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# 모델 조회 (v3 노드 동적 주입용)
+# 查询模型（用于 v3 节点动态注入）
 # ---------------------------------------------------------------------------
 
 
@@ -162,17 +162,17 @@ async def _get_default_model_name(db: AsyncSession, user_id: uuid.UUID | None = 
 
 
 # ---------------------------------------------------------------------------
-# 빌드 확인 (confirm) — confirm_creation 로직 재사용
+# 构建确认（confirm）— 复用 confirm_creation 逻辑
 # ---------------------------------------------------------------------------
 
 
 async def confirm_build(
     db: AsyncSession, session: BuilderSession, *, model_id: str | None = None
 ) -> Agent | None:
-    """빌드 확인: draft_config를 기반으로 실제 Agent를 생성한다.
+    """构建确认：基于 draft_config 创建实际 Agent。
 
-    agent_creation_service.confirm_creation()의 도구/모델 매칭 로직을 재사용.
-    예외 발생 시 세션을 PREVIEW로 롤백하여 CONFIRMING 고착을 방지한다.
+    复用 agent_creation_service.confirm_creation() 的工具/模型匹配逻辑。
+    发生异常时将会话回滚到 PREVIEW，防止卡死在 CONFIRMING。
     """
     await db.refresh(session, with_for_update=True)
     if session.status == BuilderStatus.COMPLETED and session.agent_id:
@@ -193,7 +193,7 @@ async def confirm_build(
         )
         model = binding.model
 
-        # 항목 매칭 — 이름으로 Tool / McpTool / Skill 3-way 분리 조회
+        # 条目匹配 — 按名称对 Tool / McpTool / Skill 做 3-way 分离查询
         tools_to_link, mcp_tools_to_link, skills_to_link = await _resolve_tools(
             db, session.user_id, config.get("tools", [])
         )
@@ -238,7 +238,7 @@ async def confirm_build(
                 ]
             }
         )
-        # 에이전트 생성
+        # 创建 Agent
         agent = Agent(
             user_id=session.user_id,
             name=config.get("name") or tr("new_agent_265674"),
@@ -257,7 +257,7 @@ async def confirm_build(
         agent.mcp_tool_links = [AgentMcpToolLink(mcp_tool_id=mt.id) for mt in mcp_tools_to_link]
         agent.skill_links = [AgentSkillLink(skill_id=s.id) for s in skills_to_link]
         db.add(agent)
-        await db.flush()  # agent.id 할당을 위해 flush 필요
+        await db.flush()  # 为分配 agent.id 需要 flush
 
         session.status = BuilderStatus.COMPLETED
         session.agent_id = agent.id
@@ -268,17 +268,17 @@ async def confirm_build(
         builder_project_lifecycle.schedule(agent.id, session.user_id)
         await db.refresh(agent, ["model", "tool_links"])
 
-        # 이미지 처리: phase7_save가 draft_config["image_url"]을 항상 명시적으로 set.
-        #   truthy → 임시 파일을 Agent 디렉토리로 이동
-        #   None/falsy → 사용자가 phase6에서 명시적 skip
+        # 图片处理：phase7_save 始终显式 set draft_config["image_url"]。
+        #   truthy → 将临时文件移动到 Agent 目录
+        #   None/falsy → 用户在 phase6 中显式 skip
         image_url = (config or {}).get("image_url")
         if image_url:
             await _transfer_builder_image(session, agent, image_url)
-            # agent.image_path 변경을 DB에 반영
+            # 将 agent.image_path 的更改反映到 DB
             await db.commit()
             await db.refresh(agent)
 
-        # 이미지 생성이 commit하면 관계가 expire되므로 selectinload로 재로드
+        # 图片生成 commit 后关系会 expire，因此通过 selectinload 重新加载
         result = await db.execute(
             select(Agent)
             .where(Agent.id == agent.id)
@@ -292,7 +292,7 @@ async def confirm_build(
         )
         return result.scalar_one()
     except Exception:
-        # CONFIRMING 고착 방지: 예외 발생 시 PREVIEW로 롤백
+        # 防止 CONFIRMING 卡死：发生异常时回滚到 PREVIEW
         await db.rollback()
         await db.refresh(session)
         if session.status == BuilderStatus.COMPLETED and session.agent_id:
@@ -403,15 +403,15 @@ async def _resolve_tools(
     user_id: uuid.UUID,
     tool_names: list[str],
 ) -> tuple[list[Tool], list[McpTool], list[Skill]]:
-    """이름 목록 → (Tool, McpTool, Skill) 3-way 분리 반환.
+    """名称列表 → (Tool, McpTool, Skill) 3-way 分离返回。
 
-    Builder phase3 카탈로그 (``get_tools_catalog``) 는 ``Tool`` + ``McpTool`` +
-    ``Skill`` 모두 노출하므로 phase8 confirm 도 세 테이블을 모두 매칭해야 한다.
+    Builder phase3 目录（``get_tools_catalog``）会展示 ``Tool`` + ``McpTool`` +
+    ``Skill``，因此 phase8 confirm 也必须匹配这三张表。
 
-    매칭 우선순위는 ``Tool > McpTool > Skill``. 같은 이름이 여러 테이블에
-    있으면 더 명시적으로 등록된 쪽 (Tool 우선) 을 선택. ``McpTool`` 은
-    ``McpServer.user_id`` ownership 필터, ``Skill`` 은 ``Skill.user_id``
-    ownership 필터로 cross-user 링킹 차단.
+    匹配优先级为 ``Tool > McpTool > Skill``。若多个表中存在同名项，
+    选择注册更明确的一侧（Tool 优先）。``McpTool`` 使用
+    ``McpServer.user_id`` ownership 过滤，``Skill`` 使用 ``Skill.user_id``
+    ownership 过滤，以阻止 cross-user 链接。
     """
     if not tool_names:
         return [], [], []
@@ -456,7 +456,7 @@ async def _resolve_tools(
 
 
 # ---------------------------------------------------------------------------
-# Builder v3 — StateGraph 기반 메시지 스트리밍
+# Builder v3 — 基于 StateGraph 的消息流式传输
 # ---------------------------------------------------------------------------
 
 
@@ -465,9 +465,9 @@ def _transfer_builder_image_sync(
     agent_id: uuid.UUID,
     public_url: str,
 ) -> str | None:
-    """Sync I/O — copy file + cleanup builder temp dir. asyncio.to_thread로 호출.
+    """Sync I/O — copy file + cleanup builder temp dir. 通过 asyncio.to_thread 调用。
 
-    Returns: agent.image_path 값 (None이면 실패).
+    Returns: agent.image_path 值（None 表示失败）。
     """
     import shutil
     from pathlib import Path
@@ -485,7 +485,7 @@ def _transfer_builder_image_sync(
     dest = dest_dir / f"avatar{src.suffix}"
     try:
         dest_dir.mkdir(parents=True, exist_ok=True)
-        # 직접 copy — 파일 사라지면 FileNotFoundError로 처리 (TOCTOU 방어)
+        # 直接 copy — 文件消失时按 FileNotFoundError 处理（TOCTOU 防护）
         shutil.copy(src, dest)
     except FileNotFoundError:
         logger.warning("Builder image disappeared before copy: %s", src)
@@ -494,7 +494,7 @@ def _transfer_builder_image_sync(
         logger.warning("Builder image transfer failed", exc_info=True)
         return None
 
-    # Cleanup: builder temp dir 정리 (실패해도 무시)
+    # Cleanup: builder temp dir 清理（失败也忽略）
     builder_dir = src.parent
     if builder_dir.name == str(session_id):
         shutil.rmtree(builder_dir, ignore_errors=True)
@@ -507,9 +507,9 @@ async def _transfer_builder_image(
     agent: Agent,
     public_url: str,
 ) -> None:
-    """Phase 6 임시 이미지 → Agent 디렉토리 복사 (async wrapper).
+    """Phase 6 临时图片 → 复制到 Agent 目录（async wrapper）。
 
-    실패해도 Agent 생성은 유지한다.
+    即使失败也保留 Agent 创建结果。
     """
     result = await asyncio.to_thread(_transfer_builder_image_sync, session.id, agent.id, public_url)
     if result:
@@ -524,10 +524,10 @@ async def run_v3_message_stream(
     *,
     locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
-    """Builder v3 StateGraph로 메시지를 스트리밍한다.
+    """通过 Builder v3 StateGraph 流式传输消息。
 
-    - 첫 메시지: 카탈로그/모델/세션 정보를 inject한 full state로 시작
-    - 후속 메시지: messages만 추가 (state는 checkpoint에서 복원)
+    - 第一条消息：从 inject 目录/模型/会话信息的 full state 开始
+    - 后续消息：只追加 messages（state 从 checkpoint 恢复）
     """
     from langchain_core.messages import HumanMessage
 
@@ -581,7 +581,7 @@ async def run_v3_message_stream(
 
 
 class StaleInterruptError(Exception):
-    """resume이 현재 paused interrupt와 매칭되지 않음 (stale 카드 클릭)."""
+    """resume 与当前 paused interrupt 不匹配（点击了 stale 卡片）。"""
 
 
 @localized_stream
@@ -593,10 +593,10 @@ async def run_v3_resume_stream(
     *,
     locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
-    """interrupt 응답을 받아 Command(resume=...)로 그래프를 재개한다.
+    """接收 interrupt 响应并通过 Command(resume=...) 恢复 graph。
 
-    interrupt_id가 제공되면 현재 paused interrupt의 ns와 비교하여 stale 카드로 인한
-    오용을 차단한다. None이면 검증 skip (backward compatibility).
+    若提供 interrupt_id，则与当前 paused interrupt 的 ns 比较，阻止 stale 卡片导致的
+    误用。若为 None，则 skip 验证（backward compatibility）。
     """
     from langgraph.types import Command
 
@@ -610,7 +610,7 @@ async def run_v3_resume_stream(
         "configurable": {"thread_id": str(session_id), "ui_locale": get_locale()}
     }
 
-    # interrupt_id stale 검증
+    # interrupt_id stale 验证
     if interrupt_id:
         try:
             state = await graph_compiled.aget_state(config)
@@ -619,7 +619,7 @@ async def run_v3_resume_stream(
                 for intr in task.interrupts or []:
                     current_ids.append(str(getattr(intr, "ns", "")))
             if current_ids and interrupt_id not in current_ids:
-                # stale interrupt — 사용자에게 알리고 graph는 재개하지 않음
+                # stale interrupt — 告知用户，graph 不恢复
                 logger.warning(
                     "Stale interrupt resume rejected. expected=%s got=%s",
                     current_ids,

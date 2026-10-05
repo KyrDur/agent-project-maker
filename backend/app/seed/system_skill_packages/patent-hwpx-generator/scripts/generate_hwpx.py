@@ -232,7 +232,7 @@ def modify_part2_title(xml_content: str, data: dict[str, Any]) -> str:
     marker = "发明（设计）的名称"
     marker_pos = xml_content.find(marker)
     if marker_pos == -1:
-        raise ValueError("발명(고안)의 명칭 마커를 찾을 수 없습니다")
+        raise ValueError("找不到发明（设计）的名称标记")
     search_area = xml_content[marker_pos:]
     title_pattern = re.compile(r'(charPrIDRef="6"><hp:t>)(.*?)(</hp:t></hp:run>)')
     match = title_pattern.search(search_area)
@@ -245,10 +245,10 @@ def modify_part2_title(xml_content: str, data: dict[str, Any]) -> str:
 
 
 def modify_part2_body(xml_content: str, data: dict[str, Any]) -> str:
-    spec_title = "발  명  명  세  서"
+    spec_title = "发  明  说  明  书"
     spec_pos = xml_content.find(spec_title)
     if spec_pos == -1:
-        raise ValueError("발  명  명  세  서 마커를 찾을 수 없습니다")
+        raise ValueError("找不到发  明  说  明  书标记")
     tbl_start = xml_content.rfind("<hp:tbl", 0, spec_pos)
     tr_positions: list[int] = []
     pos = tbl_start
@@ -259,11 +259,11 @@ def modify_part2_body(xml_content: str, data: dict[str, Any]) -> str:
         tr_positions.append(found)
         pos = found
     if len(tr_positions) < 3:
-        raise ValueError("Part 2 테이블에서 Row 2를 찾을 수 없습니다")
+        raise ValueError("在 Part 2 表格中找不到 Row 2")
     row2_start = tr_positions[2]
     sublist_start = xml_content.find("<hp:subList", row2_start)
     if sublist_start == -1:
-        raise ValueError("Row 2에서 subList를 찾을 수 없습니다")
+        raise ValueError("在 Row 2 中找不到 subList")
     sublist_tag_end = xml_content.find(">", sublist_start) + 1
     depth = 0
     scan_pos = sublist_start
@@ -283,7 +283,7 @@ def modify_part2_body(xml_content: str, data: dict[str, Any]) -> str:
             depth -= 1
             scan_pos = close_pos
     if sublist_end == -1:
-        raise ValueError("매칭되는 </hp:subList>를 찾을 수 없습니다")
+        raise ValueError("找不到匹配的 </hp:subList>")
     return (
         xml_content[:sublist_tag_end] + build_specification_body(data) + xml_content[sublist_end:]
     )

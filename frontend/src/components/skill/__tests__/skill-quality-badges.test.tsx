@@ -35,7 +35,7 @@ describe('skill quality badges', () => {
       />,
     )
 
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
   })
 
   it('renders missing evaluation states without a pass rate', () => {
@@ -72,6 +72,6 @@ describe('skill quality badges', () => {
     )
 
     expect(screen.getByText('评估取消')).toBeInTheDocument()
-    expect(screen.queryByText('평가 100%')).not.toBeInTheDocument()
+    expect(screen.queryByText('评估100%')).not.toBeInTheDocument()
   })
 })

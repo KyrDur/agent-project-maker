@@ -76,9 +76,9 @@ export const conversationsApi = {
   messagesEnvelope: (conversationId: string) =>
     apiFetch<MessagesEnvelope>(`/api/conversations/${conversationId}/messages`),
   /**
-   * 대화 파일 목록(생성 산출물 + 사용자 첨부)을 합쳐 반환. 우측 레일의
-   * 첨부 섹션은 `source==='attached'`만 사용하고, 생성 산출물은 기존
-   * `chatArtifactsAtom` 스트리밍 경로를 그대로 유지한다.
+   * 合并并返回对话文件列表（生成产物 + 用户附件）。右侧侧栏的
+   * 附件区域只使用 `source==='attached'`，生成产物继续沿用现有
+   * `chatArtifactsAtom` 流式传输路径。
    */
   files: (conversationId: string): Promise<FileItem[]> =>
     apiFetch<FileItem[]>(`/api/conversations/${conversationId}/files`),
@@ -98,8 +98,8 @@ export const conversationsApi = {
       body: JSON.stringify({ checkpoint_id: checkpointId }),
     }),
   /**
-   * Follow-up 고스트 제안 1개 생성 — 런 종료 시 호출. system LLM 미설정 등
-   * 어떤 이유로든 생성 불가면 suggestion=null(고스트 미표시).
+   * 生成 Follow-up 幽灵建议 1 条 — 运行结束时调用。若因 system LLM 未配置等
+   * 任意原因无法生成，则 suggestion=null（不显示幽灵）。
    */
   followupSuggestion: (conversationId: string) =>
     apiFetch<{ suggestion: string | null }>(

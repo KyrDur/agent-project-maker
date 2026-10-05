@@ -1,24 +1,24 @@
-# Sprint 1 / Story S2 — 디자인 토큰 oklch 픽스 + DialogShell 비주얼 스펙 (팀쿡)
+# Sprint 1 / Story S2 — 设计 token oklch 修复 + DialogShell 视觉规范（Tim Cook）
 
-## 목표
-1. `--primary` / `--primary-foreground` / `--primary-strong` / `--ring` + 시맨틱 상태색 oklch 정확값 결정 (라이트/다크)
-2. DialogShell 비주얼 스펙을 정확한 Tailwind 클래스로 ADR-010에 기록
-3. 기존 raw color → 새 토큰 매핑표
-4. 포커스 링 완화 스펙
-5. 베이스 컴포넌트 (`ui/dialog.tsx`, `ui/sheet.tsx`) 정비 스펙
+## 目标
+1. 确定 `--primary` / `--primary-foreground` / `--primary-strong` / `--ring` + semantic 状态色的精确 oklch 值（light/dark）
+2. 将 DialogShell 视觉规范以精确 Tailwind class 记录到 ADR-010
+3. 现有 raw color → 新 token 映射表
+4. focus ring 弱化规范
+5. base component（`ui/dialog.tsx`, `ui/sheet.tsx`）整理规范
 
-## 산출물
-- `docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md` (신규)
-- `AUDIT.log`에 한 줄 추가 (S2_DONE)
-- `progress.txt`에 oklch 정확값 1-2줄 추가 (저커버그 복붙용)
+## 产出物
+- `docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md`（新增）
+- 在 `AUDIT.log` 中新增一行（S2_DONE）
+- 在 `progress.txt` 中新增 1-2 行 oklch 精确值（供 Zuckerberg 复制粘贴）
 
 ---
 
-## A. oklch 정확값 결정 (Tailwind v4 emerald palette 기반)
+## A. 确定 oklch 精确值（基于 Tailwind v4 emerald palette）
 
-Tailwind CSS v4의 색은 모두 oklch로 정의되어 있다 (Tailwind v4.0 발표글 + tailwindcss/dist/preflight 참조). emerald 계열의 v4 oklch 값:
+Tailwind CSS v4 的颜色全部以 oklch 定义（参考 Tailwind v4.0 发布文与 tailwindcss/dist/preflight）。emerald 系列的 v4 oklch 值：
 
-| Tailwind 클래스 | oklch 정확값 |
+| Tailwind class | oklch 精确值 |
 |---|---|
 | emerald-50  | `oklch(0.979 0.021 166.113)` |
 | emerald-100 | `oklch(0.95 0.052 163.051)` |
@@ -32,9 +32,9 @@ Tailwind CSS v4의 색은 모두 oklch로 정의되어 있다 (Tailwind v4.0 발
 | emerald-900 | `oklch(0.378 0.077 168.94)` |
 | emerald-950 | `oklch(0.262 0.051 172.552)` |
 
-또한 시맨틱 상태색에 쓸 v4 팔레트:
+此外，用于 semantic 状态色的 v4 palette：
 
-| Tailwind 클래스 | oklch 정확값 |
+| Tailwind class | oklch 精确值 |
 |---|---|
 | amber-500   | `oklch(0.769 0.188 70.08)` |
 | amber-400   | `oklch(0.828 0.189 84.429)` |
@@ -42,37 +42,37 @@ Tailwind CSS v4의 색은 모두 oklch로 정의되어 있다 (Tailwind v4.0 발
 | sky-400     | `oklch(0.746 0.16 232.661)` |
 | violet-500  | `oklch(0.606 0.25 292.717)` |
 | violet-400  | `oklch(0.702 0.183 293.541)` |
-| red-500     | `oklch(0.637 0.237 25.331)` (= destructive 라이트) |
-| red-400     | `oklch(0.704 0.191 22.216)` (= destructive 다크, 이미 사용 중) |
+| red-500     | `oklch(0.637 0.237 25.331)` (= destructive light) |
+| red-400     | `oklch(0.704 0.191 22.216)` (= destructive dark，当前已使用) |
 
-### 결정값
+### 决定值
 
-라이트:
-- `--primary: oklch(0.95 0.052 163.051);`        (= emerald-100, 사용자 메시지 박스 배경 그대로)
+light：
+- `--primary: oklch(0.95 0.052 163.051);`        (= emerald-100，保持用户消息框背景不变)
 - `--primary-foreground: oklch(0.262 0.051 172.552);` (= emerald-950)
 - `--primary-strong: oklch(0.596 0.145 163.225);` (= emerald-600)
 - `--ring: oklch(0.596 0.145 163.225 / 0.4);`     (= emerald-600 @ 40%)
 
-다크:
+dark：
 - `--primary: oklch(0.378 0.077 168.94);`         (= emerald-900)
 - `--primary-foreground: oklch(0.95 0.052 163.051);` (= emerald-100)
 - `--primary-strong: oklch(0.765 0.177 163.223);` (= emerald-400)
 - `--ring: oklch(0.765 0.177 163.223 / 0.45);`    (= emerald-400 @ 45%)
 
-상태색 (라이트/다크 공통 — 알파로 배경 톤 조정):
-- `--status-success: oklch(0.596 0.145 163.225);` 라이트 / `oklch(0.765 0.177 163.223);` 다크 (= primary-strong과 동일)
-- `--status-info: oklch(0.685 0.169 237.323);` 라이트 / `oklch(0.746 0.16 232.661);` 다크 (= sky-500/400)
-- `--status-warn: oklch(0.769 0.188 70.08);` 라이트 / `oklch(0.828 0.189 84.429);` 다크 (= amber-500/400)
-- `--status-danger: oklch(0.637 0.237 25.331);` 라이트 / `oklch(0.704 0.191 22.216);` 다크 (= red-500/400, destructive 별칭)
-- `--status-accent: oklch(0.606 0.25 292.717);` 라이트 / `oklch(0.702 0.183 293.541);` 다크 (= violet-500/400)
+状态色（light/dark 共用——通过 alpha 调整背景色调）：
+- `--status-success: oklch(0.596 0.145 163.225);` light / `oklch(0.765 0.177 163.223);` dark (= 与 primary-strong 相同)
+- `--status-info: oklch(0.685 0.169 237.323);` light / `oklch(0.746 0.16 232.661);` dark (= sky-500/400)
+- `--status-warn: oklch(0.769 0.188 70.08);` light / `oklch(0.828 0.189 84.429);` dark (= amber-500/400)
+- `--status-danger: oklch(0.637 0.237 25.331);` light / `oklch(0.704 0.191 22.216);` dark (= red-500/400，destructive alias)
+- `--status-accent: oklch(0.606 0.25 292.717);` light / `oklch(0.702 0.183 293.541);` dark (= violet-500/400)
 
-### 명도 대비 검증 (WCAG AA 4.5:1)
-- 라이트: emerald-100 (L=0.95) × emerald-950 (L=0.262) — 거의 흰 배경 vs 거의 검은 텍스트, contrast ≈ 14:1 ✅
-- 다크: emerald-900 (L=0.378) × emerald-100 (L=0.95) — contrast ≈ 8:1 ✅
-- ring 알파(35-45%)는 배경에 따라 인지율 충분 (border-ring 제거하므로 visible focus는 ring으로만)
+### 明度对比验证（WCAG AA 4.5:1）
+- light：emerald-100 (L=0.95) × emerald-950 (L=0.262) —— 近白背景 vs 近黑文本，contrast ≈ 14:1 ✅
+- dark：emerald-900 (L=0.378) × emerald-100 (L=0.95) —— contrast ≈ 8:1 ✅
+- ring alpha(35-45%) 随背景变化仍有足够可感知度（移除 border-ring，因此 visible focus 只通过 ring 呈现）
 
-### Tailwind v4 @theme 형식 등록
-`globals.css`의 `@theme inline` 블록에 추가될 라인:
+### Tailwind v4 @theme 格式注册
+将添加到 `globals.css` 的 `@theme inline` block 中的行：
 ```
 --color-primary-strong: var(--primary-strong);
 --color-status-success: var(--status-success);
@@ -81,187 +81,187 @@ Tailwind CSS v4의 색은 모두 oklch로 정의되어 있다 (Tailwind v4.0 발
 --color-status-danger: var(--status-danger);
 --color-status-accent: var(--status-accent);
 ```
-(`--primary`, `--primary-foreground`, `--ring`은 기존 매핑 재사용)
+（`--primary`、`--primary-foreground`、`--ring` 复用现有映射）
 
 ---
 
-## B. DialogShell 비주얼 스펙
+## B. DialogShell 视觉规范
 
-### 컨테이너
+### 容器
 ```
 flex flex-col overflow-hidden rounded-2xl shadow-2xl ring-1 ring-border/60 bg-popover
 ```
-+ `DIALOG_SIZE` 클래스 + `DIALOG_HEIGHT` 클래스 + `max-h-[calc(100vh-4rem)]`
++ `DIALOG_SIZE` class + `DIALOG_HEIGHT` class + `max-h-[calc(100vh-4rem)]`
 
-`DIALOG_SIZE` 토큰 (TS 객체 → Tailwind 클래스 매핑):
+`DIALOG_SIZE` token（TS object → Tailwind class 映射）：
 - `sm`: `w-[400px]`
 - `md`: `w-[560px]`
 - `lg`: `w-[720px]`
 - `xl`: `w-[920px]`
 - `console`: `w-[1080px]`
 
-`DIALOG_HEIGHT` 토큰:
+`DIALOG_HEIGHT` token：
 - `auto`: `h-[480px] max-h-[calc(100vh-4rem)]`
 - `fixed`: `h-[640px] max-h-[calc(100vh-4rem)]`
 - `tall`: `h-[760px] max-h-[calc(100vh-4rem)]`
 
-### Header (고정)
+### Header（固定）
 ```
 border-b border-border/60 px-6 py-5 flex items-start gap-4 relative
 ```
-- icon slot: `flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-strong` (currentColor 도메인 아이콘)
+- icon slot：`flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-strong`（currentColor domain icon）
 - text wrap: `flex-1 min-w-0`
   - title: `text-base font-semibold tracking-tight text-foreground`
   - description: `mt-1 text-sm text-muted-foreground leading-relaxed`
-- right action slot: `ml-auto flex items-center gap-2` (StatusChip, 메뉴 등)
+- right action slot：`ml-auto flex items-center gap-2`（StatusChip、菜单等）
 - close X: `absolute top-4 right-4 size-8 rounded-md hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center justify-center text-muted-foreground hover:text-foreground`
 
-### Body (스크롤)
+### Body（滚动）
 ```
 flex-1 overflow-y-auto px-6 py-5
 ```
-- 섹션 간격: `space-y-6`
-- 섹션 내부: `space-y-3`
-- input 그룹: `space-y-1.5`
-- 라벨: `text-xs font-medium text-muted-foreground`
-- divider: 직접 `<div className="border-t border-border/60" />` (Separator 컴포넌트 사용 X — 토큰 일관성)
+- section 间距：`space-y-6`
+- section 内部：`space-y-3`
+- input group：`space-y-1.5`
+- label：`text-xs font-medium text-muted-foreground`
+- divider：直接使用 `<div className="border-t border-border/60" />`（不使用 Separator component——保持 token 一致性）
 
-### Footer (고정)
+### Footer（固定）
 ```
 border-t border-border/60 bg-muted/30 px-6 py-4 flex items-center justify-end gap-2
 ```
-- 표준 버튼: `min-w-[80px]`
+- 标准按钮：`min-w-[80px]`
 - pending: `<Loader2 className="mr-1 size-4 animate-spin" aria-hidden />`
-- variant 우선순위: 좌측에 secondary("취소"), 우측에 primary("저장")
+- variant 优先级：左侧 secondary（“取消”），右侧 primary（“保存”）
 
-### Sidebar (선택 슬롯)
+### Sidebar（可选 slot）
 ```
 w-[260px] shrink-0 border-r border-border/60 bg-muted/30 px-4 py-5 overflow-y-auto
 ```
-DialogShell 컨테이너를 `flex-row`로 전환할 때 `flex-1`인 main 영역과 짝.
+当 DialogShell container 切换为 `flex-row` 时，与 `flex-1` 的 main 区域配对。
 
-### 접근성
-- `role="dialog"`, `aria-labelledby={titleId}`, `aria-describedby={descriptionId}` (Radix DialogPrimitive 기본 구현 그대로)
-- 포커스 트랩, ESC 닫기, 오버레이 클릭 — Radix 기본
-- 모션: `data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200`
+### 可访问性
+- `role="dialog"`, `aria-labelledby={titleId}`, `aria-describedby={descriptionId}`（保持 Radix DialogPrimitive 默认实现）
+- focus trap、ESC 关闭、点击 overlay —— Radix 默认行为
+- motion：`data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-200`
 
 ---
 
-## C. 기존 raw color → 새 토큰 매핑표
+## C. 现有 raw color → 新 token 映射表
 
-| 기존 클래스 (라이트 / 다크) | 새 토큰 클래스 | 용도 / 위치 예시 |
+| 现有 class（light / dark） | 新 token class | 用途 / 位置示例 |
 |---|---|---|
-| `bg-emerald-100 dark:bg-emerald-900` | `bg-primary` | 사용자 메시지 박스 (assistant-thread.tsx:243), 전송 버튼, 활성 노드 배경 |
-| `text-emerald-950 dark:text-emerald-100` | `text-primary-foreground` | 위 강조 배경 위 텍스트 |
-| `text-emerald-600 dark:text-emerald-400` | `text-primary-strong` | 링크, 활성 탭 텍스트, hover, "활성 사용자 메시지" 보조 |
-| `bg-emerald-500 dark:bg-emerald-400` (after::, indicator) | `bg-primary-strong` | 탭 인디케이터 (`after:bg-...`) |
-| `bg-emerald-100 ring-emerald-200 dark:bg-emerald-900 dark:ring-emerald-800` | `bg-primary/15 ring-primary-strong/30` | 모델 배지, subtle chip |
-| `bg-emerald-50 dark:bg-emerald-950/30` | `bg-primary/10` | 매우 옅은 강조 배경 |
-| `bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-100` | `bg-status-accent/10 text-status-accent` | 대화형 카드, 구분 강조 |
-| `bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100` | `bg-status-warn/10 text-status-warn` | 경고/주의 박스 |
-| `bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100` | `bg-status-info/10 text-status-info` | 정보/안내 박스 |
-| `bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100` | `bg-destructive/10 text-destructive` | 에러 박스 (기존 destructive 토큰 재사용) |
+| `bg-emerald-100 dark:bg-emerald-900` | `bg-primary` | 用户消息框（assistant-thread.tsx:243）、发送按钮、active node 背景 |
+| `text-emerald-950 dark:text-emerald-100` | `text-primary-foreground` | 上述强调背景上的文本 |
+| `text-emerald-600 dark:text-emerald-400` | `text-primary-strong` | 链接、active tab 文本、hover、“active 用户消息”辅助文本 |
+| `bg-emerald-500 dark:bg-emerald-400` (after::, indicator) | `bg-primary-strong` | tab indicator（`after:bg-...`） |
+| `bg-emerald-100 ring-emerald-200 dark:bg-emerald-900 dark:ring-emerald-800` | `bg-primary/15 ring-primary-strong/30` | model badge、subtle chip |
+| `bg-emerald-50 dark:bg-emerald-950/30` | `bg-primary/10` | 非常浅的强调背景 |
+| `bg-violet-100 text-violet-900 dark:bg-violet-950 dark:text-violet-100` | `bg-status-accent/10 text-status-accent` | 对话式 card、分区强调 |
+| `bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100` | `bg-status-warn/10 text-status-warn` | warning/注意 box |
+| `bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100` | `bg-status-info/10 text-status-info` | 信息/提示 box |
+| `bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100` | `bg-destructive/10 text-destructive` | error box（复用现有 destructive token） |
 
-분석 보고서 기준 58곳 ≈ emerald 직접 사용 + violet/amber/sky 섹션. 저커버그가 mgrep + 매핑표로 일괄 치환.
+按分析报告，约 58 处 ≈ 直接使用 emerald，另有 violet/amber/sky section。Zuckerberg 使用 mgrep + 映射表批量替换。
 
 ---
 
-## D. 포커스 링 완화 스펙
+## D. focus ring 弱化规范
 
-기존 (input.tsx, textarea.tsx, select.tsx, button.tsx, checkbox.tsx 공통 패턴):
+现有（input.tsx、textarea.tsx、select.tsx、button.tsx、checkbox.tsx 共用 pattern）：
 ```
 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50
 ```
 
-새:
+新：
 ```
 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
 ```
 
-이유:
-1. `border-ring`은 입력 컨테이너의 border 색을 통째로 강조색으로 바꿔 "트림이 두꺼워진" 느낌. 제거.
-2. `ring-3`은 3px → `ring-2` 2px로 완화.
-3. `--ring` 토큰 자체에 알파(0.4 / 0.45)를 내장했으므로 클래스에 `/50` 명시 불필요. CSS 변수 변경만으로 라이트/다크 알파 자동 적용.
-4. `outline-none` 명시: 일부 브라우저 기본 outline이 ring과 겹쳐 보이는 이슈 방지.
+原因：
+1. `border-ring` 会把 input container 的 border color 整体改为强调色，产生“边框变厚”的感觉，因此移除。
+2. `ring-3` 为 3px → 改为 `ring-2` 2px，降低强度。
+3. `--ring` token 本身已内置 alpha(0.4 / 0.45)，因此 class 中无需再写 `/50`。只修改 CSS 变量即可自动应用 light/dark alpha。
+4. 明确写 `outline-none`：避免部分浏览器默认 outline 与 ring 重叠显示。
 
-추가: 키보드 접근성을 위해 `focus-visible:ring-offset-2 focus-visible:ring-offset-background`은 **버튼류에만** 적용 (input은 offset 없이). 베이스 컴포넌트 패치 시 결정.
+补充：为保证键盘可访问性，`focus-visible:ring-offset-2 focus-visible:ring-offset-background` **只应用于按钮类**（input 不加 offset）。在 patch base component 时决定。
 
 ---
 
-## E. 베이스 컴포넌트 정비 스펙
+## E. base component 整理规范
 
 ### `ui/dialog.tsx`
 - `DialogContent`:
-  - 기존: `rounded-xl bg-popover p-4 ... ring-1 ring-foreground/10`
-  - 새:   `rounded-2xl bg-popover ring-1 ring-border/60 shadow-2xl` — `p-4` 제거 (DialogShell이 패딩 관리), `ring-foreground/10` → `ring-border/60`
+  - 现有：`rounded-xl bg-popover p-4 ... ring-1 ring-foreground/10`
+  - 新：  `rounded-2xl bg-popover ring-1 ring-border/60 shadow-2xl` —— 移除 `p-4`（由 DialogShell 管理 padding），`ring-foreground/10` → `ring-border/60`
 - `DialogOverlay`:
-  - 기존: `bg-black/80` 류
-  - 새:   `bg-black/40 backdrop-blur-sm`
-- 기본 `max-w` 제거 — DialogShell의 `DIALOG_SIZE`가 제어
+  - 现有：`bg-black/80` 类
+  - 新：  `bg-black/40 backdrop-blur-sm`
+- 移除默认 `max-w` —— 由 DialogShell 的 `DIALOG_SIZE` 控制
 
 ### `ui/sheet.tsx`
-- 모바일 사이드바 + 대화목록 두 곳만 유지
-- 둥근 모서리 정리: 우측 패널은 `rounded-l-2xl`, 하단 패널은 `rounded-t-2xl`. 좌측/상단 변은 0
-- 그림자/링 토큰화: `ring-1 ring-border/60 shadow-2xl`
-- 패딩은 사용처에서 관리 (sheet 자체는 컨테이너만)
+- 只保留 mobile sidebar + conversation list 两处
+- 圆角整理：右侧 panel 为 `rounded-l-2xl`，底部 panel 为 `rounded-t-2xl`。左/上边为 0
+- shadow/ring token 化：`ring-1 ring-border/60 shadow-2xl`
+- padding 由使用处管理（sheet 本身只作为 container）
 
-### 베이스 input/textarea/select/button/checkbox
-- 위 D의 포커스 클래스 일괄 치환
-- `aria-invalid:ring-destructive/40 aria-invalid:border-destructive/60` 패턴 유지 (에러 상태 표현)
+### base input/textarea/select/button/checkbox
+- 批量替换为上文 D 的 focus class
+- 保留 `aria-invalid:ring-destructive/40 aria-invalid:border-destructive/60` pattern（error 状态表达）
 
 ---
 
-## 마이그레이션 영향
+## migration 影响
 
-| 항목 | 변경 위치 수 |
+| 项目 | 变更位置数量 |
 |---|---|
-| globals.css 토큰 추가/수정 | 1 (`:root` + `.dark` + `@theme`) |
+| globals.css token 新增/修改 | 1（`:root` + `.dark` + `@theme`） |
 | ui/dialog.tsx | 1 |
 | ui/sheet.tsx | 1 |
 | ui/input·textarea·select·button·checkbox.tsx | 5 |
-| emerald raw → primary 토큰 치환 | ~58곳 (mgrep) |
-| violet/amber/sky raw → status 토큰 치환 | 약 20-30곳 (분석 보고서 참조) |
+| emerald raw → primary token 替换 | ~58 处（mgrep） |
+| violet/amber/sky raw → status token 替换 | 约 20-30 处（参见分析报告） |
 
-코드 작업은 저커버그가 Sprint 1-1~1-4에서 분할 수행. ADR-010이 단일 진실 공급원.
-
----
-
-## 검증 방법
-
-1. **시각 회귀**: 사용자 메시지 박스(assistant-thread.tsx)는 기존과 시각적으로 동일해야 함 — primary 토큰이 emerald-100/900을 그대로 흡수
-2. **WCAG AA**: 라이트/다크 각각 primary × primary-foreground 콘트라스트 ≥ 4.5 — 위에서 14:1 / 8:1 검증
-3. **포커스 가시성**: 키보드 Tab 시 모든 인터랙티브 요소에 ring 보임 (CI: axe-core 또는 수동 QA)
-4. **다크모드 라운드트립**: 라이트→다크→라이트 토글 시 깜빡임 없이 hue 동일, lightness만 변경
-5. **빌드**: `pnpm build` 통과 (Tailwind v4 `@theme inline` 토큰 인식)
+代码工作由 Zuckerberg 在 Sprint 1-1~1-4 中拆分执行。ADR-010 是单一事实来源。
 
 ---
 
-## 트레이드오프 (사티아 보고용)
+## 验证方法
 
-**사용자 메시지 색을 brand primary로 승격 vs 별도 `--user-bubble` 토큰 분리.**
-
-선택: 승격. 이유:
-- 채팅이 Moldy의 핵심 surface — 가장 빈번하게 보이는 강조 배경이 곧 brand 정체성
-- 토큰 2개로 쪼개면 "사용자 메시지만 다른 색"이라는 우연한 분리가 굳어져 일관성 깨짐
-- 비용: emerald-100이 라이트모드 `--primary`가 되면서 "primary 위 검은 텍스트"라는 일반적 기대와 어긋남 → `--primary-foreground = emerald-950`로 명시 보정. 따라서 "primary는 항상 강한 강조색이다"라는 흔한 가정에 의존하는 코드(예: 임의로 `bg-primary text-white` 같은 조합)는 깨질 수 있음 — 이 경우 즉시 `text-primary-foreground`로 교정.
-
-대안 거절: `--user-bubble` 분리는 토큰 1개를 추가로 관리해야 하고, 결국 같은 emerald 톤이라 "정렬되었지만 두 곳"이 되어 디자인 의도를 흐림.
+1. **视觉回归**：用户消息框（assistant-thread.tsx）应与现有视觉完全一致——primary token 原样吸收 emerald-100/900
+2. **WCAG AA**：light/dark 下 primary × primary-foreground contrast 均 ≥ 4.5 —— 上文已验证为 14:1 / 8:1
+3. **focus 可见性**：使用键盘 Tab 时，所有 interactive element 都能看到 ring（CI：axe-core 或手动 QA）
+4. **dark mode round-trip**：light→dark→light 切换时无闪烁，hue 相同，仅 lightness 改变
+5. **build**：`pnpm build` 通过（Tailwind v4 `@theme inline` 能识别 token）
 
 ---
 
-## 작업 순서 (실행 단계)
+## 权衡（供 Satya 汇报）
 
-1. ADR-010 작성 — 위 A~E + 마이그레이션 영향 + 검증 방법 + 트레이드오프
-2. `AUDIT.log`에 한 줄 추가: `[ISO타임] timcook S2_DONE ADR-010 + 토큰 oklch 픽스 + DialogShell 비주얼 스펙`
-3. `progress.txt`에 oklch 핵심값 1-2줄 추가 (저커버그가 globals.css에 복붙):
+**将用户消息颜色升级为 brand primary vs 单独拆分 `--user-bubble` token。**
+
+选择：升级。原因：
+- chat 是 Moldy 的核心 surface——最频繁出现的强调背景就是 brand identity
+- 如果拆成 2 个 token，会把“只有用户消息使用另一种颜色”这种偶然差异固化，破坏一致性
+- 成本：emerald-100 成为 light mode `--primary` 后，会偏离“primary 上使用黑色文本”的一般预期 → 通过 `--primary-foreground = emerald-950` 明确修正。因此依赖“primary 总是强强调色”这一常见假设的代码（例如随意组合 `bg-primary text-white`）可能出错——这种情况应立即改为 `text-primary-foreground`。
+
+拒绝的替代方案：拆分 `--user-bubble` 需要额外维护 1 个 token，而且最终仍是同一 emerald tone，只是“对齐但分成两处”，反而模糊设计意图。
+
+---
+
+## 工作顺序（执行步骤）
+
+1. 编写 ADR-010 —— 包含上文 A~E + migration 影响 + 验证方法 + 权衡
+2. 在 `AUDIT.log` 新增一行：`[ISO时间] timcook S2_DONE ADR-010 + token oklch 修复 + DialogShell 视觉规范`
+3. 在 `progress.txt` 中添加 1-2 行 oklch 核心值（供 Zuckerberg 复制到 globals.css）：
    ```
-   - 토큰 oklch 픽스(라이트): --primary oklch(0.95 0.052 163.051) / --primary-foreground oklch(0.262 0.051 172.552) / --primary-strong oklch(0.596 0.145 163.225) / --ring oklch(0.596 0.145 163.225 / 0.4)
-   - 토큰 oklch 픽스(다크):   --primary oklch(0.378 0.077 168.94) / --primary-foreground oklch(0.95 0.052 163.051) / --primary-strong oklch(0.765 0.177 163.223) / --ring oklch(0.765 0.177 163.223 / 0.45)
+   - token oklch 修复（light）：--primary oklch(0.95 0.052 163.051) / --primary-foreground oklch(0.262 0.051 172.552) / --primary-strong oklch(0.596 0.145 163.225) / --ring oklch(0.596 0.145 163.225 / 0.4)
+   - token oklch 修复（dark）：  --primary oklch(0.378 0.077 168.94) / --primary-foreground oklch(0.95 0.052 163.051) / --primary-strong oklch(0.765 0.177 163.223) / --ring oklch(0.765 0.177 163.223 / 0.45)
    ```
-4. 사티아에게 보고: ADR 경로 + 핵심 oklch + 트레이드오프 한 줄
+4. 向 Satya 汇报：ADR 路径 + 核心 oklch + 一句权衡
 
-## 완료 조건
-- ADR-010 파일 존재 (Accepted, 2026-05-01)
-- AUDIT.log에 S2_DONE 라인
-- progress.txt에 oklch 핵심값 추가
-- 모든 결정값이 Tailwind v4 emerald/amber/sky/violet/red palette의 공식 oklch와 일치 (검증 가능)
+## 完成条件
+- ADR-010 文件存在（Accepted, 2026-05-01）
+- AUDIT.log 中有 S2_DONE 行
+- progress.txt 中已添加 oklch 核心值
+- 所有决定值都与 Tailwind v4 emerald/amber/sky/violet/red palette 的官方 oklch 一致（可验证）

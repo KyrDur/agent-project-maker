@@ -93,7 +93,7 @@ markdown-content.tsx
 
 ### 2.3 lib/hooks/ — 유지
 
-| 파일 | 이유 |
+| 文件 | 原因 |
 |------|------|
 | `use-conversations.ts` | TanStack Query 훅. conversation-list + 대화 페이지에서 사용. |
 

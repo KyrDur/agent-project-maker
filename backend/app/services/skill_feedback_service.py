@@ -1,12 +1,12 @@
-"""휴먼 피드백 서비스 (Phase 3 §7, D2) — 표시 전용.
+"""人类反馈服务（Phase 3 §7, D2）— 仅用于展示。
 
-두 축을 다룬다:
+处理两个维度：
 
-* 스킬 단위 up/down (+코멘트) — ``skill_feedbacks``, (skill, user) 유니크.
-* 평가 런 케이스별 agree/disagree (+코멘트) — grader 판정 검증,
-  ``skill_evaluation_case_feedbacks``, (run, user, case_index) 유니크.
+* skill 级 up/down（+comment）— ``skill_feedbacks``，(skill, user) 唯一。
+* evaluation run 的 case 级 agree/disagree（+comment）— 用于验证 grader 判断，
+  ``skill_evaluation_case_feedbacks``，(run, user, case_index) 唯一。
 
-어느 쪽도 pass_rate/health 계산에 반영되지 않는다 — 반영은 후속.
+两者都不计入 pass_rate/health 计算 — 后续再接入。
 """
 
 from __future__ import annotations

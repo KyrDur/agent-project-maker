@@ -74,22 +74,22 @@ async def get_owned_conversation_with_agent(
 ) -> Conversation | None:
     """Single SELECT joining ``conversations ⨝ agents on user_id`` + agent
     runtime eager-loads (model / llm_credential / tool_links / mcp_tool_links
-    / skill_links). 결과 ``conv.agent`` 는 별도 query 없이 hydrated.
+    / skill_links). 结果 ``conv.agent`` 已 hydrated，无需额外 query。
 
-    ``_resolve_agent_context`` 의 conv lookup + ``get_agent_with_tools`` 두
-    round-trip 을 하나로 축소 (W3-out 트랙 종료 retrospective MED follow-up).
-    runtime relations 의 selectin chain 자체는 동일하게 발사되므로 SELECT
-    수는 (2 + N) → (1 + N) — N=5 (model, llm_credential, tool_links, mcp_tool
-    _links, skill_links) 기준 약 14% 절감.
+    将 ``_resolve_agent_context`` 的 conv lookup + ``get_agent_with_tools`` 两次
+    round-trip 缩减为一次（W3-out 轨道结束 retrospective MED follow-up）。
+    runtime relations 的 selectin chain 本身仍照常发出，因此 SELECT
+    数量从 (2 + N) → (1 + N) — N=5（model、llm_credential、tool_links、mcp_tool
+    _links、skill_links）时约减少 14%。
 
-    ``Model.default_credential`` 관계는 의도적으로 chain 에서 제외한다 —
-    ``credential_resolution`` 이 FK (``default_credential_id``) 만 읽고 tier 2
-    fallback 시 ownership 검증을 위해 ``credential_service.get_for_user`` 로
-    별도 fetch 하므로, eager-load 결과는 사용처가 없다.
+    ``Model.default_credential`` 关系有意不纳入 chain —
+    ``credential_resolution`` 只读取 FK（``default_credential_id``），并在 tier 2
+    fallback 时为验证 ownership，通过 ``credential_service.get_for_user`` 另行
+    fetch，因此 eager-load 结果没有使用场景。
 
     Returns ``None`` when the conversation doesn't exist *or* belongs to
     another user — caller should map both to a single 404 (rules/security.md
-    enumeration oracle, ``get_owned_conversation`` 와 동일 contract).
+    enumeration oracle, 与 ``get_owned_conversation`` 相同 contract).
     """
     result = await db.execute(
         select(Conversation)

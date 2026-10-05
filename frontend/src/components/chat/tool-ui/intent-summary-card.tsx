@@ -8,15 +8,15 @@ import { PhaseCard, PhaseCardHeader } from './phase-card'
 export type IntentConfidence = 'high' | 'medium' | 'low'
 
 export interface IntentSummaryCardProps {
-  /** 에이전트 이름 (예: '한컴 뉴스 모니터'). */
+  /** 智能体名称（例：'韩康新闻监控'）。 */
   name: string
-  /** 에이전트 설명 (한 단락). */
+  /** 智能体描述（一个段落）。 */
   description: string
-  /** 태그 (요약 키워드, 0~N개). */
+  /** 标签（摘要关键词，0~N 个）。 */
   tags?: string[]
-  /** 의도 분석 확신도. 헤더 우측 라벨에 반영. */
+  /** 意图分析置信度。反映在标题区右侧标签中。 */
   confidence?: IntentConfidence
-  /** 헤더 phase 라벨 (예: 'Phase 2'). */
+  /** 标题区 phase 标签（例：'Phase 2'）。 */
   phaseLabel?: string
 }
 
@@ -52,11 +52,11 @@ function IntentLabel({ text }: { text: string }) {
 }
 
 /**
- * Phase 2 결과 카드 — 의도 분석 요약.
+ * Phase 2 结果卡片 — 意图分析摘要。
  *
- * 현재 backend가 별도 tool로 emit하지 않으므로 presentational 컴포넌트로만 제공.
- * 이후 builder graph가 `intent_summary` ToolMessage를 emit하면 그 tool UI에서
- * 이 컴포넌트를 그대로 wrap해서 사용한다.
+ * 当前 backend 不会通过独立 tool emit，因此仅提供为 presentational 组件。
+ * 后续 builder graph 若将 `intent_summary` ToolMessage emit 出来，则在对应 tool UI 中
+ * 直接 wrap 此组件使用。
  */
 export function IntentSummaryCard({
   name,

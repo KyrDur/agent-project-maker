@@ -8,20 +8,20 @@ import { followupEnabledAtom, setConversationFollowupAtom } from '@/lib/stores/c
 import { reportClientError } from '@/lib/logging/client-logger'
 
 /**
- * 런 종료(thread.isRunning true→false) 시 follow-up 제안 1개를 생성해
- * 대화별 atom에 싣는다 (use-files-run-sync의 완료 감지 패턴).
+ * 运行结束(thread.isRunning true→false)时生成 follow-up 建议 1 条，
+ * 放入每个对话的 atom（use-files-run-sync 的完成检测模式）。
  *
- * - 토글 OFF면 호출 자체를 하지 않는다(비용 0).
- * - 새 런 시작 시 이전 제안을 비워 낡은 제안이 남지 않게 한다.
- * - 응답이 늦게 도착했는데 대화가 바뀌었으면 버린다(레이스 가드).
- * - 실패는 조용히 무시 — 고스트는 nice-to-have, 채팅을 막지 않는다.
+ * - 开关 OFF 时完全不调用（成本 0）。
+ * - 新运行开始时清空上一条建议，避免旧建议残留。
+ * - 响应延迟到达但对话已切换时丢弃（竞态防护）。
+ * - 失败静默忽略 — 幽灵只是 nice-to-have，不阻塞聊天。
  */
 export function useFollowupSuggestion(conversationId: string | null): void {
   const enabled = useAtomValue(followupEnabledAtom)
   const setFollowup = useSetAtom(setConversationFollowupAtom)
   const isRunning = useAuiState((s) => s.thread.isRunning)
   const prevRunning = useRef(isRunning)
-  // TanStack v5의 mutateAsync는 참조 안정 — effect 의존성으로 안전하다.
+  // TanStack v5 的 mutateAsync 引用稳定 — 作为 effect 依赖是安全的。
   const { mutateAsync: fetchSuggestion } = useFollowupSuggestionMutation()
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function useFollowupSuggestion(conversationId: string | null): void {
     prevRunning.current = isRunning
     if (!conversationId) return
 
-    // 런 시작 — 직전 턴의 제안은 더 이상 유효하지 않다.
+    // 运行开始 — 上一轮的建议已不再有效。
     if (!wasRunning && isRunning) {
       setFollowup({ conversationId, suggestion: null })
       return

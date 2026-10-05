@@ -113,7 +113,7 @@ def _common_parameters(
 
 blog_definition = ToolDefinition(
     key="naver_search_blog",
-    display_name="네이버 블로그 검색",
+    display_name="Naver 博客搜索",
     description="Search Korean blogs via the Naver Search API.",
     icon_id="naver",
     category="search",
@@ -124,7 +124,7 @@ blog_definition = ToolDefinition(
 
 news_definition = ToolDefinition(
     key="naver_search_news",
-    display_name="네이버 뉴스 검색",
+    display_name="Naver 新闻搜索",
     description="Search Korean news articles via the Naver Search API.",
     icon_id="naver",
     category="search",
@@ -135,7 +135,7 @@ news_definition = ToolDefinition(
 
 image_definition = ToolDefinition(
     key="naver_search_image",
-    display_name="네이버 이미지 검색",
+    display_name="Naver 图片搜索",
     description="Search images via the Naver Search API.",
     icon_id="naver",
     category="search",
@@ -160,7 +160,7 @@ image_definition = ToolDefinition(
 
 shop_definition = ToolDefinition(
     key="naver_search_shop",
-    display_name="네이버 쇼핑 검색",
+    display_name="Naver 购物搜索",
     description="Search shopping items via the Naver Search API.",
     icon_id="naver",
     category="search",
@@ -171,7 +171,7 @@ shop_definition = ToolDefinition(
 
 local_definition = ToolDefinition(
     key="naver_search_local",
-    display_name="네이버 지역 검색",
+    display_name="Naver 本地搜索",
     description="Search local places via the Naver Search API.",
     icon_id="naver",
     category="search",

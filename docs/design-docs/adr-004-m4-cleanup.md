@@ -1,8 +1,8 @@
 # ADR-004: M4 정리 — Creation Agent + Trigger + Streaming
 
-## 상태: 승인됨
+## 状态：已批准
 
-## 맥락
+## 背景
 
 M1-M3에서 deep agent 엔진 전환이 완료되었다. M4에서 남은 코드를 정리하고 통일된 엔진을 사용한다.
 
@@ -236,7 +236,7 @@ class PatchedLLMToolSelectorMiddleware(LLMToolSelectorMiddleware):
 
 ---
 
-## 결과
+## 结果
 
 ### 긍정적
 - **통일된 엔진**: creation_agent도 `create_deep_agent` 경로 사용. 프로젝트 내 모든 LLM 호출이 단일 엔진.

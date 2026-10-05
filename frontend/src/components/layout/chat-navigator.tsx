@@ -133,11 +133,11 @@ export function ChatNavigator() {
     }
   }, [])
 
-  // M7 — `usePathname()`이 replaced pathname을 따라잡으면 stale override를 정리한다.
-  // effect 안에서 동기적으로 setState하면 `react-hooks/set-state-in-effect`에 걸리고
-  // (AGENTS.md 참고) cascading render를 유발하므로, 대신 라우터가 따라잡았을 때
-  // 렌더 중에 곧장 state를 비운다. setState during render는 같은 렌더 안에서
-  // 즉시 재실행되어 cascade 없이 정착하는 React 권장 패턴이다
+  // M7 — 当 `usePathname()` 追上 replaced pathname 后，清理 stale override。
+  // 如果在 effect 中同步 setState，会触发 `react-hooks/set-state-in-effect`，
+  // 并（参见 AGENTS.md）导致 cascading render，因此改为在路由器追上时
+  // 直接在渲染中清空 state。setState during render 会在同一渲染内
+  // 会立即重新执行并在无 cascade 的情况下稳定，是 React 推荐的模式
   // (https://react.dev/reference/react/useState#storing-information-from-previous-renders).
   if (replacedPathname !== null && pathname === replacedPathname) {
     setReplacedPathname(null)
@@ -156,7 +156,7 @@ export function ChatNavigator() {
   const toggleAgentExpanded = useCallback(
     (agentId: string) => {
       if (isAgentExpanded(agentId)) {
-        // 활성 에이전트의 기본 펼침은 collapse override로만 덮을 수 있다
+        // 活跃智能体的默认展开只能由 collapse override 覆盖
         if (agentId === activeAgentId) {
           setCollapsedAgentIds((current) =>
             current.includes(agentId) ? current : [...current, agentId],

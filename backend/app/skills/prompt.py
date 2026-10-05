@@ -3,7 +3,7 @@
 Mirrors LambChat's ``loader.build_skills_prompt`` pattern: when an agent has
 one or more skills mounted, append a markdown section describing them so the
 model knows to ``read_file`` ``/skills/<slug>/SKILL.md`` before invoking
-behaviour. This complements the existing "스킬 사용 규칙" block in
+behaviour. This complements the existing "Skill 使用规则" block in
 ``executor._prepare_agent`` — that one teaches *how* to use skills; this one
 teaches *which* skills exist.
 

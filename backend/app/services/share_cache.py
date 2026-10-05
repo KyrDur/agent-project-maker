@@ -75,8 +75,8 @@ def put_snapshot(token: str, checkpoint_id: str | None, value: Any) -> None:
 
 
 def get_envelope(token: str, checkpoint_id: str | None) -> Any | None:
-    """``MessagesEnvelope`` 모양의 캐시 entry. ``SharedConversationView``와
-    같은 token이라도 shape이 달라 별도 namespace로 분리한다."""
+    """``MessagesEnvelope`` 形状的缓存 entry。即使与 ``SharedConversationView``
+    使用同一 token，由于 shape 不同，也分到独立 namespace。"""
     return _cache.get((_envelope_key(token), checkpoint_id))
 
 
@@ -89,7 +89,7 @@ def _envelope_key(token: str) -> str:
 
 
 def invalidate_token(token: str) -> None:
-    """View 와 envelope 양쪽의 token-prefix entry 모두 폐기."""
+    """同时废弃 View 与 envelope 两侧的 token-prefix entry。"""
     _cache.invalidate_prefix(token)
     _cache.invalidate_prefix(_envelope_key(token))
 

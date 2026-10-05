@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 def _selectin_agent() -> list:
     """Standard eager-loading options for Agent queries.
 
-    AgentSubAgentLink.sub_agent는 model 측에 lazy="joined"가 걸려 있어 link 로드 시
-    같이 들어온다 — 여기서 추가 selectinload는 불필요(중복).
+    AgentSubAgentLink.sub_agent 在 model 侧设置了 lazy="joined"，因此加载 link 时
+    会一并加载 — 此处无需额外 selectinload（重复）。
     """
     return [
         selectinload(Agent.model),
@@ -125,7 +125,7 @@ async def list_agents(db: AsyncSession, user_id: uuid.UUID) -> list[Agent]:
         .outerjoin(last_used_subq, Agent.id == last_used_subq.c.agent_id)
         .where(
             Agent.user_id == user_id,
-            # Hidden runtime rows (skill builder 등) never surface in lists.
+            # Hidden runtime rows (skill builder 等) never surface in lists.
             Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
         )
         .options(*_selectin_agent())
@@ -267,7 +267,7 @@ def _build_tool_links(tool_ids: list[uuid.UUID]) -> list[AgentToolLink]:
 async def _validate_sub_agent_ids_owned(
     db: AsyncSession, sub_agent_ids: list[uuid.UUID], user_id: uuid.UUID
 ) -> None:
-    """sub_agent_ids: 실재 + 동일 사용자 소유. 누락 시 400."""
+    """sub_agent_ids: 实际存在 + 归同一用户所有。缺失时返回 400。"""
     if not sub_agent_ids:
         return
     result = await db.execute(
@@ -290,7 +290,7 @@ async def _validate_sub_agent_ids_owned(
 async def _validate_mcp_tool_ids_owned(
     db: AsyncSession, mcp_tool_ids: list[uuid.UUID], user_id: uuid.UUID
 ) -> None:
-    """mcp_tool_ids: 실재 + (서버 소유주가 user_id). 누락 시 400."""
+    """mcp_tool_ids: 实际存在 +（服务器所有者为 user_id）。缺失时返回 400。"""
 
     if not mcp_tool_ids:
         return
@@ -311,7 +311,7 @@ async def _validate_mcp_tool_ids_owned(
 async def _validate_tool_ids_owned(
     db: AsyncSession, tool_ids: list[uuid.UUID], user_id: uuid.UUID
 ) -> None:
-    """tool_ids: 실재 + (사용자 소유 OR 시스템 도구). 누락 시 400."""
+    """tool_ids: 实际存在 +（用户所有 OR 系统工具）。缺失时返回 400。"""
     if not tool_ids:
         return
     result = await db.execute(
@@ -352,7 +352,7 @@ async def _validate_model_fallback_ids(db: AsyncSession, fallback_ids: list[uuid
 async def _validate_skill_ids_owned(
     db: AsyncSession, skill_ids: list[uuid.UUID], user_id: uuid.UUID
 ) -> None:
-    """skill_ids: 실재 + 동일 사용자 소유. 누락 시 400."""
+    """skill_ids: 实际存在 + 归同一用户所有。缺失时返回 400。"""
     if not skill_ids:
         return
     from app.models.skill import Skill
@@ -597,10 +597,10 @@ async def update_agent(db: AsyncSession, agent: Agent, data: AgentUpdate) -> Age
         await db.flush()
         agent.skill_links = [AgentSkillLink(skill_id=sid) for sid in data.skill_ids]
     if data.sub_agent_ids is not None:
-        # 자기참조 방어: DB CHECK 제약과 이중 가드
+        # 自引用防护：DB CHECK 约束 + 双重 guard
         if agent.id in data.sub_agent_ids:
             raise HTTPException(status_code=400, detail="Cannot add self as sub-agent")
-        # 소유권/실재 검증 (cross-tenant leak + 500 IntegrityError 방지)
+        # 所有权/存在性验证（防止 cross-tenant leak + 500 IntegrityError）
         await _validate_sub_agent_ids_owned(db, data.sub_agent_ids, agent.user_id)
         agent.sub_agent_links.clear()
         await db.flush()

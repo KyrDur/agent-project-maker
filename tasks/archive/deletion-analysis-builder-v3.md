@@ -452,7 +452,7 @@ Builder v2 (7-phase 자동 파이프라인)에서 v3 (LangGraph StateGraph 8-pha
 
 ---
 
-## 산출물
+## 产出物
 
 - **분석 파일**: `/Users/chester/dev/natural-mold/tasks/deletion-analysis.md` ✓
 - **분류 완료**:

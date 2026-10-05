@@ -15,8 +15,8 @@ Moldy should extend the existing Skill marketplace into a marketplace for three 
 
 The important naming decision is:
 
-- Use **Agent Blueprint / 에이전트 블루프린트** for Agent sharing.
-- Use **MCP / MCP 서버** for MCP sharing.
+- Agent sharing 使用 **Agent Blueprint / Agent 蓝图**。
+- MCP sharing 使用 **MCP / MCP 服务器**。
 - Do **not** use "MCP Blueprint" in user-facing copy. It is not a common MCP term and adds an unnecessary product concept.
 
 This keeps the product intuitive:
@@ -164,20 +164,20 @@ Fields are roughly prompt/model/category/recommended tools. This is useful as a 
 
 | Concept | User-facing name | Internal resource |
 | --- | --- | --- |
-| Existing Skill marketplace resource | Skill Package / 스킬 패키지 | `resource_type='skill'`, `payload_kind='skill_package'` |
-| Reusable MCP server configuration | MCP / MCP 서버 | `resource_type='mcp'`, `payload_kind='mcp_template'` |
-| Reusable Agent design | Agent Blueprint / 에이전트 블루프린트 | `resource_type='agent'`, `payload_kind='agent_spec'` |
-| User-installed Agent design | Installed Agent Blueprint / 내 블루프린트 | `agent_blueprints` row linked from marketplace installation |
-| Legacy prompt starter | Legacy Template / 기존 템플릿 | `templates` table, deprecated |
+| 现有 Skill marketplace resource | Skill Package / Skill 包 | `resource_type='skill'`, `payload_kind='skill_package'` |
+| 可复用 MCP 服务器配置 | MCP / MCP 服务器 | `resource_type='mcp'`, `payload_kind='mcp_template'` |
+| 可复用 Agent 设计 | Agent Blueprint / Agent 蓝图 | `resource_type='agent'`, `payload_kind='agent_spec'` |
+| 用户已安装的 Agent 设计 | Installed Agent Blueprint / 我的蓝图 | `agent_blueprints` row linked from marketplace installation |
+| Legacy prompt starter | Legacy Template / 旧模板 | `templates` table, deprecated |
 
-User-facing MCP copy should say "MCP" or "MCP 서버". The internal `mcp_template` payload kind can remain because it describes the immutable marketplace snapshot, not the product label.
+面向用户的 MCP 文案应写作“MCP”或“MCP 服务器”。内部 `mcp_template` payload kind 可以保留，因为它描述的是 immutable marketplace snapshot，而不是产品标签。
 
 ### 3.2 User workflows
 
 #### Publish MCP server
 
 1. User has a working MCP server in `/mcp-servers`.
-2. User clicks `MCP 서버 공유`.
+2. User 点击 `共享 MCP 服务器`。
 3. Publish wizard previews:
    - transport and endpoint/command
    - expected tools from latest discovery
@@ -199,7 +199,7 @@ User-facing MCP copy should say "MCP" or "MCP 서버". The internal `mcp_templat
 #### Publish Agent Blueprint
 
 1. User has a working Agent in `/agents`.
-2. User clicks `블루프린트로 공유` from Agent detail/settings.
+2. User 在 Agent detail/settings 中点击 `共享为蓝图`。
 3. Publish wizard builds an install plan:
    - portable settings copied into Blueprint
    - credentials stripped
@@ -220,7 +220,7 @@ User-facing MCP copy should say "MCP" or "MCP 서버". The internal `mcp_templat
 5. Server creates `MarketplaceInstallation(installed_agent_blueprint_id=...)`.
 6. Missing dependency information yields `install_status='needs_setup'`.
 7. No runnable Agent is created during marketplace install.
-8. User later clicks `이 블루프린트로 에이전트 만들기`; only then does the server resolve/install dependencies and create a runnable `agents` row.
+8. User 之后点击 `用此蓝图创建 Agent`；只有此时 server 才会 resolve/install dependencies 并创建可运行的 `agents` row。
 
 ## 4. Core Decisions
 
@@ -250,7 +250,7 @@ The Agent dashboard should show runnable `agents` only.
 
 Installed Agent Blueprints should be visible through:
 
-- short term: `/agents/new/template` renamed as `블루프린트에서 시작`
+- short term：将 `/agents/new/template` 重命名为 `从蓝图开始`
 - medium term: `/agents/blueprints` or `/agent-blueprints`
 
 This mirrors existing resource behavior:
@@ -544,7 +544,7 @@ If rediscovery changes tool IDs, remap links by `(server_id, tool_name)`.
       }
     ],
     "middleware_configs": [],
-    "opener_questions": ["오늘 조사할 주제는 무엇인가요?"]
+    "opener_questions": ["今天要调研的主题是什么？"]
   },
   "capabilities": {
     "tools": [
@@ -827,8 +827,8 @@ Tasks:
 5. Add MCP server publish wizard entry point.
 6. Add install plan UI.
 7. Add installed Agent Blueprint library surface.
-8. Add `이 블루프린트로 에이전트 만들기` flow.
-9. Rename template creation surface to `블루프린트에서 시작`.
+8. 添加 `用此蓝图创建 Agent` flow。
+9. 将 template creation surface 重命名为 `从蓝图开始`。
 10. Add i18n messages and run `pnpm lint:i18n`.
 11. Run `pnpm lint:design-system` after UI changes.
 
@@ -871,7 +871,7 @@ Entry point:
 
 Button:
 
-- Korean: `블루프린트로 공유`
+- Korean：`共享为蓝图`
 - English: `Share as blueprint`
 
 Wizard:
@@ -891,7 +891,7 @@ Entry point:
 
 Button:
 
-- Korean: `MCP 서버 공유`
+- Korean：`共享 MCP 服务器`
 - English: `Share MCP server`
 
 Wizard:

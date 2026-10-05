@@ -138,7 +138,7 @@ export function ComingSoonButton({
 - `Button` (variant: ghost)
 - `toast.info` (sonner)
 
-### 접근성
+### 可访问性
 
 - `aria-label`에 "(준비 중)" 포함
 - `disabled` 제거 → 키보드 포커스 가능
@@ -300,7 +300,7 @@ export function ComingSoonButton({
 - `text-muted-foreground`도 테마 자동 대응
 - 추가 다크모드 클래스 불필요
 
-### 접근성
+### 可访问性
 
 - 호버로 숨긴 버튼은 `focus-within:opacity-100`으로 키보드 접근 보장
 - `aria-label` 필수: "설정", "비주얼 설정"
@@ -457,7 +457,7 @@ app/agents/[agentId]/settings/
 - `bg-background/95 backdrop-blur-sm`은 테마 자동 대응
 - `border-b`, `border-t`도 테마 변수 사용으로 자동 대응
 
-### 접근성
+### 可访问性
 
 - `Tabs`는 shadcn/ui가 aria-role 자동 처리 (`role="tablist"`, `role="tab"`, `role="tabpanel"`)
 - 키보드: 좌우 화살표로 탭 전환
@@ -631,7 +631,7 @@ export function AppHeader() {
 - `text-muted-foreground`, `text-foreground`는 테마 자동 대응
 - 추가 다크모드 클래스 불필요
 
-### 접근성
+### 可访问性
 
 - `<nav aria-label="Breadcrumb">` 랜드마크
 - 현재 페이지: `aria-current="page"` 추가
@@ -797,7 +797,7 @@ function ThemeCard() {
 - 테마 토글이 이 페이지에 있으므로 즉각 반영 확인 필요
 - `bg-primary/5`는 테마 자동 대응
 
-### 접근성
+### 可访问性
 
 - 테마/언어 선택: `role="radiogroup"` + `role="radio"` + `aria-checked`
 - 또는 시맨틱 `<fieldset>` + `<input type="radio">`
@@ -917,7 +917,7 @@ function ThemeCard() {
 - Dialog 컴포넌트가 테마 자동 대응 (bg-background, text-foreground)
 - 추가 다크모드 클래스 불필요
 
-### 접근성
+### 可访问性
 
 - Dialog는 모달 포커스 트랩 자동 제공 (Sheet과 동일)
 - `Escape` 키로 닫기 (기존과 동일)

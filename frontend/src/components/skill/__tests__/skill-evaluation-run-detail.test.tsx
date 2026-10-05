@@ -61,7 +61,7 @@ describe('SkillEvaluationRunDetail', () => {
     )
     const line = screen.getByTestId('run-usage-line')
     expect(line).toHaveTextContent('3,500')
-    expect(line).not.toHaveTextContent('미측정')
+    expect(line).not.toHaveTextContent('未测量')
   })
 
   it('shows "Token未知" instead of 0 tokens when usage_metadata was absent', () => {
@@ -81,6 +81,6 @@ describe('SkillEvaluationRunDetail', () => {
     )
     const line = screen.getByTestId('run-usage-line')
     expect(line).toHaveTextContent('Token未知')
-    expect(line).not.toHaveTextContent('0 토큰')
+    expect(line).not.toHaveTextContent('0 个令牌')
   })
 })

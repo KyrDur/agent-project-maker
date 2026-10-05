@@ -16,17 +16,17 @@ import { OptionListCard } from './option-list-card'
 interface AskUserArgs {
   mode?: 'question_flow' | 'option_list'
   title?: string
-  /** 복수 질문 */
+  /** 多个问题 */
   questions?: UserInputQuestion[]
-  /** 단일 질문 폴백 */
+  /** 单个问题回退 */
   question?: string
   type?: UserInputQuestion['type']
   options?: Array<string | UserInputOption>
   minSelections?: number
   maxSelections?: number
-  /** 입력 만료 timeout (초) — 미지정 시 5분 */
+  /** 输入过期 timeout (秒) — 未指定时为 5 分钟 */
   timeout_seconds?: number
-  /** 입력 식별자 — deadline 리셋 키로 사용 */
+  /** 输入标识符 — 用作 deadline 重置键 */
   approval_id?: string
   /** 标准 HiTL interrupt 内的 action index */
   hitl_action_index?: number
@@ -186,14 +186,14 @@ function CompletedBadge({ result }: { result: unknown }) {
   )
 }
 
-/** string[] → {label}[] 변환. 스트리밍 부분 args에선 배열이 아닐 수 있어
- * Array.isArray로 가드한다 (문자열 조각은 length>0을 통과해 map에서 크래시). */
+/** string[] → {label}[] 转换。流式部分 args 中可能不是数组，
+ * 因此用 Array.isArray 防护（字符串片段会通过 length>0，然后在 map 时崩溃）。 */
 function normalizeOptions(options?: Array<string | UserInputOption>): UserInputQuestion['options'] {
   if (!Array.isArray(options) || options.length === 0) return undefined
   return options.map((o) => (typeof o === 'string' ? { label: o } : o))
 }
 
-/** args에서 질문 배열 정규화 */
+/** 从 args 中规范化问题数组 */
 function normalizeQuestions(args: AskUserArgs): UserInputQuestion[] {
   if (Array.isArray(args.questions) && args.questions.length > 0) {
     return args.questions.map((q) => ({
@@ -211,7 +211,7 @@ function normalizeQuestions(args: AskUserArgs): UserInputQuestion[] {
       {
         question: args.question,
         label: args.question,
-        // options가 있으면 자동으로 single_select
+        // 有 options 时自动设为 single_select
         type: args.type ?? (opts?.length ? 'single_select' : 'text'),
         options: opts,
         required: true,
@@ -269,7 +269,7 @@ export function UserInputUI({
     [submitDecision],
   )
 
-  // 입력 인스턴스별 안정 키 — args.approval_id 우선, 없으면 마운트 시 생성
+  // 每个输入实例的稳定键 — 优先 args.approval_id，没有则在挂载时生成
   const fallbackId = useId()
   const approvalId = args?.approval_id ?? `ask-user-${fallbackId}`
 
@@ -282,7 +282,7 @@ export function UserInputUI({
 
   const handleSubmit = useCallback(
     async (opts?: { skipReason?: string }) => {
-      // 응답 직렬화
+      // 响应序列化
       const response: Record<string, unknown> = {}
       questions.forEach((q, i) => {
         const key = q.question ?? q.label ?? q.id ?? `question_${i + 1}`
@@ -297,10 +297,10 @@ export function UserInputUI({
       setSubmitState('submitting')
       setSubmitError(false)
 
-      // 질문이 1개면 값만 전송, 복수면 객체 전송
+      // 只有 1 个问题时仅发送值，多个问题时发送对象
       const payload = questions.length === 1 ? Object.values(response)[0] : response
 
-      // 화면 표시용 텍스트
+      // 屏幕显示用文本
       const displayText =
         opts?.skipReason ??
         questions
@@ -325,7 +325,7 @@ export function UserInputUI({
     [answers, questions, submitDecision],
   )
 
-  // 만료 시 빈 답변으로 자동 제출 — 에이전트 graph가 무한히 paused되지 않도록
+  // 过期时自动提交空回答 — 避免智能体 graph 无限 paused
   const expireMessage = t('autoSkipped')
   const handleExpire = useCallback(() => {
     if (submitState !== 'idle') return
@@ -373,7 +373,7 @@ export function UserInputUI({
     )
   }
 
-  // ── requires-action: 입력 UI ──
+  // ── requires-action: 输入 UI ──
   const allAnswered =
     questions.length > 0 &&
     questions.every((_, i) => {

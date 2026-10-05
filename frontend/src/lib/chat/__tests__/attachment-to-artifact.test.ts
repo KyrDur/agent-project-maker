@@ -57,11 +57,11 @@ describe('attachmentToArtifactSummary', () => {
     expect(artifact.extension).toBe('png')
     expect(artifact.artifact_kind).toBe('image')
     expect(artifact.size_bytes).toBe(1234)
-    // 모든 URL 필드는 업로드 다운로드 URL을 가리킨다.
+    // 所有 URL 字段都指向上传文件的下载 URL。
     expect(artifact.url).toBe('/api/uploads/upload-1')
     expect(artifact.preview_url).toBe('/api/uploads/upload-1')
     expect(artifact.download_url).toBe('/api/uploads/upload-1')
-    // artifact 전용 식별자는 안전한 기본값.
+    // artifact 专用标识符使用安全默认值。
     expect(artifact.status).toBe('ready')
     expect(artifact.sha256).toBe('')
     expect(artifact.version_number).toBe(0)

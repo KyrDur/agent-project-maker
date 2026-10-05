@@ -7,7 +7,7 @@
 
 ---
 
-## 맥락
+## 背景
 
 ### 현재 상황 (Builder v2)
 
@@ -32,7 +32,7 @@
 
 ---
 
-## 결정
+## 决定
 
 ### 1. 기술 선택: StateGraph (ReAct 대신)
 
@@ -486,7 +486,7 @@ POST /api/builder/{id}/confirm
 
 ---
 
-## 대안
+## 替代方案
 
 ### 대안 A: 기존 v2 유지 + HiTL만 추가
 
@@ -522,7 +522,7 @@ POST /api/builder/{id}/confirm
 
 ---
 
-## 결과
+## 结果
 
 ### 구현 영향
 

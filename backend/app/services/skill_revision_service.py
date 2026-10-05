@@ -32,9 +32,9 @@ from app.skills.package_metadata import refresh_package_metadata, sync_frontmatt
 from app.skills.packager import PackageError, extract_package
 from app.storage.paths import resolve_data_path
 
-# 리비전 파일 path 상한 — content 엔드포인트 Query 바운드와 목록 필터가 공유한다
-# (zip 엔트리 이름은 65,535바이트까지 가능; 비대칭이면 목록엔 있는데 못 여는
-# 파일이 생긴다, R6).
+# revision 文件 path 上限 — 与 content endpoint Query 边界及列表过滤共享
+# （zip entry 名称最长可达 65,535 字节；若不对称，会出现列表里有但无法打开的
+# 文件，R6）。
 MAX_REVISION_FILE_PATH_CHARS = 4096
 
 
@@ -91,11 +91,11 @@ async def list_revisions(
     user_id: uuid.UUID,
     limit: int | None = 100,
 ) -> list[SkillRevision]:
-    """리비전 목록 (최신순).
+    """revision 列表（最新优先）。
 
-    ``limit=None``은 전수 열거 — retention prune처럼 의미상 무제한 순회가
-    필요한 소비자용이다. 기본 100 창만 보면 창 밖(>100번째) 리비전이 영구히
-    prune 대상에서 빠져 스냅샷 디스크가 새는 잠복 계약 파손이 된다 (R5).
+    ``limit=None`` 表示全量枚举 — 供 retention prune 等语义上需要无限遍历的
+    消费方使用。若只看默认 100 窗口，窗口外（>第 100 个）的 revision 会永久
+    漏出 prune 范围，导致 snapshot 磁盘泄漏这一潜在契约破坏（R5）。
     """
     if skill.user_id != user_id:
         return []
@@ -151,16 +151,16 @@ async def rollback_to_revision(
         try:
             content = await run_sync(_read_skill_md, zip_bytes)
         except (zipfile.BadZipFile, zlib.error, KeyError, UnicodeDecodeError) as exc:
-            # UnicodeDecodeError: CRC는 멀쩡한데 비 UTF-8 바이트인 스냅샷 —
-            # decode는 zip read가 아니라 여기서 터진다 (R7).
+            # UnicodeDecodeError: CRC 正常但包含非 UTF-8 字节的 snapshot —
+            # decode 错误不是在 zip read，而是在这里抛出（R7）。
             raise SkillRevisionSnapshotMissing("revision snapshot is unreadable") from exc
         try:
-            # update_text_content도 write 전에 같은 파싱을 돌리지만, 여기서
-            # 선검증해야 "스냅샷 불가" 부류(레거시 frontmatter 등)가 형제
-            # 케이스(유실/손상)와 같은 409로 수렴한다 — 500 비대칭 방지 (R6).
-            # yaml.YAMLError: frontmatter.loads의 파서 오류는 ValueError 계열이
-            # 아니다(SkillMetadataError만 ValueError) — 깨진 YAML frontmatter가
-            # frontmatter 부재와 다른 응답이 되면 안 된다 (R7).
+            # update_text_content 在 write 前也会做同样解析，但仍必须在这里
+            # 预验证，使"snapshot 不可用"类别（legacy frontmatter 等）与兄弟
+            # case（丢失/损坏）一起收敛到相同 409，避免 500 不对称（R6）。
+            # yaml.YAMLError: frontmatter.loads 的 parser 错误不属于 ValueError 系列
+            # （只有 SkillMetadataError 是 ValueError）— 损坏的 YAML frontmatter
+            # 不应得到与缺少 frontmatter 不同的响应（R7）。
             parse_skill_md(content, require_metadata=True)
         except (ValueError, yaml.YAMLError) as exc:
             raise SkillRevisionSnapshotMissing("revision snapshot SKILL.md is invalid") from exc
@@ -168,18 +168,18 @@ async def rollback_to_revision(
     else:
         if not skill.storage_path:
             raise SkillRevisionRollbackUnsupported("package skill has no storage path")
-        # validate-then-mutate: 파괴적 교체(rmtree) 전에 zip 무결성과 SKILL.md
-        # 존재를 검증한다. 교체 후 실패하면 디스크는 이미 바뀌었는데 DB만
-        # 롤백되는 발산이 남으므로, "스냅샷 불가" 부류는 전부 여기서 걸러
-        # 무변경 409로 끝낸다 (R5).
+        # validate-then-mutate: 在破坏性替换（rmtree）之前验证 zip 完整性和 SKILL.md
+        # 存在性。若替换后再失败，磁盘已经变化而只有 DB
+        # 回滚，会产生发散，因此所有"snapshot 不可用"类别都要在这里拦截，
+        # 以无变更 409 结束（R5）。
         await run_sync(_validate_package_snapshot, zip_bytes)
         await run_sync(_replace_package_files, skill.storage_path, zip_bytes)
         refresh_package_metadata(skill)
         sync_frontmatter(skill, skill_service.get_file_bytes(skill, "SKILL.md"))
         _sync_moldy_runtime_columns(skill)
-        # 형제 패키지 변이(file_service.set_skill_file)와 동일하게 수정 시각을
-        # 갱신 — 목록 정렬(last_modified_at desc)·UI 타임스탬프 정합 (R5).
-        # naive UTC — 컬럼/형제 _now()와 동일 규약.
+        # 与兄弟 package mutation（file_service.set_skill_file）一样更新修改时间
+        # — 保持列表排序（last_modified_at desc）与 UI 时间戳一致（R5）。
+        # naive UTC — 与列/兄弟 _now() 使用相同约定。
         skill.last_modified_at = datetime.now(UTC).replace(tzinfo=None)
         await db.flush()
     return await create_revision_for_skill(
@@ -208,24 +208,24 @@ def snapshot_pruned(revision: SkillRevision) -> bool:
 
 
 async def list_revision_files(revision: SkillRevision) -> list[tuple[str, int, bool]] | None:
-    """리비전 스냅샷 zip의 파일 목록 — (path, size, is_binary).
+    """revision snapshot zip 文件列表 — (path, size, is_binary)。
 
-    디스크 추출 없이 central directory + head sniff만 랜덤 액세스로 읽는다
-    (전체 bytes 적재 없음, zip-slip 표면 없음). pruned는 호출 전에
-    ``snapshot_pruned``로 거르고, **zip이 디스크에 없으면 None**을 반환한다
-    (pruned 플래그 없이 파일만 유실된 스냅샷 — 라우터가 pruned와 동일하게
-    처리해 500 대신 명시 응답을 낸다).
+    不提取到磁盘，只通过 central directory + head sniff 做随机访问读取
+    （不加载全部 bytes，无 zip-slip 表面）。pruned 在调用前通过
+    ``snapshot_pruned`` 过滤，**若 zip 在磁盘上不存在则返回 None**
+    （没有 pruned flag 但文件丢失的 snapshot — router 与 pruned 相同处理，
+    返回明确响应而不是 500）。
     """
 
     return await run_sync(_list_revision_files_sync, revision.object_key)
 
 
 async def load_revision_file_content(revision: SkillRevision, relative_path: str) -> str | None:
-    """리비전 스냅샷의 단일 파일 텍스트 — 열거 경로와 **정확 일치**할 때만.
+    """revision snapshot 的单文件文本 — 仅当与枚举路径**完全一致**时。
 
-    traversal은 매칭 실패(None→404)로 끝난다. 바이너리(널바이트)·상한 초과·
-    스냅샷 유실도 None — 표시 계층 fail-closed(드래프트 레일 뷰어와 동일,
-    상한 정본은 app.skills.display_limits).
+    traversal 以匹配失败（None→404）结束。二进制（空字节）·超过上限·
+    snapshot 丢失也返回 None — 显示层 fail-closed（与草稿 rail viewer 相同，
+    上限正本为 app.skills.display_limits）。
     """
 
     return await run_sync(_load_revision_file_content_sync, revision.object_key, relative_path)
@@ -235,7 +235,7 @@ def _list_revision_files_sync(object_key: str) -> list[tuple[str, int, bool]] | 
     try:
         archive = zipfile.ZipFile(_revision_snapshot_path(object_key))
     except (FileNotFoundError, zipfile.BadZipFile):
-        # 유실뿐 아니라 손상(중단된 쓰기 등)도 pruned와 동일 계약 — 500 금지 (R5).
+        # 不仅丢失，损坏（中断写入等）也与 pruned 使用相同契约 — 禁止 500（R5）。
         return None
     entries: list[tuple[str, int, bool]] = []
     try:
@@ -243,16 +243,16 @@ def _list_revision_files_sync(object_key: str) -> list[tuple[str, int, bool]] | 
             for info in archive.infolist():
                 if info.is_dir():
                     continue
-                # content 엔드포인트 path 상한과 대칭 — 목록에는 있는데 열 수 없는
-                # 엔트리를 만들지 않는다 (R6).
+                # 与 content endpoint path 上限对称 — 不生成“列表里有但无法打开”的
+                # entry（R6）。
                 if len(info.filename) > MAX_REVISION_FILE_PATH_CHARS:
                     continue
                 with archive.open(info) as handle:
                     sniff = handle.read(DISPLAY_TEXT_SNIFF_BYTES)
                 entries.append((info.filename, info.file_size, b"\x00" in sniff))
     except (zipfile.BadZipFile, zlib.error):
-        # central directory는 멀쩡한데 멤버 바이트가 손상(Bad CRC 등) — open 시점
-        # 검사를 통과한 손상도 같은 계약으로 (R6).
+        # central directory 正常但 member 字节损坏（Bad CRC 等）— 即使通过 open 时
+        # 的检查，也要按同一契约处理（R6）。
         return None
     entries.sort(key=lambda entry: entry[0])
     return entries
@@ -270,8 +270,8 @@ def _load_revision_file_content_sync(object_key: str, relative_path: str) -> str
             return None
         if info.is_dir():
             return None
-        # 헤더의 file_size를 믿지 않고 스트림을 상한+1까지 읽어 검증한다.
-        # 멤버 바이트 손상(Bad CRC/zlib)은 open이 아니라 read에서 터진다 (R6).
+        # 不信任 header 的 file_size，而是将流读取到上限+1进行验证。
+        # member 字节损坏（Bad CRC/zlib）不是在 open，而是在 read 时抛出（R6）。
         try:
             with archive.open(info) as handle:
                 raw = handle.read(MAX_DISPLAY_TEXT_BYTES + 1)
@@ -305,11 +305,11 @@ class SkillRevisionRollbackUnsupported(RuntimeError):
 
 
 class SkillRevisionSnapshotMissing(RuntimeError):
-    """스냅샷 유실/손상 — 디스크 **무변경** 상태에서만 발생해야 한다.
+    """snapshot 丢失/损坏 — 必须只发生在磁盘**未变更**状态下。
 
-    라우터는 이 예외(+RollbackUnsupported)만 409로 매핑한다. 변이 이후의
-    FileNotFoundError를 409로 뭉개면 "아무 일 없었음" 응답 뒤에 부분 변이가
-    숨는다 (R5).
+    router 只将该异常（+RollbackUnsupported）映射为 409。若把 mutation 之后的
+    FileNotFoundError 也吞成 409，部分 mutation 会隐藏在"什么都没发生"的响应后面
+    （R5）。
     """
 
 
@@ -334,8 +334,8 @@ def _validate_package_snapshot(zip_bytes: bytes) -> None:
     try:
         with zipfile.ZipFile(BytesIO(zip_bytes)) as archive:
             names = set(archive.namelist())
-            # central directory가 멀쩡해도 멤버 바이트가 손상(bitrot/부분 쓰기)일
-            # 수 있다 — testzip으로 CRC 전수 검사해야 extract 단계 500을 막는다 (R6).
+            # 即使 central directory 正常，member 字节也可能因 bitrot/部分写入而损坏，
+            # 必须通过 testzip 全量检查 CRC，避免 extract 阶段 500（R6）。
             corrupt_member = archive.testzip()
             skill_md = archive.read("SKILL.md") if "SKILL.md" in names else None
     except (zipfile.BadZipFile, zlib.error) as exc:
@@ -347,9 +347,9 @@ def _validate_package_snapshot(zip_bytes: bytes) -> None:
     if skill_md is None:
         raise SkillRevisionSnapshotMissing("revision snapshot is missing SKILL.md")
     try:
-        # 파싱 가능성까지 변이 전에 검증 — extract_package 내부 파싱의 YAML
-        # 파서 오류는 PackageError가 아니라서(SkillMetadataError만 래핑) 여기서
-        # 걸러야 frontmatter 부재 형제와 같은 409로 수렴한다 (R7).
+        # mutation 前连可解析性也要验证 — extract_package 内部解析 YAML
+        # 的 parser 错误不是 PackageError（只包装 SkillMetadataError），因此必须在这里
+        # 拦截，才能与缺少 frontmatter 的兄弟 case 收敛到相同 409（R7）。
         parse_skill_md(skill_md, require_metadata=True)
     except (ValueError, yaml.YAMLError) as exc:
         raise SkillRevisionSnapshotMissing("revision snapshot SKILL.md is invalid") from exc
@@ -360,10 +360,10 @@ def _replace_package_files(storage_path: str, zip_bytes: bytes) -> None:
     with TemporaryDirectory() as temp_dir:
         extracted = Path(temp_dir) / "skill"
         try:
-            # 추출은 tempdir에서 rmtree **이전** — 여기서의 거부(zip-slip/symlink/
-            # 널바이트, PackageError)는 무변이이므로 409 계약으로 수렴시킨다 (R6).
-            # yaml.YAMLError: extract 내부 SKILL.md 파싱은 SkillMetadataError만
-            # PackageError로 래핑한다 — validate가 선검증하지만 belt-and-braces (R7).
+            # 提取在 tempdir 中、且发生在 rmtree **之前** — 这里的拒绝（zip-slip/symlink/
+            # 空字节、PackageError）均无 mutation，因此收敛到 409 契约（R6）。
+            # yaml.YAMLError: extract 内部 SKILL.md 解析只会包装 SkillMetadataError
+            # 为 PackageError — validate 已预验证，但这里继续 belt-and-braces（R7）。
             extract_package(zip_bytes, extracted)
         except (PackageError, yaml.YAMLError) as exc:
             raise SkillRevisionSnapshotMissing("revision snapshot package is invalid") from exc

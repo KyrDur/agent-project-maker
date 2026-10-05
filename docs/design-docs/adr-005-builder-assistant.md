@@ -20,7 +20,7 @@
 3. 두 에이전트 모두 도구를 사용하지 않아 DB와의 정합성 보장 불가
 4. 시스템 프롬프트 개선이 전체 교체만 가능 (부분 수정 불가)
 
-## 결정
+## 决定
 
 **Builder** (오케스트레이터 + 4 서브에이전트)와 **Assistant** (도구 기반 단일 에이전트)로 교체한다.
 
@@ -60,7 +60,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** LangGraph StateGraph (노드 기반)
 **기각:** 단일 에이전트 + 도구 / 단순 함수 체인
 
-이유:
+原因：
 - Phase간 의존성을 그래프 엣지로 명시적 표현
 - 각 Phase를 독립 노드로 격리 → 개별 테스트 용이
 - 에러 시 특정 Phase부터 재시도 가능 (state 저장)
@@ -71,7 +71,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** create_deep_agent + ainvoke
 **기각:** LLM 직접 호출 (model.ainvoke) / LangGraph 서브그래프
 
-이유:
+原因：
 - create_deep_agent가 프로젝트 표준 에이전트 생성 방식
 - 현재 creation_agent.py도 이미 build_agent(tools=[]) 사용
 - 서브그래프는 불필요한 복잡성 (도구 없는 단순 추론)
@@ -82,7 +82,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** 도구 내부에서 AsyncSession을 받아 DB 직접 수정
 **기각:** 도구가 변경사항을 반환 → 서비스에서 일괄 적용
 
-이유:
+原因：
 - VERIFY-MODIFY 루프가 도구 단위로 작동해야 함
 - 도구가 즉시 DB에 반영 → get_agent_config로 즉시 확인 가능
 - fix_agent의 JSON 파싱 실패 문제 근본 해결
@@ -93,7 +93,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** POST /start → SSE /stream → POST /confirm
 **기각:** 단일 POST (동기) / WebSocket
 
-이유:
+原因：
 - 7 Phase 실행이 수십 초 소요 → SSE로 진행 상황 실시간 보고
 - confirm 단계에서 사용자가 draft_config 검토 후 수정/승인
 - SSE는 기존 채팅 인프라(streaming.py) 재사용 가능
@@ -104,7 +104,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** 기존 AgentCreationSession 확장 → BuilderSession
 **기각:** 메모리 전용 (세션 종료 시 유실) / 파일 시스템
 
-이유:
+原因：
 - 서버 재시작/크래시 시에도 빌드 재개 가능
 - Phase별 중간 결과(intent, tools, middlewares, prompt)를 JSON 컬럼에 저장
 - 기존 agent_creation_sessions 테이블 마이그레이션으로 전환
@@ -115,7 +115,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** conversations 테이블 + checkpointer 기반 히스토리
 **기각:** 별도 assistant_sessions 테이블
 
-이유:
+原因：
 - Assistant 대화는 일반 채팅과 동일한 구조 (user/assistant 메시지)
 - checkpointer가 히스토리 관리 → 추가 테이블 불필요
 - conversation에 `type` 필드 추가로 구분 (chat / assistant)
@@ -126,7 +126,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 **채택:** 서브에이전트 호출 시 DB에서 카탈로그를 조회하여 description에 포함
 **기각:** 시스템 프롬프트에 카탈로그 하드코딩
 
-이유:
+原因：
 - 도구/미들웨어가 동적으로 추가/삭제되므로 하드코딩은 drift 위험
 - 서브에이전트는 도구를 사용하지 않으므로 API 직접 호출 불가
 - 오케스트레이터가 DB 조회 → description 템플릿에 주입
@@ -167,7 +167,7 @@ Phase 1 (init) → Phase 2 (intent) → Phase 3 (tools) → Phase 4 (middlewares
 {phase: number, message: string, recoverable: boolean}
 ```
 
-## 결과
+## 结果
 
 ### 긍정적
 - 서브에이전트 격리로 각 Phase 독립 테스트 가능

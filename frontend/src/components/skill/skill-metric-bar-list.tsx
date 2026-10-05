@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * Phase 3 평가 지표 바 리스트 — usage `SpendBarChart`와 동일한 plain-div 바
- * 패턴(데이터 주도 width 인라인 스타일, check-design-system.mjs allowlist).
- * A/B 벤치마크 비교와 버전별 통과율 추이가 공유한다.
+ * Phase 3 评估指标条形列表 — 与 usage `SpendBarChart` 相同的 plain-div 条形
+ * 模式（数据驱动 width 行内样式，check-design-system.mjs allowlist）。
+ * A/B 基准比较与按版本通过率趋势共享使用。
  */
 
 export type SkillMetricBarRow = {

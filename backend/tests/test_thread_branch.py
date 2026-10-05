@@ -750,7 +750,7 @@ async def test_regenerate_does_not_duplicate_user_message(client: AsyncClient):
     cfg, history = captured[0]
     # Forked from ck0 (state holds only the user message — no assistant).
     assert cfg.checkpoint_id == "ck0"
-    assert "재생성 요청" in cfg.system_prompt
+    assert "重新生成请求" in cfg.system_prompt
     assert "응답1" in cfg.system_prompt
     # langgraph 1.2 DeltaChannel — regenerate 도 fork-edit 와 동일하게
     # ``Overwrite(value=[pre_msgs])`` 로 messages 채널을 명시 리셋해야

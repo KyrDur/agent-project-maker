@@ -12,18 +12,18 @@ interface WittyLoadingMessageProps {
   className?: string
 }
 
-// 모듈 레벨 상태 — 컴포넌트가 streaming 중 remount 되더라도 (assistant-ui 가
-// 청크마다 메시지 트리를 재구성하면 발생) 메시지 텍스트와 다음 rotate 시각이
-// 유지된다. 이전엔 ``useState(() => pickRandom(...))`` 초기값이 mount 마다
-// 새로 추첨되어 스트리밍 청크 타이밍에 메시지가 휘둘렸다.
+// 模块级状态 — 即使组件在 streaming 中 remount（assistant-ui 若
+// 每个分块重建消息树时会发生），消息文本和下一次 rotate 时间也会
+// 保持。以前 ``useState(() => pickRandom(...))`` 的初始值会在每次 mount 时
+// 重新随机，导致消息被流式传输分块的时序左右。
 let _currentMessage: string | null = null
 let _recent: string[] = []
 let _nextRotateAt = 0
 
 /**
- * 위트 있는 로딩 메시지 컴포넌트.
- * 3초 간격으로 랜덤 메시지 로테이션, fade 전환.
- * 이전 5개 메시지 중복 방지. ThinkingDots 3-dot 애니메이션 함께 표시.
+ * 机智风格的加载中消息组件。
+ * 每 3 秒随机轮换消息，使用 fade 转场。
+ * 避免与前 5 条消息重复。同时显示 ThinkingDots 3-dot 动画。
  */
 export function WittyLoadingMessage({ className }: WittyLoadingMessageProps) {
   const t = useTranslations('chat.loading.witty')
@@ -49,9 +49,9 @@ export function WittyLoadingMessage({ className }: WittyLoadingMessageProps) {
     messagesRef.current = messages
   }, [messages])
 
-  // setInterval 이 아니라 setTimeout 체이닝으로 다음 rotate 시각을 모듈 상태에
-  // 묶어둔다. 컴포넌트가 remount 되어도 ``_nextRotateAt`` 까지 남은 시간만큼만
-  // 대기하므로, 청크가 빈번해도 회전 주기는 일정하게 ~3 초로 유지된다.
+  // 不使用 setInterval，而用 setTimeout 链式调用，将下一次 rotate 时间绑定在模块状态中。
+  // 即使组件 remount，也只等待到 ``_nextRotateAt`` 的剩余时间，
+  // 因此即使分块很频繁，轮换周期仍稳定保持在约 3 秒。
   useEffect(() => {
     let cancelled = false
 
@@ -96,7 +96,7 @@ export function WittyLoadingMessage({ className }: WittyLoadingMessageProps) {
   )
 }
 
-/** 3-dot 펄싱 애니메이션 (기존 ThinkingDots 스타일 유지) */
+/** 3-dot 脉冲动画（沿用现有 ThinkingDots 样式） */
 function ThinkingDots() {
   return (
     <div className="flex items-center gap-1.5">
@@ -107,7 +107,7 @@ function ThinkingDots() {
   )
 }
 
-/** 최근 N개를 제외한 랜덤 메시지 선택 */
+/** 从排除最近 N 条后的候选中随机选择消息 */
 function pickRandom(pool: string[], recent: string[]): string {
   const available = pool.filter((m) => !recent.includes(m))
   const source = available.length > 0 ? available : pool

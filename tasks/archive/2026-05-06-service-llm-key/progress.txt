@@ -559,7 +559,7 @@ M0(거버넌스+docs+삭제분석) → M1(브랜딩+Cipher) → M2(Credential+Va
 [2026-05-05 satya] HiTL Phase 2 — Wire format 통합 사이클 시작
 ================================================================================
 
-## 목표
+## 目标
 자체 HiTL wire format → LangChain `HumanInTheLoopMiddleware` 표준 wire format으로
 dual-path transition. 본 PR은 양쪽 모두 작동하게 만드는 transition window.
 Phase 3에서 legacy 제거.

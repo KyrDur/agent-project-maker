@@ -20,10 +20,10 @@ interface TimelineArgs {
 
 const PHASE_TIMELINE_TOOL_NAME = 'phase_timeline'
 
-/** assistant-ui thread state에서 phase_timeline tool_call들을 모두 찾아 마지막 id를 반환.
+/** 在 assistant-ui thread state 中找到全部 phase_timeline tool_call，并返回最后一个 id。
  *
- * 백엔드가 phase 전환마다 새 tool_call_id로 phase_timeline을 재emit한다.
- * 이전 봇 메시지에 박힌 phase_timeline은 더 이상 마지막이 아니므로 hide 대상이 됨. */
+ * 后端每次 phase 转换时都会以新的 tool_call_id 对 phase_timeline 重新 emit。
+ * 之前机器人消息中的 phase_timeline 已不再是最后一个，因此应被 hide。 */
 function selectLatestPhaseTimelineId(
   messages: readonly {
     role?: string
@@ -46,12 +46,12 @@ function selectLatestPhaseTimelineId(
   return latest
 }
 
-/** 모든 phase가 completed/pending만 갖고 있을 때 첫 번째 pending을 in_progress로 도출.
+/** 当所有 phase 只有 completed/pending 状态时，将第一个 pending 推导为 in_progress。
  *
- * 백엔드가 `mark_completed_through(N)`만 호출하면 1..N=completed / N+1..=pending 으로
- * emit되어 어떤 단계도 in_progress가 안 됨. 시각 컴포넌트는 in_progress를 이미 지원하므로
- * 프론트엔드에서 derivation. 백엔드가 향후 explicit emit해도 호환 (이미 in_progress 있으면
- * 미적용). */
+ * 后端若只调用 `mark_completed_through(N)`，则以 1..N=completed / N+1..=pending 形式
+ * emit，导致没有任何阶段为 in_progress。视觉组件已支持 in_progress，因此在前端完成 derivation。
+ * 后端将来即使 explicit emit 也兼容（若已有 in_progress 则
+ * 不应用）。 */
 function deriveInProgress(todos: PhaseTodo[]): PhaseTodo[] {
   if (todos.some((t) => t.status === 'in_progress')) return todos
   const idx = todos.findIndex((t) => t.status === 'pending')
@@ -150,10 +150,10 @@ export function PhaseTimelineRender({
   toolCallId: string
   args: TimelineArgs
 }) {
-  // thread 안 마지막 phase_timeline tool_call이 아니면 hide.
-  // 이전 봇 메시지에 박힌 동일 tool은 더 이상 렌더하지 않아 진행 카드가 최신 메시지에만 보이게.
-  // assistant-ui 0.12+ 의 `useAuiState((s) => s.thread.messages)` 패턴 — ThreadContext.d.ts 의
-  // 마이그레이션 가이드에 공식 노출된 selector.
+  // 如果不是 thread 中最后一个 phase_timeline tool_call，则 hide。
+  // 不再渲染之前机器人消息中的同一 tool，让进度卡片只显示在最新消息中。
+  // assistant-ui 0.12+ 的 `useAuiState((s) => s.thread.messages)` 模式 — ThreadContext.d.ts 的
+  // 迁移指南中正式公开的 selector。
   const latestId = useAuiState((s) => {
     const thread = (s as { thread?: { messages?: readonly ThreadMessageLite[] } }).thread
     return selectLatestPhaseTimelineId(thread?.messages ?? [])

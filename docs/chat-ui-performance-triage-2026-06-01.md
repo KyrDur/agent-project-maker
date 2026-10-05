@@ -819,30 +819,30 @@ executor 会按服务器逐个顺序连接。
 
 ## 最终决定
 
-이번 채팅 UI 속도/깜박임 리팩토링은 프론트 hot path를 먼저 안정화한다.
+本次聊天 UI 的速度/闪烁重构将优先稳定前端 hot path。
 
-포함:
+包括：
 
 - stream stale guard
 - rAF cancel
-- render phase update 제거
+- 移除 render phase update
 - streaming code plain render
-- token usage/projection 비용 축소
+- 降低 token usage/projection 成本
 - Tool UI lazy/memo
 
-분리:
+拆分：
 
 - DB index
-- `/api/agents` brief/list 경량화
+- 轻量化 `/api/agents` brief/list
 - message projection table
 - trace chunk/event table
 - DeepAgent runtime cache
-- Deep Agents backend 교체
+- 替换 Deep Agents backend
 - MCP schema/client cache
 
-하지 않음:
+不做：
 
-- checkpointer 제거
-- `thread_id` 생략
-- Deep Agents를 단순 LangChain agent로 하향
-- 재현 없이 `content-visibility:auto` 제거
+- 移除 checkpointer
+- 省略 `thread_id`
+- 将 Deep Agents 降级为简单 LangChain agent
+- 在未复现问题的情况下移除 `content-visibility:auto`

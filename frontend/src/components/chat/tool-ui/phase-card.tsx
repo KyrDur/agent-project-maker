@@ -14,15 +14,15 @@ interface PhaseCardProps {
 }
 
 /**
- * Builder Phase 결과 카드 공통 쉘.
+ * Builder Phase 结果卡片通用外壳。
  *
- * Phase 2~8 결과 카드(IntentSummary, ToolRecommendation, MiddlewareRecommendation,
- * SystemPrompt, ImagePreview, DraftConfig …)의 공통 외피.
+ * Phase 2~8 结果卡片(IntentSummary, ToolRecommendation, MiddlewareRecommendation,
+ * SystemPrompt, ImagePreview, DraftConfig …)的通用外壳。
  *
  * Spec:
  *  - bg `--surface` / 1px border `--border` / radius 14
  *  - shadow via `--builder-card-shadow`
- *  - overflow hidden — header strip이 카드 모서리까지 닿게
+ *  - overflow hidden — 让 header strip 贴到卡片边角
  */
 export function PhaseCard({ header, children, footer, className }: PhaseCardProps) {
   return (
@@ -42,10 +42,10 @@ interface PhaseCardHeaderProps {
 }
 
 /**
- * 카드 헤더 스트립.
+ * 卡片标题区去除。
  *
- * - gradient: 민트 그라데이션 + bottom border (Phase 완료 결과 카드 — 의도 수집 완료 등)
- * - plain: white + bottom border (review/approval 카드 — 도구 추천 등)
+ * - gradient: 薄荷绿渐变 + bottom border（Phase 完成结果卡片 — 如意图收集完成等）
+ * - plain: white + bottom border（review/approval 卡片 — 如工具推荐等）
  */
 export function PhaseCardHeader({ children, variant = 'plain', className }: PhaseCardHeaderProps) {
   return (
@@ -61,9 +61,9 @@ interface PhaseCardFooterProps {
 }
 
 /**
- * 카드 푸터 영역 (action row).
+ * 卡片页脚区域 (action row)。
  *
- * surfaceAlt 배경 + top border. 내부 padding/레이아웃은 사용처가 자유롭게 정의.
+ * surfaceAlt 背景 + top border。内部 padding 和布局由使用方自由定义。
  */
 export function PhaseCardFooter({ children, className }: PhaseCardFooterProps) {
   return <div className={cn('moldy-phase-card-footer', className)}>{children}</div>

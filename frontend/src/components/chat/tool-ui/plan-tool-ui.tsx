@@ -21,7 +21,7 @@ interface WriteTodosArgs {
 }
 
 // ──────────────────────────────────────────────
-// Status 설정
+// Status 设置
 // ──────────────────────────────────────────────
 
 const STATUS_MAP = {
@@ -46,17 +46,17 @@ const STATUS_MAP = {
 } as const
 
 // ──────────────────────────────────────────────
-// PlanToolUI — write_todos 도구
+// PlanToolUI — write_todos 工具
 // ──────────────────────────────────────────────
 
 export function PlanToolUI({ args, status }: ToolCallMessagePartProps<WriteTodosArgs, string>) {
   return <PlanToolView args={args} statusType={status.type} />
 }
 
-// 스트리밍 중 tool-call args는 부분 JSON으로 도착한다 — `todos`가 배열이 되기
-// 전(문자열/객체 조각)에도 렌더가 호출되므로 Array.isArray + item shape 가드가
-// 없으면 실 LLM 경로에서 렌더 크래시가 난다 (M8-4에서 발견, scripted 모델은
-// 완성 args만 방출해 재현 불가).
+// 流式传输期间 tool-call args 会以部分 JSON 到达 — 在 `todos` 成为数组
+// 之前（字符串/对象片段）也会触发渲染，因此需要 Array.isArray + item shape 防护；
+// 否则真实 LLM 路径会发生渲染崩溃（在 M8-4 中发现，scripted 模型
+// 只会输出完整 args，无法复现）。
 function normalizeTodoItems(args: WriteTodosArgs | undefined): TodoItem[] {
   const raw = args?.todos ?? args?.items
   if (!Array.isArray(raw)) return []
@@ -83,7 +83,7 @@ function PlanToolView({ args, statusType }: { args: WriteTodosArgs; statusType: 
     items.length > 0 ? (
       <div>
         {items.map((item, i) => {
-          // 부분 스트리밍 args의 status는 'in_prog' 같은 조각일 수 있다.
+          // 部分流式 args 的 status 可能是 'in_prog' 之类的片段。
           const s = STATUS_MAP[item.status ?? 'pending'] ?? STATUS_MAP.pending
           const isLast = i === items.length - 1
           return (

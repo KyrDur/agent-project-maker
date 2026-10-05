@@ -47,7 +47,7 @@ interface DraftConfigArgs {
 }
 
 // ---------------------------------------------------------------------------
-// Shared pieces — header + summary (mint tokens, builder-card 일관성)
+// Shared pieces — header + summary（mint tokens，保持 builder-card 一致性）
 // ---------------------------------------------------------------------------
 
 function DraftHeader({ title, variant }: { title: string; variant: 'plain' | 'gradient' }) {
@@ -128,7 +128,7 @@ function DraftConfigSummary({
 }
 
 // ---------------------------------------------------------------------------
-// Phase 7 — DraftConfig 표시 (자동 진행, 입력 폼 없음)
+// Phase 7 — 显示 DraftConfig（自动推进，无输入表单）
 // ---------------------------------------------------------------------------
 
 function DraftConfigCardView({ args }: { args: DraftConfigArgs }) {
@@ -153,7 +153,7 @@ export function DraftConfigCardToolUI({
 }
 
 // ---------------------------------------------------------------------------
-// Phase 8 — 최종 승인 (interrupt approval) — 민트 button + frozen footer
+// Phase 8 — 最终批准 (interrupt approval) — 薄荷绿 button + frozen footer
 // ---------------------------------------------------------------------------
 
 function FeedbackTextarea({
@@ -248,7 +248,7 @@ function DraftApprovalView({
       <PhaseCard
         header={<DraftHeader title={args.title || t('finalConfirmTitle')} variant="gradient" />}
         footer={
-          // 결정 끝나면 footer(수정 요청 / 최종 승인 + textarea) 전체 unmount.
+          // 决策结束后，footer（修改请求 / 最终批准 + textarea）整体 unmount。
           form.isLocked ? null : (
             <PhaseCardFooter>
               {feedbackOpen && (
@@ -282,4 +282,3 @@ export function DraftApprovalToolUI({
 }: ToolCallMessagePartProps<DraftConfigArgs, unknown>) {
   return <DraftApprovalView args={args} status={status.type} />
 }
-

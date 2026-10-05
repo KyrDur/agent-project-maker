@@ -7,7 +7,7 @@
 
 ## 즉시 삭제 가능
 
-| 파일 | 이유 |
+| 文件 | 原因 |
 |------|------|
 | `backend/app/agent_runtime/creation_agent.py` | v2 Builder 오케스트레이터로 완전 대체. 외부 의존성: `agent_creation_service.py`만 import → 동시에 교체 가능 |
 | `backend/app/agent_runtime/fix_agent.py` | v2 Assistant로 완전 대체. 외부 의존성: `routers/fix_agent.py`만 import → 동시에 교체 가능 |

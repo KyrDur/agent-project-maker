@@ -1,11 +1,11 @@
-"""스킬 드래프트 워크스페이스 파일시스템 서비스 (스펙 AD-2).
+"""skill 草稿工作区文件系统服务（规范 AD-2）。
 
-세션마다 ``data/skill-drafts/<session_id>/`` 물리 디렉토리를 만들고, 런타임은
-이를 가상 경로 ``/skill-drafts/<session_id>/``로 마운트한다. 경로는 전부
-ADR-018 상대경로 계약(``storage/paths``)을 따른다.
+每个会话创建 ``data/skill-drafts/<session_id>/`` 物理目录，运行时将其
+挂载到虚拟路径 ``/skill-drafts/<session_id>/``。所有路径都遵循
+ADR-018 相对路径契约（``storage/paths``）。
 
-책임: 생성 / 시드(improve 원본 복사) / 첨부→``inputs/`` 복사 /
-디렉토리→``SkillDraftFile`` 어댑터 / GC(세션 상태 기준).
+职责：创建 / seed（复制 improve 源）/ 附件→``inputs/`` 复制 /
+目录→``SkillDraftFile`` 适配 / GC（基于会话状态）。
 """
 
 from __future__ import annotations
@@ -37,32 +37,32 @@ logger = logging.getLogger(__name__)
 
 SKILL_DRAFTS_ROOT = "skill-drafts"
 
-# 사용자 시험 입력 전용 디렉토리 — 스킬 패키지 콘텐츠가 아니므로 어댑터
-# (검증/zip 수거)에서 제외한다.
+# 用户测试输入专用目录 — 不是 skill 包内容，因此在适配器
+# （验证/zip 收集）中排除。
 INPUTS_DIR = "inputs"
 
-# GC가 삭제할 수 있는 세션 상태 (스펙 AD-2): active/confirming은 보존.
+# GC 可删除的会话状态（规范 AD-2）：保留 active/confirming。
 GC_DELETABLE_STATUSES = ("completed", "abandoned")
 
-# 어댑터가 파일 하나에서 읽는 최대 바이트 — 검증 입력 폭주 방어.
-# 표시-계층 상한 정본은 app.skills.display_limits — 리비전 뷰어와 lockstep.
+# 适配器从单个文件读取的最大字节数 — 防止验证输入激增。
+# 显示层上限的单一正本是 app.skills.display_limits — 与 revision viewer lockstep。
 _MAX_ADAPTER_FILE_BYTES = MAX_DISPLAY_TEXT_BYTES
 
 
 def workspace_storage_path(session_id: uuid.UUID) -> str:
-    """세션 워크스페이스의 data_root 기준 상대 경로 (ADR-018)."""
+    """相对于 data_root 的会话工作区路径（ADR-018）。"""
 
     return ensure_relative(f"{SKILL_DRAFTS_ROOT}/{session_id}")
 
 
 def resolve_workspace_dir(storage_path: str) -> Path:
-    """``draft_workspace_path`` 컬럼 값 → 절대 경로."""
+    """``draft_workspace_path`` 列值 → 绝对路径。"""
 
     return resolve_data_path(storage_path)
 
 
 def create_workspace(session_id: uuid.UUID) -> str:
-    """워크스페이스 디렉토리를 만들고 상대 storage path를 반환한다 (멱등)."""
+    """创建工作区目录并返回相对 storage path（幂等）。"""
 
     storage_path = workspace_storage_path(session_id)
     resolve_data_path(storage_path).mkdir(parents=True, exist_ok=True)
@@ -70,13 +70,13 @@ def create_workspace(session_id: uuid.UUID) -> str:
 
 
 def seed_workspace_from_skill(skill: Skill, session_id: uuid.UUID) -> str:
-    """improve 모드 시드 — 원본 스킬 파일을 워크스페이스로 **복사**한다.
+    """improve 模式 seed — 将源 skill 文件**复制**到工作区。
 
-    스킬 마운트의 materialize 선례를 따른다(``skill_runtime._materialize_skill``):
-    text-kind는 단일 ``SKILL.md`` 파일, package-kind는 ``copytree``.
-    ``symlinks=False`` — 드래프트 편집이 공유 원본으로 역류하면 안 된다.
-    소스가 디스크에 없으면 경고 후 빈 워크스페이스로 시작한다(대화에서
-    에이전트가 base_snapshot으로 상황을 설명할 수 있도록 실패시키지 않음).
+    遵循 skill mount 的 materialize 先例（``skill_runtime._materialize_skill``）：
+    text-kind 为单个 ``SKILL.md`` 文件，package-kind 使用 ``copytree``。
+    ``symlinks=False`` — 草稿编辑不能反向影响共享源。
+    若源在磁盘上不存在，则警告后从空工作区开始（不判为失败，以便对话中
+    Agent 可通过 base_snapshot 说明情况）。
     """
 
     storage_path = workspace_storage_path(session_id)
@@ -111,11 +111,11 @@ def copy_attachments_to_inputs(
     storage_path: str,
     attachments: Sequence[MessageAttachment],
 ) -> list[str]:
-    """대화 첨부 blob을 ``<workspace>/inputs/``로 **복사**한다 (마운트 금지, §6-3).
+    """将对话附件 blob **复制**到 ``<workspace>/inputs/``（禁止 mount，§6-3）。
 
-    반환: 복사된 상대 경로(``inputs/<이름>``) 목록. 파일명은 사용자 입력이라
-    경로 성분을 제거해 traversal을 차단하고, 충돌 시 순번을 붙인다. blob이
-    없으면 건너뛴다 (orphan GC와의 경합 허용).
+    返回：已复制的相对路径（``inputs/<名称>``）列表。文件名来自用户输入，
+    因此移除路径组件以阻止 traversal，冲突时追加序号。若 blob
+    不存在则跳过（允许与 orphan GC 竞争）。
     """
 
     inputs_dir = resolve_workspace_dir(storage_path) / INPUTS_DIR
@@ -130,7 +130,7 @@ def copy_attachments_to_inputs(
                 src,
             )
             continue
-        # 파일명 새니타이즈: 경로 성분 제거(traversal 차단) + 빈 이름 방어.
+        # 文件名 sanitize：移除路径组件（阻止 traversal）+ 防止空名称。
         safe_name = Path(attachment.filename).name or f"attachment-{attachment.id}"
         destination = inputs_dir / safe_name
         counter = 1
@@ -143,13 +143,13 @@ def copy_attachments_to_inputs(
 
 
 def load_draft_files(storage_path: str) -> list[SkillDraftFile]:
-    """워크스페이스 디렉토리 → ``SkillDraftFile`` 리스트 어댑터 (text-only).
+    """工作区目录 → ``SkillDraftFile`` 列表适配器（text-only）。
 
-    validate와 finalize의 **검증/메타데이터** 입력 계약(스펙 AD-3).
-    ``inputs/``(시험 입력)는 패키지 콘텐츠가 아니라 제외. 바이너리(널 바이트
-    포함)는 skip하고, 그 외에는 ``errors="replace"``로 디코드한다 (스냅샷 로더
-    선례). 최종 zip 수거는 ``build_workspace_zip_bytes``(디스크 기반)가
-    담당하므로 바이너리 asset은 여기서 빠져도 패키지에는 포함된다.
+    validate 与 finalize 的**验证/元数据**输入契约（规范 AD-3）。
+    ``inputs/``（测试输入）不是包内容，因此排除。二进制（含空字节）
+    会 skip，其余用 ``errors="replace"`` 解码（遵循 snapshot loader
+    先例）。最终 zip 收集由 ``build_workspace_zip_bytes``（基于磁盘）
+    负责，因此即使二进制 asset 不在这里，也会包含在包中。
     """
 
     root = resolve_workspace_dir(storage_path)
@@ -180,18 +180,18 @@ _BINARY_SNIFF_BYTES = DISPLAY_TEXT_SNIFF_BYTES
 
 
 def _iter_draft_paths(storage_path: str):
-    """어댑터와 동일한 필터(inputs/ 제외·symlink 제외·바이너리 sniff skip)로
-    (relative_path, disk_path)를 순회한다 — **내용을 전부 읽지 않는다**.
+    """使用与适配器相同的过滤器（排除 inputs/、排除 symlink、二进制 sniff skip）
+    遍历 (relative_path, disk_path) — **不会读取全部内容**。
 
-    파일 목록/단건 조회 API가 워크스페이스 전체 바이트를 매 요청 적재하지
-    않도록(R2 perf) 바이너리 판정은 앞 8KB sniff로 제한한다. 전량 판정이
-    필요한 validate/finalize 경로는 기존 ``load_draft_files``를 그대로 쓴다.
+    为避免文件列表/单文件查询 API 每次请求都加载整个工作区字节，
+    （R2 perf）二进制判断仅限前 8KB sniff。需要全量判断的
+    validate/finalize 路径继续使用现有 ``load_draft_files``。
 
-    계약 주의: 널바이트가 8KB 뒤에 처음 나오는 병적 파일은 여기(목록)엔 뜨지만
-    ``load_draft_file_content``(전량 재판정)는 None→404로 제외된다 — 표시
-    계층은 fail-closed 방향의 의도된 발산이다. 최종 저장(finalize)은
-    ``build_workspace_zip_bytes``가 디스크에서 직접 zip을 만들어 바이너리를
-    포함한다 (Phase 1.5).
+    契约注意：若病态文件的第一个空字节出现在 8KB 之后，这里（列表）仍会显示，
+    但 ``load_draft_file_content``（全量重判）会以 None→404 排除 — 显示
+    层有意向 fail-closed 方向分化。最终保存（finalize）由
+    ``build_workspace_zip_bytes`` 直接从磁盘生成 zip，因此会包含二进制文件
+    （Phase 1.5）。
     """
 
     root = resolve_workspace_dir(storage_path)
@@ -214,7 +214,7 @@ def _iter_draft_paths(storage_path: str):
 
 
 def list_draft_file_entries(storage_path: str) -> list[tuple[str, int, str]]:
-    """파일 목록 메타데이터 — (path, size, role). ``st_size`` 기반(내용 미독)."""
+    """文件列表元数据 — (path, size, role)。基于 ``st_size``（不读内容）。"""
 
     entries: list[tuple[str, int, str]] = []
     for relative, path in _iter_draft_paths(storage_path):
@@ -227,8 +227,8 @@ def list_draft_file_entries(storage_path: str) -> list[tuple[str, int, str]]:
 
 
 def load_draft_file_content(storage_path: str, relative_path: str) -> SkillDraftFile | None:
-    """단일 파일 내용 — 요청 경로가 열거 경로와 **정확 일치**할 때만 그 파일만
-    읽는다 (traversal은 매칭 실패 = None, 어댑터 계약과 동일)."""
+    """单个文件内容 — 仅当请求路径与枚举路径**完全一致**时读取该文件，
+    （traversal 匹配失败 = None，与适配器契约相同）。"""
 
     for relative, path in _iter_draft_paths(storage_path):
         if relative != relative_path:
@@ -249,10 +249,10 @@ _SAFE_SLUG_RE_STR = r"[a-z0-9][a-z0-9_-]{0,63}"
 
 
 def draft_slug(files: Sequence[SkillDraftFile]) -> str:
-    """SKILL.md 프론트매터 ``name`` → 새니타이즈된 slug (실패 시 'draft').
+    """SKILL.md frontmatter ``name`` → sanitize 后的 slug（失败时为 'draft'）。
 
-    LLM 저작 값이라 엄격히 새니타이즈한다 — 샌드박스 materialize가
-    ``runtime_root / slug``로 복사하므로 경로 성분이 섞이면 traversal.
+    这是 LLM 生成的值，因此严格 sanitize — sandbox materialize 会复制到
+    ``runtime_root / slug``，若混入路径组件会造成 traversal。
     """
 
     import re
@@ -272,11 +272,11 @@ def draft_slug(files: Sequence[SkillDraftFile]) -> str:
 
 
 def build_draft_package(storage_path: str) -> SkillDraftPackage:
-    """워크스페이스 디렉토리 → ``SkillDraftPackage`` (finalize 입력, M5).
+    """工作区目录 → ``SkillDraftPackage``（finalize 输入，M5）。
 
-    name/description은 SKILL.md 프론트매터, credential_requirements/
-    execution_profile은 ``agents/moldy.yaml``에서 파생한다. 파싱 실패 시
-    자리표시자를 채워 confirm의 패키지 검증이 정확한 이슈를 보고하게 한다.
+    name/description 来自 SKILL.md frontmatter，credential_requirements/
+    execution_profile 从 ``agents/moldy.yaml`` 派生。解析失败时填入
+    占位符，让 confirm 的包验证报告准确的问题。
     """
 
     from app.schemas.skill_builder import SkillDraftPackage
@@ -314,11 +314,11 @@ def build_draft_package(storage_path: str) -> SkillDraftPackage:
 
 
 def build_workspace_zip_bytes(storage_path: str, *, slug: str) -> bytes:
-    """워크스페이스 디스크 → ``.skill`` zip (finalize 입력, Phase 1.5).
+    """工作区磁盘 → ``.skill`` zip（finalize 输入，Phase 1.5）。
 
-    text 어댑터(``load_draft_files``)를 우회해 바이너리 asset을 바이트 그대로
-    보존한다. ``inputs/``(시험 입력)와 ``evals/``는 text zip 경로와 동일하게
-    export에서 제외한다.
+    绕过 text 适配器（``load_draft_files``），按原字节保留二进制 asset。
+    ``inputs/``（测试输入）与 ``evals/`` 和 text zip 路径一样
+    从 export 中排除。
     """
 
     from app.skills.package_builder import build_skill_zip_bytes_from_dir
@@ -333,20 +333,20 @@ def build_workspace_zip_bytes(storage_path: str, *, slug: str) -> bytes:
 def binary_secret_scan_issues(
     storage_path: str, *, known_paths: Collection[str]
 ) -> list[dict[str, Any]]:
-    """text 어댑터가 skip한(=검증 스캔에 실리지 않은) 파일의 secret scan.
+    """对 text 适配器 skip 的（= 未进入验证扫描的）文件执行 secret scan。
 
-    finalize의 시크릿 스캔은 ``validate_draft_package``가 어댑터 파일을
-    tempdir로 재구성해 돈다 — 널바이트를 앞에 붙인 파일은 어댑터가 skip해
-    스캔을 우회한 채 디스크 기반 zip에는 그대로 실린다(Phase 1.5 리뷰 갭).
-    zip에 실리는 범위(``inputs/``·``evals/`` 제외)에서 어댑터 밖 파일만
-    tempdir로 복사해 ``scan_package``(파일명 패턴 + bytes 정규식)를 재적용한다.
-    반환 shape는 validator의 SECRET_DETECTED issue와 동일.
+    finalize 的 secret 扫描由 ``validate_draft_package`` 将适配器文件
+    重建到 tempdir 后运行 — 前置空字节的文件会被适配器 skip，从而
+    绕过扫描，但仍原样进入基于磁盘的 zip（Phase 1.5 review gap）。
+    在会进入 zip 的范围内（排除 ``inputs/``·``evals/``），只把适配器外文件
+    复制到 tempdir，再重新应用 ``scan_package``（文件名模式 + bytes 正则）。
+    返回 shape 与 validator 的 SECRET_DETECTED issue 相同。
 
-    비용 계약(R2 리뷰): ``known_paths``는 호출자가 이미 메모리에 있는 어댑터
-    결과(``draft.files``)에서 파생해 넘긴다 — 여기서 ``load_draft_files``를
-    재호출하면 워크스페이스 full-read가 중복된다. 복사도 content 스캐너가
-    읽는 head(``_MAX_CONTENT_SCAN_BYTES``)까지만 — 대용량 asset 전량 복사
-    금지. 디스크 순회+IO이므로 async 호출자는 스레드로 오프로드할 것.
+    成本契约（R2 review）：``known_paths`` 由调用方从已在内存中的适配器
+    结果（``draft.files``）派生并传入 — 若在这里再次调用 ``load_draft_files``，
+    会重复 full-read 工作区。复制也仅限 content scanner 会读取的
+    head（``_MAX_CONTENT_SCAN_BYTES``）— 禁止全量复制大型 asset。
+    因为涉及磁盘遍历 + IO，async 调用方应 offload 到线程。
     """
 
     root = resolve_workspace_dir(storage_path)
@@ -369,8 +369,8 @@ def binary_secret_scan_issues(
                 continue
             target = temp_root / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            # head-only 복사 — filename 스캐너는 이름만, content 스캐너는 head만
-            # 읽으므로(secret_scan._check_content) 그 이상 복사는 낭비다.
+            # head-only 复制 — filename scanner 只看名称，content scanner 只看 head
+            # 因此（secret_scan._check_content）复制更多内容只是浪费。
             with path.open("rb") as source, target.open("wb") as sink:
                 sink.write(source.read(_MAX_CONTENT_SCAN_BYTES))
             copied = True
@@ -390,7 +390,7 @@ def binary_secret_scan_issues(
 
 
 def draft_execution_profile(storage_path: str) -> dict[str, object]:
-    """드래프트의 execution_profile (``agents/moldy.yaml`` 기준, 없으면 {})."""
+    """草稿的 execution_profile（以 ``agents/moldy.yaml`` 为准，不存在则为 {}）。"""
 
     files = load_draft_files(storage_path)
     by_path = {f.path: f for f in files}
@@ -404,10 +404,10 @@ def draft_execution_profile(storage_path: str) -> dict[str, object]:
 
 
 def draft_requires_network(storage_path: str) -> bool:
-    """세션 동의 가능성 게이트 (AD-4 경계) — 현재 드래프트 상태를 매번 재평가.
+    """会话同意资格 gate（AD-4 边界）— 每次重新评估当前草稿状态。
 
-    동의가 기록된 뒤 드래프트가 ``requires_network: true``로 바뀔 수 있으므로,
-    동의 기록 시점과 정책 적용 시점 **양쪽**에서 이 함수를 확인해야 한다.
+    记录同意后，草稿仍可能变为 ``requires_network: true``，因此在
+    记录同意时和应用策略时**两边**都必须检查此函数。
     """
 
     return bool(draft_execution_profile(storage_path).get("requires_network"))
@@ -420,7 +420,7 @@ async def copy_conversation_attachments_to_inputs(
     attachment_ids: Sequence[uuid.UUID],
     user_id: uuid.UUID,
 ) -> list[str]:
-    """run 시작 시 방금 링크된 첨부를 ``inputs/``로 복사한다 (소유권 필터 포함)."""
+    """run 开始时将刚关联的附件复制到 ``inputs/``（包含所有权过滤）。"""
 
     if not attachment_ids:
         return []
@@ -436,10 +436,10 @@ async def copy_conversation_attachments_to_inputs(
 
 
 def build_skill_draft_brief(session: SkillBuilderSession) -> dict[str, object]:
-    """``moldy.skill_draft`` stream-head 페이로드 (AD-5).
+    """``moldy.skill_draft`` stream-head payload（AD-5）。
 
-    요약만 싣는다 — 세션 id/모드/slug/파일 경로·크기/base 대비 변경 수.
-    파일 **내용**은 절대 싣지 않는다 (§6-7; 내용은 도구 결과/FS 읽기로만).
+    只承载摘要 — 会话 id/模式/slug/文件路径·大小/相对 base 的变更数。
+    **绝不**承载文件内容（§6-7；内容只能通过工具结果/FS 读取）。
     """
 
     files = load_draft_files(session.draft_workspace_path) if session.draft_workspace_path else []
@@ -470,7 +470,7 @@ def build_skill_draft_brief(session: SkillBuilderSession) -> dict[str, object]:
         except SkillMetadataError:
             slug = None
 
-    # 검증 레일 상태 카드용 요약 (M7 — 목업 "所需凭据" 행).
+    # 验证 rail 状态卡片摘要（M7 — mockup "所需凭据" 行）。
     from app.skills.moldy_metadata import (
         credential_requirements_from_metadata,
         load_moldy_metadata,
@@ -491,16 +491,16 @@ def build_skill_draft_brief(session: SkillBuilderSession) -> dict[str, object]:
 
 
 async def gc_stale_draft_workspaces(db: AsyncSession, *, retention_hours: int) -> int:
-    """완료/포기된 세션의 워크스페이스와 세션 없는 orphan 디렉토리를 정리한다.
+    """清理已完成/已放弃会话的工作区，以及没有会话的 orphan 目录。
 
-    mtime이 아니라 **세션 상태 기준** (스펙 AD-2): ``active``/``confirming``
-    세션은 abandon 지평(``skill_draft_abandon_days``, 기본 14일) 안에서는
-    보존한다 (브라우저를 닫았다 며칠 뒤 돌아와도 재개). 대화가 소실됐거나
-    지평을 넘긴 비완료 세션은 ``abandoned``로 전이해 다음 패스에서 회수한다
-    (R2 — 전이 경로가 없으면 이탈 세션이 영구 누수).
-    ``completed``/``abandoned``만 ``updated_at``이 리텐션을 지나면 삭제하고
-    ``draft_workspace_path``를 비운다. 세션 row가 없는 디렉토리(커밋 실패
-    잔재 등)는 디렉토리 mtime 기준으로 삭제한다. 커밋까지 수행(크론 호출용).
+    依据的不是 mtime，而是**会话状态**（规范 AD-2）：``active``/``confirming``
+    会话在 abandon 时间窗（``skill_draft_abandon_days``，默认 14 天）内
+    会保留（即使关闭浏览器几天后回来也能恢复）。若对话丢失，或未完成会话
+    超过时间窗，则转换为 ``abandoned``，在下一轮清理中回收
+    （R2 — 若没有转换路径，流失会话会永久泄漏）。
+    只有 ``completed``/``abandoned`` 在 ``updated_at`` 超过 retention 后才删除，
+    并清空 ``draft_workspace_path``。没有 session row 的目录（commit 失败
+    残留等）按目录 mtime 删除。执行到 commit（用于 cron 调用）。
     """
 
     if retention_hours <= 0:
@@ -533,30 +533,30 @@ async def gc_stale_draft_workspaces(db: AsyncSession, *, retention_hours: int) -
 
 
 async def _mark_dead_sessions_abandoned(db: AsyncSession, *, cutoff: datetime) -> int:
-    """죽은/이탈 v2 세션을 ``abandoned``로 전이해 상태 GC의 회수 대상으로 만든다.
+    """将死亡/流失的 v2 会话转换为 ``abandoned``，使其成为状态 GC 的回收对象。
 
-    ``abandoned``는 선언만 되고 전이 경로가 없으면 GC_DELETABLE_STATUSES 절반이
-    죽은 규칙이 된다(R2 리뷰) — 여기가 유일한 전이 지점이다. 두 부류만 전이:
+    若只声明 ``abandoned`` 而没有转换路径，GC_DELETABLE_STATUSES 一半会
+    成为死规则（R2 review）— 这里是唯一转换点。只转换两类：
 
-    1. **죽은 세션** — draft-conversation GC가 대화를 지워 ``conversation_id``가
-       SET NULL로 끊긴 비완료 세션(재개 불가). 같은 리텐션 cutoff 적용
-       (생성 직후 attach 전 창 보호).
-    2. **장기 이탈 세션** — 대화는 남아 있으나 ``skill_draft_abandon_days``
-       (기본 14일) 동안 미활동인 비완료 세션. 활성 세션 보존 원칙(AD-2)은
-       유지하되 무기한 누수만 막는다.
+    1. **死亡会话** — draft-conversation GC 删除对话，使 ``conversation_id``
+       通过 SET NULL 断开的未完成会话（不可恢复）。应用相同 retention cutoff
+       （保护刚创建后尚未 attach 的时间窗）。
+    2. **长期流失会话** — 对话仍存在，但在 ``skill_draft_abandon_days``
+       （默认 14 天）内无活动的未完成会话。保留 active 会话原则（AD-2），
+       只防止无限期泄漏。
 
-    v1 레거시 행(워크스페이스 없음)은 건드리지 않도록
-    ``draft_workspace_path IS NOT NULL``로 스코프를 좁힌다.
+    为不触碰 v1 legacy 行（无工作区），使用
+    ``draft_workspace_path IS NOT NULL`` 缩小范围。
     """
 
-    # 의미상 "재-마킹 금지" = 삭제 가능 상태와 동일 집합 — divergence 방지 재사용.
+    # 语义上的"禁止重复标记" = 与可删除状态相同的集合 — 复用以防 divergence。
     terminal = GC_DELETABLE_STATUSES
     dead_clause = and_(
         SkillBuilderSession.conversation_id.is_(None),
         SkillBuilderSession.updated_at < cutoff,
     )
-    # abandon_days <= 0 은 idle 규칙 비활성(대화가 살아 있으면 무기한 보존) —
-    # max(1)로 강제하면 운영자가 0(끄기)을 의도했을 때 1일로 둔갑한다.
+    # abandon_days <= 0 表示禁用 idle 规则（只要对话还在就永久保留）—
+    # 若强制 max(1)，运维想设 0（关闭）时会变成 1 天。
     if settings.skill_draft_abandon_days > 0:
         abandon_cutoff = datetime.now(UTC).replace(tzinfo=None) - timedelta(
             days=settings.skill_draft_abandon_days
@@ -582,7 +582,7 @@ async def _mark_dead_sessions_abandoned(db: AsyncSession, *, cutoff: datetime) -
 
 
 async def _gc_orphan_workspace_dirs(db: AsyncSession, *, cutoff: datetime) -> int:
-    """세션 row가 없는 ``skill-drafts/`` 하위 디렉토리 삭제 (mtime 기준)."""
+    """删除没有 session row 的 ``skill-drafts/`` 子目录（基于 mtime）。"""
 
     drafts_root = resolve_data_path(SKILL_DRAFTS_ROOT)
     if not drafts_root.is_dir():
@@ -601,7 +601,7 @@ async def _gc_orphan_workspace_dirs(db: AsyncSession, *, cutoff: datetime) -> in
                 select(SkillBuilderSession.id).where(SkillBuilderSession.id == session_id)
             )
             if exists is not None:
-                continue  # 살아있는 세션 — 상태 기준 GC가 담당.
+                continue  # 活着的会话 — 由基于状态的 GC 负责。
         try:
             if entry.stat().st_mtime > cutoff_ts:
                 continue
@@ -613,7 +613,7 @@ async def _gc_orphan_workspace_dirs(db: AsyncSession, *, cutoff: datetime) -> in
 
 
 def role_for_path(path: str) -> SkillDraftFileRole:
-    """드래프트 파일 경로 → SkillDraftFile.role (정본 — 스냅샷 로더도 위임)."""
+    """草稿文件路径 → SkillDraftFile.role（正本 — snapshot loader 也委托它）。"""
 
     if path == "SKILL.md":
         return "skill"

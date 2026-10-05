@@ -35,7 +35,7 @@ Phase 0~5 모두 완료 시 ADR-012 5단계 마이그레이션 전체 종료. Ph
 
 ---
 
-## 맥락
+## 背景
 
 현재 메인 채팅의 HiTL (Human-in-the-Loop) 은 deep agents 도입 이전에 만들어진 자체 구현. 세 갈래로 분산:
 
@@ -53,7 +53,7 @@ Phase 0~5 모두 완료 시 ADR-012 5단계 마이그레이션 전체 종료. Ph
 
 ---
 
-## 결정
+## 决定
 
 ### 1. 메인 채팅만 표준 `HumanInTheLoopMiddleware` 로 마이그레이션
 

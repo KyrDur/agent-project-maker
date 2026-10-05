@@ -25,8 +25,8 @@ from app.services.system_credential_resolver import (
 
 logger = logging.getLogger(__name__)
 
-# E2E scripted 배포에선 system credential 없이도 파이프라인 전체(엔드포인트 →
-# 훅 → 고스트 → 수락)를 결정적으로 검증할 수 있도록 고정 제안을 돌려준다.
+# 在 E2E scripted 部署中，即使没有 system credential，也返回固定建议，
+# 以便对整条管线（endpoint → hook → ghost → 接受）进行确定性验证。
 E2E_FOLLOWUP_SUGGESTION = "把刚才的回答整理成表格"
 
 _MAX_TAIL_MESSAGES = 6
@@ -61,14 +61,14 @@ def _content_text(content: Any) -> str:
 
 
 def _sanitize_suggestion(raw: str) -> str | None:
-    """모델 출력 → 제안 한 줄. 불릿/따옴표/코드펜스 장식 제거 + 길이 상한."""
+    """模型输出 → 单行建议。移除 bullet/引号/code fence 装饰 + 长度上限。"""
 
     for line in raw.splitlines():
         text = line.strip()
         if not text or text.startswith("```"):
             continue
         text = text.lstrip("-*•").strip()
-        # "1. " / "1) " 류 번호 접두 제거.
+        # 移除 "1. " / "1) " 一类编号前缀。
         head = text.split(" ", 1)
         if len(head) == 2 and head[0].rstrip(".)").isdigit():
             text = head[1].strip()
@@ -133,10 +133,10 @@ async def generate_followup_suggestion(
         result = await model.ainvoke(
             [
                 SystemMessage(content=_SYSTEM_PROMPT),
-                HumanMessage(content=f"대화 기록:\n{transcript}\n\n후속 요청 제안:"),
+                HumanMessage(content=f"对话记录:\n{transcript}\n\n后续请求建议:"),
             ]
         )
         return _sanitize_suggestion(_content_text(getattr(result, "content", "")))
-    except Exception:  # noqa: BLE001 — 제안은 nice-to-have; 채팅을 막지 않는다.
+    except Exception:  # noqa: BLE001 — 建议是 nice-to-have；不应阻塞聊天。
         logger.warning("followup suggestion generation failed", exc_info=True)
         return None

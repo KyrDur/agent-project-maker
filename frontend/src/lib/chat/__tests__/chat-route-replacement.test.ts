@@ -9,17 +9,17 @@ import {
 } from '../chat-route-replacement'
 
 describe('conversationIdFromChatPath', () => {
-  it('매칭되는 agentId 경로에서 conversationId를 추출한다', () => {
+  it('从匹配的 agentId 路径中提取 conversationId', () => {
     expect(conversationIdFromChatPath('/agents/agent-1/conversations/conv-9', 'agent-1')).toBe(
       'conv-9',
     )
   })
 
-  it('agentId가 다르면 null을 반환한다', () => {
+  it('agentId 不同则返回 null', () => {
     expect(conversationIdFromChatPath('/agents/agent-2/conversations/conv-9', 'agent-1')).toBeNull()
   })
 
-  it('채팅 경로 형식이 아니면 null을 반환한다', () => {
+  it('不是聊天路径格式则返回 null', () => {
     expect(conversationIdFromChatPath('/agents/agent-1/settings', 'agent-1')).toBeNull()
     expect(conversationIdFromChatPath('/agents/agent-1/conversations', 'agent-1')).toBeNull()
     expect(
@@ -29,14 +29,14 @@ describe('conversationIdFromChatPath', () => {
     expect(conversationIdFromChatPath('/', 'agent-1')).toBeNull()
   })
 
-  it('percent-encoded conversationId를 디코드한다', () => {
+  it('解码 percent-encoded conversationId', () => {
     expect(
       conversationIdFromChatPath('/agents/agent-1/conversations/conv%20a%2Fb', 'agent-1'),
     ).toBe('conv a/b')
   })
 
-  it('percent-encoded agentId도 raw 세그먼트로 비교한다(디코드된 비교가 아님)', () => {
-    // route param의 agentId는 보통 이미 디코드된 값이라, raw 세그먼트가 다르면 null.
+  it('percent-encoded agentId 也按 raw 片段比较（不是解码后比较）', () => {
+    // route param 的 agentId 通常已是解码后的值，因此 raw 片段不同则返回 null。
     expect(
       conversationIdFromChatPath('/agents/agent%201/conversations/conv-1', 'agent 1'),
     ).toBeNull()
@@ -45,7 +45,7 @@ describe('conversationIdFromChatPath', () => {
     )
   })
 
-  it('malformed percent sequence는 raw 세그먼트로 폴백한다', () => {
+  it('malformed percent sequence 回退到 raw 片段', () => {
     expect(conversationIdFromChatPath('/agents/agent-1/conversations/%E0%A4%A', 'agent-1')).toBe(
       '%E0%A4%A',
     )
@@ -53,25 +53,25 @@ describe('conversationIdFromChatPath', () => {
 })
 
 describe('isChatRouteReplacedEvent', () => {
-  it('올바른 detail.pathname을 가진 CustomEvent를 인식한다', () => {
+  it('识别具有正确 detail.pathname 的 CustomEvent', () => {
     const event = new CustomEvent(CHAT_ROUTE_REPLACED_EVENT, {
       detail: { pathname: '/agents/a/conversations/c' },
     })
     expect(isChatRouteReplacedEvent(event)).toBe(true)
   })
 
-  it('이벤트 타입이 다르면 false', () => {
+  it('事件类型不同则为 false', () => {
     const event = new CustomEvent('some-other-event', {
       detail: { pathname: '/agents/a/conversations/c' },
     })
     expect(isChatRouteReplacedEvent(event)).toBe(false)
   })
 
-  it('cleared 이벤트는 false', () => {
+  it('cleared 事件为 false', () => {
     expect(isChatRouteReplacedEvent(new Event(CHAT_ROUTE_CLEARED_EVENT))).toBe(false)
   })
 
-  it('detail이 없거나 pathname이 문자열이 아니면 false', () => {
+  it('没有 detail 或 pathname 不是字符串则为 false', () => {
     expect(isChatRouteReplacedEvent(new CustomEvent(CHAT_ROUTE_REPLACED_EVENT))).toBe(false)
     expect(
       isChatRouteReplacedEvent(new CustomEvent(CHAT_ROUTE_REPLACED_EVENT, { detail: {} })),
@@ -88,7 +88,7 @@ describe('isChatRouteReplacedEvent', () => {
     ).toBe(false)
   })
 
-  it('detail이 null이면 false', () => {
+  it('detail 为 null 则为 false', () => {
     expect(
       isChatRouteReplacedEvent(new CustomEvent(CHAT_ROUTE_REPLACED_EVENT, { detail: null })),
     ).toBe(false)
@@ -97,7 +97,7 @@ describe('isChatRouteReplacedEvent', () => {
 
 describe('replaceChatRouteWithoutRemount', () => {
   beforeEach(() => {
-    // jsdom 시작 경로를 알려진 값으로 고정해 상대 경로 해석을 안정화한다.
+    // 将 jsdom 起始路径固定为已知值，以稳定相对路径解析。
     window.history.replaceState(null, '', '/agents/agent-1/conversations/new')
   })
 

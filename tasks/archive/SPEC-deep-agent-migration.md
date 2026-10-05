@@ -4,7 +4,7 @@
 
 natural-mold(Moldy) 프로젝트의 AI 에이전트 실행 엔진을 `langchain.agents.create_agent`에서 `deepagents.create_deep_agent`로 교체한다. 동시에 MCP 직접 구현을 `langchain-mcp-adapters`로 대체하고, 대화 관리를 LangGraph checkpointer로 전환한다.
 
-## 목표
+## 目标
 
 - [ ] create_agent → create_deep_agent 교체
 - [ ] MCP 직접 구현 → langchain-mcp-adapters 교체

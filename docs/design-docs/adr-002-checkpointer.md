@@ -1,32 +1,32 @@
-# ADR-002: Checkpointer 기반 대화 관리
+# ADR-002：基于 Checkpointer 的对话管理
 
-## 상태: 승인됨
+## 状态：已批准
 
-## 맥락
+## 背景
 
-현재 Moldy의 대화 메시지는 `messages` 테이블에 저장된다. 매 요청마다:
-1. 사용자 메시지를 DB에 저장 (`save_message`)
-2. 전체 히스토리를 DB에서 조회 (`list_messages`)
-3. LangChain 메시지로 변환하여 에이전트에 전달
-4. 에이전트 응답을 다시 DB에 저장 (`save_message`)
+当前 Moldy 的对话消息保存在 `messages` table 中。每次请求都会：
+1. 将用户消息保存到 DB（`save_message`）
+2. 从 DB 查询完整 history（`list_messages`）
+3. 转换为 LangChain message 并传给 agent
+4. 将 agent 响应再次保存到 DB（`save_message`）
 
-이 방식의 문제점:
-- **이중 관리**: DB와 에이전트 내부 상태가 분리되어 불일치 가능
-- **매 요청 전체 히스토리 로딩**: N개 메시지를 매번 DB에서 읽고 변환
-- **tool_calls 손실**: `save_message`가 assistant 응답의 `content`만 저장하여 tool call 히스토리 유실
-- **LangGraph 기능 제한**: checkpointer 없이는 time-travel, state 복원 등 고급 기능 사용 불가
+该方式的问题：
+- **双重管理**：DB 与 agent 内部状态分离，可能出现不一致
+- **每次请求都加载完整 history**：每次都从 DB 读取并转换 N 条 message
+- **tool_calls 丢失**：`save_message` 只保存 assistant 响应的 `content`，导致 tool call history 丢失
+- **LangGraph 功能受限**：没有 checkpointer 时无法使用 time-travel、state 恢复等高级功能
 
-M1에서 `create_deep_agent`로 전환했으므로, LangGraph `AsyncPostgresSaver` checkpointer를 도입하여 대화 상태 관리를 프레임워크에 위임한다.
+M1 已切换到 `create_deep_agent`，因此引入 LangGraph `AsyncPostgresSaver` checkpointer，将对话状态管理交给 framework。
 
 ---
 
-## 결정
+## 决定
 
-### 1. AsyncPostgresSaver 초기화 패턴
+### 1. AsyncPostgresSaver 初始化 pattern
 
-#### 모듈 위치: `backend/app/agent_runtime/checkpointer.py` (신규)
+#### module 位置：`backend/app/agent_runtime/checkpointer.py`（新增）
 
-모듈-레벨 싱글턴으로 관리. `main.py` lifespan에서 초기화/정리.
+以 module-level singleton 管理。在 `main.py` lifespan 中初始化/清理。
 
 ```python
 # backend/app/agent_runtime/checkpointer.py
@@ -44,17 +44,17 @@ _checkpointer: AsyncPostgresSaver | None = None
 
 
 async def init_checkpointer(conn_string: str) -> None:
-    """앱 시작 시 checkpointer 초기화. lifespan에서 호출."""
+    """app 启动时初始化 checkpointer。由 lifespan 调用。"""
     global _pool, _checkpointer
     _pool = AsyncConnectionPool(conninfo=conn_string)
     await _pool.open()
     _checkpointer = AsyncPostgresSaver(conn=_pool)
-    await _checkpointer.setup()  # checkpoint 테이블 자동 생성
+    await _checkpointer.setup()  # 自动创建 checkpoint table
     logger.info("Checkpointer initialized (PostgreSQL)")
 
 
 async def shutdown_checkpointer() -> None:
-    """앱 종료 시 connection pool 정리. lifespan에서 호출."""
+    """app 关闭时清理 connection pool。由 lifespan 调用。"""
     global _pool, _checkpointer
     if _pool:
         await _pool.close()
@@ -64,59 +64,59 @@ async def shutdown_checkpointer() -> None:
 
 
 def get_checkpointer() -> AsyncPostgresSaver:
-    """checkpointer 싱글턴 반환. 초기화 전 호출 시 RuntimeError."""
+    """返回 checkpointer singleton。初始化前调用时抛出 RuntimeError。"""
     if _checkpointer is None:
         raise RuntimeError("Checkpointer not initialized. Call init_checkpointer() first.")
     return _checkpointer
 ```
 
-#### 왜 싱글턴인가
+#### 为什么使用 singleton
 
-- `executor.py`와 `trigger_executor.py` 모두 checkpointer에 접근 필요
-- `trigger_executor.py`는 APScheduler 컨텍스트에서 실행되어 `request.app.state` 접근 불가
-- 모듈-레벨 싱글턴이 가장 단순하고 모든 호출자에게 동일한 접근 방식 제공
+- `executor.py` 与 `trigger_executor.py` 都需要访问 checkpointer
+- `trigger_executor.py` 在 APScheduler context 中执行，无法访问 `request.app.state`
+- module-level singleton 最简单，也能为所有 caller 提供相同访问方式
 
-#### lifespan 통합 (main.py)
+#### lifespan 集成（main.py）
 
 ```python
 from app.agent_runtime.checkpointer import init_checkpointer, shutdown_checkpointer
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # ... 기존 시드 로직 ...
+    # ... 现有 seed 逻辑 ...
 
-    # Checkpointer 초기화 — database_url에서 asyncpg 드라이버 접두사 제거
+    # Checkpointer 初始化 —— 从 database_url 中移除 asyncpg driver prefix
     checkpointer_url = settings.database_url.replace("+asyncpg", "")
     await init_checkpointer(checkpointer_url)
 
-    # ... 기존 스케줄러 로직 ...
+    # ... 现有 scheduler 逻辑 ...
     yield
     # Shutdown
     scheduler.shutdown(wait=False)
     await shutdown_checkpointer()
 ```
 
-#### Connection string 변환
+#### Connection string 转换
 
-| 용도 | 형식 | 예시 |
+| 用途 | 格式 | 示例 |
 |------|------|------|
 | SQLAlchemy async | `postgresql+asyncpg://` | `settings.database_url` |
 | Alembic sync | `postgresql://` | `settings.database_url_sync` |
 | **psycopg v3 (checkpointer)** | `postgresql://` | `settings.database_url.replace("+asyncpg", "")` |
 
-`database_url`에서 `+asyncpg`를 제거하여 파생. 별도 설정 변수를 추가하지 않는다 (DRY).
+从 `database_url` 中移除 `+asyncpg` 后派生。无需新增单独设置变量（DRY）。
 
-#### 의존성 추가
+#### 添加 dependency
 
 ```bash
 uv add langgraph-checkpoint-postgres
-# → psycopg[pool] 포함 (psycopg_pool 자동 설치)
+# → 包含 psycopg[pool]（自动安装 psycopg_pool）
 ```
 
-#### executor.py 연결
+#### executor.py 接入
 
 ```python
-# executor.py — build_agent() 호출 시 checkpointer 전달
+# executor.py —— 调用 build_agent() 时传入 checkpointer
 from app.agent_runtime.checkpointer import get_checkpointer
 
 agent = build_agent(
@@ -129,19 +129,19 @@ agent = build_agent(
 )
 ```
 
-`build_agent()`은 이미 `checkpointer` 파라미터를 지원 (M1에서 추가됨, executor.py:34).
+`build_agent()` 已支持 `checkpointer` 参数（M1 中新增，executor.py:34）。
 
 ---
 
-### 2. 메시지 변환 로직
+### 2. message 转换逻辑
 
-#### 핵심 흐름 변경
+#### 核心 flow 变化
 
 **Before (M1):**
 ```
 POST /messages
   1. save_message(user)          → DB INSERT
-  2. list_messages()             → DB SELECT (전체 히스토리)
+  2. list_messages()             → DB SELECT（完整 history）
   3. convert_to_langchain_messages(full_history)
   4. agent.astream({messages: full_history})
   5. save_message(assistant)     → DB INSERT
@@ -150,21 +150,21 @@ POST /messages
 **After (M2):**
 ```
 POST /messages
-  1. maybe_set_auto_title()      → DB UPDATE (조건부)
+  1. maybe_set_auto_title()      → DB UPDATE（条件式）
   2. agent.astream({messages: [new_user_msg]})
-     → checkpointer auto-loads 이전 히스토리
-     → checkpointer auto-saves 새 상태 (user + assistant)
-  (save_message 호출 없음)
+     → checkpointer 自动加载之前的 history
+     → checkpointer 自动保存新 state（user + assistant）
+  （不再调用 save_message）
 ```
 
-**핵심**: checkpointer가 있으면 `messages_history`에 전체 히스토리가 아닌 **새 메시지만** 전달. checkpointer가 이전 상태를 자동 복원하고, 새 상태를 자동 저장한다.
+**核心**：有 checkpointer 后，`messages_history` 只传入**新消息**，不再传完整 history。checkpointer 会自动恢复之前的 state，并自动保存新的 state。
 
-#### 메시지 조회: GET /conversations/{id}/messages
+#### message 查询：GET /conversations/{id}/messages
 
-checkpointer에서 state를 직접 읽어 `MessageResponse` 형식으로 변환.
+直接从 checkpointer 读取 state，并转换为 `MessageResponse` 格式。
 
 ```python
-# message_utils.py — 신규 함수 추가
+# message_utils.py —— 新增 function
 
 from langchain_core.messages import (
     AIMessage, HumanMessage, ToolMessage, BaseMessage
@@ -178,12 +178,12 @@ def langchain_messages_to_response(
     conversation_id: uuid.UUID,
     base_timestamp: datetime | None = None,
 ) -> list[MessageResponse]:
-    """LangChain BaseMessage 리스트를 MessageResponse 리스트로 변환.
+    """将 LangChain BaseMessage list 转换为 MessageResponse list。
 
     Args:
-        messages: checkpointer에서 추출한 메시지 리스트
-        conversation_id: 대화 ID
-        base_timestamp: 기준 타임스탬프 (없으면 conversation.created_at 사용)
+        messages：从 checkpointer 提取的 message list
+        conversation_id：对话 ID
+        base_timestamp：基准 timestamp（如无则使用 conversation.created_at）
     """
     results = []
     base_ts = base_timestamp or datetime.utcnow()
@@ -199,25 +199,25 @@ def langchain_messages_to_response(
             content=content,
             tool_calls=getattr(msg, "tool_calls", None) or None,
             tool_call_id=getattr(msg, "tool_call_id", None),
-            created_at=base_ts + timedelta(milliseconds=idx),  # 합성 타임스탬프
+            created_at=base_ts + timedelta(milliseconds=idx),  # synthetic timestamp
         ))
 
     return results
 ```
 
-#### 왜 `message_utils.py`인가
+#### 为什么放在 `message_utils.py`
 
-- 기존 `convert_to_langchain_messages()` (dict → BaseMessage)과 **대칭** 위치
-- BaseMessage ↔ app format 변환이라는 동일 도메인
-- 새 파일 생성 불필요
+- 与现有 `convert_to_langchain_messages()`（dict → BaseMessage）位置**对称**
+- 同属 BaseMessage ↔ app format 转换领域
+- 无需新建文件
 
-#### `created_at` 처리 전략
+#### `created_at` 处理策略
 
-LangChain `BaseMessage`에는 타임스탬프가 없다. 선택지:
+LangChain `BaseMessage` 没有 timestamp。选项：
 
-| 옵션 | 장점 | 단점 |
+| 选项 | 优点 | 缺点 |
 |------|------|------|
-| A. nullable | 스키마 정직함 | 프론트엔드 수정 필요 |
+| A. nullable | schema 诚实 | 需要修改 frontend |
 | B. 합성 타임스탬프 | 프론트엔드 변경 없음 | 정확한 시간 아님 |
 | C. checkpoint metadata | 정확함 | checkpoint당 1개 (메시지별 없음) |
 
@@ -425,7 +425,7 @@ async def execute_agent_stream(
 ) -> AsyncGenerator[str, None]:
 ```
 
-**변경 사항:**
+**变更事项：**
 - `messages_history`: 전체 대화 히스토리 → **새 사용자 메시지만** (1개 dict)
 - checkpointer가 이전 히스토리를 자동 복원
 - `trigger_executor.py`도 동일 패턴 적용 (새 메시지만 전달)
@@ -479,7 +479,7 @@ DROP TABLE messages;
 
 ---
 
-## 대안
+## 替代方案
 
 ### 옵션 A: Checkpointer 전면 전환 (선택)
 
@@ -498,9 +498,9 @@ DROP TABLE messages;
 
 ---
 
-## 변경 파일 요약
+## 变更文件摘要
 
-| 파일 | 변경 유형 | 상세 |
+| 文件 | 变更类型 | 详情 |
 |------|-----------|------|
 | `agent_runtime/checkpointer.py` | **신규** | AsyncPostgresSaver 싱글턴 + init/shutdown + delete_thread |
 | `main.py` | **수정** | lifespan에서 checkpointer 초기화/정리 |
@@ -515,9 +515,9 @@ DROP TABLE messages;
 | `alembic/versions/` | **신규** | messages DROP + token_usages FK 변경 |
 | `pyproject.toml` | **수정** | `langgraph-checkpoint-postgres` 추가 |
 
-### 유지되는 모듈 (변경 없음)
+### 保留的 module（不变）
 
-| 파일 | 이유 |
+| 文件 | 原因 |
 |------|------|
 | `streaming.py` | `astream()` 입출력 동일 — checkpointer는 agent 내부에서 동작 |
 | `model_factory.py` | LLM 생성 무관 |
@@ -526,7 +526,7 @@ DROP TABLE messages;
 
 ---
 
-## 결과
+## 结果
 
 - **코드 제거**: `save_message()`, `list_messages()` 삭제. messages 모델/테이블 제거
 - **단순화**: 메시지 저장/조회가 LangGraph 프레임워크에 위임됨

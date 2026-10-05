@@ -52,18 +52,18 @@ def build_skill_zip_bytes_from_dir(
     include_evals: bool = False,
     exclude_top_dirs: Collection[str] = (),
 ) -> bytes:
-    """디스크 디렉토리 → ``.skill`` zip — 파일을 바이트 그대로 싣는다.
+    """磁盘目录 → ``.skill`` zip — 文件按原字节写入。
 
-    text 어댑터(``SkillDraftFile.content``)는 바이너리를 표현할 수 없어
-    finalize에서 asset이 조용히 누락됐다(Phase 1.5) — 이 경로는 디스크를 직접
-    zip 소스로 써서 바이너리를 보존한다. symlink는 제외하고 경로는
-    ``normalize_draft_path``로 방어한다. 최종 안전판은 어차피
-    ``extract_package``의 zip-slip/symlink/size 가드가 다시 검증한다.
+    text 适配器（``SkillDraftFile.content``）无法表达二进制，
+    导致 finalize 时 asset 曾被静默遗漏（Phase 1.5）— 此路径直接以磁盘
+    为 zip 源，从而保留二进制。排除 symlink，并通过
+    ``normalize_draft_path`` 防护路径。最终安全网仍由
+    ``extract_package`` 的 zip-slip/symlink/size guard 再次验证。
 
-    크기 상한은 순회 중 ``st_size`` 누적으로 **읽기 전에** 검사한다 —
-    ``extract_package``의 가드는 zip을 이미 메모리에 다 만든 뒤라, 여기서
-    fail-fast하지 않으면 초대형 워크스페이스가 상한에 걸리기 전에 메모리를
-    무제한 점유한다.
+    大小上限在遍历时累计 ``st_size``，并在**读取前**检查 —
+    ``extract_package`` 的 guard 是在 zip 已全部构建进内存后才检查，
+    因此若这里不 fail-fast，超大工作区会在触发上限前
+    无限占用内存。
     """
 
     folder = slugify(slug)

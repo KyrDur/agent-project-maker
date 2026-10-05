@@ -44,14 +44,14 @@ function isNavigatorPages(data: unknown): data is NavigatorPages {
 }
 
 function navigatorCacheFilters(agentId: string): QueryFilters[] {
-  // list prefix가 agent page 쿼리까지 포섭하고, ['conversations','page']가 글로벌 쿼리를 잡는다
+  // list prefix 会覆盖 agent page 查询，而 ['conversations','page'] 会匹配全局查询
   return [
     { queryKey: conversationKeys.list(agentId) },
     { queryKey: conversationKeys.globalPagesRoot },
   ]
 }
 
-/** 핀/제목 변경을 내비게이터 캐시(목록·infinite page)에 즉시 반영하고 롤백 스냅샷을 돌려준다. */
+/** 将置顶/标题变更即时反映到导航器缓存（列表·infinite page），并返回回滚快照。 */
 function patchConversationCaches(
   queryClient: QueryClient,
   conversation: Conversation,
@@ -91,7 +91,7 @@ export function useConversationRowActions({
       data: ConversationUpdateRequest
     }) => conversationsApi.update(conversation.id, data),
     onMutate: async ({ conversation, data }) => {
-      // 진행 중인 refetch가 낙관 패치를 덮어쓰지 않도록 먼저 취소한다
+      // 先取消进行中的 refetch，避免覆盖乐观补丁
       await Promise.all(
         navigatorCacheFilters(conversation.agent_id).map((filter) =>
           queryClient.cancelQueries(filter),
@@ -149,7 +149,7 @@ export function useConversationRowActions({
     deleteConversation.mutate(target, {
       onSuccess: () => {
         setDeleteTarget(null)
-        // hook의 agentId는 글로벌 목록에서 다른 에이전트 대화일 수 있다 — 대상 기준으로 이동
+        // hook 的 agentId 在全局列表中可能对应其他智能体对话 — 以目标为准移动
         if (deletingCurrent) router.push(`/agents/${target.agent_id}`)
       },
     })

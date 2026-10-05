@@ -24,13 +24,13 @@ def with_regeneration_guidance(cfg: AgentConfig, target_msg: Any) -> AgentConfig
         previous_answer = previous_answer[:REGENERATE_PREVIOUS_ANSWER_LIMIT].rstrip() + "\n..."
 
     guidance = (
-        "\n\n## 재생성 요청\n"
-        "사용자가 방금 assistant 답변 재생성을 요청했습니다. 같은 사용자 메시지에 대해 "
-        "정확성은 유지하되, 이전 답변과 다른 표현, 구조, 관점의 대안 답변을 작성하세요. "
-        "이전 답변을 그대로 반복하거나 문장 구조를 거의 복사하지 마세요."
+        "\n\n## 重新生成请求\n"
+        "用户刚刚请求重新生成 assistant 回复。请针对同一条用户消息，"
+        "在保持准确性的同时，给出与上一版在表达、结构、视角上不同的替代回答。"
+        "不要原样重复上一版回答，也不要几乎照搬其句子结构。"
     )
     if previous_answer:
-        guidance += f"\n\n### 이전 assistant 답변\n{previous_answer}"
+        guidance += f"\n\n### 上一版 assistant 回复\n{previous_answer}"
     return replace(cfg, system_prompt=f"{cfg.system_prompt}{guidance}")
 
 

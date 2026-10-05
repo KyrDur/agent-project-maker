@@ -8,7 +8,7 @@ function buildSkill(overrides: Partial<Skill>): Skill {
     id: 'skill-1',
     name: 'Weather Skill',
     slug: 'weather-skill',
-    description: '날씨를 요약합니다.',
+    description: '汇总天气。',
     kind: 'package',
     version: '0.1.0',
     storage_path: null,
@@ -83,7 +83,7 @@ describe('skill state filters', () => {
       health: {
         state: 'needs_credentials',
         label: '所需凭据',
-        reason: '필수 연결이 없습니다.',
+        reason: '没有必需连接。',
         severity: 'warning',
       },
     })
@@ -94,7 +94,7 @@ describe('skill state filters', () => {
       health: {
         state: 'needs_credentials',
         label: '所需凭据',
-        reason: '필수 연결이 없습니다.',
+        reason: '没有必需连接。',
         severity: 'warning',
       },
     })

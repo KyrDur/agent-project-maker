@@ -16,7 +16,7 @@ import { chatRightRailAtom } from '@/lib/stores/chat-right-rail'
 import { toolCallChildLabel } from '@/lib/chat/tool-group-meta'
 
 // ──────────────────────────────────────────────
-// ToolFallbackPanel — 확장 가능 도구 패널
+// ToolFallbackPanel — 可展开的工具面板
 // ──────────────────────────────────────────────
 
 interface ToolFallbackPanelProps {
@@ -27,7 +27,7 @@ interface ToolFallbackPanelProps {
   toolCallId?: string
 }
 
-/** 도구 결과 JSON에서 이미지 URL을 추출 */
+/** 从工具结果 JSON 中提取图片 URL */
 function extractImageUrls(data: unknown): string[] {
   const urls: string[] = []
   if (!data) return urls
@@ -54,7 +54,7 @@ function extractImageUrls(data: unknown): string[] {
     }
   }
 
-  // 도구 결과가 JSON 문자열로 전달되는 경우 파싱 시도 (일부 MCP/HTTP 도구)
+  // 当工具结果以 JSON 字符串传入时尝试解析（部分 MCP/HTTP 工具）
   if (typeof data === 'string') {
     try {
       walk(JSON.parse(data))
@@ -65,7 +65,7 @@ function extractImageUrls(data: unknown): string[] {
     walk(data)
   }
 
-  // MCP 도구 결과: [{type:'text', text:'JSON문자열'}] 형태 처리
+  // 处理 MCP 工具结果形态：[{type:'text', text:'JSON字符串'}]
   if (Array.isArray(data)) {
     for (const item of data) {
       if (
@@ -166,7 +166,7 @@ export function ToolFallbackPanel({
   const conversationId = useChatConversationId()
   const leadingIcon = useToolIcon(toolName)
   const mcpServerName = useMcpToolServer(toolName)
-  // 그룹 자식이면 도구명(그룹 헤더에 이미 있음) 대신 호출별 인자/결과 요약을 제목으로.
+  // 若是分组子项，则不以工具名（分组标题区已显示）为标题，改用每次调用的参数/结果摘要。
   const isGroupChild = useIsToolGroupChild()
   const pillTitle = (isGroupChild ? toolCallChildLabel(args, result) : null) ?? toolName
   const hasArgs = args && Object.keys(args).length > 0
@@ -249,7 +249,7 @@ export function ToolFallbackPanel({
 }
 
 // ──────────────────────────────────────────────
-// GenericToolFallback — 미등록 도구용 폴백 UI
+// GenericToolFallback — 未注册工具的回退 UI
 // ──────────────────────────────────────────────
 
 function resolveStatus(statusType: string): 'running' | 'complete' | 'error' {
@@ -258,7 +258,7 @@ function resolveStatus(statusType: string): 'running' | 'complete' | 'error' {
   return 'error'
 }
 
-/** 등록되지 않은 도구를 위한 GroupedParts 폴백 UI. */
+/** 用于未注册工具的 GroupedParts 回退 UI。 */
 export function GenericToolFallback({
   toolName,
   args,
@@ -269,9 +269,9 @@ export function GenericToolFallback({
   readonly toolCallId?: string
   readonly status: { readonly type: string }
 }) {
-  // shape 기반 검색 라우팅 — 이름 매칭이 어긋난 검색 도구(사용자가 이름을
-  // 바꾼 registry 도구, MCP 검색 도구)도 결과가 검색 shape이면 리치 카드로
-  // 렌더한다. 판정은 보수적(results|items 배열 + title + url|link 필수).
+  // 基于 shape 的搜索路由 — 即使搜索工具名称匹配偏差（用户修改了名称的
+  // registry 工具、MCP 搜索工具），只要结果是搜索 shape，也以富媒体卡片
+  // 渲染。判定较保守（results|items 数组 + title + url|link 必填）。
   if (looksLikeSearchResults(result)) {
     return <SearchRender args={args as Record<string, unknown>} result={result} status={status} />
   }

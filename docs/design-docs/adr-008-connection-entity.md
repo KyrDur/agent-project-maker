@@ -8,7 +8,7 @@ Connection 엔티티 재도입을 승인한 문서가 아니다.
 
 ## 날짜: 2026-04-18
 
-## 맥락
+## 背景
 
 현재 도구(Tool)-자격증명(Credential) 바인딩은 타입별로 위치와 시맨틱이 다르고, PREBUILT 시스템 도구에서 유저별 분리가 불가능하다.
 
@@ -32,7 +32,7 @@ Connection 엔티티 재도입을 승인한 문서가 아니다.
 
 ---
 
-## 결정
+## 决定
 
 `connections` 엔티티를 신규 도입해 **유저×도구 타입×provider** 수준에서 credential 바인딩을 통일한다. Tool은 "무엇을 호출할지(정의)", Connection은 "누가 어떤 키로 호출할지(바인딩)"로 관심사를 분리한다.
 
@@ -155,7 +155,7 @@ if link.connection_id is not None:
 
 ---
 
-## 대안
+## 替代方案
 
 ### 대안 A — `agent_tools` 레벨 바인딩만 (Connection 없음)
 
@@ -195,7 +195,7 @@ credential 자체를 provider 바인딩까지 포함하게 확장.
 
 ---
 
-## 결과
+## 结果
 
 ### 긍정
 

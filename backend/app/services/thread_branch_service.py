@@ -251,7 +251,7 @@ async def materialize_messages_at_checkpoint(
     try:
         histories = await checkpointer.aget_delta_channel_history(config=cfg, channels=["messages"])
     except (AttributeError, NotImplementedError):
-        # Pre-DeltaChannel saver (테스트 fake) — fall back to channel_values.
+        # Pre-DeltaChannel saver（测试 fake）— fall back to channel_values.
         tup = await checkpointer.aget_tuple(cfg)
         if tup is None:
             return []
@@ -347,10 +347,10 @@ def _message_id(msg: BaseMessage, fallback_idx: int) -> str:
 
 
 def _is_synthetic_id(mid: str) -> bool:
-    """Synthetic id 는 ``synthetic-{idx}`` 형태. fork-edit 같은 분기에서
-    LangChain HumanMessage(id=None) 가 분기마다 같은 synthetic id 로 나오기
-    때문에 sibling 비교 시 checkpoint 까지 함께 봐야 한다. 진짜 langchain
-    id (e.g. ``lc_run-...``) 는 메시지 단위로 유니크해 id 만으로 dedup."""
+    """Synthetic id 采用 ``synthetic-{idx}`` 形式。fork-edit 等分支中，
+    LangChain HumanMessage(id=None) 在不同分支可能得到相同 synthetic id，
+    因此比较 sibling 时必须连 checkpoint 一起看。真实 langchain
+    id（e.g. ``lc_run-...``）在消息级唯一，因此仅凭 id 即可 dedup。"""
 
     return mid.startswith("synthetic-")
 

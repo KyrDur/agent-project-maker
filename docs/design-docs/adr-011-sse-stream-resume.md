@@ -9,7 +9,7 @@
 
 ---
 
-## 맥락
+## 背景
 
 현재 Moldy 채팅 SSE 스트리밍은 **POST 단방향**으로만 동작했다. 한 turn(`message_start` ~ `message_end`)의 모든 SSE event는 in-memory `trace_sink: list[dict]`에 누적되었다가 turn 종료 후 `_persist_trace`가 batch로 `message_events` 테이블에 적재한다(W5).
 
@@ -21,7 +21,7 @@
 
 ---
 
-## 결정
+## 决定
 
 ### 1. 단일 GET endpoint, 서버 내부 분기
 

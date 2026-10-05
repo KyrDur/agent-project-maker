@@ -182,7 +182,7 @@ async def update_model(db: AsyncSession, *, model: Model, data: ModelUpdate) -> 
     """Apply a partial update. Returns the changed field names (for audit)."""
 
     updated = data.model_dump(exclude_unset=True)
-    # is_default 와 is_visible 의 최종 조합이 모순(기본인데 숨김)이면 거부.
+    # 若 is_default 与 is_visible 的最终组合矛盾（默认但隐藏），则拒绝。
     final_default = updated.get("is_default", model.is_default)
     final_visible = updated.get("is_visible", model.is_visible)
     if final_default and not final_visible:

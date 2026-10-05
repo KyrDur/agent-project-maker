@@ -1,15 +1,15 @@
 # ADR-003: 스킬 + 메모리 전환 설계
 
-## 상태: 승인됨
+## 状态：已批准
 
-## 맥락
+## 背景
 
 현재 Moldy의 스킬 시스템은 두 가지 커스텀 경로로 동작한다:
 
 1. **Text 스킬**: `build_effective_prompt()`가 DB `content` 필드를 시스템 프롬프트에 직접 주입
 2. **Package 스킬**: `skill_tool_factory.py`가 `run_*`, `read_*_file` LangChain 도구로 변환, `skill_executor.py`가 Python 스크립트 실행
 
-이 방식의 문제점:
+该方式的问题：
 - **프로그레시브 디스클로저 없음**: 모든 스킬 콘텐츠가 시스템 프롬프트에 일괄 주입되어 토큰 낭비
 - **이중 경로**: text/package 타입에 따라 완전히 다른 코드 경로, 유지보수 부담
 - **커스텀 도구 오버헤드**: `skill_tool_factory.py` + `skill_executor.py`가 LangChain 도구를 수동 생성
@@ -19,7 +19,7 @@ M1에서 `create_deep_agent`로 전환 완료되었으므로, deepagents 네이�
 
 ---
 
-## 결정
+## 决定
 
 ### 1. Backend 선택: FilesystemBackend
 
@@ -244,7 +244,7 @@ async for chunk in execute_agent_stream(
 
 ---
 
-## 대안
+## 替代方案
 
 ### 대안 A: CompositeBackend (StateBackend + FilesystemBackend)
 
@@ -382,7 +382,7 @@ POST /api/skills (create)  |  PUT /api/skills/{id} (update)
 
 ---
 
-## 결과
+## 结果
 
 ### 긍정적
 - **프로그레시브 디스클로저**: 스킬이 한 번에 로드되지 않고, 에이전트가 필요 시 탐색

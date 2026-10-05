@@ -4,12 +4,12 @@ W5 Phase 1: end-of-turn batch persistence. Events accumulate in a list during
 ``stream_agent_response`` and are flushed once when the stream completes (or
 fails). Sufficient for W6 shared-page rendering.
 
-W3-out M2: partial flush — ``append_events`` UPSERT은 stream 진행 중 32 events
-또는 2초마다 호출되어 ``status='streaming'`` row를 점진적으로 채운다.
-``finalize_turn`` 은 message_end / 정상 종료 / 실패 분기에서 한 번 호출되어
-``status`` 를 종결 상태로 갱신하고 ``linked_message_ids`` 를 부착한다.
-기존 ``record_turn`` 은 [DEPRECATED] backward-compat shim — 신규 호출 경로는
-``append_events`` + ``finalize_turn`` 조합을 사용한다 (W3-out M6 retrospective).
+W3-out M2: partial flush — ``append_events`` UPSERT 在 stream 进行中每 32 events
+或 2 秒调用一次，逐步填充 ``status='streaming'`` row。
+``finalize_turn`` 在 message_end / 正常结束 / 失败分支中调用一次，
+将 ``status`` 更新为终止状态并附加 ``linked_message_ids``。
+现有 ``record_turn`` 是 [DEPRECATED] backward-compat shim — 新调用路径
+使用 ``append_events`` + ``finalize_turn`` 组合（W3-out M6 retrospective）。
 """
 
 from __future__ import annotations
@@ -27,17 +27,17 @@ from sqlalchemy.orm.attributes import set_committed_value
 from app.agent_runtime.message_utils import parse_msg_id
 from app.models.message_event import MessageEvent, MessageEventChunk
 
-# Status enum for message_events.status — DB CHECK 제약과 일치.
+# Status enum for message_events.status — 与 DB CHECK 约束一致。
 TraceStatus = Literal["streaming", "completed", "failed"]
 
 logger = logging.getLogger(__name__)
 
 
 def _extract_msg_id(events: list[dict[str, Any]]) -> str | None:
-    """``message_start`` 이벤트의 ``data.id``를 assistant message id로 사용.
+    """使用 ``message_start`` event 的 ``data.id`` 作为 assistant message id。
 
-    스트림 직후 graph 에러로 ``message_start``가 안 발행된 비정상 케이스에서는
-    ``None``을 돌려 caller가 새 UUID를 할당하게 한다.
+    若刚开始 stream 就发生 graph 错误，导致 ``message_start`` 未发出的异常情况，
+    返回 ``None``，让 caller 分配新的 UUID。
     """
     for evt in events:
         if evt.get("event") == "message_start":
@@ -67,27 +67,27 @@ async def append_events(
 ) -> MessageEvent | None:
     """Partial flush — append event payload into chunk rows for the turn.
 
-    W3-out M2의 핵심 hot path. ``stream_agent_response`` 의 emit 클로저가
-    32 events 또는 2초마다 호출. dedup-by-id로 boundary 중복(같은 chunk가
-    재시도 등으로 두 번 도달)을 방지한다.
+    W3-out M2 的核心 hot path。由 ``stream_agent_response`` 的 emit closure
+    每 32 events 或 2 秒调用。通过 dedup-by-id 防止 boundary 重复
+    （同一 chunk 因重试等到达两次）。
 
     Behavior:
-    - row가 없으면 INSERT. Parent ``events`` 는 legacy 호환용으로 비워둔다.
-    - row가 있으면 payload는 ``message_event_chunks`` 에 append-only insert.
-    - ``last_event_id`` = ``events_chunk[-1]["id"]`` (chunk 비면 no-op).
-    - ``status`` 는 caller가 명시. 기본 'streaming'.
-    - ``updated_at`` 은 model의 ``onupdate=now()`` 가 자동 갱신
-      (INSERT 시도 server_default 적용).
-    - ``known_event_ids`` (BE-P5(d)): caller 가 유지하는 run-scoped persisted
-      event id 셋. 주어지면 flush 마다 누적 chunk 전체를 재 SELECT 하던
-      O(T²/64) 재로드를 건너뛴다. **DB 상태와 일치해야 한다** — caller 는
-      commit 성공분만 셋에 반영하고, 실패 시 다음 flush 를 재로드 경로(None)
-      로 보내야 유실이 없다 (:func:`load_persisted_event_ids` 로 시드).
+    - 若 row 不存在则 INSERT。Parent ``events`` 为 legacy 兼容保持为空。
+    - 若 row 存在，则 payload 以 append-only 方式 insert 到 ``message_event_chunks``。
+    - ``last_event_id`` = ``events_chunk[-1]["id"]``（chunk 为空时 no-op）。
+    - ``status`` 由 caller 显式指定。默认 'streaming'。
+    - ``updated_at`` 由 model 的 ``onupdate=now()`` 自动更新
+      （INSERT 时也应用 server_default）。
+    - ``known_event_ids`` (BE-P5(d)): caller 维护的 run-scoped persisted
+      event id 集。提供后可跳过每次 flush 都重新 SELECT 累计 chunk 全量
+      O(T²/64) 的加载。**必须与 DB 状态一致** — caller 只将
+      commit 成功部分加入集合；失败时下一次 flush 必须走重新加载路径（None），
+      才不会丢失（通过 :func:`load_persisted_event_ids` seed）。
 
     Caller commits the session.
 
     Returns:
-        Updated/inserted MessageEvent row, or ``None`` if ``events_chunk`` 가 비었음.
+        Updated/inserted MessageEvent row, or ``None`` if ``events_chunk`` 为空。
     """
     if not events_chunk:
         return None
@@ -107,7 +107,7 @@ async def append_events(
             events=[],
             last_event_id=last_event_id,
             status=status,
-            # completed_at은 finalize_turn에서 set. streaming 동안은 None.
+            # completed_at 在 finalize_turn 中 set。streaming 期间为 None。
         )
         db.add(record)
         await db.flush()
@@ -151,16 +151,16 @@ async def append_events(
     if last_event_id:
         record.last_event_id = last_event_id
     record.status = status
-    # ``onupdate=`` 가 ORM flush 시 updated_at을 갱신.
+    # ``onupdate=`` 会在 ORM flush 时更新 updated_at。
     return record
 
 
 async def load_persisted_event_ids(db: AsyncSession, *, assistant_msg_id: str) -> set[str]:
-    """BE-P5(d) 시드 — run 의 기존 persisted event id 전체를 1회 로드.
+    """BE-P5(d) seed — 一次加载 run 已有的全部 persisted event id。
 
-    ``build_persist_callback`` 이 첫 flush 에서 캐시를 시드할 때 쓴다. row 가
-    아직 없으면(신규 run) 빈 셋. row 가 이미 있으면(같은 run_id 재개 등)
-    legacy ``events`` + 모든 chunk 의 id 를 합쳐 정확한 dedup 기준을 준다.
+    ``build_persist_callback`` 在第一次 flush 时用它 seed 缓存。若 row
+    尚不存在（新 run），返回空集合。若 row 已存在（如同一 run_id 恢复），
+    合并 legacy ``events`` + 所有 chunk 的 id，提供准确的 dedup 基准。
     """
 
     existing = await db.execute(
@@ -257,17 +257,17 @@ async def finalize_turn(
 ) -> MessageEvent | None:
     """Mark a streaming turn as finished and attach linked message ids.
 
-    W3-out M2 — ``_persist_trace`` 의 final-write 책임을 흡수. 정상 종료
-    (message_end), 예외, GraphInterrupt 모두 finally 블록에서 호출.
+    W3-out M2 — 吸收 ``_persist_trace`` 的 final-write 职责。正常结束
+    （message_end）、异常、GraphInterrupt 都在 finally 块中调用。
 
     Behavior:
-    - row 없음 → ``None`` 반환 (events 0건이라 append_events가 한 번도 안
-      불린 비정상 케이스. caller가 record_turn fallback 결정).
-    - row 있음 → status, completed_at, updated_at 갱신. raw_msg_ids 제공 시
-      linked_message_ids 갱신 (NULL 덮어쓰기 OK).
+    - row 不存在 → 返回 ``None``（events 为 0，因此 append_events 从未被
+      调用的异常情况。caller 决定是否使用 record_turn fallback）。
+    - row 存在 → 更新 status、completed_at、updated_at。提供 raw_msg_ids 时
+      更新 linked_message_ids（NULL 覆盖 OK）。
 
-    ``conversation_id`` 는 raw_msg_ids → linked_ids 변환에만 필요. 이미 row
-    가 있으면 row의 conversation_id를 사용해 caller가 생략 가능.
+    ``conversation_id`` 仅用于 raw_msg_ids → linked_ids 转换。若 row
+    已存在，可使用 row 的 conversation_id，因此 caller 可省略。
 
     Caller commits the session.
     """
@@ -301,35 +301,35 @@ async def record_turn(
     external_trace_id: str | None = None,
     external_trace_url: str | None = None,
 ) -> MessageEvent | None:
-    """[DEPRECATED — 신규 호출자 추가 금지] one-shot turn persistence shim.
+    """[DEPRECATED — 禁止新增调用方] one-shot turn persistence shim.
 
-    W3-out 트랙 종료 (M6) 시점 기준 production 호출자는 단 1곳:
-    ``routers/conversations._finalize_trace`` 의 fallback path (``finalize_turn``
-    이 row 를 못 찾고 + ``trace_sink`` 에 events 가 모인 비정상 종료 케이스).
-    나머지 호출자는 모두 테스트 (``test_trace_storage.py`` 12건 + ``test_shares_
-    router.py`` 시드).
+    截至 W3-out 轨道结束（M6），production 调用方只有 1 处：
+    ``routers/conversations._finalize_trace`` 的 fallback path（``finalize_turn``
+    找不到 row 且 ``trace_sink`` 中积累了 events 的异常结束情况）。
+    其余调用方全部是测试（``test_trace_storage.py`` 12 处 + ``test_shares_
+    router.py`` seed）。
 
-    **신규 코드는 반드시** ``append_events`` (partial flush) + ``finalize_turn``
-    조합을 사용. ``record_turn`` 추가 호출은 invariant (``IntegrityError`` 보장
-    vs ``append_events`` UPSERT) 가 분산되어 디버깅을 어렵게 한다.
+    **新代码必须**使用 ``append_events``（partial flush）+ ``finalize_turn``
+    组合。新增 ``record_turn`` 调用会分散 invariant（``IntegrityError`` 保证
+    vs ``append_events`` UPSERT），增加调试难度。
 
-    제거 절차 (별도 PR):
-    1. ``finalize_turn`` 에 ``events_fallback: list | None = None`` 옵션 추가
-       — 호출자가 row 부재 시 events 로 새 row insert + IntegrityError invariant
-       유지하는 분기 흡수.
-    2. production 호출자 1곳을 ``finalize_turn(events_fallback=trace_sink)`` 로
-       마이그레이션.
-    3. test_trace_storage.py 12건을 ``finalize_turn(events_fallback=...)`` 또는
-       ``append_events`` 패턴으로 이전.
-    4. ``record_turn`` 삭제.
+    移除步骤（单独 PR）：
+    1. 给 ``finalize_turn`` 增加 ``events_fallback: list | None = None`` 选项
+       — 吸收 caller 在 row 缺失时用 events insert 新 row + IntegrityError invariant
+       保持分支。
+    2. 将唯一 production 调用方改为调用 ``finalize_turn(events_fallback=trace_sink)``，
+       完成迁移。
+    3. 将 test_trace_storage.py 12 处迁移为 ``finalize_turn(events_fallback=...)`` 或
+       ``append_events`` 模式。
+    4. 删除 ``record_turn``。
 
-    --- 기존 contract (현 호출자가 의존) ---
+    --- 现有 contract（当前调用方依赖）---
     No-op when ``events`` is empty (interrupt before message_start, etc.).
     Caller commits the session.
 
-    ``raw_msg_ids`` (W6 정확도): 이 turn 동안 노출된 langchain 메시지 raw id
-    목록 (중복 제거됨, streaming 순서 보존). ``parse_msg_id``로 UUID 변환 후
-    ``linked_message_ids`` 컬럼에 저장. None이면 컬럼은 NULL.
+    ``raw_msg_ids``（W6 准确性）：该 turn 中暴露的 langchain message raw id
+    列表（已去重，保留 streaming 顺序）。通过 ``parse_msg_id`` 转为 UUID 后
+    存入 ``linked_message_ids`` 列。None 时该列为 NULL。
     """
     if not events:
         return None
@@ -352,9 +352,9 @@ async def record_turn(
         external_trace_url=external_trace_url,
         status=status,
         completed_at=now,
-        # ORM-level explicit set — server_default(now())와 별도로 SQLite/PG
-        # 일관성과 회귀 가드. (model의 default lambda + server_default가
-        # 채우지만 이중 안전망.)
+        # ORM-level explicit set — 除 server_default(now()) 外，确保 SQLite/PG
+        # 一致性和回归 guard。（model 的 default lambda + server_default 会
+        # 填充，但这里作为双重保险。）
         updated_at=now,
     )
     db.add(record)
