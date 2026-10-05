@@ -80,7 +80,7 @@ function scopedMessageKey(message: BaseMessage, subagentId: string, index: numbe
 
 const OUTPUT_SUMMARY_MAX_CHARS = 140
 
-/** 완료된 서브에이전트의 output 첫 의미 줄 — 접힌 pill에서도 결과가 보이게. */
+/** 已完成子 Agent 的 output 第一条有效行 —— 折叠 pill 中也能看到结果。 */
 function outputSummaryLine(output: string): string {
   const line = output
     .split('\n')

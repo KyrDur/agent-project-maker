@@ -11,12 +11,12 @@ vi.mock('next-intl', () => ({
 }))
 
 describe('skillNameFromDirectory', () => {
-  it('가상 경로 마지막 세그먼트를 스킬 이름으로 뽑는다', () => {
+  it('从虚拟路径最后一个 segment 提取技能名', () => {
     expect(skillNameFromDirectory('/runtime/thread-1/agents/a1/skills/openwiki')).toBe('openwiki')
     expect(skillNameFromDirectory('skills/data-report/')).toBe('data-report')
   })
 
-  it('경로가 없거나 skills 디렉토리 자체면 null', () => {
+  it('没有路径或就是 skills 目录本身时为 null', () => {
     expect(skillNameFromDirectory(undefined)).toBeNull()
     expect(skillNameFromDirectory('/skills/')).toBeNull()
     expect(skillNameFromDirectory('')).toBeNull()
@@ -24,15 +24,15 @@ describe('skillNameFromDirectory', () => {
 })
 
 describe('outputFilesFromResult', () => {
-  it('OUTPUT_FILES 계약 라인에서 파일명을 추출한다', () => {
+  it('从 OUTPUT_FILES 约定行中提取文件名', () => {
     expect(outputFilesFromResult('stdout...\n\nOUTPUT_FILES: report.md, chart.png')).toEqual([
       'report.md',
       'chart.png',
     ])
   })
 
-  it('OUTPUT_FILES가 없으면 빈 배열', () => {
-    expect(outputFilesFromResult('그냥 출력')).toEqual([])
+  it('没有 OUTPUT_FILES 时为空数组', () => {
+    expect(outputFilesFromResult('普通输出')).toEqual([])
     expect(outputFilesFromResult(undefined)).toEqual([])
     expect(outputFilesFromResult({ not: 'a string' })).toEqual([])
   })
@@ -44,12 +44,12 @@ describe('SkillExecutionToolUI render', () => {
     result?: unknown
     statusType?: string
   }) {
-    // 현재 Toolkit에 등록되는 실제 렌더러를 직접 호출한다.
+    // 直接调用当前 Toolkit 中注册的实际 renderer。
     const { SkillExecutionToolUI } = await import('../skill-execution-ui')
     const renderFn = SkillExecutionToolUI as unknown as (props: unknown) => ReactNode
-    // renderFn을 Provider "아래의" 컴포넌트 렌더 중에 호출해야
-    // useChatConversationId가 provider 값을 읽는다 (Wrapper 본문에서 직접
-    // 호출하면 provider 바깥 fiber에서 훅이 실행된다).
+    // 必须在 Provider "下方" 的组件 render 过程中调用 renderFn，
+    // 这样 useChatConversationId 才能读取 provider 值（如果在 Wrapper 正文中直接
+    // 调用，hook 会在 provider 外部 fiber 中执行）。
     function CardUnderTest() {
       return (
         <>
@@ -71,7 +71,7 @@ describe('SkillExecutionToolUI render', () => {
     )
   }
 
-  it('스킬 이름을 제목으로, 파일 개수를 메타로 보여준다', async () => {
+  it('以技能名为标题，以文件数量为 meta 显示', async () => {
     await renderCard({
       args: {
         skill_directory: '/runtime/t/skills/data-report',
@@ -83,7 +83,7 @@ describe('SkillExecutionToolUI render', () => {
     expect(screen.getByText('files(1)')).toBeInTheDocument()
   })
 
-  it('펼치면 커맨드와 파일 링크(API 경로)를 보여준다', async () => {
+  it('展开后显示 command 和文件链接（API 路径）', async () => {
     const user = userEvent.setup()
     await renderCard({
       args: {
@@ -92,17 +92,17 @@ describe('SkillExecutionToolUI render', () => {
       },
       result: 'ok\n\nOUTPUT_FILES: out.csv, chart.png',
     })
-    // 파일이 있으면 기본 펼침 — 링크가 바로 보인다.
+    // 有文件时默认展开 —— 链接直接可见。
     const link = screen.getByText('out.csv').closest('a')
     expect(link).not.toBeNull()
     expect(link?.getAttribute('href')).toContain('/api/conversations/conv-77/files/out.csv')
     expect(screen.getByText('python scripts/aggregate.py')).toBeInTheDocument()
-    // 접었다 펴도 유지.
+    // 折叠再展开后仍保持。
     await user.click(screen.getByText('data-report'))
     expect(screen.queryByText('python scripts/aggregate.py')).not.toBeInTheDocument()
   })
 
-  it('실행 중에는 running 메타를 보여주고 파일을 파싱하지 않는다', async () => {
+  it('执行中显示 running meta，不解析文件', async () => {
     await renderCard({
       args: { skill_directory: '/runtime/t/skills/openwiki', command: 'python x.py' },
       statusType: 'running',

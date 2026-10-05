@@ -480,8 +480,8 @@ async def _handle_input_respond_command(
             message=validation_error.message,
         )
     # AD-4 — 将 ``scope:"session"`` consent 记录到 Session，并在 decision 中使用非标准
-    # 키를 제거한다. **resolve_agent_context 이전**이어야 이번 resume의 에이전트
-    # 재빌드부터 동의가 즉시 효력을 갖는다 (모든 resume은 재빌드).
+    # 删除该键。必须在 **resolve_agent_context 之前**，这样本次 resume 的 Agent
+    # 从重新构建开始，同意即可立即生效（所有 resume 都会重新构建）。
     consented_tools = await apply_session_consent_decisions(
         db,
         conversation_id=conversation.id,

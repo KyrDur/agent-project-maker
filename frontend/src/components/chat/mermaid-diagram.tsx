@@ -32,8 +32,8 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
   const [svg, setSvg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // resolvedTheme이 hydration 직전엔 undefined → 'default'로 폴백 (SSR과 일치).
-  // mounted 후 'dark'로 바뀌면 effect deps 변경으로 자연스럽게 재렌더.
+  // resolvedTheme 在 hydration 前一刻为 undefined → fallback 到 'default'（与 SSR 一致）。
+  // mounted 后变为 'dark' 时，通过 effect deps 变化自然重新 render。
   const mermaidTheme: MermaidTheme = resolvedTheme === 'dark' ? 'dark' : 'default'
 
   useEffect(() => {

@@ -8,7 +8,7 @@ describe('StatsCard', () => {
       <StatsCard
         items={[
           { label: '总请求数', value: 1240, delta: 12 },
-          { label: '성공률', value: 98.6, unit: '%', delta: -8 },
+          { label: '成功率', value: 98.6, unit: '%', delta: -8 },
         ]}
       />,
     )

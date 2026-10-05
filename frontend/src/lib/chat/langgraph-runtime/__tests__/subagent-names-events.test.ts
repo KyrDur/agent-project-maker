@@ -10,14 +10,14 @@ describe('protocolSubagentNames', () => {
       params: {
         data: {
           name: 'moldy.subagent_names',
-          payload: { names: { agent_11111111: '리서처', agent_22222222: '작성자' } },
+          payload: { names: { agent_11111111: '调研员', agent_22222222: '作者' } },
         },
       },
     }
 
     expect(protocolSubagentNames(event)).toEqual({
-      agent_11111111: '리서처',
-      agent_22222222: '작성자',
+      agent_11111111: '调研员',
+      agent_22222222: '作者',
     })
   })
 
@@ -43,11 +43,11 @@ describe('protocolSubagentNames', () => {
     const event = {
       method: 'custom',
       params: {
-        data: { name: 'moldy.subagent_names', payload: { names: { a: '  ', b: 42, c: '작성자' } } },
+        data: { name: 'moldy.subagent_names', payload: { names: { a: '  ', b: 42, c: '作者' } } },
       },
     }
 
-    expect(protocolSubagentNames(event)).toEqual({ c: '작성자' })
+    expect(protocolSubagentNames(event)).toEqual({ c: '作者' })
   })
 
   it('names가 비었으면 null을 반환한다', () => {

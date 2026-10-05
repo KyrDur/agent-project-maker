@@ -368,10 +368,10 @@ _ROTATION_BATCH = 100
 async def rotate_credentials_to_active_key() -> int:
     """Re-encrypt every credential whose ``key_id`` differs from the active key.
 
-    본문은 ``app.credentials.rotation``으로 이관 (BE-S9). 이 wrapper는 영속
-    jobstore의 ``app.scheduler`` job 레퍼런스를 보존하고, 모듈 전역
-    ``async_session`` / ``_ROTATION_BATCH``를 call-time에 읽어 주입한다
-    (테스트 patch 표면).
+    正文已迁移到 ``app.credentials.rotation``（BE-S9）。该 wrapper 保留持久化
+    jobstore 的 ``app.scheduler`` job 引用，并在 call-time 读取模块全局的
+    ``async_session`` / ``_ROTATION_BATCH`` 后注入
+    （测试 patch 表面）。
     """
 
     from app.credentials import rotation as credential_rotation
@@ -594,7 +594,7 @@ def register_draft_conversation_gc_job() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Skill draft workspace GC (스킬 스튜디오 phase 1, AD-2)
+# Skill draft workspace GC（Skill Studio phase 1，AD-2）
 # ---------------------------------------------------------------------------
 
 SKILL_DRAFT_GC_JOB_ID = "skill_draft_workspace_gc"
@@ -679,7 +679,7 @@ async def poll_mcp_servers_health() -> dict[str, int]:
     history row): this job only refreshes the lightweight
     ``health_status`` / ``health_polled_at`` / ``health_message`` columns
     so the list view can show a fresh dot without paying for a full sweep.
-    본문은 ``app.services.mcp_service``로 이관 (BE-S9).
+    正文已迁移到 ``app.services.mcp_service``（BE-S9）。
     """
 
     from app.services import mcp_service
@@ -748,7 +748,7 @@ def register_conversation_queue_recovery_job() -> None:
 async def sweep_stale_conversation_runs() -> None:
     """Mark active conversation runs stale after their heartbeat threshold.
 
-    본문은 ``app.services.conversation_run_service``로 이관 (BE-S9).
+    正文已迁移到 ``app.services.conversation_run_service``（BE-S9）。
     """
     from app.services import conversation_run_service
 
@@ -759,7 +759,7 @@ def evict_expired_brokers() -> None:
     """Drop closed brokers past TTL + force-close stale live brokers.
 
     Wraps ``event_broker.registry.evict_expired`` so APScheduler can target a
-    module-level callable (lambda 는 SQLAlchemyJobStore 직렬화 불가).
+    module-level callable（lambda 无法由 SQLAlchemyJobStore 序列化）。
     """
     from app.agent_runtime.event_broker import registry as broker_registry
 
@@ -807,8 +807,8 @@ def cleanup_skill_runtime_roots() -> None:
     """Drop stale ``data/runtime/<thread_id>/`` directories.
 
     Wraps ``app.marketplace.skill_runtime.cleanup_skill_runtime_roots`` so
-    APScheduler can target a module-level callable. 본문(keep-cron-alive
-    try/except 포함)은 그쪽으로 이관 (BE-S9).
+    APScheduler can target a module-level callable. 正文（包括 keep-cron-alive
+    try/except）已迁移到该模块（BE-S9）。
     """
 
     from app.marketplace import skill_runtime
@@ -851,9 +851,9 @@ def register_skill_runtime_cleanup_job() -> None:
 def register_broker_eviction_job() -> None:
     """Register the recurring EventBroker GC job (W3-out M4). Idempotent.
 
-    60s interval. ``evict_expired`` 가 (a) closed broker 중 TTL 경과한 것
-    (b) 30분 초과 live broker 강제 close 두 단계를 수행한다 — 정상적인
-    finally 블록 미수행으로 누락된 broker 가 메모리에 누적되는 것을 막는다.
+    60s interval. ``evict_expired`` 执行两步：(a) 清理 closed broker 中 TTL 已过期者，
+    (b) 强制 close 超过 30 分钟的 live broker — 防止因正常
+    finally block 未执行而遗漏的 broker 持续堆积在内存中。
     """
 
     scheduler = get_scheduler()

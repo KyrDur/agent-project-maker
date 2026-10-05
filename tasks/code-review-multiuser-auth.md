@@ -134,7 +134,7 @@
 
 ### **CONDITIONAL GO**
 
-**근거**:
+**依据**：
 - Critical 이슈 0건. ESCALATION 2건 후속 fix 검증 완료.
 - High 4건 — 모두 머지 차단할 정도는 아니지만 운영 전 재확인 필요.
   - H2 OAuth callback state 검증 강화 (PoC-grade 명시적)

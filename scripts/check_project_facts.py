@@ -57,7 +57,7 @@ STALE_PATTERNS: Final = (
     re.compile(r"\bm(?:59|63)(?:_[\w-]+)?\b", re.IGNORECASE),
 )
 CURRENT_FACT_CONTEXT: Final = re.compile(
-    r"\b(?:current|latest|head|runtime|database|status|up to)\b|현재|최신|상태|까지",
+    r"\b(?:current|latest|head|runtime|database|status|up to)\b|当前|最新|状态|截至",
     re.IGNORECASE,
 )
 

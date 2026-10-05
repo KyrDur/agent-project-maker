@@ -26,24 +26,24 @@ import type { Decision as StandardDecision } from '@/lib/types'
 import { CountdownBadge } from './countdown-badge'
 
 interface ApprovalArgs {
-  /** 승인 대상 도구명 */
+  /** 待审批工具名 */
   tool_name?: string
-  /** 도구 실행 인자 */
+  /** 工具执行参数 */
   tool_args?: Record<string, unknown>
-  /** 왜 승인이 필요한지 설명 */
+  /** 说明为什么需要审批 */
   description?: string
-  /** 메시지 (description 대체) */
+  /** 消息（替代 description） */
   message?: string
-  /** 승인 만료 timeout (초) — 미지정 시 5분 */
+  /** 审批过期 timeout（秒）—— 未指定时为 5 分钟 */
   timeout_seconds?: number
-  /** 승인 식별자 — deadline 리셋 키로 사용 */
+  /** 审批标识符 —— 用作 deadline reset key */
   approval_id?: string
-  /** 표준 HiTL interrupt 내 action index */
+  /** 标准 HiTL interrupt 内的 action index */
   hitl_action_index?: number
   hitl_total_actions?: number
   hitl_interrupt_id?: string | null
   allowed_decisions?: StandardDecision['type'][]
-  /** 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 옵션 노출 (review_configs 플래그) */
+  /** 技能 Builder AD-4 —— 显示 "留出本次会议的剩余时间" 选项（review_configs flag） */
   session_consent_eligible?: boolean
 }
 
@@ -106,9 +106,9 @@ function toDecision(
     case 'approved':
       return toApprove(options)
     case 'modified':
-      // edited_action.name은 백엔드가 pending action을 positional index로 매칭해
-      // 권위적으로 채운다. 도구 이름을 알면 advisory로 첨부하고, 모르면 생략한다
-      // (예전엔 name이 없으면 하드 중단했지만 더 이상 필요 없다).
+      // edited_action.name 由 backend 按 positional index 匹配 pending action 后
+      // 权威填充。知道工具名时作为 advisory 附带，不知道则省略
+      // （过去 name 缺失会硬中断，但现在已不需要）。
       return toEdit(
         toolName
           ? { name: toolName, args: response.modified_args ?? {} }
@@ -204,7 +204,7 @@ function cleanApprovalDescription(raw: string | undefined): string | undefined {
 }
 
 // The headline should name the actual action being approved. `execute_in_skill`
-// is a generic mechanism (and redundant with the "도구 사용 승인" header), so show
+// is a generic mechanism (and redundant with the "工具使用审批" header), so show
 // the skill itself instead — derived from skill_directory ("/skills/docx-document"
 // → "docx-document") or an explicit skill arg.
 function resolveApprovalToolName(
@@ -385,25 +385,25 @@ export function ApprovalCard({
   const multi = useMultiApproval()
   const [decision, setDecision] = useState<Decision | null>(null)
   const [rejectReason, setRejectReason] = useState('')
-  // 수정 모드 draft — field-based editor가 키별로 편집한다. raw JSON 텍스트
-  // 대신 칸별 값을 들고 있어 JSON.parse 실패로 전체 submit이 막히지 않는다.
+  // 编辑模式 draft —— field-based editor 按 key 分字段编辑。不用 raw JSON 文本
+  // 而是逐字段保存值，因此不会因 JSON.parse 失败而阻塞整个 submit。
   const [draft, setDraft] = useState<Record<string, unknown>>({})
   const [showEdit, setShowEdit] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [resumeError, setResumeError] = useState<string | null>(null)
   const [localResult, setLocalResult] = useState<ApprovalResult | null>(null)
-  // 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 체크 상태. review_configs 플래그
-  // (session_consent_eligible)가 있을 때만 렌더/전송된다.
+  // 技能 Builder AD-4 —— "留出本次会议的剩余时间" 勾选状态。仅当有 review_configs flag
+  // (session_consent_eligible) 时才 render/send。
   const [consentSession, setConsentSession] = useState(false)
 
-  // 카드 인스턴스별 안정 키 — args.approval_id 우선, 없으면 마운트 시 생성
+  // 每个卡片实例的稳定 key —— 优先 args.approval_id，没有则 mount 时生成
   const fallbackId = useId()
   const approvalId = args?.approval_id ?? `approval-${fallbackId}`
 
-  // requires-action 상태일 때만 timer 활성
+  // 仅在 requires-action 状态启用 timer
   const isPending = status.type !== 'complete' && status.type !== 'running' && result === undefined
-  // 그룹(멀티액션) 안에서 렌더될 때는 compact 모드 — 자체 헤더/카운트다운을 숨기고
-  // (그룹 컨테이너가 대신 보여준다) "批准全部"을 위해 승인 콜백을 등록한다.
+  // 在分组（多 action）内渲染时使用 compact 模式 —— 隐藏自身 header/countdown
+  // （由分组容器代为显示），并注册批准回调供 "批准全部" 使用。
   const grouped = Boolean(multi) && typeof args?.hitl_action_index === 'number'
   const actionIndex = args?.hitl_action_index
   const groupedActive = !grouped || multi?.isActive(actionIndex ?? -1) === true
@@ -451,9 +451,9 @@ export function ApprovalCard({
       }
 
       if (d === 'modified') {
-        // field-based editor의 draft를 그대로 사용한다. 시크릿 칸은 잠겨
-        // <redacted>로 남고, 백엔드가 checkpoint 원본으로 복원한다(프론트
-        // 복원 없음). JSON.parse가 없으므로 syntax 에러로 막히지 않는다.
+        // 直接使用 field-based editor 的 draft。secret 字段被锁定，
+        // 保持为 <redacted>，由 backend 从 checkpoint 原始值恢复（frontend
+        // 不做恢复）。由于没有 JSON.parse，因此不会因 syntax error 被阻塞。
         response.modified_args = draft
         resumeResponse.modified_args = draft
       }
@@ -493,7 +493,7 @@ export function ApprovalCard({
     }
   }, [actionIndex, grouped, multi, status.type, visibleResult])
 
-  // 만료 시 자동 reject — handleDecision 변동에 영향받지 않도록 ref로 보관
+  // 过期时自动 reject —— 保存在 ref 中，避免受 handleDecision 变化影响
   const expireMessage = t('autoRejected')
   const handleExpire = useCallback(() => {
     if (submitting || decision !== null) return
@@ -512,9 +512,9 @@ export function ApprovalCard({
 
   const onInteract = useMemo(() => extend, [extend])
 
-  // 도구별 allowed_decisions 게이팅 — 카드가 받은 화이트리스트대로 버튼을 노출.
-  // 빈/누락이면 approve+reject만(edit 제외) — standard-interrupt의 reviewForAction
-  // fallback과 동일. execute_in_skill(approve,reject)엔 수정 버튼이 뜨지 않는다.
+  // 按工具的 allowed_decisions gating —— 按卡片收到的 whitelist 显示按钮。
+  // 为空/缺失时仅 approve+reject（排除 edit）—— 与 standard-interrupt 的 reviewForAction
+  // fallback 相同。execute_in_skill(approve,reject) 不显示编辑按钮。
   const allowedDecisions = useMemo(
     () => new Set(args?.allowed_decisions ?? []),
     [args?.allowed_decisions],
@@ -523,9 +523,9 @@ export function ApprovalCard({
   const canEdit = allowedDecisions.has('edit')
   const canReject = allowedDecisions.size === 0 || allowedDecisions.has('reject')
 
-  // "批准全部"을 위해 미결정 카드의 승인 콜백을 그룹 컨테이너에 등록. 결정되거나
-  // (localResult) 사용자가 이미 거부/수정 흐름에 들어간 카드(decision/showEdit)는
-  // 등록에서 빠져, "批准全部"이 진행 중인 거부·수정 의도를 덮어쓰지 않는다.
+  // 为 "批准全部" 向分组容器注册未决卡片的批准回调。已决定，或
+  // (localResult) 用户已经进入拒绝/编辑流程的卡片(decision/showEdit)则
+  // 从注册中排除，避免 "批准全部" 覆盖正在进行的拒绝/编辑意图。
   useEffect(() => {
     const idx = args?.hitl_action_index
     if (
@@ -552,7 +552,7 @@ export function ApprovalCard({
     handleDecision,
   ])
 
-  // ── 완료 상태 ──
+  // ── 完成状态 ──
   if (status.type === 'complete' || visibleResult !== null) {
     const badge = <ApprovalBadge result={visibleResult} />
     if (!grouped) return badge
@@ -569,7 +569,7 @@ export function ApprovalCard({
     )
   }
 
-  // ── 로딩 상태 ──
+  // ── 加载状态 ──
   if (status.type === 'running') {
     return (
       <div className="moldy-chat-card flex items-center gap-2 px-3 py-2 text-xs">
@@ -579,7 +579,7 @@ export function ApprovalCard({
     )
   }
 
-  // ── requires-action: 승인 카드 ──
+  // ── requires-action: 审批卡 ──
   const toolName = resolveApprovalToolName(args?.tool_name, args?.tool_args) ?? t('toolCall')
   const rawDescription = cleanApprovalDescription(args?.description ?? args?.message)
   const description = rawDescription ? redactSensitiveText(rawDescription) : undefined
@@ -724,8 +724,8 @@ export function ApprovalCard({
     </div>
   )
 
-  // 그룹(멀티액션) 안: 헤더/카운트다운 없이 compact 블록. 그룹 컨테이너가
-  // "승인 대기 N건" 헤더와 단일 카운트다운, "批准全部"을 소유한다.
+  // 分组（多 action）内：compact block，不带 header/countdown。分组容器
+  // 负责 "待审批 N 项" header、单一 countdown 和 "批准全部"。
   if (grouped) {
     return (
       <div

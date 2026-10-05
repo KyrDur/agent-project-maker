@@ -25,7 +25,7 @@
 
 ## Phase 1 — 정적 검증
 
-| 명령 | 결과 |
+| 命令 | 结果 |
 |------|------|
 | `cd backend && uv run ruff check .` | ✅ All checks passed |
 | `cd backend && uv run ruff format --check .` | 🔴 **55 files would be reformatted** (135 already formatted) |

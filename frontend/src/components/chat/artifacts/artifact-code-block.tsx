@@ -3,8 +3,8 @@
 import { lazy, Suspense } from 'react'
 import { languageForExtension } from './code-language'
 
-// 챗 마크다운과 동일한 하이라이터를 재사용한다 — heavy 라이브러리 규칙에 따라
-// lazy 로드하고, 로딩/비지원 언어/대용량 파일은 기존 plain <pre>로 폴백한다.
+// 复用与聊天 markdown 相同的 highlighter —— 按 heavy library 规则
+// lazy 加载，加载中/不支持的语言/大文件则 fallback 到现有 plain <pre>。
 const MarkdownCodeHighlighter = lazy(() => import('../markdown-code-highlighter'))
 
 const HIGHLIGHT_MAX_LINES = 1500

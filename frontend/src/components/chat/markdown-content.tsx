@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import 'katex/dist/katex.min.css'
 import './markdown-styles.css'
 
-// 모듈 레벨 상수 — 매 렌더에서 새 배열 만드는 것 회피.
+// 模块级常量 —— 避免每次 render 都创建新数组。
 const REHYPE_PLUGINS = [rehypeKatex]
 
 /** Allow sandbox: and file: URLs that LLMs prepend, then delegate to default. */

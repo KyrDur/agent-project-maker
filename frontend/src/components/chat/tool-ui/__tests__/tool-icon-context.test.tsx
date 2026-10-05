@@ -15,35 +15,35 @@ function wrapper(iconIds: Record<string, string>, mcpServers: Record<string, str
 }
 
 describe('useToolIcon', () => {
-  it('빌트인 맵이 1순위 (icon_id가 있어도 빌트인 우선)', () => {
+  it('内置 map 是第 1 优先（即使有 icon_id 也优先内置）', () => {
     const { result } = renderHook(() => useToolIcon('current_datetime'), {
       wrapper: wrapper({ current_datetime: 'calendar' }),
     })
     expect(result.current).toBe(ClockIcon)
   })
 
-  it('빌트인에 없으면 도구 icon_id를 getDomainIcon으로 해석', () => {
+  it('内置中没有时，将工具 icon_id 交给 getDomainIcon 解析', () => {
     const { result } = renderHook(() => useToolIcon('custom_registry_tool'), {
       wrapper: wrapper({ custom_registry_tool: 'calendar' }),
     })
     expect(result.current).toBe(getDomainIcon('calendar'))
   })
 
-  it('빌트인도 icon_id도 없으면 렌치 폴백', () => {
+  it('内置和 icon_id 都没有时 fallback 到扳手图标', () => {
     const { result } = renderHook(() => useToolIcon('unknown_mcp_tool'), {
       wrapper: wrapper({}),
     })
     expect(result.current).toBe(WrenchIcon)
   })
 
-  it('MCP 도구는 플러그 아이콘으로 해석된다', () => {
+  it('MCP 工具解析为插件图标', () => {
     const { result } = renderHook(() => useToolIcon('notion_search'), {
       wrapper: wrapper({}, { notion_search: 'Notion' }),
     })
     expect(result.current).toBe(PlugIcon)
   })
 
-  it('빌트인 고정 맵이 MCP 매핑보다 우선한다', () => {
+  it('内置固定 map 的优先级高于 MCP 映射', () => {
     const { result } = renderHook(() => useToolIcon('web_search'), {
       wrapper: wrapper({}, { web_search: 'ShouldNotWin' }),
     })
@@ -52,7 +52,7 @@ describe('useToolIcon', () => {
 })
 
 describe('useMcpToolServer', () => {
-  it('MCP 도구면 서버 표시명, 아니면 null', () => {
+  it('MCP 工具返回服务器显示名，否则为 null', () => {
     const { result } = renderHook(
       () => ({
         mcp: useMcpToolServer('notion_search'),

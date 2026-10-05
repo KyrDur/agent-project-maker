@@ -70,13 +70,13 @@ E2E_SCRIPTED_SYSTEM_CREDENTIAL_NAME = "[e2e] Scripted System LLM"
 
 
 async def _seed_scripted_system_llm(db: AsyncSession) -> None:
-    """스킬 빌더 챗 E2E용 System LLM(text_primary) 시드.
+    """用于 Skill Builder 聊天 E2E 的 System LLM(text_primary) seed。
 
-    빌더 챗의 히든 에이전트는 런타임에 ``resolve_system_model('text_primary')``
-    로 모델을 재해석한다(ADR-019) — throwaway E2E 스택에서 이 슬롯이 비어 있으면
-    빌더가 409로 막히므로, scripted 모델을 가리키는 system credential + 설정을
-    깔아 준다. **이미 설정된 text_primary는 건드리지 않는다** (실 LiteLLM
-    구성(seed_e2e_llm)이나 운영자 선택을 덮어쓰지 않음).
+    Builder 聊天的 hidden Agent 会在 runtime 中通过 ``resolve_system_model('text_primary')``
+    重新解析模型（ADR-019）— 如果 throwaway E2E stack 中该 slot 为空，
+    Builder 会被 409 阻止，因此预置指向 scripted 模型的 system credential + 配置。
+    **不要修改已经设置的 text_primary**（不覆盖真实 LiteLLM
+    配置（seed_e2e_llm）或 operator 的选择）。
     """
 
     from app.credentials import service as credential_service

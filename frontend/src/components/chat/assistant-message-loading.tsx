@@ -30,21 +30,21 @@ function isRunningMessageStatus(status: unknown): boolean {
   return isRecord(status) && status.type === 'running'
 }
 
-/** M6 — 메시지가 "현재 스트리밍 중"인지 판정.
+/** M6 —— 判断消息是否"当前正在流式传输"。
  *
- * 두 신호를 OR한다: (1) 우리가 직접 심는 `metadata.custom.isStreamingMessage`,
- * (2) assistant-ui status가 `running`.
+ * 对两个信号执行 OR：(1) 我们直接写入的 `metadata.custom.isStreamingMessage`，
+ * (2) assistant-ui status 为 `running`。
  *
- * `metadata.custom.isStreamingMessage`는 `convert-message.ts`가 id가 `stream-`로
- * 시작하는 메시지에 대해서만 `true`로 심으며, `false`를 명시하는 production 경로는
- * 없다(완료 시엔 필드가 단순히 부재한다). 따라서 "metadata가 streaming=false라고
- * 명시하면 running status를 무시한다"는 식의 추가 가드는 런타임에서 절대 발화될 수
- * 없는 dead code였다 — 이를 제거하고 위 두 신호의 단순 OR로 되돌렸다.
+ * `metadata.custom.isStreamingMessage` 只会由 `convert-message.ts` 对 id 以 `stream-`
+ * 开头的消息写入 `true`，production 路径不会显式写入 `false`
+ * （完成时只是该字段不存在）。因此，"如果 metadata 明确为 streaming=false
+ * 就忽略 running status"之类的额外 guard 在运行时永远不会触发，属于 dead code
+ * —— 已将其移除，恢复为上述两个信号的简单 OR。
  *
- * sticky/converted 재사용으로 완료 메시지에 stale `running` status가 남을 수 있다는
- * 우려는 호출 컴포넌트(`StreamingMessageLoadingIndicator`)가
- * `AuiIf condition={(s) => s.thread.isRunning}`로 감싸 thread가 idle이면 어떤
- * 메시지든 인디케이터가 렌더되지 않는 것으로 방어한다. */
+ * 关于 sticky/converted 复用可能使已完成消息残留 stale `running` status 的担忧，
+ * 由调用组件(`StreamingMessageLoadingIndicator`)通过
+ * `AuiIf condition={(s) => s.thread.isRunning}` 包裹来防护；当 thread idle 时，
+ * 任何消息都不会渲染指示器。 */
 export function isStreamingMessageState(message: unknown): boolean {
   if (!isRecord(message)) return false
   if (isStreamingMessageMetadata(message.metadata)) return true

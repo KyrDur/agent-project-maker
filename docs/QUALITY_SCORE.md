@@ -257,56 +257,56 @@
 ### ISSUE-3: 缺少 v2 unit test（严重度: MEDIUM）
 
 Builder orchestrator、Assistant Agent、v2 Router/Service 均没有 unit test。
-- 기존 48개 테스트 삭제됨 (v1 코드 제거)
-- v2 신규 테스트 0개
-- **테스트 커버리지 갭**: Builder 7단계 파이프라인, Assistant 도구 호출, SSE 스트리밍
+- 已删除现有 48 个测试（移除 v1 代码）
+- v2 新增测试 0 个
+- **测试覆盖缺口**：Builder 7 阶段流水线、Assistant 工具调用、SSE 流式传输
 
 ---
 
-## 이전: M1 빌드 검증 (2026-04-07)
+## 之前：M1 构建验证 (2026-04-07)
 
 | Gate | 结果 | 备注 |
 |--------|------|------|
 | `pnpm build` | PASS | TypeScript 3.1s |
 | `pnpm lint` | PASS | 0 errors |
 | `uv run pytest` | PASS | 332 passed |
-| `uv run ruff check .` | FAIL | 2 errors (I001) — 이후 수정 완료 |
+| `uv run ruff check .` | FAIL | 2 errors (I001) — 后续已修复 |
 
 ---
 
-## 이전: UI/UX 개선 프로젝트 (2026-04-07)
+## 之前：UI/UX 改进项目 (2026-04-07)
 
-### 라우트 완결성 (14/14)
+### 路由完整性 (14/14)
 
-모든 라우트 PASS.
+所有路由均 PASS。
 
-### UI/UX 기능 검증 (10/10)
+### UI/UX 功能验证 (10/10)
 
-모든 항목 PASS.
+所有项目均 PASS。
 
 ---
 
-## 총평
+## 总评
 
-**v2 최종 판정: CONDITIONAL GO**
+**v2 最终判定：CONDITIONAL GO**
 
 PASS:
 - Backend ruff: 0 errors
 - Backend pytest: 284 passed
 - Frontend build: 0 errors (TypeScript + 18 pages)
 - Frontend lint: 0 errors
-- 기존 코드 삭제: 7/7 backend 파일 삭제 완료
-- v2 신규 코드: 16 backend + 3 frontend 파일 존재 확인
-- main.py 라우터 교체 완료
-- models/__init__.py 교체 완료 (AgentCreationSession -> BuilderSession)
+- 现有代码删除：7/7 backend 文件已删除
+- v2 新增代码：已确认存在 16 个 backend + 3 个 frontend 文件
+- main.py 路由替换完成
+- models/__init__.py 替换完成 (AgentCreationSession -> BuilderSession)
 
-조건부 이슈:
-- **ISSUE-1** (LOW): Frontend 죽은 코드 2개 — 삭제 권장
-- **ISSUE-2** (LOW): Backend 모델 파일 1개 잔존 — 삭제 권장
-- **ISSUE-3** (MEDIUM): v2 유닛 테스트 0개 — 커버리지 갭
+条件性问题：
+- **ISSUE-1** (LOW)：Frontend 死代码 2 个 — 建议删除
+- **ISSUE-2** (LOW)：Backend 模型文件残留 1 个 — 建议删除
+- **ISSUE-3** (MEDIUM)：v2 单元测试 0 个 — 覆盖缺口
 
-**GO 조건**: ISSUE-3 (v2 테스트)은 별도 태스크로 후속 처리 가능. ISSUE-1, 2는 코드 위생 이슈로 즉시 삭제 가능.
-빌드/린트/기존 테스트 모두 통과하므로 **GO** 판정.
+**GO 条件**：ISSUE-3 (v2 测试) 可作为独立任务后续处理。ISSUE-1、2 属于代码卫生问题，可立即删除。
+构建/lint/现有测试均通过，因此判定为 **GO**。
 
 ---
 
@@ -314,39 +314,39 @@ PASS:
 
 ### 各域评级
 
-| 도메인 | 등급 | 근거 |
+| 领域 | 等级 | 依据 |
 |--------|------|------|
-| **Marketplace catalog / read API** | **A** | Slice A read-only endpoints + visibility 매트릭스 (super_user/owner/ACL/unrelated × private/restricted/public/unlisted/system) 검증. 25 access tests + 12 listing tests + 11 migration tests + 15 regression tests. enumeration oracle envelope 동등성 가드. |
-| **Marketplace install** | **A** | 8 install tests + 7 E2E scenarios (모두 PASS). OPEN-1 (install_service lazy load) 2026-05-19 RESOLVED — `select(...).options(selectinload(MarketplaceItem.acl_entries))`로 eager-load. Phase 1 출시 게이트 #1 (enumeration oracle 방지) 가드 통과. strict xfail 자동 감지 → 베조스 promote 완료. |
-| **Marketplace publish + secret scan** | **A** | 8 publish integration tests + 53 secret_scan unit tests. 파일 패턴 9개 + 내용 패턴 6개 (OI-4 `\bsk-…{20,}\b` boundary 검증). 256KB cap + binary skip + symlink skip 가드. |
-| **Credential system (ADR-007/009 재사용 + 신규 8개)** | **A** | 13 기존 + 8 신규 k-skill definitions (총 21개). 10 credential injection tests: fail-fast 409, mapped-only env, override priority (`agent_skills.config.credential_bindings`), ownership drift silent missing. Cipher V2 round-trip 회귀 가드. |
-| **Runtime mount (per-thread)** | **A** | 10 isolation tests. `build_skill_runtime_context(cfg, data_dir)` per-thread `copytree(symlinks=False)` 격리. selected-skill mount (`ctx.descriptors`이 보안 경계). Cross-thread prefix-spoof 가드. `cleanup_stale_runtime_roots` mtime 기반 retention. |
-| **Redaction (multi-channel)** | **A** | 16 redaction tests. `redact_credential_values` (literal value, `len<5` 가드, 길이 정렬), `redact_keys` (recursive structural mask), subprocess stdout/stderr, SSE TOOL_CALL_START.parameters, exception detail 모두 통합. `streaming.py` 호출 지점 pin. |
-| **k-skill importer (CLI)** | **B+** | super_user CLI 전용. 모듈 존재 + admin status endpoint mount 가드. 실제 upstream sync는 운영 환경 검증 필요. 단위 테스트는 jensen 트랙. |
-| **Frontend Marketplace UI** | **Pending** | M8 진행 중 (M8a 디자인 스펙 in-progress, M8b 미완료). 빌드/lint 검증 후 재평가. |
+| **Marketplace catalog / read API** | **A** | 已验证 Slice A read-only endpoints + visibility 矩阵 (super_user/owner/ACL/unrelated × private/restricted/public/unlisted/system)。25 access tests + 12 listing tests + 11 migration tests + 15 regression tests。enumeration oracle envelope 等价性防护。 |
+| **Marketplace install** | **A** | 8 install tests + 7 E2E scenarios（全部 PASS）。OPEN-1 (install_service lazy load) 2026-05-19 RESOLVED — 通过 `select(...).options(selectinload(MarketplaceItem.acl_entries))` 进行 eager-load。Phase 1 发布门禁 #1（防止 enumeration oracle）防护通过。strict xfail 自动检测 → Bezos promote 完成。 |
+| **Marketplace publish + secret scan** | **A** | 8 publish integration tests + 53 secret_scan unit tests。文件模式 9 个 + 内容模式 6 个 (OI-4 `\bsk-…{20,}\b` boundary 验证)。256KB cap + binary skip + symlink skip 防护。 |
+| **Credential system (ADR-007/009 复用 + 新增 8 个)** | **A** | 13 个现有 + 8 个新增 k-skill definitions（共 21 个）。10 credential injection tests：fail-fast 409、mapped-only env、override priority (`agent_skills.config.credential_bindings`)、ownership drift silent missing。Cipher V2 round-trip 回归防护。 |
+| **Runtime mount (per-thread)** | **A** | 10 isolation tests。`build_skill_runtime_context(cfg, data_dir)` per-thread `copytree(symlinks=False)` 隔离。selected-skill mount（`ctx.descriptors` 为安全边界）。Cross-thread prefix-spoof 防护。`cleanup_stale_runtime_roots` 基于 mtime 的 retention。 |
+| **Redaction (multi-channel)** | **A** | 16 redaction tests。`redact_credential_values`（literal value、`len<5` 防护、长度排序）、`redact_keys`（recursive structural mask）、subprocess stdout/stderr、SSE TOOL_CALL_START.parameters、exception detail 均已集成。固定 `streaming.py` 调用位置。 |
+| **k-skill importer (CLI)** | **B+** | 仅限 super_user CLI。模块存在 + admin status endpoint mount 防护。实际 upstream sync 需要在生产环境验证。单元测试属于 Jensen 轨道。 |
+| **Frontend Marketplace UI** | **Pending** | M8 进行中（M8a 设计规格 in-progress，M8b 未完成）。构建/lint 验证后重新评估。 |
 
-### Phase 1 출시 게이트 (PRD §13) 검증 결과
+### Phase 1 发布门禁 (PRD §13) 验证结果
 
-8개 게이트 통합 검증: `backend/tests/test_marketplace_phase1_gates.py` (22 tests).
+8 个门禁集成验证：`backend/tests/test_marketplace_phase1_gates.py` (22 tests)。
 
-| Gate | 상태 | 책임 |
+| Gate | 状态 | 责任 |
 |------|------|------|
-| 1. Access control | ✅ PASS | `marketplace.access` 술어 + 라우터 enumeration oracle |
-| 2. Secret safety | ✅ PASS | `secret_scan` 9 파일 + 6 내용 패턴 + redaction 통합 |
+| 1. Access control | ✅ PASS | `marketplace.access` 谓词 + 路由 enumeration oracle |
+| 2. Secret safety | ✅ PASS | `secret_scan` 9 个文件模式 + 6 个内容模式 + redaction 集成 |
 | 3. Runtime isolation | ✅ PASS | per-thread root + selected-skill mount + retention |
-| 4. Credential runtime | ✅ PASS | fail-fast 409 + mapped-only env + override 우선 |
-| 5. k-skill sync | ✅ PASS (skip 가능) | admin endpoint mount 가드, 실제 sync는 CLI/운영 |
-| 6. Backward compatibility | ✅ PASS | Skill ORM legacy columns 보존 + to_runtime_dict 키셋 |
-| 7. Listing 승인 | ✅ PASS | `_base_catalog_query` default `public+published+is_listed` 가드 |
-| 8. ADR-016 정합 | ✅ PASS | 모든 mutation route `verify_csrf` + `get_current_user`/`require_super_user` |
+| 4. Credential runtime | ✅ PASS | fail-fast 409 + mapped-only env + override 优先 |
+| 5. k-skill sync | ✅ PASS（可 skip） | admin endpoint mount 防护，实际 sync 通过 CLI/生产环境 |
+| 6. Backward compatibility | ✅ PASS | 保留 Skill ORM legacy columns + to_runtime_dict 键集合 |
+| 7. Listing 审批 | ✅ PASS | `_base_catalog_query` default `public+published+is_listed` 防护 |
+| 8. ADR-016 一致性 | ✅ PASS | 所有 mutation route `verify_csrf` + `get_current_user`/`require_super_user` |
 
 ### 验证命令
 
 ```bash
 cd backend
 uv run pytest tests/test_marketplace_phase1_gates.py -v   # 22 PASS
-uv run pytest tests/test_marketplace_e2e.py -v            # 7 PASS (xfail 해제 후)
-uv run pytest                                              # 전체 1191 PASS, 0 xfailed, 회귀 0
+uv run pytest tests/test_marketplace_e2e.py -v            # 7 PASS（解除 xfail 后）
+uv run pytest                                              # 全部 1191 PASS, 0 xfailed, 回归 0
 uv run ruff check .                                        # clean
 ```
 
@@ -354,49 +354,49 @@ uv run ruff check .                                        # clean
 
 | ID | Severity | Status | Resolution |
 |----|----------|--------|------------|
-| **OPEN-1** | MEDIUM | ✅ RESOLVED 2026-05-19 | `install_service.install_item`을 `select(...).options(selectinload(acl_entries))` 로 교체 (젠슨). strict xfail이 XPASS로 자동 감지 → 베조스 promote. test_marketplace_e2e.py::TestScenario_10_4_RestrictedACL는 이제 canonical regression guard. |
+| **OPEN-1** | MEDIUM | ✅ RESOLVED 2026-05-19 | 将 `install_service.install_item` 替换为 `select(...).options(selectinload(acl_entries))` (Jensen)。strict xfail 自动检测为 XPASS → Bezos promote。test_marketplace_e2e.py::TestScenario_10_4_RestrictedACL 现已成为 canonical regression guard。 |
 
 ### Open Issues
 
 | ID | Severity | Description | Owner |
 |----|----------|-------------|-------|
-| **OPEN-2** | LOW | M8 (Frontend Marketplace UI) 진행 중. Spec 정합성은 M8b 완료 후 재평가. | 저커버그 |
-| **OPEN-3** | LOW | k-skill importer 실제 upstream sync는 단위 테스트 범위 외. 운영 환경에서 dry-run 후 실제 sync 1회 수행 필요. | 운영 |
+| **OPEN-2** | LOW | M8 (Frontend Marketplace UI) 进行中。Spec 一致性将在 M8b 完成后重新评估。 | Zuckerberg |
+| **OPEN-3** | LOW | k-skill importer 的实际 upstream sync 超出单元测试范围。需要在生产环境 dry-run 后执行 1 次实际 sync。 | 运维 |
 
-### GO/NO-GO 판정
+### GO/NO-GO 判定
 
-**Backend 트랙: ✅ FULL GO** (2026-05-19) — 8개 출시 게이트 모두 통과 + OPEN-1 해소. Frontend 트랙은 M8b 완료 시점에 재평가.
+**Backend 轨道：✅ FULL GO** (2026-05-19) — 8 个发布门禁全部通过 + OPEN-1 已解决。Frontend 轨道将在 M8b 完成时重新评估。
 
-**근거**:
-- 36 보안 critical 테스트 (runtime isolation 10 + credential injection 10 + redaction 16) PASS
+**依据**：
+- 36 个安全 critical 测试 (runtime isolation 10 + credential injection 10 + redaction 16) PASS
 - 53 secret_scan unit tests PASS
 - 25 access matrix tests + 12 listing tests + 11 migration tests + 15 regression tests PASS
-- **7 E2E user scenarios (PRD §10.1~10.7) 모두 PASS** (xfail strict 자동 감지 → 젠슨 fix → 베조스 promote)
-- 22 Phase 1 출시 게이트 통합 검증 PASS
-- 회귀 0, ruff 0
+- **7 个 E2E user scenarios (PRD §10.1~10.7) 全部 PASS**（strict xfail 自动检测 → Jensen fix → Bezos promote）
+- 22 个 Phase 1 发布门禁集成验证 PASS
+- 回归 0，ruff 0
 
 ---
 
-## ADR-019 System LLM Settings — S5 통합검증 (2026-05-26, 베조스)
+## ADR-019 System LLM Settings — S5 集成验证 (2026-05-26, Bezos)
 
-### GO/NO-GO 판정: ✅ FULL GO (fast-follow closed 2026-05-26)
+### GO/NO-GO 判定：✅ FULL GO (fast-follow closed 2026-05-26)
 
-| 게이트 | 결과 | 근거 |
+| 门禁 | 结果 | 依据 |
 |--------|------|------|
-| S5-1 backend ruff + pytest | ✅ PASS | `ruff check .` clean, `pytest` **1219 passed**, 2 deselected, 0 회귀 (fast-follow +1) |
-| S5-2 frontend build + lint | ✅ PASS | `pnpm build` 성공(`/settings/system-llm` 라우트 생성), `pnpm lint` clean |
-| S5-3 HIGH#1 super_user 가드 | ✅ CLOSED | `test_get/put_requires_super_user`(403), `test_invalid_credential_detail_is_byte_identical`(404↔422 detail byte-identical) |
-| S5-4 HIGH#2 FK SET NULL | ✅ CLOSED | `test_credential_delete_sets_slot_null`(국소 engine+PRAGMA, conftest 무수정) PASS. 베조스 false-pass 반증: PRAGMA 제거 시 credential_id NULL 안 됨 입증 → load-bearing 회귀가드 |
-| S5-5 핵심 시나리오 | ✅ PASS | `test_assistant_stream_surfaces_unconfigured`(SSE `event:error` code=`system_model_not_configured`), image base_url payload우선/canonical/raise 3케이스, assistant `create_chat_model(...,base_url)` 전달 |
+| S5-1 backend ruff + pytest | ✅ PASS | `ruff check .` clean，`pytest` **1219 passed**，2 deselected，0 回归 (fast-follow +1) |
+| S5-2 frontend build + lint | ✅ PASS | `pnpm build` 成功（生成 `/settings/system-llm` 路由），`pnpm lint` clean |
+| S5-3 HIGH#1 super_user 防护 | ✅ CLOSED | `test_get/put_requires_super_user`(403)，`test_invalid_credential_detail_is_byte_identical`(404↔422 detail byte-identical) |
+| S5-4 HIGH#2 FK SET NULL | ✅ CLOSED | `test_credential_delete_sets_slot_null`（局部 engine+PRAGMA，conftest 未修改）PASS。Bezos false-pass 反证：证明移除 PRAGMA 时 credential_id 不会变为 NULL → load-bearing 回归防护 |
+| S5-5 核心场景 | ✅ PASS | `test_assistant_stream_surfaces_unconfigured`(SSE `event:error` code=`system_model_not_configured`)，image base_url payload优先/canonical/raise 3 个 case，assistant 传递 `create_chat_model(...,base_url)` |
 
-신규 테스트 검증: `test_system_llm_settings.py` **19 PASS** (S2 11 + 베조스 리뷰 하드닝 8). 모든 신규 assertion 실질적(거짓통과 없음) 확인.
+新增测试验证：`test_system_llm_settings.py` **19 PASS** (S2 11 + Bezos review hardening 8)。确认所有新增 assertion 均有效（无假通过）。
 
 ### Open Items
 
-| ID | 심각도 | 설명 | 담당 |
+| ID | 严重度 | 说明 | 负责人 |
 |----|--------|------|------|
-| ~~**ADR019-OPEN-1**~~ | ✅ RESOLVED | (2026-05-26) `test_credential_delete_sets_slot_null` 추가 — 국소 engine+PRAGMA, conftest 무수정. 베조스 false-pass 반증으로 load-bearing 확인. 1219 PASS. | 젠슨 |
-| **ADR019-OPEN-2** | LOW | 전역 aiosqlite `PRAGMA foreign_keys=ON` 채택 — 1218 테스트 회귀확인 필요. builder_session 등 타 FK SET NULL 테스트에도 잠재 영향. **별도 follow-up 이슈** | 젠슨/운영 |
-| **ADR019-OPEN-3** | LOW | 머지 후 운영자가 3슬롯 미설정 시 Builder/Assistant/이미지 동작 불가(ADR 의도). 배포 노트 "운영자 설정 필수" 명시 필요 | 운영 |
+| ~~**ADR019-OPEN-1**~~ | ✅ RESOLVED | (2026-05-26) 新增 `test_credential_delete_sets_slot_null` — 局部 engine+PRAGMA，conftest 未修改。通过 Bezos false-pass 反证确认为 load-bearing。1219 PASS。 | Jensen |
+| **ADR019-OPEN-2** | LOW | 采用全局 aiosqlite `PRAGMA foreign_keys=ON` — 需要对 1218 个测试进行回归确认。对 builder_session 等其他 FK SET NULL 测试也可能有影响。**独立 follow-up issue** | Jensen/运维 |
+| **ADR019-OPEN-3** | LOW | 合并后若运维人员未配置 3 个 slot，Builder/Assistant/图像将无法运行（ADR 设计意图）。发布说明中需明确“运维人员必须配置” | 运维 |
 
-**근거**: 전 게이트 그린(backend **1219 PASS**/0 회귀, frontend build+lint clean), HIGH#1·#2 모두 CLOSED, 핵심 시나리오(미설정 SSE surface + base_url passthrough) verified. fast-follow FK SET NULL 회귀가드 머지 전 닫힘 → **FULL GO**.
+**依据**：所有门禁均为绿色（backend **1219 PASS**/0 回归，frontend build+lint clean），HIGH#1·#2 均 CLOSED，核心场景（未配置 SSE surface + base_url passthrough）verified。fast-follow FK SET NULL 回归防护在合并前关闭 → **FULL GO**。

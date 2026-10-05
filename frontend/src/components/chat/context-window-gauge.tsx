@@ -8,22 +8,22 @@ import { formatCompactCount, formatDisplayNumber } from '@/lib/utils/display-for
 import type { TokenUsageBreakdown } from '@/lib/types'
 
 // ──────────────────────────────────────────────
-// ContextWindowGauge — 컴포저 하단의 "컨텍스트 창 사용량" 표시(클로드코드式).
+// ContextWindowGauge —— composer 底部的 "上下文窗口使用量" 显示（Claude Code 风格）。
 //
-// 점유량 = 최신 assistant 턴의 ``prompt_tokens`` 단독. LangChain 1.x에서
-// input_tokens는 cache 토큰을 모두 포함한 총 input이므로 cache_*를 더하지 않는다
-// (더하면 이중계상). 한도 = model.context_window.
+// 占用量 = 最新 assistant turn 的 ``prompt_tokens`` 单独值。LangChain 1.x 中
+// input_tokens 是包含全部 cache token 的总 input，因此不再叠加 cache_*
+// （否则会重复计数）。上限 = model.context_window。
 //
-// context_window가 null인 모델은 숨기지 않고 "停用" 상태로 — muted/점선 ring +
-// 다른 색 + 호버 시 한도 미설정 안내. (사용량 표시 불가임을 명확히.)
+// context_window 为 null 的模型不隐藏，而显示为 "停用" 状态 —— muted/虚线 ring +
+// 不同颜色 + hover 时提示未设置上限。（明确说明无法显示使用量。）
 // ──────────────────────────────────────────────
 
 interface ContextWindowGaugeProps {
-  /** 가장 최근 assistant 턴 usage (점유량은 prompt_tokens). 첫 턴 전이면 null. */
+  /** 最近一次 assistant turn usage（占用量用 prompt_tokens）。首轮前为 null。 */
   readonly usage: TokenUsageBreakdown | null
-  /** 모델 컨텍스트 창 한도(토큰). null이면 비활성. */
+  /** 模型上下文窗口上限（token）。为 null 时禁用。 */
   readonly contextWindow: number | null | undefined
-  /** 게이지 옆에 함께 표시할 모델명. */
+  /** 与 gauge 一起显示的模型名。 */
   readonly modelName?: string
   readonly runtimeCredentialName?: string | null
   readonly runtimeReady?: boolean
@@ -33,7 +33,7 @@ interface ContextWindowGaugeProps {
 const RING_RADIUS = 6
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
-/** 사용자 지정: 80%↑ 경고색, 95%↑ 위험색. 그 미만은 중립. */
+/** 自定义：80%↑ 警告色，95%↑ 危险色。低于此值为中性。 */
 function levelColorClass(hasLimit: boolean, percent: number): string {
   if (!hasLimit) return 'text-muted-foreground/50'
   if (percent >= 95) return 'text-status-danger'
@@ -108,14 +108,12 @@ export function ContextWindowGauge({
                 'flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 moldy-ui-micro text-muted-foreground',
               )}
               aria-label={
-                hasLimit
-                  ? t('percentAria', { percent: roundedPercent })
-                  : t('disabledAria')
+                hasLimit ? t('percentAria', { percent: roundedPercent }) : t('disabledAria')
               }
             >
               {modelName ? (
-                // 좁은 컴포저(패널 폭 < @md)에서는 모델명을 숨겨 게이지·비용이
-                // 빡빡하지 않게 — 넓을 때만 모델명 표시(긴 이름은 truncate).
+                // 在较窄 composer（panel 宽度 < @md）中隐藏模型名，避免 gauge·费用
+                // 过于拥挤 —— 仅较宽时显示模型名（长名称 truncate）。
                 <span className="hidden min-w-0 items-center gap-1.5 @md:flex">
                   <span className="max-w-40 truncate font-medium text-foreground/70">
                     {modelName}
@@ -186,7 +184,9 @@ function RuntimeDetails({
     <div className="mt-2 space-y-1 border-t pt-1.5 text-muted-foreground">
       <div className="flex items-center justify-between gap-3">
         <span>{t('runtimeModel')}</span>
-        <span className="truncate text-right text-foreground">{modelName ?? t('notConfigured')}</span>
+        <span className="truncate text-right text-foreground">
+          {modelName ?? t('notConfigured')}
+        </span>
       </div>
       <div className="flex items-center justify-between gap-3">
         <span>{t('runtimeCredential')}</span>

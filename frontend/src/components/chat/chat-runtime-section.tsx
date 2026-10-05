@@ -84,7 +84,7 @@ export interface ChatRuntimeSectionProps {
   readonly agentImageUrl?: string | null
   readonly agentName?: string
   readonly attachmentAdapter?: AttachmentAdapter
-  /** Composer 위 커스텀 힌트 (스킬 빌더 "예시로 시험" 등). */
+  /** Composer 上方自定义提示（技能 Builder 的 "用示例测试" 等）。 */
   readonly composerHint?: ReactNode
   readonly emptyContent: ReactNode
   readonly feedbackAdapter?: FeedbackAdapter
@@ -93,9 +93,9 @@ export interface ChatRuntimeSectionProps {
   readonly modelName?: string
   readonly runtimeCredentialName?: string | null
   readonly runtimeReady?: boolean
-  /** 메인 v3 채팅 컴포저에 컨텍스트 창 사용량 게이지 표시. */
+  /** 在主 v3 聊天 composer 中显示上下文窗口使用量 gauge。 */
   readonly showContextGauge?: boolean
-  /** 컨텍스트 게이지 한도(agent.model.context_window). null이면 비활성. */
+  /** 上下文 gauge 上限(agent.model.context_window)。为 null 时禁用。 */
   readonly contextWindow?: number | null
   readonly onRuntimeStatusChange: (status: ConversationRuntimeStatus) => void
   readonly onBeforeNewMessage?: () => void

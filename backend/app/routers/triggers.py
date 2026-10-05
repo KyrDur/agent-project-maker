@@ -71,8 +71,8 @@ async def _record_trigger_audit(
 
 
 def _map_trigger_validation(exc: ValueError) -> None:
-    # 히든 런타임/미존재 에이전트는 enumeration-safe 404 — INVALID_SCHEDULE_CONFIG로
-    # 삼키면 "설정이 틀렸다"는 오답을 주고 존재 여부 힌트도 어긋난다.
+    # hidden runtime/不存在的 Agent 返回 enumeration-safe 404 — 如果被 INVALID_SCHEDULE_CONFIG
+    # 吞掉，就会给出“配置错误”的错误答案，也会导致存在性提示不一致。
     if "agent not found" in str(exc):
         raise agent_not_found() from exc
     if "identity_mode must be fixed" in str(exc):

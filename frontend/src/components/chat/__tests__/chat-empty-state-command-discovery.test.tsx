@@ -157,13 +157,13 @@ describe('ChatEmptyState command discovery', () => {
     const input = screen.getByRole('textbox', { name: 'Message' })
 
     fireEvent.compositionStart(input)
-    fireEvent.change(input, { target: { selectionEnd: 5, selectionStart: 5, value: 'hi /한' } })
+    fireEvent.change(input, { target: { selectionEnd: 5, selectionStart: 5, value: 'hi /中' } })
     fireEvent.compositionEnd(input, {
-      target: { selectionEnd: 5, selectionStart: 5, value: 'hi /한' },
+      target: { selectionEnd: 5, selectionStart: 5, value: 'hi /中' },
     })
     await flushComposerTriggerSync()
 
-    expect(input).toHaveValue('hi /한')
+    expect(input).toHaveValue('hi /中')
     expect(input).toHaveProperty('selectionStart', 5)
     await waitFor(() => expect(screen.getByRole('listbox', { name: 'Commands' })).toBeVisible())
   })

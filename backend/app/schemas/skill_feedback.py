@@ -1,4 +1,4 @@
-"""휴먼 피드백 스키마 (Phase 3 §7, D2)."""
+"""人工反馈 schema（Phase 3 §7, D2）。"""
 
 from __future__ import annotations
 

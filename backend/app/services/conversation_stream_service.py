@@ -238,8 +238,8 @@ async def _resolve_skill_builder_agent_context(
             SkillBuilderSession.conversation_id == conv.id,
             SkillBuilderSession.user_id == user.id,
         )
-        # 세션↔대화 1:1은 DB 제약이 아니라 관례다 — 방어적으로 최신 1건만
-        # 취해 MultipleResultsFound 500을 차단한다 (R2).
+        # 会话↔对话 1:1 并非 DB 约束，而是约定 — 为防御起见只取最新 1 条
+        # 以避免 MultipleResultsFound 500（R2）。
         .order_by(SkillBuilderSession.created_at.desc())
         .limit(1)
     )

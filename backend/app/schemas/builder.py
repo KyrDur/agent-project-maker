@@ -1,4 +1,4 @@
-"""Builder v2 schemas — 빌드 세션, AgentCreationIntent, 서브에이전트 입출력."""
+"""Builder v2 schemas — 构建会话、AgentCreationIntent、subagent 输入/输出。"""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from app.agent_runtime.identity import AGENT_IDENTITY_PER_USER, validate_identit
 
 
 class BuilderStatus(enum.StrEnum):
-    """빌드 세션 상태."""
+    """构建会话状态。"""
 
     BUILDING = "building"
     STREAMING = "streaming"
@@ -29,18 +29,18 @@ class BuilderStatus(enum.StrEnum):
 
 
 # ---------------------------------------------------------------------------
-# Builder 요청/응답
+# Builder 请求/响应
 # ---------------------------------------------------------------------------
 
 
 class BuilderStartRequest(BaseModel):
-    """POST /api/builder/start — 빌드 세션 시작 요청."""
+    """POST /api/builder/start — 启动构建会话请求。"""
 
     user_request: str = Field(..., min_length=1, max_length=2000)
 
 
 class BuilderSessionResponse(BaseModel):
-    """빌드 세션 상태 응답."""
+    """构建会话状态响应。"""
 
     id: uuid.UUID
     status: BuilderStatus
@@ -60,33 +60,32 @@ class BuilderSessionResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# AgentCreationIntent (Phase 2 출력)
+# AgentCreationIntent（Phase 2 输出）
 # ---------------------------------------------------------------------------
 
 
 class AgentCreationIntent(BaseModel):
-    """의도 분석 서브에이전트의 구조화된 출력."""
+    """意图分析 subagent 的结构化输出。"""
 
     agent_name: str = Field(..., description="Agent name in the active output language")
-    agent_description: str = Field(
-        ..., description="에이전트의 역할과 기능에 대한 상세 설명 (3~5문장)"
-    )
-    primary_task_type: str = Field(..., description="에이전트의 핵심 작업 한 문장")
-    tool_preferences: str = Field(default="", description="선호하는 도구 유형")
+    agent_description: str = Field(..., description="关于 Agent 角色与功能的详细说明（3~5 句）")
+    primary_task_type: str = Field(..., description="Agent 核心任务一句话说明")
+    tool_preferences: str = Field(default="", description="偏好的工具类型")
     output_style: str = Field(
-        default_factory=lambda: tr("brief_summary_and_key_points_dedcfb"), description="결과물 형태"
+        default_factory=lambda: tr("brief_summary_and_key_points_dedcfb"),
+        description="输出结果形式",
     )
     response_tone: str = Field(
-        default_factory=lambda: tr("friendly_and_casual_301c5f"), description="응답 톤"
+        default_factory=lambda: tr("friendly_and_casual_301c5f"), description="响应语气"
     )
     identity_mode: str = Field(
         default=AGENT_IDENTITY_PER_USER,
-        description="credential 사용 주체: per_user 또는 fixed",
+        description="credential 使用主体：per_user 或 fixed",
     )
     use_cases: list[str] = Field(
-        default_factory=list, min_length=1, description="사용 사례 (최소 1개)"
+        default_factory=list, min_length=1, description="使用案例（至少 1 个）"
     )
-    constraints: list[str] = Field(default_factory=list, description="제약 조건")
+    constraints: list[str] = Field(default_factory=list, description="约束条件")
     project_requirements: dict[str, str] | None = Field(
         default=None,
         description=(
@@ -104,7 +103,7 @@ class AgentCreationIntent(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Tool Recommendation (Phase 3 출력)
+# Tool Recommendation（Phase 3 输出）
 # ---------------------------------------------------------------------------
 
 
@@ -124,12 +123,12 @@ class ToolRecommendation(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Middleware Recommendation (Phase 4 출력)
+# Middleware Recommendation（Phase 4 输出）
 # ---------------------------------------------------------------------------
 
 
 class MiddlewareRecommendation(BaseModel):
-    """미들웨어 추천 서브에이전트의 개별 추천 항목."""
+    """中间件推荐 subagent 的单个推荐条目。"""
 
     middleware_name: str
     description: str
@@ -137,23 +136,23 @@ class MiddlewareRecommendation(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# DraftAgentConfig (Phase 6-7 출력, confirm 입력)
+# DraftAgentConfig（Phase 6-7 输出，confirm 输入）
 # ---------------------------------------------------------------------------
 
 
 class DraftAgentConfig(BaseModel):
-    """빌드 파이프라인 최종 산출물 — 사용자 확인용 에이전트 설정 프리뷰."""
+    """构建 pipeline 的最终产物 — 供用户确认的 Agent 配置 preview。"""
 
     name: str
     description: str
     system_prompt: str
-    tools: list[str] = Field(default_factory=list, description="도구 이름 목록")
+    tools: list[str] = Field(default_factory=list, description="工具名称列表")
     planned_tools: list[dict[str, Any]] = Field(
         default_factory=list, description="尚未连接、可在评测 mock 环境中使用的工具接口"
     )
     generated_skills: list[dict[str, Any]] = Field(default_factory=list)
     capability_reason: str | None = None
-    middlewares: list[str] = Field(default_factory=list, description="미들웨어 이름 목록")
+    middlewares: list[str] = Field(default_factory=list, description="中间件名称列表")
     model_name: str = Field(default="")
     primary_task_type: str = ""
     use_cases: list[str] = Field(default_factory=list)
@@ -166,7 +165,7 @@ class DraftAgentConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Builder SSE 이벤트 데이터
+# Builder SSE 事件数据
 # ---------------------------------------------------------------------------
 
 
@@ -201,15 +200,15 @@ class BuildErrorEvent(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# BuilderState (LangGraph 내부 상태 — TypedDict로 실제 사용, 여기는 문서용)
+# BuilderState（LangGraph 内部状态 — 实际使用 TypedDict，此处仅用于文档）
 # ---------------------------------------------------------------------------
 
 
 class BuilderStateSchema(BaseModel):
-    """LangGraph BuilderState의 Pydantic 미러 (문서/검증용).
+    """LangGraph BuilderState 的 Pydantic 镜像（用于文档/校验）。
 
-    실제 LangGraph에서는 builder/state.py의 TypedDict를 사용한다.
-    이 스키마는 API 테스트와 문서화 목적으로만 사용.
+    实际 LangGraph 使用 builder/state.py 中的 TypedDict。
+    此 schema 仅用于 API 测试与文档化。
     """
 
     user_id: str
@@ -229,5 +228,5 @@ class BuilderStateSchema(BaseModel):
     default_model_name: str = ""
 
 
-# Pydantic v2 모델 재구성 (forward references 해결)
+# 重建 Pydantic v2 模型（解决 forward references）
 BuilderSessionResponse.model_rebuild()

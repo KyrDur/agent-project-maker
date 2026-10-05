@@ -41,7 +41,7 @@ key resolution for builder/assistant sub-agent (provider P):
   4. None                                        ← caller 가 LLM 에러 surface
 ```
 
-**근거**:
+**依据**：
 - ENV 1순위 = backward compat. 기존 `.env`-only 배포 영향 0.
 - System 2순위 = operator-managed 키가 user 키보다 우선. PoC 단계에서 mock user 단일이라 충돌 거의 없으나, 인증 도입 후에도 일관됨.
 - User 3순위 = 사용자 mental model 충족. `/credentials` UI 에 키 등록하면 builder 도 자동 사용.

@@ -6,10 +6,10 @@ import { HiTLContext } from '@/lib/chat/hitl-context'
 import { PlanToolUI } from '../plan-tool-ui'
 import { UserInputUI } from '../user-input-ui'
 
-// M8-4 회귀: 스트리밍 중 tool-call args는 부분 JSON으로 도착한다 — 배열 필드가
-// 문자열/객체 조각인 순간에도 렌더가 호출되므로, 가드가 없으면 실 LLM 경로에서
-// 렌더 크래시(에러 바운더리로 채팅 전체 다운)가 난다. scripted 모델은 완성
-// args만 방출해 이 크래시를 재현하지 못한다 (실 LLM 투어에서 발견).
+// M8-4 regression：流式中 tool-call args 会以部分 JSON 到达 —— 数组字段
+// 即使处于字符串/对象片段状态也会触发 render；若无 guard，真实 LLM 路径中会发生
+// render crash（触发 error boundary，整个聊天挂掉）。scripted 模型只输出完整
+// args，因此无法复现该 crash（在真实 LLM tour 中发现）。
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -26,19 +26,21 @@ type ToolUiRender = {
 const renderPlan = PlanToolUI as unknown as ToolUiRender['render']
 const renderUserInput = UserInputUI as unknown as ToolUiRender['render']
 
-describe('부분 스트리밍 args 방어 (M8-4)', () => {
-  it('write_todos: todos가 문자열 조각이어도 크래시 없이 렌더된다', () => {
+describe('部分流式 args 防护 (M8-4)', () => {
+  it('write_todos: 即使 todos 是字符串片段，也能无 crash 渲染', () => {
     expect(() =>
-      render(<>{renderPlan({ args: { todos: '회의록에서 담' }, status: { type: 'running' } })}</>),
+      render(
+        <>{renderPlan({ args: { todos: '从会议记录中提取' }, status: { type: 'running' } })}</>,
+      ),
     ).not.toThrow()
   })
 
-  it('write_todos: item.status가 부분 문자열이면 pending으로 폴백한다', () => {
+  it('write_todos: item.status 为部分字符串时 fallback 到 pending', () => {
     expect(() =>
       render(
         <>
           {renderPlan({
-            args: { todos: [{ content: '초안 작성', status: 'in_prog' }] },
+            args: { todos: [{ content: '编写草稿', status: 'in_prog' }] },
             status: { type: 'running' },
           })}
         </>,
@@ -46,12 +48,12 @@ describe('부분 스트리밍 args 방어 (M8-4)', () => {
     ).not.toThrow()
   })
 
-  it('write_todos: content 없는 조각 아이템은 걸러진다', () => {
+  it('write_todos: 过滤掉没有 content 的片段 item', () => {
     expect(() =>
       render(
         <>
           {renderPlan({
-            args: { todos: [{}, { content: '검증 실행' }] },
+            args: { todos: [{}, { content: '执行验证' }] },
             status: { type: 'running' },
           })}
         </>,
@@ -63,24 +65,24 @@ describe('부분 스트리밍 args 방어 (M8-4)', () => {
     render(
       <>
         {renderPlan({
-          args: { todos: [{ content: '초안 작성', status: 'in_progress' }] },
+          args: { todos: [{ content: '编写草稿', status: 'in_progress' }] },
           status: { type: 'complete' },
         })}
       </>,
     )
 
-    expect(screen.queryByText('초안 작성')).toBeNull()
+    expect(screen.queryByText('编写草稿')).toBeNull()
     expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('ask_user: questions/options가 문자열 조각이어도 크래시 없이 렌더된다', () => {
+  it('ask_user: 即使 questions/options 是字符串片段，也能无 crash 渲染', () => {
     const hitl = { onResumeDecisions: vi.fn(), registerDecision: vi.fn() }
-    // render fn이 훅을 직접 호출하므로 컴포넌트로 감싸 React render 단계에서 실행.
+    // render fn 会直接调用 hook，因此包成组件，在 React render 阶段执行。
     function AskUserUnderTest() {
       return (
         <>
           {renderUserInput({
-            args: { questions: '어떤 형식', options: '표' },
+            args: { questions: '什么格式', options: '表格' },
             status: { type: 'running' },
           })}
         </>

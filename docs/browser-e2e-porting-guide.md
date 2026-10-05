@@ -1,7 +1,7 @@
-# 실제 브라우저 기반 E2E 도입 가이드
+# 基于真实浏览器的 E2E 引入指南
 
-이 문서는 Moldy의 현재 E2E 구성을 다른 프로젝트로 옮길 때 필요한 것과 작업 순서를
-정리한다. 기준 소스는 다음 파일들이다.
+本文整理将 Moldy 当前的 E2E 配置迁移到其他项目时所需的内容与工作顺序。
+基准来源是以下文件。
 
 - `frontend/playwright.config.ts`
 - `frontend/e2e/global-setup.mjs`
@@ -15,16 +15,16 @@
 - `frontend/.env.example`
 - `frontend/.gitignore`
 
-목표는 단순 DOM 단위 테스트가 아니라, 실제 브라우저에서 실제 dev server를 띄우고,
-로그인된 세션으로 주요 메뉴를 이동하며, 필요하면 화면 이미지를 캡처해 공유할 수
-있는 운영 가능한 E2E 체계를 만드는 것이다.
+目标不是简单的 DOM 单元测试，而是在真实浏览器中启动真实 dev server，
+使用已登录会话在主要菜单间跳转，并在需要时捕获并分享页面图像，
+从而建立一套可运行、可维护的 E2E 体系。
 
 ---
 
-## Moldy의 현재 구조
+## Moldy 当前结构
 
-Moldy는 Playwright를 프론트엔드 패키지에 둔다. `frontend/package.json`에는 아래
-스크립트가 있다.
+Moldy 将 Playwright 放在前端包中。`frontend/package.json` 中有以下
+脚本。
 
 ```json
 {
@@ -33,47 +33,47 @@ Moldy는 Playwright를 프론트엔드 패키지에 둔다. `frontend/package.js
 }
 ```
 
-`frontend/playwright.config.ts`가 테스트 실행 시 서버를 함께 띄운다.
+`frontend/playwright.config.ts` 会在测试执行时一并启动服务器。
 
-- `E2E_FRONTEND_PORT` 기본값은 `3000`
-- `E2E_BACKEND_PORT` 기본값은 `8001`
-- `E2E_BASE_URL` 기본값은 `http://localhost:<frontendPort>`
-- `E2E_API_BASE_URL` 기본값은 `http://localhost:<backendPort>`
-- 백엔드는 `CORS_ALLOWED_ORIGINS`를 현재 frontend origin에 맞춰 실행
-- 프론트엔드는 `NEXT_PUBLIC_API_BASE_URL`을 현재 backend URL에 맞춰 실행
-- `reuseExistingServer: true`라서 이미 켜진 서버가 있으면 재사용
+- `E2E_FRONTEND_PORT` 默认值为 `3000`
+- `E2E_BACKEND_PORT` 默认值为 `8001`
+- `E2E_BASE_URL` 默认值为 `http://localhost:<frontendPort>`
+- `E2E_API_BASE_URL` 默认值为 `http://localhost:<backendPort>`
+- backend 按当前 frontend origin 设置 `CORS_ALLOWED_ORIGINS` 后运行
+- frontend 按当前 backend URL 设置 `NEXT_PUBLIC_API_BASE_URL` 后运行
+- 因为 `reuseExistingServer: true`，若服务器已经启动则复用
 
-핵심은 frontend port, backend port, CORS origin, API base URL을 한 묶음으로
-움직이는 것이다. 이 네 값이 어긋나면 브라우저 쿠키, CSRF, CORS, API 요청이 서로
-다른 서버를 보는 것처럼 실패한다.
+关键是将 frontend port、backend port、CORS origin、API base URL 作为一组
+联动。这四个值一旦不一致，浏览器 cookie、CSRF、CORS、API 请求就会像是
+访问不同服务器一样失败。
 
-`frontend/e2e/global-setup.mjs`는 브라우저마다 로그인 폼을 반복하지 않는다.
-대신 Playwright API client로 한 번 로그인하고, 성공한 cookie storage를
-`frontend/e2e/.auth/user.json`에 저장한다.
+`frontend/e2e/global-setup.mjs` 不会在每个浏览器中重复走登录表单。
+而是通过 Playwright API client 登录一次，并将成功后的 cookie storage
+保存到 `frontend/e2e/.auth/user.json`。
 
-현재 인증 흐름은 다음 순서다.
+当前认证流程顺序如下。
 
 1. `POST /api/auth/login`
-2. 실패하면 `POST /api/auth/register`
-3. `409 Conflict`이면 다시 `POST /api/auth/login`
-4. 성공하면 `api.storageState({ path: authFile })`
-5. Playwright config의 `use.storageState`가 모든 테스트 브라우저에 주입
+2. 失败时 `POST /api/auth/register`
+3. 若为 `409 Conflict`，再次 `POST /api/auth/login`
+4. 成功后执行 `api.storageState({ path: authFile })`
+5. Playwright config 的 `use.storageState` 注入所有测试浏览器
 
-Moldy는 백엔드에도 E2E 계정 bootstrap을 둔다. `backend/app/seed/e2e_user.py`는
-`E2E_SEED_USER_ENABLED=true`일 때 로컬 전용 테스트 사용자를 만들거나 갱신한다.
-단, `APP_ENV=production`이면 항상 스킵한다. 이 계정은 Moldy의 admin 권한이 필요한
-화면까지 검증할 수 있도록 `is_super_user=True`로 생성된다.
+Moldy 在 backend 也提供 E2E 账户 bootstrap。`backend/app/seed/e2e_user.py` 会
+当 `E2E_SEED_USER_ENABLED=true` 时，创建或更新仅用于本地的测试用户。
+但如果 `APP_ENV=production`，则始终 skip。该账户用于验证 Moldy 中需要 admin 权限的
+页面，因此以 `is_super_user=True` 创建。
 
 ---
 
-## 다른 프로젝트에 필요한 구성요소
+## 其他项目所需的组成部分
 
-### 1. 브라우저 테스트 러너
+### 1. 浏览器测试运行器
 
-Moldy는 Playwright를 쓴다. 다른 프로젝트도 실제 브라우저 조작, storage state,
-trace, screenshot, route mocking을 한 번에 쓰려면 Playwright가 가장 단순하다.
+Moldy 使用 Playwright。其他项目如果也要一次性使用真实浏览器操作、storage state、
+trace、screenshot、route mocking，Playwright 是最简单的选择。
 
-필요한 패키지와 스크립트:
+所需包和脚本：
 
 ```bash
 pnpm add -D @playwright/test
@@ -89,10 +89,10 @@ pnpm exec playwright install chromium
 }
 ```
 
-### 2. 서버를 테스트 실행 안에서 띄우는 설정
+### 2. 在测试执行过程中启动服务器的配置
 
-Moldy의 `webServer` 패턴을 옮긴다. 핵심은 테스트 실행자가 frontend와 backend를
-직접 켜는 것이다.
+迁移 Moldy 的 `webServer` 模式。关键是让测试执行器直接启动 frontend 和 backend。
+也就是由测试执行器自行启动它们。
 
 ```ts
 import { defineConfig } from "@playwright/test";
@@ -133,41 +133,41 @@ export default defineConfig({
 });
 ```
 
-대상 프로젝트가 FastAPI/Next.js가 아니어도 원리는 같다.
+即使目标项目不是 FastAPI/Next.js，原理也相同。
 
-- backend command를 그 프로젝트의 API 서버 실행 명령으로 바꾼다.
-- frontend command를 그 프로젝트의 web dev server 명령으로 바꾼다.
-- frontend가 읽는 API URL env 이름을 실제 이름으로 바꾼다.
-- cookie 인증이면 API 서버의 CORS allow credentials 설정과 allowed origins를 맞춘다.
+- 将 backend command 替换为该项目的 API 服务器启动命令。
+- 将 frontend command 替换为该项目的 web dev server 启动命令。
+- 将 frontend 读取的 API URL env 名称替换为实际名称。
+- 如果使用 cookie 认证，则对齐 API 服务器的 CORS allow credentials 配置与 allowed origins。
 
-### 3. 로컬 E2E 전용 계정
+### 3. 本地 E2E 专用账户
 
-테스트가 로그인 화면을 실제로 지나가거나 API login을 하려면 예측 가능한 계정이
-필요하다. Moldy는 두 겹으로 처리한다.
+如果测试需要实际经过登录页面或执行 API login，就需要一个可预测的账户。
+Moldy 通过双重方式处理。
 
-첫 번째는 백엔드 seed다.
+第一层是 backend seed。
 
 - env: `E2E_SEED_USER_ENABLED`
 - env: `E2E_USER_EMAIL`
 - env: `E2E_USER_PASSWORD`
 - env: `E2E_USER_NAME`
-- production에서는 무조건 skip
-- 기존 계정이 있으면 이름, 활성 상태, 권한, 비밀번호를 갱신
+- 在 production 中无条件 skip
+- 如果已有账户，则更新姓名、激活状态、权限和密码
 
-두 번째는 Playwright global setup의 register fallback이다. seed가 아직 실행되지
-않았거나 새 DB인 경우에도 테스트가 스스로 계정을 만들 수 있다.
+第二层是 Playwright global setup 的 register fallback。如果 seed 尚未执行
+或使用的是新 DB，测试也可以自行创建账户。
 
-다른 프로젝트에도 아래 원칙을 적용한다.
+其他项目也应应用以下原则。
 
-- 테스트 계정은 실제 사용자 계정과 분리한다.
-- production/staging 공유 계정 비밀번호를 git에 넣지 않는다.
-- production boot에서는 테스트 계정 자동 생성을 차단한다.
-- admin 화면까지 돌려야 한다면 테스트 계정 권한을 명시적으로 올린다.
-- 테스트가 만든 데이터는 테스트 종료 후 삭제하거나 고유 prefix를 붙인다.
+- 测试账户与真实用户账户分离。
+- 不要把 production/staging 共享账户密码写入 git。
+- 在 production boot 中阻止自动创建测试账户。
+- 如果需要跑到 admin 页面，则显式提升测试账户权限。
+- 测试生成的数据在测试结束后删除，或加上唯一 prefix。
 
-### 4. 로그인 storage state
+### 4. 登录 storage state
 
-Moldy의 `global-setup.mjs` 패턴은 거의 그대로 재사용할 수 있다.
+Moldy 的 `global-setup.mjs` 模式几乎可以原样复用。
 
 ```js
 import { request } from "@playwright/test";
@@ -220,23 +220,23 @@ export default async function globalSetup() {
 }
 ```
 
-프로젝트별로 바꿀 부분:
+各项目需要修改的部分：
 
 - login endpoint
 - register endpoint
 - request body shape
-- CSRF token이 response body가 아닌 cookie/header로 오는 경우 처리
-- MFA, OAuth, SSO처럼 API login이 어려운 인증 방식이면 테스트용 password login 또는
-  test-only session mint endpoint를 별도로 둔다.
+- 如果 CSRF token 不是通过 response body，而是通过 cookie/header 返回，则相应处理
+- 如果使用 MFA、OAuth、SSO 等难以通过 API login 的认证方式，则提供测试用 password login，或
+  单独提供 test-only session mint endpoint。
 
-### 5. 공통 fixture
+### 5. 公共 fixture
 
-Moldy의 `frontend/e2e/fixtures.ts`는 두 가지를 한다.
+Moldy 的 `frontend/e2e/fixtures.ts` 做两件事。
 
-- `PW_SKIP_BACKEND=1`일 때 `/api/auth/me`를 mock해서 로그인 상태처럼 보이게 한다.
-- console error, page exception, request failure를 수집하고 테스트 끝에서 검증한다.
+- 当 `PW_SKIP_BACKEND=1` 时，mock `/api/auth/me`，让页面看起来处于登录状态。
+- 收集 console error、page exception、request failure，并在测试结束时验证。
 
-다른 프로젝트에도 최소한 아래 fixture를 둔다.
+其他项目至少也应提供以下 fixture。
 
 ```ts
 import { test as base, expect } from "@playwright/test";
@@ -268,15 +268,15 @@ export const test = base.extend<{ errors: ErrorCollector }>({
 export { expect };
 ```
 
-실제 프로젝트에서는 favicon, devtools 안내, analytics 차단처럼 알려진 benign error만
-좁게 무시한다.
+实际项目中，仅狭义忽略 favicon、devtools 提示、analytics 屏蔽等已知 benign error。
+只应窄范围忽略这些错误。
 
 ### 6. smoke spec
 
-Moldy의 `frontend/e2e/smoke.spec.ts`는 가장 중요한 메뉴와 dialog가 깨지지 않는지
-넓게 확인한다.
+Moldy 的 `frontend/e2e/smoke.spec.ts` 会广泛检查最重要的菜单和 dialog 是否正常。
+进行较宽范围的检查。
 
-현재 Moldy smoke는 다음을 포함한다.
+当前 Moldy smoke 包括以下内容。
 
 - `/` dashboard
 - `/agents/new`
@@ -284,16 +284,16 @@ Moldy의 `frontend/e2e/smoke.spec.ts`는 가장 중요한 메뉴와 dialog가 �
 - `/tools`
 - `/models`
 - `/usage`
-- agent 생성 후 chat/settings/redirect 확인
-- 모델 추가 dialog
-- 도구 생성 dialog
-- 사전 구성 도구 credential dialog
-- agent 삭제 confirmation dialog
-- 대화형 agent 생성 화면
+- 创建 agent 后检查 chat/settings/redirect
+- 添加模型 dialog
+- 创建工具 dialog
+- 预配置工具 credential dialog
+- 删除 agent confirmation dialog
+- 对话式 agent 创建页面
 
-다른 프로젝트의 첫 E2E도 이 정도의 “메뉴 순회 smoke”부터 시작한다.
+其他项目的首批 E2E 也应从这种程度的“菜单遍历 smoke”开始。
 
-권장 패턴:
+推荐模式：
 
 ```ts
 import { test, expect } from "./fixtures";
@@ -322,58 +322,58 @@ test.describe("Smoke", () => {
 });
 ```
 
-셀렉터 원칙:
+选择器原则：
 
-- `getByRole`, `getByLabel`, `getByPlaceholder`를 우선 사용한다.
-- 복잡한 컴포넌트에는 안정적인 `data-testid`를 추가한다.
-- CSS class selector는 레이아웃 구현에 묶이므로 마지막 수단으로 둔다.
-- E2E 검증 문구가 i18n에 따라 바뀌는 프로젝트는 locale을 고정하거나 key에 가까운
-  접근성 label을 사용한다.
+- 优先使用 `getByRole`、`getByLabel`、`getByPlaceholder`。
+- 对复杂组件添加稳定的 `data-testid`。
+- CSS class selector 与布局实现绑定，因此仅作为最后手段。
+- 对于 E2E 验证文案会随 i18n 变化的项目，固定 locale，或使用更接近 key 的
+  可访问性 label。
 
-### 7. 실제 backend와 mock-only 모드 분리
+### 7. 区分真实 backend 与 mock-only 模式
 
-Moldy는 두 모드를 모두 지원한다.
+Moldy 同时支持两种模式。
 
-실제 backend 모드:
+真实 backend 模式：
 
-- 기본값
-- FastAPI와 Next.js를 둘 다 실행
-- login storage state가 실제 cookie를 가진다.
-- smoke, 동적 페이지, CRUD 흐름 검증에 사용
+- 默认值
+- 同时运行 FastAPI 和 Next.js
+- login storage state 持有真实 cookie。
+- 用于验证 smoke、动态页面和 CRUD 流程
 
-mock-only 모드:
+mock-only 模式：
 
 - `PW_SKIP_BACKEND=1`
-- 백엔드를 띄우지 않는다.
-- 모든 `/api/*` 요청을 `page.route`로 mock해야 한다.
-- UI 상태, dialog, table, chart처럼 backend 안정성에 의존하지 않는 화면 검증에 사용
+- 不启动 backend。
+- 所有 `/api/*` 请求都必须用 `page.route` mock。
+- 用于验证 UI 状态、dialog、table、chart 等不依赖 backend 稳定性的页面
 
-Moldy 예시:
+Moldy 示例：
 
-- `credentials.spec.ts`: credential catalog/create API를 route mock
-- `mcp-server-wizard.spec.ts`: MCP probe/discover API를 route mock
-- `health-check.spec.ts`: model health API와 history API를 route mock
-- `model-test.spec.ts`: provider test success/auth error 응답을 route mock
+- `credentials.spec.ts`：对 credential catalog/create API 进行 route mock
+- `mcp-server-wizard.spec.ts`：对 MCP probe/discover API 进行 route mock
+- `health-check.spec.ts`：对 model health API 和 history API 进行 route mock
+- `model-test.spec.ts`：对 provider test success/auth error 响应进行 route mock
 
-다른 프로젝트에도 규칙을 명확히 둔다.
+其他项目也要明确制定规则。
 
-- smoke와 핵심 사용자 journey는 실제 backend로 돌린다.
-- 외부 API, 결제, LLM, OAuth, webhook처럼 불안정하거나 비용이 드는 경계는 mock한다.
-- `PW_SKIP_BACKEND=1`로 돌릴 수 있는 spec은 모든 API를 명시적으로 mock한다.
-- 실제 backend가 필요한 spec은 `test.skip(process.env.PW_SKIP_BACKEND === '1', ...)`를 둔다.
+- smoke 和核心用户 journey 使用真实 backend 运行。
+- 外部 API、支付、LLM、OAuth、webhook 等不稳定或会产生成本的边界使用 mock。
+- 可在 `PW_SKIP_BACKEND=1` 下运行的 spec，必须显式 mock 所有 API。
+- 需要真实 backend 的 spec 使用 `test.skip(process.env.PW_SKIP_BACKEND === '1', ...)`。
 
-### 8. CSRF와 상태 변경 API
+### 8. CSRF 与状态变更 API
 
-Moldy는 HttpOnly cookie + CSRF double-submit을 쓰기 때문에, Playwright request로
-테스트 데이터를 만들 때 CSRF header가 필요하다.
+Moldy 使用 HttpOnly cookie + CSRF double-submit，因此通过 Playwright request
+创建测试数据时需要 CSRF header。
 
-`frontend/e2e/smoke.spec.ts`의 `loginApi()`는 다음 흐름을 가진다.
+`frontend/e2e/smoke.spec.ts` 中的 `loginApi()` 流程如下。
 
 1. `POST /api/auth/login`
-2. 응답 body의 `csrf_token` 추출
-3. 상태 변경 요청에 `X-CSRF-Token` header 추가
+2. 从响应 body 中提取 `csrf_token`
+3. 在状态变更请求中添加 `X-CSRF-Token` header
 
-다른 프로젝트에서 cookie 인증과 CSRF를 쓰면 이 헬퍼를 먼저 만든다.
+如果其他项目使用 cookie 认证和 CSRF，应先创建这个 helper。
 
 ```ts
 async function loginApi(request) {
@@ -386,40 +386,40 @@ async function loginApi(request) {
 }
 ```
 
-Bearer token 인증 프로젝트라면 같은 자리에 `Authorization: Bearer <token>`을
-반환하면 된다.
+如果项目使用 Bearer token 认证，则在同一位置返回 `Authorization: Bearer <token>`
+即可。
 
-### 9. 테스트 데이터 생성과 정리
+### 9. 测试数据创建与清理
 
-Moldy smoke는 동적 페이지 검증을 위해 API로 agent와 conversation을 만든 뒤,
-`afterAll`에서 agent를 삭제한다.
+Moldy smoke 为验证动态页面，会先通过 API 创建 agent 和 conversation，
+然后在 `afterAll` 中删除 agent。
 
-다른 프로젝트에도 다음 규칙을 둔다.
+其他项目也应遵循以下规则。
 
-- UI로 만들 필요가 없는 전제 데이터는 API로 만든다.
-- 사용자가 실제로 밟아야 하는 핵심 flow만 UI로 만든다.
-- 데이터 이름에는 `E2E` prefix를 붙인다.
-- 테스트가 생성한 데이터 id를 저장하고 `afterAll` 또는 teardown에서 삭제한다.
-- 실패 시에도 재실행 가능한 idempotent setup을 선호한다.
+- 不需要通过 UI 创建的前置数据，用 API 创建。
+- 只有用户实际必须走过的核心 flow 才通过 UI 创建。
+- 数据名称加上 `E2E` prefix。
+- 保存测试生成的数据 id，并在 `afterAll` 或 teardown 中删除。
+- 即使失败也优先采用可重新执行的 idempotent setup。
 
-### 10. 화면 캡처 산출물
+### 10. 页面截图产物
 
-Moldy의 repo 규칙은 E2E 산출물을 repo root에 흩뿌리지 않고 아래 경로에 모으는 것이다.
+Moldy 的 repo 规则是不把 E2E 产物散落在 repo root，而是集中到以下路径。
 
 ```text
 output/e2e-captures/<YYYYMMDD>-<feature>/
 ```
 
-`output/`은 `.gitignore`에 포함되어 있다. Playwright 자체 산출물도
-`frontend/.gitignore`에서 제외한다.
+`output/` 已包含在 `.gitignore` 中。Playwright 自身的产物也
+在 `frontend/.gitignore` 中排除。
 
 - `frontend/e2e/.auth/`
 - `frontend/test-results/`
 - `frontend/playwright-report/`
 
-다른 프로젝트에도 같은 규칙을 둔다.
+其他项目也应采用相同规则。
 
-캡처용 helper 예시:
+截图用 helper 示例：
 
 ```ts
 import fs from "node:fs/promises";
@@ -442,24 +442,24 @@ export async function capturePage(page, feature, name) {
 }
 ```
 
-운영 규칙:
+运维规则：
 
-- 캡처 전에 로그인 계정과 화면 상태가 맞는지 확인한다.
-- secret 화면은 실제 secret 대신 더미 값을 사용한다.
-- 캡처 후 `file output/e2e-captures/.../*.png`로 실제 PNG와 해상도를 확인한다.
-- 사람에게 공유하기 전 직접 열어 텍스트 잘림, 빈 화면, 깨진 이미지가 없는지 확인한다.
-- trace/video/raw capture도 같은 feature directory 아래에 모은다.
+- 截图前确认登录账户和页面状态正确。
+- secret 页面使用 dummy 值代替真实 secret。
+- 截图后用 `file output/e2e-captures/.../*.png` 确认实际 PNG 与分辨率。
+- 分享给他人前亲自打开检查，确认没有文字裁切、空白页面或破损图片。
+- trace/video/raw capture 也统一放在同一 feature directory 下。
 
-### 11. CI와 로컬 명령
+### 11. CI 与本地命令
 
-로컬 기본 명령:
+本地基础命令：
 
 ```bash
 cd frontend
 pnpm test:e2e
 ```
 
-포트 충돌이 있거나 여러 worktree를 동시에 돌리는 경우:
+端口冲突或同时运行多个 worktree 时：
 
 ```bash
 cd frontend
@@ -470,97 +470,97 @@ E2E_API_BASE_URL=http://localhost:8010 \
 pnpm test:e2e
 ```
 
-mock-only spec만 지정해서 돌리는 경우:
+仅指定 mock-only spec 运行时：
 
 ```bash
 cd frontend
 PW_SKIP_BACKEND=1 pnpm exec playwright test e2e/credentials.spec.ts
 ```
 
-CI에서는 다음을 추가로 고정한다.
+CI 中还需额外固定以下内容。
 
-- DB service 또는 test database
-- migration 실행
-- E2E env 값
+- DB service 或 test database
+- 执行 migration
+- E2E env 值
 - Playwright browser install cache
 - test result, trace, screenshot artifact upload
-- worker 수 제한: `E2E_WORKERS=1` 또는 작은 값부터 시작
+- 限制 worker 数量：`E2E_WORKERS=1`，或从较小值开始
 
 ---
 
-## 이식 체크리스트
+## 迁移检查清单
 
 ### Backend
 
-- [ ] test database를 띄우는 명령이 있다.
-- [ ] migration을 테스트 전에 실행할 수 있다.
-- [ ] 로컬 E2E 계정 seed가 있다.
-- [ ] production에서는 E2E seed가 무조건 비활성화된다.
-- [ ] cookie 인증이면 CORS allow credentials와 allowed origins가 명확하다.
-- [ ] CSRF가 있으면 테스트용 header helper가 있다.
-- [ ] 테스트 데이터 cleanup API 또는 seed reset 방법이 있다.
+- [ ] 有启动 test database 的命令。
+- [ ] 可以在测试前执行 migration。
+- [ ] 有本地 E2E 账户 seed。
+- [ ] 在 production 中 E2E seed 必须无条件禁用。
+- [ ] 若使用 cookie 认证，CORS allow credentials 与 allowed origins 明确。
+- [ ] 若有 CSRF，提供测试用 header helper。
+- [ ] 有测试数据 cleanup API 或 seed reset 方法。
 
 ### Frontend
 
-- [ ] Playwright가 설치되어 있다.
-- [ ] `test:e2e`, `test:e2e:ui` 스크립트가 있다.
-- [ ] `playwright.config.ts`가 frontend/backend 서버를 함께 띄운다.
-- [ ] frontend API base URL env가 테스트 backend port를 본다.
-- [ ] `globalSetup`이 login/register fallback 후 storage state를 저장한다.
-- [ ] `.auth/`, `test-results/`, `playwright-report/`가 gitignore에 있다.
-- [ ] 공통 fixture가 console/page/network error를 수집한다.
+- [ ] 已安装 Playwright。
+- [ ] 有 `test:e2e`、`test:e2e:ui` 脚本。
+- [ ] `playwright.config.ts` 会同时启动 frontend/backend 服务器。
+- [ ] frontend API base URL env 指向测试 backend port。
+- [ ] `globalSetup` 在 login/register fallback 后保存 storage state。
+- [ ] `.auth/`、`test-results/`、`playwright-report/` 已加入 gitignore。
+- [ ] 公共 fixture 会收集 console/page/network error。
 
 ### Spec
 
-- [ ] dashboard 또는 home route smoke가 있다.
-- [ ] 주요 메뉴 route smoke가 있다.
-- [ ] 최소 1개 dialog/open-close smoke가 있다.
-- [ ] 실제 backend가 필요한 CRUD journey가 1개 이상 있다.
-- [ ] 외부 API 또는 비용 발생 경계는 route mock spec으로 분리되어 있다.
-- [ ] `PW_SKIP_BACKEND=1` 모드에서 mock-only spec이 돌아간다.
-- [ ] 주요 셀렉터가 role/label/testid 기반이다.
+- [ ] 有 dashboard 或 home route smoke。
+- [ ] 有主要菜单 route smoke。
+- [ ] 至少有 1 个 dialog/open-close smoke。
+- [ ] 至少有 1 个需要真实 backend 的 CRUD journey。
+- [ ] 外部 API 或产生成本的边界已拆分为 route mock spec。
+- [ ] mock-only spec 可在 `PW_SKIP_BACKEND=1` 模式下运行。
+- [ ] 主要 selector 基于 role/label/testid。
 
 ### Capture
 
-- [ ] screenshot/video/trace 저장 경로가 정해져 있다.
-- [ ] 저장 경로가 gitignore에 있다.
-- [ ] 캡처 전에 더미 secret만 사용한다.
-- [ ] 공유 전 PNG 파일 여부와 해상도를 확인한다.
-- [ ] 공유 전 이미지를 직접 열어 UI가 깨지지 않았는지 확인한다.
+- [ ] 已确定 screenshot/video/trace 保存路径。
+- [ ] 保存路径已加入 gitignore。
+- [ ] 截图前只使用 dummy secret。
+- [ ] 分享前确认文件确实是 PNG 并检查分辨率。
+- [ ] 分享前亲自打开图片，确认 UI 没有损坏。
 
 ---
 
-## 권장 도입 순서
+## 推荐引入顺序
 
-1. Playwright 설치와 `test:e2e` 스크립트를 추가한다.
-2. frontend만 띄워 정적 smoke 한 개를 통과시킨다.
-3. backend webServer를 붙이고 CORS/API base URL을 맞춘다.
-4. E2E 계정 seed와 `globalSetup` storage state를 추가한다.
-5. 로그인된 dashboard smoke를 통과시킨다.
-6. 주요 메뉴 smoke를 5~10개 추가한다.
-7. API setup + UI 검증이 섞인 실제 CRUD journey를 1개 추가한다.
-8. 외부 API가 필요한 화면은 route mock spec으로 분리한다.
-9. 캡처 helper와 `output/e2e-captures/` 규칙을 추가한다.
-10. CI artifact로 Playwright report, trace, screenshot을 올린다.
+1. 安装 Playwright 并添加 `test:e2e` 脚本。
+2. 只启动 frontend，先通过一个静态 smoke。
+3. 接入 backend webServer，并对齐 CORS/API base URL。
+4. 添加 E2E 账户 seed 与 `globalSetup` storage state。
+5. 通过已登录的 dashboard smoke。
+6. 添加 5~10 个主要菜单 smoke。
+7. 添加 1 个混合 API setup + UI 验证的真实 CRUD journey。
+8. 对需要外部 API 的页面拆分为 route mock spec。
+9. 添加截图 helper 与 `output/e2e-captures/` 规则。
+10. 将 Playwright report、trace、screenshot 作为 CI artifact 上传。
 
-이 순서로 가면 처음부터 모든 기능을 E2E로 덮으려다 느려지는 일을 피하면서도,
-"서버가 실제로 뜨고, 로그인되고, 브라우저에서 핵심 메뉴가 깨지지 않는다"는 신호를
-빠르게 얻을 수 있다.
+按这个顺序推进，可以避免一开始就试图用 E2E 覆盖所有功能而导致进展缓慢，同时
+能够快速获得“服务器能真实启动、可以登录、浏览器中的核心菜单不会损坏”这一
+信号。
 
 ---
 
-## Moldy에서 배울 점
+## 可以从 Moldy 学到的点
 
-- 로그인은 매 테스트마다 UI로 반복하지 않고 `storageState`로 공유한다.
-- 실제 backend smoke와 route mock spec을 분리한다.
-- port, CORS, API base URL은 한 세트로 다룬다.
-- 테스트 계정은 backend seed와 Playwright register fallback으로 이중 안전망을 둔다.
-- production에서는 테스트 seed를 강제로 막는다.
-- 상태 변경 API는 CSRF/auth helper를 만들어 재사용한다.
-- E2E 산출물은 정해진 ignored directory에 모은다.
-- 화면 검증은 role/label/testid 기반으로 작성한다.
+- 登录不在每个测试中重复走 UI，而是通过 `storageState` 共享。
+- 将真实 backend smoke 与 route mock spec 分离。
+- port、CORS、API base URL 作为一组处理。
+- 测试账户通过 backend seed 与 Playwright register fallback 构成双重安全网。
+- production 中强制阻止测试 seed。
+- 对状态变更 API 创建可复用的 CSRF/auth helper。
+- E2E 产物统一收集到指定的 ignored directory。
+- 页面验证基于 role/label/testid 编写。
 
-이 구성을 다른 프로젝트에 옮길 때 가장 먼저 복제할 파일은
-`playwright.config.ts`, `global-setup.mjs`, `fixtures.ts`, `smoke.spec.ts` 네 개다.
-그 다음 프로젝트의 인증 방식과 서버 실행 방식에 맞춰 backend seed, env, cleanup
-흐름을 붙이면 된다.
+将这套配置迁移到其他项目时，最先应复制的文件是
+`playwright.config.ts`、`global-setup.mjs`、`fixtures.ts`、`smoke.spec.ts` 这四个。
+之后再根据项目的认证方式和服务器启动方式接入 backend seed、env、cleanup
+流程即可。

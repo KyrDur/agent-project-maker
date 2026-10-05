@@ -37,8 +37,8 @@ const researcherSnapshot = {
   parentId: null,
   depth: 0,
   status: 'complete',
-  taskInput: '시장 자료를 조사해줘',
-  output: '조사 완료',
+  taskInput: '帮我调研市场资料',
+  output: '调研完成',
   error: undefined,
   startedAt: new Date('2026-06-13T00:00:00Z'),
   completedAt: new Date('2026-06-13T00:01:00Z'),
@@ -62,7 +62,7 @@ describe('SubagentCard', () => {
     getDefaultStore().set(chatSubagentNamesAtom, {})
     mocks.useSubagentSnapshot.mockReturnValue(researcherSnapshot)
     mocks.useSubagentStream.mockReturnValue(streamToken)
-    mocks.useMessages.mockReturnValue([new AIMessage('세부 메시지')])
+    mocks.useMessages.mockReturnValue([new AIMessage('详细消息')])
     mocks.useToolCalls.mockReturnValue([])
     mocks.useSubagentInlinePolicy.mockReturnValue({
       defaultExpanded: false,
@@ -75,7 +75,7 @@ describe('SubagentCard', () => {
     renderCard()
 
     expect(screen.getByText('researcher')).toBeInTheDocument()
-    expect(screen.queryByText('세부 메시지')).not.toBeInTheDocument()
+    expect(screen.queryByText('详细消息')).not.toBeInTheDocument()
     expect(mocks.useMessages).not.toHaveBeenCalled()
     expect(mocks.useToolCalls).not.toHaveBeenCalled()
   })
@@ -101,7 +101,7 @@ describe('SubagentCard', () => {
       completedAt: null,
       output: undefined,
     })
-    expect(screen.getByText('세부 메시지')).toBeInTheDocument()
+    expect(screen.getByText('详细消息')).toBeInTheDocument()
   })
 
   it('redacts private reasoning parts from expanded scoped messages', () => {
@@ -119,17 +119,17 @@ describe('SubagentCard', () => {
     mocks.useMessages.mockReturnValue([
       new AIMessage({
         content: [
-          { type: 'text', text: '보이는 세부 메시지' },
+          { type: 'text', text: '可见的详细消息' },
           { type: 'reasoning', text: 'hidden chain' },
           { type: 'thinking', text: 'private thought' },
-          { type: 'text', reasoning: 'raw private reason', text: '안전한 후속 메시지' },
+          { type: 'text', reasoning: 'raw private reason', text: '安全的后续消息' },
         ],
       }),
     ])
 
     renderCard()
 
-    expect(screen.getByText('보이는 세부 메시지안전한 후속 메시지')).toBeInTheDocument()
+    expect(screen.getByText('可见的详细消息安全的后续消息')).toBeInTheDocument()
     expect(screen.queryByText(/hidden chain/)).not.toBeInTheDocument()
     expect(screen.queryByText(/private thought/)).not.toBeInTheDocument()
     expect(screen.queryByText(/raw private reason/)).not.toBeInTheDocument()
@@ -151,19 +151,19 @@ describe('SubagentCard', () => {
     renderCard()
 
     expect(screen.getByText('researcher')).toBeInTheDocument()
-    expect(screen.queryByText('세부 메시지')).not.toBeInTheDocument()
+    expect(screen.queryByText('详细消息')).not.toBeInTheDocument()
     expect(mocks.useMessages).not.toHaveBeenCalled()
     expect(mocks.useToolCalls).not.toHaveBeenCalled()
   })
 
   it('substitutes the runtime name with the conversation display name when mapped', () => {
     getDefaultStore().set(chatSubagentNamesAtom, {
-      'conversation-1': { researcher: '리서치 봇' },
+      'conversation-1': { researcher: '调研机器人' },
     })
 
     renderCard()
 
-    expect(screen.getByText('리서치 봇')).toBeInTheDocument()
+    expect(screen.getByText('调研机器人')).toBeInTheDocument()
     expect(screen.queryByText('researcher')).not.toBeInTheDocument()
   })
 

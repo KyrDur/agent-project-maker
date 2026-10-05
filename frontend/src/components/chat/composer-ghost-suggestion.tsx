@@ -3,14 +3,14 @@
 import { useTranslations } from 'next-intl'
 
 /**
- * Follow-up 고스트 — 빈 컴포저 위에 제안 1개를 placeholder처럼 연하게 띄운다
- * (fish autosuggestion). 타이핑이 시작되면 부모(ThreadComposer)가 컴포저
- * 비어있음 조건으로 자동 숨기므로 이 컴포넌트는 표시만 담당한다.
+ * Follow-up ghost —— 在空 composer 上方以 placeholder 风格浅色显示 1 条建议
+ * (fish autosuggestion)。开始输入后，父级(ThreadComposer)会根据 composer
+ * 为空的条件自动隐藏，因此该组件只负责显示。
  *
- * 텍스트 부분만 클릭 가능(pointer-events-auto) — → 키가 없는 터치 환경의
- * 수락 경로. 나머지 영역 클릭은 textarea 포커스로 그대로 통과한다.
- * 스크린리더에는 버튼 레이블로 제안 전문이 전달되고, 시각 장식(키캡 힌트)은
- * aria-hidden 처리한다.
+ * 仅文本部分可点击(pointer-events-auto) —— 作为没有 → 键的触屏环境接受路径。
+ * 其余区域点击仍直接传递给 textarea focus。
+ * 屏幕阅读器会通过按钮 label 读出完整建议，视觉装饰（键帽提示）
+ * 设为 aria-hidden。
  */
 export function ComposerGhostSuggestion({
   text,

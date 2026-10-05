@@ -33,7 +33,7 @@ function snapshot(overrides: Partial<SubagentDiscoverySnapshot>): SubagentDiscov
     parentId: null,
     depth: 0,
     status: 'running',
-    taskInput: '리서치 해줘',
+    taskInput: '帮我调研',
     output: undefined,
     error: undefined,
     startedAt: new Date('2026-07-04T00:00:00Z'),
@@ -56,13 +56,13 @@ function renderStrip(store = createStore(), conversationId: string | null = 'con
 }
 
 describe('SubagentTeamStrip', () => {
-  it('스냅샷이 없으면 렌더하지 않는다', () => {
+  it('没有快照时不渲染', () => {
     snapshotsMock.current = []
     const { container } = renderStrip()
     expect(container.querySelector('[data-moldy-team-strip]')).toBeNull()
   })
 
-  it('서브에이전트 칩을 상태 dot과 함께 렌더하고 진행 메타를 보여준다', () => {
+  it('将子 Agent chip 与状态 dot 一起渲染，并显示进度 meta', () => {
     snapshotsMock.current = [
       snapshot({ id: 'c1', name: 'agent_a', status: 'running' }),
       snapshot({ id: 'c2', name: 'agent_b', status: 'complete', completedAt: new Date() }),
@@ -70,13 +70,13 @@ describe('SubagentTeamStrip', () => {
     renderStrip()
     expect(screen.getByText('agent_a')).toBeInTheDocument()
     expect(screen.getByText('agent_b')).toBeInTheDocument()
-    // 진행 중이 있으면 runningMeta 우선.
+    // 有进行中项时优先 runningMeta。
     expect(screen.getByText('runningMeta(1)')).toBeInTheDocument()
     expect(document.querySelector('[data-moldy-team-chip="running"]')).not.toBeNull()
     expect(document.querySelector('[data-moldy-team-chip="complete"]')).not.toBeNull()
   })
 
-  it('모두 종료되면 done/total 메타를 보여준다', () => {
+  it('全部结束后显示 done/total meta', () => {
     snapshotsMock.current = [
       snapshot({ id: 'c1', status: 'complete' }),
       snapshot({ id: 'c2', status: 'error', error: 'boom' }),
@@ -85,18 +85,18 @@ describe('SubagentTeamStrip', () => {
     expect(screen.getByText('doneMeta(2/2)')).toBeInTheDocument()
   })
 
-  it('표시명 맵이 있으면 runtime_name을 display_name으로 치환한다', () => {
+  it('有显示名 map 时，将 runtime_name 替换为 display_name', () => {
     snapshotsMock.current = [snapshot({ id: 'c1', name: 'agent_ab12cd34' })]
     const store = createStore()
-    store.set(chatSubagentNamesAtom, { 'conv-1': { agent_ab12cd34: '리서처' } })
+    store.set(chatSubagentNamesAtom, { 'conv-1': { agent_ab12cd34: '调研员' } })
     renderStrip(store)
-    expect(screen.getByText('리서처')).toBeInTheDocument()
+    expect(screen.getByText('调研员')).toBeInTheDocument()
     expect(screen.queryByText('agent_ab12cd34')).not.toBeInTheDocument()
   })
 
-  it('칩 클릭 시 우측 레일 subagent 패널을 연다', async () => {
+  it('点击 chip 时打开右侧 rail 的 subagent 面板', async () => {
     const user = userEvent.setup()
-    snapshotsMock.current = [snapshot({ id: 'call-9', name: 'agent_x', taskInput: '작업 입력' })]
+    snapshotsMock.current = [snapshot({ id: 'call-9', name: 'agent_x', taskInput: '任务输入' })]
     const store = createStore()
     renderStrip(store)
     await user.click(screen.getByText('agent_x'))
@@ -106,12 +106,12 @@ describe('SubagentTeamStrip', () => {
         conversationId: 'conv-1',
         toolCallId: 'call-9',
         agentName: 'agent_x',
-        input: '작업 입력',
+        input: '任务输入',
       },
     })
   })
 
-  it('서브의 서브(depth≥2)만 ↳ 마커를 붙인다 — 직접 위임(depth 1)은 마커 없음', () => {
+  it('只有子级的子级(depth≥2)才加 ↳ 标记 —— 直接委派(depth 1)不加标记', () => {
     snapshotsMock.current = [
       snapshot({ id: 'c1', name: 'agent_parent', depth: 1 }),
       snapshot({ id: 'c2', name: 'agent_child', parentId: 'c1', depth: 2 }),

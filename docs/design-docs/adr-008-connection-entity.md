@@ -119,7 +119,7 @@ if link.connection_id is not None:
 
 **유저 도구 실행 경로에선 env fallback 제거**. `settings.naver_*` 등을 credential 해석 시점에 읽지 않는다.
 
-**근거**:
+**依据**：
 - env 키는 개인 귀속이 안 되어 감사/비용 배분 불가
 - "마법처럼 동작"하다 env 제거 시 갑자기 깨지는 은닉 버그 발생
 - 멀티 유저 인증 도입 후에도 env를 모든 유저의 암묵적 기본값으로 두는 건 보안 원칙 위반

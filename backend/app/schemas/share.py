@@ -39,8 +39,8 @@ class SharedAgentBrief(BaseModel):
 class SharedConversationView(BaseModel):
     """Public read-only conversation snapshot returned by ``/api/shares/{token}``.
 
-    ``traces`` (W6): turn별 SSE event 시퀀스. 공개 페이지에서 도구/Skill 칩
-    렌더에 사용된다. 빈 배열이면 trace가 없는 (W5 머지 이전에 만들어진) 대화.
+    ``traces``（W6）：按 turn 的 SSE event 序列。用于公开页面渲染工具/Skill chip。
+    若为空数组，则表示该对话没有 trace（在 W5 merge 之前创建）。
     """
 
     share_token: str

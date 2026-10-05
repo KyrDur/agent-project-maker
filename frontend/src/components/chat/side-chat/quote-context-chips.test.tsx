@@ -14,7 +14,7 @@ function Harness() {
       id: '11111111-1111-4111-8111-111111111111',
       message_id: 'm1',
       message_role: 'assistant',
-      quote: '원문 일부',
+      quote: '原文片段',
       label: '来源对话',
     },
   ])
@@ -35,13 +35,13 @@ describe('quote chip preview and editor', () => {
     await user.hover(chip)
     await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('assistantMessage'))
     await user.click(chip)
-    await user.type(screen.getByRole('textbox', { name: 'comment' }), '내 의견')
+    await user.type(screen.getByRole('textbox', { name: 'comment' }), '我的意见')
     await user.click(screen.getByRole('button', { name: 'saveComment' }))
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: 'saveComment' })).not.toBeInTheDocument(),
     )
     await user.hover(chip)
-    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('내 의견'))
+    await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent('我的意见'))
     expect(screen.getByRole('tooltip')).toHaveTextContent('来源对话')
   })
 })

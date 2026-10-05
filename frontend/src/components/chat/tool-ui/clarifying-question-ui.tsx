@@ -67,7 +67,7 @@ export function ClarifyingQuestionUI({
     (Array.isArray(parsed?.options) ? parsed.options : undefined) ??
     ([args?.option_1, args?.option_2, args?.option_3, directInputLabel].filter(Boolean) as string[])
 
-  // 카드 인스턴스별 안정 키 — args.approval_id 우선, 없으면 마운트 시 생성
+  // 每个卡片实例的稳定 key —— 优先 args.approval_id，没有则 mount 时生成
   const fallbackId = useId()
   const approvalId = args?.approval_id ?? `clarifying-${fallbackId}`
 

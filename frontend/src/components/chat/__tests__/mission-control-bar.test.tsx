@@ -10,36 +10,36 @@ vi.mock('next-intl', () => ({
 }))
 
 const TODOS: readonly DeepAgentTodo[] = [
-  { id: 't1', content: '저장소 구조 조사', status: 'completed' },
-  { id: 't2', content: 'quickstart.md 작성', status: 'in_progress' },
-  { id: 't3', content: '위키 게시', status: 'pending' },
+  { id: 't1', content: '调查仓库结构', status: 'completed' },
+  { id: 't2', content: '编写 quickstart.md', status: 'in_progress' },
+  { id: 't3', content: '发布 wiki', status: 'pending' },
 ]
 
 describe('MissionControlBar', () => {
-  it('todos가 없으면 렌더하지 않는다', () => {
+  it('没有 todos 时不渲染', () => {
     const { container } = render(<MissionControlBar todos={[]} />)
     expect(container.querySelector('[data-moldy-mission-control]')).toBeNull()
   })
 
-  it('접힌 상태에서 진행 요약(done/total)을 보여준다', () => {
+  it('折叠状态下显示进度摘要(done/total)', () => {
     render(<MissionControlBar todos={TODOS} />)
     expect(screen.getByText(/tasks\.progress\(1\/3\).*tasks\.current/)).toBeInTheDocument()
     expect(screen.getByText('tasks.title')).toHaveClass('shrink-0')
-    // 접힌 기본 상태 — 개별 todo 행은 보이지 않는다.
-    expect(screen.queryByText('quickstart.md 작성')).not.toBeInTheDocument()
+    // 默认折叠状态 —— 不显示单个 todo 行。
+    expect(screen.queryByText('编写 quickstart.md')).not.toBeInTheDocument()
   })
 
-  it('펼치면 모델이 계획한 원래 순서로 todo 행을 보여준다', async () => {
+  it('展开后按模型原计划顺序显示 todo 行', async () => {
     const user = userEvent.setup()
     render(<MissionControlBar todos={TODOS} />)
     await user.click(screen.getByText('tasks.title'))
     const items = screen.getAllByRole('listitem').map((li) => li.textContent ?? '')
-    expect(items[0]).toContain('저장소 구조 조사')
-    expect(items[1]).toContain('quickstart.md 작성')
-    expect(items[2]).toContain('위키 게시')
+    expect(items[0]).toContain('调查仓库结构')
+    expect(items[1]).toContain('编写 quickstart.md')
+    expect(items[2]).toContain('发布 wiki')
   })
 
-  it('모든 todo 완료 시에도 요약을 유지한다', () => {
+  it('所有 todo 完成后仍保留摘要', () => {
     render(
       <MissionControlBar
         todos={TODOS.map((todo) => ({ ...todo, status: 'completed' as const }))}

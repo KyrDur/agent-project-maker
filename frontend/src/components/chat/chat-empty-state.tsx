@@ -41,8 +41,8 @@ export function ChatEmptyState({ agent, fallback }: ChatEmptyStateProps) {
   const composer = useAui().optional.composer
   const openerQuestions = agent?.opener_questions ?? []
 
-  // 스타터 폴백: 에이전트에 큐레이션된 opener가 없을 때만 템플릿의
-  // usage_example을 프런트 조인으로 가져온다(백엔드 변경 없음, 5분 캐시).
+  // starter fallback：仅当 Agent 没有 curated opener 时，才从模板中
+  // 通过前端 join 获取 usage_example（backend 无改动，缓存 5 分钟）。
   const needsTemplateStarter = openerQuestions.length === 0 && Boolean(agent?.template_id)
   const { data: templates } = useTemplates(undefined, { enabled: needsTemplateStarter })
   const templateStarter = needsTemplateStarter

@@ -53,14 +53,14 @@ describe('PinnedConversationSummary', () => {
     mocks.summary = {
       source_message_id: 'message-1',
       source_status: sourceStatus,
-      snapshot_text: '사용자가 선택한 원본 요약',
+      snapshot_text: '用户选择的原始摘要',
     }
 
     // When
     render(<PinnedConversationSummary conversationId="conversation-1" />)
 
     // Then
-    expect(screen.getByText('사용자가 선택한 원본 요약')).toBeVisible()
+    expect(screen.getByText('用户选择的原始摘要')).toBeVisible()
     expect(screen.getByText(label)).toBeVisible()
   })
 
@@ -69,7 +69,7 @@ describe('PinnedConversationSummary', () => {
     mocks.summary = {
       source_message_id: 'message-1',
       source_status: 'current',
-      snapshot_text: '요약',
+      snapshot_text: '摘要',
     }
     const user = (await import('@testing-library/user-event')).default.setup()
     render(<PinnedConversationSummary conversationId="conversation-1" />)
@@ -87,13 +87,13 @@ describe('PinnedConversationSummary', () => {
     render(
       <PinConversationSummaryButton
         conversationId="conversation-1"
-        pinLabel="요약으로 고정"
-        unpinLabel="요약 고정 해제"
+        pinLabel="固定为摘要"
+        unpinLabel="取消固定摘要"
       />,
     )
 
     // When
-    await user.click(screen.getByRole('button', { name: '요약으로 고정' }))
+    await user.click(screen.getByRole('button', { name: '固定为摘要' }))
 
     // Then
     expect(mocks.pin).toHaveBeenCalledWith('message-1')
@@ -106,13 +106,13 @@ describe('PinnedConversationSummary', () => {
     render(
       <PinConversationSummaryButton
         conversationId="conversation-1"
-        pinLabel="요약으로 고정"
-        unpinLabel="요약 고정 해제"
+        pinLabel="固定为摘要"
+        unpinLabel="取消固定摘要"
       />,
     )
 
     // When
-    await user.click(screen.getByRole('button', { name: '요약으로 고정' }))
+    await user.click(screen.getByRole('button', { name: '固定为摘要' }))
 
     // Then
     expect(mocks.pin).toHaveBeenCalledWith('message-1::moldy-turn-2')
@@ -123,19 +123,19 @@ describe('PinnedConversationSummary', () => {
     mocks.summary = {
       source_message_id: 'message-1',
       source_status: 'current',
-      snapshot_text: '요약',
+      snapshot_text: '摘要',
     }
     const user = (await import('@testing-library/user-event')).default.setup()
     render(
       <PinConversationSummaryButton
         conversationId="conversation-1"
-        pinLabel="요약으로 고정"
-        unpinLabel="요약 고정 해제"
+        pinLabel="固定为摘要"
+        unpinLabel="取消固定摘要"
       />,
     )
 
     // When
-    await user.click(screen.getByRole('button', { name: '요약 고정 해제' }))
+    await user.click(screen.getByRole('button', { name: '取消固定摘要' }))
 
     // Then
     expect(mocks.unpin).toHaveBeenCalledOnce()
@@ -149,12 +149,12 @@ describe('PinnedConversationSummary', () => {
     render(
       <PinConversationSummaryButton
         conversationId="conversation-1"
-        pinLabel="요약으로 고정"
-        unpinLabel="요약 고정 해제"
+        pinLabel="固定为摘要"
+        unpinLabel="取消固定摘要"
       />,
     )
 
     // Then
-    expect(screen.getByRole('button', { name: '요약으로 고정' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '固定为摘要' })).toBeDisabled()
   })
 })

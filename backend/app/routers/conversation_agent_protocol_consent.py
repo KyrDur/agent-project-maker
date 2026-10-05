@@ -1,16 +1,16 @@
-"""HITL 세션 동의 처리 (스킬 빌더 챗, 스펙 AD-4).
+"""处理 HITL 会话同意（Skill Builder 聊天，规范 AD-4）。
 
-프론트가 ``input.respond`` decision에 실어 보내는 확장 필드 ``scope:"session"``
-("留出本次会议的剩余时间")을 여기서 소비한다:
+在这里消费前端随 ``input.respond`` decision 发送的扩展字段 ``scope:"session"``
+("留出本次会议的剩余时间")：
 
-1. 세션 row(``skill_builder_sessions.tool_consents``)에 동의를 기록하고,
-2. decision에서 ``scope`` 키를 **제거**해 미들웨어에는 표준
-   approve/reject/edit만 내려보낸다 — 비표준 decision 필드는 langchain
-   ``HumanInTheLoopMiddleware`` 검증을 깨뜨린다.
+1. 将同意记录到会话 row（``skill_builder_sessions.tool_consents``）中，
+2. 从 decision 中**删除** ``scope`` 键，只向中间件传递标准的
+   approve/reject/edit — 非标准 decision 字段会破坏 langchain
+   ``HumanInTheLoopMiddleware`` 校验。
 
-경계 (AD-4): 동의 대상은 ``SESSION_CONSENT_ELIGIBLE_TOOLS`` 뿐이고
-(``finalize_skill`` 은 항상 카드), 드래프트가 ``requires_network`` 면 동의를
-기록하지 않는다 — 이번 승인만 1회 유효.
+边界（AD-4）：同意对象仅限 ``SESSION_CONSENT_ELIGIBLE_TOOLS``
+（``finalize_skill`` 始终显示卡片）；如果草稿 ``requires_network``，则不记录同意
+— 本次批准仅单次有效。
 """
 
 from __future__ import annotations
@@ -40,11 +40,11 @@ async def apply_session_consent_decisions(
     resume: ResumePayload,
     pending_interrupts: list[ThreadInterrupt],
 ) -> list[str]:
-    """``scope:"session"`` 동의를 기록하고 decision에서 scope 키를 벗겨낸다.
+    """记录 ``scope:"session"`` 同意，并从 decision 中剥离 scope 键。
 
-    decision dict를 **in-place** 로 수정한다 (``resume.input_payload`` 와
-    ``resume.submitted`` 가 같은 dict를 참조). 기록된 도구명 목록을 반환한다
-    (동의 불가 조건이면 빈 목록 — 이번 승인은 표준 approve로 1회 진행).
+    **in-place** 修改 decision dict（``resume.input_payload`` 与
+    ``resume.submitted`` 引用同一个 dict）。返回已记录的工具名列表
+    （若不满足同意条件则返回空列表 — 本次批准仍作为标准 approve 单次执行）。
     """
 
     actions_by_interrupt = {
@@ -63,7 +63,7 @@ async def apply_session_consent_decisions(
         for index, decision in enumerate(decisions):
             if not isinstance(decision, dict) or "scope" not in decision:
                 continue
-            # 비표준 키는 대상 여부와 무관하게 항상 제거한다.
+            # 无论是否为目标对象，都始终删除非标准键。
             scope = decision.pop("scope")
             if scope != "session" or decision.get("type") != "approve":
                 continue
@@ -81,14 +81,14 @@ async def apply_session_consent_decisions(
             SkillBuilderSession.conversation_id == conversation_id,
             SkillBuilderSession.user_id == user_id,
         )
-        # 세션↔대화 1:1은 DB 제약이 아니라 관례다 — 방어적으로 최신 1건만
-        # 취해 MultipleResultsFound 500을 차단한다 (R2).
+        # 会话↔对话 1:1 并非 DB 约束，而是约定 — 为防御起见只取最新 1 条
+        # 以避免 MultipleResultsFound 500（R2）。
         .order_by(SkillBuilderSession.created_at.desc())
         .limit(1)
     )
     session = result.scalar_one_or_none()
     if session is None:
-        # 빌더 대화가 아니면 동의는 무의미 — scope 제거만으로 충분.
+        # 如果不是 Builder 对话，同意没有意义 — 只删除 scope 即可。
         return []
     if session.draft_workspace_path and skill_draft_workspace.draft_requires_network(
         session.draft_workspace_path

@@ -11,13 +11,13 @@ function selectedText() {
   const root = document.createElement('div')
   const thread = document.createElement('div')
   thread.dataset.chatSelectionThread = id
-  thread.dataset.chatSelectionTitle = '원문 대화'
+  thread.dataset.chatSelectionTitle = '原始对话'
   const message = document.createElement('div')
   message.dataset.moldyMessageId = 'message-1'
   message.dataset.moldyMessageRole = 'assistant'
   const text = document.createElement('p')
   text.dataset.chatQuoteText = ''
-  text.textContent = '선택한 문장'
+  text.textContent = '选中的句子'
   const tool = document.createElement('button')
   tool.textContent = '工具'
   message.append(text, tool)
@@ -46,10 +46,10 @@ describe('selected message provenance', () => {
       id,
       message_id: 'message-1',
       message_role: 'assistant',
-      quote: '선택한 문장',
-      label: '원문 대화',
+      quote: '选中的句子',
+      label: '原始对话',
     })
-    expect(root.textContent).toBe('선택한 문장도구')
+    expect(root.textContent).toBe('选中的句子工具')
   })
   it('excludes unrelated roots, in-progress text, and cross-element selections', () => {
     const { root, paragraph, selection } = selectedText()
@@ -64,12 +64,12 @@ describe('selected message provenance', () => {
     expect(readQuoteSelection(root, selection)).toBeNull()
   })
   it('validates quote contracts and keeps different excerpts from the same message', () => {
-    const one = { kind: 'conversation', id, message_id: 'message-1', quote: '첫 문장' } as const
+    const one = { kind: 'conversation', id, message_id: 'message-1', quote: '第一句' } as const
     expect(resourceContextReferencesSchema.safeParse([one]).success).toBe(true)
     expect(resourceContextReferencesSchema.safeParse([{ ...one, quote: undefined }]).success).toBe(
       false,
     )
     expect(addResourceContextReference([one], one).kind).toBe('duplicate')
-    expect(addResourceContextReference([one], { ...one, quote: '다른 문장' }).kind).toBe('added')
+    expect(addResourceContextReference([one], { ...one, quote: '其他句子' }).kind).toBe('added')
   })
 })

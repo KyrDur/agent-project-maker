@@ -11,15 +11,15 @@ describe('chat-subagent-names store', () => {
     const store = createStore()
     store.set(mergeConversationSubagentNamesAtom, {
       conversationId: 'c1',
-      names: { agent_11111111: '리서처' },
+      names: { agent_11111111: '调研员' },
     })
     store.set(mergeConversationSubagentNamesAtom, {
       conversationId: 'c1',
-      names: { agent_22222222: '작성자' },
+      names: { agent_22222222: '作者' },
     })
 
     expect(store.get(chatSubagentNamesAtom)).toEqual({
-      c1: { agent_11111111: '리서처', agent_22222222: '작성자' },
+      c1: { agent_11111111: '调研员', agent_22222222: '作者' },
     })
   })
 

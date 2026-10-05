@@ -13,13 +13,13 @@ const quote: MessageQuote = {
   kind: 'conversation',
   id: '11111111-1111-4111-8111-111111111111',
   message_id: 'message-1',
-  quote: '선택한 문장',
-  comment: '댓글',
+  quote: '选中的句子',
+  comment: '评论',
 }
 function workspace(): SideChatContextValue {
   return {
     mainId: quote.id,
-    mainTitle: '원문',
+    mainTitle: '原文',
     sideId: 'side',
     open: true,
     loading: false,
@@ -76,7 +76,7 @@ describe('quote delivery through official composer', () => {
             id: 1,
             target: 'side',
             reference: quote,
-            prompt: '자세히 설명해 주세요.',
+            prompt: '请详细说明。',
           },
         }}
       />,
@@ -89,7 +89,7 @@ describe('quote delivery through official composer', () => {
     const value = workspace()
     const view = render(<Harness value={value} run={run} />)
     fireEvent.change(screen.getByRole('textbox', { name: 'draft' }), {
-      target: { value: '기존 초안' },
+      target: { value: '现有草稿' },
     })
     view.rerender(
       <Harness
@@ -105,24 +105,24 @@ describe('quote delivery through official composer', () => {
         }}
       />,
     )
-    await waitFor(() => expect(screen.getByTestId('refs')).toHaveTextContent('선택한 문장'))
-    expect(screen.getByRole('textbox', { name: 'draft' })).toHaveValue('기존 초안')
+    await waitFor(() => expect(screen.getByTestId('refs')).toHaveTextContent('选中的句子'))
+    expect(screen.getByRole('textbox', { name: 'draft' })).toHaveValue('现有草稿')
     expect(run).not.toHaveBeenCalled()
   })
   it('preserves the unsent text and references across responsive runtime remounts', async () => {
     const value = workspace()
     const view = render(<Harness value={value} />)
     fireEvent.change(screen.getByRole('textbox', { name: 'draft' }), {
-      target: { value: '보존할 초안' },
+      target: { value: '要保留的草稿' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'add reference' }))
-    await waitFor(() => expect(screen.getByTestId('refs')).toHaveTextContent('선택한 문장'))
+    await waitFor(() => expect(screen.getByTestId('refs')).toHaveTextContent('选中的句子'))
     view.unmount()
-    expect(value.draft.current).toEqual({ text: '보존할 초안', references: [quote] })
+    expect(value.draft.current).toEqual({ text: '要保留的草稿', references: [quote] })
     render(<Harness value={value} />)
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'draft' })).toHaveValue('보존할 초안'),
+      expect(screen.getByRole('textbox', { name: 'draft' })).toHaveValue('要保留的草稿'),
     )
-    expect(screen.getByTestId('refs')).toHaveTextContent('선택한 문장')
+    expect(screen.getByTestId('refs')).toHaveTextContent('选中的句子')
   })
 })

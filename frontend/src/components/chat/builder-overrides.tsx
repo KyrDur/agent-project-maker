@@ -45,17 +45,17 @@ import { chatCancelInFlightAtom } from '@/lib/stores/chat-store'
 import { reportClientWarning } from '@/lib/logging/client-logger'
 
 /**
- * Builder-variant 메시지/컴포저 오버라이드.
+ * Builder-variant 消息/composer override。
  *
- * AssistantThread가 `variant="builder"`일 때만 사용. 기본 variant 동작은 그대로 둠.
+ * 仅当 AssistantThread 为 `variant="builder"` 时使用。默认 variant 行为保持不变。
  * - User: bubble-only (no avatar), mint bubble with tail (designer-directed)
- * - Assistant: bare 38×38 mascot (no chip), "Moldy · 에이전트 빌더" name row
- * - Composer: mint focus ring, 파일/템플릿 IconBtn, 모델 메타, Send ↔ Stop 토글
+ * - Assistant: bare 38×38 mascot (no chip), "Moldy · 智能体构建器" name row
+ * - Composer: mint focus ring, 文件/模板 IconBtn, 模型 meta, Send ↔ Stop toggle
  */
 
 const MASCOT_SRC = '/project-maker.svg'
 
-/** User 메시지 — 아바타 없음 + mint bubble. */
+/** User 消息 —— 无头像 + mint bubble。 */
 export function BuilderUserMessage({ metaRow }: { metaRow: React.ReactNode }) {
   return (
     <div className="group relative flex justify-end">
@@ -103,7 +103,7 @@ export function BuilderUserEditComposer() {
 const MARKDOWN_COMPONENTS_STREAMING = buildMarkdownComponents({ isStreaming: true })
 const MARKDOWN_COMPONENTS_FINAL = buildMarkdownComponents({ isStreaming: false })
 
-/** Builder 전용 text part — phase narration을 SystemEventChip으로 변환. */
+/** Builder 专用 text part —— 将 phase narration 转换为 SystemEventChip。 */
 function BuilderAssistantTextPart() {
   const tPhase = useTranslations('chat.phaseTimeline')
   const part = useMessagePartText()
@@ -146,11 +146,11 @@ function BuilderAssistantTextPart() {
   )
 }
 
-/** Builder 전용 ToolFallback wrapper — 시각 표시는 기본 ToolFallback과 동일하게 유지.
+/** Builder 专用 ToolFallback wrapper —— 视觉展示与默认 ToolFallback 保持一致。
  *
- * BUILDER_TOOLKIT에 등록된 tool들(phase_timeline / ask_user / recommendation_approval
- * 등)은 자체 ToolUI가 인터셉트하므로 이 fallback에 닿지 않는다. 안전망으로 기본
- * ToolFallbackPanel을 그대로 사용해 모르는 도구도 화면에 표시되게 한다. */
+ * 注册到 BUILDER_TOOLKIT 的 tool（phase_timeline / ask_user / recommendation_approval
+ * 等）会被自身 ToolUI 拦截，因此不会到达这个 fallback。作为兜底，直接使用默认
+ * ToolFallbackPanel，让未知工具也能显示在界面上。 */
 function BuilderToolFallback(props: {
   toolName: string
   args: Record<string, unknown>
@@ -173,24 +173,24 @@ function BuilderToolFallback(props: {
   )
 }
 
-// ── 빌더 표면 tool-call 그룹핑 (메인 v3와 공유하는 GroupedParts) ───────────
+// ── Builder 界面 tool-call 分组（与主 v3 共用 GroupedParts）───────────
 //
-// groupBy/노드 판별은 `group-assistant-parts.ts`에서 메인 v3 채팅과 공유한다.
-// leaf 비주얼만 빌더 전용으로 분기: 텍스트는 phase-narration을 SystemEventChip으로
-// 바꾸는 `BuilderAssistantTextPart`, 도구 박스는 등록된 per-tool UI(leaf.toolUI) →
-// 없으면 `BuilderToolFallback`. 메인 v3와 달리 order 재배치 없이 자연 순서를 쓰며,
-// 묶는 비주얼만 `ToolGroupContainer`(검색류면 출처 집계까지)로 통일한다.
+// groupBy/节点判定与主 v3 聊天共用 `group-assistant-parts.ts`。
+// 只对 leaf 视觉按 Builder 专用逻辑分支：文本将 phase-narration 转为 SystemEventChip
+// 通过 `BuilderAssistantTextPart` 实现，工具框则优先使用已注册的 per-tool UI(leaf.toolUI) →
+// 没有则用 `BuilderToolFallback`。与主 v3 不同，不重排 order，保持自然顺序，
+// 仅将分组视觉统一为 `ToolGroupContainer`（若为搜索类还会汇总来源）。
 
-/** GroupedParts의 노드/leaf를 빌더 톤으로 그린다. group-tool 노드는 N≥2면 컨테이너,
- * N=1이면 패스스루. text leaf는 phase-narration 보존, tool-call leaf는 등록 UI 우선. */
+/** 以 Builder 风格绘制 GroupedParts 的节点/leaf。group-tool 节点 N≥2 时用容器，
+ * N=1 时 passthrough。text leaf 保留 phase-narration，tool-call leaf 优先用已注册 UI。 */
 export function renderBuilderGroupedPart({ part, children }: GroupedRenderInfo): ReactNode {
   if (isGroupToolNode(part)) {
     const running = part.status?.type === 'running'
-    // N=1은 컨테이너 없이 그룹 내부(단일 tool-call leaf)를 그대로 통과.
+    // N=1 不使用容器，直接传递组内内容（单个 tool-call leaf）。
     if (part.indices.length < 2) {
       return children
     }
-    // running→펼침/done→접힘은 key remount로 달성(CollapsiblePill은 uncontrolled).
+    // running→展开/done→折叠通过 key remount 实现（CollapsiblePill 为 uncontrolled）。
     return (
       <ToolGroupContainer
         key={running ? 'running' : 'done'}
@@ -208,8 +208,8 @@ export function renderBuilderGroupedPart({ part, children }: GroupedRenderInfo):
     case 'text':
       return <BuilderAssistantTextPart />
     case 'tool-call': {
-      // 등록된 per-tool UI(BUILDER_TOOLKIT)는 leaf.toolUI로 흐른다. 미등록 도구는
-      // BuilderToolFallback이 안전망으로 표시 — 기존 tools.Fallback 동작과 동일.
+      // 已注册的 per-tool UI(BUILDER_TOOLKIT) 走 leaf.toolUI。未注册工具则由
+      // BuilderToolFallback 作为兜底显示 —— 与现有 tools.Fallback 行为一致。
       const leaf = part as Extract<EnrichedPartState, { type: 'tool-call' }>
       return (
         leaf.toolUI ?? (
@@ -223,20 +223,20 @@ export function renderBuilderGroupedPart({ part, children }: GroupedRenderInfo):
       )
     }
     case 'data':
-      // 빌더는 dataUI를 등록하지 않아 보통 undefined(=렌더 없음). 메인 v3와 동일하게
-      // 등록된 data renderer가 있으면 그대로 위임.
+      // Builder 未注册 dataUI，因此通常为 undefined（=不渲染）。与主 v3 相同，
+      // 如果存在已注册 data renderer，就直接委托给它。
       return (part as Extract<EnrichedPartState, { type: 'data' }>).dataRendererUI
     case 'indicator':
-      // indicator="never"라 발화하지 않지만 방어적으로 null.
+      // indicator="never"，因此不会触发，但防御性返回 null。
       return null
     default:
-      // image/file/source/reasoning 등: 빌더는 Text/tool만 렌더했으므로 기본 null.
+      // image/file/source/reasoning 等：Builder 只渲染 Text/tool，因此默认 null。
       return null
   }
 }
 
-/** Builder Assistant 메시지 본문 — parts 사이에 12px gap stack. 연속 같은 도구는
- * 메인 v3와 동일하게 1개 그룹 컨테이너로 묶는다(GroupedParts). */
+/** Builder Assistant 消息正文 —— parts 之间使用 12px gap stack。连续相同工具
+ * 与主 v3 一样合并为 1 个分组容器（GroupedParts）。 */
 export function BuilderAssistantMessageParts() {
   return (
     <div className="flex flex-col gap-3">
@@ -247,13 +247,13 @@ export function BuilderAssistantMessageParts() {
   )
 }
 
-/** Assistant 메시지 — 38×38 bare mascot + 이름줄. */
+/** Assistant 消息 —— 38×38 bare mascot + 名称行。 */
 export function BuilderAssistantMessage({
   children,
   metaRow,
   agentSubtitle,
 }: {
-  /** 메시지 본문 (MessageMetaRow 포함 X — metaRow는 별도). */
+  /** 消息正文（MessageMetaRow：不包含(X) —— metaRow 单独处理）。 */
   children: React.ReactNode
   metaRow: React.ReactNode
   agentSubtitle?: string
@@ -281,7 +281,7 @@ export function BuilderAssistantMessage({
   )
 }
 
-/** 좌측 툴바 IconBtn — 파일첨부 / 템플릿 (시각 stub, 클릭 시 title 표시만). */
+/** 左侧工具栏 IconBtn —— 文件附件 / 模板（视觉 stub，点击时仅显示 title）。 */
 function IconBtn({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <BuilderIconButton aria-label={label} title={label}>
@@ -290,7 +290,7 @@ function IconBtn({ label, children }: { label: string; children: React.ReactNode
   )
 }
 
-/** Stop 버튼 — 진행 중 응답 취소 (AbortController 경로). */
+/** Stop 按钮 —— 取消进行中的响应（AbortController 路径）。 */
 function BuilderStopButton() {
   const tMsg = useTranslations('chat.message')
   const aui = useAui()
@@ -318,7 +318,7 @@ function BuilderStopButton() {
   )
 }
 
-/** Send 버튼 — 32×32 민트 square. */
+/** Send 按钮 —— 32×32 mint square。 */
 function BuilderSendButton() {
   const t = useTranslations('chat.input')
   return (
@@ -331,13 +331,13 @@ function BuilderSendButton() {
   )
 }
 
-/** Builder 전용 Composer.
+/** Builder 专用 Composer。
  *
  * Spec:
  *  - Outer padding 12/28/18, gradient bg (transparent → #fafafa)
  *  - Card: white, 16 radius, mint focus-within 4px box-shadow ring
- *  - ImeSafeComposerInput submitMode="enter" — Chrome/IME 조합 입력을 composer 상태에 즉시 동기화
- *  - Toolbar: 파일/템플릿 IconBtn(시각만) + 1×16 divider + 모델 메타 + Send/Stop 토글
+ *  - ImeSafeComposerInput submitMode="enter" —— 将 Chrome/IME 组合输入立即同步到 composer 状态
+ *  - Toolbar: 文件/模板 IconBtn（仅视觉）+ 1×16 divider + 模型元数据 + Send/Stop 切换
  */
 export function BuilderComposer({ modelLabel }: { modelLabel?: string }) {
   const t = useTranslations('chat.input')

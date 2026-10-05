@@ -94,7 +94,7 @@ describe('selectDeepAgentsState', () => {
         {
           id: 'artifact-md',
           path: 'reports/final.md',
-          display_name: '최종 보고서',
+          display_name: '最终报告',
           preview_url: '/api/artifacts/artifact-md/content',
           download_url: '/api/artifacts/artifact-md/download',
           artifact_kind: 'markdown',
@@ -112,7 +112,7 @@ describe('selectDeepAgentsState', () => {
     expect(state.files).toEqual([
       expect.objectContaining({
         id: 'artifact-md',
-        name: '최종 보고서',
+        name: '最终报告',
         path: 'reports/final.md',
         artifactKind: 'markdown',
         mimeType: 'text/markdown',

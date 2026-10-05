@@ -24,7 +24,7 @@ describe('useResourceContextComposer', () => {
       id: '11111111-1111-4111-8111-111111111111',
       message_id: 'm',
       quote: '可选',
-      label: '원문',
+      label: '原文',
     } as const
     const { result } = renderHook(() => useHarness(0), { wrapper: Wrapper })
     act(() => result.current.context.add(ref))
@@ -32,10 +32,10 @@ describe('useResourceContextComposer', () => {
     act(() =>
       result.current.context.update(result.current.context.references[0], {
         ...ref,
-        comment: '댓글',
+        comment: '评论',
       }),
     )
-    await waitFor(() => expect(result.current.configured).toEqual([{ ...ref, comment: '댓글' }]))
+    await waitFor(() => expect(result.current.configured).toEqual([{ ...ref, comment: '评论' }]))
   })
   it('keeps strict refs in official run config, supports removal, and clears after acceptance', async () => {
     const ref = {

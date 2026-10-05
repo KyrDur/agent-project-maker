@@ -48,7 +48,7 @@ curl -X POST http://localhost:8001/v1/runs/wait \
     "agent_id": "agent_12345678",
     "input": {
       "messages": [
-        { "role": "user", "content": "요약해줘" }
+        { "role": "user", "content": "帮我总结" }
       ]
     },
     "user": "external-user-123"
@@ -65,7 +65,7 @@ curl -N -X POST http://localhost:8001/v1/runs/stream \
     "agent_id": "agent_12345678",
     "input": {
       "messages": [
-        { "role": "user", "content": "스트리밍으로 답해줘" }
+        { "role": "user", "content": "用流式方式回答我" }
       ]
     }
   }'
@@ -93,7 +93,7 @@ curl -X POST http://localhost:8001/v1/threads/thr_xxx/runs/wait \
     "agent_id": "agent_12345678",
     "input": {
       "messages": [
-        { "role": "user", "content": "방금 질문을 기억해?" }
+        { "role": "user", "content": "还记得刚才的问题吗？" }
       ]
     }
   }'
@@ -107,7 +107,7 @@ Dify-style chat:
 curl -X POST http://localhost:8001/v1/agents/agent_12345678/chat-messages \
   -H "Authorization: Bearer $MOLDY_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{ "query": "요약해줘", "response_mode": "blocking", "user": "abc-123" }'
+  -d '{ "query": "帮我总结", "response_mode": "blocking", "user": "abc-123" }'
 ```
 
 Dify-style workflow:

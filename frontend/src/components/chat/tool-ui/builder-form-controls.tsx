@@ -13,11 +13,11 @@ interface BuilderFeedbackTextareaProps {
 }
 
 /**
- * Builder approval/edit 카드 공통 textarea.
+ * Builder approval/edit 卡共用 textarea。
  *
- * - mint focus ring (`primaryDim` border + 3px box-shadow)
- * - 한글 IME composition 가드 (composition 중 Enter 전파 차단)
- * - disabled 시 회색 처리 없이 비활성만 — 시각적으로는 frozen 상태에서 보통 unmount
+ * - mint focus ring（`primaryDim` border + 3px box-shadow）
+ * - 韩文 IME composition guard（composition 中阻止 Enter 传播）
+ * - disabled 时不做灰色处理，仅禁用 —— 视觉上通常在 frozen 状态时 unmount
  */
 export function BuilderFeedbackTextarea({
   value,

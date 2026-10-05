@@ -6,10 +6,10 @@ describe('DataTableCard', () => {
   it('renders headers, cell values, and the title', () => {
     render(
       <DataTableCard
-        title="팀 점수"
+        title="团队得分"
         columns={[
           { key: 'name', header: '名称' },
-          { key: 'score', header: '점수' },
+          { key: 'score', header: '得分' },
         ]}
         rows={[
           { name: 'Alice', score: 92 },
@@ -19,9 +19,9 @@ describe('DataTableCard', () => {
     )
 
     expect(screen.getByTestId('data-ui-data-table')).toBeInTheDocument()
-    expect(screen.getByText('팀 점수')).toBeInTheDocument()
+    expect(screen.getByText('团队得分')).toBeInTheDocument()
     expect(screen.getByText('名称')).toBeInTheDocument()
-    expect(screen.getByText('점수')).toBeInTheDocument()
+    expect(screen.getByText('得分')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('92')).toBeInTheDocument()
     expect(screen.getByText('Bob')).toBeInTheDocument()

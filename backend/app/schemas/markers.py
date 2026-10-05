@@ -5,20 +5,20 @@ schemas/connection ↔ services/env_var_resolver ↔ services/credential_service
 ↔ schemas/credential.
 """
 
-# m10 마이그레이션이 env 기반 자동 시드한 connection/credential에 부여하는 프리픽스.
-# downgrade가 이 프리픽스로 seeded row를 식별해 역삭제하므로, API 경계에서 사용자가
-# 이 프리픽스를 직접 쓰지 못하도록 예약 (display_name / name 두 필드 모두).
+# m10 migration 给基于 env 自动 seed 的 connection/credential 添加的 prefix。
+# downgrade 会通过该 prefix 识别 seeded row 并反向删除，因此在 API 边界需要禁止用户
+# 直接使用该 prefix（display_name / name 两个字段都保留）。
 M10_SEED_MARKER = "[m10-auto-seed]"
 
 
 def check_reserved_marker(value: str | None, field_name: str) -> str | None:
-    """API 경계에서 `M10_SEED_MARKER` 프리픽스 사용을 차단.
+    """在 API 边界阻止使用 `M10_SEED_MARKER` prefix。
 
-    connection.display_name 과 credential.name 모두 m10 auto-seed downgrade의
-    LIKE 매칭 대상이므로, 사용자가 이 프리픽스를 직접 쓸 수 있으면 rollback 시
-    사용자 수동 생성분까지 삭제되는 데이터 손실이 발생한다.
+    connection.display_name 和 credential.name 都是 m10 auto-seed downgrade 的
+    LIKE 匹配对象，因此如果用户可以直接使用该 prefix，rollback 时
+    会连用户手动创建的数据也一起删除，造成数据丢失。
 
-    None은 패스스루 (PATCH 미전송 / Optional 필드 고려).
+    None 直接 passthrough（考虑 PATCH 未发送 / Optional 字段）。
     """
     if value is None:
         return value

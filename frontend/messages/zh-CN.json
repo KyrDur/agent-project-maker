@@ -2035,8 +2035,8 @@
       "conversation": "对话"
     },
     "toolGroup": {
-      "count": "{count} 通话",
-      "sourceCount": "{count} 来源",
+      "count": "{count}次",
+      "sourceCount": "来源 {count} 个",
       "labels": {
         "webSearch": "网页搜索",
         "naverBlog": "Naver博客",
@@ -2138,7 +2138,7 @@
       "actionN": "{total} 的操作 {index}",
       "lockedSecretHint": "秘密值无法编辑",
       "invalidFieldValue": "值格式无效",
-      "pendingCount": "{count} 待批准",
+      "pendingCount": "待批准 {count} 项",
       "approveAll": "批准全部",
       "allowForSession": "留出本次会议的剩余时间"
     },
@@ -2294,7 +2294,7 @@
     "toolUi": {
       "subAgent": {
         "fallbackName": "子智能体",
-        "invocation": "子智能体通话",
+        "invocation": "子智能体调用",
         "openDetails": "打开子智能体详情",
         "messageCount": "{count} 消息",
         "toolCount": "{count}工具",
@@ -2453,7 +2453,7 @@
       "agent": "智能体",
       "input": "输入",
       "output": "输出",
-      "subagentPending": "子 智能体 执行详细信息将在流式传输时显示在此处。",
+      "subagentPending": "子智能体的执行详情将在运行时显示。",
       "noResult": "没有结果。",
       "arguments": "论据",
       "result": "结果",
@@ -2551,10 +2551,10 @@
       "error": "出了点问题",
       "summaryAria": "运行总结",
       "elapsedUnknown": "时间不可用",
-      "durationSeconds": "{count}",
-      "durationMinutesSeconds": "{minutes}m {seconds}s",
-      "toolTotal": "总工具{count}",
-      "subagentTotal": "共分智能体 {count}",
+      "durationSeconds": "{count}秒",
+      "durationMinutesSeconds": "{minutes}分 {seconds}秒",
+      "toolTotal": "工具总计 {count}",
+      "subagentTotal": "子智能体总计 {count}",
       "rootTools": "主要工具",
       "descendantTools": "后代工具",
       "rootSubagents": "主子智能体",
@@ -2569,7 +2569,7 @@
       "summary": "对较旧的消息进行了总结以释放上下文"
     },
     "subagents": {
-      "progress": "{completed}/{total} 子 智能体 完成",
+      "progress": "子智能体 {completed}/{total} 完成",
       "progressLabel": "子智能体进度",
       "running": "{count} 运行中",
       "failed": "{count} 失败"

@@ -162,8 +162,8 @@ async def sweep_e2e_stale_conversation_runs(
         stale_before=_utc_now_naive() - timedelta(seconds=settings.chat_run_stale_after_seconds),
         worker_instance_id="e2e-helper",
         include_workerless=True,
-        # path 의 conversation 으로 스코프 — 병렬 E2E 테스트가 서로의 active run
-        # 을 stale 처리하는 cross-test 간섭 방지.
+        # 按 path 中的 conversation 进行 scope — 防止并行 E2E 测试把彼此的 active run
+        # 标记为 stale，避免 cross-test 干扰。
         conversation_id=conv.id,
     )
     await db.commit()

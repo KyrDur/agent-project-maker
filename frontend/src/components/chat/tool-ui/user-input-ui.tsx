@@ -28,7 +28,7 @@ interface AskUserArgs {
   timeout_seconds?: number
   /** 입력 식별자 — deadline 리셋 키로 사용 */
   approval_id?: string
-  /** 표준 HiTL interrupt 내 action index */
+  /** 标准 HiTL interrupt 内的 action index */
   hitl_action_index?: number
   hitl_total_actions?: number
   hitl_interrupt_id?: string | null
@@ -273,7 +273,7 @@ export function UserInputUI({
   const fallbackId = useId()
   const approvalId = args?.approval_id ?? `ask-user-${fallbackId}`
 
-  // requires-action 상태일 때만 timer 활성
+  // 仅在 requires-action 状态启用 timer
   const isPending =
     submitState === 'idle' &&
     result === undefined &&
@@ -358,12 +358,12 @@ export function UserInputUI({
     [extend],
   )
 
-  // ── 완료 상태 ──
+  // ── 完成状态 ──
   if (status.type === 'complete' || result !== undefined || submitState === 'submitted') {
     return <CompletedBadge result={submittedDisplay ?? result ?? answers[0]} />
   }
 
-  // ── 로딩 상태 ──
+  // ── 加载状态 ──
   if (status.type === 'running') {
     return (
       <div className="moldy-chat-card flex items-center gap-2 px-3 py-2 text-xs">

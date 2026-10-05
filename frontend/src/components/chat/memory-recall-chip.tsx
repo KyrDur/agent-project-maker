@@ -9,7 +9,7 @@ import { useChatConversationId } from '@/components/chat/conversation-context'
 import { useMemories } from '@/lib/hooks/use-memory'
 import { chatMemoryRecallAtom, type RecalledMemoryBrief } from '@/lib/stores/chat-memory-recall'
 
-/** 영속 이벤트의 기억 내용 마스킹 값 (backend protocol_redaction 계약). */
+/** 持久化事件的记忆内容掩码值（backend protocol_redaction 约定）。 */
 const REDACTED_CONTENT = '<redacted>'
 
 function MemoryRecallList({ memories }: { readonly memories: readonly RecalledMemoryBrief[] }) {
@@ -39,11 +39,11 @@ function MemoryRecallList({ memories }: { readonly memories: readonly RecalledMe
 }
 
 /**
- * 리로드 경로 — 영속화된 회상 이벤트는 기억 내용이 `<redacted>`로 마스킹돼
- * 있으므로(공유/스냅샷 안전 계약), brief의 id로 메모리 API에서 내용을
- * 재조회해 합친다. memory-tool-ui가 proposal을 서버 재조회로 복원하는 것과
- * 같은 패턴 — 소유자 전용 API라 공유 페이지에서는 복원되지 않는다.
- * (이 컴포넌트는 redacted brief가 있을 때만 마운트되어 불필요한 fetch가 없다.)
+ * reload 路径 —— 持久化的回忆事件中的记忆内容会被 `<redacted>` 掩码
+ * （共享/快照安全约定），因此用 brief 的 id 从 Memory API 重新查询内容
+ * 并合并。与 memory-tool-ui 通过服务器重新查询恢复 proposal 的模式相同
+ * —— 这是仅 owner 可用的 API，因此在共享页面不会恢复。
+ * （该组件仅在存在 redacted brief 时 mount，不会产生无用 fetch。）
  */
 function MemoryRecallListWithJoin({
   memories,
@@ -65,10 +65,10 @@ function MemoryRecallListWithJoin({
 }
 
 /**
- * MemoryRecallChip — 이번 런의 system prompt에 주입된 장기 기억(회상)을
- * 보여주는 상시 칩. 데이터는 `moldy.memory_recalled` stream-head 이벤트
- * (memory-recall-events.ts)가 대화 단위 atom에 채운다. 회상이 없는 대화에선
- * 렌더하지 않는다. 펼치면 scope 배지 + 기억 미리보기 목록.
+ * MemoryRecallChip —— 显示本次 run 注入 system prompt 的长期记忆（回忆）的
+ * 常驻 chip。数据由 `moldy.memory_recalled` stream-head 事件
+ * (memory-recall-events.ts) 填入对话级 atom。没有回忆的对话
+ * 不渲染。展开后显示 scope badge + 记忆预览列表。
  */
 export function MemoryRecallChip() {
   const t = useTranslations('chat.memoryRecall')

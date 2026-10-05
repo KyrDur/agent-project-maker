@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# worktree-setup.sh — git worktree 진입 후 1회 실행.
+# worktree-setup.sh — 进入 git worktree 后执行一次。
 #
-# 매번 .env 를 따로 만들지 않도록 main checkout 의 backend/.env 를 symlink
-# 로 연결한다. main 의 .env 가 ground truth — JWT_SECRET / ENCRYPTION_KEYS
-# / DATABASE_URL 이 같아야 세션 공유 + 기존 credential 복호화가 정상이다.
+# 通过 symlink 连接主 checkout 的 backend/.env，避免重复创建配置。
+# 主 checkout 的 .env 是配置来源；JWT_SECRET / ENCRYPTION_KEYS / DATABASE_URL
+# 必须一致，才能共享会话并解密已有 credential。
 #
-# 사용 예 (worktree 안에서):
+# 使用示例（在 worktree 中）：
 #   bash scripts/worktree-setup.sh
 #
-# 멱등 — 여러 번 실행해도 안전.
+# 幂等操作，可重复执行。
 
 set -euo pipefail
 
-# 현재 cwd 가 git worktree 인지 확인
+# 检查当前 cwd 是否位于 git worktree。
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null || true)
 if [[ -z "$toplevel" ]]; then
-  echo "✗ git repository 가 아닙니다. cwd 를 worktree 안으로 옮겨서 다시 실행하세요." >&2
+  echo "✗ 当前目录不是 git repository。请进入 worktree 后重试。" >&2
   exit 1
 fi
 
-# main checkout 의 경로 — git worktree list 에서 첫 번째 (= bare/main) 항목.
-# 일반적으로 prunable 가 아닌 첫 항목이 main.
+# 主 checkout 路径：git worktree list 的第一项（bare/main）。
+# 通常第一个未标记 prunable 的项目就是主 checkout。
 main_path=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
 if [[ -z "$main_path" ]]; then
-  echo "✗ 'git worktree list' 결과가 비어있습니다." >&2
+  echo "✗ 'git worktree list' 返回空结果。" >&2
   exit 1
 fi
 
 if [[ "$main_path" == "$toplevel" ]]; then
-  echo "ℹ main checkout 입니다 — symlink 셋업이 필요 없습니다."
+  echo "ℹ 当前为主 checkout，无需设置 symlink。"
   exit 0
 fi
 
@@ -36,28 +36,28 @@ main_env="$main_path/backend/.env"
 worktree_env="$toplevel/backend/.env"
 
 if [[ ! -f "$main_env" ]]; then
-  echo "✗ main 의 backend/.env 가 없습니다: $main_env" >&2
-  echo "  먼저 main 에서 'cp backend/.env.example backend/.env' + JWT_SECRET / ENCRYPTION_KEYS 채워주세요." >&2
+  echo "✗ 主 checkout 缺少 backend/.env：$main_env" >&2
+  echo "  请先在主 checkout 执行 'cp backend/.env.example backend/.env' 并填写 JWT_SECRET / ENCRYPTION_KEYS。" >&2
   exit 1
 fi
 
-# 기존 .env 가 일반 파일이면 — 사용자가 직접 만든 worktree-local 파일.
-# 충돌을 피하려 백업 후 symlink 로 교체.
+# 若已有 .env 是普通文件，说明用户创建了 worktree 本地配置。
+# 为避免冲突，先备份再替换为 symlink。
 if [[ -f "$worktree_env" && ! -L "$worktree_env" ]]; then
   backup="$worktree_env.bak-$(date +%s)"
-  echo "⚠ 기존 backend/.env 는 일반 파일입니다 — $backup 으로 백업 후 symlink 로 교체"
+  echo "⚠ 已有 backend/.env 是普通文件，将备份到 $backup 后替换为 symlink。"
   mv "$worktree_env" "$backup"
 fi
 
-# Relative symlink — main checkout 이 이동하지 않는 한 안전. worktree 가
-# repository 어디에 있든 정확히 main backend/.env 를 가리킨다.
+# 使用相对 symlink；只要主 checkout 未移动，就能从任意 worktree
+# 准确指向主 checkout 的 backend/.env。
 mkdir -p "$(dirname "$worktree_env")"
 rel_target=$(python3 -c "import os.path; print(os.path.relpath('$main_env', start='$(dirname "$worktree_env")'))")
 ln -sf "$rel_target" "$worktree_env"
 
-# 결과 검증
+# 验证结果。
 if [[ ! -f "$worktree_env" ]]; then
-  echo "✗ symlink 가 resolve 되지 않습니다: $(readlink "$worktree_env")" >&2
+  echo "✗ symlink 无法解析：$(readlink "$worktree_env")" >&2
   exit 1
 fi
 
@@ -65,30 +65,30 @@ echo "✓ backend/.env → $(readlink "$worktree_env")"
 echo "  resolved → $(python3 -c "import os; print(os.path.realpath('$worktree_env'))")"
 
 # --- ADR-018 — backend/data symlink ---------------------------------------
-# DB는 main과 공유되는데 backend/data/ 가 worktree마다 별도면 publish/install
-# 시 본문 파일이 worktree 안에만 생성된다. worktree를 정리하면 DB에는 row만
-# 남고 파일이 사라지는 사고가 2026-05-23에 발생. 같은 .env symlink 패턴을
-# data/ 에도 적용해 main backend/data 를 직접 가리키게 한다.
+# DB 与主 checkout 共享，但若各 worktree 使用独立的 backend/data/，
+# publish/install 只会在 worktree 中生成正文文件。2026-05-23 曾发生清理
+# worktree 后 DB 保留 row、文件却丢失的问题。对 data/ 采用与 .env 相同的
+# symlink 方式，直接指向主 checkout 的 backend/data。
 main_data="$main_path/backend/data"
 worktree_data="$toplevel/backend/data"
 
 mkdir -p "$main_data"
 
-# worktree에 일반 디렉토리가 이미 있으면 비어있을 때만 자동 제거 후 symlink.
-# 안에 데이터가 있으면 — 사용자가 worktree 안에서 publish/install 한 결과 —
-# 자동 제거 위험하니 수동 조치 안내만 출력.
+# 若 worktree 已有普通目录，仅在为空时自动移除并创建 symlink。
+# 若包含数据，可能是用户在 worktree 中 publish/install 的结果。
+# 为避免误删，仅输出手动处理说明。
 if [[ -d "$worktree_data" && ! -L "$worktree_data" ]]; then
   if [[ -z "$(ls -A "$worktree_data" 2>/dev/null)" ]]; then
     rmdir "$worktree_data"
   else
     backup="$worktree_data.bak-$(date +%s)"
     echo
-    echo "⚠ 기존 backend/data/ 는 일반 디렉토리이고 내용물이 있습니다."
-    echo "  worktree 안 데이터가 main 과 분리되어 storage_path 가 깨질 수 있습니다."
-    echo "  수동 조치:"
-    echo "    1) worktree 안에서 띄운 dev server 가 있으면 종료"
-    echo "    2) mv '$worktree_data' '$backup'   # 백업"
-    echo "    3) bash scripts/worktree-setup.sh   # 재실행"
+    echo "⚠ 已有 backend/data/ 是普通目录，且包含数据。"
+    echo "  worktree 数据与主 checkout 分离可能导致 storage_path 失效。"
+    echo "  手动处理："
+    echo "    1) 停止在 worktree 中运行的 dev server"
+    echo "    2) mv '$worktree_data' '$backup'   # 备份"
+    echo "    3) bash scripts/worktree-setup.sh   # 重新执行"
     echo
   fi
 fi
@@ -98,15 +98,15 @@ if [[ ! -e "$worktree_data" ]]; then
   ln -sf "$rel_data_target" "$worktree_data"
   echo "✓ backend/data → $(readlink "$worktree_data")"
 elif [[ -L "$worktree_data" ]]; then
-  echo "✓ backend/data → $(readlink "$worktree_data") (이미 symlink)"
+  echo "✓ backend/data → $(readlink "$worktree_data")（已为 symlink）"
 fi
 
 echo
-echo "다음 가이드:"
-echo "  1) backend 실행: cd backend && uv run uvicorn app.main:app --reload --port 8001 --reload-dir app"
-echo "     (--reload-dir app — publish/install 시 data/ 변경이 reload 트리거하는 것 방지)"
-echo "  2) frontend 실행: cd frontend && pnpm dev"
+echo "后续步骤："
+echo "  1) 启动 backend：cd backend && uv run uvicorn app.main:app --reload --port 8001 --reload-dir app"
+echo "     （--reload-dir app 避免 publish/install 时 data/ 变化触发 reload）"
+echo "  2) 启动 frontend：cd frontend && pnpm dev"
 echo
-echo "참고: ADR-018 — storage_path 는 settings.data_root 기준 상대경로로 저장됩니다."
-echo "       backend/data symlink + 상대경로 컬럼의 이중 방어로 worktree 정리 후에도"
-echo "       main 데이터가 보존됩니다."
+echo "说明：ADR-018 — storage_path 保存为相对于 settings.data_root 的路径。"
+echo "       backend/data symlink 与相对路径字段共同保证清理 worktree 后"
+echo "       主 checkout 的数据仍被保留。"

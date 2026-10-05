@@ -114,7 +114,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     const input = screen.getByRole('textbox', { name: 'Message' })
 
     fireEvent.compositionStart(input)
-    fireEvent.change(input, { target: { value: '/search 한', selectionStart: 9, selectionEnd: 9 } })
+    fireEvent.change(input, { target: { value: '/search 中', selectionStart: 9, selectionEnd: 9 } })
     fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
     expect(execute).not.toHaveBeenCalled()
     fireEvent.compositionEnd(input)
@@ -145,7 +145,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     render(<Harness commands={[]} onResourceSelect={onResourceSelect} />)
     const input = screen.getByRole('textbox', { name: 'Message' })
 
-    fireEvent.change(input, { target: { value: '@회', selectionStart: 2, selectionEnd: 2 } })
+    fireEvent.change(input, { target: { value: '@会', selectionStart: 2, selectionEnd: 2 } })
     await waitFor(() => expect(screen.getByRole('listbox', { name: 'Resources' })).toBeVisible())
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'Enter' })

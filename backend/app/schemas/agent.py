@@ -17,8 +17,8 @@ OPENER_QUESTION_MAX_LENGTH = 200
 def _validate_opener_questions(v: list[str] | None) -> list[str] | None:
     """Shared validator for opener_questions.
 
-    - 리스트 길이 ≤ 12
-    - 각 항목은 strip 후 1~200자
+    - list 长度 ≤ 12
+    - 每项 strip 后长度为 1~200 字符
     """
     if v is None:
         return v
@@ -54,8 +54,8 @@ class MiddlewareConfigEntry(BaseModel):
 
 
 def _validate_sub_agent_ids(v: list[uuid.UUID] | None) -> list[uuid.UUID] | None:
-    """Reject duplicates. 자기참조는 path id가 없는 schema 단계에서 차단 불가 →
-    service 레이어에서 추가 검증."""
+    """Reject duplicates. 自引用在没有 path id 的 schema 阶段无法阻止 →
+    在 service 层追加校验。"""
     if v is None:
         return v
     seen: set[uuid.UUID] = set()
@@ -67,8 +67,8 @@ def _validate_sub_agent_ids(v: list[uuid.UUID] | None) -> list[uuid.UUID] | None
 
 
 class AgentCreate(BaseModel):
-    # M6: extra='forbid' — 구버전 client가 tool_configs / agent_config 등
-    # 이미 제거된 필드를 보내면 422로 명시적 reject. silent drop 금지.
+    # M6: extra='forbid' — 旧版 client 如果发送 tool_configs / agent_config 等
+    # 已删除字段，明确 reject. 为 422。禁止 silent drop。
     model_config = ConfigDict(extra="forbid")
 
     name: str
@@ -96,7 +96,7 @@ class AgentCreate(BaseModel):
     @field_validator("sub_agent_ids")
     @classmethod
     def _validate_sub_agent_ids(cls, v: list[uuid.UUID]) -> list[uuid.UUID]:
-        # Create는 None을 받지 않으므로 헬퍼 결과는 항상 list[UUID].
+        # Create 不接收 None，因此 helper 结果始终是 list[UUID]。
         cleaned = _validate_sub_agent_ids(v)
         return cleaned if cleaned is not None else []
 
@@ -107,7 +107,7 @@ class AgentCreate(BaseModel):
 
 
 class AgentUpdate(BaseModel):
-    # M6: extra='forbid' — AgentCreate와 동일 이유.
+    # M6: extra='forbid' — 原因与 AgentCreate 相同。
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = None
@@ -147,8 +147,8 @@ class ModelBrief(BaseModel):
     display_name: str
     provider: str
     model_name: str
-    # 컨텍스트 창 한도(토큰). 채팅 컴포저의 컨텍스트 사용량 게이지가 참조한다.
-    # null이면 한도 미설정 모델(게이지 비활성).
+    # context window 上限（token）。供聊天 composer 的 context 使用量 gauge 引用。
+    # 为 null 时表示模型未设置上限（gauge 禁用）。
     context_window: int | None = None
 
     model_config = {"from_attributes": True}
@@ -157,8 +157,8 @@ class ModelBrief(BaseModel):
 class ToolBrief(BaseModel):
     id: uuid.UUID
     name: str
-    # 도구 registry 정의의 icon_id(domain `icon_id`). 채팅 도구 pill이 의미 아이콘을
-    # 고르는 데 쓴다. registry에 정의가 없으면 null(프론트는 렌치로 폴백).
+    # 工具 registry 定义中的 icon_id（domain `icon_id`）。聊天工具 pill 用它选择语义 icon；
+    # 如果 registry 中没有定义则为 null（前端 fallback 为 wrench）。
     icon_id: str | None = None
 
     model_config = {"from_attributes": True}
@@ -176,7 +176,7 @@ class McpToolBrief(BaseModel):
 
 
 class AgentBrief(BaseModel):
-    """가벼운 에이전트 카드용 표현 (서브에이전트 목록 등)."""
+    """用于轻量 Agent 卡片的表示（如 subagent 列表）。"""
 
     id: uuid.UUID
     name: str

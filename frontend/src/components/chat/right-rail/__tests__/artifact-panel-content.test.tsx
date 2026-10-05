@@ -186,28 +186,28 @@ describe('ArtifactPanelContent', () => {
     })
   })
 
-  it('renders generated items with the 생성 badge', () => {
+  it('renders generated items with the 生成 badge', () => {
     renderPanel('list')
 
     expect(screen.getByText('生成的文件')).toBeInTheDocument()
-    expect(screen.getAllByText('已创建').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('生成').length).toBeGreaterThanOrEqual(2)
   })
 
-  it('renders an attached file with the 첨부 badge as a read-only card', () => {
+  it('renders an attached file with the 附件 badge as a read-only card', () => {
     useConversationFilesMock.mockReturnValue({ data: [fileItem({ name: 'sent.png' })] })
 
     renderPanel('list')
 
-    // 첨부 섹션 + 배지 + 파일명이 보인다.
+    // 可看到附件 section + badge + 文件名。
     expect(screen.getByText('您发送的文件')).toBeInTheDocument()
     expect(screen.getByText('附')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sent\.png/ })).toBeInTheDocument()
-    // 읽기 전용: edit/save/remove 류 액션이 없다.
+    // 只读：没有 edit/save/remove 类 action。
     expect(screen.queryByRole('button', { name: /제거|삭제|편집|수정|저장/ })).toBeNull()
-    // 다운로드 어포던스는 존재한다(base-ui Button이 <a>에 role=button을 부여).
+    // 存在下载 affordance（base-ui Button 会给 <a> 添加 role=button）。
     const download = screen.getByRole('button', { name: '下载' })
     expect(download.getAttribute('href')).toContain('/api/uploads/attach-1')
-    // 생성 섹션도 그대로 함께 렌더된다(레그레션).
+    // 生成 section 也仍一起渲染（regression）。
     expect(screen.getByText('生成的文件')).toBeInTheDocument()
   })
 

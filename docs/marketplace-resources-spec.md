@@ -954,7 +954,7 @@ PUT body:
 { "credential_id": "uuid" }
 ```
 
-검증:
+验证：
 
 - skill ownership (`Skill.user_id == current_user.id`)
 - requirement key 존재
@@ -1391,7 +1391,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - 기존 `/api/skills`, `/api/mcp-servers` 응답에 origin/publication summary 추가
 - Install/publish 없음
 
-검증:
+验证：
 
 - 마이그레이션 upgrade/downgrade
 - Catalog 응답이 access 규칙 준수 (private/restricted/public/system 시나리오)
@@ -1406,7 +1406,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - Installed skill row에 source 메타 채우기
 - `install_mode` 처리
 
-검증:
+验证：
 
 - 설치는 user-owned skills row 생성
 - Installation row가 item/version/resource IDs 추적
@@ -1421,7 +1421,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - `marketplace_publication_links` 생성
 - Installed skill detail에 published 상태 표시
 
-검증:
+验证：
 
 - Publish가 private data strip
 - Secret scan rejects `.env`/PEM
@@ -1437,7 +1437,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - Install 흐름에 binding wizard 통합
 - Frontend setup UX
 
-검증:
+验证：
 
 - 잘못된 owner credential 거부
 - 잘못된 definition_key 거부
@@ -1451,7 +1451,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - Cleanup job (stale runtime root)
 - Fail-fast: missing required credential
 
-검증:
+验证：
 
 - 미선택 skill 접근 불가
 - Decrypted credential은 subprocess env에만 노출
@@ -1466,7 +1466,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - Execution profile 분류
 - Idempotent sync (content_hash 비교)
 
-검증:
+验证：
 
 - Dry-run이 create/update/deprecate 카운트 보고
 - 같은 commit 재실행 시 신규 version 없음
@@ -1481,7 +1481,7 @@ skill_runtime_credential_injection_enabled: bool = False  # Slice E gating
 - Installed resource page 보강 (origin/publication badges)
 - Admin moderation 화면 (super_user)
 
-검증:
+验证：
 
 - Catalog 필터/검색/정렬
 - Install 후 agent 설정에서 skill 선택 가능

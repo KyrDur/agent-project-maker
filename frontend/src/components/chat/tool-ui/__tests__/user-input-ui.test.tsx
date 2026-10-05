@@ -40,8 +40,8 @@ describe('UserInputUI', () => {
       return renderUserInput({
         args: {
           mode: 'option_list',
-          title: '출력 형식',
-          question: '결과를 어떤 형식으로 받고 싶으세요?',
+          title: '输出格式',
+          question: '希望以什么格式接收结果？',
           options: ['HTML', 'Markdown'],
         },
         status: { type: 'requires-action' },
@@ -50,7 +50,7 @@ describe('UserInputUI', () => {
 
     render(<UserInputUnderTest />)
 
-    expect(screen.getByText('결과를 어떤 형식으로 받고 싶으세요?')).toBeInTheDocument()
+    expect(screen.getByText('希望以什么格式接收结果？')).toBeInTheDocument()
   })
 
   it('uses a neutral card surface while input is pending', () => {

@@ -107,7 +107,7 @@ export function OutlinePanelContent({ payload }: Props) {
               <button
                 type="button"
                 onClick={() => {
-                  // Placeholder — scroll target not yet implemented (P0-1 작업자가 마무리)
+                  // Placeholder —— scroll target not yet implemented（由 P0-1 任务负责人完成）
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(
                       new CustomEvent('moldy:outline-jump', {

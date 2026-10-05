@@ -45,10 +45,10 @@ async def restore_redacted_resume_payload(
 
 
 def _resume_contains_edit(value: Any) -> bool:
-    # redacted 유무와 무관하게 edit decision이 하나라도 있으면 index 해석 경로를
-    # 타야 한다. edit는 secret placeholder 복원뿐 아니라 ``edited_action.name``을
-    # pending action index로 채우는 작업도 필요하기 때문이다(프론트는 name을
-    # 보내지 않는다). 비-edit(approve/reject/respond) resume은 그대로 short-circuit.
+    # 无论是否 redacted，只要存在一个 edit decision，就必须走 index 解析路径。
+    # 因为 edit 不仅要恢复 secret placeholder，还需要把 ``edited_action.name``
+    # 填为 pending action index 对应的值（前端不会发送 name）。
+    # 非 edit（approve/reject/respond）的 resume 则直接 short-circuit.
     if isinstance(value, Mapping):
         if value.get("type") == "edit":
             return True
@@ -172,11 +172,11 @@ def _restore_redacted_response(
         if unresolved:
             raise RedactedResumeArgsUnavailable()
         restored_edited_action = {**dict(edited_action), "args": restored_args}
-        # 권위적 name 채우기: langchain ``HumanInTheLoopMiddleware``는 decision↔
-        # action을 positional index로 매칭하고 ``edited_action["name"]``을 hard
-        # subscript로 읽는다. 프론트가 도구 이름을 몰라도(생략/오류) 백엔드가
-        # pending action의 이름으로 덮어쓴다. 매칭 raw action이 없으면(방어)
-        # 프론트값을 그대로 둔다.
+        # 填充权威 name：langchain ``HumanInTheLoopMiddleware`` 会按 positional index 匹配 decision↔
+        # action，并按 positional index 匹配，同时对 ``edited_action["name"]`` 进行 hard
+        # subscript 读取。即使前端不知道工具名（省略/错误），后端也会
+        # 用 pending action 的名称覆盖。若没有匹配的 raw action（防御性处理），
+        # 则保留前端传入值。
         raw_name = raw_action.get("name") if isinstance(raw_action, Mapping) else None
         if isinstance(raw_name, str):
             restored_edited_action["name"] = raw_name

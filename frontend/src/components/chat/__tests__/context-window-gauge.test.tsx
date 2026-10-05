@@ -14,11 +14,15 @@ function usage(over: Partial<TokenUsageBreakdown>): TokenUsageBreakdown {
 }
 
 describe('ContextWindowGauge', () => {
-  it('점유량은 prompt_tokens 단독 — cache_*를 더하지 않는다', () => {
-    // prompt 700k + cache 300k. cache를 더하면 100%가 되지만 prompt 단독이라 70%.
+  it('占用量仅使用 prompt_tokens —— 不叠加 cache_*', () => {
+    // prompt 700k + cache 300k。若叠加 cache 会变成 100%，但只算 prompt，因此是 70%。
     render(
       <ContextWindowGauge
-        usage={usage({ prompt_tokens: 700000, cache_creation_tokens: 200000, cache_read_tokens: 100000 })}
+        usage={usage({
+          prompt_tokens: 700000,
+          cache_creation_tokens: 200000,
+          cache_read_tokens: 100000,
+        })}
         contextWindow={1000000}
         modelName="claude-sonnet-4-6"
       />,
@@ -29,7 +33,7 @@ describe('ContextWindowGauge', () => {
     expect(trigger.textContent).toContain('claude-sonnet-4-6')
   })
 
-  it('< 80%: 중립색(경고색 아님)', () => {
+  it('< 80%: 中性色（非警告色）', () => {
     const { container } = render(
       <ContextWindowGauge usage={usage({ prompt_tokens: 500000 })} contextWindow={1000000} />,
     )
@@ -37,7 +41,7 @@ describe('ContextWindowGauge', () => {
     expect(container.querySelector('.text-status-danger')).toBeNull()
   })
 
-  it('≥ 80%: 경고색(--status-warn)', () => {
+  it('≥ 80%: 警告色(--status-warn)', () => {
     const { container } = render(
       <ContextWindowGauge usage={usage({ prompt_tokens: 850000 })} contextWindow={1000000} />,
     )
@@ -45,26 +49,30 @@ describe('ContextWindowGauge', () => {
     expect(container.querySelector('.text-status-danger')).toBeNull()
   })
 
-  it('≥ 95%: 위험색(--status-danger)', () => {
+  it('≥ 95%: 危险色(--status-danger)', () => {
     const { container } = render(
       <ContextWindowGauge usage={usage({ prompt_tokens: 980000 })} contextWindow={1000000} />,
     )
     expect(container.querySelector('.text-status-danger')).not.toBeNull()
   })
 
-  it('context_window null: 숨기지 않고 비활성 + "没有限制" 표시', () => {
+  it('context_window null: 不隐藏，显示为禁用 + "没有限制"', () => {
     render(
-      <ContextWindowGauge usage={usage({ prompt_tokens: 500000 })} contextWindow={null} modelName="scripted" />,
+      <ContextWindowGauge
+        usage={usage({ prompt_tokens: 500000 })}
+        contextWindow={null}
+        modelName="scripted"
+      />,
     )
     const trigger = screen.getByRole('button')
-    expect(trigger).toBeInTheDocument() // 숨기지 않음
+    expect(trigger).toBeInTheDocument() // 不隐藏
     expect(trigger.textContent).toContain('没有限制')
     expect(trigger).toHaveAttribute('aria-label', '上下文限制未知')
-    // 점유율(%) 텍스트는 없다.
+    // 不显示占用率(%)文本。
     expect(trigger.textContent).not.toContain('%')
   })
 
-  it('usage null(첫 턴 전): 0%로 빈 상태', () => {
+  it('usage null（首轮之前）: 以 0% 空状态显示', () => {
     render(<ContextWindowGauge usage={null} contextWindow={1000000} />)
     expect(screen.getByRole('button').textContent).toContain('0%')
   })

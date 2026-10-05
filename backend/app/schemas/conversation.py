@@ -11,11 +11,11 @@ from app.schemas.conversation_run import ConversationRunResponse
 
 
 def _utc_iso(dt: datetime) -> str:
-    """timezone-naive datetime을 UTC ISO 문자열(Z suffix)로 직렬화.
+    """将 timezone-naive datetime 序列化为 UTC ISO 字符串（Z suffix）。
 
-    백엔드는 datetime을 `datetime.now(UTC).replace(tzinfo=None)`로 저장하므로
-    값은 UTC지만 tzinfo가 비어 있다. Pydantic 기본 직렬화는 'Z' 없이 보내
-    JS `new Date(s)`가 로컬 시간으로 해석하는 함정을 유발한다.
+    后端使用 `datetime.now(UTC).replace(tzinfo=None)` 保存 datetime，
+    因此值是 UTC，但 tzinfo 为空。Pydantic 默认序列化发送时不带 'Z'，
+    会导致 JS `new Date(s)` 将其解释为本地时间。
     """
     if dt.tzinfo is None:
         return dt.isoformat() + "Z"
@@ -76,22 +76,22 @@ class ConversationWithAgentListEnvelope(BaseModel):
 
 
 class Decision(BaseModel):
-    """단일 tool_call에 대한 인간 결정.
+    """针对单个 tool_call 的人工 decision。
 
-    LangChain ``HumanInTheLoopMiddleware``의 ``HITLResponse.decisions[i]``와
-    동일 shape (1:1 매칭). router에서 검증한 뒤 ``model_dump(exclude_none=True)``
-    로 dict 직렬화하여 ``Command(resume={"decisions": [dict, ...]})``로 송신한다
-    (LangChain 미들웨어는 ``NotRequired`` TypedDict를 받음).
+    与 LangChain ``HumanInTheLoopMiddleware`` 的 ``HITLResponse.decisions[i]``
+    shape 相同（1:1 匹配）。router 校验后通过 ``model_dump(exclude_none=True)``
+    序列化为 dict，并以 ``Command(resume={"decisions": [dict, ...]})`` 发送
+    （LangChain 中间件接收 ``NotRequired`` TypedDict）。
 
-    - ``approve``: 추가 필드 없음.
-    - ``edit``: ``edited_action={"name": str, "args": dict}`` 필수.
-    - ``reject``: ``message`` 선택 (없으면 미들웨어가 기본 메시지 생성).
-    - ``respond``: ``message`` 필수 (synthetic ToolMessage content).
+    - ``approve``：无额外字段。
+    - ``edit``：必须提供 ``edited_action={"name": str, "args": dict}``。
+    - ``reject``：``message`` 可选（没有时中间件生成默认消息）。
+    - ``respond``：``message`` 必填（synthetic ToolMessage content）。
     """
 
     type: Literal["approve", "edit", "reject", "respond"]
-    edited_action: dict[str, Any] | None = None  # type=edit 시 필수
-    message: str | None = None  # type=respond 시 필수, type=reject 시 선택
+    edited_action: dict[str, Any] | None = None  # type=edit 时必填
+    message: str | None = None  # type=respond 时必填，type=reject 时可选
 
     @model_validator(mode="after")
     def _validate_payload_for_type(self) -> Decision:
@@ -103,7 +103,7 @@ class Decision(BaseModel):
 
 
 class ResumeRequest(BaseModel):
-    """HiTL resume 요청. LangChain ``HITLResponse`` 호환 표준 wire."""
+    """HiTL resume 请求。兼容 LangChain ``HITLResponse`` 的标准 wire."""
 
     decisions: list[Decision]
 
@@ -178,12 +178,12 @@ class MessageFeedbackBrief(BaseModel):
 
 
 class TokenUsageBreakdown(BaseModel):
-    """W7 — 메시지별 4종 토큰 분해 (LangChain ``usage_metadata`` 평탄화).
+    """W7 — 按消息拆分 4 类 token（扁平化 LangChain ``usage_metadata``）。
 
-    LangChain은 ``input_token_details``로 cache_creation/cache_read를 분리해
-    전달한다. 클라이언트 hover 팝오버가 직접 참조하므로 평탄한 4 필드 + 비용
-    형태로 직렬화. 모든 필드 0이면 응답에서 ``null`` 자리를 반환하고 클라이언트는
-    렌더 자체를 건너뛴다.
+    LangChain 通过 ``input_token_details`` 区分 cache_creation/cache_read
+    并传递。由于客户端 hover popover 会直接引用，因此序列化为扁平的 4 个字段 + cost
+    形式。若所有字段都为 0，则响应中该位置返回 ``null``，客户端
+    直接跳过渲染。
     """
 
     prompt_tokens: int
@@ -191,9 +191,9 @@ class TokenUsageBreakdown(BaseModel):
     cache_creation_tokens: int
     cache_read_tokens: int
     estimated_cost: float | None = None
-    # 스트리밍 timing 메트릭 (TTFT / 총 생성시간(ms) / 출력 tok/s). live-only —
-    # checkpointer에 영속되지 않아 새로고침 후엔 None. token/cost 옆에 실어
-    # 같은 SSE/변환 경로로 흐른다 (assistant-ui ``useMessageTiming`` 호환 개념).
+    # streaming timing metric（TTFT / 总生成时间(ms) / 输出 tok/s）。live-only —
+    # 不持久化到 checkpointer，因此刷新后为 None. 与 token/cost 一起
+    # 走相同 SSE/转换路径（兼容 assistant-ui ``useMessageTiming`` 的概念）。
     ttft_ms: float | None = None
     generation_ms: float | None = None
     tokens_per_second: float | None = None
@@ -210,8 +210,8 @@ class MessageResponse(BaseModel):
     feedback: MessageFeedbackBrief | None = None
     attachments: list[MessageAttachmentBrief] | None = None
     artifacts: list[ArtifactSummary] | None = None
-    # W7 — assistant 메시지에서만 채워진다. user/tool 메시지나 LangChain이
-    # ``usage_metadata``를 emit하지 않은 chunk는 ``None``.
+    # W7 — 仅在 assistant 消息中填充。user/tool 消息或 LangChain
+    # 未 emit ``usage_metadata`` 的 chunk 为 ``None``。
     usage: TokenUsageBreakdown | None = None
     # M-CHAT1b — parent message id in the branch tree. ``None`` for the root
     # (first message). Frontend uses this to build assistant-ui's
@@ -248,17 +248,17 @@ class MessagesEnvelope(BaseModel):
 
     messages: list[MessageResponse]
     active_run: ConversationRunResponse | None = None
-    # 최신 run (상태 무관). ``active_run`` 은 terminal run 을 보고하지 않아
-    # 마지막 turn 이 취소되었는지(canceled/canceling)를 새로고침·refetch 후에
-    # 알 수 없다. 메시지가 checkpointer 파생이라 run ↔ message id 매칭이
-    # 불가능하므로, 프론트는 이 필드로 "被遗弃" notice 를 durable 하게 렌더.
+    # 最新 run（不区分状态）。``active_run`` 不报告 terminal run，
+    # 因此刷新/refetch 后无法得知最后一个 turn 是否被取消（canceled/canceling）。
+    # 消息由 checkpointer 派生，无法匹配 run ↔ message id，
+    # 因此前端用该字段 durable 渲染“被遗弃” notice。
     latest_run: ConversationRunResponse | None = None
     active_tip_message_id: uuid.UUID | None = None
     active_checkpoint_id: str | None = None
-    # W7-4 — conversation 단위 누적 비용 (USD). 메시지 단위는 model_id를 추적
-    # 하지 않으므로 ``MessageResponse.usage.estimated_cost``를 채울 수 없는데,
-    # ``token_usages`` 테이블이 turn마다 cost를 누적하므로 합산해 envelope에
-    # 발행한다. 클라이언트의 Composer 토큰 바가 새로고침 후에도 cost를 표시.
+    # W7-4 — conversation 维度累计 cost（USD）。消息级不追踪 model_id，
+    # 因此无法填充 ``MessageResponse.usage.estimated_cost``；
+    # 但 ``token_usages`` 表会按 turn 累积 cost，因此汇总后发到 envelope 中。
+    # 这样客户端 Composer token bar 在刷新后仍可显示 cost。
     total_estimated_cost: float = 0.0
 
 
@@ -328,9 +328,9 @@ class TurnTraceResponse(BaseModel):
     Used by W6 (shared page chip rendering) and the future W3-out resume
     endpoint to read the full event sequence.
 
-    ``linked_message_ids``: 이 turn에 노출된 assistant 메시지의 parsed UUID
-    (``MessageResponse.id``와 동일 형식). 빈 배열/None이면 frontend는
-    chronological turn 순서로 폴백.
+    ``linked_message_ids``：本 turn 暴露的 assistant 消息的 parsed UUID
+    （与 ``MessageResponse.id`` 格式相同）。若为空数组/None，frontend
+    fallback 到 chronological turn 顺序。
     """
 
     assistant_msg_id: str

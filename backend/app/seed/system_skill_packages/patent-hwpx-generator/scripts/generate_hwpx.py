@@ -17,11 +17,11 @@ SKILL_DIR = SCRIPT_DIR.parent
 TEMPLATE_PATH = SKILL_DIR / "assets" / "template.hwpx"
 
 GENERIC_TEAM = [
-    {"kor": "김 민 준", "eng": "Kim Min Jun", "dept": "기술개발팀", "role": "책임"},
-    {"kor": "이 서 연", "eng": "Lee Seo Yeon", "dept": "기술개발팀", "role": "선임"},
-    {"kor": "박 지 훈", "eng": "Park Ji Hoon", "dept": "플랫폼팀", "role": "선임"},
-    {"kor": "최 은 지", "eng": "Choi Eun Ji", "dept": "플랫폼팀", "role": "책임"},
-    {"kor": "정 도 윤", "eng": "Jung Do Yun", "dept": "품질검증팀", "role": "선임"},
+    {"kor": "金敏俊", "eng": "Kim Min Jun", "dept": "技术开发团队", "role": "负责人"},
+    {"kor": "李瑞妍", "eng": "Lee Seo Yeon", "dept": "技术开发团队", "role": "高级"},
+    {"kor": "朴志勋", "eng": "Park Ji Hoon", "dept": "平台团队", "role": "高级"},
+    {"kor": "崔恩智", "eng": "Choi Eun Ji", "dept": "平台团队", "role": "负责人"},
+    {"kor": "郑道允", "eng": "Jung Do Yun", "dept": "质量验证团队", "role": "高级"},
 ]
 
 
@@ -98,48 +98,46 @@ def normalize_inventors(data: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def normalize_data(data: dict[str, Any]) -> dict[str, Any]:
-    title = str(data.get("title") or data.get("invention_title") or "AI 에이전트 문서 검증 방법")
-    abstract = str(data.get("abstract") or "AI 에이전트가 생성한 문서를 검증하는 방법이다.")
-    default_background = "문서 생성 결과와 미리보기 결과를 함께 검증할 필요가 있다."
+    title = str(data.get("title") or data.get("invention_title") or "AI Agent 文档验证方法")
+    abstract = str(data.get("abstract") or "这是验证 AI Agent 生成文档的方法。")
+    default_background = "需要同时验证文档生成结果和预览结果。"
     background = str(data.get("background") or default_background)
     claims = data.get("claims")
     if not isinstance(claims, list) or not claims:
-        claims = ["문서 파일을 생성하는 단계", "artifact viewer에서 표시하는 단계"]
+        claims = ["生成文档文件的阶段", "在 artifact viewer 中显示的阶段"]
     effects = data.get("effects")
     if not isinstance(effects, list) or not effects:
-        effects = ["문서 생성과 미리보기 검증을 하나의 자동화 흐름으로 확인할 수 있다."]
+        effects = ["可以在一个自动化流程中检查文档生成与预览验证。"]
     return {
         "date": str(data.get("date") or "2026. 06. 07."),
         "invention_title": title,
         "invention_content": f"{abstract}\n\n{background}",
         "purpose": [
-            "AI 에이전트가 생성한 문서 파일의 실제 활용 가능성을 검증한다.",
-            "문서 생성, artifact 수집, viewer 렌더링, 화면 캡처를 단일 흐름으로 연결한다.",
+            "验证 AI Agent 生成的文档文件是否具备实际可用性。",
+            "将文档生成、artifact 收集、viewer 渲染、屏幕截图连接为单一流程。",
         ],
         "system_modules": [
             {
-                "title": "(1) 문서 생성 모듈",
-                "descriptions": ["선택된 skill을 실행하여 DOCX, XLSX, PPTX, HWPX 파일을 생성한다."],
+                "title": "(1) 文档生成模块",
+                "descriptions": ["执行选定的 skill，生成 DOCX、XLSX、PPTX、HWPX 文件。"],
             },
             {
-                "title": "(2) Artifact 수집 모듈",
-                "descriptions": [
-                    "생성된 파일을 conversation artifact로 수집하고 미리보기 URL을 제공한다."
-                ],
+                "title": "(2) Artifact 收集模块",
+                "descriptions": ["将生成的文件收集为 conversation artifact，并提供预览 URL。"],
             },
             {
-                "title": "(3) Viewer 검증 모듈",
+                "title": "(3) Viewer 验证模块",
                 "descriptions": [
-                    "파일 형식별 client-side viewer를 열고 Playwright 캡처로 결과를 검증한다."
+                    "打开各文件格式对应的 client-side viewer，并通过 Playwright 截图验证结果。"
                 ],
             },
         ],
         "methodology_sections": [
             {
-                "title": "(1) 검증 절차",
+                "title": "(1) 验证流程",
                 "paragraphs": [abstract, background],
                 "steps": [
-                    {"title": f"청구항 {idx + 1}", "paragraphs": [str(claim)]}
+                    {"title": f"权利要求 {idx + 1}", "paragraphs": [str(claim)]}
                     for idx, claim in enumerate(claims)
                 ],
             }
@@ -151,25 +149,23 @@ def normalize_data(data: dict[str, Any]) -> dict[str, Any]:
 
 def build_specification_body(data: dict[str, Any]) -> str:
     paragraphs: list[str] = [make_empty_paragraph()]
-    paragraphs.append(make_paragraph("발명의 목적", "14", "20"))
-    purpose_intro = "본 발명은 다음과 같은 기술적 과제를 해결하는 것을 목적으로 한다."
+    paragraphs.append(make_paragraph("发明目的", "14", "20"))
+    purpose_intro = "本发明旨在解决以下技术课题。"
     paragraphs.append(make_paragraph(purpose_intro, "12", "0"))
     for purpose in data["purpose"]:
         paragraphs.append(make_paragraph(purpose, "12", "28"))
 
     paragraphs.append(make_empty_paragraph())
-    paragraphs.append(make_paragraph("시스템 구성", "14", "20"))
+    paragraphs.append(make_paragraph("系统构成", "14", "20"))
     module_count = len(data["system_modules"])
-    paragraphs.append(
-        make_paragraph(f"본 발명의 시스템은 다음 {module_count}개 모듈로 구성된다.", "12", "0")
-    )
+    paragraphs.append(make_paragraph(f"本发明的系统由以下 {module_count} 个模块构成。", "12", "0"))
     for module in data["system_modules"]:
         paragraphs.append(make_paragraph(module["title"], "24", "0"))
         for desc in module["descriptions"]:
             paragraphs.append(make_paragraph(desc, "12", "29"))
 
     paragraphs.append(make_empty_paragraph())
-    paragraphs.append(make_paragraph("발명의 방법론", "15", "21"))
+    paragraphs.append(make_paragraph("发明方法", "15", "21"))
     for section in data["methodology_sections"]:
         paragraphs.append(make_paragraph(section["title"], "23", "23", "16"))
         for para_text in section.get("paragraphs", []):
@@ -180,7 +176,7 @@ def build_specification_body(data: dict[str, Any]) -> str:
                 paragraphs.append(make_paragraph(step_para, "10", "25"))
 
     paragraphs.append(make_empty_paragraph())
-    paragraphs.append(make_paragraph("발명의 효과", "15", "21"))
+    paragraphs.append(make_paragraph("发明效果", "15", "21"))
     for effect in data["effects"]:
         paragraphs.append(make_paragraph(effect, "10", "24"))
     return "".join(paragraphs)
@@ -191,7 +187,7 @@ def modify_part1(xml_content: str, data: dict[str, Any]) -> str:
     replacements: list[tuple[int, int, str]] = []
     for index, original in enumerate(GENERIC_TEAM):
         new_member = inventors[index]
-        for prefix, key in (("(한글) ", "kor"), ("(영문) ", "eng")):
+        for prefix, key in (("(韩文) ", "kor"), ("(英文) ", "eng")):
             old = f"{prefix}{original[key]}"
             new = f"{prefix}{new_member[key]}"
             pos = xml_content.find(old)
@@ -218,13 +214,13 @@ def modify_part1(xml_content: str, data: dict[str, Any]) -> str:
     )
     xml_content = content_pattern.sub(rf"\g<1>{escaped_content}\3", xml_content, count=1)
     xml_content = re.sub(
-        r"신고연월일 \d{4}\. \d{2}\. \d{2}\.",
-        f"신고연월일 {data['date']}",
+        r"申报年月日 \d{4}\. \d{2}\. \d{2}\.",
+        f"申报年月日 {data['date']}",
         xml_content,
         count=1,
     )
     xml_content = re.sub(
-        r"(신  고  인    ).*?( \(인\))",
+        r"(申  报  人    ).*?( \(印\))",
         rf"\g<1>{inventors[0]['kor']}\2",
         xml_content,
         count=1,
@@ -233,7 +229,7 @@ def modify_part1(xml_content: str, data: dict[str, Any]) -> str:
 
 
 def modify_part2_title(xml_content: str, data: dict[str, Any]) -> str:
-    marker = "발명(고안)의 명칭"
+    marker = "发明（设计）的名称"
     marker_pos = xml_content.find(marker)
     if marker_pos == -1:
         raise ValueError("발명(고안)의 명칭 마커를 찾을 수 없습니다")

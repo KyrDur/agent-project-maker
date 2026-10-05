@@ -19,23 +19,23 @@ const CONTAINER_BY_ACCENT: Record<Accent, string> = {
 
 interface ApprovalFooterProps {
   form: ApprovalFormState
-  /** 카드 톤. 기본 neutral, Phase 8 같은 강조 카드는 violet */
+  /** 卡片 tone。默认 neutral，Phase 8 等强调卡为 violet */
   accent?: Accent
   /** textarea placeholder */
   placeholder?: string
-  /** textarea 행 수 */
+  /** textarea 行数 */
   rows?: number
-  /** 승인 메시지 라벨 (제출 후 표시) */
+  /** 审批消息标签（提交后显示） */
   approvedStatusText?: string
-  /** 수정 요청 메시지 라벨 (제출 후 표시) */
+  /** 编辑请求消息标签（提交后显示） */
   revisionStatusText?: string
-  /** 제출 후 상태 메시지를 표시할지 */
+  /** 是否显示提交后的状态消息 */
   showStatusMessage?: boolean
 }
 
 /**
- * Phase 3/4/5/8 공통 approval footer.
- * textarea + (수정요청, 승인) 두 버튼.
+ * Phase 3/4/5/8 共用 approval footer。
+ * textarea +（编辑请求、批准）两个按钮。
  */
 export function ApprovalFooter({
   form,

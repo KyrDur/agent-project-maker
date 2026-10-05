@@ -57,14 +57,14 @@ class SkillRevisionFileEntry(BaseModel):
 
     path: str
     size: int
-    # 앞 8KB sniff에 널바이트가 있는 파일 — 내용 조회는 404(fail-closed).
+    # 前 8KB sniff 中含 null byte 的文件 — 内容查询返回 404（fail-closed）。
     is_binary: bool
 
 
 class SkillRevisionFilesResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    # 리텐션이 스냅샷을 정리한 리비전 — 파일 목록/내용을 제공할 수 없다.
+    # retention 已清理 snapshot 的 revision — 无法提供文件列表/内容。
     snapshot_pruned: bool
     files: list[SkillRevisionFileEntry]
 
