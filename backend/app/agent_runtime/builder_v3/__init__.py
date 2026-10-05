@@ -1,6 +1,6 @@
-"""Builder v3 — LangGraph StateGraph 기반 8-phase 대화형 빌더.
+"""Builder v3 — 基于 LangGraph StateGraph 的 8-phase 对话式构建器。
 
-순서를 그래프 토폴로지로 강제 (LLM이 어길 수 없음).
-HiTL: ask_user / approval / image choice (interrupt 기반).
-일반 채팅과 동일한 streaming.py / checkpointer 인프라 재사용.
+通过图拓扑强制顺序（LLM 无法违反）。
+HiTL: ask_user / approval / image choice（基于 interrupt）。
+复用与普通聊天相同的 streaming.py / checkpointer 基础设施。
 """

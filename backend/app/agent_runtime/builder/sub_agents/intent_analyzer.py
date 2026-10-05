@@ -22,7 +22,7 @@ def _build_task_description(user_request: str) -> str:
 
 
 async def analyze_intent(user_request: str) -> AgentCreationIntent:
-    """사용자 요청을 분석하여 AgentCreationIntent를 반환한다.
+    """分析用户请求并返回 AgentCreationIntent。
 
     解析失败后暂停阶段，允许用户重试。
     """

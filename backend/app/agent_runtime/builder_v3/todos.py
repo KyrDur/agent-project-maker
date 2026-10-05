@@ -1,7 +1,7 @@
-"""진행 상황 카드 (Todo) 헬퍼.
+"""进度状态卡（Todo）辅助函数。
 
-각 phase 노드 진입/완료 시 호출하여 BuilderState.todos를 갱신하고,
-ToolMessage로 emit하여 프론트엔드가 PhaseTimelineToolUI로 렌더링한다.
+每个 phase 节点进入/完成时调用，更新 BuilderState.todos，
+并通过 ToolMessage emit，使前端使用 PhaseTimelineToolUI 渲染。
 """
 
 from __future__ import annotations
@@ -21,14 +21,14 @@ from app.agent_runtime.builder_v3.state import (
     initial_todos,
 )
 
-# 진행 상황 카드를 ToolMessage로 표시하기 위한 가짜 도구 이름.
+# 用于将进度状态卡显示为 ToolMessage 的虚假工具名称。
 PHASE_TIMELINE_TOOL = ToolNames.PHASE_TIMELINE
 
 
 def update_phase_status(
     todos: list[PhaseTodo] | None, phase_id: int, status: str
 ) -> list[PhaseTodo]:
-    """단일 phase의 status를 갱신한 새 todos 리스트를 반환한다 (불변)."""
+    """返回更新单个 phase status 后的新 todos 列表（不可变）。"""
     base: list[PhaseTodo] = (
         [cast(PhaseTodo, {**t, "name": get_phase_name(t["id"])}) for t in todos]
         if todos
@@ -44,7 +44,7 @@ def update_phase_status(
 
 
 def mark_completed_through(todos: list[PhaseTodo] | None, phase_id: int) -> list[PhaseTodo]:
-    """1..phase_id 까지를 completed, phase_id+1을 pending(기본값) 유지한 todos 반환."""
+    """返回将 1..phase_id 标记为 completed、并让 phase_id+1 保持 pending（默认值）的 todos。"""
     base: list[PhaseTodo] = (
         [cast(PhaseTodo, {**t, "name": get_phase_name(t["id"])}) for t in todos]
         if todos
@@ -64,12 +64,12 @@ def build_timeline_messages(
     *,
     intro_text: str | None = None,
 ) -> tuple[list[Any], list[PhaseTodo]]:
-    """Tool call (assistant) + tool result (timeline) 메시지 쌍을 생성한다.
+    """生成 Tool call (assistant) + tool result (timeline) 消息对。
 
-    assistant-ui는 tool_call_id로 tool 메시지를 매칭하므로, 두 메시지를 항상 함께 emit.
+    assistant-ui 通过 tool_call_id 匹配 tool 消息，因此始终一起 emit 两条消息。
 
     Returns:
-        (messages, updated_todos): messages는 add_messages reducer로 누적
+        (messages, updated_todos): messages 通过 add_messages reducer 累积
     """
     todos = [
         {**t, "name": get_phase_name(t["id"])} for t in (state.get("todos") or initial_todos())

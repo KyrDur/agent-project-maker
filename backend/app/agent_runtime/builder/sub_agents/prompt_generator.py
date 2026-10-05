@@ -69,12 +69,12 @@ def _build_task_description(
     )
 
 
-# 프롬프트 검증용 핵심 헤딩 (builder/prompts/prompt_generator.md의 필수 섹션과 동기화)
+# 用于提示词验证的核心标题（与 builder/prompts/prompt_generator.md 的必需章节同步）
 _REQUIRED_HEADINGS = ("## Role", "## Tool Guidelines", "## Workflow", "## Constraints")
 
 
 def _has_required_sections(text: str) -> bool:
-    """생성된 프롬프트에 핵심 헤딩이 포함되어 있는지 확인한다."""
+    """检查生成的提示词是否包含核心标题。"""
     return all(heading in text for heading in _REQUIRED_HEADINGS)
 
 
@@ -83,7 +83,7 @@ async def generate_system_prompt(
     tools: list[ToolRecommendation],
     middlewares: list[MiddlewareRecommendation],
 ) -> str:
-    """시스템 프롬프트를 생성한다. 실패 시 1회 재시도 후 기본 프롬프트를 반환한다."""
+    """生成系统提示词；返回内容无效或模型调用失败时抛出错误。"""
     description = _build_task_description(intent, tools, middlewares)
 
     result = await invoke_for_text(SYSTEM_PROMPT, description, min_length=300)

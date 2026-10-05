@@ -1,7 +1,7 @@
-"""Builder v3 — BuilderState TypedDict + Phase 정의.
+"""Builder v3 — BuilderState TypedDict + Phase 定义。
 
-LangGraph StateGraph가 사용하는 상태. messages는 add_messages reducer로 누적,
-나머지는 단순 덮어쓰기 (default reducer).
+LangGraph StateGraph 使用的状态。messages 通过 add_messages reducer 累积，
+其余字段直接覆盖（default reducer）。
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ PHASE_DEFINITIONS: list[dict[str, Any]] = [
 
 
 class PhaseTodo(TypedDict):
-    """Phase 진행 상황 카드의 단일 항목."""
+    """Phase 进度状态卡的单个条目。"""
 
     id: int
     name: str
@@ -41,21 +41,21 @@ class BuilderState(TypedDict, total=False):
     capability_reason: str | None
     runtime_model_id: str | None
     runtime_setup_payload: dict[str, Any] | None
-    """LangGraph StateGraph가 관리하는 빌더 세션 상태.
+    """LangGraph StateGraph 管理的构建器会话状态。
 
-    `total=False`로 모든 키를 optional로 두어, 노드가 부분 업데이트만 반환해도 됨.
+    通过 `total=False` 将所有键设为 optional，使节点只返回部分更新也可以。
     """
 
-    # 메시지 히스토리 (assistant-ui 호환)
+    # 消息历史（assistant-ui 兼容）
     messages: Annotated[list[BaseMessage], add_messages]
 
-    # 진행 상황 카드 (8-phase)
+    # 进度状态卡（8-phase）
     todos: list[PhaseTodo]
 
-    # 첫 사용자 요청 (Phase 1에서 messages에서 추출하여 저장)
+    # 首次用户请求（在 Phase 1 中从 messages 提取并保存）
     user_request: str
 
-    # 카탈로그/메타 (Phase 1에서 주입)
+    # 目录/元数据（在 Phase 1 中注入）
     user_id: str
     session_id: str
     tools_catalog: list[dict[str, Any]]
@@ -63,41 +63,41 @@ class BuilderState(TypedDict, total=False):
     default_model_name: str
     project_path: str
 
-    # Phase별 결과
+    # 各 Phase 结果
     intent: dict[str, Any] | None  # Phase 2
     tools: list[dict[str, Any]]  # Phase 3 (ToolRecommendation list)
     middlewares: list[dict[str, Any]]  # Phase 4
     system_prompt: str | None  # Phase 5
-    image_url: str | None  # Phase 6 (None이면 이미지 없음)
+    image_url: str | None  # Phase 6（None 表示无图片）
     draft_config: dict[str, Any] | None  # Phase 7
 
-    # 진행 위치
+    # 当前进度位置
     current_phase: int
 
-    # phase 3/4/5 승인 루프에서 LLM에 전달할 수정 의견
+    # phase 3/4/5 批准循环中传递给 LLM 的修改意见
     last_revision_message: str | None
 
-    # phase 2가 사용자 이름 확인을 받았는지 (재진입 시 ask_user 스킵 여부)
+    # phase 2 是否已收到用户名称确认（再次进入时是否跳过 ask_user）
     intent_confirmed: bool
     phase2_name_options: list[str]
 
-    # phase 6 분기 신호 (skip/confirm 시 True → graph가 phase7로 라우팅)
+    # phase 6 分支信号（skip/confirm 时 True → graph 路由到 phase7）
     image_skipped: bool
 
-    # 직전 propose 노드가 emit한 pending tool_call의 id (wait 노드가 ToolMessage close용)
+    # 上一个 propose 节点 emit 的 pending tool_call id（wait 节点用于 close ToolMessage）
     pending_tool_call_id: str | None
 
-    # phase 8에서 router가 분기를 결정한 phase (디버깅/감사용)
+    # phase 8 中 router 决定分支的 phase（用于调试/审计）
     last_router_decision: str | None
 
-    # 종료 신호
+    # 结束信号
     completed: bool
     agent_id: str | None
     error_message: str | None
 
 
 def initial_todos() -> list[PhaseTodo]:
-    """8개 phase 초기 상태 (모두 pending)."""
+    """8 个 phase 的初始状态（全部 pending）。"""
     return [
         {"id": p["id"], "name": p["name"], "status": "pending"} for p in localize(PHASE_DEFINITIONS)
     ]

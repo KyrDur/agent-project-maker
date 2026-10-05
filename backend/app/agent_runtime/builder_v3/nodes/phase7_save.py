@@ -1,7 +1,7 @@
-"""Phase 7 — 에이전트 설정 저장 (자동, LLM 불필요).
+"""Phase 7 — 保存智能体设置（自动，无需 LLM）。
 
-draft_config 조립 → DB(builder_session)에 저장 → status=PREVIEW.
-DraftConfigCard ToolMessage emit + Phase 8로 자동 진행.
+组装 draft_config → 保存到 DB(builder_session) → status=PREVIEW。
+emit DraftConfigCard ToolMessage + 自动进入 Phase 8。
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ async def _persist_session(
     middlewares: list[dict[str, Any]],
     intent: dict[str, Any] | None = None,
 ) -> None:
-    """builder_session에 phase 결과를 저장하고 status=PREVIEW로 전환."""
+    """将 phase 结果保存到 builder_session，并切换为 status=PREVIEW。"""
     if not session_id:
         raise ValueError("builder_session_missing")
     try:
@@ -78,13 +78,13 @@ async def _persist_session(
             if not row:
                 raise ValueError("builder_session_missing")
             payload: dict[str, Any] = draft.model_dump(mode="json")
-            # image_url은 항상 명시적으로 set — None은 사용자가 phase6에서 skip한 의미.
+            # 始终显式 set image_url — None 表示用户在 phase6 中 skip。
             payload["image_url"] = image_url
             row.intent = intent
             row.draft_config = payload
             row.system_prompt = draft.system_prompt
-            # ToolRecommendation/MiddlewareRecommendation 전체 객체 저장
-            # (BuilderSessionResponse 스키마가 description/reason 필수)
+            # 保存 ToolRecommendation/MiddlewareRecommendation 完整对象
+            # （BuilderSessionResponse 模式要求 description/reason 必填）
             row.tools_result = list(tools)
             row.middlewares_result = list(middlewares)
             row.current_phase = current_phase
@@ -99,7 +99,7 @@ async def phase7_save(state: BuilderState) -> dict:
     try:
         draft = _build_draft(state)
         draft_dict: dict[str, Any] = draft.model_dump(mode="json")
-        # image_url은 항상 명시적으로 set — None이면 사용자가 phase6에서 skip한 의미.
+        # 始终显式 set image_url — None 表示用户在 phase6 中 skip。
         draft_dict["image_url"] = state.get("image_url")
 
         await _persist_session(

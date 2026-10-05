@@ -1,40 +1,39 @@
 # Moldy Backend
 
-FastAPI + SQLAlchemy + LangChain/LangGraph로 동작하는 AI 에이전트 빌더 백엔드.
+基于 FastAPI、SQLAlchemy 和 LangChain/LangGraph 的 AI 智能体构建后端。
 
-전체 프로젝트 개요/스택/세팅은 루트 [`README.md`](../README.md) /
-[`README_KO.md`](../README_KO.md) 참조.
+项目概述、技术栈和配置请参阅根目录 [`README.md`](../README.md)。
 
-## 빠른 시작
+## 快速开始
 
 ```bash
-# 의존성 설치
+# 安装依赖
 uv sync
 
-# DB 마이그레이션
+# 数据库迁移
 uv run alembic upgrade head
 
-# 개발 서버 (http://localhost:8001/docs)
+# 开发服务器 (http://localhost:8001/docs)
 uv run uvicorn app.main:app --reload --reload-dir app --port 8001
 ```
 
-worktree에서 frontend 포트를 바꿔 띄우면 backend CORS도 같은 origin으로 맞춰야
-합니다. 예: frontend `3010`, backend `8010`.
+在 worktree 中使用其他前端端口时，后端 CORS 必须允许相同的 origin。
+例如：前端 `3010`，后端 `8010`。
 
 ```bash
 CORS_ALLOWED_ORIGINS=http://localhost:3010,http://127.0.0.1:3010 \
   uv run uvicorn app.main:app --reload --reload-dir app --port 8010
 ```
 
-## 주요 명령
+## 常用命令
 
 ```bash
-uv run pytest                # aiosqlite 기반 단위 테스트 (Postgres 불필요)
-uv run ruff check .          # 린트
-uv run ruff format .         # 포맷
-uv run alembic revision -m "..." --autogenerate  # 새 마이그레이션
+uv run pytest                # 基于 aiosqlite 的单元测试（无需 Postgres）
+uv run ruff check .          # 静态检查
+uv run ruff format .         # 格式化
+uv run alembic revision -m "..." --autogenerate  # 新建迁移
 
-# disposable PostgreSQL 통합 테스트는 저장소 루트 runner로 실행한다.
+# 使用仓库根目录的 runner 执行隔离 PostgreSQL 集成测试。
 (
   cd ..
   manifest=".omo/evidence/project-restart-consolidated-roadmap/local-postgres-$(date +%s).json"
@@ -43,13 +42,13 @@ uv run alembic revision -m "..." --autogenerate  # 새 마이그레이션
 )
 ```
 
-runner는 `backend/tests` 전체에서 `integration` 마커가 붙은 테스트를 선택하므로
-`tests/integration/` 디렉토리만 직접 지정하는 것보다 canonical integration lane의
-검증 범위를 정확히 반영한다. 특정 테스트를 빠르게 디버깅할 때만 backend 디렉토리에서
-`uv run pytest -q tests/integration/test_name.py -m integration`을 사용한다.
+runner 从整个 `backend/tests` 中选择带有 `integration` 标记的测试，
+比直接指定 `tests/integration/` 更准确地覆盖标准集成验证流程。
+仅在快速调试单项测试时，才从 backend 目录执行
+`uv run pytest -q tests/integration/test_name.py -m integration`。
 
-## 디렉토리 구조
+## 目录结构
 
-`app/main.py`가 FastAPI 앱 팩토리. `routers/`(HTTP) → `services/`(비즈니스) →
-`models/`(SQLAlchemy ORM) 3계층 구조. AI 실행은 `agent_runtime/` 격리.
-세부 사항은 루트 `CLAUDE.md` 참조.
+`app/main.py` 是 FastAPI 应用工厂。采用 `routers/`（HTTP）→
+`services/`（业务逻辑）→ `models/`（SQLAlchemy ORM）三层结构。
+AI 执行逻辑独立放在 `agent_runtime/`。开发约定请参阅根目录 `AGENTS.md`。

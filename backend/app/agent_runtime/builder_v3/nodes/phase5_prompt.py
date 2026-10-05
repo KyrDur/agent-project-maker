@@ -1,4 +1,4 @@
-"""Phase 5 — 시스템 프롬프트 작성 (generate + approval 2-노드 패턴)."""
+"""Phase 5 — 系统提示词编写（generate + approval 2-节点模式）。"""
 
 from __future__ import annotations
 

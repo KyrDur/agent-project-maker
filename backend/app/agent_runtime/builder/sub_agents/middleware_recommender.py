@@ -59,7 +59,7 @@ async def recommend_middlewares(
     tools: list[ToolRecommendation],
     middlewares_catalog: list[dict[str, Any]],
 ) -> list[MiddlewareRecommendation]:
-    """Intent + 도구 기반으로 미들웨어를 추천한다."""
+    """基于 Intent + 工具推荐中间件。"""
     description = _build_task_description(intent, tools, middlewares_catalog)
 
     valid_types = {m.get("type", "").lower() for m in middlewares_catalog}

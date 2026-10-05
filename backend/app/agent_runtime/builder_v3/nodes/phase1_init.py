@@ -1,6 +1,6 @@
-"""Phase 1 — 프로젝트 초기화 (LLM 불필요).
+"""Phase 1 — 项目初始化（无需 LLM）。
 
-진입 메시지 + 진행 상황 카드 emit + 다음 phase로 진입.
+emit 进入消息 + 进度状态卡 + 进入下一 phase。
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from app.agent_runtime.builder_v3.todos import (
 
 
 async def phase1_init(state: BuilderState) -> dict:
-    """첫 진입: 환영 메시지 + 8-phase 진행 상황 카드 emit."""
+    """首次进入：emit 欢迎消息 + 8-phase 进度状态卡。"""
     user_request = state.get("user_request") or get_last_user_text(state)
 
     todos = state.get("todos") or initial_todos()
 
-    # 진입: Phase 1 in_progress
+    # 进入：Phase 1 in_progress
     in_progress_todos = update_phase_status(todos, 1, "in_progress")
     intro_msgs, _ = make_tool_card(
         PHASE_TIMELINE_TOOL,
@@ -33,10 +33,10 @@ async def phase1_init(state: BuilderState) -> dict:
         intro_text=(tr("we_ll_make_you_an_b8b04a")),
     )
 
-    # 작업 — 단순한 path 문자열 (실제 파일 생성 없음, 메타용)
+    # 工作 — 简单的 path 字符串（不实际创建文件，仅用于元数据）
     project_path = f"agent_builds/{state.get('session_id', 'session')}"
 
-    # 완료 메시지 + 카드 갱신
+    # 完成消息 + 更新卡片
     complete_msgs = build_phase_complete(
         1,
         in_progress_todos,

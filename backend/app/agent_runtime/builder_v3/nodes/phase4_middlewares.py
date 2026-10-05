@@ -1,4 +1,4 @@
-"""Phase 4 — 미들웨어 추천 (generate + approval 2-노드 패턴)."""
+"""Phase 4 — 中间件推荐（generate + approval 2-节点模式）。"""
 
 from __future__ import annotations
 

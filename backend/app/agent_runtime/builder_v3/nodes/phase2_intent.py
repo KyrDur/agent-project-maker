@@ -1,17 +1,17 @@
-"""Phase 2 — 사용자 의도 분석 (analyze + wait 2-노드 패턴).
+"""Phase 2 — 用户意图分析（analyze + wait 2-节点模式）。
 
-LangGraph `interrupt()`는 ToolMessage를 자동 생성하지 않으므로,
-propose(=analyze) 노드에서 `ask_user` ToolMessage를 messages에 emit하고,
-wait 노드에서 interrupt를 호출한다. resume 후 응답에 따라 self-loop 또는 Phase 3로.
+LangGraph `interrupt()` 不会自动生成 ToolMessage，
+因此在 propose(=analyze) 节点将 `ask_user` ToolMessage emit 到 messages，
+在 wait 节点调用 interrupt。resume 后根据响应进入 self-loop 或 Phase 3。
 
-흐름:
+流程:
     phase2_analyze_intent
       ├ intent_confirmed=True  → Command(goto="phase3_recommend_tools", ...)
-      └ 그 외                  → ToolMessage(ask_user) emit + dict 반환
+      └ 其他                   → ToolMessage(ask_user) emit + 返回 dict
                                    ↓ (fixed edge)
     phase2_intent_wait → interrupt → resume:
-      ├ 빈/직접 입력 → Command(goto="phase2_analyze_intent")
-      └ 옵션 선택   → Command(goto="phase2_analyze_intent",
+      ├ 空/直接输入 → Command(goto="phase2_analyze_intent")
+      └ 选择选项   → Command(goto="phase2_analyze_intent",
                               update={intent_confirmed=True, intent.agent_name=..})
 """
 
@@ -43,7 +43,7 @@ from app.agent_runtime.identity import AGENT_IDENTITY_PER_USER
 logger = logging.getLogger(__name__)
 
 
-# fallback 라벨 (intent_analyzer.py가 파싱 실패 시 채우는 값)
+# fallback 标签（intent_analyzer.py 解析失败时填入的值）
 _FALLBACK_NAMES = {"Custom Agent", "自定义智能体", "自定义代理", ""}
 
 _ASK_QUESTION = "你想给这个智能体取什么名字？"
@@ -63,7 +63,7 @@ _OUTPUT_STYLE_OPTIONS = [
 def _build_phase2_ask_user_payload(
     name_options: list[str], intent: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    """Phase 2 설정 확인을 ask_user question_flow payload로 만든다."""
+    """将 Phase 2 设置确认构造成 ask_user question_flow payload。"""
     cleaned_names = [name for name in name_options if name.strip()]
     return {
         "mode": "question_flow",
@@ -163,10 +163,10 @@ def _fallback_name_options(state: BuilderState) -> list[str]:
 
 
 def _build_combined_request(state: BuilderState) -> str:
-    """초기 user_request + 후속 사용자 응답 + Phase 8 router의 revision 결합.
+    """结合初始 user_request + 后续用户响应 + Phase 8 router 的 revision。
 
-    Phase 8 → router → phase 2 재진입 시 ``last_revision_message`` 가 set된 상태.
-    이 메시지를 prompt에 포함해야 LLM이 사용자 수정 의견을 반영한다 (phase 3/4/5 패턴).
+    Phase 8 → router → 再次进入 phase 2 时，``last_revision_message`` 处于 set 状态。
+    必须将该消息包含在 prompt 中，LLM 才能反映用户的修改意见（phase 3/4/5 模式）。
     """
     parts: list[str] = []
     initial = state.get("user_request") or ""
@@ -196,7 +196,7 @@ def _name_matches_locale(name: str, request: str) -> bool:
 
 
 async def _suggest_name_options(user_request: str) -> list[str]:
-    """LLM에게 에이전트 이름 후보 3개를 생성해달라고 한다."""
+    """让 LLM 生成 3 个智能体名称候选。"""
     system = tr("you_name_ai_agents_suggest_97611d")
     task = tr("user_request_v_suggest_three_a2fc9c", v0=f"{user_request}")
     try:
@@ -247,9 +247,9 @@ def _complete_confirmed_intent(intent: dict[str, Any], state: BuilderState) -> d
 
 
 async def phase2_analyze_intent(state: BuilderState) -> dict:
-    """LLM 분석 + ask_user pending 카드 emit. intent_confirmed=True면 완료 메시지만.
+    """LLM 分析 + 发出 ask_user pending 卡片。intent_confirmed=True 时只 emit 完成消息。
 
-    실제 다음 노드 라우팅은 graph.py의 ``conditional_edges`` 가 결정한다.
+    实际下一节点的路由由 graph.py 的 ``conditional_edges`` 决定。
     """
     if not (state.get("user_request") or get_last_user_text(state)):
         return {
@@ -257,9 +257,9 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
             "error_message": tr("user_request_is_empty_3eb039"),
         }
 
-    # 사용자가 이미 이름을 확인한 경우 → 완료 메시지만 emit
-    # 단, last_revision_message가 set이면 (router로 phase 8에서 재진입한 경우)
-    # 다시 LLM 분석 + ask_user 흐름으로 (intent_confirmed=False로 reset)
+    # 用户已确认名称时 → 只 emit 完成消息
+    # 但如果 last_revision_message 已 set（从 phase 8 经 router 再次进入时）
+    # 则重新进入 LLM 分析 + ask_user 流程（reset 为 intent_confirmed=False）
     intent_dict = state.get("intent")
     if state.get("intent_confirmed") and intent_dict and not state.get("last_revision_message"):
         complete_msgs = build_phase_complete(
@@ -277,7 +277,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
 
     combined = _build_combined_request(state)
 
-    # LLM 2개 병렬 — 각 ~5-10초 호출 → 절반으로 단축
+    # 并行执行 2 个 LLM — 每个调用约 ~5-10 秒 → 缩短一半
     try:
         intent_obj, name_options = await asyncio.gather(
             analyze_intent(combined),
@@ -306,11 +306,11 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
         name_options = [suggested] + name_options[:2]
     name_options = name_options[:3]
 
-    # ask_user pending 카드 emit (ToolMessage 없이 AIMessage tool_call만)
-    # → frontend UserInputUI가 result undefined로 인식하여 입력 폼 표시
-    # NOTE: "直接输入" 옵션은 의도적으로 제외 — UserInputUI가 single_select 1개
-    # 질문에서 옵션 클릭 즉시 라벨 그대로 자동 제출하여 무한 루프가 발생하기 때문.
-    # 사용자가 다른 이름을 원하면 Phase 8 router에서 phase 2로 점프 가능.
+    # emit ask_user pending 卡片（无 ToolMessage，仅 AIMessage tool_call）
+    # → frontend UserInputUI 将 result undefined 识别为输入表单并显示
+    # NOTE: 有意排除 "直接输入" 选项 — UserInputUI 在 single_select 1 个
+    # 问题中点击选项后会立即原样自动提交标签，从而导致无限循环。
+    # 如果用户想使用其他名称，可从 Phase 8 router 跳转到 phase 2。
     msgs, tool_call_id = make_pending_tool_card(
         "ask_user",
         _build_phase2_ask_user_payload(name_options, intent_obj.model_dump(mode="json")),
@@ -319,7 +319,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
 
     return {
         "messages": msgs,
-        # intent는 임시 저장 (intent_confirmed=False 상태)
+        # intent 临时保存（intent_confirmed=False 状态）
         "intent": intent_obj.model_dump(mode="json"),
         "phase2_name_options": name_options,
         "error_message": None,
@@ -333,7 +333,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
 
 
 async def phase2_intent_wait(state: BuilderState) -> dict:
-    """interrupt 호출 → 응답 처리. dict만 반환, 라우팅은 graph.py 가 결정."""
+    """调用 interrupt → 处理响应。仅返回 dict，路由由 graph.py 决定。"""
     name_options = state.get("phase2_name_options") or _fallback_name_options(state)
     answer = interrupt(
         {
@@ -346,7 +346,7 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
     structured_answers, structured_labels = parse_question_flow_response(answer)
     pending_tc_id = state.get("pending_tool_call_id")
 
-    # 빈 응답 → intent_confirmed=False로 둠 (analyze 재진입)
+    # 空响应 → 保持 intent_confirmed=False（重新进入 analyze）
     if not answer_text:
         close_msgs = close_pending_tool_card(pending_tc_id, "ask_user", tr("no_response_c3ac04"))
         return {
@@ -412,6 +412,6 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
         "intent": intent_dict,
         "intent_confirmed": True,
         "messages": [*close_msgs, HumanMessage(content=receipt_text)],
-        "last_revision_message": None,  # router로 들어왔던 revision 소비 완료
+        "last_revision_message": None,  # 已消费通过 router 进入时的 revision
         "pending_tool_call_id": None,
     }

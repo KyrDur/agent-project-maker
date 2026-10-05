@@ -1,7 +1,7 @@
-"""Router 노드 — Phase 8 수정요청 시 어느 phase로 점프할지 분류.
+"""Router 节点 — Phase 8 出现修改请求时，分类应跳转到哪个 phase。
 
-Pydantic enum + 구조화 출력으로 LLM이 잘못된 분기를 하지 못하도록 강제.
-모호하면 ask_user fallback.
+通过 Pydantic enum + 结构化输出，强制防止 LLM 进入错误分支。
+如果模糊则 ask_user fallback。
 """
 
 from __future__ import annotations
@@ -34,15 +34,15 @@ _LABEL_TO_NODE = {
 }
 
 _SYSTEM_PROMPT = (
-    "당신은 에이전트 빌더의 라우팅 분류기입니다. "
-    "사용자의 수정 요청 메시지를 보고, 어느 단계를 다시 실행할지 결정합니다. "
-    "응답은 반드시 다음 5개 중 하나의 라벨만을 포함한 JSON 객체로만 합니다:\n"
-    " - intent: 에이전트 이름/설명/역할 변경\n"
-    " - tools: 도구 추천 변경\n"
-    " - middlewares: 미들웨어 추천 변경\n"
-    " - prompt: 시스템 프롬프트 수정\n"
-    " - image: 에이전트 이미지 변경\n\n"
-    '응답 형식: {"target": "<label>", "reason": "<짧은 설명>"}'
+    "你是智能体构建器的路由分类器。 "
+    "查看用户的修改请求消息，决定重新执行哪个阶段。 "
+    "响应必须仅为一个 JSON 对象，其中只包含以下 5 个标签之一:\n"
+    " - intent: 修改智能体名称/描述/角色\n"
+    " - tools: 修改工具推荐\n"
+    " - middlewares: 修改中间件推荐\n"
+    " - prompt: 修改系统提示词\n"
+    " - image: 修改智能体图片\n\n"
+    '响应格式: {"target": "<label>", "reason": "<简短说明>"}'
 )
 
 
@@ -71,7 +71,7 @@ async def router(state: BuilderState) -> Command:
             },
         )
 
-    # 모호 → ask_user fallback
+    # 模糊 → ask_user fallback
     answer = interrupt(
         {
             "type": "ask_user",
@@ -98,14 +98,14 @@ async def router(state: BuilderState) -> Command:
         return Command(
             goto=localized_targets[text], update={"last_router_decision": localized_targets[text]}
         )
-    fallback_target = "phase3_recommend_tools"  # 가장 흔한 케이스
+    fallback_target = "phase3_recommend_tools"  # 最常见的情况
     if "名称" in text or "描述" in text or "intent" in text:
         fallback_target = "phase2_analyze_intent"
     elif "工具" in text or "tool" in text:
         fallback_target = "phase3_recommend_tools"
     elif "中间件" in text or "middleware" in text:
         fallback_target = "phase4_recommend_middlewares"
-    elif "프롬프트" in text or "prompt" in text:
+    elif "提示词" in text or "prompt" in text:
         fallback_target = "phase5_generate_prompt"
     elif "图片" in text or "image" in text:
         fallback_target = "phase6_choice_propose"
