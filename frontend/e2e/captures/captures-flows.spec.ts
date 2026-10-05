@@ -23,9 +23,9 @@ async function createAgent(
   modelId: string,
 ): Promise<string> {
   const agent = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '지피 — 일상 비서',
-    description: '일정·정보·추천을 도와주는 개인 비서',
-    system_prompt: '당신은 친근한 개인 비서입니다. 사용자의 일상 질문에 간결하고 도움이 되게 답합니다.',
+    name: 'GPT — 日常助手',
+    description: '帮助处理日程、信息和推荐的个人助手',
+    system_prompt: '你是友好的个人助手。对用户的日常问题给出简洁且有帮助的回答。',
     model_id: modelId,
   })
   if (!isRecord(agent) || typeof agent.id !== 'string') throw new Error('agent create failed')
@@ -59,7 +59,7 @@ test.describe('Wave 1 — hero flow captures', () => {
         request,
         `${API_BASE}/api/agents/${agentId}/conversations`,
         csrfHeaders,
-        { title: '오늘의 비서 대화' },
+        { title: '今日助手对话' },
       )
       if (!isRecord(convo) || typeof convo.id !== 'string') throw new Error('conversation failed')
 
@@ -123,7 +123,7 @@ test.describe('Wave 1 — hero flow captures', () => {
 
   test('agent creation — conversational builder flow', async ({ page }) => {
     test.setTimeout(180_000)
-    const prompt = '헬스장 멤버십 문의에 답하고 예약·취소를 돕는 고객지원 봇을 만들어줘'
+    const prompt = '帮我创建一个回答健身房会员咨询并协助预约、取消的客户支持机器人'
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {

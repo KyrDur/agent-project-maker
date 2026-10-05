@@ -7,13 +7,13 @@ describe('StatsCard', () => {
     render(
       <StatsCard
         items={[
-          { label: '총 요청', value: 1240, delta: 12 },
+          { label: '总请求数', value: 1240, delta: 12 },
           { label: '성공률', value: 98.6, unit: '%', delta: -8 },
         ]}
       />,
     )
     expect(screen.getByTestId('data-ui-stats')).toBeInTheDocument()
-    expect(screen.getByText('총 요청')).toBeInTheDocument()
+    expect(screen.getByText('总请求数')).toBeInTheDocument()
     expect(screen.getByText('1,240')).toBeInTheDocument()
     expect(screen.getByText('98.6%')).toBeInTheDocument()
     expect(screen.getByText('12%')).toBeInTheDocument()

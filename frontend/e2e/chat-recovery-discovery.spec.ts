@@ -186,8 +186,8 @@ test.describe('Task 8 recovery and discovery browser acceptance', () => {
         `[data-testid="run-summary"][data-run-id="${activeRunId}"]`,
       )
       await expect(canceledSummary).toBeVisible({ timeout: 15_000 })
-      await expect(canceledSummary).toContainText('도구 총 0')
-      await expect(canceledSummary).toContainText('서브 에이전트 총 0')
+      await expect(canceledSummary).toContainText('工具总数 0')
+      await expect(canceledSummary).toContainText('子 Agent 总数 0')
       const canceledNotice = page.locator(`[data-moldy-message-id="moldy-canceled-${activeRunId}"]`)
       await expect(canceledNotice).toBeVisible({ timeout: 15_000 })
       await expect(canceledNotice).toContainText(/중단됨|Canceled/)

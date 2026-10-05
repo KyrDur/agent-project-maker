@@ -351,7 +351,7 @@ describe('SkillEvaluationTab', () => {
           name: '회의록 케이스',
           status: 'passed',
           grader_feedback: '담당자와 마감일을 찾았습니다.',
-          evidence: '액션 아이템 표',
+          evidence: 'action item 表格',
         },
       ],
       created_at: '2026-06-01T00:00:00Z',
@@ -393,7 +393,7 @@ describe('SkillEvaluationTab', () => {
     // needs a with_skill_pass_rate) — the legacy duration-delta line was
     // removed to stop the double render (review finding).
     expect(screen.getByText('담당자와 마감일을 찾았습니다.')).toBeInTheDocument()
-    expect(screen.getByText('액션 아이템 표')).toBeInTheDocument()
+    expect(screen.getByText('action item 表格')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'run-older 실행 보기' }))
 

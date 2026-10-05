@@ -41,7 +41,7 @@ async function installAskUserActivityObserver(page: Page): Promise<void> {
 
       const rows = Array.from(
         main.querySelectorAll('[data-testid="run-activity-strip"] [data-kind="tool"]'),
-      ).filter((element) => (element.textContent ?? '').includes('ask_user 실행 중'))
+      ).filter((element) => (element.textContent ?? '').includes('ask_user 执行中'))
       const count = rows.length
       const previous = observedWindow.__moldyAskUserActivityMaxRows ?? 0
       if (count > previous) {
@@ -213,7 +213,7 @@ test.describe('Chat transcript stability QA bundle', () => {
       const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       setFailurePhase(testInfo.annotations, 'wait_ask_user_card')
       await expect(askUserCards).toHaveCount(1, { timeout: 30_000 })
-      await expect(askUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
+      await expect(askUserCards.first().getByText('你喜欢哪种水果？')).toBeVisible()
       setFailurePhase(testInfo.annotations, 'verify_prompt_stability')
       await expectNoUserPromptDisappearance(page)
 
@@ -262,9 +262,9 @@ test.describe('Chat transcript stability QA bundle', () => {
   }) => {
     test.setTimeout(150_000)
     const setup = await setupLangGraphV3Agent(request)
-    const firstPrompt = '안녕?'
-    const secondPrompt = '반가워'
-    const askUserPrompt = '사과, 배, 포도 중에 하나 선택하는 ask user 해줘'
+    const firstPrompt = '你好？'
+    const secondPrompt = '很高兴见到你'
+    const askUserPrompt = '用 ask user 在苹果、梨、葡萄中选一个'
 
     try {
       await page.goto(`${FRONTEND}/agents/${setup.parentAgentId}/conversations/new`)
@@ -292,17 +292,17 @@ test.describe('Chat transcript stability QA bundle', () => {
       ).toBeVisible({ timeout: 30_000 })
       const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       await expect(askUserCards).toHaveCount(1, { timeout: 45_000 })
-      await expect(page.getByText('네, 골라봐요!').last()).toBeVisible()
-      await expect(askUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
+      await expect(page.getByText('好，选一个吧！').last()).toBeVisible()
+      await expect(askUserCards.first().getByText('你喜欢哪种水果？')).toBeVisible()
       await expectNoUserPromptDisappearance(page)
       await expectAskUserActivityNotDuplicated(page)
-      await expect(page.getByText('ask_user 실행 중')).toHaveCount(0)
+      await expect(page.getByText('ask_user 执行中')).toHaveCount(0)
       const conversationUrl = page.url()
       await page.reload()
       await expect(page).toHaveURL(conversationUrl)
       const hydratedAskUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       await expect(hydratedAskUserCards).toHaveCount(1, { timeout: 45_000 })
-      await expect(hydratedAskUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
+      await expect(hydratedAskUserCards.first().getByText('你喜欢哪种水果？')).toBeVisible()
       await expect(
         page.locator('[data-moldy-message-role="user"]').filter({ hasText: askUserPrompt }),
       ).toBeVisible()

@@ -35,7 +35,7 @@ test.describe('Chat streaming render integrity', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      const prompt = 'E2E_SLOW_STREAM 렌더 무결성 확인'
+      const prompt = 'E2E_SLOW_STREAM 渲染完整性确认'
       await sendMessage(page, prompt)
 
       // Optimistic user bubble appears exactly once (no duplicate optimistic+real).
@@ -78,11 +78,11 @@ test.describe('Chat streaming render integrity', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      const prompt = 'E2E_HITL_APPROVAL 승인 카드 무결성'
+      const prompt = 'E2E_HITL_APPROVAL approval card 完整性'
       await sendMessage(page, prompt)
 
       // The execute_in_skill tool pauses on an approval card (the "called X" box).
-      await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByText('需要批准').last()).toBeVisible({ timeout: 30_000 })
       // The card headline names the SKILL being approved (resolveApprovalToolName
       // rewrites the generic execute_in_skill to the skill_directory basename).
       await expect(page.getByText('docx-document').last()).toBeVisible({ timeout: 15_000 })
@@ -125,10 +125,10 @@ test.describe('Chat streaming render integrity', () => {
     const GROUPED_COUNT = 3
     const SEPARATE_TOOL = 'resolve_relative_date'
     const FINAL_TEXT = 'E2E tool group rendering complete.'
-    const COUNT_META = `${GROUPED_COUNT}회`
+    const COUNT_META = `${GROUPED_COUNT}次`
 
     const userBubbles = page.locator('[data-moldy-message-role="user"]')
-    // The group container is the CollapsiblePill whose meta shows "{N}회".
+    // The group container is the CollapsiblePill whose meta shows "{N}次".
     const groupContainer = page.locator('.moldy-tool-pill').filter({ hasText: COUNT_META })
     const separatePill = page
       .locator('.moldy-tool-pill')
@@ -142,7 +142,7 @@ test.describe('Chat streaming render integrity', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      const prompt = 'E2E_TOOL_GROUP 그룹 렌더 확인'
+      const prompt = 'E2E_TOOL_GROUP group 渲染确认'
       await sendMessage(page, prompt)
 
       // Wait for the run to settle (final assistant text). Once settled the
@@ -151,7 +151,7 @@ test.describe('Chat streaming render integrity', () => {
       // each label/count appears exactly once — making the counts unambiguous.
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
 
-      // Exactly ONE group container, showing the grouped tool name + "{N}회".
+      // Exactly ONE group container, showing the grouped tool name + "{N}次".
       // NOT N separate boxes for the repeated tool.
       await expect(groupContainer).toHaveCount(1, { timeout: 15_000 })
       await expect(groupContainer).toContainText(GROUPED_TOOL)
@@ -193,7 +193,7 @@ test.describe('Chat streaming render integrity', () => {
     }
   })
 
-  test('collapses a search-tool group into one container with a source aggregate (domain badges + 출처 N개)', async ({
+  test('collapses a search-tool group into one container with a source aggregate (domain badges + 来源 N 个)', async ({
     page,
     request,
     errors,
@@ -209,14 +209,14 @@ test.describe('Chat streaming render integrity', () => {
     // (builtin:e2e_scripted_search), appended only when E2E_SCRIPTED_MODEL_ENABLED.
     // Each query returns a different multi-domain slice, so the collapsed search
     // group's header aggregates the per-call results into domain badges + a
-    // source count ("출처 9개"). tavily_search maps to label key webSearch
+    // source count ("来源 9 个"). tavily_search maps to label key webSearch
     // ("默认标题") and carries no HITL interrupt, so the run streams to completion.
     const GROUPED_COUNT = 3
     const SOURCE_COUNT = 9
     const SEARCH_LABEL = '默认标题' // chat.toolGroup.labels.webSearch (ko)
     const FINAL_TEXT = 'E2E search group rendering complete.'
-    const COUNT_META = `${GROUPED_COUNT}회`
-    const SOURCE_META = `출처 ${SOURCE_COUNT}개` // chat.toolGroup.sourceCount (ko)
+    const COUNT_META = `${GROUPED_COUNT}次`
+    const SOURCE_META = `来源 ${SOURCE_COUNT}个` // chat.toolGroup.sourceCount (ko)
     // SourceBadges renders at most 3 domain chips (domains.slice(0, 3)). All five
     // scripted domains are candidates; the exact three shown depend on a stable
     // frequency sort, so assert the COUNT (3) and that the rank-1 domain
@@ -232,7 +232,7 @@ test.describe('Chat streaming render integrity', () => {
     ]
 
     const userBubbles = page.locator('[data-moldy-message-role="user"]')
-    // The group container is the CollapsiblePill whose meta shows "{N}회".
+    // The group container is the CollapsiblePill whose meta shows "{N}次".
     const groupContainer = page.locator('.moldy-tool-pill').filter({ hasText: COUNT_META })
 
     try {
@@ -242,7 +242,7 @@ test.describe('Chat streaming render integrity', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      const prompt = 'E2E_SEARCH_GROUP 검색 그룹 렌더 확인'
+      const prompt = 'E2E_SEARCH_GROUP search group 渲染确认'
       await sendMessage(page, prompt)
 
       // Wait for the run to settle (final assistant text). Once settled the group
@@ -252,7 +252,7 @@ test.describe('Chat streaming render integrity', () => {
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
 
       // Exactly ONE search group container — NOT 3 separate boxes. It shows the
-      // "默认标题" label and "{N}회".
+      // "默认标题" label and "{N}次".
       await expect(groupContainer).toHaveCount(1, { timeout: 15_000 })
       await expect(groupContainer).toContainText(SEARCH_LABEL)
       await expect(groupContainer).toContainText(COUNT_META)
@@ -309,7 +309,7 @@ test.describe('Chat streaming render integrity', () => {
   }) => {
     test.setTimeout(150_000)
     const setup = await setupLangGraphV3Agent(request)
-    const FINAL_TEXT_PARTIAL = '문서 파일 생성이 완료'
+    const FINAL_TEXT_PARTIAL = '文档文件生成完成'
     const cards = page.locator('[data-testid^="approval-action-"]')
     const approveButtons = page.locator('[data-testid="approval-approve-button"]')
     const userBubbles = page.locator('[data-moldy-message-role="user"]')
@@ -342,14 +342,14 @@ test.describe('Chat streaming render integrity', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      const prompt = 'E2E_HITL_MULTI 멀티 승인 카드 무결성'
+      const prompt = 'E2E_HITL_MULTI 多 approval card 完整性'
       await sendMessage(page, prompt)
 
       // One AIMessage with two execute_in_skill calls → ONE interrupt → TWO mounted
       // approval decisions inside ONE grouped container. Only the current action
       // is visible, matching the ask_user question-flow interaction.
-      // The grouped container replaces the standalone "승인이 필요합니다" headline.
-      await expect(page.getByText('승인 대기 2건').first()).toBeVisible({ timeout: 30_000 })
+      // The grouped container replaces the standalone "需要批准" headline.
+      await expect(page.getByText('待批准 2 项').first()).toBeVisible({ timeout: 30_000 })
       await expect(cards).toHaveCount(2, { timeout: 15_000 })
       await expect(approveButtons).toHaveCount(2)
       await expect(page.getByTestId('approval-action-0')).toBeVisible()
@@ -385,7 +385,7 @@ test.describe('Chat streaming render integrity', () => {
       await expect(cards).toHaveCount(2, { timeout: 15_000 })
       await expect(page.getByTestId('approval-action-0')).toBeHidden()
       await expect(page.getByTestId('approval-action-1')).toBeVisible()
-      await expect(page.getByText('승인 대기 1건').first()).toBeVisible()
+      await expect(page.getByText('待批准 1 项').first()).toBeVisible()
       await expect(
         page.getByTestId('approval-action-0').getByTestId('approval-approve-button'),
       ).toHaveCount(0)

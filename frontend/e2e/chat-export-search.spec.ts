@@ -33,14 +33,14 @@ test.describe('Chat export + in-conversation search (G5/G6)', () => {
 
     // Send multiple turns. "E2E" appears in both the user messages and the
     // scripted assistant reply, so search matches user + LLM answers alike.
-    for (const text of ['E2E 회의 내용을 정리해줘', 'E2E 회의 안건도 알려줘']) {
+    for (const text of ['整理一下 E2E 会议内容', '也告诉我 E2E 会议议题']) {
       await sendMessage(page, text)
       const stop = page.locator('[data-moldy-stop-button="true"]:visible').last()
       await stop.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {})
       await stop.waitFor({ state: 'hidden', timeout: 90_000 }).catch(() => {})
     }
 
-    // G5 — navigator session menu → 내보내기 → Markdown triggers a download.
+    // G5 — navigator session menu → 导出 → Markdown triggers a download.
     await page.getByRole('button', { name: '对话菜单' }).first().click()
     await page.getByRole('menuitem', { name: '导出' }).click()
     const downloadPromise = page.waitForEvent('download')
@@ -48,13 +48,13 @@ test.describe('Chat export + in-conversation search (G5/G6)', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/^conversation-.*\.md$/)
 
-    // G6 — Ctrl/Cmd+F overlay finds the sent message ("회의").
+    // G6 — Ctrl/Cmd+F overlay finds the sent message ("会议").
     await page.locator('textarea[data-moldy-composer-input="true"]').last().click()
     await page.keyboard.press('ControlOrMeta+f')
     const overlay = page.getByRole('search')
     await expect(overlay).toBeVisible({ timeout: 10_000 })
     await overlay.getByRole('textbox').fill('E2E')
-    // user 메시지 + assistant 응답 모두 "E2E"를 포함하므로 total이 넉넉히 2 이상.
+    // user 消息 + assistant 响应都包含 "E2E"，所以 total 足够大于等于 2。
     await expect(overlay.getByText(/^\d+\/[2-9]\d*$/)).toBeVisible({ timeout: 10_000 })
   })
 })

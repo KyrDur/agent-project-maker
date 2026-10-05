@@ -61,8 +61,8 @@ test('discovered MCP tool attaches, survives reload and detaches from agent sett
       .getByRole('tabpanel', { name: 'MCP', exact: true })
       .getByPlaceholder('搜索', { exact: true })
       .fill(serverName)
-    await dialog.getByRole('button', { name: 'weather 추가', exact: true }).click()
-    await expect(dialog.getByRole('button', { name: 'weather 제거', exact: true })).toBeVisible()
+    await dialog.getByRole('button', { name: 'weather 添加', exact: true }).click()
+    await expect(dialog.getByRole('button', { name: 'weather 移除', exact: true })).toBeVisible()
     await dialog.getByRole('button', { name: '关闭', exact: true }).click()
     const saved = page.waitForResponse(
       (res) => res.url() === agentUrl && res.request().method() === 'PUT',
@@ -75,22 +75,22 @@ test('discovered MCP tool attaches, survives reload and detaches from agent sett
 
     await page.reload()
     await page.getByRole('button', { name: '添加', exact: true }).first().click()
-    await expect(dialog.getByRole('button', { name: 'weather 제거', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'weather 移除', exact: true })).toBeVisible()
     await captureResourcePage({
       page,
       testInfo,
       state: 'agent-mcp-attached',
-      evidence: dialog.getByRole('button', { name: 'weather 제거', exact: true }),
+      evidence: dialog.getByRole('button', { name: 'weather 移除', exact: true }),
       surface: dialog,
       horizontalBoundary: dialog.locator('.moldy-dialog-body'),
       verify: async () => {
         await expect(dialog.getByRole('tab', { name: 'MCP', exact: true })).toBeVisible()
         await expect(
-          dialog.getByRole('button', { name: 'weather 제거', exact: true }),
+          dialog.getByRole('button', { name: 'weather 移除', exact: true }),
         ).toBeVisible()
       },
     })
-    await dialog.getByRole('button', { name: 'weather 제거', exact: true }).click()
+    await dialog.getByRole('button', { name: 'weather 移除', exact: true }).click()
     await dialog.getByRole('button', { name: '关闭', exact: true }).click()
     const detached = page.waitForResponse(
       (res) => res.url() === agentUrl && res.request().method() === 'PUT',

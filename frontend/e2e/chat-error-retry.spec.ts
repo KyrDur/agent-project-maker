@@ -42,7 +42,7 @@ test.describe('Chat error retry (v3, G2)', () => {
       .waitFor({ state: 'visible', timeout: 90_000 })
 
     // Capture the accepted run id directly: E2E_ERROR can fail before active-run polling.
-    const runId = await sendMessageForRun(page, conversationId, 'E2E_ERROR 강제 실패')
+    const runId = await sendMessageForRun(page, conversationId, 'E2E_ERROR 强制失败')
     await waitForRunStatus(request, conversationId, runId, 'failed')
 
     // The failed run renders an error bubble whose retry button is always visible

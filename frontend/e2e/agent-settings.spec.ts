@@ -365,7 +365,7 @@ test.describe('Agent settings — edit & attach', () => {
     await dialog.getByPlaceholder('搜索智能体...').fill(childName)
     // Add the child from the "available" column (per-row add action).
     await dialog
-      .getByRole('button', { name: new RegExp(`(추가|${childName})`) })
+      .getByRole('button', { name: new RegExp(`(添加|${childName})`) })
       .first()
       .click()
     await dialog.getByRole('button', { name: '关闭' }).click()
@@ -391,7 +391,7 @@ test.describe('Agent settings — edit & attach', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('tab', { name: 'Skills' }).click()
-    await dialog.getByRole('button', { name: `${skillName} 추가` }).click()
+    await dialog.getByRole('button', { name: `${skillName} 添加` }).click()
     await dialog.getByRole('button', { name: '关闭' }).click()
 
     await page.getByRole('button', { name: '保存', exact: true }).click()
@@ -415,7 +415,7 @@ test.describe('Agent settings — edit & attach', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('tab', { name: 'My Tools' }).click()
-    await dialog.getByRole('button', { name: `${toolName} 추가` }).click()
+    await dialog.getByRole('button', { name: `${toolName} 添加` }).click()
     await dialog.getByRole('button', { name: '关闭' }).click()
 
     await page.getByRole('button', { name: '保存', exact: true }).click()

@@ -199,7 +199,7 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '10-hitl-approval.png',
         title: 'HITL approval card',
         run: async (conversationId) => {
-          await goAndSend(conversationId, '도구를 사용해서 문서를 만들어줘. 승인 후 실행해.')
+          await goAndSend(conversationId, '使用工具创建文档。批准后执行。')
           await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
             timeout: 40_000,
           })
@@ -221,7 +221,7 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '12-artifact-inline.png',
         title: 'Generated artifact (inline)',
         run: async (conversationId) => {
-          await goAndSend(conversationId, 'E2E_DOCX 문서를 생성해줘')
+          await goAndSend(conversationId, '生成 E2E_DOCX 文档')
           await approveExecuteInSkill(page).catch(() => {})
           await settleStream(page, 120_000)
         },
@@ -247,7 +247,7 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '14-branch-picker.png',
         title: 'Regenerate branch picker',
         run: async (conversationId) => {
-          await goAndSend(conversationId, '오늘 날씨 어때?')
+          await goAndSend(conversationId, '今天天气怎么样？')
           await settleStream(page)
           await page.getByRole('button', { name: '再生' }).first().click().catch(() => {})
           await expect(page.getByText('2/2').first()).toBeVisible({ timeout: 40_000 }).catch(() => {})

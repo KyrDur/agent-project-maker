@@ -35,7 +35,7 @@ __all__ = [
 
 
 def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
-    """스킬 디렉토리에서 Python 스크립트를 실행하는 도구를 생성.
+    """创建一个在 Skill 目录中执行 Python 脚本的工具。
 
     ADR-017 Slice E refactor — the tool now closes over a
     ``SkillToolContext`` (output_dir + thread_id + runtime_root + slug
@@ -51,12 +51,12 @@ def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
     _path_re = re.compile(re.escape(str(output_dir)) + r"/([^\s\n]+)") if api_file_prefix else None
 
     async def execute_in_skill(skill_directory: str, command: str) -> str:
-        """스킬 디렉토리에서 Python 스크립트를 실행합니다.
+        """在 Skill 目录中执行 Python 脚本。
 
         Args:
-            skill_directory: 스킬 디렉토리의 가상 경로
-                (예: /runtime/<thread_id>/skills/<slug>/).
-            command: 실행할 명령어 (예: python scripts/mark_seat.py search 이상윤)
+            skill_directory: Skill 目录的虚拟路径
+                （例：/runtime/<thread_id>/skills/<slug>/）。
+            command: 要执行的命令（例：python scripts/mark_seat.py search 李尚允）
         """
         # ``Path(skill_directory).name`` extracts the final segment
         # regardless of leading slashes / trailing slashes — the LLM may
@@ -165,10 +165,10 @@ def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
             await proc.wait()
             return f"Error: script execution timed out ({timeout_seconds:g}s)."
         except asyncio.CancelledError:
-            # run cancel(Stop)/worker shutdown 이 이 await 를 취소하면 timeout
-            # kill 경로도 함께 취소되어 subprocess 가 고아로 남는다 — 즉시
-            # 종료시켜 취소된 대화 디렉토리에 출력이 계속 쌓이는 것을 막고
-            # 취소를 전파한다.
+            # 如果 run cancel(Stop)/worker shutdown 取消这个 await，timeout
+            # kill 路径也会一并被取消，导致 subprocess 成为孤儿 — 应立即
+            # 终止它，防止输出继续堆积到已取消的对话目录中，并
+            # 传播取消。
             if proc.returncode is None:
                 proc.kill()
             await proc.wait()
@@ -179,7 +179,7 @@ def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
             err = stderr.decode("utf-8", errors="replace")
             result += f"\nSTDERR: {err}"
 
-        # Phase 3 skill-axis usage (spec §5.3 — "성공 경로에서") — count a
+        # Phase 3 skill-axis usage (spec §5.3 — "成功路径中") — count a
         # SUCCESSFUL (exit 0) sandbox execution for agent runs (chat + scheduled
         # triggers + Agent-API; all use the default "execute_in_skill"
         # audit_kind). Evaluation runs ("skill_evaluation") and builder draft
@@ -202,11 +202,11 @@ def _create_skill_execute_tool(ctx: SkillToolContext) -> BaseTool:
                 agent_id=ctx.agent_id,
             )
 
-        # IMAGE: 절대경로 → API URL 자동 변환
+        # IMAGE: 绝对路径 → 自动转换为 API URL
         if _path_re and str(output_dir) in result:
             result = _path_re.sub(lambda m: api_file_prefix + m.group(1), result)
 
-        # 출력 파일 수집
+        # 收集输出文件
         def _collect_outputs() -> list[str]:
             if output_dir.exists():
                 return [f.name for f in output_dir.iterdir() if f.is_file()]

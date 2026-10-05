@@ -49,7 +49,7 @@ test('follows a bounded instruction through a live model chat', async ({
     name: `E2E Live Quality ${Date.now()}`,
     description: 'Live provider instruction-following quality gate.',
     system_prompt:
-      'Answer in one short Korean sentence. Include the exact marker MOLDY_LIVE_OK and the words 연결, 실행, 응답. Do not use tools, markdown, or extra commentary.',
+      'Answer in one short Chinese sentence. Include the exact marker MOLDY_LIVE_OK and the words 连接, 执行, 响应. Do not use tools, markdown, or extra commentary.',
     model_id: await liveModelId(request),
     tool_ids: [],
     mcp_tool_ids: [],
@@ -76,7 +76,7 @@ test('follows a bounded instruction through a live model chat', async ({
     const runId = await sendMessageForRun(
       page,
       conversationId,
-      '연결 상태를 확인하고 요청한 형식으로만 답해 주세요.',
+      '请确认连接状态，并仅按要求的格式回答。',
     )
     await waitForRunStatus(request, conversationId, runId, 'completed', 90_000)
 

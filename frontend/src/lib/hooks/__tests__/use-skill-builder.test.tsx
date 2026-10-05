@@ -35,7 +35,7 @@ function createTestQueryClient(): QueryClient {
 
 const skillResponse = {
   id: 'skill-1',
-  name: '회의록 액션 아이템',
+  name: '会议记录 action item',
   slug: 'meeting-actions',
   description: null,
   kind: 'package',

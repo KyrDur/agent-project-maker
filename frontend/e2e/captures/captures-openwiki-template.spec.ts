@@ -16,7 +16,7 @@ import {
  */
 
 const WAVE = 'wave-openwiki'
-const TEMPLATE_NAME = 'OpenWiki 문서화 에이전트'
+const TEMPLATE_NAME = 'OpenWiki 文档化 Agent'
 
 test.describe('OpenWiki skill + template captures', () => {
   test.skip(process.env.E2E_CAPTURE_TOUR !== '1', 'Set E2E_CAPTURE_TOUR=1 to run the capture tour')
@@ -42,7 +42,7 @@ test.describe('OpenWiki skill + template captures', () => {
     await settle(page)
     await capture(page, WAVE, '00-marketplace-list-openwiki.png')
 
-    // 2) Marketplace item detail — cards navigate via the 상세 보기 link.
+    // 2) Marketplace item detail — cards navigate via the 查看详情 link.
     await marketplaceCard.getByRole('link', { name: '显示详情' }).click()
     await page.waitForURL(/\/marketplace\/[0-9a-f-]{36}/, { timeout: 60_000 })
     await expect(page.getByText('OpenWiki').first()).toBeVisible({ timeout: 60_000 })

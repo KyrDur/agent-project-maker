@@ -100,16 +100,16 @@ def optimize_trigger_description(
 
 def generate_trigger_examples(*, name: str, description: str, intent: str) -> list[TriggerExample]:
     positive = [
-        f"{name} 도와줘",
+        f"{name} 帮我",
         intent,
         description,
-        f"{_keyword_phrase(description)} 작업을 처리해줘",
+        f"请处理 {_keyword_phrase(description)} 任务",
     ]
     negative = [
-        "오늘 날씨와 교통 상황을 알려줘",
-        "이미지 배경을 파란색으로 바꿔줘",
-        "데이터베이스 마이그레이션 오류를 디버깅해줘",
-        "캘린더 일정을 새로 예약해줘",
+        "告诉我今天的天气和交通情况",
+        "把图片背景改成蓝色",
+        "帮我调试数据库迁移错误",
+        "帮我新建一个日历日程",
     ]
     return [TriggerExample(query=item, should_trigger=True) for item in positive] + [
         TriggerExample(query=item, should_trigger=False) for item in negative
@@ -237,7 +237,7 @@ def _replace_frontmatter_description(content: str, description: str) -> str:
 
 def _keyword_phrase(text: str) -> str:
     tokens = _tokens(text)
-    return " ".join(tokens[:3]) if tokens else "관련"
+    return " ".join(tokens[:3]) if tokens else "相关"
 
 
 def _tokens(text: str) -> list[str]:

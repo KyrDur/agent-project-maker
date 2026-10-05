@@ -45,15 +45,15 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     "context_editing": {
         "name": "ContextEditingMiddleware",
         "display_name": "上下文清理",
-        "description": "오래된 도구 결과를 정리하여 컨텍스트 윈도우를 관리합니다",
+        "description": "清理旧的工具结果以管理上下文窗口",
         "category": "context",
         "config_schema": {},
         "provider_specific": None,
     },
     "filesystem": {
         "name": "FilesystemMiddleware",
-        "display_name": "파일시스템 접근",
-        "description": "에이전트에 파일 읽기/쓰기/편집 도구를 제공합니다",
+        "display_name": "文件系统访问",
+        "description": "为 Agent 提供文件读取/写入/编辑工具",
         "category": "context",
         "config_schema": {},
         "provider_specific": None,
@@ -61,16 +61,16 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     # ---- planning (2) ----
     "todo_list": {
         "name": "TodoListMiddleware",
-        "display_name": "작업 계획 및 추적",
-        "description": "에이전트가 복잡한 작업을 계획하고 진행 상황을 추적합니다",
+        "display_name": "任务规划与追踪",
+        "description": "Agent 规划复杂任务并追踪进度",
         "category": "planning",
         "config_schema": {},
         "provider_specific": None,
     },
     "subagent": {
         "name": "SubAgentMiddleware",
-        "display_name": "서브에이전트 위임",
-        "description": "전문 서브에이전트에 작업을 위임하여 복잡한 작업을 분업합니다",
+        "display_name": "子 Agent 委派",
+        "description": "将任务委派给专业子 Agent，以分工处理复杂任务",
         "category": "planning",
         "config_schema": {},
         "provider_specific": None,
@@ -78,43 +78,43 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     # ---- safety (3) ----
     "human_in_the_loop": {
         "name": "HumanInTheLoopMiddleware",
-        "display_name": "사용자 승인 게이트",
-        "description": "위험한 도구 실행 전 사용자 승인을 요청합니다",
+        "display_name": "用户审批门控",
+        "description": "执行危险工具前请求用户批准",
         "category": "safety",
         "config_schema": {
             "interrupt_on": {
                 "type": "object",
                 "default": {},
-                "description": "승인이 필요한 도구 목록 (도구명: true)",
+                "description": "需要审批的工具列表（工具名: true）",
             },
         },
         "provider_specific": None,
     },
     "pii": {
         "name": "PIIMiddleware",
-        "display_name": "PII 보호",
-        "description": "개인식별정보(이메일, 신용카드, IP 등)를 감지하고 마스킹합니다",
+        "display_name": "PII 保护",
+        "description": "检测并掩码个人身份信息（邮箱、信用卡、IP 等）",
         "category": "safety",
-        # langchain 1.3 PIIMiddleware는 pii_type 단일값만 받는다(이전엔 자동 다중감지).
-        # 기본은 ``email``로 두고, 다중 감지가 필요한 사용자는 미들웨어를 여러 번 등록.
+        # langchain 1.3 PIIMiddleware 只接受单个 pii_type 值（之前会自动进行多类型检测）。
+        # 默认使用 ``email``，需要检测多种类型的用户可多次注册该中间件。
         "config_schema": {
             "pii_type": {
                 "type": "string",
                 "default": "email",
-                "description": "감지할 PII 종류 (email | credit_card | ip | mac_address | url)",
+                "description": "要检测的 PII 类型 (email | credit_card | ip | mac_address | url)",
             },
             "strategy": {
                 "type": "string",
                 "default": "redact",
-                "description": "감지 시 처리 방식 (block | redact | mask | hash)",
+                "description": "检测后的处理方式 (block | redact | mask | hash)",
             },
         },
         "provider_specific": None,
     },
     "shell_tool": {
         "name": "ShellToolMiddleware",
-        "display_name": "쉘 명령어 실행",
-        "description": "에이전트에 영속 쉘 세션을 제공합니다",
+        "display_name": "Shell 命令执行",
+        "description": "为 Agent 提供持久化 Shell 会话",
         "category": "safety",
         "config_schema": {},
         "provider_specific": None,
@@ -122,88 +122,88 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     # ---- reliability (7) ----
     "llm_tool_selector": {
         "name": "LLMToolSelectorMiddleware",
-        "display_name": "도구 자동 선택",
-        "description": "LLM이 관련 도구만 선택하여 정확도를 향상시킵니다",
+        "display_name": "工具自动选择",
+        "description": "LLM 仅选择相关工具以提升准确率",
         "category": "reliability",
         "config_schema": {},
         "provider_specific": None,
     },
     "model_call_limit": {
         "name": "ModelCallLimitMiddleware",
-        "display_name": "모델 호출 제한",
-        "description": "LLM 호출 횟수를 제한하여 무한 루프를 방지합니다",
+        "display_name": "模型调用限制",
+        "description": "限制 LLM 调用次数以防止无限循环",
         "category": "reliability",
         "config_schema": {
             "thread_limit": {
                 "type": "integer",
                 "default": 100,
-                "description": "스레드당 최대 모델 호출 횟수",
+                "description": "每线程最大模型调用次数",
             },
             "run_limit": {
                 "type": "integer",
                 "default": 5,
-                "description": "실행당 최대 모델 호출 횟수",
+                "description": "每次运行最大模型调用次数",
             },
             "exit_behavior": {
                 "type": "string",
                 "default": "end",
-                "description": "제한 초과 시 동작 (end/error)",
+                "description": "超出限制时的行为 (end/error)",
             },
         },
         "provider_specific": None,
     },
     "tool_retry": {
         "name": "ToolRetryMiddleware",
-        "display_name": "도구 재시도",
-        "description": "도구 실패 시 지수 백오프로 자동 재시도합니다",
+        "display_name": "工具重试",
+        "description": "工具失败时使用指数退避自动重试",
         "category": "reliability",
         "config_schema": {
             "max_retries": {
                 "type": "integer",
                 "default": 3,
-                "description": "최대 재시도 횟수",
+                "description": "最大重试次数",
             },
         },
         "provider_specific": None,
     },
     "tool_call_limit": {
         "name": "ToolCallLimitMiddleware",
-        "display_name": "도구 호출 제한",
-        "description": "도구 호출 횟수를 제한합니다",
+        "display_name": "工具调用限制",
+        "description": "限制工具调用次数",
         "category": "reliability",
         "config_schema": {
             "limit": {
                 "type": "integer",
                 "default": 20,
-                "description": "최대 도구 호출 횟수",
+                "description": "最大工具调用次数",
             },
         },
         "provider_specific": None,
     },
     "model_fallback": {
         "name": "ModelFallbackMiddleware",
-        "display_name": "모델 자동 전환",
-        "description": "주 모델 실패 시 대체 모델로 자동 전환합니다",
+        "display_name": "模型自动切换",
+        "description": "主模型失败时自动切换到备用模型",
         "category": "reliability",
         "config_schema": {
             "fallback_model": {
                 "type": "string",
                 "default": "openai:gpt-5.4",
-                "description": "대체 모델 식별자",
+                "description": "备用模型标识符",
             },
         },
         "provider_specific": None,
     },
     "model_retry": {
         "name": "ModelRetryMiddleware",
-        "display_name": "모델 호출 재시도",
-        "description": "LLM 호출 실패 시 지수 백오프로 재시도합니다",
+        "display_name": "模型调用重试",
+        "description": "LLM 调用失败时使用指数退避重试",
         "category": "reliability",
         "config_schema": {
             "max_retries": {
                 "type": "integer",
                 "default": 2,
-                "description": "최대 재시도 횟수",
+                "description": "最大重试次数",
             },
         },
         "provider_specific": None,
@@ -211,15 +211,15 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     "file_search": {
         "name": "FilesystemFileSearchMiddleware",
         "display_name": "搜索文件",
-        "description": "대용량 문서에서 glob/grep 검색 기능을 제공합니다",
+        "description": "在大型文档中提供 glob/grep 搜索功能",
         "category": "reliability",
         "config_schema": {},
         "provider_specific": None,
     },
     "llm_tool_emulator": {
         "name": "LLMToolEmulator",
-        "display_name": "도구 에뮬레이터",
-        "description": "LLM으로 도구 실행을 에뮬레이션합니다 (테스트용)",
+        "display_name": "工具模拟器",
+        "description": "使用 LLM 模拟工具执行（用于测试）",
         "category": "reliability",
         "config_schema": {},
         "provider_specific": None,
@@ -227,48 +227,48 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     # ---- provider-specific (6) ----
     "anthropic_prompt_caching": {
         "name": "AnthropicPromptCachingMiddleware",
-        "display_name": "Anthropic 프롬프트 캐싱",
-        "description": "시스템 프롬프트를 캐시하여 최대 75% 비용을 절감합니다",
+        "display_name": "Anthropic 提示词缓存",
+        "description": "缓存系统提示词，最高可节省 75% 成本",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "anthropic",
     },
     "anthropic_memory": {
         "name": "StateClaudeMemoryMiddleware",
-        "display_name": "Anthropic 지속 메모리",
-        "description": "Anthropic의 지속 메모리 기능을 활용합니다",
+        "display_name": "Anthropic 持久记忆",
+        "description": "使用 Anthropic 的持久记忆功能",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "anthropic",
     },
     "anthropic_bash_tool": {
         "name": "ClaudeBashToolMiddleware",
-        "display_name": "Anthropic Bash 도구",
-        "description": "Claude 모델에서 Bash 명령어 실행을 지원합니다",
+        "display_name": "Anthropic Bash 工具",
+        "description": "在 Claude 模型中支持执行 Bash 命令",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "anthropic",
     },
     "anthropic_file_search": {
         "name": "StateFileSearchMiddleware",
-        "display_name": "Anthropic 파일 검색",
-        "description": "Claude 모델에서 대용량 문서 검색을 지원합니다",
+        "display_name": "Anthropic 文件搜索",
+        "description": "在 Claude 模型中支持大型文档搜索",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "anthropic",
     },
     "anthropic_text_editor": {
         "name": "StateClaudeTextEditorMiddleware",
-        "display_name": "Anthropic 텍스트 편집기",
-        "description": "Claude 모델에서 텍스트 편집 도구를 지원합니다",
+        "display_name": "Anthropic 文本编辑器",
+        "description": "在 Claude 模型中支持文本编辑工具",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "anthropic",
     },
     "openai_moderation": {
         "name": "OpenAIModerationMiddleware",
-        "display_name": "OpenAI 콘텐츠 모더레이션",
-        "description": "GPT 모델에서 콘텐츠 안전성을 검사합니다",
+        "display_name": "OpenAI 内容审核",
+        "description": "在 GPT 模型中检查内容安全性",
         "category": "provider",
         "config_schema": {},
         "provider_specific": "openai",
@@ -291,8 +291,8 @@ _MODULE_MAP: dict[str, str] = {
 def _patched_llm_tool_selector_class() -> type | None:
     """Return a patched LLMToolSelectorMiddleware that normalizes response format.
 
-    ADR-004: deepagents가 {"const": "name"} 정규화를 내부 처리하지 않음.
-    GPT-4o + llm_tool_selector 조합 시 패치 없으면 깨짐. 유지 필요.
+    ADR-004: deepagents 不会在内部处理 {"const": "name"} 规范化。
+    GPT-4o + llm_tool_selector 组合在没有补丁时会出错。需要保留。
 
     GPT-4o sometimes returns {"const": "tool_name"} objects instead of plain
     "tool_name" strings when using structured output with const schemas.
@@ -390,10 +390,10 @@ def build_middleware_instances(middleware_configs: list[dict[str, Any]]) -> list
             continue
 
         coerced = _coerce_tuple_params(params, registry_entry.get("config_schema", {}))
-        # langchain 1.3 미들웨어 시그니처 변경 대응:
-        # config_schema에 default가 있는데 params에 누락된 키는 default로 채운다.
-        # ``ModelCallLimitMiddleware`` 는 thread_limit/run_limit 중 하나가 반드시
-        # 필요하고, ``PIIMiddleware`` 는 ``pii_type`` 이 positional required다.
+        # 适配 langchain 1.3 中间件签名变更：
+        # config_schema 中存在 default，但 params 中缺失的键用 default 补齐。
+        # ``ModelCallLimitMiddleware`` 必须提供 thread_limit/run_limit 中的至少一个，
+        # 并且 ``PIIMiddleware`` 的 ``pii_type`` 是 positional required。
         for key, schema in registry_entry.get("config_schema", {}).items():
             if key not in coerced and "default" in schema:
                 coerced[key] = schema["default"]
@@ -401,8 +401,8 @@ def build_middleware_instances(middleware_configs: list[dict[str, Any]]) -> list
         if middleware_type == "tool_call_limit" and "limit" in coerced:
             coerced.setdefault("run_limit", coerced.pop("limit"))
 
-        # tool_retry: GraphInterrupt는 정상적인 HiTL 시그널이므로
-        # 재시도하지 않고 re-raise하여 그래프 일시정지가 정상 전파되도록 함
+        # tool_retry: GraphInterrupt 是正常的 HiTL 信号，因此
+        # 不进行重试并 re-raise，使图暂停正常向上传播
         if middleware_type == "tool_retry":
             from langgraph.errors import GraphInterrupt
 
@@ -441,8 +441,8 @@ def get_provider_middleware(provider: str) -> list:
     return build_middleware_instances([{"type": t, "params": {}} for t in types])
 
 
-# deepagents/create_deep_agent()가 자동 추가하는 미들웨어 타입.
-# 사용자 설정에서 중복 추가하면 AssertionError가 발생하므로 카탈로그/실행 시 제외.
+# deepagents/create_deep_agent() 自动添加的中间件类型。
+# 如果在用户设置中重复添加会触发 AssertionError，因此在目录/执行时排除。
 DEEPAGENT_AUTO_INJECTED_TYPES: frozenset[str] = frozenset(
     {
         "filesystem",
@@ -453,10 +453,10 @@ DEEPAGENT_AUTO_INJECTED_TYPES: frozenset[str] = frozenset(
 )
 
 
-# Deep Agents 0.7부터 TodoListMiddleware는 기본 주입되지 않는다. Moldy는
-# 기존 todo stream 계약과 delete 없는 filesystem 표면을 build_agent()에서 직접
-# 주입한다. 이 타입들은 사용자 설정으로 재인스턴스화하면 안 되며, 카탈로그의
-# ``exclude_builtin`` 보기에서도 숨긴다.
+# 从 Deep Agents 0.7 开始，TodoListMiddleware 不再默认注入。Moldy 会
+# 在 build_agent() 中直接注入现有 todo stream 协议和不含 delete 的 filesystem 表面。
+# 这些类型不得通过用户设置重新实例化，并且在目录的
+# ``exclude_builtin`` 视图中也会隐藏。
 MOLDY_COMPAT_INJECTED_TYPES: frozenset[str] = frozenset(
     {
         "todo_list",
@@ -465,11 +465,11 @@ MOLDY_COMPAT_INJECTED_TYPES: frozenset[str] = frozenset(
 )
 
 
-# 본 set 의 항목은 ``build_middleware_instances`` 경로를 우회한다. executor 가
-# 도구별 정책을 읽어 DeepAgents top-level ``interrupt_on`` 으로 변환하고,
-# create_deep_agent() 가 표준 HumanInTheLoopMiddleware 경로를 구성한다.
-# 사용자가 카탈로그에서 추가하면 ``cfg.middleware_configs`` 에 들어가지만
-# build 단계에서는 제외되어 중복 인스턴스화를 피한다.
+# 本 set 中的条目绕过 ``build_middleware_instances`` 路径。executor 会
+# 读取逐工具策略并转换为 DeepAgents top-level ``interrupt_on``，
+# 由 create_deep_agent() 构建标准 HumanInTheLoopMiddleware 路径。
+# 用户从目录中添加后会进入 ``cfg.middleware_configs``，但
+# build 阶段会排除它们，以避免重复实例化。
 EXPLICITLY_INSTANTIATED_TYPES: frozenset[str] = frozenset(
     {
         "human_in_the_loop",
@@ -478,10 +478,10 @@ EXPLICITLY_INSTANTIATED_TYPES: frozenset[str] = frozenset(
 )
 
 
-# Build 단계에서 제외되는 모든 타입 — deepagents auto + Moldy compat + explicit.
-# ``_prepare_agent`` 의 ``filtered_mw`` 가 사용자 ``middleware_configs`` 에서
-# 본 set 의 항목을 제거. auto-injected 는 deepagents 가, explicit 는 executor
-# 가 top-level 설정으로 처리하므로 build 시 중복 인스턴스화 방지가 목적.
+# Build 阶段排除的所有类型 — deepagents auto + Moldy compat + explicit。
+# ``_prepare_agent`` 的 ``filtered_mw`` 会从用户 ``middleware_configs`` 中
+# 移除本 set 的条目。auto-injected 由 deepagents 处理，explicit 由 executor
+# 作为 top-level 设置处理，因此目的是避免 build 时重复实例化。
 DEEPAGENT_BUILTIN_TYPES: frozenset[str] = (
     DEEPAGENT_AUTO_INJECTED_TYPES | MOLDY_COMPAT_INJECTED_TYPES | EXPLICITLY_INSTANTIATED_TYPES
 )
@@ -494,11 +494,11 @@ def get_middleware_registry(*, exclude_builtin: bool = False) -> list[dict[str, 
     description, category, config_schema, provider_specific).
 
     Args:
-        exclude_builtin: True이면 deepagents가 자동 추가하는 타입과 Moldy가
-            build_agent()에서 호환 목적으로 직접 주입하는 타입을 카탈로그에서
-            제외한다. ``human_in_the_loop`` 같이 사용자가 도구별 ``interrupt_on``
-            정책을 정의해야 동작하는 explicit 타입은 노출된다 — executor 가
-            사용자 설정을 읽어 top-level 정책으로 전달한다.
+        exclude_builtin: True 时，目录中会排除 deepagents 自动添加的类型，以及 Moldy
+            为兼容目的在 build_agent() 中直接注入的类型。
+            像 ``human_in_the_loop`` 这样，必须由用户定义逐工具 ``interrupt_on``
+            策略才能工作的 explicit 类型仍会显示 — executor 会
+            读取用户设置并作为 top-level 策略传递。
     """
     return [
         {"type": key, **entry}

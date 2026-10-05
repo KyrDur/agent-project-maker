@@ -9,9 +9,9 @@ from zoneinfo import ZoneInfo
 DEFAULT_TIMEZONE = "Asia/Seoul"
 
 _WEEKDAYS_KO = [
-    "월요일",
-    "화요일",
-    "수요일",
+    "星期一",
+    "星期二",
+    "星期三",
     "목요일",
     "금요일",
     "토요일",
@@ -19,9 +19,9 @@ _WEEKDAYS_KO = [
 ]
 
 _WEEKDAY_INDEX = {
-    "월요일": 0,
-    "화요일": 1,
-    "수요일": 2,
+    "星期一": 0,
+    "星期二": 1,
+    "星期三": 2,
     "목요일": 3,
     "금요일": 4,
     "토요일": 5,

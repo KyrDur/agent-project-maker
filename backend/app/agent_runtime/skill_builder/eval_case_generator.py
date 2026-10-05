@@ -25,9 +25,9 @@ def _structured_cases(intent: str, template: EvalTemplate) -> list[SkillEvalCase
         "required_fields": ["task", "owner", "deadline"],
     }
     inputs = (
-        "다음 회의록에서 액션 아이템, 담당자, 마감일을 추출하세요.",
-        "긴 노트에서 결정사항과 후속 작업을 구분해 표로 정리하세요.",
-        "누락된 담당자나 기한이 있으면 빈 값으로 표시하고 추측하지 마세요.",
+        "请从以下会议纪要中提取行动项、负责人和截止日期。",
+        "请将长笔记中的决策事项和后续任务区分开，并整理成表格。",
+        "若缺少负责人或期限，请留空，不要猜测。",
     )
     return [_case(intent, template, item, expected, ["structured"]) for item in inputs]
 
@@ -38,9 +38,9 @@ def _research_cases(intent: str, template: EvalTemplate) -> list[SkillEvalCase]:
         "minimum_sources": 2,
     }
     inputs = (
-        "주어진 주제의 핵심 주장 3개를 출처와 함께 요약하세요.",
-        "서로 다른 출처의 관점을 비교하고 근거 링크를 함께 제시하세요.",
-        "불확실한 내용은 추정하지 말고 추가 확인이 필요하다고 표시하세요.",
+        "请将给定主题的 3 个核心主张连同来源一起总结。",
+        "请比较不同来源的观点，并同时给出依据链接。",
+        "对于不确定的内容不要推测，请标明需要进一步确认。",
     )
     return [_case(intent, template, item, expected, ["research", "citation"]) for item in inputs]
 
@@ -48,8 +48,8 @@ def _research_cases(intent: str, template: EvalTemplate) -> list[SkillEvalCase]:
 def _general_cases(intent: str, template: EvalTemplate) -> list[SkillEvalCase]:
     expected: dict[str, JsonValue] = {"format": "useful_answer"}
     inputs = (
-        "사용자의 원래 의도를 보존하면서 결과를 개선하세요.",
-        "모호한 입력에는 필요한 가정을 짧게 밝히고 실행 가능한 결과를 내세요.",
+        "请在保留用户原始意图的同时改进结果。",
+        "面对模糊输入，请简短说明必要假设并给出可执行结果。",
     )
     return [_case(intent, template, item, expected, ["general"]) for item in inputs]
 

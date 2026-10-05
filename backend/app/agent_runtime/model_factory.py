@@ -234,15 +234,15 @@ def clear_model_cache() -> None:
         _close_cached_model(model)
 
 
-# SSL 컨텍스트.
+# SSL 上下文。
 #
-# 일부 macOS / 사내 VPN 환경에서 OpenAI 인증서 체인이 strict 검증
-# (``Missing Authority Key Identifier``)에 걸린다. ``truststore``로
-# OS 네이티브 trust store(macOS Keychain / Windows CryptoAPI / Linux
-# /etc/ssl)를 사용하면 시스템이 인정한 모든 root CA를 그대로 활용해
-# CRL/AKI 같은 deep-validation 이슈를 우회할 수 있다.
+# 在部分 macOS / 企业 VPN 环境中，OpenAI 证书链会触发 strict 验证
+# （``Missing Authority Key Identifier``）。使用 ``truststore``
+# 通过 OS 原生 trust store(macOS Keychain / Windows CryptoAPI / Linux
+# /etc/ssl) 可以直接使用系统认可的所有 root CA，
+# 从而绕过 CRL/AKI 等 deep-validation 问题。
 #
-# ``HC_SSL.pem`` (사내 프록시 인증서) 가 존재하면 추가 trust로 결합한다.
+# 如果存在 ``HC_SSL.pem``（企业代理证书），则合并为额外 trust。
 _hc_cert = Path(os.path.expanduser("~/.ssl/HC_SSL.pem"))  # noqa: PTH111 — Path.expanduser crashes on unresolvable $HOME
 try:
     import truststore
@@ -271,7 +271,7 @@ def create_chat_model(
     runtime paths pass ``False`` where falling through to system credentials
     would cross the credential boundary.
 
-    Provider quirk 처리는 helper 함수 (``_apply_*``) 로 분리 — ADR-014.
+    Provider quirk 处理拆分到 helper 函数（``_apply_*``）— ADR-014。
     """
 
     cls = PROVIDER_MAP.get(provider, ChatOpenAI)
@@ -350,11 +350,11 @@ _GPT5_DEFAULT_COMPLETION_TOKENS = 4096
 
 
 def is_gpt5_family(provider: str, model_name: str) -> bool:
-    """OpenAI GPT-5 / o-series 가족 — ``max_completion_tokens`` 강제, temperature lock.
+    """OpenAI GPT-5 / o-series 系列 — 强制 ``max_completion_tokens``，temperature lock。
 
     Public so other modules (e.g. ``app.services.model_test``) share the
-    single source of truth (ADR-014). raw curl preview 와 런타임 wire 가
-    drift 하지 않도록 한 곳에서만 판정.
+    single source of truth (ADR-014). raw curl preview 与运行时 wire
+    只在一个位置判定，以避免 drift。
     """
 
     if provider != "openai":
@@ -364,7 +364,7 @@ def is_gpt5_family(provider: str, model_name: str) -> bool:
 
 
 TEST_COMPLETION_TOKEN_CAP = 200
-# Backwards-compat alias (이전 commit 에서 underscore prefix 로 export 되었음).
+# Backwards-compat alias（之前的 commit 中以 underscore prefix 进行 export）。
 _TEST_COMPLETION_TOKEN_CAP = TEST_COMPLETION_TOKEN_CAP
 
 
@@ -383,7 +383,7 @@ def create_chat_model_for_test(
     ``ainvoke`` in an ``asyncio.wait_for(...)`` to enforce the timeout —
     this factory does not schedule timers itself.
 
-    Provider quirk 처리는 ``create_chat_model`` 과 동일 helper 사용 — ADR-014.
+    Provider quirk 处理使用与 ``create_chat_model`` 相同的 helper — ADR-014。
     """
 
     cls = PROVIDER_MAP.get(provider, ChatOpenAI)
@@ -414,7 +414,7 @@ def create_chat_model_for_test(
 
 
 def _apply_anthropic_quirks(provider: str, kwargs: dict[str, Any]) -> None:
-    """Anthropic API 가 ``temperature`` 와 ``top_p`` 동시 지정을 거부 — top_p drop."""
+    """Anthropic API 拒绝同时指定 ``temperature`` 和 ``top_p`` — drop top_p。"""
 
     if provider == "anthropic" and "temperature" in kwargs and "top_p" in kwargs:
         kwargs.pop("top_p")
@@ -427,14 +427,14 @@ def _apply_gpt5_quirks(
     *,
     completion_token_default: int,
 ) -> None:
-    """OpenAI GPT-5 / o-series 가족: ``max_tokens`` 거부 + non-default ``temperature`` 거부.
+    """OpenAI GPT-5 / o-series 系列：拒绝 ``max_tokens`` + 拒绝 non-default ``temperature``。
 
-    - ``max_tokens`` → ``max_completion_tokens`` 로 top-level forward
-      (langchain-openai 0.3+ 는 ``model_kwargs`` 안에 넣으면 UserWarning 후
-      제거해 OpenAI 에 도달 못 함).
-    - caller 가 cap 을 안 줬으면 ``completion_token_default`` 보장 — reasoning
-      토큰을 다 쓰고 visible content 가 비는 회귀 방지.
-    - ``temperature`` 는 모델이 default 만 받으므로 drop.
+    - ``max_tokens`` → ``max_completion_tokens`` 以 top-level forward
+      （langchain-openai 0.3+ 若放在 ``model_kwargs`` 内，会在 UserWarning 后
+      被移除，无法到达 OpenAI）。
+    - caller 未提供 cap 时，保证 ``completion_token_default`` — 防止 reasoning
+      token 全部耗尽后 visible content 为空的回归。
+    - ``temperature`` 因模型只接受 default 而 drop。
     """
 
     if not is_gpt5_family(provider, model_name):
@@ -446,13 +446,13 @@ def _apply_gpt5_quirks(
 
 
 def _apply_openai_compatible_base_url(provider: str, kwargs: dict[str, Any]) -> None:
-    """``base_url`` 미지정 시 provider canonical endpoint pin.
+    """未指定 ``base_url`` 时 pin 到 provider canonical endpoint。
 
-    ChatOpenAI 가 base_url 없을 때 OpenAI Python SDK 가 ``OPENAI_BASE_URL``
-    env 로 fallback. 사용자 셸이 RunPod proxy / Claude Code helper / 사내
-    프록시로 export 해놓으면 *엉뚱한* 호스트로 라우팅되어 404 회귀
-    (e.g. ``OPENAI_BASE_URL=https://*.proxy.runpod.net/v1`` 환경에서 gpt-5
-    호출 시 404). provider 별 canonical endpoint 명시 set 으로 OS env 우회 차단.
+    ChatOpenAI 没有 base_url 时，OpenAI Python SDK 会 fallback 到 ``OPENAI_BASE_URL``
+    env。若用户 Shell 将其 export 为 RunPod proxy / Claude Code helper / 企业
+    代理，会被路由到*错误的*主机并产生 404 回归
+    （e.g. 在 ``OPENAI_BASE_URL=https://*.proxy.runpod.net/v1`` 环境中调用 gpt-5
+    时 404）。通过按 provider 显式 set canonical endpoint，阻断 OS env 绕行。
     """
 
     if "base_url" in kwargs:
@@ -463,7 +463,7 @@ def _apply_openai_compatible_base_url(provider: str, kwargs: dict[str, Any]) -> 
 
 
 def _apply_openai_ssl_clients(cls: type[BaseChatModel], kwargs: dict[str, Any]) -> None:
-    """ChatOpenAI 계열만 truststore 기반 SSL client 주입 (사내 VPN / corp proxy 호환)."""
+    """仅为 ChatOpenAI 系列注入基于 truststore 的 SSL client（兼容企业 VPN / corp proxy）。"""
 
     if cls is ChatOpenAI:
         kwargs["http_async_client"] = httpx.AsyncClient(verify=_ssl_ctx)
@@ -477,9 +477,9 @@ _OPENAI_FAMILY_BASE_URLS: dict[str, str] = {
     "moonshot": "https://api.moonshot.cn/v1",
     "openai": "https://api.openai.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
-    # 사내 표준 게이트웨이. ``model.base_url`` 이 명시돼 있으면 그것을 우선
-    # 사용하고, 비어 있을 때만 이 default 가 적용된다. 다른 게이트웨이를
-    # 등록할 때는 모델 행의 ``base_url`` 컬럼을 채울 것.
+    # 企业标准网关。如果明确设置了 ``model.base_url``，则优先
+    # 使用该值，仅在为空时应用此 default。注册其他网关时
+    # 应填写模型行的 ``base_url`` 列。
     "openai_compatible": "https://llm-gw.hancom.com/v1",
     "zhipu_glm": "https://open.bigmodel.cn/api/paas/v4",
 }

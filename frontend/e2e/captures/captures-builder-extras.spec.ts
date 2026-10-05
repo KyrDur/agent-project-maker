@@ -49,7 +49,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
     const csrf = await loginApi(request)
     const agentIds = await seedRealisticAgents(request, csrf)
     if (agentIds[0]) {
-      for (const title of ['멤버십 취소 문의', '수업 예약 도움']) {
+      for (const title of ['会员取消咨询', '课程预约帮助']) {
         await createConversation(request, csrf, agentIds[0], title)
       }
     }
@@ -63,7 +63,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
       await page.getByRole('menu').first().waitFor({ state: 'visible', timeout: 8_000 }).catch(() => {})
       await page.waitForTimeout(400)
       await capture(page, WAVE, '01-sidebar-navigator-menu.png')
-      // Open the "分组方式" submenu to reveal the view modes (에이전트별 / 최근 에이전트 / 최근 대화).
+      // Open the "分组方式" submenu to reveal the view modes (按 Agent / 最近 Agent / 最近对话).
       await page.getByText('分组方式').first().hover().catch(() => {})
       await page.waitForTimeout(700)
       await capture(page, WAVE, '02-sidebar-view-modes.png')
@@ -77,14 +77,14 @@ test.describe('Wave 8 — builder + extras captures', () => {
     const csrf = await loginApi(request)
     const modelId = await scriptedModelId(request)
     const created = await apiPostJson(request, `${API_BASE}/api/agents`, csrf, {
-      name: '핏라이프 멤버십 지원봇',
-      description: '헬스장 멤버십 문의·예약·취소 고객지원',
-      system_prompt: '고객지원 상담원입니다.',
+      name: 'FitLife 会员支持机器人',
+      description: '健身房会员咨询、预约、取消客户支持',
+      system_prompt: '我是客户支持客服。',
       model_id: modelId,
       opener_questions: [
-        '멤버십 크레딧이 얼마나 남았는지 알려줘',
-        '이번 주 요가 수업을 예약하고 싶어',
-        '멤버십을 취소하려면 어떻게 해?',
+        '告诉我会员积分还剩多少',
+        '我想预约本周的瑜伽课',
+        '要怎么取消会员？',
       ],
     })
     const agentId = isRecord(created) && typeof created.id === 'string' ? created.id : ''
@@ -110,13 +110,13 @@ test.describe('Wave 8 — builder + extras captures', () => {
 
   test('conversational builder — step by step', async ({ page }) => {
     test.setTimeout(360_000)
-    const prompt = '헬스장 멤버십 문의에 답하고 예약·취소를 돕는 고객지원 봇을 만들어줘'
+    const prompt = '帮我创建一个回答健身房会员咨询并协助预约、取消的客户支持机器人'
     await nav(page, `/agents/new/conversational?initialMessage=${encodeURIComponent(prompt)}`)
     await page.getByText(/세션 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
     await capture(page, WAVE, '10-builder-welcome.png')
 
     // Verified via diagnostics: options are <button role="option">; selecting the
-    // LAST one (freshest card if regenerated) enables the EXACT 다음/완료 button.
+    // LAST one (freshest card if regenerated) enables the EXACT 下一步/完成 button.
     // Must NOT match "再生" (regenerate) — that loops the card forever.
     let dryRounds = 0
     for (let step = 1; step <= 16 && dryRounds < 3; step += 1) {
@@ -130,9 +130,9 @@ test.describe('Wave 8 — builder + extras captures', () => {
         await page.waitForTimeout(700)
       }
 
-      // Each phase's advance differs: the intent wizard uses 다음/완료; later
-      // phases (tool/middleware/prompt/image/save/build) use 승인하고 진행. Never
-      // 재생성 / 수정 요청.
+      // Each phase's advance differs: the intent wizard uses 下一步/完成; later
+      // phases (tool/middleware/prompt/image/save/build) use 批准并继续. Never
+      // 重新生成 / 请求修改.
       const next = page
         .getByRole('button', { name: /^(다음|완료|제출|확인|승인하고 진행|승인|진행|건너뛰기|시작하기)$/ })
         .last()

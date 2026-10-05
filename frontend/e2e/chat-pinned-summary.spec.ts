@@ -107,7 +107,7 @@ test.describe('Pinned conversation summary', () => {
 
     try {
       await page.goto(`/agents/${fixture.agentId}/conversations/${fixture.conversationId}`)
-      await sendMessage(page, '고정할 답변을 작성해줘')
+      await sendMessage(page, '写一个要固定的回答')
       await waitForCompletedReply(request, fixture.conversationId)
       await page.reload()
       const reply = page.getByText('E2E scripted document model is ready.').last()

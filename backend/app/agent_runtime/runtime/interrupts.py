@@ -1,8 +1,8 @@
-"""HiTL ``interrupt_on`` 정책 조립 (BE-S10 분리).
+"""HiTL ``interrupt_on`` 策略组装（BE-S10 拆分）。
 
-CLAUDE.md 의 HiTL 기본 인터럽트 규칙이 참조하는
-``_default_interrupt_on_from_tools`` 가 이 모듈에 있다 — 위험 메타데이터가
-있는 도구는 별도 미들웨어 설정 없이 기본 ``interrupt_on`` 정책이 붙는다.
+CLAUDE.md 的 HiTL 默认中断规则引用的
+``_default_interrupt_on_from_tools`` 位于本模块 — 带有危险元数据的
+工具无需额外中间件设置，就会附加默认 ``interrupt_on`` 策略。
 """
 
 from __future__ import annotations

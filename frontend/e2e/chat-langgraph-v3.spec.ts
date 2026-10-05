@@ -74,10 +74,10 @@ test.describe('LangGraph v3 chat runtime', () => {
       await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
         timeout: 30_000,
       })
-      // pending 인터럽트 상태의 리로드 — raw execute_in_skill pill은 승인 카드가
-      // 대표하므로 숨겨지고(stripInterruptedRawToolCalls), 카드 헤드라인이 승인
-      // 대상 스킬명을 보여준다(resolveApprovalToolName). 승인 완료 후 리로드의
-      // SkillExecutionToolUI pill 계약은 captures-wave2-scenario가 검증한다.
+      // pending interrupt 状态下 reload — raw execute_in_skill pill 由 approval card
+      // 代表，因此被隐藏（stripInterruptedRawToolCalls），card headline 会显示 approval
+      // 对象 skill 名称（resolveApprovalToolName）。approval 完成后 reload 的
+      // SkillExecutionToolUI pill contract 由 captures-wave2-scenario 验证。
       await expect(page.getByText('docx-document').last()).toBeVisible({ timeout: 30_000 })
       expect(runStartCommands).toHaveLength(1)
 

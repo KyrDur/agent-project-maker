@@ -12,23 +12,23 @@ import { sendMessage, setupLangGraphV3Agent } from '../langgraph-v3-helpers'
 import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-helpers'
 
 /**
- * Wave 2 메모리 라이프사이클 캡처 — 채팅의 메모리 관련 표면 전부:
+ * Wave 2 memory lifecycle 截图 — chat 中所有 memory 相关界面：
  *
- *  1막 자동 저장 : write_policy=auto + E2E_MEMORY_SAVE → "已保存" pill (즉시 기록)
- *  2막 저장 제안 : write_policy=ask + E2E_MEMORY_PROPOSE → 제안 카드
- *                 (저장/수정/거절 버튼, 기본 펼침)
- *  3막 저장 승인 : 제안 카드에서 저장 클릭 → "已保存" 상태 전이
- *  4막 저장 거절 : 새 제안 → 거절 클릭 → "不保存" 상태 전이
- *  5막 수정 후 저장: 새 제안 → 수정 → textarea 편집 → 수정 후 저장
- *  6막 회상 풀서클: 저장된 기억들이 다음 런의 "记忆回忆" 칩으로 돌아온다
+ *  第 1 幕自动保存：write_policy=auto + E2E_MEMORY_SAVE → "已保存" pill（立即记录）
+ *  第 2 幕保存建议：write_policy=ask + E2E_MEMORY_PROPOSE → 建议 card
+ *                 （保存/修改/拒绝 button，默认展开）
+ *  第 3 幕保存批准：在建议 card 中点击保存 → 状态变为 "已保存"
+ *  第 4 幕保存拒绝：新建议 → 点击拒绝 → 状态变为 "不保存"
+ *  第 5 幕修改后保存：新建议 → 修改 → textarea 编辑 → 修改后保存
+ *  第 6 幕回忆闭环：已保存 memory 在下一次 run 中以 "记忆回忆" chip 返回
  *
  * Gated by E2E_CAPTURE_TOUR=1 (+ E2E_TEST_HELPERS_ENABLED, scripted model).
  */
 
 const WAVE = 'wave2-memory'
 const MEMORY_FINAL = 'E2E memory tool run complete.'
-const SAVE_CONTENT = '사용자는 결론 먼저, 표 중심의 보고서를 선호한다.'
-const PROPOSE_CONTENT = '매주 월요일 아침에 주간 계획 브리핑을 받고 싶어한다.'
+const SAVE_CONTENT = '用户偏好结论优先、以表格为主的报告。'
+const PROPOSE_CONTENT = '希望每周一早上收到周计划 briefing。'
 
 async function createConversation(
   request: APIRequestContext,
@@ -58,7 +58,7 @@ async function setWritePolicy(
   expect(response.ok()).toBe(true)
 }
 
-/** 재실행/리트라이가 결정적이도록 기존 기억을 전부 지운다. */
+/** 为确保 rerun/retry 具有确定性，删除所有现有 memory。 */
 async function clearMemories(
   request: APIRequestContext,
   csrfHeaders: CsrfHeaders,
@@ -104,42 +104,42 @@ test.describe('Wave 2 memory lifecycle captures', () => {
     await clearMemories(request, csrfHeaders)
 
     try {
-      // ── 1막: 자동 저장 (write_policy=auto) — 묻지 않고 바로 기록 ────────
+      // ── 第 1 幕：自动保存（write_policy=auto）— 不询问，直接记录 ───────
       await setWritePolicy(request, csrfHeaders, 'auto')
       const autoConversationId = await createConversation(
         request,
         csrfHeaders,
         setup.parentAgentId,
-        '메모리 자동 저장',
+        'memory 自动保存',
       )
       await gotoChat(page, setup.parentAgentId, autoConversationId)
-      await sendMessage(page, '내 보고서 취향 꼭 기억해줘 E2E_MEMORY_SAVE')
+      await sendMessage(page, '一定要记住我的报告偏好 E2E_MEMORY_SAVE')
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
 
       const memoryCard = page.getByTestId('memory-tool-card').last()
       await expect(memoryCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
-      // 접힌 pill에도 내용 미리보기(meta)가 보인다 — 펼쳐서 전문 확인.
+      // 折叠 pill 中也会显示内容 preview(meta) — 展开查看全文。
       await memoryCard.getByText('已保存').click()
-      // 내용은 접힘 meta(truncate span)와 펼침 본문(p) 두 곳에 나온다 — first로 고정.
+      // 内容会同时出现在折叠 meta(truncate span) 和展开正文(p) 两处 — 固定用 first。
       await expect(memoryCard.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await settle(page)
       await capture(page, WAVE, '00-memory-auto-saved-pill.png')
 
-      // ── 2막: 저장 제안 (write_policy=ask) — 승인 전엔 기록하지 않는다 ────
+      // ── 第 2 幕：保存建议（write_policy=ask）— 批准前不记录 ─────────
       await setWritePolicy(request, csrfHeaders, 'ask')
       const proposeConversationId = await createConversation(
         request,
         csrfHeaders,
         setup.parentAgentId,
-        '메모리 저장 제안',
+        'memory 保存建议',
       )
       await gotoChat(page, setup.parentAgentId, proposeConversationId)
-      await sendMessage(page, '월요일 브리핑 얘기 기억해두면 좋겠어 E2E_MEMORY_PROPOSE')
+      await sendMessage(page, '如果能记住周一 briefing 的事就好了 E2E_MEMORY_PROPOSE')
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
 
       const proposalCard = page.getByTestId('memory-tool-card').last()
       await expect(proposalCard.getByText('保存建议')).toBeVisible({ timeout: 30_000 })
-      // 제안 카드는 기본 펼침 — 내용 + 저장/수정/거절 버튼이 바로 보인다.
+      // 建议 card 默认展开 — 内容 + 保存/修改/拒绝 button 直接可见。
       await expect(proposalCard.getByText(PROPOSE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await expect(proposalCard.getByTestId('memory-proposal-approve')).toBeVisible()
       await expect(proposalCard.getByTestId('memory-proposal-reject')).toBeVisible()
@@ -147,21 +147,21 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await settle(page)
       await capture(page, WAVE, '01-memory-proposal-card.png')
 
-      // ── 3막: 저장 승인 — 카드가 "已保存"으로 전이 ───────────────────────
+      // ── 第 3 幕：保存批准 — card 转为 "已保存" ─────────────────────
       await proposalCard.getByTestId('memory-proposal-approve').click()
       await expect(proposalCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
       await settle(page)
       await capture(page, WAVE, '02-memory-proposal-approved.png')
 
-      // ── 4막: 저장 거절 — 카드가 "不保存"으로 전이 ───────────────────
+      // ── 第 4 幕：保存拒绝 — card 转为 "不保存" ─────────────────────
       const rejectConversationId = await createConversation(
         request,
         csrfHeaders,
         setup.parentAgentId,
-        '메모리 저장 거절',
+        'memory 保存拒绝',
       )
       await gotoChat(page, setup.parentAgentId, rejectConversationId)
-      await sendMessage(page, '이건 저장하지 말자 E2E_MEMORY_PROPOSE')
+      await sendMessage(page, '这个别保存 E2E_MEMORY_PROPOSE')
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
       const rejectCard = page.getByTestId('memory-tool-card').last()
       await expect(rejectCard.getByTestId('memory-proposal-reject')).toBeVisible({
@@ -172,59 +172,59 @@ test.describe('Wave 2 memory lifecycle captures', () => {
       await settle(page)
       await capture(page, WAVE, '03-memory-proposal-rejected.png')
 
-      // ── 5막: 수정 후 저장 — 제안 내용을 고쳐서 승인 ─────────────────────
+      // ── 第 5 幕：修改后保存 — 修改建议内容后批准 ────────────────────
       const editConversationId = await createConversation(
         request,
         csrfHeaders,
         setup.parentAgentId,
-        '메모리 수정 후 저장',
+        'memory 修改后保存',
       )
       await gotoChat(page, setup.parentAgentId, editConversationId)
-      await sendMessage(page, '브리핑 시간을 기억해줘 E2E_MEMORY_PROPOSE')
+      await sendMessage(page, '记住 briefing 时间 E2E_MEMORY_PROPOSE')
       await expect(page.getByText(MEMORY_FINAL).first()).toBeVisible({ timeout: 120_000 })
       const editCard = page.getByTestId('memory-tool-card').last()
       await expect(editCard.getByTestId('memory-proposal-edit')).toBeVisible({ timeout: 30_000 })
       await editCard.getByTestId('memory-proposal-edit').click()
       const editor = editCard.getByRole('textbox')
       await expect(editor).toBeVisible({ timeout: 10_000 })
-      await editor.fill('매주 월요일 오전 9시에 주간 계획 브리핑을 받고 싶어한다.')
+      await editor.fill('希望每周一上午 9 点收到周计划 briefing。')
       await settle(page)
       await capture(page, WAVE, '04-memory-proposal-editing.png')
       await editCard.getByTestId('memory-proposal-edit-approve').click()
       await expect(editCard.getByText('已保存')).toBeVisible({ timeout: 30_000 })
       await expect(
-        editCard.getByText('매주 월요일 오전 9시에 주간 계획 브리핑을 받고 싶어한다.').first(),
+        editCard.getByText('希望每周一上午 9 点收到周计划 briefing。').first(),
       ).toBeVisible()
       await settle(page)
       await capture(page, WAVE, '05-memory-proposal-edit-approved.png')
 
-      // ── 6막: 회상 풀서클 — 저장된 기억이 다음 런의 회상 칩으로 돌아온다 ──
-      // 저장분: 자동 저장 1 + 승인 1 + 수정 후 저장 1 = 3개.
+      // ── 第 6 幕：回忆闭环 — 保存的 memory 在下一次 run 以 recall chip 返回 ──
+      // 已保存：自动保存 1 + 批准 1 + 修改后保存 1 = 3 个。
       const recallConversationId = await createConversation(
         request,
         csrfHeaders,
         setup.parentAgentId,
-        '기억 회상 확인',
+        '确认 memory recall',
       )
       await gotoChat(page, setup.parentAgentId, recallConversationId)
-      await sendMessage(page, '지난번에 말한 취향대로 정리해줘')
+      await sendMessage(page, '按上次说的偏好整理一下')
       const recallChip = page.locator('[data-moldy-memory-recall]')
       await expect(recallChip).toBeVisible({ timeout: 60_000 })
-      await expect(recallChip.getByText('3개')).toBeVisible({ timeout: 15_000 })
+      await expect(recallChip.getByText('3 个')).toBeVisible({ timeout: 15_000 })
       await recallChip.getByText('记忆回忆').click()
       await expect(recallChip.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 10_000 })
       await settle(page)
       await capture(page, WAVE, '06-memory-recall-full-circle.png')
 
-      // 리로드 — 영속 이벤트는 기억 내용이 <redacted>로 마스킹되고(공유 안전
-      // 계약), 소유자 화면은 메모리 API 조인으로 내용을 복원해야 한다.
+      // reload — 持久化 event 中 memory 内容会被 <redacted> 掩码（共享安全
+      // contract），owner 界面需通过 memory API join 恢复内容。
       await gotoChat(page, setup.parentAgentId, recallConversationId)
       await expect(recallChip).toBeVisible({ timeout: 60_000 })
       await recallChip.getByText('记忆回忆').click()
       await expect(recallChip.getByText(SAVE_CONTENT).first()).toBeVisible({ timeout: 15_000 })
       await expect(recallChip.getByText('<redacted>')).toHaveCount(0)
     } finally {
-      // 정리 — 정책 기본값(ask) 복원 + 기억/제안 잔여물 제거로 spec 간 결합 차단.
+      // 清理 — 恢复 policy 默认值(ask) + 删除 memory/建议残留，切断 spec 间耦合。
       await setWritePolicy(request, csrfHeaders, 'ask')
       await clearMemories(request, csrfHeaders)
     }

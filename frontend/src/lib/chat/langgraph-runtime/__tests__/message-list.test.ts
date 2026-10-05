@@ -177,7 +177,7 @@ describe('useStableConvertedMessages', () => {
       new AIMessage({
         id: 'assistant-ask',
         content: [
-          { type: 'text', text: '네, 골라봐요!', index: 0 },
+          { type: 'text', text: '好，选一个吧！', index: 0 },
           {
             type: 'tool_call',
             id: 'call-ask',
@@ -186,7 +186,7 @@ describe('useStableConvertedMessages', () => {
               mode: 'option_list',
               title: '需要输入',
               question: '어떤 과일?',
-              options: [{ id: 'apple', label: '🍎 사과' }],
+              options: [{ id: 'apple', label: '🍎 苹果' }],
               approval_id: 'call-ask',
               hitl_interrupt_id: 'intr-ask',
               hitl_action_index: 0,
@@ -203,7 +203,7 @@ describe('useStableConvertedMessages', () => {
               mode: 'option_list',
               title: '需要输入',
               question: '어떤 과일?',
-              options: [{ id: 'apple', label: '🍎 사과' }],
+              options: [{ id: 'apple', label: '🍎 苹果' }],
               approval_id: 'call-ask',
               hitl_interrupt_id: 'intr-ask',
               hitl_action_index: 0,
@@ -228,7 +228,7 @@ describe('useStableConvertedMessages', () => {
         role: 'assistant',
         status: { type: 'requires-action', reason: 'tool-calls' },
         content: expect.arrayContaining([
-          expect.objectContaining({ type: 'text', text: '네, 골라봐요!' }),
+          expect.objectContaining({ type: 'text', text: '好，选一个吧！' }),
           expect.objectContaining({
             type: 'tool-call',
             toolCallId: 'call-ask',

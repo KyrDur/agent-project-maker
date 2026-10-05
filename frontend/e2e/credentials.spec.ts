@@ -78,7 +78,7 @@ test.describe('Credentials page', () => {
     await page.getByText('OpenAI').click()
 
     // Step 2: form
-    await expect(page.getByRole('heading', { name: '새 OpenAI 자격증명' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '新的 OpenAI 凭据' })).toBeVisible()
     await page.getByLabel('名称').fill('Prod OpenAI')
     await page.getByLabel(/api key/i).fill('sk-test-1234')
 

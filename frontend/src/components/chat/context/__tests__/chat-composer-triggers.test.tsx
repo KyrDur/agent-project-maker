@@ -68,7 +68,7 @@ function Harness({
           {
             kind: 'file',
             id: '8f65c7bb-7092-43f4-a215-8e603101d114',
-            label: '회의록',
+            label: '会议记录',
           },
         ]}
         selectedResourceCount={0}
@@ -153,7 +153,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     expect(onResourceSelect).toHaveBeenCalledWith({
       kind: 'file',
       id: '8f65c7bb-7092-43f4-a215-8e603101d114',
-      label: '회의록',
+      label: '会议记录',
     })
     expect(input).toHaveValue(' ')
   })

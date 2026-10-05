@@ -35,7 +35,7 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      await sendMessage(page, 'E2E_UI_DATA_DEMO 제너레이티브 UI 데모 렌더 확인')
+      await sendMessage(page, 'E2E_UI_DATA_DEMO 确认生成式 UI demo 渲染')
 
       // The run streams to completion (the demo tool is READ_ONLY, no HITL).
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
@@ -77,7 +77,7 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      await sendMessage(page, 'E2E_UI_DATA_TABLE 데이터 테이블 렌더 확인')
+      await sendMessage(page, 'E2E_UI_DATA_TABLE 确认数据表格渲染')
 
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
       await expect(table).toHaveCount(1, { timeout: 15_000 })
@@ -116,7 +116,7 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      await sendMessage(page, 'E2E_UI_DATA_CHART 차트 렌더 확인')
+      await sendMessage(page, 'E2E_UI_DATA_CHART 确认图表渲染')
 
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
       await expect(chart).toHaveCount(1, { timeout: 15_000 })
@@ -147,11 +147,11 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      await sendMessage(page, 'E2E_UI_DATA_STATS 통계 렌더 확인')
+      await sendMessage(page, 'E2E_UI_DATA_STATS 确认统计渲染')
 
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
       await expect(stats).toHaveCount(1, { timeout: 15_000 })
-      await expect(stats.getByText('총 요청')).toBeVisible()
+      await expect(stats.getByText('总请求数')).toBeVisible()
       await expect(stats.getByText('1,240')).toBeVisible()
 
       await page.reload({ waitUntil: 'domcontentloaded' })
@@ -180,7 +180,7 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`, {
         waitUntil: 'domcontentloaded',
       })
-      await sendMessage(page, 'E2E_UI_DATA_TERMINAL 터미널 렌더 확인')
+      await sendMessage(page, 'E2E_UI_DATA_TERMINAL 确认 terminal 渲染')
 
       await expect(page.getByText(FINAL_TEXT).last()).toBeVisible({ timeout: 60_000 })
       await expect(terminal).toHaveCount(1, { timeout: 15_000 })
@@ -218,12 +218,12 @@ test.describe('Chat generative UI (ui_data demo)', () => {
       })
 
       // Turn 1 → data_table. Wait for the run to settle before turn 2.
-      await sendMessage(page, 'E2E_UI_DATA_TABLE 첫 번째 턴')
+      await sendMessage(page, 'E2E_UI_DATA_TABLE 第一轮')
       await expect(table).toHaveCount(1, { timeout: 60_000 })
       await expect(page.getByText(FINAL_TEXT)).toHaveCount(1, { timeout: 30_000 })
 
       // Turn 2 → chart.
-      await sendMessage(page, 'E2E_UI_DATA_CHART 두 번째 턴')
+      await sendMessage(page, 'E2E_UI_DATA_CHART 第二轮')
       await expect(chart).toHaveCount(1, { timeout: 60_000 })
 
       // Both render exactly once, in SEPARATE turns. The pre-fix bug collapsed

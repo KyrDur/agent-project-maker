@@ -1,10 +1,10 @@
-"""``validate_skill``/``finalize_skill`` 도구 결과 → ``moldy.skill_validation``
-projection (memory_event_projection 패턴, 스펙 AD-5).
+"""``validate_skill``/``finalize_skill`` 工具结果 → ``moldy.skill_validation``
+projection（memory_event_projection 模式，spec AD-5）。
 
-페이로드는 기존 ``validation_result`` 스키마 그대로 실어 프론트 검증 레일이
-v1 패널(ValidationPanel/PortableCompatibilityPanel)을 재사용하게 한다.
-issues는 code/severity/message/path만 담는다 — 파일 내용/시크릿 값은 검증기
-계약상 포함되지 않는다 (SecretFinding은 path+kind만, §6-7).
+payload 原样携带现有 ``validation_result`` schema，使前端验证 rail
+复用 v1 panel（ValidationPanel/PortableCompatibilityPanel）。
+issues 仅包含 code/severity/message/path — 按验证器协议，不包含文件内容/secret 值
+（SecretFinding 仅包含 path+kind，§6-7）。
 """
 
 from __future__ import annotations
@@ -12,11 +12,9 @@ from __future__ import annotations
 import json
 from typing import Any, Final
 
-SKILL_VALIDATION_TOOL_NAMES: Final[frozenset[str]] = frozenset(
-    {"validate_skill", "finalize_skill"}
-)
+SKILL_VALIDATION_TOOL_NAMES: Final[frozenset[str]] = frozenset({"validate_skill", "finalize_skill"})
 
-# 검증 결과로 인정하는 최소 shape — 임의 JSON 도구 결과 오인 방지.
+# 被视为验证结果的最小 shape — 防止误认任意 JSON 工具结果。
 _REQUIRED_KEYS: Final[frozenset[str]] = frozenset({"valid", "issues"})
 
 
@@ -24,7 +22,7 @@ def skill_validation_event_from_tool_result(
     tool_name: str,
     result: str,
 ) -> dict[str, Any] | None:
-    """도구 결과 JSON에서 검증 페이로드를 추출한다 (아니면 ``None``)."""
+    """从工具结果 JSON 中提取验证 payload（否则返回 ``None``）。"""
 
     if tool_name not in SKILL_VALIDATION_TOOL_NAMES:
         return None
@@ -36,7 +34,7 @@ def skill_validation_event_from_tool_result(
         return None
     validation = parsed.get("validation_result")
     if not isinstance(validation, dict):
-        # validate_skill은 결과 dict 자체가 validation_result 스키마.
+        # validate_skill 的结果 dict 本身就是 validation_result schema。
         validation = parsed
     if not set(validation) >= _REQUIRED_KEYS:
         return None

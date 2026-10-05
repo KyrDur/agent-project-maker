@@ -69,12 +69,12 @@ test.describe('Chat error + retry captures', () => {
       request,
       csrfHeaders,
       agentId,
-      '에러 재시도 캡쳐',
+      '错误重试截图',
     )
     await gotoChat(page, agentId, conversationId)
 
     // Capture the accepted run id directly: E2E_ERROR can fail before active-run polling.
-    const runId = await sendMessageForRun(page, conversationId, 'E2E_ERROR 강제 실패 시나리오')
+    const runId = await sendMessageForRun(page, conversationId, 'E2E_ERROR 强制失败场景')
     await waitForRunStatus(request, conversationId, runId, 'failed')
 
     // The error bubble carries the always-visible retry button — gate on it so we

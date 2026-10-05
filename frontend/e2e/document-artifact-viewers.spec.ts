@@ -404,7 +404,7 @@ test.describe('Document artifact viewers', () => {
         verify: async (viewerPage) => {
           await expect(
             artifactViewerPanel(viewerPage, 'moldy-docx-demo.docx')
-              .getByText('Moldy 문서 생성 검증 보고서')
+              .getByText('Moldy 文档生成验证报告')
               .first(),
           ).toBeVisible({ timeout: 30_000 })
         },
@@ -415,7 +415,7 @@ test.describe('Document artifact viewers', () => {
         extension: 'xlsx',
         verify: async (viewerPage) => {
           const panel = artifactViewerPanel(viewerPage, 'moldy-xlsx-demo.xlsx')
-          await expect(panel.getByText('검증요약').first()).toBeVisible({
+          await expect(panel.getByText('验证摘要').first()).toBeVisible({
             timeout: 30_000,
           })
           await expect(panel.getByText('JS runner').first()).toBeVisible()

@@ -1,4 +1,4 @@
-"""시스템 프롬프트 블록 빌더 (BE-S10 분리)."""
+"""系统提示词块构建器（BE-S10 拆分）。"""
 
 from __future__ import annotations
 

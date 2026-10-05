@@ -39,7 +39,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
   try {
     await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
     await test.step('send initial message', () =>
-      sendMessage(page, '사이드 채팅을 살펴보겠습니다.'))
+      sendMessage(page, '看看侧边 chat。'))
     const main = page.locator(`[data-chat-selection-thread="${setup.conversationId}"]`)
     const answer = main
       .locator('[data-moldy-message-role="assistant"] [data-chat-quote-text]')
@@ -52,19 +52,19 @@ test('quotes, comments, independent side run and return to main', async ({ page,
       .getByTestId('chat-selection-actions')
       .getByRole('button', { name: '添加到聊天', exact: true })
       .click()
-    const note = main.getByRole('button', { name: '주석 1', exact: true })
+    const note = main.getByRole('button', { name: '注释 1', exact: true })
     await expect(note).toBeVisible()
     await note.click()
     const comment = page.getByRole('textbox', { name: '您的评论' })
-    await comment.fill('이 문장의 의미를 설명해 주세요.')
+    await comment.fill('请解释这句话的含义。')
     await page.getByRole('button', { name: '应用', exact: true }).click()
     await note.hover()
-    await expect(page.getByRole('tooltip')).toContainText('이 문장의 의미를 설명해 주세요.')
+    await expect(page.getByRole('tooltip')).toContainText('请解释这句话的含义。')
     await expect(page.getByRole('tooltip')).toContainText('智能体 回复')
     await capture(page, '02-quote-comment-preview.png')
     await main
       .locator('textarea[data-moldy-composer-input]')
-      .fill('본 채팅의 초안은 보존해 주세요.')
+      .fill('请保留主 chat 的 draft。')
     await selectBody(page, answer)
     const created = page.waitForResponse(
       (response) =>
@@ -83,7 +83,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     const side = page.locator(`[data-chat-selection-thread="${sideId}"]`)
     await expect(side.getByTestId('quote-context-chips')).toBeVisible({ timeout: 30_000 })
     const sideComposer = side.locator('textarea[data-moldy-composer-input]')
-    await sideComposer.fill('선택한 부분을 자세히 알려 주세요.')
+    await sideComposer.fill('请详细说明选中的部分。')
     const runRequest = page.waitForRequest(
       (req) => req.url().includes(sideId) && (req.postData() ?? '').includes('resource_context'),
     )
@@ -95,7 +95,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     )
     await expect(side.getByTestId('sent-quote-context')).toBeVisible()
     await expect(main.locator('textarea[data-moldy-composer-input]')).toHaveValue(
-      '본 채팅의 초안은 보존해 주세요.',
+      '请保留主 chat 的 draft。',
     )
     await expect(main.locator('[data-moldy-message-role="assistant"]')).toHaveCount(1)
     await expect(side.getByRole('button', { name: '添加到聊天', exact: true })).toBeEnabled({
@@ -103,7 +103,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     })
     await capture(page, '03-side-chat-desktop.png')
     await side.getByRole('button', { name: '添加到聊天', exact: true }).click()
-    await expect(main.getByRole('button', { name: '주석 2', exact: true })).toBeVisible()
+    await expect(main.getByRole('button', { name: '注释 2', exact: true })).toBeVisible()
     await side.getByRole('button', { name: '关闭侧边聊天', exact: true }).click()
     await expect(side).toBeHidden()
     await page.getByRole('button', { name: '边聊', exact: true }).click()
@@ -132,10 +132,10 @@ test('quotes, comments, independent side run and return to main', async ({ page,
       })
       await capture(page, `04-side-chat-${name}.png`)
       if (name === 'tablet')
-        await side.locator('textarea[data-moldy-composer-input]').fill('사이드 초안 보존')
+        await side.locator('textarea[data-moldy-composer-input]').fill('保留侧边 draft')
       else
         await expect(side.locator('textarea[data-moldy-composer-input]')).toHaveValue(
-          '사이드 초안 보존',
+          '保留侧边 draft',
         )
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
@@ -144,7 +144,7 @@ test('quotes, comments, independent side run and return to main', async ({ page,
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toBeHidden()
     await expect(main.locator('textarea[data-moldy-composer-input]')).toHaveValue(
-      '본 채팅의 초안은 보존해 주세요.',
+      '请保留主 chat 的 draft。',
     )
     await page.reload()
     const reopened = page.waitForResponse(

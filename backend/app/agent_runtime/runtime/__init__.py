@@ -1,13 +1,13 @@
-"""Runtime component clusters — ``runtime_component_builder`` 분리 패키지 (BE-S10).
+"""Runtime component clusters — 从 ``runtime_component_builder`` 拆分出的包（BE-S10）。
 
-모듈 구성:
+模块组成：
 
-* ``models`` — 모델 후보/폴백/재시도 판정
-* ``reliability`` — 빈 응답 재시도 미들웨어 + 기본 신뢰성 미들웨어 조립
-* ``interrupts`` — HiTL ``interrupt_on`` 정책 조립
-* ``prompts`` — 시스템 프롬프트 블록 빌더
-* ``memory_context`` — 장기 기억 프롬프트/회상 브리프/쓰기 정책
+* ``models`` — 模型候选/回退/重试判定
+* ``reliability`` — 空响应重试中间件 + 默认可靠性中间件组装
+* ``interrupts`` — HiTL ``interrupt_on`` 策略组装
+* ``prompts`` — 系统提示词块构建器
+* ``memory_context`` — 长期记忆提示词/回忆 brief/写入策略
 
-호환성: 기존 심볼은 ``app.agent_runtime.runtime_component_builder`` 가 계속
-재-export 하며, 테스트 monkeypatch 계약도 그 모듈 경로 기준으로 유지된다.
+兼容性：现有符号继续由 ``app.agent_runtime.runtime_component_builder``
+re-export，测试 monkeypatch 协议也继续以该模块路径为准。
 """

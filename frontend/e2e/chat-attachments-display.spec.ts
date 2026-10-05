@@ -140,7 +140,7 @@ test.describe('Chat attachments display', () => {
 
     // fix 1 — the composer "文件列表" button opens the file panel even though this
     //         conversation has no generated artifact card to click; the attachment
-    //         shows there under "您发送的文件" with the 첨부 badge.
+    //         shows there under "您发送的文件" with the 附件 badge.
     await page.getByRole('button', { name: '文件列表' }).click()
     // (the rail renders in both the desktop + overlay slots → match the first)
     await expect(page.getByText('您发送的文件').first()).toBeVisible({ timeout: 10_000 })

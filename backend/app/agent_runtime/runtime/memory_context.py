@@ -1,7 +1,7 @@
-"""장기 기억 컨텍스트 로딩 + 회상 브리프 + 쓰기 정책 (BE-S10 분리).
+"""长期记忆上下文加载 + 回忆 brief + 写入策略（BE-S10 拆分）。
 
-주의: ``memory_service``/DB 세션 함수-로컬 import 는 기존 코드 그대로 유지한다
-— 인자 주입으로의 역전은 BE-S4(Stage 5) 작업이며 여기서는 순수 이동만 한다.
+注意：``memory_service``/DB session 的函数内局部 import 保持现有代码不变
+— 改为参数注入反转属于 BE-S4(Stage 5) 工作，此处仅做纯移动。
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ def _parse_uuid(value: str | None) -> _uuid.UUID | None:
         return None
 
 
-# 회상 칩 payload에 싣는 기억 내용 미리보기 상한 — 전문은 memory 설정 화면에서
-# 확인하고, 스트림 이벤트에는 식별 가능한 한 줄만 싣는다.
+# 回忆 chip payload 中携带的记忆内容预览上限 — 全文在 memory 设置页面中
+# 查看，stream 事件仅携带可识别的一行内容。
 _RECALLED_MEMORY_PREVIEW_CHARS = 200
 
 

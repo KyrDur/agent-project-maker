@@ -212,7 +212,7 @@ test.describe('Live chat surface captures', () => {
 
     try {
       await page.goto(`/agents/${agentId}/settings`)
-      const prompt = '현재 에이전트 설정을 읽고 개선할 점을 한 문장으로 알려줘.'
+      const prompt = '读取当前 Agent 设置，用一句话告诉我可以改进的地方。'
       await fillAndSendComposer(page, prompt)
       await expect(page.getByText(prompt).first()).toBeVisible()
 

@@ -113,7 +113,7 @@ describe('SkillHistoryTab', () => {
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
     const revisions = screen.getAllByRole('article')
-    expect(within(revisions[0]).getByText('리비전 3')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('revision 3')).toBeInTheDocument()
     expect(within(revisions[0]).getByText('当前')).toBeInTheDocument()
     expect(within(revisions[0]).getByText(/빌더 개선/)).toBeInTheDocument()
     expect(within(revisions[0]).getByText('3개 파일')).toBeInTheDocument()
@@ -206,9 +206,7 @@ describe('SkillHistoryTab', () => {
     await user.click(screen.getByRole('button', { name: '리비전 1 보기' }))
     await user.click(screen.getByRole('button', { name: '리비전 1 되돌리기' }))
 
-    expect(
-      screen.getByText('回滚会将当前内容保留为新的历史记录条目。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('回滚会将当前内容保留为新的历史记录条目。')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '回滚' }))
 

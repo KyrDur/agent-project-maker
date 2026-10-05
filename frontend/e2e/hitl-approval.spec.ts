@@ -96,7 +96,7 @@ test.describe('HITL tool approval — reject', () => {
     await composer.press('Enter')
 
     // 1. The tool call pauses on an approval card before executing.
-    await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('需要批准').last()).toBeVisible({ timeout: 30_000 })
 
     // 2. Reject → confirm.
     await page.getByRole('button', { name: '拒绝', exact: true }).last().click()

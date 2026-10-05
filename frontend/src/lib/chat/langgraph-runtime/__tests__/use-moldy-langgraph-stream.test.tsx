@@ -522,7 +522,7 @@ describe('useMoldyLangGraphStream', () => {
   it('keeps assistant-ui running while a submitted user turn is waiting for the first assistant token', () => {
     mocks.stream.isLoading = true
     mocks.useExternalMessageConverter.mockReturnValue([
-      { id: 'pending-user', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+      { id: 'pending-user', role: 'user', content: [{ type: 'text', text: '你好？' }] },
     ])
 
     renderHook(
@@ -538,7 +538,7 @@ describe('useMoldyLangGraphStream', () => {
       expect.objectContaining({
         isRunning: true,
         messages: [
-          { id: 'pending-user', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+          { id: 'pending-user', role: 'user', content: [{ type: 'text', text: '你好？' }] },
         ],
       }),
     )
@@ -547,11 +547,11 @@ describe('useMoldyLangGraphStream', () => {
   it('keeps a converted ask_user tool-call card when the same assistant message previously rendered as text only', () => {
     const assistantSourceTextOnly = new AIMessage({
       id: 'assistant-ask-user-cache',
-      content: '네, 골라봐요!',
+      content: '好，选一个吧！',
     })
     const assistantSourceWithToolCall = new AIMessage({
       id: 'assistant-ask-user-cache',
-      content: '네, 골라봐요!',
+      content: '好，选一个吧！',
       tool_calls: [
         {
           id: 'call_e2e_ask_user_fruit',
@@ -564,8 +564,8 @@ describe('useMoldyLangGraphStream', () => {
             allowed_decisions: ['respond'],
             mode: 'option_list',
             title: '需要输入',
-            question: '어떤 과일이 좋아요?',
-            options: [{ id: 'apple', label: '🍎 사과' }],
+            question: '你喜欢哪种水果？',
+            options: [{ id: 'apple', label: '🍎 苹果' }],
           },
         },
       ],
@@ -574,7 +574,7 @@ describe('useMoldyLangGraphStream', () => {
       {
         id: 'assistant-ask-user-cache',
         role: 'assistant',
-        content: [{ type: 'text', text: '네, 골라봐요!' }],
+        content: [{ type: 'text', text: '好，选一个吧！' }],
       },
     ]
     const pendingAskUserAssistant = [
@@ -583,7 +583,7 @@ describe('useMoldyLangGraphStream', () => {
         role: 'assistant',
         status: { type: 'requires-action', reason: 'tool-calls' },
         content: [
-          { type: 'text', text: '네, 골라봐요!' },
+          { type: 'text', text: '好，选一个吧！' },
           {
             type: 'tool-call',
             toolCallId: 'call_e2e_ask_user_fruit',
@@ -596,8 +596,8 @@ describe('useMoldyLangGraphStream', () => {
               allowed_decisions: ['respond'],
               mode: 'option_list',
               title: '需要输入',
-              question: '어떤 과일이 좋아요?',
-              options: [{ id: 'apple', label: '🍎 사과' }],
+              question: '你喜欢哪种水果？',
+              options: [{ id: 'apple', label: '🍎 苹果' }],
             },
           },
         ],
@@ -1554,15 +1554,15 @@ describe('useMoldyLangGraphStream', () => {
   })
 
   it('keeps cached converted history when assistant-ui conversion briefly shrinks during a new run', () => {
-    const firstUser = new HumanMessage({ id: 'user-1', content: '안녕?' })
+    const firstUser = new HumanMessage({ id: 'user-1', content: '你好？' })
     const firstAssistant = new AIMessage({ id: 'assistant-1', content: '안녕하세요!' })
-    const secondUser = new HumanMessage({ id: 'user-2', content: '반가워' })
+    const secondUser = new HumanMessage({ id: 'user-2', content: '很高兴见到你' })
     const secondAssistant = new AIMessage({ id: 'assistant-2', content: '반갑습니다!' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
     const readyConvertedMessages = [
-      { id: 'user-1', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+      { id: 'user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
       { id: 'assistant-1', role: 'assistant', content: [{ type: 'text', text: '안녕하세요!' }] },
-      { id: 'user-2', role: 'user', content: [{ type: 'text', text: '반가워' }] },
+      { id: 'user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
       { id: 'assistant-2', role: 'assistant', content: [{ type: 'text', text: '반갑습니다!' }] },
     ]
     mocks.stream.messages = readyMessages
@@ -1611,18 +1611,18 @@ describe('useMoldyLangGraphStream', () => {
   })
 
   it('keeps visible user message text when a live stream briefly reports the same user id with empty content', () => {
-    const firstUser = new HumanMessage({ id: 'stable-user-1', content: '안녕?' })
+    const firstUser = new HumanMessage({ id: 'stable-user-1', content: '你好？' })
     const firstAssistant = new AIMessage({ id: 'stable-assistant-1', content: '안녕하세요!' })
-    const secondUser = new HumanMessage({ id: 'stable-user-2', content: '반가워' })
+    const secondUser = new HumanMessage({ id: 'stable-user-2', content: '很高兴见到你' })
     mocks.stream.messages = [firstUser, firstAssistant, secondUser]
     mocks.useExternalMessageConverter.mockReturnValue([
-      { id: 'stable-user-1', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+      { id: 'stable-user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
       {
         id: 'stable-assistant-1',
         role: 'assistant',
         content: [{ type: 'text', text: '안녕하세요!' }],
       },
-      { id: 'stable-user-2', role: 'user', content: [{ type: 'text', text: '반가워' }] },
+      { id: 'stable-user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
     ])
 
     const { rerender } = renderHook(
@@ -1641,7 +1641,7 @@ describe('useMoldyLangGraphStream', () => {
     mocks.stream.isLoading = true
     mocks.stream.messages = [firstUser, firstAssistant, transientBlankSecondUser]
     mocks.useExternalMessageConverter.mockReturnValue([
-      { id: 'stable-user-1', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+      { id: 'stable-user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
       {
         id: 'stable-assistant-1',
         role: 'assistant',
@@ -1655,16 +1655,16 @@ describe('useMoldyLangGraphStream', () => {
       | { messages: readonly { id?: string; content?: unknown }[] }
       | undefined
     expect(converterOptions?.messages).toEqual([
-      expect.objectContaining({ id: 'stable-user-1', content: '안녕?' }),
+      expect.objectContaining({ id: 'stable-user-1', content: '你好？' }),
       expect.objectContaining({ id: 'stable-assistant-1', content: '안녕하세요!' }),
-      expect.objectContaining({ id: 'stable-user-2', content: '반가워' }),
+      expect.objectContaining({ id: 'stable-user-2', content: '很高兴见到你' }),
     ])
   })
 
   it('keeps completed middle turns when SDK briefly reports an older prefix plus the newest user turn', () => {
-    const firstUser = new HumanMessage({ id: 'middle-user-1', content: '안녕?' })
+    const firstUser = new HumanMessage({ id: 'middle-user-1', content: '你好？' })
     const firstAssistant = new AIMessage({ id: 'middle-assistant-1', content: '안녕하세요!' })
-    const secondUser = new HumanMessage({ id: 'middle-user-2', content: '반가워' })
+    const secondUser = new HumanMessage({ id: 'middle-user-2', content: '很高兴见到你' })
     const secondAssistant = new AIMessage({ id: 'middle-assistant-2', content: '반갑습니다!' })
     const thirdUser = new HumanMessage({ id: 'middle-user-3', content: '바보야' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
@@ -1730,20 +1730,20 @@ describe('useMoldyLangGraphStream', () => {
   })
 
   it('keeps an optimistic converted user turn when server hydration briefly replaces source with an older prefix', async () => {
-    const firstUser = new HumanMessage({ id: 'hydration-user-1', content: '안녕?' })
+    const firstUser = new HumanMessage({ id: 'hydration-user-1', content: '你好？' })
     const firstAssistant = new AIMessage({ id: 'hydration-assistant-1', content: '안녕하세요!' })
-    const secondUser = new HumanMessage({ id: 'hydration-user-2', content: '반가워' })
+    const secondUser = new HumanMessage({ id: 'hydration-user-2', content: '很高兴见到你' })
     const secondAssistant = new AIMessage({ id: 'hydration-assistant-2', content: '반갑습니다!' })
     const thirdUser = new HumanMessage({ id: 'hydration-user-3', content: '바보야' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
     const readyConvertedMessages = [
-      { id: 'hydration-user-1', role: 'user', content: [{ type: 'text', text: '안녕?' }] },
+      { id: 'hydration-user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
       {
         id: 'hydration-assistant-1',
         role: 'assistant',
         content: [{ type: 'text', text: '안녕하세요!' }],
       },
-      { id: 'hydration-user-2', role: 'user', content: [{ type: 'text', text: '반가워' }] },
+      { id: 'hydration-user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
       {
         id: 'hydration-assistant-2',
         role: 'assistant',
@@ -1781,9 +1781,9 @@ describe('useMoldyLangGraphStream', () => {
     mocks.apiFetch.mockResolvedValueOnce({
       values: {
         messages: [
-          { type: 'human', id: 'hydration-user-1', content: '안녕?' },
+          { type: 'human', id: 'hydration-user-1', content: '你好？' },
           { type: 'ai', id: 'hydration-assistant-1', content: '안녕하세요!' },
-          { type: 'human', id: 'hydration-user-2', content: '반가워' },
+          { type: 'human', id: 'hydration-user-2', content: '很高兴见到你' },
         ],
       },
     })
@@ -2297,9 +2297,9 @@ describe('useMoldyLangGraphStream', () => {
     mocks.stream.messages = [
       new HumanMessage({
         id: 'human-ask-user',
-        content: '사과, 배, 포도 중에 하나 선택하는 ask user 해줘',
+        content: '用 ask user 在苹果、梨、葡萄中选一个',
       }),
-      new AIMessage({ id: 'assistant-preface', content: '네, 골라봐요!' }),
+      new AIMessage({ id: 'assistant-preface', content: '好，选一个吧！' }),
     ]
     renderHook(
       () =>
@@ -2320,9 +2320,9 @@ describe('useMoldyLangGraphStream', () => {
             {
               type: 'human',
               id: 'human-ask-user',
-              content: '사과, 배, 포도 중에 하나 선택하는 ask user 해줘',
+              content: '用 ask user 在苹果、梨、葡萄中选一个',
             },
-            { type: 'ai', id: 'assistant-preface', content: '네, 골라봐요!' },
+            { type: 'ai', id: 'assistant-preface', content: '好，选一个吧！' },
           ],
         },
         tasks: [
@@ -2340,9 +2340,9 @@ describe('useMoldyLangGraphStream', () => {
                       args: {
                         mode: 'option_list',
                         title: '需要输入',
-                        question: '어떤 과일이 좋아요?',
+                        question: '你喜欢哪种水果？',
                         options: [
-                          { id: 'apple', label: '🍎 사과' },
+                          { id: 'apple', label: '🍎 苹果' },
                           { id: 'pear', label: '🍐 배' },
                           { id: 'grape', label: '🍇 포도' },
                         ],
@@ -2382,9 +2382,9 @@ describe('useMoldyLangGraphStream', () => {
     mocks.stream.messages = [
       new HumanMessage({
         id: 'human-ask-user-mount',
-        content: '사과, 배, 포도 중에 하나 선택하는 ask user 해줘',
+        content: '用 ask user 在苹果、梨、葡萄中选一个',
       }),
-      new AIMessage({ id: 'assistant-preface-mount', content: '네, 골라봐요!' }),
+      new AIMessage({ id: 'assistant-preface-mount', content: '好，选一个吧！' }),
     ]
     mocks.apiFetch.mockResolvedValueOnce({
       values: {
@@ -2392,9 +2392,9 @@ describe('useMoldyLangGraphStream', () => {
           {
             type: 'human',
             id: 'human-ask-user-mount',
-            content: '사과, 배, 포도 중에 하나 선택하는 ask user 해줘',
+            content: '用 ask user 在苹果、梨、葡萄中选一个',
           },
-          { type: 'ai', id: 'assistant-preface-mount', content: '네, 골라봐요!' },
+          { type: 'ai', id: 'assistant-preface-mount', content: '好，选一个吧！' },
         ],
       },
       tasks: [
@@ -2412,9 +2412,9 @@ describe('useMoldyLangGraphStream', () => {
                     args: {
                       mode: 'option_list',
                       title: '需要输入',
-                      question: '어떤 과일이 좋아요?',
+                      question: '你喜欢哪种水果？',
                       options: [
-                        { id: 'apple', label: '🍎 사과' },
+                        { id: 'apple', label: '🍎 苹果' },
                         { id: 'pear', label: '🍐 배' },
                         { id: 'grape', label: '🍇 포도' },
                       ],
@@ -2465,9 +2465,9 @@ describe('useMoldyLangGraphStream', () => {
     const askUserArgs = {
       mode: 'option_list',
       title: '需要输入',
-      question: '어떤 과일이 좋아요?',
+      question: '你喜欢哪种水果？',
       options: [
-        { id: 'apple', label: '🍎 사과' },
+        { id: 'apple', label: '🍎 苹果' },
         { id: 'pear', label: '🍐 배' },
         { id: 'grape', label: '🍇 포도' },
       ],
@@ -2479,13 +2479,13 @@ describe('useMoldyLangGraphStream', () => {
           {
             type: 'human',
             id: 'human-ask-user-persisted',
-            content: '사과, 배, 포도 중에 하나 선택하는 ask user 해줘',
+            content: '用 ask user 在苹果、梨、葡萄中选一个',
           },
           {
             type: 'ai',
             id: 'assistant-ask-user-persisted',
             content: [
-              { type: 'text', text: '네, 골라봐요!', index: 0 },
+              { type: 'text', text: '好，选一个吧！', index: 0 },
               {
                 type: 'tool_call',
                 id: 'call_e2e_ask_user_fruit',

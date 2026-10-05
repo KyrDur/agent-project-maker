@@ -4,25 +4,25 @@ import { sendMessage, setupLangGraphV3Agent } from '../langgraph-v3-helpers'
 import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-helpers'
 
 /**
- * Wave 2 follow-up 고스트 + 입력 히스토리 캡처:
+ * Wave 2 follow-up ghost + 输入 history 截图：
  *
- *  1막 고스트   : 런 종료 → LLM 후속 제안 1개가 입력창에 연하게(placeholder처럼)
- *  2막 → 수락   : ArrowRight로 제안이 실제 입력으로 채워짐
- *  3막 타이핑   : 한 글자라도 입력하면 고스트가 사라지고 입력만 남음
- *               (지우면 다시 나타나고, Esc로 해제)
- *  4막 히스토리 : ↑로 이전 입력을 최신순 탐색, ↓로 복귀 + draft 복원
- *  5막 토글     : 컴포저 툴바에서 후속 제안 OFF → 런이 끝나도 고스트 없음
+ *  第 1 幕 ghost：run 结束 → 1 条 LLM 后续建议以浅色显示在输入框中（像 placeholder）
+ *  第 2 幕 → 接受：用 ArrowRight 将建议填入实际输入
+ *  第 3 幕 typing：只要输入一个字符，ghost 就消失，仅保留输入
+ *               （清空后再次出现，Esc 取消）
+ *  第 4 幕 history：用 ↑ 按最新顺序浏览之前的输入，↓ 返回 + 恢复 draft
+ *  第 5 幕 toggle：在 composer toolbar 中关闭后续建议（OFF） → run 结束后也不显示 ghost
  *
- * scripted 모델 배포에선 followup 엔드포인트가 결정적 제안
- * ("把刚才的回答整理成表格")을 돌려줘 전체 체인이 결정적이다.
+ * scripted 模型部署中，followup endpoint 返回确定性建议
+ * ("把刚才的回答整理成表格")，因此整条链路是确定性的。
  * Gated by E2E_CAPTURE_TOUR=1.
  */
 
 const WAVE = 'wave2-followup'
 const SUGGESTION = '把刚才的回答整理成表格'
 const SCRIPTED_READY = 'E2E scripted document model is ready.'
-const FIRST_MESSAGE = '오늘 할 일 정리해줘'
-const SECOND_MESSAGE = '어제 회의록 요약해줘'
+const FIRST_MESSAGE = '整理一下今天要做的事'
+const SECOND_MESSAGE = '总结一下昨天的会议记录'
 
 async function createConversation(
   request: APIRequestContext,
@@ -69,13 +69,13 @@ test.describe('Wave 2 follow-up ghost + composer history captures', () => {
       request,
       csrfHeaders,
       setup.parentAgentId,
-      'Follow-up 데모',
+      'Follow-up 演示',
     )
     await gotoChat(page, setup.parentAgentId, conversationId)
     const composer = page.locator('textarea[data-moldy-composer-input="true"]').last()
     const ghost = page.locator('[data-moldy-followup-ghost]')
 
-    // ── 1막: 런 종료 → 고스트 제안이 입력창에 연하게 나타난다 ───────────
+    // ── 第 1 幕：run 结束 → ghost 建议以浅色出现在输入框中 ───────────
     await sendMessage(page, FIRST_MESSAGE)
     await expect(page.getByText(SCRIPTED_READY).first()).toBeVisible({ timeout: 120_000 })
     await expect(ghost).toBeVisible({ timeout: 30_000 })
@@ -83,7 +83,7 @@ test.describe('Wave 2 follow-up ghost + composer history captures', () => {
     await settle(page)
     await capture(page, WAVE, '00-ghost-suggestion.png')
 
-    // ── 2막: → 키로 제안이 실제 입력으로 채워진다 (고스트는 소진) ────────
+    // ── 第 2 幕：用 → 键将建议填入实际输入（ghost 被消耗）────────────
     await composer.click()
     await page.keyboard.press('ArrowRight')
     await expect(composer).toHaveValue(SUGGESTION, { timeout: 10_000 })
@@ -91,24 +91,24 @@ test.describe('Wave 2 follow-up ghost + composer history captures', () => {
     await settle(page)
     await capture(page, WAVE, '01-ghost-accepted-arrow-right.png')
 
-    // ── 3막: 타이핑하면 사라지고, 지우면 돌아오고, Esc로 해제 ────────────
+    // ── 第 3 幕：输入后消失，清空后回来，Esc 取消 ───────────────────
     await composer.fill('')
     await sendMessage(page, SECOND_MESSAGE)
     await expect(page.getByText(SCRIPTED_READY).nth(1)).toBeVisible({ timeout: 120_000 })
     await expect(ghost).toBeVisible({ timeout: 30_000 })
-    await composer.pressSequentially('직')
+    await composer.pressSequentially('直')
     await expect(ghost).toBeHidden()
     await settle(page)
     await capture(page, WAVE, '02-ghost-dismissed-by-typing.png')
-    // 입력을 지우면 (아직 소진되지 않은) 제안이 다시 나타난다.
+    // 清空输入后，（尚未消耗的）建议会再次出现。
     await composer.fill('')
     await expect(ghost).toBeVisible({ timeout: 10_000 })
-    // Esc → 이번 제안 해제.
+    // Esc → 取消本次建议。
     await composer.press('Escape')
     await expect(ghost).toBeHidden()
 
-    // ── 4막: ↑/↓ 입력 히스토리 — 최신순 탐색 + draft 복원 ────────────────
-    await composer.pressSequentially('작성 중이던 초안')
+    // ── 第 4 幕：↑/↓ 输入 history — 按最新顺序浏览 + 恢复 draft ───────
+    await composer.pressSequentially('正在编写的 draft')
     await composer.press('ArrowUp')
     await expect(composer).toHaveValue(SECOND_MESSAGE, { timeout: 10_000 })
     await composer.press('ArrowUp')
@@ -118,24 +118,24 @@ test.describe('Wave 2 follow-up ghost + composer history captures', () => {
     await composer.press('ArrowDown')
     await expect(composer).toHaveValue(SECOND_MESSAGE, { timeout: 10_000 })
     await composer.press('ArrowDown')
-    // 최신을 지나 내려오면 작성 중이던 draft가 복원된다 (readline 계약).
-    await expect(composer).toHaveValue('작성 중이던 초안', { timeout: 10_000 })
+    // 越过最新项向下时，会恢复正在编写的 draft（readline contract）。
+    await expect(composer).toHaveValue('正在编写的 draft', { timeout: 10_000 })
     await settle(page)
     await capture(page, WAVE, '04-history-draft-restored.png')
 
-    // ── 5막: 토글 OFF — 런이 끝나도 고스트가 뜨지 않는다 ────────────────
+    // ── 第 5 幕：toggle OFF — run 结束后也不会显示 ghost ─────────────
     await composer.fill('')
     const toggle = page.locator('[data-moldy-followup-toggle]').last()
     await expect(toggle).toHaveAttribute('data-moldy-followup-toggle', 'on')
     await toggle.click()
     await expect(toggle).toHaveAttribute('data-moldy-followup-toggle', 'off')
-    await sendMessage(page, '토글 끈 상태 확인')
+    await sendMessage(page, '确认 toggle 关闭状态')
     await expect(page.getByText(SCRIPTED_READY).nth(2)).toBeVisible({ timeout: 120_000 })
     await expect(ghost).toBeHidden()
     await settle(page)
     await capture(page, WAVE, '05-followup-toggle-off.png')
 
-    // 정리 — 다음 spec을 위해 토글 복원.
+    // 清理 — 为下一个 spec 恢复 toggle。
     await toggle.click()
     await expect(toggle).toHaveAttribute('data-moldy-followup-toggle', 'on')
   })

@@ -108,10 +108,10 @@ describe('generative UI render (path A)', () => {
 
   it('routes a stats part to the Stats component', async () => {
     render(
-      <Harness uiType="stats" props={{ items: [{ label: '총 요청', value: 1240, delta: 12 }] }} />,
+      <Harness uiType="stats" props={{ items: [{ label: '总请求数', value: 1240, delta: 12 }] }} />,
     )
     await waitFor(() => expect(screen.getByTestId('data-ui-stats')).toBeInTheDocument())
-    expect(screen.getByText('총 요청')).toBeInTheDocument()
+    expect(screen.getByText('总请求数')).toBeInTheDocument()
     expect(screen.getByText('1,240')).toBeInTheDocument()
   })
 

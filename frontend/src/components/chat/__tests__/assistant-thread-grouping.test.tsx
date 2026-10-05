@@ -142,7 +142,7 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
 
   it('승인 그룹 N≥2: generic 컨테이너 대신 "승인 대기 N건" + "批准全部"으로 묶고 카드는 항상 보인다', () => {
     renderGroupNode('request_approval', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByText('批准全部')).toBeInTheDocument()
     // 승인 카드는 접히지 않고 항상 렌더된다(사용자가 결정해야 하므로).
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
     // groupBy가 `request_approval:<interruptId>`로 키를 세분화해도 render 경로는
     // groupToolName으로 도구명을 복원해 전용 승인 컨테이너를 유지해야 한다.
     renderGroupNode('request_approval:int-b', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
   })
 })

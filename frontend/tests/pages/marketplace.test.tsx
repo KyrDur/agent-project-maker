@@ -104,10 +104,10 @@ describe('MarketplaceCatalogPage', () => {
   it('uses the shared resource layout with one active tab count surface', () => {
     render(<MarketplaceCatalogPage />)
 
-    const activeTab = screen.getByRole('tab', { name: '스킬 2개' })
+    const activeTab = screen.getByRole('tab', { name: '技能 2 项目' })
     expect(activeTab).toHaveAttribute('aria-selected', 'true')
-    expect(within(activeTab).getByText('2개')).toBeInTheDocument()
-    expect(screen.getAllByText('2개')).toHaveLength(1)
+    expect(within(activeTab).getByText('2 项目')).toBeInTheDocument()
+    expect(screen.getAllByText('2 项目')).toHaveLength(1)
 
     expect(screen.getByPlaceholderText('搜索市场...')).toBeInTheDocument()
     expect(screen.getByText('이미지 생성')).toBeInTheDocument()

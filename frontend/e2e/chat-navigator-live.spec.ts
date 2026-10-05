@@ -417,7 +417,7 @@ test.describe('Chat navigator live integration', () => {
       )
       await expect(row).toBeVisible({ timeout: 20_000 })
 
-      // Open the row menu → 공유 → ShareDialog.
+      // Open the row menu → 分享 → ShareDialog.
       await row.hover()
       await row.getByRole('button', { name: '对话菜单' }).click()
       await page.getByRole('menuitem', { name: '分享', exact: true }).click()

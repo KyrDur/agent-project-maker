@@ -7,7 +7,7 @@ import { useStreamVisibleMessages } from '../use-stream-visible-messages'
 import type { PendingNewSubmitState } from '../use-submit-checkpoint-controller'
 import type { Message } from '@/lib/types'
 
-const CONTENT = '사과, 배, 포도 중에 하나 선택하는 ask user 해줘'
+const CONTENT = '用 ask user 在苹果、梨、葡萄中选一个'
 
 function pendingSubmit(): PendingNewSubmitState {
   return {
@@ -69,7 +69,7 @@ describe('useStreamVisibleMessages', () => {
   })
 
   it('keeps a persisted user bubble when an interrupt snapshot temporarily regresses', () => {
-    const firstPrompt = '안녕?'
+    const firstPrompt = '你好？'
     const latestPrompt = CONTENT
     const initialProps: Parameters<typeof useStreamVisibleMessages>[0] = {
       streamMessages: [new HumanMessage({ id: 'stream-user-1', content: firstPrompt })],

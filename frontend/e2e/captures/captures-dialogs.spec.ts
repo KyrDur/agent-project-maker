@@ -146,7 +146,7 @@ test.describe('Wave 3 — dialog captures', () => {
     }
   })
 
-  // Schedules are created PER-AGENT (settings → 스케줄 tab → 추가), not on the
+  // Schedules are created PER-AGENT (settings → 日程 tab → 添加), not on the
   // /settings/schedules list page (which only manages existing triggers).
   test('captures the schedule create dialog (per-agent)', async ({ page, request }) => {
     test.setTimeout(180_000)

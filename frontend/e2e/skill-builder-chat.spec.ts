@@ -109,13 +109,13 @@ test.describe('skill builder chat', () => {
 
     // 1) 점진 편집 — write_file 2건이 승인 카드 없이 실행된다 (AD-3 과승인 방지).
     await sendMessage(`E2E_SKILL_BUILDER_WRITE /skill-drafts/${sessionId}`)
-    await expect(page.getByText('드래프트 파일을 작성했습니다').last()).toBeVisible({
+    await expect(page.getByText('已写入 draft 文件').last()).toBeVisible({
       timeout: 45_000,
     })
 
     // 2) 검증 — 다음 런 stream head의 moldy.skill_draft가 레일 파일 목록을 채운다.
     await sendMessage('E2E_SKILL_BUILDER_VALIDATE')
-    await expect(page.getByText('드래프트 검증을 실행했습니다').last()).toBeVisible({
+    await expect(page.getByText('已执行 draft 验证').last()).toBeVisible({
       timeout: 45_000,
     })
     const rail = page.getByTestId('skill-builder-rail')
@@ -136,21 +136,21 @@ test.describe('skill builder chat', () => {
 
     // 3) 드래프트 시험 — CODE_EXECUTION 승인 카드 + 세션 동의 체크.
     await sendMessage('E2E_SKILL_BUILDER_TEST run=1')
-    await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 45_000 })
+    await expect(page.getByText('需要批准').last()).toBeVisible({ timeout: 45_000 })
     const consent = page.getByTestId('approval-session-consent').last()
     await expect(consent).toBeVisible()
     await consent.check()
     await approve()
-    await expect(page.getByText('드래프트 시험 실행이 끝났습니다').last()).toBeVisible({
+    await expect(page.getByText('draft 测试执行已完成').last()).toBeVisible({
       timeout: 60_000,
     })
 
     // 4) 동의 후 재실행 — 승인 카드 없이 바로 실행된다 (2회차 무카드).
     await sendMessage('E2E_SKILL_BUILDER_RETEST run=2')
-    await expect(page.getByText('드래프트 시험 실행이 끝났습니다').nth(1)).toBeVisible({
+    await expect(page.getByText('draft 测试执行已完成').nth(1)).toBeVisible({
       timeout: 60_000,
     })
-    await expect(page.getByText('승인이 필요합니다')).toHaveCount(0)
+    await expect(page.getByText('需要批准')).toHaveCount(0)
 
     // 5) finalize — 항상 승인 카드, 세션 동의 옵션은 없다.
     await sendMessage('E2E_SKILL_BUILDER_FINALIZE')
@@ -160,7 +160,7 @@ test.describe('skill builder chat', () => {
     // 그룹 컨테이너("승인 대기 N건")로 묶이지 않고 단독 카드로 렌더되어야 한다.
     await expect(page.getByText(/승인 대기 \d+건/)).toHaveCount(0)
     await approve()
-    await expect(page.getByText('스킬을 저장했습니다').last()).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('已保存 skill').last()).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('builder-completed-banner')).toBeVisible({ timeout: 30_000 })
 
     // 6) 진짜 skills row + 세션 completed (스펙 §2-3).
@@ -187,7 +187,7 @@ test.describe('skill builder chat', () => {
     await expect(page.getByText('E2E_SKILL_BUILDER_VALIDATE').first()).toBeVisible({
       timeout: 30_000,
     })
-    await expect(page.getByText('스킬을 저장했습니다').first()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('已保存 skill').first()).toBeVisible({ timeout: 30_000 })
     // Phase 1.5 재전송 가드 — 리로드 시 자동 첫 메시지가 중복 발화되지 않는다
     // (대화 이력/run 이력 존재 시 no-op). 트랜스크립트 버블 기준 정확히 1건.
     await expect(autoSentBubble).toHaveCount(1)

@@ -186,7 +186,7 @@ test.describe('Skill history tab', () => {
     await page.goto('/skills?detailId=skill-history&tab=history')
     await page.waitForURL(/\/skills\/skill-history\/versions/)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Korea Weather')
-    await expect(page.getByRole('heading', { name: '리비전 3', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'revision 3', exact: true })).toBeVisible()
     await expect(page.getByText('当前', { exact: true }).first()).toBeVisible()
     await expect(page.getByText(/빌더 개선/)).toBeVisible()
     await expect(page.getByText('리비전 3 상세')).toBeVisible()

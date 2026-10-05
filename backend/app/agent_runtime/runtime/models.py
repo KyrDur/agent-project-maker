@@ -1,9 +1,9 @@
-"""모델 후보/폴백/재시도 판정 — ``runtime_component_builder`` 에서 분리 (BE-S10).
+"""模型候选/回退/重试判定 — 从 ``runtime_component_builder`` 拆分（BE-S10）。
 
-Patch-contract: 테스트는 ``runtime_component_builder.create_chat_model`` 을
-patch 한다. 이 모듈의 함수들은 ``create_chat_model`` 을 builder 모듈 경유
-call-time import 로 조회해 그 patch 가 계속 유효하다 (BE-S8 recorder→facade
-패턴). 직접 top-level import 로 바꾸면 patch 가 우회된다.
+Patch-contract: 测试会 patch ``runtime_component_builder.create_chat_model``。
+本模块函数通过 builder 模块进行 call-time import 来查找 ``create_chat_model``，
+从而保证该 patch 继续有效（BE-S8 recorder→facade 模式）。若改为直接 top-level import，
+会绕过 patch。
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ class MiddlewareModelCredentialRequiredError(AppError):
         super().__init__(
             code="middleware_model_credential_required",
             message=(
-                f"미들웨어 모델({provider})에 사용할 본인의 LLM API 키가 등록되어 있지 않습니다. "
-                "/credentials 페이지에서 해당 제공자의 키를 등록하거나 미들웨어 모델 설정을 "
-                "변경해주세요."
+                f"尚未注册可供中间件模型({provider})使用的您自己的 LLM API key。"
+                "/credentials 页面中注册对应 provider 的 key，或修改中间件模型设置。"
+                "请进行修改。"
             ),
             status=422,
         )
@@ -41,14 +41,14 @@ def _resolve_middleware_model_params(
     configs: list[dict[str, Any]],
     provider_api_keys: dict[str, str | None],
 ) -> list[dict[str, Any]]:
-    """미들웨어 config의 model 문자열을 BaseChatModel 객체로 사전 해석.
+    """预先将中间件 config 的 model 字符串解析为 BaseChatModel 对象。
 
     User-facing agent runtime must not fall through to env/system credentials.
     The caller provides only user-owned provider keys; missing keys become a
     clear 422 error before LangChain model construction.
     """
-    # Call-time facade lookup: 테스트가 runtime_component_builder.create_chat_model
-    # 을 patch 하므로 builder 모듈 경유로 조회해야 patch 가 유효하다 (monkeypatch 투명성).
+    # Call-time facade lookup: 测试会 patch runtime_component_builder.create_chat_model，
+    # 因此必须经由 builder 模块查找，patch 才能生效（monkeypatch 透明性）。
     from app.agent_runtime.runtime_component_builder import create_chat_model
 
     resolved = []
@@ -105,8 +105,8 @@ def _build_model_candidates(cfg: AgentConfig) -> list[BaseChatModel]:
 
     from app.agent_runtime.model_factory import _is_fallback_recoverable
 
-    # Call-time facade lookup: 테스트가 runtime_component_builder.create_chat_model
-    # 을 patch 하므로 builder 모듈 경유로 조회해야 patch 가 유효하다 (monkeypatch 투명성).
+    # Call-time facade lookup: 测试会 patch runtime_component_builder.create_chat_model，
+    # 因此必须经由 builder 模块查找，patch 才能生效（monkeypatch 透明性）。
     from app.agent_runtime.runtime_component_builder import create_chat_model
 
     last_error: BaseException | None = None

@@ -1,12 +1,12 @@
-"""스킬 빌더 챗 전용 도구 (스펙 AD-3).
+"""Skill Builder chat 专用工具（spec AD-3）。
 
-전부 기존 함수 재사용 — 검증은 ``validate_draft_package``(+호환성), 평가 생성은
-``select_eval_template``/``generate_eval_cases``. 드래프트 파일 편집 자체는
-deepagents 표준 FS 도구(``write_file``/``edit_file``)가 담당하고, 여기 도구는
-드래프트 디렉토리를 어댑터로 읽는다.
+全部复用现有函数 — 验证使用 ``validate_draft_package``（+兼容性），评测生成使用
+``select_eval_template``/``generate_eval_cases``。草稿文件编辑本身由
+deepagents 标准 FS 工具（``write_file``/``edit_file``）负责，这里的工具
+将草稿目录作为 adapter 读取。
 
-DB 접근은 request-scoped 세션을 장수명 스트림에 고정하지 않도록 **세션 팩토리
-클로저**로 받는다 (memory 도구 선례).
+DB 访问通过**session factory closure**传入，避免把 request-scoped session
+固定到长生命周期 stream 中（memory 工具先例）。
 """
 
 from __future__ import annotations
@@ -43,14 +43,14 @@ SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 EVALS_FILE_PATH = "evals/evals.json"
 
-# AD-4 — 세션 동의("留出本次会议的剩余时间")가 허용되는 도구. finalize_skill은
-# 절대 포함 금지(항상 승인 카드), requires_network 드래프트는 런타임에서 재차
-# 차단된다 (``skill_draft_workspace.draft_requires_network``).
+# AD-4 — 允许 session consent（"留出本次会议的剩余时间"）的工具。finalize_skill
+# 绝对禁止包含（始终显示审批卡）；requires_network 草稿会在 runtime 再次
+# 被阻止（``skill_draft_workspace.draft_requires_network``）。
 SESSION_CONSENT_ELIGIBLE_TOOLS = frozenset({"test_skill_draft"})
 
 
 class _NoArgs(BaseModel):
-    """인자 없는 도구용 빈 스키마."""
+    """用于无参数工具的空 schema。"""
 
 
 class _GenerateEvalsInput(BaseModel):
@@ -92,12 +92,12 @@ def build_skill_builder_tools(
     include_runtime_tools: bool = False,
     consented_tools: Sequence[str] | None = None,
 ) -> list[BaseTool]:
-    """빌더 세션에 바인딩된 도구 리스트.
+    """绑定到 Builder session 的工具列表。
 
-    ``include_runtime_tools=True`` 면 ``test_skill_draft``(저장 전 드래프트
-    샌드박스 실행, CODE_EXECUTION risk)와 ``finalize_skill``(확정 — 항상 승인
-    카드)을 함께 붙인다 — 런타임 분기 전용. DB-free 호출자(테스트 등)는
-    기본값으로 validate/generate만 받는다.
+    ``include_runtime_tools=True`` 时，同时附加 ``test_skill_draft``（保存前草稿
+    sandbox 执行，CODE_EXECUTION risk）和 ``finalize_skill``（确认 — 始终需要审批
+    卡）— 仅用于 runtime 分支。DB-free caller（测试等）
+    默认只获取 validate/generate。
     """
 
     try:
@@ -113,12 +113,12 @@ def build_skill_builder_tools(
         return result.scalar_one_or_none()
 
     async def validate_skill() -> str:
-        """드래프트를 검증하고 결과를 반환한다 (읽기 전용 + 세션에 결과 저장)."""
+        """验证草稿并返回结果（只读 + 将结果保存到 session）。"""
 
         try:
             files = skill_draft_workspace.load_draft_files(workspace_path)
             result = validate_draft_package(files=files)
-        except Exception:  # noqa: BLE001 — 도구 에러는 모델에게 텍스트로 전달
+        except Exception:  # noqa: BLE001 — 工具错误以文本形式传递给模型
             logger.exception("validate_skill failed (session=%s)", session_id)
             return _json_dumps(
                 {"error": "validation failed unexpectedly; check draft files and retry"}
@@ -134,7 +134,7 @@ def build_skill_builder_tools(
         return _json_dumps({"session_id": session_id, **result})
 
     async def generate_evals(intent: str | None = None) -> str:
-        """평가 케이스를 생성해 드래프트의 ``evals/evals.json``에 기록한다."""
+        """生成评测 case，并写入草稿的 ``evals/evals.json``。"""
 
         effective_intent = (intent or "").strip()
         if not effective_intent:
@@ -158,7 +158,7 @@ def build_skill_builder_tools(
         eval_file = SkillEvalFile(name=template.label, evals=cases)
         content = json.dumps(eval_file.model_dump(mode="json"), ensure_ascii=False, indent=2)
         try:
-            parse_evals_json(content)  # 스키마 가드 — 기록 전 라운드트립 검증
+            parse_evals_json(content)  # schema guard — 写入前进行 round-trip 验证
         except SkillEvalSchemaError:
             logger.exception("generate_evals produced invalid schema (session=%s)", session_id)
             return _json_dumps({"error": "generated evals failed schema validation"})
@@ -176,16 +176,16 @@ def build_skill_builder_tools(
         )
 
     async def test_skill_draft(command: str) -> str:
-        """드래프트를 스킬 샌드박스에서 실행한다 (저장 전 시험, AD-3)."""
+        """在 Skill sandbox 中执行草稿（保存前测试，AD-3）。"""
 
         from app.agent_runtime.skill_builder.eval_runner import run_eval_skill_command
         from app.config import settings
         from app.marketplace.skill_runtime import build_skill_runtime_context
 
-        # 세션 동의 fail-closed 재검증(R2): 동의는 run 시작 시 "requires_network가
-        # 아닌 드래프트"에만 적용되는데, 같은 턴 안에서 에이전트가
-        # agents/moldy.yaml에 requires_network를 추가하면 승인 카드 없이 네트워크
-        # 샌드박스가 열린다 — 실행 시점에 프로필을 다시 읽어 차단한다.
+        # session consent fail-closed 重新验证（R2）：consent 仅适用于 run 开始时
+        # “requires_network 为否的草稿”，但若 Agent 在同一 turn 内
+        # 向 agents/moldy.yaml 添加 requires_network，就会在没有审批卡的情况下打开网络
+        # sandbox — 因此在执行时重新读取 profile 并阻止。
         if "test_skill_draft" in (consented_tools or ()) and (
             skill_draft_workspace.draft_requires_network(workspace_path)
         ):
@@ -197,11 +197,11 @@ def build_skill_builder_tools(
         files = skill_draft_workspace.load_draft_files(workspace_path)
         slug = skill_draft_workspace.draft_slug(files)
         execution_profile = skill_draft_workspace.draft_execution_profile(workspace_path)
-        # fabricated descriptor — DB row 불요 (skill_evaluation_worker_state 선례).
-        # ``agent_runtime_name=None`` 로 non-agent 런타임 루트 레이아웃을 강제해
-        # run_eval_skill_command 의 slug 경로와 일치시킨다. thread_id 를 세션에
-        # 고정하면 재실행이 같은 마운트를 wipe+copy 로 재사용하고, mtime 기반
-        # runtime-root GC 가 자동으로 청소한다.
+        # fabricated descriptor — 不需要 DB row（skill_evaluation_worker_state 先例）。
+        # 通过 ``agent_runtime_name=None`` 强制使用 non-agent runtime 根布局，
+        # 使其与 run_eval_skill_command 的 slug 路径一致。将 thread_id 固定到 session
+        # 后，重新执行会通过 wipe+copy 复用同一 mount，并由基于 mtime 的
+        # runtime-root GC 自动清理。
         sandbox_thread_id = f"skill-draft-{session_id}"
         fabricated_cfg = SimpleNamespace(
             thread_id=sandbox_thread_id,
@@ -223,14 +223,14 @@ def build_skill_builder_tools(
         try:
             data_dir = Path(settings.data_root)
             ctx = build_skill_runtime_context(
-                fabricated_cfg,  # type: ignore[arg-type] — duck-typed cfg (선례 동일)
+                fabricated_cfg,  # type: ignore[arg-type] — duck-typed cfg（先例相同）
                 data_dir=data_dir,
                 output_root=data_dir / "skill-draft-runs",
             )
             ctx.audit_kind = "skill_builder.draft_test"
             ctx.run_id = session_id
             return await run_eval_skill_command(ctx, skill_slug=slug, command=command)
-        except Exception:  # noqa: BLE001 — 도구 에러는 모델에게 텍스트로 전달
+        except Exception:  # noqa: BLE001 — 工具错误以文本形式传递给模型
             logger.exception("test_skill_draft failed (session=%s)", session_id)
             return "Error: draft test execution failed unexpectedly."
 
@@ -258,7 +258,7 @@ def build_skill_builder_tools(
     ]
 
     async def finalize_skill() -> str:
-        """드래프트를 확정한다 — 검증 재실행→secret scan→skills row+리비전 (M5)."""
+        """确认草稿 — 重新执行验证→secret scan→skills row+revision（M5）。"""
 
         from app.services.skill_builder_finalize import finalize_draft_session
 
@@ -273,7 +273,7 @@ def build_skill_builder_tools(
                 result = await finalize_draft_session(
                     db, session_id=session_uuid, user_id=owner_uuid
                 )
-        except Exception:  # noqa: BLE001 — 도구 에러는 모델에게 텍스트로 전달
+        except Exception:  # noqa: BLE001 — 工具错误以文本形式传递给模型
             logger.exception("finalize_skill failed (session=%s)", session_id)
             return _json_dumps(
                 {"error_code": "FINALIZE_FAILED", "message": "finalize failed unexpectedly"}
@@ -291,8 +291,8 @@ def build_skill_builder_tools(
             ),
             args_schema=_TestSkillDraftInput,
         )
-        # AD-4 — execute_in_skill 과 동일한 CODE_EXECUTION 위험 메타. 기본
-        # interrupt 정책이 이 메타에서 승인 카드를 만든다.
+        # AD-4 — 与 execute_in_skill 相同的 CODE_EXECUTION 风险元数据。默认
+        # interrupt 策略会根据该元数据生成审批卡。
         attach_tool_risk(
             sandbox_tool,
             risk_metadata_dict(
@@ -314,8 +314,8 @@ def build_skill_builder_tools(
             ),
             args_schema=_NoArgs,
         )
-        # AD-4 — 항상 승인 카드 (세션 동의 불가; SESSION_CONSENT_ELIGIBLE_TOOLS
-        # 에 절대 포함하지 않는다).
+        # AD-4 — 始终显示审批卡（不可 session consent；SESSION_CONSENT_ELIGIBLE_TOOLS
+        # 中绝不包含）。
         attach_tool_risk(
             finalize_tool,
             risk_metadata_dict(

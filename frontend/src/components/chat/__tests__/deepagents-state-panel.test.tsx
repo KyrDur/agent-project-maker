@@ -17,7 +17,7 @@ describe('DeepAgentsStatePanel', () => {
     render(<DeepAgentsStatePanel state={state} />)
 
     expect(screen.getByText('任务计划')).toBeInTheDocument()
-    expect(screen.getByText('1/3 완료')).toBeInTheDocument()
+    expect(screen.getByText('1/3 完成')).toBeInTheDocument()
     expect(screen.getByText('Plan work')).toBeInTheDocument()
     expect(screen.getByText('Write draft')).toBeInTheDocument()
     expect(screen.getByText('Review result')).toBeInTheDocument()

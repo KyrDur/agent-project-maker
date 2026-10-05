@@ -340,7 +340,7 @@ PASS:
 | 7. Listing 승인 | ✅ PASS | `_base_catalog_query` default `public+published+is_listed` 가드 |
 | 8. ADR-016 정합 | ✅ PASS | 모든 mutation route `verify_csrf` + `get_current_user`/`require_super_user` |
 
-### 검증 명령
+### 验证命令
 
 ```bash
 cd backend

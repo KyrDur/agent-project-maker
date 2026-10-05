@@ -1,4 +1,4 @@
-"""빌더 챗 시스템 프롬프트 로더 (assistant_agent._load_system_prompt 패턴)."""
+"""Builder chat 系统提示词 loader（assistant_agent._load_system_prompt 模式）。"""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _load_template() -> str:
 
 
 def load_skill_builder_prompt(workspace_path: str) -> str:
-    """``{workspace}`` 플레이스홀더를 세션 가상 마운트 경로로 치환해 반환."""
+    """将 ``{workspace}`` placeholder 替换为 session 虚拟 mount 路径后返回。"""
 
     virtual = "/" + workspace_path.strip("/") if workspace_path else "/skill-drafts"
     return _load_template().replace("{workspace}", virtual)
