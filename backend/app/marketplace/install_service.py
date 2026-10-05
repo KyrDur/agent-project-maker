@@ -160,7 +160,7 @@ async def install_item(
         logger.info("marketplace_install_unsupported_resource_type %s", item.resource_type)
         raise marketplace_item_not_found()
 
-    # install_mode dispatch (Spec §10.8 / desc 단계 3)
+    # install_mode dispatch (Spec §10.8 / desc 阶段 3)
     existing = await _existing_installation(db, item=item, user=user)
     if existing is not None:
         if body.install_mode == "reuse_or_update":

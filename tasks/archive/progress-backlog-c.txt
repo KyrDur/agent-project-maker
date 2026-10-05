@@ -60,7 +60,7 @@
   2. `credentials.is_active` 컬럼 + 응답 노출 → 토글 API 없음, 실질 dead이나 스코프 외 (별도 티켓 권고)
   3. `has_data` 필드 → 구조적 항상 True, 프론트엔드 영향 조사 후 별도 PR
 - **S4 대비 gotcha**: `test_tools.py:513`의 `resolve_credential_data` patch 패턴 존재 — S4 신규 테스트는 `decrypt_api_key`를 직접 patch(spy)해 호출 횟수 0 검증. 기존 테스트 복제 금지.
-- 산출물: `tasks/deletion-analysis-c.md`
+- 产出物: `tasks/deletion-analysis-c.md`
 
 ## S4 완료 노트 (2026-04-17, bezos)
 

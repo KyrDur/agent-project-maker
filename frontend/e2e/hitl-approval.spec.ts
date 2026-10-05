@@ -102,9 +102,9 @@ test.describe('HITL tool approval — reject', () => {
     await page.getByRole('button', { name: '拒绝', exact: true }).last().click()
     await page.getByRole('button', { name: '拒绝 确认' }).last().click()
 
-    // M8-2 회귀 가드: 백엔드가 인터럽트 전이를 trace보다 먼저 커밋하고 resume
-    // 핸들러가 전이를 짧게 기다리므로, 거부 resume은 재시도 없이 한 번에
-    // 수락되어야 한다 (재시도 문구가 뜨면 레이스 회귀).
+    // M8-2 回归守卫：后端先于 trace 提交 interrupt 状态转移，然后 resume
+    // handler 会短暂等待状态转移，因此拒绝 resume 应无需重试、一次即可
+    // 被接受（如果出现重试文案，则说明 race 回归）。
     const rejectedBadge = page.getByText('被拒绝').last()
     await expect(rejectedBadge).toBeVisible({ timeout: 30_000 })
     await expect(

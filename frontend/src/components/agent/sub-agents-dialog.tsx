@@ -17,7 +17,7 @@ interface SubAgentsDialogProps {
   onOpenChange: (v: boolean) => void
   selectedSubAgentIds: Set<string>
   onToggleSubAgent: (id: string) => void
-  /** 자기 자신 제외용. 매뉴얼 페이지는 빈 문자열 전달. */
+  /** 用于排除自身。manual 页面传入空字符串。 */
   currentAgentId: string
 }
 

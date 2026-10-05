@@ -474,7 +474,7 @@ test.describe('Document artifact viewers', () => {
     await expect(page.getByText('Document Artifact Viewer E2E').first()).toBeVisible()
 
     for (const item of cases) {
-      await sendMessage(page, `${item.marker} 문서를 생성해서 artifact viewer로 확인해줘.`)
+      await sendMessage(page, `${item.marker} 生成文档后用 artifact viewer 确认一下。`)
       await approveExecuteInSkill(page)
       const artifact = await waitForArtifactByName(api, setup.conversationId, item.filename)
       expect(artifact.extension).toBe(item.extension)
@@ -506,7 +506,7 @@ test.describe('Document artifact viewers', () => {
       await page.waitForLoadState('domcontentloaded')
       await sendMessage(
         page,
-        'E2E_DOCX E2E_ARTIFACT_SLOW_FINAL 문서를 생성한 뒤 최종 답변 중 취소할게.',
+        'E2E_DOCX E2E_ARTIFACT_SLOW_FINAL 生成文档后，我会在最终回答过程中取消。',
       )
       await approveExecuteInSkill(page)
 

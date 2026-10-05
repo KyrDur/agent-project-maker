@@ -1,4 +1,4 @@
-"""Forest-trip (산림청 휴양림 예약) account — login credentials."""
+"""Forest-trip（林业厅休养林预约）account — login credentials."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ definition = CredentialDefinition(
             display_name="Username",
             kind=FieldKind.STRING,
             required=True,
-            description="숲나들e 회원 아이디",
+            description="森林出行e会员 ID",
         ),
         FieldDef(
             name="password",

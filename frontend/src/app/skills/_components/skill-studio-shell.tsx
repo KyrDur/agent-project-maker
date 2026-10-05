@@ -28,11 +28,11 @@ import {
 } from '../_lib/skill-studio-tabs'
 
 /**
- * 스킬 스튜디오 셸 — 6탭 내비 + 현재 스킬 컨텍스트 바 (Phase 2 스펙 AD-2).
+ * Skill Studio shell — 6-tab navigation + 当前 skill context bar（Phase 2 规范 AD-2）。
  *
- * layout은 하위 세그먼트 params에 접근할 수 없으므로(Next.js 계약) 클라이언트
- * 훅(pathname)으로 활성 탭/컨텍스트를 파생한다. 빌더 라우트의 컨텍스트 스킬은
- * 세션의 source(개선 원본) → finalized(생성 산출물) 순으로 역참조한다.
+ * layout 无法访问子 segment params（Next.js 契约），因此通过 client
+ * hook(pathname) 派生 active tab/context。builder route 的 context skill
+ * 按 session source（improve 原始项）→ finalized（生成产物）顺序反向解析。
  */
 export function SkillStudioShell() {
   const t = useTranslations('skill.studio')
@@ -44,8 +44,8 @@ export function SkillStudioShell() {
   const builderSkillId = context.sessionId
     ? (builderSession?.source_skill_id ?? builderSession?.finalized_skill_id ?? null)
     : null
-  // 빌더 인덱스(/skills/builder?skillId=)의 스코프 스킬 — pathname에는 없어
-  // 쿼리에서 보충한다. 놓치면 스킬 스코프 탭 4개가 disabled로 오표기된다(리뷰 R).
+  // builder index（/skills/builder?skillId=）的 scope skill — pathname 中没有，
+  // 从 query 补充。漏掉会导致 4 个 skill scope tab 被错误显示为 disabled（review R）。
   const builderIndexSkillId =
     context.activeTab === 'builder' && context.sessionId === null
       ? searchParams.get('skillId')
@@ -62,7 +62,7 @@ export function SkillStudioShell() {
   }
 
   function handleSwitchSkill(skill: Skill) {
-    // 활성 탭 유지(§2.2) — 빌더 탭에서는 대상 스킬 스코프의 빌더 인덱스로.
+    // 保持 active tab（§2.2）— 在 builder tab 中跳到目标 skill scope 的 builder index。
     if (context.activeTab === 'builder') {
       router.push(skillStudioTabHref('builder', skill.id) ?? '/skills/builder')
       return

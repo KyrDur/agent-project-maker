@@ -219,10 +219,10 @@ def infer_execution_profile(skill_dir: Path) -> dict[str, Any]:
         runners.append("ready_python")
         support_level = "ready_python"
     else:
-        # Pure SKILL.md skills (instructions only) — LLM이 read_file로
-        # SKILL.md를 직접 따라가는 케이스라 marketplace 관점에서는 "ready".
-        # 외부 앱/브라우저 로그인이 필요한 진짜 manual 케이스는 curated
-        # map에서 명시적으로 ``manual_only``로 지정한다.
+        # Pure SKILL.md skills (instructions only) — LLM 通过 read_file
+        # 直接遵循 SKILL.md，因此从 marketplace 视角看是 "ready"。
+        # 真正需要外部 app/browser 登录的 manual 情况，在 curated
+        # map 中明确指定为 ``manual_only``。
         support_level = "ready_python"
 
     return {

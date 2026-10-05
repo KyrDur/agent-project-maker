@@ -60,8 +60,8 @@ class Model(Base):
     )
 
     # Provider-matched user credential captured at Add-model time. Used as
-    # fallback when ``Agent.llm_credential`` 가 미설정인 경우 (예: builder
-    # 가 자동 생성한 agent). 우선순위: agent.llm_credential >
+    # fallback when ``Agent.llm_credential`` 未配置时（例如 builder
+    # 自动创建的 agent）。优先级：agent.llm_credential >
     # model.default_credential > _ENV_FALLBACK[provider] > None.
     default_credential = relationship(
         "Credential",

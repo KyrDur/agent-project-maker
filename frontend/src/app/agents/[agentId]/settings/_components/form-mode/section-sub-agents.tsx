@@ -11,7 +11,7 @@ import { useAgents } from '@/lib/hooks/use-agents'
 interface SectionSubAgentsProps {
   selectedSubAgentIds: Set<string>
   onToggleSubAgent: (id: string) => void
-  /** 자기 자신은 sub-agent가 될 수 없으므로 필터에 사용. 매뉴얼(생성) 페이지에선 빈 문자열 전달. */
+  /** 自身不能成为 sub-agent，因此用于过滤。manual（创建）页面传入空字符串。 */
   currentAgentId: string
 }
 

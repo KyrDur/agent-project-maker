@@ -249,8 +249,8 @@ export async function normalizeArtifactList(page: Page, reportFile: string, note
   const artifactPreviewIsVisible = async (): Promise<boolean> =>
     (await Promise.all(artifactPreviewHeadings.map((heading) => heading.isVisible()))).some(Boolean)
 
-  // 파일 이벤트는 마지막 파일을 자동 미리보기로 열 수 있다. 이벤트가 UI에 반영된 뒤
-  // 목록 패널을 선택해야 이후의 파일 선택 계약을 결정적으로 검증할 수 있다.
+  // 文件事件可以自动将最后一个文件打开为预览。事件反映到 UI 后
+  // 必须选择列表面板，才能确定性验证后续的文件选择契约。
   if (!(await artifactRail.isVisible())) {
     await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
   }

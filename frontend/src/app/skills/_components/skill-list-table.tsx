@@ -26,13 +26,13 @@ import { getSkillExportUrl, isSkillNotFoundError, useDeleteSkill } from '@/lib/h
 import { formatDisplayDate } from '@/lib/utils/display-format'
 import type { Skill } from '@/lib/types/skill'
 
-/** 구 SkillCard와 동일한 게시 가드 — 이미 게시된 스킬에는 게시 진입점을 숨긴다. */
+/** 与旧 SkillCard 相同的 publish guard — 对已发布 skill 隐藏 publish 入口。 */
 function canPublishSkill(skill: Skill): boolean {
   return !skill.publication_summary?.state || skill.publication_summary.state === 'not_published'
 }
 
-/** 확인 다이얼로그 이름 열거 상한 — 무제한 열거는 max-w-xs 다이얼로그에서
- * 수백 줄로 자라 확인/취소 버튼이 화면 밖으로 잘린다 (R5). */
+/** 确认 dialog 中列举名称的上限 — 无限制列举会在 max-w-xs dialog 中
+ * 增长为数百行，导致确认/取消按钮被挤出屏幕（R5）。 */
 const NAME_LIST_CAP = 8
 
 function formatNameList(names: readonly string[], more: (count: number) => string): string {
@@ -41,11 +41,11 @@ function formatNameList(names: readonly string[], more: (count: number) => strin
 }
 
 /**
- * 스킬 목록 표 (Phase 2 목업 skill-table) — DataTable rowSelection의 첫 도입.
+ * skill 列表表格（Phase 2 mock skill-table）— DataTable rowSelection 的首次引入。
  *
- * 선택 상태는 controlled(rowSelectionState)로 소유해 벌크 삭제/선택 해제 시
- * remount 없이 리셋한다(정렬·페이지 유지). 검색으로 숨겨진 선택 행이 남을 수
- * 있어 확인 다이얼로그에 대상 이름을 열거한다 (스펙 AD-5).
+ * 选择状态由 controlled(rowSelectionState) 管理，以便 bulk delete/取消选择时
+ * 无需 remount 即可重置（保持排序·分页）。搜索可能留下被隐藏的已选 row，
+ * 因此在确认 dialog 中列出目标名称（规范 AD-5）。
  */
 export function SkillListTable({
   skills,
@@ -55,12 +55,12 @@ export function SkillListTable({
   improvePending,
   onPublish,
 }: {
-  /** 부모의 useMemo 결과를 그대로 받는다 — 새 identity를 만들면 선택 통지 effect가 재순환한다. */
+  /** 直接接收父级 useMemo 结果 — 如果创建新的 identity，选择通知 effect 会循环触发。 */
   readonly skills: Skill[]
   readonly isLoading: boolean
   readonly emptyTitle: string
   readonly onImprove: (skillId: string) => void
-  /** 빌더 세션 시작 중 — 행 "编辑" 이중 클릭이 세션을 중복 생성하지 않게 막는다. */
+  /** builder session 启动中 — 防止 row "编辑" 双击重复创建 session。 */
   readonly improvePending: boolean
   readonly onPublish: (skill: Skill) => void
 }) {
@@ -70,14 +70,14 @@ export function SkillListTable({
   const removeSkill = useDeleteSkill()
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
   const [selected, setSelected] = useState<Skill[]>([])
-  // 삭제 대상은 **id만** 저장하고 실행/표시 시점에 현재 목록에서 파생한다 —
-  // 선택 스냅샷 객체는 refetch 후 stale해질 수 있다(DataTable 통지는 id 기반).
+  // 删除目标只保存 **id**，执行/显示时再从当前列表派生 —
+  // 选择 snapshot object 在 refetch 后可能 stale（DataTable 通知基于 id）。
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
   const pendingSkills = skills.filter((skill) => pendingDeleteIds.includes(skill.id))
-  // 다이얼로그가 파생-close된 뒤(대상이 refetch로 전부 소실) 잔존 id가 남으면
-  // 해당 스킬이 목록에 재등장할 때 파괴적 다이얼로그가 저절로 재오픈된다 —
-  // guarded render-time 리셋으로 정리(패키지 에디터 selectedPath 선례).
+  // 如果 dialog 因派生条件 close 后（目标经 refetch 全部消失）仍残留 id，
+  // 当该 skill 再次出现在列表中时，破坏性 dialog 会自动重新打开 —
+  // 通过 guarded render-time reset 清理（沿用 package editor selectedPath 先例）。
   if (pendingDeleteIds.length > 0 && pendingSkills.length === 0 && !deleting) {
     setPendingDeleteIds([])
   }
@@ -89,20 +89,20 @@ export function SkillListTable({
 
   async function executeDelete() {
     if (pendingSkills.length === 0) {
-      // 다이얼로그 오픈 중 refetch로 대상이 전부 사라진 경우 — 잔존 id를
-      // 정리해 닫는다(안 그러면 확인 버튼이 무반응인 dead-end).
+      // 如果 dialog 打开期间 refetch 导致目标全部消失 — 清理残留 id
+      // 并关闭 dialog（否则确认按钮会无响应，形成 dead-end）。
       setPendingDeleteIds([])
       return
     }
     setDeleting(true)
     const failures: string[] = []
-    // 순차 삭제 — 기존 단건 DELETE 재사용, 부분 실패는 이름으로 보고 (AD-5).
+    // 顺序删除 — 复用现有单条 DELETE，部分失败按名称报告（AD-5）。
     for (const skill of pendingSkills) {
       try {
         await removeSkill.mutateAsync(skill.id)
       } catch (error) {
-        // 404 = 멱등 성공 — 다른 탭/플로우에서 이미 삭제된 대상. 실패로 세면
-        // 결과는 요청대로인데 "삭제 실패" 토스트가 오발한다 (규칙 ④, R5).
+        // 404 = 幂等成功 — 目标已在其他 tab/flow 中删除。若计为失败，
+        // 结果明明符合请求却会误发 "删除失败" toast（规则 ④，R5）。
         if (!isSkillNotFoundError(error)) {
           failures.push(skill.name)
         }
@@ -116,8 +116,8 @@ export function SkillListTable({
       toast.success(list('deleteSuccess', { count: deletedCount }))
     }
     if (failures.length > 0) {
-      // 실패 이름도 확인 다이얼로그와 같은 상한 — 세션 만료 등으로 전건 실패 시
-      // 무상한 토스트가 화면을 덮는다 (R6).
+      // 失败名称也与确认 dialog 使用相同上限 — 若因 session 过期等导致全部失败，
+      // 无上限 toast 会覆盖屏幕（R6）。
       toast.error(
         list('deletePartialFailure', {
           names: formatNameList(failures, (count) => list('moreNames', { count })),
@@ -131,11 +131,11 @@ export function SkillListTable({
     pendingSkills.map((skill) => skill.name),
     (count) => list('moreNames', { count }),
   )
-  // AD-4.1 — 영향받는 에이전트 이름은 신규 API 없이 에이전트 목록에서 역도출.
-  // 삭제 확인이 열려 있고 **연결 카운트가 있을 때만** fetch — 무조건 fetch는
-  // /skills 방문마다(R5), 연결 0 삭제마다(R6) 무거운 에이전트 전체 직렬화를
-  // 부른다(사이드바는 useAgentSummaries라 캐시 공유 없음). 로딩 중엔 자리
-  // 지킴 문구로 다이얼로그 텍스트 리플로를 막는다.
+  // AD-4.1 — 受影响的 Agent 名称无需新增 API，可从 Agent 列表反向推导。
+  // 只有删除确认已打开且 **存在连接计数时** 才 fetch — 无条件 fetch 会在
+  // 每次访问 /skills（R5）、每次删除连接数为 0 的项（R6）时触发沉重的 Agent 全量序列化，
+  // （侧边栏使用 useAgentSummaries，无法共享 cache）。loading 时用占位
+  // 文案避免 dialog 文本 reflow。
   const {
     data: agents,
     isLoading: agentsLoading,
@@ -179,7 +179,7 @@ export function SkillListTable({
       header: t('columns.status'),
       enableSorting: false,
       cell: ({ row }) => (
-        // 게시/출처 배지는 구 카드에서 이관 — 목록에서 게시 상태를 잃지 않는다.
+        // publish/source badge 从旧 card 迁移 — 列表中不会丢失 publish 状态。
         <div className="flex flex-wrap items-center gap-1">
           <SkillHealthBadge health={row.original.health} />
           <OriginBadge summary={row.original.origin_summary} />
@@ -190,7 +190,7 @@ export function SkillListTable({
     {
       id: 'evaluation',
       header: t('columns.evaluation'),
-      // 목업 계약(통과율 정렬) — 요약 pass_rate 기준, 미평가는 최하단.
+      // mock 契约（按通过率排序）— 基于 summary pass_rate，未评估项放最底部。
       accessorFn: (skill) => skill.latest_evaluation_summary?.pass_rate ?? -1,
       cell: ({ row }) => (
         <SkillEvaluationSummaryBadge summary={row.original.latest_evaluation_summary} />
@@ -279,9 +279,9 @@ export function SkillListTable({
                   names: pendingNames,
                   connected: connectedTotal,
                 }),
-                // 조회 실패를 침묵 소실로 두지 않는다 — 연결 카운트만 보이고
-                // 이름 공개(AD-4.1)가 사라지면 사용자는 실패를 모른 채 파괴적
-                // 확정을 누른다 (R6).
+                // 不把查询失败静默吞掉 — 如果只显示连接计数而
+                // 名称披露（AD-4.1）消失，用户会在不知失败的情况下点击破坏性
+                // 确认（R6）。
                 agentsLoading
                   ? list('affectedAgentsLoading')
                   : agentsError
@@ -323,8 +323,8 @@ function SkillRowActions({
   const list = useTranslations('skill.studio.list')
   const router = useRouter()
 
-  // 행 클릭(소스 이동)과 겹치지 않게 각 인터랙티브 요소에서 전파를 끊는다
-  // (DataTable 체크박스 컬럼과 동일 선례 — 정적 wrapper 핸들러는 a11y 위반).
+  // 为避免与 row click（跳转 source）冲突，在每个 interactive element 上阻止传播
+  // （与 DataTable checkbox column 相同先例 — 静态 wrapper handler 违反 a11y）。
   return (
     <div className="flex items-center justify-end gap-1">
       <Button

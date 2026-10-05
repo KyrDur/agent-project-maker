@@ -190,7 +190,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     const main = page.getByRole('main')
 
     // Agent name appears in multiple headings (sidebar h2, chat header h1, empty state h2).
-    // smoke 검증은 적어도 하나가 보이면 OK.
+    // smoke 验证至少能看到一个即可 OK。
     await expect(main.getByRole('heading', { name: 'E2E Smoke Agent' }).first()).toBeVisible()
     // New Conversation and Settings are available from the chat header menu.
     // The menu is rendered in a portal, so locate its items at page level.
@@ -218,7 +218,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await expect(main.getByRole('button', { name: '保存' })).toBeVisible()
     // "删除智能体" button
     await expect(main.getByRole('button', { name: '删除智能体' })).toBeVisible()
-    // AssistantPanel은 우측 패널로 통합 — 별도 트리거 버튼 없음
+    // AssistantPanel 已集成到右侧面板 — 没有单独的 trigger 按钮
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -230,7 +230,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await page.waitForURL(`**/agents/${agentId}/conversations/**`, { timeout: 10_000 })
     await page.waitForLoadState('domcontentloaded')
 
-    // Verify we landed on the chat page (heading 여러 곳 — first 매칭으로 충분)
+    // Verify we landed on the chat page (heading 有多处 — first 匹配即可)
     await expect(
       page.getByRole('main').getByRole('heading', { name: 'E2E Smoke Agent' }).first(),
     ).toBeVisible()
@@ -241,7 +241,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Smoke Test - Chat Navigator (통합 사이드바)
+// Smoke Test - Chat Navigator（集成侧边栏）
 // ---------------------------------------------------------------------------
 
 test.describe('Smoke Test - Chat Navigator', () => {
@@ -291,7 +291,7 @@ test.describe('Smoke Test - Chat Navigator', () => {
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
     await page.waitForLoadState('domcontentloaded')
 
-    // 통합 내비게이터: 에이전트 그룹과 세션 행이 사이드바에 렌더된다
+    // 集成 navigator：Agent group 和 session row 会渲染到侧边栏
     await expect(page.getByText('E2E Navigator Smoke Agent').first()).toBeVisible()
     const sessionRow = page.locator(
       `[data-chat-session-href="/agents/${agentId}/conversations/${conversationId}"]`,
@@ -299,7 +299,7 @@ test.describe('Smoke Test - Chat Navigator', () => {
     await expect(sessionRow).toBeVisible()
     await expect(sessionRow.getByText('Navigator smoke session')).toBeVisible()
 
-    // 행 메뉴는 hover 시 노출되고, 메뉴 항목은 portal로 렌더된다
+    // row menu 在 hover 时显示，menu item 通过 portal 渲染
     await sessionRow.hover()
     await sessionRow.getByRole('button', { name: '对话菜单' }).click()
     await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
@@ -481,7 +481,7 @@ test.describe('Smoke Test - Dialogs', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByRole('tab', { name: '修复智能体' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'E2E Dialog Agent 수정' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'E2E Dialog Agent 修改' })).toBeVisible()
     await expect(page.getByText('修复英雄字幕')).toBeVisible()
 
     expect(errors.console).toEqual([])

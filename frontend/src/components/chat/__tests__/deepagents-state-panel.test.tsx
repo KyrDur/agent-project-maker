@@ -17,12 +17,12 @@ describe('DeepAgentsStatePanel', () => {
     render(<DeepAgentsStatePanel state={state} />)
 
     expect(screen.getByText('任务计划')).toBeInTheDocument()
-    expect(screen.getByText('1/3 完成')).toBeInTheDocument()
+    expect(screen.getByText('1/3 已完成')).toBeInTheDocument()
     expect(screen.getByText('Plan work')).toBeInTheDocument()
     expect(screen.getByText('Write draft')).toBeInTheDocument()
     expect(screen.getByText('Review result')).toBeInTheDocument()
     expect(screen.getByText('文件')).toBeInTheDocument()
-    expect(screen.getByText('1개')).toBeInTheDocument()
+    expect(screen.getByText('1 文件')).toBeInTheDocument()
     expect(screen.queryByText('brief.md')).not.toBeInTheDocument()
   })
 
@@ -32,7 +32,7 @@ describe('DeepAgentsStatePanel', () => {
       files: [
         {
           id: 'artifact-md',
-          name: '최종 보고서',
+          name: '最终报告',
           path: 'reports/final.md',
           mimeType: 'text/markdown',
           artifactKind: 'markdown',
@@ -72,17 +72,17 @@ describe('DeepAgentsStatePanel', () => {
       />,
     )
 
-    await screen.findByText('최종 보고서')
+    await screen.findByText('最终报告')
     expect(screen.getByText('降价')).toBeInTheDocument()
     expect(screen.getByText('代码')).toBeInTheDocument()
     expect(screen.getByText('文字')).toBeInTheDocument()
-    const previewButton = screen.getByRole('button', { name: '최종 보고서 미리보기 열기' })
-    const copyButton = screen.getByRole('button', { name: '최종 보고서 복사' })
-    const downloadLink = screen.getByRole('link', { name: '최종 보고서 다운로드' })
+    const previewButton = screen.getByRole('button', { name: '打开最终报告预览' })
+    const copyButton = screen.getByRole('button', { name: '复制最终报告' })
+    const downloadLink = screen.getByRole('link', { name: '下载最终报告' })
     expect(previewButton).toBeEnabled()
     expect(copyButton).toBeEnabled()
     expect(downloadLink).toHaveAttribute('href', '/api/artifacts/artifact-md/download')
-    expect(screen.getByRole('button', { name: 'analysis.py 복사' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '复制analysis.py' })).toBeEnabled()
     downloadLink.addEventListener('click', (event) => event.preventDefault())
     await user.click(previewButton)
     await user.click(copyButton)
@@ -109,7 +109,7 @@ describe('DeepAgentsStatePanel', () => {
       />,
     )
 
-    expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
+    expect(screen.queryByText('任务列表')).not.toBeInTheDocument()
     expect(screen.getByText('文件')).toBeInTheDocument()
   })
 
@@ -117,7 +117,7 @@ describe('DeepAgentsStatePanel', () => {
     render(<DeepAgentsStatePanel state={state} showTodos={false} />)
 
     // Todos are deferred to the message "Plan" card, so they do not render here.
-    expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
+    expect(screen.queryByText('任务列表')).not.toBeInTheDocument()
     expect(screen.queryByText('Plan work')).not.toBeInTheDocument()
     // Files stay live-only and remain visible.
     expect(screen.getByText('文件')).toBeInTheDocument()
@@ -143,7 +143,7 @@ describe('DeepAgentsStatePanel', () => {
       files: [
         {
           id: 'artifact-md',
-          name: '최종 보고서',
+          name: '最终报告',
           path: 'reports/final.md',
           mimeType: 'text/markdown',
           artifactKind: 'markdown',
@@ -154,9 +154,9 @@ describe('DeepAgentsStatePanel', () => {
 
     render(<DeepAgentsStatePanel state={stateWithEditableFile} isLoading isInterrupted />)
 
-    await screen.findByText('최종 보고서')
-    expect(screen.getByRole('button', { name: '최종 보고서 편집' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '최종 보고서 저장' })).toBeDisabled()
+    await screen.findByText('最终报告')
+    expect(screen.getByRole('button', { name: '编辑最终报告' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '保存最终报告' })).toBeDisabled()
     expect(screen.getByText('运行期间无法编辑文件')).toBeInTheDocument()
   })
 })

@@ -37,7 +37,7 @@ function buildRequirement(overrides: Partial<CredentialRequirement>): Credential
     definition_key: 'weather_api',
     required: true,
     label: 'Weather API',
-    description: '날씨 조회에 사용합니다.',
+    description: '用于查询天气。',
     fields: ['api_key'],
     injection: 'env',
     scope: 'user',
@@ -85,7 +85,7 @@ describe('SkillCredentialBindingsPanel', () => {
 
     render(<SkillCredentialBindingsPanel skillId="skill-1" />)
 
-    expect(screen.getByText('필수 자격증명 1개 미연결')).toBeInTheDocument()
+    expect(screen.getByText('1 缺少所需的凭据')).toBeInTheDocument()
 
     const weatherRow = screen.getByText('Weather API').closest('div')
     if (weatherRow === null) {

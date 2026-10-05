@@ -69,8 +69,8 @@ export function AssistantPanel({
   const messages = session?.messages ?? localMessages
 
   // streamFn:
-  // - createMode + agentId 비어있음 → 부모 콜백으로 createAgent + redirect 위임
-  // - 그 외 → streamAssistant(agentId)
+  // - createMode + agentId 为空 → 委托父级 callback 执行 createAgent + redirect
+  // - 其他情况 → streamAssistant(agentId)
   const streamFn = useCallback(
     (content: string, signal: AbortSignal): AsyncGenerator<SSEEvent> => {
       async function* run() {
@@ -78,7 +78,7 @@ export function AssistantPanel({
           if (onCreateModeFirstMessage) {
             await onCreateModeFirstMessage(content)
           }
-          // 부모가 redirect 처리하므로 stream 시작 안 함 (컴포넌트 unmount 예정)
+          // 因为父级处理 redirect，所以不启动 stream（component 即将 unmount）
           return
         }
         yield* streamAssistant(agentId, content, signal, sessionId)
@@ -206,7 +206,7 @@ interface EmptyContentProps {
 }
 
 function EmptyContent({ title, subtitle, suggestions, imageSrc }: EmptyContentProps) {
-  // AssistantRuntimeProvider 안에서만 composer scope가 제공된다.
+  // 只有在 AssistantRuntimeProvider 内才提供 composer scope。
   const composer = useAui().optional.composer
 
   return (

@@ -22,9 +22,9 @@ test('profile name, initials and color survive reload; automatic identity can be
   errors,
 }, testInfo) => {
   await page.goto('/settings')
-  await page.getByLabel('显示名称', { exact: true }).fill('프로필 검증')
+  await page.getByLabel('显示名称', { exact: true }).fill('配置文件验证')
   await page.getByRole('button', { name: '使用字母', exact: true }).click()
-  await page.getByLabel('图标字母', { exact: true }).fill('검증')
+  await page.getByLabel('图标字母', { exact: true }).fill('验证')
   await page.getByRole('button', { name: '紫罗兰色', exact: true }).click()
   const saved = page.waitForResponse(
     (res) => res.url().endsWith('/api/auth/me/profile') && res.request().method() === 'PATCH',
@@ -32,20 +32,20 @@ test('profile name, initials and color survive reload; automatic identity can be
   await page.getByRole('button', { name: '保存', exact: true }).click()
   const profile = profileSchema.parse(await apiJson(await saved, 'Save profile'))
   expect(profile).toMatchObject({
-    display_name: '프로필 검증',
+    display_name: '配置文件验证',
     avatar_mode: 'initials',
-    avatar_initials: '검증',
+    avatar_initials: '验证',
     avatar_color: 'violet',
   })
   await page.reload()
-  await expect(page.getByLabel('显示名称', { exact: true })).toHaveValue('프로필 검증')
-  await expect(page.getByLabel('图标字母', { exact: true })).toHaveValue('검증')
+  await expect(page.getByLabel('显示名称', { exact: true })).toHaveValue('配置文件验证')
+  await expect(page.getByLabel('图标字母', { exact: true })).toHaveValue('验证')
   await expect(page.getByRole('button', { name: '紫罗兰色', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   )
-  await expect(page.getByRole('img', { name: '프로필 검증 프로필 아이콘' }).first()).toContainText(
-    '검증',
+  await expect(page.getByRole('img', { name: '配置文件验证 配置文件图标' }).first()).toContainText(
+    '验证',
   )
   await captureResourcePage({
     page,
@@ -98,7 +98,7 @@ test('avatar image upload, authenticated rendering and deletion persist', async 
   await page.reload()
   const image = page
     .locator('img')
-    .and(page.getByRole('img', { name: 'E2E Member 프로필 아이콘' }))
+    .and(page.getByRole('img', { name: 'E2E Member 配置文件图标' }))
     .first()
   await expect(image).toBeVisible()
   await expect

@@ -1,208 +1,208 @@
 # Quality Score — Moldy Agent Builder
 
-> 최종 검증일: 2026-05-09
-> 검증자: bezos (QA Engineer)
+> 最终验证日期: 2026-05-09
+> 验证人: bezos (QA Engineer)
 
 ---
 
 ## ADR-016 Multi-user Auth (S2~S7) — 2026-05-09
 
-### 게이트
+### Gate
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |---|---|---|
 | `uv run ruff check app/ tests/` | PASS | 0 errors |
 | `uv run pytest` | PASS | **947 passed, 3 xfailed (BUG escalations), 2 deselected** |
 | `pnpm lint` | PASS | 0 errors |
-| `pnpm build` | PASS | 모든 라우트 빌드 성공 (Proxy middleware 포함) |
-| Mock user 흔적 grep (backend/app/, frontend/src/) | PASS | 0건 |
-| `alembic upgrade head` | DEFERRED | dev DB는 head 상태. 운영 DB는 별도 마이그레이션 윈도우 |
+| `pnpm build` | PASS | 所有 route 构建成功（包含 Proxy middleware） |
+| Mock user 痕迹 grep（backend/app/, frontend/src/） | PASS | 0 条 |
+| `alembic upgrade head` | DEFERRED | dev DB 当前为 head 状态。生产 DB 使用单独 migration window |
 
-### Authentication 도메인 등급
+### Authentication 域评级
 
-| 영역 | 등급 | 비고 |
+| 区域 | 评级 | 备注 |
 |---|:---:|---|
-| 백엔드 인증 코어 (`auth/`) | A | JWT(access/refresh/csrf) 분리 type, bcrypt cost 12, refresh hash 저장 |
-| 라우터 audit (`/api/auth`) | A | register/login/refresh/logout/me 5 엔드포인트, rate-limit, CSRF exempt 분리 |
-| Service 레이어 owner filter | A | 모든 owner-scoped query에 `Agent.user_id == user_id` predicate |
-| Super_user 가드 | A | 6 엔드포인트(system-credentials × 5, models × 3) 모두 PASS |
-| Multi-user isolation | A | 격리 매트릭스 10/10, enumeration oracle 통일 (404) 검증 |
-| User cleanup / cascade | A | LangGraph thread + refresh + agent CASCADE + system 보존 8/8 PASS |
-| CSRF double-submit | A | 7/7 PASS (header≠cookie, sub mismatch, garbage 모두 거부) |
-| **Refresh replay defense** | **B-** | 감지·logging은 작동하나 mass-revoke가 commit 누락으로 미적용 — escalation 2 |
-| **Login lockout** | **B-** | 동일 클래스 commit 누락 — failed_login_attempts 카운터 영구 0, escalation 1 |
-| 프론트엔드 인증 흐름 | A | 19 신규 + 5 수정 파일, 빌드 PASS, proxy.ts middleware 정상 |
-| 보안 체크리스트 | A- | OWASP Top 10 8/10 PASS, 2건은 운영자 설정 의존(cookie_secure, JWT_SECRET) + escalation 2건 |
-| 마이그레이션 m36 | A | refresh_tokens, users 컬럼, FK CASCADE, ADR 번호 보정 정상 |
+| 后端认证核心（`auth/`） | A | JWT(access/refresh/csrf) 分离 type，bcrypt cost 12，保存 refresh hash |
+| Router audit（`/api/auth`） | A | register/login/refresh/logout/me 5 个 endpoint，rate-limit，CSRF exempt 分离 |
+| Service layer owner filter | A | 所有 owner-scoped query 均包含 `Agent.user_id == user_id` predicate |
+| Super_user guard | A | 6 个 endpoint（system-credentials × 5, models × 3）全部 PASS |
+| Multi-user isolation | A | 隔离矩阵 10/10，验证 enumeration oracle 统一为（404） |
+| User cleanup / cascade | A | LangGraph thread + refresh + agent CASCADE + system 保留，8/8 PASS |
+| CSRF double-submit | A | 7/7 PASS（header≠cookie、sub mismatch、garbage 均拒绝） |
+| **Refresh replay defense** | **B-** | 检测与 logging 正常，但 mass-revoke 因漏掉 commit 未生效 — escalation 2 |
+| **Login lockout** | **B-** | 同类 commit 遗漏 — failed_login_attempts 计数器永久为 0，escalation 1 |
+| 前端认证流程 | A | 19 个新增 + 5 个修改文件，构建 PASS，proxy.ts middleware 正常 |
+| 安全 checklist | A- | OWASP Top 10 8/10 PASS，2 项依赖运营配置（cookie_secure, JWT_SECRET）+ 2 项 escalation |
+| Migration m36 | A | refresh_tokens、users 字段、FK CASCADE、ADR 编号修正正常 |
 
-### 변경 통계 (S2~S6 누적)
+### 变更统计（S2~S6 累计）
 
-- 백엔드 신규 파일: 8 (auth/* 4, models/refresh_token, routers/auth, schemas/auth, services/auth_service, services/user_service)
-- 백엔드 신규 테스트: 6 (test_auth_register, test_auth_login, test_auth_refresh, test_csrf, test_multiuser_isolation, test_user_cleanup) — **40 PASS + 3 xfail**
-- 프론트엔드 신규: 19 + 5 수정 (auth pages, login form, useAuth hook, proxy middleware, 등)
-- 마이그레이션: 1 (m36_multiuser_auth)
+- 后端新增文件: 8（auth/* 4, models/refresh_token, routers/auth, schemas/auth, services/auth_service, services/user_service）
+- 后端新增测试: 6（test_auth_register, test_auth_login, test_auth_refresh, test_csrf, test_multiuser_isolation, test_user_cleanup）— **40 PASS + 3 xfail**
+- 前端新增: 19 + 5 修改（auth pages, login form, useAuth hook, proxy middleware 等）
+- Migration: 1（m36_multiuser_auth）
 
-### Escalation (deploy 차단 사항)
+### Escalation（阻止 deploy 的事项）
 
-1. **CRITICAL: Login failure counter 미커밋** — `auth_service.authenticate` 실패 path가 commit 없이 raise → `failed_login_attempts` 영구 0, lockout 무력화. brute-force 무제한 가능.
-2. **CRITICAL: Refresh replay mass-revoke 미커밋** — `rotate_refresh` replay 감지 후 `_revoke_all_active` UPDATE가 raise 전에 rollback → 도난 refresh가 victim 세션을 강제 무효화하지 못함.
+1. **CRITICAL: Login failure counter 未提交** — `auth_service.authenticate` 失败 path 在未 commit 的情况下 raise → `failed_login_attempts` 永久为 0，lockout 失效。可无限 brute-force。
+2. **CRITICAL: Refresh replay mass-revoke 未提交** — `rotate_refresh` 检测到 replay 后，`_revoke_all_active` UPDATE 会在 raise 前 rollback → 被盗 refresh 无法强制使 victim session 失效。
 
-두 escalation 모두 동일 클래스 버그(라우터 commit 경계 누락)로 단일 PR에서 일괄 fix 가능. `tasks/security-checklist-multiuser-auth.md` ESCALATION 섹션 참조. 수정 후 `tests/test_auth_login.py`와 `tests/test_auth_refresh.py`의 `xfail strict` 데코레이터 제거 필요.
+两个 escalation 均属于同一类 bug（Router commit 边界遗漏），可在单个 PR 中统一 fix。参见 `tasks/security-checklist-multiuser-auth.md` 的 ESCALATION section。修复后需移除 `tests/test_auth_login.py` 与 `tests/test_auth_refresh.py` 的 `xfail strict` decorator。
 
-### 운영자 deploy 직전 액션
+### 运营人员 deploy 前操作
 
-1. `JWT_SECRET` 32 byte 랜덤 환경변수 설정 (미설정 시 ephemeral 키)
-2. `COOKIE_SECURE=true` + `COOKIE_DOMAIN` 명시
-3. 위 escalation 2건 머지 + `xfail` 제거 검증
-4. 첫 운영자 가입 직후 `ALLOW_FIRST_USER_AS_ADMIN=false`
-5. `main.py`의 CORS `allow_origins`를 환경변수 기반으로 교체 (현재 dev origin 하드코딩)
+1. 设置 `JWT_SECRET` 32 byte 随机环境变量（未设置时使用 ephemeral key）
+2. `COOKIE_SECURE=true` + 明确设置 `COOKIE_DOMAIN`
+3. 合并上述 2 项 escalation + 验证移除 `xfail`
+4. 首位运营人员注册后立即设置 `ALLOW_FIRST_USER_AS_ADMIN=false`
+5. 将 `main.py` 的 CORS `allow_origins` 改为基于环境变量（当前硬编码 dev origin）
 
-### 판정
+### 判定
 
-**CONDITIONAL GO** — 격리 매트릭스 + super_user 가드 + cleanup은 production-ready. 그러나 **2건의 commit 누락 버그가 보안 핵심 방어를 무력화**하므로 escalation fix 머지 전에는 production deploy 금지.
+**CONDITIONAL GO** — 隔离矩阵 + super_user guard + cleanup 已达到 production-ready。但 **2 个 commit 遗漏 bug 会使核心安全防护失效**，因此在合并 escalation fix 前禁止 production deploy。
 
 ---
 
 ## Greenfield Credentials Rewrite (M0~M6) — 2026-04-29
 
-### 게이트
+### Gate
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |---|---|---|
-| `python scripts/check_branding.py` | PASS | 금지 식별자 0건, 금지 npm scope 0건, 자산 블랙리스트 0건 |
+| `python scripts/check_branding.py` | PASS | 禁止 identifier 0 条，禁止 npm scope 0 条，asset blacklist 0 条 |
 | `uv run ruff check .` | PASS | 0 errors |
-| `uv run pytest tests/` | PASS | **480 passed**, 1 deselected, 1 warning (TestRequestSpec collection 무해) |
+| `uv run pytest tests/` | PASS | **480 passed**，1 deselected，1 warning（TestRequestSpec collection 无害） |
 | `pnpm lint` | PASS | 0 errors, 1 informational warning (react-hooks/incompatible-library — TanStack Table) |
-| `pnpm build` | PASS | 16 routes (credentials, mcp-servers, tools, skills 신규) |
-| `alembic upgrade head` | DEFERRED | 사용자 확인 후 실행 (data-loss 액션) |
-| Playwright E2E | DEFERRED | 4 specs 작성, 백엔드 실행 필요 — 사용자 실행 |
+| `pnpm build` | PASS | 16 routes（credentials, mcp-servers, tools, skills 新增） |
+| `alembic upgrade head` | DEFERRED | 用户确认后执行（data-loss 操作） |
+| Playwright E2E | DEFERRED | 已编写 4 specs，需要启动后端 — 由用户执行 |
 
-### 도메인별 등급
+### 各域评级
 
-| 도메인 | 등급 | 비고 |
+| 域 | 评级 | 备注 |
 |---|:---:|---|
-| Cipher V2 (security/) | A | 23 tests, moldy-encryption-v1, key_id 멀티키 검증 완료 |
-| Credential 도메인 (credentials/) | A | 16 tests + OAuth2 + Tester + Vault, GenericAuth + interpolation + audit log |
-| Tools 도메인 (tools/) | A | 12 도구 정의, ToolDefinition 단일 경로, GenericAuth 통일 |
-| MCP (mcp/) | B+ | 디스커버리 + OAuth, agent_mcp_servers 링크 테이블 미구현 (후속) |
-| Skills (skills/) | A | text/package 양방향, zip-slip + symlink 방어, content_hash |
-| agent_runtime 재배선 | A | chat_service 단일 경로, prefetch 버그 수정, 480 회귀 PASS |
-| 키 로테이션 cron | A | rotate_credentials_to_active_key 잡 + audit log rotate |
-| External Secrets (Vault) | B | HVAC SDK 실구현, KV v2, AppRole/JWT 미지원(후속) |
-| 마이그레이션 m18 | A- | DROP+CREATE+ALTER, downgrade NotImplementedError, dialect-aware. 실제 PostgreSQL upgrade 미실행 |
-| 프론트엔드 디자인 시스템 | A | DataTable + dynamic-fields-form 일관 적용 |
-| 프론트엔드 페이지 (4) | A | credentials/tools/mcp-servers/skills 동작, build PASS |
-| 브랜딩/라이선스 가드 | A | CI 게이트 강제 |
+| Cipher V2（security/） | A | 23 tests，moldy-encryption-v1，已完成 key_id 多 key 验证 |
+| Credential 域（credentials/） | A | 16 tests + OAuth2 + Tester + Vault，GenericAuth + interpolation + audit log |
+| Tools 域（tools/） | A | 12 个工具定义，ToolDefinition 单一路径，GenericAuth 统一 |
+| MCP（mcp/） | B+ | discovery + OAuth，agent_mcp_servers link table 未实现（后续） |
+| Skills（skills/） | A | text/package 双向，zip-slip + symlink 防护，content_hash |
+| agent_runtime 重新接线 | A | chat_service 单一路径，修复 prefetch bug，480 回归 PASS |
+| key rotation cron | A | rotate_credentials_to_active_key job + audit log rotate |
+| External Secrets（Vault） | B | HVAC SDK 实现，KV v2，AppRole/JWT 不支持（后续） |
+| Migration m18 | A- | DROP+CREATE+ALTER，downgrade NotImplementedError，dialect-aware。实际 PostgreSQL upgrade 未执行 |
+| 前端 design system | A | DataTable + dynamic-fields-form 一致应用 |
+| 前端页面（4） | A | credentials/tools/mcp-servers/skills 可运行，build PASS |
+| Branding/license guard | A | CI gate 强制执行 |
 
-### 변경 통계
+### 变更统计
 
-- 백엔드 신규 파일: ~64 (security 2 + credentials 22 + tools 10 + mcp 4 + skills 4 + models 7 + routers 4 + seed 1 + alembic 1 + tests 10)
-- 백엔드 폐기: 21 prod + 21 tests
-- 프론트엔드 신규: ~29 (디자인 4 + 페이지 4 + 컴포넌트 14 + types/api/hooks 15 + e2e 4)
-- 프론트엔드 폐기: ~24
-- 신규 테스트: ~110 (cipher 23 + branding 1 + credentials 16 + oauth2 + tester + external_secrets + tools + mcp + skills 21 + seed 5 + migration 5 + chat_integration 3 + rotation 2)
+- 后端新增文件: ~64（security 2 + credentials 22 + tools 10 + mcp 4 + skills 4 + models 7 + routers 4 + seed 1 + alembic 1 + tests 10）
+- 后端废弃: 21 prod + 21 tests
+- 前端新增: ~29（design 4 + 页面 4 + components 14 + types/api/hooks 15 + e2e 4）
+- 前端废弃: ~24
+- 新增测试: ~110（cipher 23 + branding 1 + credentials 16 + oauth2 + tester + external_secrets + tools + mcp + skills 21 + seed 5 + migration 5 + chat_integration 3 + rotation 2）
 
-### 후속 (별도 PR/티켓)
+### 后续（单独 PR/ticket）
 
-1. `alembic upgrade head` 실제 PostgreSQL 실행 — 사용자 확인 필요 (dev DB 폐기)
-2. Playwright E2E 라이브 API 실행 — 백엔드 기동 후
-3. 변호사 라이선스 검토 1회 — 외부 배포 시
-4. agent_mcp_servers 링크 테이블 도입 — MCP 도구를 에이전트에 직접 연결
-5. OAuth2 callback state Redis/DB 백킹 — 멀티프로세스 배포 시
-6. TestRequestSpec → CredentialTestSpec rename — pytest collection 경고 제거
-7. Vault AppRole/JWT 인증 추가
-8. interpolation sandbox 강화 (보안 표면)
+1. `alembic upgrade head` 在真实 PostgreSQL 上执行 — 需要用户确认（废弃 dev DB）
+2. 执行 Playwright E2E live API — 启动后端后
+3. 进行 1 次律师 license review — 对外发布时
+4. 引入 agent_mcp_servers link table — 将 MCP 工具直接连接到 Agent
+5. OAuth2 callback state 使用 Redis/DB backing — 多进程 deploy 时
+6. TestRequestSpec → CredentialTestSpec rename — 消除 pytest collection warning
+7. 添加 Vault AppRole/JWT 认证
+8. 加强 interpolation sandbox（安全面）
 
-### 판정
+### 判定
 
-**GO** — 단일 PR로 머지 가능. 6개 마일스톤 모두 게이트 PASS. 회귀 위험 Low (480 tests 단일 사이클 PASS).
+**GO** — 可作为单个 PR 合并。6 个 milestone 全部 gate PASS。回归风险 Low（480 tests 单周期 PASS）。
 
 ---
 
-## 백로그 C — credentials list N+1 복호화 제거 (2026-04-17)
+## Backlog C — 移除 credentials list N+1 解密（2026-04-17）
 
-### 게이트
+### Gate
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |--------|------|------|
 | `uv run ruff check .` | PASS | 0 errors |
-| `uv run pytest tests/test_credentials.py -v` | PASS | 5/5 신규 |
-| `uv run pytest` | PASS | **545 passed** (540+ 기준 초과) |
-| `alembic upgrade head ↔ downgrade -1 ↔ upgrade head` | PASS | 젠슨 S2 왕복 확인 |
+| `uv run pytest tests/test_credentials.py -v` | PASS | 新增 5/5 |
+| `uv run pytest` | PASS | **545 passed**（超过 540+ 基线） |
+| `alembic upgrade head ↔ downgrade -1 ↔ upgrade head` | PASS | Jensen S2 往返确认 |
 
-### 신규/변경 파일
+### 新增/变更文件
 
-| 파일 | 변경 |
+| 文件 | 变更 |
 |------|------|
-| `backend/app/models/credential.py` | `field_keys: Mapped[list[str] \| None]` 컬럼 추가 |
-| `backend/alembic/versions/m7_add_credential_field_keys.py` | 신규 마이그레이션 + 백필 |
-| `backend/app/services/credential_service.py` | create/update 동기화, extract 캐시 우선 |
-| `backend/tests/test_credentials.py` | 신규 5 시나리오 |
+| `backend/app/models/credential.py` | 新增 `field_keys: Mapped[list[str] \| None]` 字段 |
+| `backend/alembic/versions/m7_add_credential_field_keys.py` | 新增 migration + backfill |
+| `backend/app/services/credential_service.py` | create/update 同步，extract 优先使用 cache |
+| `backend/tests/test_credentials.py` | 新增 5 个场景 |
 
-### 삭제 분석 (M1)
+### 删除分析（M1）
 
-- 실제 삭제: **0건** (스코프 엄격 준수)
-- 단순화 제안: 1건 (별도 티켓 이관)
-- 보류: 3건 (is_active/has_data/fallback — 스코프 외 또는 의도적 보존)
-- 산출물: `tasks/deletion-analysis-c.md`
+- 实际删除: **0 条**（严格遵守 scope）
+- 简化建议: 1 条（转至单独 ticket）
+- 暂缓: 3 条（is_active/has_data/fallback — scope 外或有意保留）
+- 产出物: `tasks/deletion-analysis-c.md`
 
-### 판정
+### 判定
 
-**GO** — 모든 M0~M4 PASS. M5 (통합/커밋)은 사티아 DRI.
+**GO** — 所有 M0~M4 PASS。M5（集成/commit）由 Satya DRI 负责。
 
 ---
 
-## v2 Builder/Assistant 프로젝트 — 최종 빌드 검증 (2026-04-07)
+## v2 Builder/Assistant 项目 — 最终 build 验证（2026-04-07）
 
-### 빌드/린트 게이트
+### Build/lint gate
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |--------|------|------|
 | `uv run ruff check .` | PASS | 0 errors |
 | `uv run pytest` | PASS | 284 passed, 0 failed (6.93s) |
 | `pnpm build` | PASS | TypeScript 3.2s, 13 static + 5 dynamic pages, 0 errors |
 | `pnpm lint` (ESLint) | PASS | 0 errors, 0 warnings |
 
-### 테스트 커버리지 변화
+### 测试覆盖率变化
 
-| 시점 | 테스트 수 | 비고 |
+| 时间点 | 测试数量 | 备注 |
 |------|-----------|------|
-| M1 (구현 전) | 332 | 기존 creation_agent, fix_agent 테스트 포함 |
-| 최종 (구현 후) | 284 | 기존 테스트 48개 삭제 (v1 코드 제거) |
-| **v2 신규 테스트** | **0** | Builder/Assistant 유닛 테스트 미작성 |
+| M1（实现前） | 332 | 包含现有 creation_agent、fix_agent 测试 |
+| 最终（实现后） | 284 | 删除 48 个现有测试（移除 v1 代码） |
+| **v2 新增测试** | **0** | 未编写 Builder/Assistant unit test |
 
-### v2 신규 파일 (Backend)
+### v2 新增文件（Backend）
 
-| 카테고리 | 파일 | 상태 |
+| 分类 | 文件 | 状态 |
 |----------|------|------|
-| Builder 오케스트레이터 | `agent_runtime/builder/orchestrator.py` | EXISTS |
-| Builder 서브에이전트 | `builder/sub_agents/intent_analyzer.py` | EXISTS |
-| Builder 서브에이전트 | `builder/sub_agents/tool_recommender.py` | EXISTS |
-| Builder 서브에이전트 | `builder/sub_agents/middleware_recommender.py` | EXISTS |
-| Builder 서브에이전트 | `builder/sub_agents/prompt_generator.py` | EXISTS |
-| Assistant 에이전트 | `agent_runtime/assistant/assistant_agent.py` | EXISTS |
-| Assistant 도구 | `assistant/tools/read_tools.py` | EXISTS |
-| Assistant 도구 | `assistant/tools/write_tools.py` | EXISTS |
-| Assistant 도구 | `assistant/tools/clarify_tools.py` | EXISTS |
-| Builder 라우터 | `routers/builder.py` | EXISTS |
-| Assistant 라우터 | `routers/assistant.py` | EXISTS |
-| Builder 서비스 | `services/builder_service.py` | EXISTS |
-| Assistant 서비스 | `services/assistant_service.py` | EXISTS |
-| Builder 스키마 | `schemas/builder.py` | EXISTS |
-| Assistant 스키마 | `schemas/assistant.py` | EXISTS |
-| Builder 모델 | `models/builder_session.py` | EXISTS |
+| Builder orchestrator | `agent_runtime/builder/orchestrator.py` | EXISTS |
+| Builder sub-agent | `builder/sub_agents/intent_analyzer.py` | EXISTS |
+| Builder sub-agent | `builder/sub_agents/tool_recommender.py` | EXISTS |
+| Builder sub-agent | `builder/sub_agents/middleware_recommender.py` | EXISTS |
+| Builder sub-agent | `builder/sub_agents/prompt_generator.py` | EXISTS |
+| Assistant Agent | `agent_runtime/assistant/assistant_agent.py` | EXISTS |
+| Assistant 工具 | `assistant/tools/read_tools.py` | EXISTS |
+| Assistant 工具 | `assistant/tools/write_tools.py` | EXISTS |
+| Assistant 工具 | `assistant/tools/clarify_tools.py` | EXISTS |
+| Builder Router | `routers/builder.py` | EXISTS |
+| Assistant Router | `routers/assistant.py` | EXISTS |
+| Builder Service | `services/builder_service.py` | EXISTS |
+| Assistant Service | `services/assistant_service.py` | EXISTS |
+| Builder Schema | `schemas/builder.py` | EXISTS |
+| Assistant Schema | `schemas/assistant.py` | EXISTS |
+| Builder Model | `models/builder_session.py` | EXISTS |
 
-### v2 신규 파일 (Frontend)
+### v2 新增文件（Frontend）
 
-| 카테고리 | 파일 | 상태 |
+| 分类 | 文件 | 状态 |
 |----------|------|------|
 | Builder API | `lib/api/builder.ts` | EXISTS |
 | Assistant API | `lib/api/assistant.ts` | EXISTS |
-| Assistant 패널 | `components/agent/assistant-panel.tsx` | EXISTS |
+| Assistant Panel | `components/agent/assistant-panel.tsx` | EXISTS |
 
-### 삭제 파일 (Backend) — 7/7 확인
+### 删除文件（Backend）— 已确认 7/7
 
-| 파일 | 상태 |
+| 文件 | 状态 |
 |------|------|
 | `agent_runtime/creation_agent.py` | DELETED |
 | `agent_runtime/fix_agent.py` | DELETED |
@@ -212,51 +212,51 @@
 | `schemas/agent_creation.py` | DELETED |
 | `schemas/fix_agent.py` | DELETED |
 
-### 삭제 테스트 (Backend) — 3/3 확인
+### 删除测试（Backend）— 已确认 3/3
 
-| 파일 | 상태 |
+| 文件 | 状态 |
 |------|------|
 | `tests/test_creation_agent.py` | DELETED |
 | `tests/test_fix_agent.py` | DELETED |
 | `tests/test_agent_creation_extended.py` | DELETED |
 
-### main.py 라우터 교체
+### main.py Router 替换
 
-| 이전 | 이후 | 상태 |
+| 之前 | 之后 | 状态 |
 |------|------|------|
 | `agent_creation.router` | `builder.router` | PASS |
 | `fix_agent.router` | `assistant.router` | PASS |
 
-### models/__init__.py 교체
+### models/__init__.py 替换
 
-| 이전 | 이후 | 상태 |
+| 之前 | 之后 | 状态 |
 |------|------|------|
 | `AgentCreationSession` | `BuilderSession` | PASS |
 
 ---
 
-## 미해결 이슈 (3건)
+## 未解决问题（3 条）
 
-### ISSUE-1: 죽은 코드 — Frontend 삭제 누락 (심각도: LOW)
+### ISSUE-1: Dead code — Frontend 删除遗漏（严重度: LOW）
 
-| 파일 | 상태 | 영향 |
+| 文件 | 状态 | 影响 |
 |------|------|------|
-| `frontend/src/lib/api/creation-session.ts` | 파일 존재, 어디서도 import 안 됨 | 빌드 영향 없음, tree-shaking |
-| `frontend/src/components/agent/fix-agent-dialog.tsx` | 파일 존재, 어디서도 import 안 됨 | 빌드 영향 없음, tree-shaking |
+| `frontend/src/lib/api/creation-session.ts` | 文件存在，但未被任何位置 import | 对 build 无影响，tree-shaking |
+| `frontend/src/components/agent/fix-agent-dialog.tsx` | 文件存在，但未被任何位置 import | 对 build 无影响，tree-shaking |
 
-빌드/런타임에 영향 없지만 코드베이스 위생상 삭제 권장.
+对 build/runtime 无影响，但从 codebase hygiene 角度建议删除。
 
-### ISSUE-2: 죽은 코드 — Backend 모델 파일 잔존 (심각도: LOW)
+### ISSUE-2: Dead code — Backend model 文件残留（严重度: LOW）
 
-| 파일 | 상태 | 영향 |
+| 文件 | 状态 | 影响 |
 |------|------|------|
-| `backend/app/models/agent_creation_session.py` | 파일 존재, `__init__.py`에서 import 안 됨 | 빌드 영향 없음 |
+| `backend/app/models/agent_creation_session.py` | 文件存在，未在 `__init__.py` 中 import | 对 build 无影响 |
 
-`BuilderSession`으로 교체 완료되었으나 구 파일 삭제 누락. Alembic 마이그레이션 고려 후 삭제 권장.
+已替换为 `BuilderSession`，但旧文件遗漏删除。建议考虑 Alembic migration 后删除。
 
-### ISSUE-3: v2 유닛 테스트 부재 (심각도: MEDIUM)
+### ISSUE-3: 缺少 v2 unit test（严重度: MEDIUM）
 
-Builder 오케스트레이터, Assistant 에이전트, v2 라우터/서비스에 대한 유닛 테스트가 없음.
+Builder orchestrator、Assistant Agent、v2 Router/Service 均没有 unit test。
 - 기존 48개 테스트 삭제됨 (v1 코드 제거)
 - v2 신규 테스트 0개
 - **테스트 커버리지 갭**: Builder 7단계 파이프라인, Assistant 도구 호출, SSE 스트리밍
@@ -265,7 +265,7 @@ Builder 오케스트레이터, Assistant 에이전트, v2 라우터/서비스에
 
 ## 이전: M1 빌드 검증 (2026-04-07)
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |--------|------|------|
 | `pnpm build` | PASS | TypeScript 3.1s |
 | `pnpm lint` | PASS | 0 errors |
@@ -312,7 +312,7 @@ PASS:
 
 ## Marketplace Resources Phase 1 (M1~M9) — 2026-05-19
 
-### 도메인별 등급
+### 各域评级
 
 | 도메인 | 등급 | 근거 |
 |--------|------|------|

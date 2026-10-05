@@ -9,7 +9,7 @@ export default async function SkillSourcePage({
 }) {
   const { skillId } = await params
   const query = await searchParams
-  // `?revision=` — 버전 탭의 "查看此版本的源代码" read-only 모드 (스펙 AD-6).
+  // `?revision=` — versions tab 的 "查看此版本的源代码" read-only 模式（规范 AD-6）。
   const revision = typeof query.revision === 'string' ? query.revision : null
   return <SkillTabPageClient skillId={skillId} tab="source" revisionId={revision} />
 }

@@ -77,7 +77,7 @@
 
 ### 1.3 기존 모듈 변경 영향
 
-| 파일 | 변경 |
+| 文件 | 变更 |
 |------|------|
 | `models/skill.py` | `Skill`에 12개 컬럼 추가 (m41). `AgentSkillLink`에 `config: Mapped[dict \| None]` 추가 (m42) |
 | `routers/skills.py` | `/api/skills/{id}/credential-requirements`, `/credential-bindings[/{key}]` 4개 endpoint 추가. `upload` 엔드포인트에 `secret_scan.scan_package` 호출. 응답에 `origin_summary`/`publication_summary` 임베드 (`origin_service` 호출) |

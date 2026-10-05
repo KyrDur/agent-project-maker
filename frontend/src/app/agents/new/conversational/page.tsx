@@ -58,7 +58,7 @@ export default function ConversationalCreationPage({
   const [restoring, setRestoring] = useState(!!restoredSessionId)
   const [restoreFailed, setRestoreFailed] = useState(false)
 
-  // 첫 메시지: 세션 생성 후 stream 시작 / 후속: 기존 세션으로
+  // 第一条消息：创建 session 后开始 stream / 后续：使用现有 session
   const streamFn = useCallback((content: string, signal: AbortSignal): AsyncGenerator<SSEEvent> => {
     async function* run() {
       let activeSessionId = sessionIdRef.current
@@ -100,14 +100,14 @@ export default function ConversationalCreationPage({
     [],
   )
 
-  // 스트리밍 메시지를 영구 messages로 누적
+  // 将 streaming 消息累积为持久化 messages
   const onMessagesCommit = useCallback((commit: Message[]) => {
     setMessages((prev) => [...prev, ...commit])
   }, [])
 
-  // Stream 종료 후 status 체크
-  // - COMPLETED + agent_id → 자동 리다이렉트
-  // - FAILED → 콘솔 경고 (메시지는 graph가 이미 emit했음)
+  // Stream 结束后检查 status
+  // - COMPLETED + agent_id → 自动 redirect
+  // - FAILED → console 警告（消息已由 graph emit）
   const onStreamEnd = useCallback(() => {
     const sid = sessionIdRef.current
     if (!sid || completedRef.current) return
@@ -135,7 +135,7 @@ export default function ConversationalCreationPage({
     onStreamEnd,
   })
 
-  // URL ?initialMessage=... 가 있으면 한 번만 자동 전송
+  // 如果 URL 中有 ?initialMessage=...，则只自动发送一次
   useEffect(() => {
     if (initialMessage && !restoreRef.current && !autoSentRef.current) {
       autoSentRef.current = true

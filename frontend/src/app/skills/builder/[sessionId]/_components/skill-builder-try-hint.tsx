@@ -5,11 +5,11 @@ import { CheckIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 /**
- * "예시로 시험" try-hint (M7 — 목업 composer 위 dashed pill 차용).
+ * "用示例测试" try-hint（M7 — 借用 mock composer 上方 dashed pill）。
  *
- * 인라인 시험(스펙 §1.3 결정 1)의 진입 affordance — 클릭하면 컴포저에 시험
- * 요청 프리필을 넣는다. AssistantThread의 composerHint 슬롯으로 렌더되어
- * AssistantRuntimeProvider 컨텍스트 안에 있으므로 composer runtime 접근 가능.
+ * inline test（规范 §1.3 决策 1）的入口 affordance — 点击后在 composer 中预填测试
+ * 请求。通过 AssistantThread 的 composerHint slot 渲染，位于
+ * AssistantRuntimeProvider context 内，因此可访问 composer runtime。
  */
 export function SkillBuilderTryHint() {
   const t = useTranslations('skill.builderChat')

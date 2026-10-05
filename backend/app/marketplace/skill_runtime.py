@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 type SkillExecutionAuditKind = Literal[
     "execute_in_skill",
     "skill_evaluation",
-    # 스킬 빌더 챗의 저장 전 드래프트 시험 실행 (스펙 4.3).
+    # Skill Builder Chat 保存前的 Draft Test Run（Spec 4.3）。
     "skill_builder.draft_test",
 ]
 
@@ -427,7 +427,7 @@ def cleanup_stale_runtime_roots(data_dir: Path, *, retention_seconds: int = 3600
 def cleanup_skill_runtime_roots(*, retention_seconds: int) -> None:
     """Drop stale ``data/runtime/<thread_id>/`` directories.
 
-    BE-S9 — 본문은 ``app.scheduler``에서 이관. Wrapped in a broad
+    BE-S9 — 正文从 ``app.scheduler`` 迁移而来。Wrapped in a broad
     ``except`` so a single failure doesn't disable the cron.
     """
 

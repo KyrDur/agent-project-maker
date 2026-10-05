@@ -541,20 +541,20 @@ natural-mold/
 | LLM Key（`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` 等） | - | 推荐在 UI Credentials 中登记（ADR-013）。ENV 是 dev bootstrap 的可选值 |
 | `OPENROUTER_API_KEY` | - | Agent 图片生成（OpenRouter + Gemini Flash Image） |
 | `LANGSMITH_API_KEY` | - | LangSmith tracing（可选） |
-| `TAVILY_API_KEY` | - | Tavily 검색 / Deep Research skill용 hosted 키 (선택) |
-| `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | - | 네이버 검색 도구 |
-| `GOOGLE_API_KEY` / `GOOGLE_CSE_ID` | - | Google CSE 도구 |
-| Google OAuth2 토큰 | - | Gmail / Calendar 도구 (`scripts/google_oauth_setup.py`) |
+| `TAVILY_API_KEY` | - | Tavily 搜索 / Deep Research skill 使用的 hosted key（可选） |
+| `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` | - | Naver 搜索工具 |
+| `GOOGLE_API_KEY` / `GOOGLE_CSE_ID` | - | Google CSE 工具 |
+| Google OAuth2 令牌 | - | Gmail / Calendar 工具（`scripts/google_oauth_setup.py`） |
 
-도구별 키 설정은 [`docs/tool-setup-guide.md`](docs/tool-setup-guide.md) 참고.
+各工具的 key 设置请参考 [`docs/tool-setup-guide.md`](docs/tool-setup-guide.md)。
 
-## 🧩 구조화 데이터 (JSON-LD)
+## 🧩 结构化数据（JSON-LD）
 
-Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에 게시한다면 아래 JSON-LD를
-사용할 수 있습니다. GitHub README 렌더링은 JSON-LD를 실행하지 않으므로, 실제 웹
-페이지의 server-rendered `<script type="application/ld+json">` 요소 안에 배치하세요.
-이 schema는 repository에서 확인 가능한 사실만 사용합니다. 공식 프로필이나 문서 URL이
-추가로 생긴 뒤에만 `sameAs` 링크를 더 넣는 것이 좋습니다.
+如果将 Moldy README 发布到项目主页、文档站点或产品页面，则可以使用下面的 JSON-LD
+。GitHub README 渲染不会执行 JSON-LD，因此请将其放置在实际 Web
+页面中 server-rendered 的 `<script type="application/ld+json">` 元素内。
+该 schema 仅使用 repository 中可核实的事实。建议仅在新增正式资料页或文档 URL
+之后再添加 `sameAs` 链接。
 
 ```json
 {
@@ -563,21 +563,21 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
     {
       "@type": "Organization",
       "@id": "https://github.com/YooSuhwa/natural-mold#organization",
-      "name": "Moldy 기여자",
+      "name": "Moldy 贡献者",
       "url": "https://github.com/YooSuhwa/natural-mold",
       "sameAs": [
         "https://github.com/YooSuhwa/natural-mold"
       ],
-      "description": "Moldy 기여자는 AI 에이전트를 만들고, 채팅하고, 스케줄링할 수 있는 오픈소스 self-hostable AI 에이전트 빌더를 유지보수합니다.",
+      "description": "Moldy 贡献者负责维护一款可创建、聊天和调度 AI Agent 的开源 self-hostable AI Agent 构建器。",
       "knowsAbout": [
-        "AI 에이전트 빌더",
+        "AI Agent 构建器",
         "LangGraph",
         "deepagents",
         "FastAPI",
         "Next.js",
         "Model Context Protocol",
-        "credential 암호화",
-        "에이전트 스케줄링"
+        "credential 加密",
+        "Agent 调度"
       ]
     },
     {
@@ -585,7 +585,7 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
       "@id": "https://github.com/YooSuhwa/natural-mold#software",
       "name": "Moldy",
       "url": "https://github.com/YooSuhwa/natural-mold",
-      "description": "Moldy는 웹 UI에서 AI 에이전트를 만들고, 설정하고, 채팅하고, 스케줄링할 수 있는 오픈소스 self-hostable 노코드 AI 에이전트 빌더입니다.",
+      "description": "Moldy 是一款可在 Web UI 中创建、配置、聊天和调度 AI Agent 的开源 self-hostable 无代码 AI Agent 构建器。",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Web",
       "isAccessibleForFree": true,
@@ -612,16 +612,16 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
         "pnpm"
       ],
       "featureList": [
-        "대화형 AI 에이전트 빌더",
-        "LangGraph 및 deepagents 런타임",
-        "MCP 서버 레지스트리와 도구 가져오기",
-        "Skill 패키지 관리",
-        "JWT 및 HttpOnly cookie 인증",
-        "Cipher V2 credential 암호화",
-        "SSE 채팅 스트리밍",
-        "분기 가능한 대화",
-        "Cron 및 interval 에이전트 트리거",
-        "Skill 마켓플레이스 설치"
+        "对话式 AI Agent 构建器",
+        "LangGraph 与 deepagents runtime",
+        "MCP server registry 与工具导入",
+        "Skill package 管理",
+        "JWT 与 HttpOnly cookie 认证",
+        "Cipher V2 credential 加密",
+        "SSE chat streaming",
+        "可分支对话",
+        "Cron 与 interval Agent trigger",
+        "Skill marketplace 安装"
       ]
     },
     {
@@ -649,26 +649,26 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "Moldy는 무엇을 하나요?",
+          "name": "Moldy 能做什么？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Moldy는 자연어 요구사항을 도구, 스킬, MCP 도구, credential, 채팅 스트리밍, 스케줄 트리거를 사용할 수 있는 실행 가능한 AI 에이전트로 바꿉니다."
+            "text": "Moldy 可将自然语言需求转化为可执行的 AI Agent，并可使用工具、skill、MCP 工具、credential、chat streaming 与 schedule trigger。"
           }
         },
         {
           "@type": "Question",
-          "name": "Moldy는 credential과 시스템 권한을 어떻게 보호하나요?",
+          "name": "Moldy 如何保护 credential 与系统权限？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Moldy는 super_user가 관리하는 시스템 리소스와 사용자별 리소스를 분리하고, JWT auth, HttpOnly cookie, CSRF 보호를 사용하며, credential payload를 HKDF-SHA256과 AES-256-GCM 기반 Cipher V2로 암호화합니다."
+            "text": "Moldy 将由 super_user 管理的系统资源与用户级资源分离，使用 JWT auth、HttpOnly cookie、CSRF 防护，并通过基于 HKDF-SHA256 与 AES-256-GCM 的 Cipher V2 加密 credential payload。"
           }
         },
         {
           "@type": "Question",
-          "name": "Moldy는 어떤 기술 스택을 사용하나요?",
+          "name": "Moldy 使用什么技术栈？",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Moldy는 Next.js 16, React 19, TailwindCSS v4, FastAPI, SQLAlchemy 2.0 async, PostgreSQL 16, LangGraph 1.x, deepagents create_deep_agent를 사용합니다."
+            "text": "Moldy 使用 Next.js 16、React 19、TailwindCSS v4、FastAPI、SQLAlchemy 2.0 async、PostgreSQL 16、LangGraph 1.x、deepagents create_deep_agent。"
           }
         }
       ]
@@ -679,8 +679,8 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
 
 ## 🤝 Contributing
 
-기여 방법은 [`CONTRIBUTING.md`](CONTRIBUTING.md) 참고. 보안 이슈는
-[`SECURITY.md`](SECURITY.md) 절차대로.
+贡献方式请参考 [`CONTRIBUTING.md`](CONTRIBUTING.md)。安全问题请
+按照 [`SECURITY.md`](SECURITY.md) 中的流程处理。
 
 ## 📄 License
 
@@ -690,7 +690,7 @@ Moldy README를 프로젝트 홈페이지, 문서 사이트, 제품 페이지에
 
 <div align="center">
 
-세부 컨벤션·디자인 토큰·long-horizon 워크플로우는 [`CLAUDE.md`](CLAUDE.md)와
-[`frontend/AGENTS.md`](frontend/AGENTS.md)를 참고하세요.
+详细规范、设计 token 与 long-horizon workflow 请参考 [`CLAUDE.md`](CLAUDE.md) 与
+[`frontend/AGENTS.md`](frontend/AGENTS.md)。
 
 </div>

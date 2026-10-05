@@ -51,9 +51,7 @@ class ResourcePublicationSummaryOut(BaseModel):
         "disabled",
     ]
     item_id: uuid.UUID | None = None
-    visibility: Literal[
-        "private", "restricted", "public", "unlisted", "system"
-    ] | None = None
+    visibility: Literal["private", "restricted", "public", "unlisted", "system"] | None = None
     status: Literal["draft", "published", "deprecated", "disabled"] | None = None
     is_listed: bool = False
     latest_version_id: uuid.UUID | None = None
@@ -155,9 +153,9 @@ class MarketplaceItemOut(BaseModel):
     origin_summary: ResourceOriginSummaryOut | None = None
     publication_summary: ResourcePublicationSummaryOut
     installation: MarketplaceInstallationSummary
-    # owner / super_user 시점에만 채워진다 (frontend 가 ACL revoke UI 에서
-    # 사용). 다른 user 응답에서는 None — list 자체가 leak 되면 enumeration
-    # oracle 위반.
+    # 仅在 owner / super_user 视角下填充（frontend 在 ACL revoke UI 中
+    # 使用）。其他 user 的响应中为 None — 若 list 本身 leak，就会违反 enumeration
+    # oracle。
     acl_user_ids: list[uuid.UUID] | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -208,9 +206,7 @@ class InstallMarketplaceItemIn(BaseModel):
     name_override: str | None = None
     credential_bindings: dict[str, uuid.UUID] = Field(default_factory=dict)
     install_missing_credentials: Literal["reject", "needs_setup"] = "needs_setup"
-    install_mode: Literal[
-        "reuse_or_update", "new_copy", "overwrite_existing"
-    ] = "reuse_or_update"
+    install_mode: Literal["reuse_or_update", "new_copy", "overwrite_existing"] = "reuse_or_update"
 
 
 class UpdateMarketplaceInstallationIn(BaseModel):
@@ -264,9 +260,9 @@ class CreateAgentFromBlueprintIn(BaseModel):
     model_id: uuid.UUID | None = None
     model_fallback_ids: list[uuid.UUID] | None = None
     credential_bindings: dict[str, uuid.UUID] = Field(default_factory=dict)
-    dependency_strategy: Literal[
-        "reuse_existing", "install_missing", "always_new"
-    ] = "install_missing"
+    dependency_strategy: Literal["reuse_existing", "install_missing", "always_new"] = (
+        "install_missing"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -334,10 +330,10 @@ class PublishAgentIn(BaseModel):
 class MarketplaceItemPatchIn(BaseModel):
     """Metadata-only PATCH (no version mutation).
 
-    ``visibility`` 는 새 version 을 만들지 않는 경량 전환 — public ↔ private
-    ↔ unlisted 토글 (예: 사용자가 잘못 public 으로 publish 한 것을 private
-    으로 되돌리는 경로). ``restricted`` 로 바꾸려면 ACL endpoint 도 함께
-    호출해야 한다 (ACL 비어 있으면 ``marketplace_acl_required``).
+    ``visibility`` 是不会创建新 version 的轻量切换 — public ↔ private
+    ↔ unlisted toggle（例如：用户误将资源 public publish 后再改回 private
+    的路径）。若要改为 ``restricted``，还必须同时调用 ACL endpoint
+    （ACL 为空时返回 ``marketplace_acl_required``）。
     """
 
     name: str | None = None

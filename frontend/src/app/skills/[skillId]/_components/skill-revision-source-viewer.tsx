@@ -21,8 +21,8 @@ import { renderSkillStudioTabShell } from './skill-studio-tab-shell'
 const SKILL_MD = 'SKILL.md'
 
 /**
- * 소스 탭의 리비전 read-only 모드 (`?revision=`) — 스냅샷 파일 목록/내용을
- * 보여준다. 저장/삭제 없음, 바이너리는 목록에만 표시(내용 404 fail-closed).
+ * source tab 的 revision read-only 模式（`?revision=`）— 显示 snapshot 文件列表/内容。
+ * 不提供保存/删除，binary 只在列表中显示（内容 404 fail-closed）。
  */
 export function SkillRevisionSourceViewer({
   skillId,
@@ -87,8 +87,8 @@ export function SkillRevisionSourceViewer({
     })
   }
 
-  // 에러(존재하지 않는/타인 리비전, 비 UUID 422 등)는 빈 스냅샷처럼 위장하지
-  // 않는다 — 'noTextFiles' 빈 상태로 렌더되면 정상 빈 스냅샷과 구분 불가 (R5).
+  // 对错误（不存在/他人的 revision、非 UUID 422 等）不会伪装成空 snapshot，
+  // 否则若渲染为 'noTextFiles' 空状态，就无法与正常的空 snapshot 区分（R5）。
   if (filesError || detailError) {
     return renderSkillStudioTabShell({
       body: (

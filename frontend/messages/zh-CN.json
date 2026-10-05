@@ -3427,12 +3427,12 @@
       "targetCount": "{count} 目标",
       "noIssues": "没有记录兼容性问题。",
       "target": {
-        "openaiCodex": "OpenAI/法典",
+        "openaiCodex": "OpenAI/Codex",
         "claudeCode": "Claude·科德",
         "vercelAgentSkills": "Vercel 智能体 技能"
       },
       "status": {
-        "pass": "通行证",
+        "pass": "通过",
         "warning": "警告",
         "error": "错误",
         "unknown": "未知"
@@ -3679,7 +3679,7 @@
       },
       "tone": {
         "pending": "未验证",
-        "pass": "通行证",
+        "pass": "通过",
         "good": "好",
         "warn": "警告",
         "error": "错误"

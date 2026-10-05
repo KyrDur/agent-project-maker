@@ -1,4 +1,4 @@
-"""Builder 라우터 — v3 채팅 UI 통합 (POST /messages, /messages/resume, GET /image)."""
+"""Builder router — v3 Chat UI 集成 (POST /messages, /messages/resume, GET /image)。"""
 
 from __future__ import annotations
 
@@ -29,32 +29,32 @@ from app.services import builder_service
 
 
 class BuilderMessageRequest(BaseModel):
-    """Builder v3 — 메시지 전송 요청."""
+    """Builder v3 — 消息发送请求。"""
 
     locale: BuilderLocale | None = None
     content: str = Field(..., min_length=1, max_length=4000)
 
 
 class BuilderResumeRequest(BaseModel):
-    """Builder v3 — interrupt 응답 요청. 표준 HiTL wire (ADR-012).
+    """Builder v3 — interrupt 响应请求。标准 HiTL wire (ADR-012)。
 
-    표준 ``decisions: list[Decision]`` 만 수용한다 (clean break — extra
-    field 는 422). router 가 ``decisions_to_builder_response`` 어댑터로
-    builder graph 가 기대하는 native shape (dict | str) 로 변환한다.
+    仅接受标准 ``decisions: list[Decision]``（clean break — extra
+    field 返回 422）。router 通过 ``decisions_to_builder_response`` adapter
+    转换为 builder graph 期待的 native shape (dict | str)。
 
-    Decision → builder native 변환:
+    Decision → builder native 转换：
     - ``approve``                   → ``{"approved": True}``      (approval phase)
     - ``reject(message)``           → ``{"approved": False, "revision_message": ...}``
     - ``respond(message)``          → ``"..."``                    (ask_user / image_*)
-    - ``edit(edited_action)``       → ``{"approved": True}``       (builder 는 edit 미사용)
+    - ``edit(edited_action)``       → ``{"approved": True}``       (builder 不使用 edit)
     """
 
     model_config = {"extra": "forbid"}
 
     locale: BuilderLocale | None = None
-    decisions: list[Decision] = Field(..., min_length=1, description="표준 HiTL decisions")
+    decisions: list[Decision] = Field(..., min_length=1, description="标准 HiTL decisions")
     display_text: str | None = Field(None, max_length=200)
-    # SSE interrupt 이벤트의 interrupt_id (stale 카드로 응답 시 차단용)
+    # SSE interrupt event 的 interrupt_id（用于阻止 stale 卡片响应）
     interrupt_id: str | None = Field(None, max_length=200)
 
 
@@ -70,7 +70,7 @@ async def start_build(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ):
-    """빌드 세션을 시작한다."""
+    """启动 Build Session。"""
     return await builder_service.create_session(db, user.id, data.user_request)
 
 
@@ -80,7 +80,7 @@ async def get_build_session(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """빌드 세션 상태를 조회한다."""
+    """查询 Build Session 状态。"""
     session = await builder_service.get_session(db, session_id, user.id)
     if not session:
         raise session_not_found()
@@ -99,24 +99,24 @@ async def confirm_build(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ):
-    """빌드를 확인하고 실제 에이전트를 생성한다.
+    """确认 Build 并创建实际 Agent。
 
-    멱등성 보장:
-    - COMPLETED + agent_id 있음 → 기존 Agent 반환 (중복 생성 방지)
-    - CONFIRMING → 409 (다른 요청이 처리 중)
-    - PREVIEW → CONFIRMING 원자적 전환 후 Agent 생성
+    保证幂等性：
+    - COMPLETED + 有 agent_id → 返回现有 Agent（防止重复创建）
+    - CONFIRMING → 409（其他请求处理中）
+    - PREVIEW → 原子切换到 CONFIRMING 后创建 Agent
     """
     session = await builder_service.get_session(db, session_id, user.id)
     if not session:
         raise session_not_found()
 
-    # 멱등: 이미 완료된 세션이면 기존 Agent 반환
+    # 幂等：若 Session 已完成，则返回现有 Agent
     if session.status == BuilderStatus.COMPLETED and session.agent_id:
         existing_agent = await builder_service.get_agent_by_id(db, session.agent_id)
         if existing_agent:
             return _agent_to_response(existing_agent)
 
-    # 동시 요청 방지: 이미 CONFIRMING이면 409
+    # 防止并发请求：若已是 CONFIRMING，则返回 409
     if session.status == BuilderStatus.CONFIRMING:
         raise session_confirming()
 
@@ -125,12 +125,12 @@ async def confirm_build(
     if not session.draft_config:
         raise no_draft_config()
 
-    # 원자적 PREVIEW → CONFIRMING 전환
+    # 原子 PREVIEW → CONFIRMING 切换
     claimed = await builder_service.claim_for_confirming(db, session_id, user.id)
     if not claimed:
         raise session_confirming()
 
-    # 세션을 다시 로드 (상태 전환 후 fresh 상태)
+    # 重新加载 Session（状态切换后的 fresh 状态）
     session = await builder_service.get_session(db, session_id, user.id)
     if not session:
         raise session_not_found()
@@ -150,12 +150,12 @@ async def confirm_build(
         raise agent_creation_failed() from exc
 
     if not agent:
-        raise agent_creation_failed("에이전트를 생성할 수 없습니다")
+        raise agent_creation_failed("无法创建 Agent")
     return _agent_to_response(agent)
 
 
 # ---------------------------------------------------------------------------
-# Builder v3 — 채팅 UI 통합 엔드포인트
+# Builder v3 — Chat UI 集成 endpoint
 # ---------------------------------------------------------------------------
 
 _SSE_HEADERS = {
@@ -174,10 +174,10 @@ async def post_message(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ):
-    """Builder v3 — 사용자 메시지를 전송하고 SSE 스트림을 받는다.
+    """Builder v3 — 发送用户消息并接收 SSE stream。
 
-    첫 메시지: 그래프를 처음부터 실행 (Phase 1부터).
-    후속 메시지: 그래프가 진행 중이면 messages만 추가.
+    第一条消息：从头执行 graph（从 Phase 1 开始）。
+    后续消息：如果 graph 正在进行，仅追加 messages。
     """
     session = await builder_service.get_session(db, session_id, user.id)
     if not session:
@@ -204,7 +204,7 @@ async def resume_message(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ):
-    """Builder v3 — interrupt 응답을 전달하고 그래프를 재개한다."""
+    """Builder v3 — 传递 interrupt 响应并恢复 graph。"""
     session = await builder_service.get_session(db, session_id, user.id)
     if not session:
         raise session_not_found()
@@ -230,9 +230,9 @@ async def serve_builder_image(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
-    """Phase 6에서 생성한 임시 이미지 미리보기를 서빙한다.
+    """提供 Phase 6 生成的临时图像预览。
 
-    세션 소유자만 접근 가능 (다른 사용자의 builder 이미지 접근 차단).
+    仅 Session owner 可访问（阻止访问其他用户的 builder 图像）。
     """
     from app.agent_runtime.builder_v3.image_gen import resolve_local_path
 

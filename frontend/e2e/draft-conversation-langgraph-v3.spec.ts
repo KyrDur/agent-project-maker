@@ -869,7 +869,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await expect(page.getByText(EMPTY_STATE_TEXT)).toBeVisible({ timeout: 20_000 })
 
-      const prompt = `안녕? E2E_FIRST_TURN_FLICKER_${Date.now()}`
+      const prompt = `你好？ E2E_FIRST_TURN_FLICKER_${Date.now()}`
       await installEmptyStateReappearanceObserver(page, prompt)
       await installMessageDisappearanceObserver(page, prompt, FIRST_TURN_RESPONSE_TEXT)
       await sendMessage(page, prompt)
@@ -913,7 +913,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     const setup = await setupLangGraphV3Agent(request)
 
     try {
-      // 1) opener 대화에서 시작 → "新聊天"으로 draft(`/new`) 진입.
+      // 1) 从 opener 对话开始 → 通过 "新聊天" 进入 draft(`/new`)。
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       await expect(page).toHaveURL(
         new RegExp(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}$`),
@@ -925,8 +925,8 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await expect(page.getByText(EMPTY_STATE_TEXT)).toBeVisible({ timeout: 20_000 })
 
-      // 2) 첫 메시지 전송 → draft가 real 대화로 승격되고 URL이 replaceState로 교체된다.
-      const prompt = `안녕? E2E_BACK_NAV_${Date.now()}`
+      // 2) 发送第一条消息 → draft 升级为 real 对话，URL 通过 replaceState 被替换。
+      const prompt = `你好？ E2E_BACK_NAV_${Date.now()}`
       await sendMessage(page, prompt)
       await expect(page).toHaveURL(
         new RegExp(`/agents/${setup.parentAgentId}/conversations/(?!new$)[^/]+$`),
@@ -941,9 +941,9 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await waitRunIdle(request, promotedConversationId)
 
-      // 3) 뒤로가기. draft route는 replaceState로 교체됐으므로 history 직전 엔트리는
-      //    opener 대화여야 한다. 회귀 버그(OLD URL의 stale state 재사용)에서는 엉뚱한
-      //    대화나 `/new`로 돌아갔다.
+      // 3) 返回。由于 draft route 已通过 replaceState 替换，history 中前一个条目应为
+      //    opener 对话。在回归 bug（复用 OLD URL 的 stale state）中会错误地
+      //    返回到其他对话或 `/new`。
       await page.goBack()
       await expect(page).toHaveURL(
         new RegExp(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}$`),
@@ -975,7 +975,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       })
       await expect(page.getByText(EMPTY_STATE_TEXT)).toBeVisible({ timeout: 20_000 })
 
-      const prompt = `안녕? E2E_REOPEN_DRAFT_${Date.now()}`
+      const prompt = `你好？ E2E_REOPEN_DRAFT_${Date.now()}`
       await sendMessage(page, prompt)
       await expect(page).toHaveURL(
         new RegExp(`/agents/${setup.parentAgentId}/conversations/(?!new$)[^/]+$`),
@@ -1071,7 +1071,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
 
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
-      const firstPrompt = `안녕? E2E_SECOND_TURN_FIRST_${Date.now()}`
+      const firstPrompt = `你好？ E2E_SECOND_TURN_FIRST_${Date.now()}`
       await sendMessage(page, firstPrompt)
       await expect(page.getByText(FIRST_TURN_RESPONSE_TEXT).last()).toBeVisible({
         timeout: 30_000,
@@ -1079,7 +1079,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await waitRunIdle(request, setup.conversationId)
       await waitForNoVisibleStopButton(page)
 
-      const secondPrompt = `반가워 E2E_SECOND_TURN_${Date.now()}`
+      const secondPrompt = `很高兴见到你 E2E_SECOND_TURN_${Date.now()}`
       await sendMessage(page, secondPrompt)
       await expect(page.getByText(secondPrompt)).toBeVisible({ timeout: 10_000 })
       const assistantMessages = page.locator('[data-moldy-message-role="assistant"]').filter({
@@ -1107,8 +1107,8 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       const unique = Date.now()
-      const firstPrompt = `안녕? E2E_USER_TEXT_FIRST_${unique}`
-      const secondPrompt = `반가워 E2E_VISUAL_SLOW_STREAM E2E_USER_TEXT_SECOND_${unique}`
+      const firstPrompt = `你好？ E2E_USER_TEXT_FIRST_${unique}`
+      const secondPrompt = `很高兴见到你 E2E_VISUAL_SLOW_STREAM E2E_USER_TEXT_SECOND_${unique}`
 
       await sendMessage(page, firstPrompt)
       await expect(page.getByText(FIRST_TURN_RESPONSE_TEXT).last()).toBeVisible({
@@ -1212,9 +1212,9 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expectConversationMessagesStatus(request, setup.conversationId, 200)
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       const unique = Date.now()
-      const originalPrompt = `안녕? E2E_BRANCH_ORIGINAL_${unique}`
-      const secondPrompt = `바보 E2E_SLOW_STREAM E2E_BRANCH_SECOND_${unique}`
-      const thirdPrompt = `반가워 E2E_VISUAL_SLOW_STREAM E2E_BRANCH_THIRD_${unique}`
+      const originalPrompt = `你好？ E2E_BRANCH_ORIGINAL_${unique}`
+      const secondPrompt = `笨蛋 E2E_SLOW_STREAM E2E_BRANCH_SECOND_${unique}`
+      const thirdPrompt = `很高兴见到你 E2E_VISUAL_SLOW_STREAM E2E_BRANCH_THIRD_${unique}`
 
       await sendMessage(page, originalPrompt)
       await expect(page.getByText(FIRST_TURN_RESPONSE_TEXT).last()).toBeVisible({

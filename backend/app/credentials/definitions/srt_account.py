@@ -21,7 +21,7 @@ definition = CredentialDefinition(
             display_name="Username",
             kind=FieldKind.STRING,
             required=True,
-            description="SRT 회원번호 또는 이메일",
+            description="SRT 会员号或电子邮箱",
         ),
         FieldDef(
             name="password",

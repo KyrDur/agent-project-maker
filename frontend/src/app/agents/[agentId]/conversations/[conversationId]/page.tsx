@@ -91,8 +91,8 @@ export default function ChatPage({
   const messageEnvelopeConversationId = routeConversationId
   const shouldLoadMessageEnvelope = !isDraftConversation
   const isPromotedDraftRoute = conversationId === 'new' && !isDraftConversation
-  // W7-4 — envelope에서 conversation 누적 비용을 가져와 토큰 바에 흘림. 같은
-  // query observer 하나에서 messages와 cost를 함께 파생해 채팅 트리 리렌더를 줄인다.
+  // W7-4 — 从 envelope 获取 conversation 累计成本并传到 token bar。同一个
+  // query observer 中同时派生 messages 和 cost，以减少 chat tree rerender。
   const { data: envelope, isLoading: messagesLoading } = useMessagesEnvelope(
     messageEnvelopeConversationId,
     shouldLoadMessageEnvelope,
@@ -105,7 +105,7 @@ export default function ChatPage({
   const setRightRail = useSetAtom(chatRightRailAtom)
   const setConversationRuntimeStatus = useSetAtom(conversationRuntimeStatusAtom)
 
-  // 캐시에서 현재 대화 제목만 추출 (전체 목록 구독 방지)
+  // 仅从 cache 提取当前 conversation title（避免订阅整个列表）
   const currentConversation = queryClient
     .getQueryData<Conversation[]>(conversationKeys.list(agentId))
     ?.find((c) => c.id === routeConversationId)
@@ -140,16 +140,16 @@ export default function ChatPage({
     startedConversationIdRef.current = null
   }, [agentId, conversationId, setSessionTokenUsage])
 
-  // M4 — read 처리 effect.
-  // ``currentConversation``은 (전체 목록 구독을 피하려고) 캐시에서 동기적으로
-  // 읽으므로 이 컴포넌트는 list 쿼리를 구독하지 않는다. 따라서 이 effect가
-  // 새 unread를 보고 다시 도는 트리거는 다음 둘뿐이다:
-  //   1) ``routeConversationId`` 변경(대화 전환),
-  //   2) navigator 무효화로 list 쿼리가 refetch되어 ``unread_count``가 바뀌면서
-  //      리렌더가 발생 → 이 effect의 ``currentConversation?.unread_count`` 의존성이
-  //      갱신될 때.
-  // markedReadKey가 ``${id}:${unreadCount}``라서 같은 unread 값에 대한 중복
-  // mark는 한 번으로 억제되고, unread가 늘면 다시 한 번만 mark된다.
+  // M4 — read 处理 effect。
+  // ``currentConversation`` 为避免订阅整个列表，会从 cache 同步
+  // 读取，因此该 component 不订阅 list query。于是这个 effect
+  // 再次看到新的 unread 并运行的 trigger 只有以下两个：
+  //   1) ``routeConversationId`` 变化（切换 conversation），
+  //   2) navigator invalidation 导致 list query refetch，``unread_count`` 变化并
+  //      发生 rerender → 这个 effect 的 ``currentConversation?.unread_count`` 依赖项
+  //      更新时。
+  // 由于 markedReadKey 是 ``${id}:${unreadCount}``，对相同 unread 值的重复
+  // mark 会被抑制为一次，unread 增加时只会再次 mark 一次。
   useEffect(() => {
     if (isDraftConversation) return
     if (messagesLoading || isMarkingRead) return
@@ -252,11 +252,11 @@ export default function ChatPage({
           ...conversationDetailQueryOptions(createdConversationId),
         })
         .then((conversation) => {
-          // M5 — optimistic upsert로 navigator(list/agent pages/global pages)를
-          // 즉시 채운다. 여기서 broad invalidate를 또 호출하면 방금 upsert한
-          // 페이지/summary가 곧장 stale 처리되어 refetch storm이 나고 optimistic
-          // upsert가 무효화된다. navigator 최종 정합은 ``onStreamEnd``가 책임지므로
-          // 여기서는 추가 무효화를 하지 않는다.
+          // M5 — 通过 optimistic upsert 立即填充 navigator(list/agent pages/global pages)，
+          // 如果这里再次调用 broad invalidate，刚刚 upsert 的
+          // page/summary 会立刻被标记为 stale，引发 refetch storm，并使 optimistic
+          // upsert 失效。navigator 的最终一致性由 ``onStreamEnd`` 负责，因此
+          // 这里不再执行额外 invalidation。
           upsertConversationNavigatorCache(
             queryClient,
             conversation,
@@ -270,8 +270,8 @@ export default function ChatPage({
           )
         })
         .catch(() => {
-          // detail fetch 실패로 upsert를 못 했으니, 이때만 navigator를 무효화해
-          // 다음 fetch로 새 대화가 목록에 들어오게 한다.
+          // 由于 detail fetch 失败，无法 upsert，因此仅此时 invalidate navigator，
+          // 让下一次 fetch 将新 conversation 加入列表。
           invalidateConversationNavigators(queryClient, agentId, createdConversationId)
         })
     },
@@ -279,7 +279,7 @@ export default function ChatPage({
   )
 
   const onStreamEnd = useCallback(() => {
-    // draft에서 시작된 스트림은 ref에 기록된 실제 대화 id로 detail까지 무효화한다
+    // 从 draft 开始的 stream 会使用记录在 ref 中的真实 conversation id，连 detail 一并 invalidate
     const settledConversationId = isDraftConversation
       ? startedConversationIdRef.current
       : routeConversationId
@@ -371,7 +371,7 @@ export default function ChatPage({
     syncPromotedDraftNavigator,
   ])
 
-  // 채팅 도구 pill 아이콘용 — 이 에이전트 도구의 toolName → registry icon_id.
+  // 用于 chat tool pill icon — 该 Agent tool 的 toolName → registry icon_id。
   const toolIconIds = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {}
     for (const tool of agent?.tools ?? []) {
@@ -380,7 +380,7 @@ export default function ChatPage({
     return map
   }, [agent?.tools])
 
-  // MCP 도구명 → 서버 표시명. 도구 pill의 플러그 아이콘 + 서버 배지 근거.
+  // MCP tool name → server display name。作为 tool pill 的 plugin icon + server badge 依据。
   const mcpServerNames = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {}
     for (const mcpTool of agent?.mcp_tools ?? []) {
@@ -462,9 +462,7 @@ export default function ChatPage({
                   runtimeReadiness?.credential?.name ?? agent?.llm_credential_name
                 }
                 runtimeReady={
-                  typeof runtimeReadiness?.ready === 'boolean'
-                    ? runtimeReadiness.ready
-                    : undefined
+                  typeof runtimeReadiness?.ready === 'boolean' ? runtimeReadiness.ready : undefined
                 }
                 showContextGauge
                 contextWindow={agent?.model?.context_window ?? null}

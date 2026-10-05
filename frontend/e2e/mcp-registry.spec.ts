@@ -164,7 +164,7 @@ test.describe('MCP server wizard — From Registry', () => {
     await page.getByRole('button', { name: '继续验证' }).click()
 
     // Step 2: Auth — credential filter limits to http_bearer.
-    await expect(page.getByText('http_bearer 타입 자격증명으로 필터링되었습니다.')).toBeVisible()
+    await expect(page.getByText('已按 http_bearer 类型凭据筛选。')).toBeVisible()
     // Pick the bearer credential
     await page.getByRole('combobox').click()
     await page.getByRole('option', { name: /GitHub PAT/i }).click()
@@ -172,7 +172,7 @@ test.describe('MCP server wizard — From Registry', () => {
     await page.getByRole('button', { name: '继续工具' }).click()
 
     // Step 3: Discover + save
-    await expect(page.getByText('1개 도구 발견됨')).toBeVisible()
+    await expect(page.getByText('发现 1 个工具')).toBeVisible()
     await expect(page.getByRole('checkbox')).toHaveCount(0)
     await page.getByRole('button', { name: '保存' }).click()
 

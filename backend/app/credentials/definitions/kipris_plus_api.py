@@ -18,7 +18,7 @@ definition = CredentialDefinition(
             kind=FieldKind.PASSWORD,
             required=True,
             type_options={"password": True},
-            description="KIPRIS Plus 서비스 키 (ServiceKey)",
+            description="KIPRIS Plus 服务密钥 (ServiceKey)",
         ),
     ],
 )

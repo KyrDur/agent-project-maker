@@ -87,8 +87,8 @@ test.describe('Skills page', () => {
     await page.goto('/skills')
     await expect(page.getByText('Bulk Target A')).toBeVisible()
 
-    // 행 체크박스로 선택(전체선택 아님) — 체크 클릭이 행 내비게이션으로
-    // 새면 안 된다(리뷰 R에서 발견된 실버그의 회귀 가드).
+    // 通过 row checkbox 选择（不是全选）— 点击 checkbox 不应触发行导航
+    // 泄漏（review R 中发现的真实 bug 回归守卫）。
     for (const name of ['Bulk Target A', 'Bulk Target B']) {
       await page
         .getByRole('row')
@@ -109,7 +109,7 @@ test.describe('Skills page', () => {
     await expect.poll(() => deleted.length, { timeout: 15_000 }).toBe(2)
     await expect(page.getByText('已删除 2 个 skill')).toBeVisible()
     await expect(page.getByText('Bulk Target A')).toBeHidden()
-    // 삭제 후 선택 상태가 리셋된다 (key remount 계약).
+    // 删除后选择状态会重置（key remount 契约）。
     await expect(page.getByTestId('skill-bulk-bar')).toBeHidden()
   })
 })

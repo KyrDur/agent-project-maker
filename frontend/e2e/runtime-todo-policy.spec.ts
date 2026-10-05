@@ -287,7 +287,7 @@ test.describe('stored runtime Todo policy E2E', () => {
       await waitForRunStatus(request, disabledConversationId, disabledRunId, 'completed')
       await expect(page.getByText(TODO_POLICY_FINAL, { exact: true })).toBeVisible()
       await expect(page.getByText('Plan', { exact: true })).toHaveCount(0)
-      await expect(page.getByText('작업 목록', { exact: true })).toHaveCount(0)
+      await expect(page.getByText('任务列表', { exact: true })).toHaveCount(0)
       await captureTodoAbsentState(page, testInfo)
       await expectWriteTodosTrace(request, disabledConversationId, todoPolicyToolCallId(1), false)
       const disabledRun = await runPolicyEvidence(request, disabledConversationId, disabledRunId)

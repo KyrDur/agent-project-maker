@@ -85,14 +85,14 @@
 
 ## 4. 검증 결과 (최종)
 
-| 게이트 | 결과 | 비고 |
+| Gate | 结果 | 备注 |
 |---|:---:|---|
 | `python scripts/check_branding.py` | PASS | 0 violations |
 | `cd backend && uv run pytest tests/` | PASS | **480 passed**, 1 deselected, 1 warning (TestRequestSpec 무해) |
 | `cd backend && uv run ruff check .` | PASS | 0 errors |
 | `cd frontend && pnpm lint` | PASS | 0 errors, 1 informational warn |
 | `cd frontend && pnpm build` | PASS | 16 routes |
-| `alembic upgrade head` | DEFERRED | 사용자 확인 후 실행 (data-loss 액션) |
+| `alembic upgrade head` | DEFERRED | 用户确认后执行（data-loss 操作） |
 | Playwright E2E | DEFERRED | 4 specs 작성, 백엔드 기동 필요 |
 
 ---

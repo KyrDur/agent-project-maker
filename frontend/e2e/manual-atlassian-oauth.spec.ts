@@ -96,7 +96,7 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
     console.log('Selected Atlassian Rovo registry entry')
     await expect(page.getByLabel('名称')).toHaveValue(/Atlassian|Jira/)
     await page.getByRole('button', { name: '继续验证' }).click()
-    await expect(page.getByText('mcp_oauth2 타입 자격증명으로 필터링되었습니다.')).toBeVisible()
+    await expect(page.getByText('已按 mcp_oauth2 类型凭据筛选。')).toBeVisible()
     await capture(page, '02-auth-tab-oauth-actions.png')
 
     console.log('Creating MCP OAuth credential')

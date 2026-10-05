@@ -1,4 +1,4 @@
-"""DART (전자공시) Open API key."""
+"""DART（电子公示）Open API key."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ definition = CredentialDefinition(
             kind=FieldKind.PASSWORD,
             required=True,
             type_options={"password": True},
-            description="OpenDART 인증키 (crtfc_key)",
+            description="OpenDART 认证密钥 (crtfc_key)",
         ),
     ],
 )

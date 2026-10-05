@@ -44,7 +44,7 @@ export function SettingsPanel({
   }
 
   function handleRemove() {
-    // 이미지 제거 API는 다음 PR — placeholder
+    // image delete API 放到下一个 PR — placeholder
     toast.info(tc('comingSoon.default'))
   }
 

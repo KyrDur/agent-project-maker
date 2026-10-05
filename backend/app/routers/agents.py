@@ -51,18 +51,18 @@ def _sub_agent_image_url(sub: Agent) -> str | None:
 
 
 def _require_standard_profile(agent: Agent) -> None:
-    """히든 런타임 에이전트(skill builder 등)는 변조 불가 — enumeration-safe 404.
+    """Hidden Runtime Agent（skill builder 等）不可修改 — enumeration-safe 404。
 
-    404로 통일해 존재 여부 oracle을 만들지 않는다 (없음/숨김 응답 동일).
-    GET 단건은 빌더 챗 서피스가 에이전트 메타를 읽어야 하므로 막지 않는다.
+    统一返回 404，避免形成存在性 oracle（不存在/隐藏响应相同）。
+    单条 GET 不阻断，因为 Builder Chat surface 需要读取 Agent metadata。
     """
     if agent.runtime_profile != AGENT_RUNTIME_PROFILE_STANDARD:
         raise agent_not_found()
 
 
 def _tool_icon_id(definition_key: str) -> str | None:
-    """도구 registry 정의에서 icon_id를 해석. Tool ORM에는 icon_id 컬럼이 없고
-    definition_key → 메모리 registry 정의가 ground truth다."""
+    """从工具 registry 定义中解析 icon_id。Tool ORM 没有 icon_id 列，
+    definition_key → 内存 registry 定义才是 ground truth。"""
     definition = tool_registry.get(definition_key)
     return definition.icon_id if definition is not None else None
 
@@ -358,7 +358,7 @@ async def get_agent_image(
 async def list_middlewares(locale: str = "zh-CN") -> list[dict[str, Any]]:
     """Return the available middleware catalog.
 
-    deepagents가 자동 추가하는 빌트인 미들웨어는 제외한다.
+    排除 deepagents 自动添加的 built-in middleware。
     """
     from app.catalog_i18n import middleware_display
 

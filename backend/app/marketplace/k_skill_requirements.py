@@ -81,9 +81,9 @@ def _hosted_proxy_req(
     label: str,
     description: str,
 ) -> dict[str, Any]:
-    """운영자 proxy 키를 거치는 skill — 사용자는 별도 credential 등록 불필요
-    (PRD §9 ``hosted_proxy`` 상태). UI는 "Uses hosted proxy" 칩만 표시하고
-    install wizard에서 credential dropdown을 띄우지 않는다.
+    """通过 Operator proxy key 的 skill — 用户无需单独注册 credential
+    (PRD §9 ``hosted_proxy`` 状态)。UI 只显示 "Uses hosted proxy" chip，
+    install wizard 中不显示 credential dropdown。
     """
 
     return {
@@ -94,8 +94,8 @@ def _hosted_proxy_req(
         "description": description,
         "fields": ["base_url"],
         "injection": "env",
-        # ``system_dependency`` 표기 (Spec §10.8). 사용자 binding 흐름에서
-        # 제외되고 시스템 credential resolver가 처리한다.
+        # ``system_dependency`` 标记 (Spec §10.8)。从用户 binding 流程中
+        # 排除，并由 system credential resolver 处理。
         "scope": "system_dependency",
         "env_map": {"base_url": "KSKILL_PROXY_BASE_URL"},
     }
@@ -107,10 +107,10 @@ def _manual_login_req(
     label: str,
     description: str,
 ) -> dict[str, Any]:
-    """사용자가 브라우저/로컬 앱에서 직접 로그인해야 하는 skill (PRD §9
-    ``manual_login``). UI는 "Manual login required" 칩으로 안내하고 install
-    wizard credential step을 skip한다 — 실제 인증은 skill 실행 시점에 외부
-    환경에서 이루어진다.
+    """用户必须在浏览器/本地应用中直接登录的 skill (PRD §9
+    ``manual_login``)。UI 以 "Manual login required" 提示标记说明，并在 install
+    wizard credential step 中 skip — 实际认证在 skill 执行时由外部
+    环境完成。
     """
 
     return {
@@ -135,7 +135,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "srt_login",
             definition_key="srt_account",
             label="SRT账户",
-            description="SRT 예매에 사용할 회원 자격증명.",
+            description="用于 SRT 订票的会员 Credential。",
             env_user="KSKILL_SRT_ID",
             env_pass="KSKILL_SRT_PASSWORD",  # noqa: S106 — env var *name*, not a value
         ),
@@ -144,8 +144,8 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
         _account_req(
             "ktx_login",
             definition_key="ktx_account",
-            label="KTX (Korail) 계정",
-            description="KTX 예매에 사용할 Korail 회원 자격증명.",
+            label="KTX (Korail) 账户",
+            description="用于 KTX 订票的 Korail 会员 Credential。",
             env_user="KSKILL_KTX_ID",
             env_pass="KSKILL_KTX_PASSWORD",  # noqa: S106 — env var *name*, not a value
         ),
@@ -155,7 +155,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "foresttrip_login",
             definition_key="foresttrip_account",
             label="森林旅行账户",
-            description="국립휴양림 예약 조회용 회원 자격증명.",
+            description="用于国家休养林预约查询的会员 Credential。",
             env_user="KSKILL_FORESTTRIP_ID",
             env_pass="KSKILL_FORESTTRIP_PASSWORD",  # noqa: S106 — env var *name*, not a value
         ),
@@ -166,7 +166,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "kipris_key",
             definition_key="kipris_plus_api",
             label="KIPRIS Plus API",
-            description="KIPRIS Plus 서비스 키.",
+            description="KIPRIS Plus 服务密钥。",
             env_name="KSKILL_KIPRIS_KEY",
         ),
     ],
@@ -175,7 +175,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "dart_key",
             definition_key="dart_api",
             label="DART Open API",
-            description="OpenDART 인증키.",
+            description="OpenDART 认证密钥。",
             env_name="KSKILL_DART_KEY",
         ),
     ],
@@ -184,7 +184,7 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "odsay_key",
             definition_key="odsay_api",
             label="ODsay API",
-            description="ODsay LAB 발급 apiKey.",
+            description="ODsay LAB 签发的 apiKey.",
             env_name="KSKILL_ODSAY_KEY",
         ),
     ],
@@ -198,8 +198,8 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             "required": False,
             "label": "Coupang Partners (optional)",
             "description": (
-                "쿠팡 파트너스 어필리에이트 키. 미설정 시 검색은 동작하나 "
-                "어필리에이트 링크 생성이 비활성화됨."
+                "Coupang Partners Affiliate Key。未配置时搜索仍可工作，但"
+                "Affiliate Link 生成功能将被禁用。"
             ),
             "fields": ["access_key", "secret_key"],
             "injection": "env",
@@ -210,20 +210,20 @@ K_SKILL_REQUIREMENT_MAP: dict[str, list[dict[str, Any]]] = {
             },
         }
     ],
-    # Hosted proxy — PRD §9 ``hosted_proxy``. 운영자 proxy key 사용.
+    # Hosted proxy — PRD §9 ``hosted_proxy``。使用 Operator proxy key。
     "seoul-density": [
         _hosted_proxy_req(
             "seoul_density_proxy",
-            label="서울 실시간 인구 proxy",
-            description="운영자가 발급한 서울 열린데이터광장 proxy를 통해 호출.",
+            label="首尔实时人口 proxy",
+            description="通过 Operator 签发的首尔开放数据广场 proxy 调用。",
         ),
     ],
-    # Manual login — PRD §9 ``manual_login``. 외부 앱/브라우저 세션 사용.
+    # Manual login — PRD §9 ``manual_login``。使用外部 app/browser Session。
     "kakaotalk-mac": [
         _manual_login_req(
             "kakaotalk_macos_session",
-            label="카카오톡 (macOS) 세션",
-            description="카카오톡 macOS 앱이 로그인된 상태로 실행되어야 한다.",
+            label="KakaoTalk (macOS) Session",
+            description="KakaoTalk macOS app 必须在已登录状态下运行。",
         ),
     ],
     # No credentials required.

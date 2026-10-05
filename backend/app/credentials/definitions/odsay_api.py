@@ -1,4 +1,4 @@
-"""ODsay (대중교통 길찾기) API key."""
+"""ODsay（公共交通路线查询）API key."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ definition = CredentialDefinition(
             kind=FieldKind.PASSWORD,
             required=True,
             type_options={"password": True},
-            description="ODsay LAB 발급 apiKey",
+            description="ODsay LAB 签发的 apiKey",
         ),
     ],
 )

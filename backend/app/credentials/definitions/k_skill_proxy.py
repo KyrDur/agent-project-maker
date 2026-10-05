@@ -28,7 +28,7 @@ definition = CredentialDefinition(
             display_name="Proxy Base URL",
             kind=FieldKind.STRING,
             required=True,
-            description="예: https://k-skill-proxy.example.com",
+            description="例如：https://k-skill-proxy.example.com",
             placeholder="https://...",
         ),
         FieldDef(
@@ -37,7 +37,7 @@ definition = CredentialDefinition(
             kind=FieldKind.PASSWORD,
             required=False,
             type_options={"password": True},
-            description="프록시가 키 인증을 요구할 때만 입력",
+            description="仅在 proxy 要求密钥认证时输入",
         ),
     ],
 )

@@ -1,4 +1,4 @@
-"""Assistant v2 라우터 — POST /api/agents/{agent_id}/assistant/message."""
+"""Assistant v2 路由器 — POST /api/agents/{agent_id}/assistant/message."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ async def send_assistant_message(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ):
-    """Assistant에게 메시지를 보내고 SSE 스트리밍으로 응답받는다."""
+    """向 Assistant 发送消息，并通过 SSE streaming 接收响应。"""
     agent = await agent_service.get_agent(db, agent_id, user.id)
     if not agent:
         raise agent_not_found()

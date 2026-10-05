@@ -10,8 +10,8 @@ from sqlalchemy.sql import func
 
 from app.database import Base
 
-# W3-out M2: SSE turn lifecycle status. CHECK 제약으로 Postgres ENUM 대신
-# 문자열 + 제약 조합 (alembic-friendly + dialect-agnostic).
+# W3-out M2: SSE turn lifecycle status. 通过 CHECK 约束，使用字符串而不是 Postgres ENUM
+# 而不是 Postgres ENUM（alembic-friendly + dialect-agnostic）。
 STREAMING_STATUS_VALUES = ("streaming", "completed", "failed")
 STREAM_EVENT_ID_MAX_LENGTH = 255
 
@@ -34,18 +34,18 @@ class MessageEvent(Base):
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
-    # ``stream_agent_response``의 msg_id (UUID 문자열). SSE event id 접두어로도 사용.
+    # ``stream_agent_response`` 的 msg_id（UUID 字符串）。也用作 SSE event id 前缀。
     assistant_msg_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    # 발행된 SSE 이벤트 시퀀스. 각 항목 shape:
+    # 已发布的 SSE 事件序列。每项 shape:
     #   {"id": "<msg_id>-<seq>", "event": "<name>", "data": {...}}
     events: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
-    # 마지막으로 발행된 SSE event id — W3-out resume 시 ``> last_event_id`` 필터의 기준.
+    # 最后发布的 SSE event id — W3-out resume 时 ``> last_event_id`` filter 的基准。
     last_event_id: Mapped[str | None] = mapped_column(
         String(STREAM_EVENT_ID_MAX_LENGTH), nullable=True
     )
-    # W6 정확도 — 이 turn에서 생성된 assistant 메시지의 parsed UUID 목록.
-    # ``MessageResponse.id``와 동일 형식이라 frontend가 직접 매칭 가능.
-    # NULL은 m33 이전 row 또는 streaming이 메시지 id를 노출 안 한 경우.
+    # W6 准确性 — 本 turn 中生成的 assistant message 的 parsed UUID 列表。
+    # 与 ``MessageResponse.id`` 格式相同，因此 frontend 可直接匹配。
+    # NULL 表示 m33 之前的 row，或 streaming 未暴露 message id。
     linked_message_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     # External trace correlation for authenticated debug tooling. The public
     # /traces schema intentionally does not expose these fields.
@@ -56,22 +56,22 @@ class MessageEvent(Base):
         default=lambda: datetime.now(UTC).replace(tzinfo=None),
         nullable=False,
     )
-    # 스트림 종료 시각. None이면 진행 중(Phase 1은 종료 시점에만 한 번 기록하므로
-    # 항상 생성과 동시에 set되지만, W3-out 진행형 영속화 도입 시 의미가 갈라진다).
+    # Stream 结束时间。None 表示进行中（Phase 1 仅在结束时记录一次，因此
+    # 当前总是在创建时同时 set，但引入 W3-out 渐进式持久化后语义会分开）。
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # W3-out M2 — turn lifecycle:
-    #   'streaming'  : 진행 중. partial flush로 events가 점진적 추가됨.
-    #   'completed'  : 정상 종료 (message_end 도달).
-    #   'failed'     : 예외/abort. last_event_id는 마지막으로 받은 이벤트.
-    # 기존 row(m34 이전)는 server_default 'completed'로 채워져 회귀 0.
+    #   'streaming'  : 进行中。通过 partial flush 逐步追加 events。
+    #   'completed'  : 正常结束（到达 message_end）。
+    #   'failed'     : 异常/abort. last_event_id 是最后收到的事件。
+    # 现有 row（m34 之前）由 server_default 'completed' 填充，回归为 0。
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
         server_default="completed",
         default="completed",
     )
-    # 진행 중 partial flush마다 갱신. completed_at과 달리 streaming 동안
-    # 매번 NOW()로 bump (heartbeat 역할 — stale broker GC 판정에도 활용 가능).
+    # 每次进行中的 partial flush 都会更新。与 completed_at 不同，在 streaming 期间
+    # 每次都用 NOW() bump（充当 heartbeat — 也可用于 stale broker GC 判定）。
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
         nullable=False,

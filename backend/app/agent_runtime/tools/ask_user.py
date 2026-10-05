@@ -1,7 +1,7 @@
-"""ask_user — 사용자에게 질문하고 응답을 기다리는 도구.
+"""ask_user — 向用户提问并等待响应的工具。
 
-LangGraph interrupt()를 사용하여 그래프 실행을 일시정지하고,
-사용자의 응답을 받은 후 Command(resume=)로 재개한다.
+使用 LangGraph interrupt() 暂停图执行，
+收到用户响应后通过 Command(resume=) 恢复。
 """
 
 from typing import Any, Literal
@@ -128,26 +128,26 @@ def ask_user(
     minSelections: int | None = None,  # noqa: N803 — mirrors tool schema wire contract
     maxSelections: int | None = None,  # noqa: N803 — mirrors tool schema wire contract
 ) -> str:
-    """사용자에게 질문하고 응답을 기다립니다.
+    """向用户提问并等待响应。
 
-    다음 상황에서만 사용하세요:
-    - 사용자의 요청이 모호하여 2가지 이상 해석이 가능할 때
-    - 중요한 작업 실행 전 최종 확인이 필요할 때
-    - 여러 옵션 중 사용자의 선호를 확인해야 할 때
+    仅在以下情况下使用：
+    - 用户请求含糊，存在 2 种以上解释时
+    - 执行重要任务前需要最终确认时
+    - 需要在多个选项中确认用户偏好时
 
-    다음 상황에서는 사용하지 마세요:
-    - 일반적인 질문에 답변할 때 (바로 답하세요)
-    - 이미 충분한 정보가 있을 때
-    - 단순한 인사나 잡담
+    以下情况下不要使用：
+    - 回答一般问题时（直接回答）
+    - 已有足够信息时
+    - 简单问候或闲聊
 
     Args:
-        question: 사용자에게 보여줄 단일 질문 (legacy)
-        options: 선택지 목록 (legacy 또는 option_list)
-        mode: question_flow 또는 option_list 렌더 모드
-        title: 확장 모드 카드 제목
-        questions: question_flow 단계 목록
-        minSelections: option_list 최소 선택 수
-        maxSelections: option_list 최대 선택 수
+        question: 向用户显示的单个问题 (legacy)
+        options: 选项列表 (legacy 或 option_list)
+        mode: question_flow 或 option_list 渲染模式
+        title: 扩展模式卡片标题
+        questions: question_flow 步骤列表
+        minSelections: option_list 最少选择数
+        maxSelections: option_list 最多选择数
     """
     response = interrupt(
         _build_interrupt_payload(

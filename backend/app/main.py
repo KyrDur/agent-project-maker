@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 
 if os.environ.get("MOLDY_DISABLE_ENV_FILE") != "true":
-    load_dotenv()  # .env → OS 환경 변수 (LangSmith 등 외부 SDK용)
+    load_dotenv()  # .env → OS 环境变量（供 LangSmith 等外部 SDK 使用）
 
 import ssl
 import uuid
@@ -13,7 +13,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# 사내 프록시 SSL 인증서 — certifi CA + HC_SSL.pem 결합 번들 생성
+# 内部 proxy SSL 证书 — 生成 certifi CA + HC_SSL.pem 组合 bundle
 _hc_cert = Path(os.path.expanduser("~/.ssl/HC_SSL.pem"))  # noqa: PTH111 — Path.expanduser crashes on unresolvable $HOME
 if _hc_cert.exists():
     import tempfile
@@ -37,14 +37,14 @@ if _hc_cert.exists():
 
 import logging
 
-# Root logger 설정 — uvicorn 자체 logger 외 ``app.*`` logger 의 INFO/WARNING/
-# ERROR 가 stdout 으로 도달하도록 한다. 미설정 시 ``logger.info()`` 호출이
-# silent 하게 사라져 진단이 불가능 (e.g. credential resolution 분기 로그,
-# stream_agent_response 의 partial flush 실패 로그).
+# Root logger 配置 — 除 uvicorn 自身 logger 外，使 ``app.*`` logger 的 INFO/WARNING/
+# ERROR 能输出到 stdout。若未配置，``logger.info()`` 调用会
+# silent 地消失，导致无法诊断（e.g. credential resolution 分支日志，
+# stream_agent_response 的 partial flush 失败日志）。
 #
-# 운영 환경의 structured logger / log shipper 설정을 덮어쓰지 않도록 root
-# handler 가 *비어있을 때만* basicConfig 적용. uvicorn ``--log-config`` /
-# JSON formatter / OpenTelemetry handler 가 사전 등록된 경우 우회한다.
+# 为避免覆盖生产环境的 structured logger / log shipper 配置，仅在 root
+# handler *为空时* 应用 basicConfig。若 uvicorn ``--log-config`` /
+# JSON formatter / OpenTelemetry handler 已预先注册，则跳过。
 if not logging.getLogger().handlers:
     logging.basicConfig(
         level=logging.INFO,
@@ -185,7 +185,7 @@ async def _lifespan_started(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception:  # noqa: BLE001 — lifespan boundary
             logger.exception("sync_env_fallback_from_credentials failed — continuing startup.")
 
-    # Checkpointer 초기화 — psycopg v3 호환 URL 사용.
+    # 初始化 Checkpointer — 使用兼容 psycopg v3 的 URL。
     from app.agent_runtime.checkpointer import init_checkpointer
 
     await init_checkpointer(
@@ -246,10 +246,10 @@ def create_app() -> FastAPI:
             "X-Api-Key",
             "X-CSRF-Token",
         ],
-        # W3-out — cross-origin (3000 → 8001) 에서 frontend 가 SSE stream 의
-        # ``X-Run-Id`` (resume 식별자) / ``X-Resume-Mode`` (관찰성) 를 읽으려면
-        # CORS expose_headers 에 명시해야 한다. 누락 시 browser fetch.headers.get
-        # 은 항상 null 을 반환해 auto-resume 가 silent no-op.
+        # W3-out — 在 cross-origin (3000 → 8001) 下，frontend 若要读取 SSE stream 的
+        # ``X-Run-Id``（resume 标识符）/ ``X-Resume-Mode``（可观测性），
+        # 必须在 CORS expose_headers 中显式声明。遗漏时 browser fetch.headers.get
+        # 会始终返回 null，导致 auto-resume silent no-op.
         expose_headers=["X-Run-Id", "X-Resume-Mode", "X-Request-Id", "X-Conversation-Id"],
     )
 

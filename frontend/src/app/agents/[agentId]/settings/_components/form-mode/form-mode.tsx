@@ -13,7 +13,7 @@ interface FormModeProps {
 
   selectedSubAgentIds: Set<string>
   onToggleSubAgent: (id: string) => void
-  /** 자기 자신 필터링용. 매뉴얼 페이지는 빈 문자열 전달. */
+  /** 用于过滤自身。manual 页面传入空字符串。 */
   currentAgentId: string
 
   modelId: string

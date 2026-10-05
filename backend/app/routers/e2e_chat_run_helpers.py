@@ -108,8 +108,8 @@ async def update_e2e_conversation_run_heartbeat(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
-    # 게이트 전용이지만 decorator dependencies 는 verify_csrf 보다 먼저 돌아
-    # CSRF 403 → 404 순서가 뒤집히므로 파라미터 위치(_csrf 뒤)로 순서를 보존한다.
+    # 虽然仅用于 gate，但 decorator dependencies 会先于 verify_csrf 执行，
+    # 导致 CSRF 403 → 404 的顺序颠倒，因此通过参数位置（_csrf 之后）保留顺序。
     _conv: Conversation = Depends(owned_conversation),
 ):
     _require_e2e_user(user)

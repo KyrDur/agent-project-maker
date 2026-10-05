@@ -52,7 +52,7 @@ content = result["messages"][-1].content
 
 **변경 파일:**
 
-| 파일 | 변경 |
+| 文件 | 变更 |
 |------|------|
 | `creation_agent.py` | `model.ainvoke()` → `build_agent()` + `agent.ainvoke()` |
 | `agent_creation_service.py` | 변경 없음 (인터페이스 동일) |
@@ -163,7 +163,7 @@ full_content = await execute_agent_invoke(
 
 **변경 파일:**
 
-| 파일 | 변경 |
+| 文件 | 变更 |
 |------|------|
 | `executor.py` | `_prepare_agent()` 추출, `execute_agent_invoke()` 추가, `execute_agent_stream()` 내부 리팩터 |
 | `trigger_executor.py` | `execute_agent_stream()` → `execute_agent_invoke()` 호출로 교체. SSE 파싱 제거 |

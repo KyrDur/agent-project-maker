@@ -122,10 +122,10 @@ export default function MarketplaceItemDetailPage({ params }: PageProps) {
     )
   }
 
-  // Owner 판별: 백엔드가 ``publication_summary.item_id`` 를 owner+link 동시일
-  // 때만 채워주므로 (service.py `_project_item`), 이 한 줄로 충분하다.
-  // origin_summary.source_user_id 는 다른 user 가 공유해준 케이스에만 set 되어
-  // 본인 publish 에서는 null — 이전 비교는 항상 false 였다.
+  // Owner 判定：后端仅在 ``publication_summary.item_id`` 同时满足 owner+link 时
+  // 才会填充（service.py `_project_item`），所以这一行就足够。
+  // origin_summary.source_user_id 只会在其他 user 分享给当前用户的 case 中 set，
+  // 自己 publish 时为 null — 之前的比较始终为 false。
   const isOwner = !!user && item.publication_summary.item_id === item.id
   const cta = derivePrimaryCta(item)
 
@@ -200,7 +200,7 @@ export default function MarketplaceItemDetailPage({ params }: PageProps) {
   }
 
   async function handleVisibilityChange(next: MarketplaceVisibility) {
-    // ``system`` 은 super_user 시드만 — PATCH 로는 변경 불가.
+    // ``system`` 仅用于 super_user seed — 无法通过 PATCH 修改。
     if (!item || next === item.visibility || next === 'system') return
     await runMutation(
       () => patchItem.mutateAsync({ visibility: next } satisfies MarketplaceItemPatchBody),

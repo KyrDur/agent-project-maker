@@ -24,8 +24,8 @@ import { SkillBuilderTryHint } from './skill-builder-try-hint'
 const EMPTY_MESSAGES: Message[] = []
 
 /**
- * 빌더는 v3(langgraph) 전용 — `useLangGraphRuntime`을 항상 켜므로 legacy
- * SSE 경로는 도달 불가. prop 계약 충족용 스텁.
+ * builder 仅支持 v3(langgraph) — 因为始终启用 `useLangGraphRuntime`，所以 legacy
+ * SSE 路径不可达。用于满足 prop 契约的 stub。
  */
 async function* builderLegacyStreamUnsupported(): AsyncGenerator<SSEEvent> {
   throw new Error('skill builder chat requires the langgraph_v3 runtime')
@@ -46,12 +46,12 @@ export function SkillBuilderChatClient({
   const agentId = session?.agent_id ?? null
   const { data: envelope } = useMessagesEnvelope(conversationId ?? '', Boolean(conversationId))
   const messages = envelope?.messages ?? EMPTY_MESSAGES
-  // Phase 1.5 — 다이얼로그의 user_request를 첫 진입 시 자동 전송 (리로드/기존
-  // run 이력에는 발화하지 않는 서버 진실 가드).
+  // Phase 1.5 — 首次进入时自动发送 dialog 的 user_request（reload/已有
+  // run 历史时不发出的 server truth guard）。
   const autoRequestText = resolveAutoFirstMessage(session, envelope)
 
   const handleStreamEnd = useCallback(() => {
-    // finalize/validate가 세션 상태·skills 목록을 바꿀 수 있다 — 런 종료 시 재조회.
+    // finalize/validate 可能改变 session 状态·skills 列表 — run 结束时重新查询。
     if (conversationId) {
       queryClient.invalidateQueries({ queryKey: conversationKeys.messages(conversationId) })
     }
@@ -60,7 +60,7 @@ export function SkillBuilderChatClient({
     queryClient.invalidateQueries({ queryKey: skillQueryKeys.all })
   }, [builderSessionId, conversationId, queryClient])
 
-  // React Compiler가 자동 메모이즈 — 수동 useMemo는 컴파일러 추론과 충돌한다.
+  // React Compiler 会自动 memoize — 手动 useMemo 与 compiler 推断冲突。
   const emptyContent = (
     <div className="mx-auto max-w-xl space-y-3 py-10 text-center">
       <HammerIcon className="mx-auto size-8 text-muted-foreground" />

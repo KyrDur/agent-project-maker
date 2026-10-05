@@ -105,7 +105,7 @@ test.describe('Draft conversation lifecycle', () => {
     }
   })
 
-  test('clicking 새 대화 shows a draft row without creating a DB conversation', async ({
+  test('clicking 新对话 shows a draft row without creating a DB conversation', async ({
     page,
     request,
     errors,

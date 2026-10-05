@@ -137,9 +137,9 @@ def _build_web_search_tool() -> BaseTool:
     return DuckDuckGoSearchResults(
         name="web_search",
         description=(
-            "웹에서 키워드를 검색하여 최신 뉴스와 정보를 찾습니다. "
-            "각 결과에 title, snippet, link(URL), date, source가 포함됩니다. "
-            "반드시 결과의 link를 출처로 사용하세요. URL을 직접 만들지 마세요."
+            "在网页中搜索关键词，查找最新新闻和信息。"
+            "每个结果都包含 title、snippet、link(URL)、date、source。"
+            "必须使用结果中的 link 作为来源。不要自行构造 URL。"
         ),
         num_results=5,
         backend="news",
@@ -189,21 +189,21 @@ async def _fetch_scrape_response(client: httpx.AsyncClient, url: str) -> tuple[s
 
 def _build_web_scraper_tool() -> BaseTool:
     async def scrape_url(url: str) -> str:
-        """웹 페이지의 텍스트 내용을 가져옵니다."""
+        """获取网页的文本内容。"""
 
         try:
             from bs4 import BeautifulSoup
         except ImportError:
-            return "Error: beautifulsoup4 패키지가 설치되지 않았습니다."
+            return "Error: 未安装 beautifulsoup4 包。"
 
         try:
             client = get_tool_http_client()
             _final_url, body, encoding = await _fetch_scrape_response(client, url)
         except BlockedUrlError as exc:
             logger.warning("web_scraper blocked URL %r: %s", url, exc)
-            return f"Error: 허용되지 않는 주소입니다 — {exc}"
+            return f"Error: 不允许的地址 — {exc}"
         except httpx.HTTPError as exc:
-            return f"Error: 페이지를 가져올 수 없습니다 — {exc}"
+            return f"Error: 无法获取页面 — {exc}"
 
         soup = BeautifulSoup(body.decode(encoding, errors="replace"), "html.parser")
         for tag in soup(["script", "style", "nav", "footer", "header"]):
@@ -216,16 +216,13 @@ def _build_web_scraper_tool() -> BaseTool:
     return StructuredTool.from_function(
         coroutine=scrape_url,
         name="web_scraper",
-        description=(
-            "웹 페이지의 텍스트 내용을 가져옵니다. "
-            "URL을 입력하면 해당 페이지의 주요 텍스트를 추출합니다."
-        ),
+        description=("获取网页的文本内容。输入 URL 后，将提取该页面的主要文本。"),
     )
 
 
 def _build_current_datetime_tool() -> BaseTool:
     async def get_current_datetime() -> str:
-        """현재 날짜와 시간, 이번 주말 등 기준 날짜 컨텍스트를 반환합니다."""
+        """返回当前日期和时间、本周末等基准日期上下文。"""
 
         return json.dumps(build_temporal_context(), ensure_ascii=False)
 
@@ -233,8 +230,8 @@ def _build_current_datetime_tool() -> BaseTool:
         coroutine=get_current_datetime,
         name="current_datetime",
         description=(
-            "현재 날짜/시간과 요일, 이번 주말/다음 주 날짜 범위를 JSON으로 반환합니다. "
-            "오늘, 요일, 현재 시간 확인이 필요할 때 사용하세요."
+            "以 JSON 返回当前日期/时间和星期、本周末/下周日期范围。"
+            "需要确认今天、星期、当前时间时请使用。"
         ),
     )
 
@@ -245,7 +242,7 @@ def _build_resolve_relative_date_tool() -> BaseTool:
         reference_date: str | None = None,
         timezone: str = DEFAULT_TIMEZONE,
     ) -> str:
-        """상대 날짜 표현을 ISO 날짜 범위로 변환합니다."""
+        """将相对日期表达转换为 ISO 日期范围。"""
 
         now = parse_reference_datetime(reference_date, timezone=timezone)
         result = resolve_relative_date_expression(
@@ -260,14 +257,14 @@ def _build_resolve_relative_date_tool() -> BaseTool:
         name="resolve_relative_date",
         description=(
             "将相对日期表达式转换为 ISO 日期范围。"
-            "예: '이번주 주말', '다음주 수요일', '최근 뉴스', '내일'. "
-            "날씨, 뉴스, 일정, 예약 조회 전에 날짜 범위를 확정할 때 사용하세요."
+            "例如：'本周周末'、'下周三'、'最近新闻'、'明天'。"
+            "在查询天气、新闻、日程、预约前，用于确定日期范围。"
         ),
     )
 
 
 # E2E-only scripted search tool. Deterministic, no network. The frontend
-# search-group aggregate (domain badges + "출처 N개") reads each grouped
+# search-group aggregate (domain badges + "来源 N 个") reads each grouped
 # tool-call's ``result``; this tool returns ``{"results":[{title,url}, ...]}``
 # whose URLs span multiple domains so the aggregate has real sources to show.
 # Each distinct ``query`` returns a DISTINCT slice of sources, so N consecutive
@@ -311,51 +308,51 @@ _E2E_SCRIPTED_SEARCH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
 # frontend public assets so captures render without external network access.
 _E2E_SCRIPTED_SEARCH_ANSWERS: dict[str, str] = {
     "agentic os 概览": (
-        "에이전틱 OS는 LLM 에이전트가 도구·스킬·메모리를 조합해 스스로 작업을 "
-        "계획하고 실행하는 실행 환경을 뜻합니다. 핵심 구성요소는 오케스트레이터, "
-        "도구 레지스트리, 장기 기억입니다."
+        "Agentic OS 是指 LLM Agent 组合工具、Skill、Memory，自主对任务进行"
+        "规划和执行的运行环境。核心组件包括 Orchestrator、"
+        "工具注册表、长期记忆。"
     ),
 }
 _E2E_SCRIPTED_SEARCH_RICH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
     "agentic os 概览": (
         {
-            "title": "Agentic OS 아키텍처 개요",
+            "title": "Agentic OS 架构概览",
             "url": "https://docs.moldy.example/agentic-os",
-            "content": "오케스트레이터·도구 레지스트리·장기 기억으로 구성된 실행 환경 소개.",
+            "content": "由 Orchestrator、工具注册表、长期记忆构成的运行环境介绍。",
         },
         {
-            "title": "딥에이전트 실전 가이드",
+            "title": "Deep Agent 实战指南",
             "url": "https://blog.moldy.example/deep-agents",
-            "content": "create_deep_agent 기반 멀티에이전트 구성 사례와 운영 팁.",
+            "content": "基于 create_deep_agent 的多 Agent 配置案例和运行技巧。",
         },
         {
-            "title": "LangGraph 체크포인터 설계",
+            "title": "LangGraph Checkpointer 设计",
             "url": "https://engineering.moldy.example/checkpointer",
-            "content": "AsyncPostgresSaver로 스레드 상태를 영속화하는 패턴.",
+            "content": "使用 AsyncPostgresSaver 持久化线程状态的模式。",
         },
     ),
 }
 _E2E_SCRIPTED_SHOP_ITEMS: tuple[dict[str, str], ...] = (
     {
-        "title": "무선 기계식 키보드 K1",
+        "title": "无线机械键盘 K1",
         "link": "https://shopping.example/k1",
         "thumbnail": "/logo.webp",
         "lprice": "89000",
-        "mallName": "몰디스토어",
+        "mallName": "Moldy商店",
     },
     {
-        "title": "저소음 무선 키보드 슬림",
+        "title": "低噪声无线纤薄键盘",
         "link": "https://shopping.example/slim",
         "thumbnail": "/moldy-mascot.webp",
         "lprice": "42900",
-        "mallName": "키보드샵",
+        "mallName": "键盘商店",
     },
     {
-        "title": "블루투스 멀티페어링 키보드",
+        "title": "蓝牙多设备配对键盘",
         "link": "https://shopping.example/multi",
         "thumbnail": "/dashboard-mascot.webp",
         "lprice": "156000",
-        "mallName": "오피스몰",
+        "mallName": "办公商城",
     },
 )
 
@@ -439,12 +436,12 @@ E2E_UI_DATA_DEMO_FIXTURES: dict[str, dict[str, Any]] = {
     "demo_note": {"ui_type": "demo_note", "text": E2E_UI_DATA_DEMO_TEXT},
     "data_table": {
         "ui_type": "data_table",
-        "title": "E2E 데이터 테이블",
+        "title": "E2E 数据表",
         "searchable": True,
         "columns": [
             {"key": "name", "header": "名称"},
-            {"key": "role", "header": "역할"},
-            {"key": "score", "header": "점수"},
+            {"key": "role", "header": "角色"},
+            {"key": "score", "header": "分数"},
         ],
         "rows": [
             {"name": "Alice", "role": "Engineer", "score": 92},
@@ -455,8 +452,8 @@ E2E_UI_DATA_DEMO_FIXTURES: dict[str, dict[str, Any]] = {
     "chart": {
         "ui_type": "chart",
         "chartType": "bar",
-        "title": "E2E 주간 차트",
-        "yLabel": "건수",
+        "title": "E2E 周度图表",
+        "yLabel": "数量",
         "series": [
             {"label": "Mon", "value": 12},
             {"label": "Tue", "value": 19},
@@ -468,9 +465,9 @@ E2E_UI_DATA_DEMO_FIXTURES: dict[str, dict[str, Any]] = {
     "stats": {
         "ui_type": "stats",
         "items": [
-            {"label": "총 요청", "value": 1240, "delta": 12},
-            {"label": "성공률", "value": 98.6, "unit": "%", "delta": 2},
-            {"label": "평균 지연", "value": 320, "unit": "ms", "delta": -8},
+            {"label": "总请求数", "value": 1240, "delta": 12},
+            {"label": "成功率", "value": 98.6, "unit": "%", "delta": 2},
+            {"label": "平均延迟", "value": 320, "unit": "ms", "delta": -8},
         ],
     },
     "terminal": {

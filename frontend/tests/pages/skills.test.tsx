@@ -210,7 +210,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'needs_credentials',
             label: '所需凭据',
-            reason: '필수 자격증명이 없습니다.',
+            reason: '没有必需凭据。',
             severity: 'warning',
           },
           publication_summary: publishedSummary('item-credentials'),
@@ -221,7 +221,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'needs_rerun',
             label: '需要重新运行',
-            reason: '콘텐츠가 바뀌었습니다.',
+            reason: '内容已更改。',
             severity: 'warning',
           },
           publication_summary: publishedSummary('item-rerun'),
@@ -232,7 +232,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'evaluation_failed',
             label: '评估失败',
-            reason: '마지막 평가가 실패했습니다.',
+            reason: '上次评估失败。',
             severity: 'error',
           },
           publication_summary: publishedSummary('item-failed'),

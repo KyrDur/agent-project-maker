@@ -57,7 +57,7 @@ function skillDraft(name: string, slug: string) {
         definition_key: 'srt_account',
         required: true,
         label: 'SRT账户',
-        description: '설치 후 실행에 사용할 테스트 계정입니다.',
+        description: '这是安装后运行时使用的测试账号。',
         fields: ['username', 'password'],
         injection: 'env',
         scope: 'user',
@@ -139,7 +139,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     await page.goto(`/marketplace/${itemId}`)
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
     await page.getByRole('button', { name: '安装', exact: true }).click()
-    let dialog = page.getByRole('dialog', { name: `${name} 설치` })
+    let dialog = page.getByRole('dialog', { name: `${name} 安装` })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: '下一步', exact: true }).click()
     await expect(dialog.getByRole('listitem').filter({ hasText: 'SRT账户' })).toBeVisible()
@@ -161,7 +161,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
 
     await page.reload()
     await page.getByRole('button', { name: '设置', exact: true }).click()
-    dialog = page.getByRole('dialog', { name: `${name} 설치` })
+    dialog = page.getByRole('dialog', { name: `${name} 安装` })
     const requirement = dialog.getByRole('listitem').filter({ hasText: 'SRT账户' })
     await expect(requirement).toBeVisible()
     await requirement.getByRole('combobox').click()
@@ -227,7 +227,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     await page.reload()
     await expect(page.getByRole('button', { name: '查看更新', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '查看更新', exact: true }).click()
-    const updateDialog = page.getByRole('dialog', { name: `${name} 업데이트` })
+    const updateDialog = page.getByRole('dialog', { name: `${name} 更新` })
     const safeDefault = updateDialog.getByRole('radio', { name: /Install as a new copy/ })
     await expect(safeDefault).toBeChecked()
     await updateDialog.getByRole('radio', { name: /Overwrite my edits/ }).check()

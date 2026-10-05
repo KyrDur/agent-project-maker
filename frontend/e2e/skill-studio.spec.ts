@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures'
 
-// Phase 2 — 스킬 스튜디오 6탭 IA: 탭 내비/컨텍스트 바/스킬 스위처/빌더 인덱스.
+// Phase 2 — Skill Studio 6-tab IA：tab navigation/context bar/skill switcher/builder index。
 
 const now = '2026-07-11T00:00:00.000Z'
 
@@ -9,7 +9,7 @@ function makeSkill(id: string, name: string, kind: 'text' | 'package') {
     id,
     name,
     slug: id,
-    description: `${name} 설명`,
+    description: `${name} 描述`,
     kind,
     version: '1.0.0',
     storage_path: null,
@@ -39,7 +39,7 @@ const builderBrief = {
   id: '00000000-0000-4000-8000-00000000b1de',
   mode: 'improve',
   status: 'active',
-  user_request: 'Alpha Notes를 개선해줘',
+  user_request: '帮我改进 Alpha Notes',
   source_skill_id: alpha.id,
   finalized_skill_id: null,
   conversation_id: null,
@@ -54,8 +54,8 @@ async function mockStudioApis(page: import('@playwright/test').Page) {
     if (route.request().method() === 'GET' && url.pathname === '/api/skill-builder') {
       const scoped = url.searchParams.get('skill_id')
       sessionListRequests.push(scoped)
-      // 무스코프 요청에는 다른 픽스처 — 스코핑 회귀가 세션 이력 단언으로
-      // 위장 통과하는 토톨로지를 차단한다.
+      // 对无 scope 请求使用另一套 fixture — 防止 scoping 回归通过 session history 断言
+      // 伪装成通过的同义反复。
       return route.fulfill({
         json: scoped === alpha.id ? [builderBrief] : [],
       })
@@ -78,7 +78,7 @@ async function mockStudioApis(page: import('@playwright/test').Page) {
       return route.fulfill({ json: detail })
     }
     if (pathName === `/api/skills/${alpha.id}/content`) {
-      return route.fulfill({ json: { content: '# Alpha Notes\n요약 규칙 본문' } })
+      return route.fulfill({ json: { content: '# Alpha Notes\n摘要规则正文' } })
     }
     if (/\/api\/skills\/skill-(alpha|beta)\/revisions$/.test(pathName)) {
       return route.fulfill({ json: [] })
@@ -102,17 +102,17 @@ test.describe('Skill studio IA', () => {
 
     await page.goto('/skills')
     await expect(page.getByText('Alpha Notes')).toBeVisible()
-    // 목록 탭에서는 스킬 스코프 탭이 비활성이다.
+    // 在 list tab 中，skill scope tab 为禁用状态。
     await expect(page.getByTestId('studio-tab-source')).toBeDisabled()
     await expect(page.getByTestId('studio-context-bar')).toBeHidden()
 
-    // 행 클릭 → 소스 탭.
+    // 点击 row → source tab。
     await page.getByText('Alpha Notes').click()
     await page.waitForURL(/\/skills\/skill-alpha\/source/)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Alpha Notes')
     await expect(page.getByTestId('studio-context-bar')).toContainText('已连接 智能体')
 
-    // 탭 내비게이션: 평가 → 버전 → 설정.
+    // tab navigation：evaluation → versions → settings。
     await page.getByTestId('studio-tab-evaluation').click()
     await page.waitForURL(/\/skills\/skill-alpha\/evaluation/)
     await page.getByTestId('studio-tab-versions').click()
@@ -143,18 +143,18 @@ test.describe('Skill studio IA', () => {
     await page.getByTestId('studio-tab-builder').click()
 
     await page.waitForURL(/\/skills\/builder\?skillId=skill-alpha/)
-    // 셸이 ?skillId= 스코프를 인식해 컨텍스트 유지 — 스킬 탭이 disabled로
-    // 오표기되거나 "新技能草稿"으로 바뀌면 안 된다 (리뷰 R 회귀 가드).
+    // shell 识别 ?skillId= scope 并保持 context — skill tab 不应错误显示为 disabled，
+    // 也不应变成 "新技能草稿"（review R 回归守卫）。
     await expect(page.getByTestId('studio-context-bar')).toContainText('Alpha Notes')
     await expect(page.getByTestId('studio-tab-source')).toBeEnabled()
     await expect(page.getByRole('button', { name: /Alpha Notes 개선 시작/ })).toBeVisible()
     const sessionList = page.getByTestId('builder-session-list')
-    await expect(sessionList).toContainText('Alpha Notes를 개선해줘')
+    await expect(sessionList).toContainText('帮我改进 Alpha Notes')
     await expect(sessionList.getByRole('link').first()).toHaveAttribute(
       'href',
       `/skills/builder/${builderBrief.id}`,
     )
-    // 목록 요청 자체가 skill_id로 스코프됐는지 — mock 픽스처 분기와 이중 방어.
+    // 同时验证 list 请求本身是否按 skill_id 做了 scope — mock fixture 分支 + 双重防护。
     expect(sessionListRequests).toContain(alpha.id)
   })
 })

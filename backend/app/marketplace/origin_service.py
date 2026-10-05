@@ -53,12 +53,12 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _ORIGIN_LABELS: dict[str, str] = {
-    "created_by_me": "직접 만든 리소스",
-    "imported_by_me": "내가 가져온 리소스",
-    "built_in_k_skill": "기본 제공 (k-skill)",
-    "shared_with_me": "공유받은 리소스",
+    "created_by_me": "自行创建的资源",
+    "imported_by_me": "我导入的资源",
+    "built_in_k_skill": "默认提供 (k-skill)",
+    "shared_with_me": "他人共享给我的资源",
     "community": "社区",
-    "system_seed": "기본 제공",
+    "system_seed": "默认提供",
 }
 
 

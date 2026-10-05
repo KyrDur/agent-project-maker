@@ -23,12 +23,12 @@ function brief(overrides: Partial<SkillDraftBrief> = {}): SkillDraftBrief {
 }
 
 describe('deriveHeadState', () => {
-  it('검증 전이면 pending', () => {
+  it('验证前为 pending', () => {
     expect(deriveHeadState(null).tone).toBe('pending')
     expect(deriveHeadState(undefined).tone).toBe('pending')
   })
 
-  it('error_count > 0 이면 error, warning만 있으면 warn, 둘 다 없으면 pass', () => {
+  it('error_count > 0 时为 error，仅有 warning 时为 warn，两者都没有时为 pass', () => {
     expect(deriveHeadState({ valid: false, error_count: 2, warning_count: 1 }).tone).toBe('error')
     expect(deriveHeadState({ valid: true, error_count: 0, warning_count: 3 }).tone).toBe('warn')
     expect(deriveHeadState({ valid: true, error_count: 0, warning_count: 0 }).tone).toBe('pass')
@@ -36,13 +36,13 @@ describe('deriveHeadState', () => {
 })
 
 describe('deriveStatusRows', () => {
-  it('검증 전이면 전 행 pending', () => {
+  it('验证前所有 row 都是 pending', () => {
     const rows = deriveStatusRows(null)
     expect(rows).toHaveLength(4)
     expect(rows.every((row) => row.tone === 'pending')).toBe(true)
   })
 
-  it('이슈 코드를 행에 매핑한다 — 트리거 경고/시크릿 오류', () => {
+  it('将 issue code 映射到 row — trigger warning/secret error', () => {
     const rows = deriveStatusRows({
       valid: false,
       error_count: 1,
@@ -70,16 +70,16 @@ describe('deriveStatusRows', () => {
     expect(byKey.secrets.tone).toBe('error')
   })
 
-  it('이슈가 없으면 트리거 행은 good, 나머지는 pass', () => {
+  it('没有 issue 时 trigger row 为 good，其余为 pass', () => {
     const rows = deriveStatusRows({ valid: true, error_count: 0, warning_count: 0, issues: [] })
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row]))
     expect(byKey.trigger.tone).toBe('good')
     expect(byKey.frontmatter.tone).toBe('pass')
-    // 미분류 이슈가 없으면 폴백 행도 없다.
+    // 没有未分类 issue 时，也不存在 fallback row。
     expect(byKey.other).toBeUndefined()
   })
 
-  it('버킷 밖 이슈는 "기타 검사" 폴백 행으로 노출된다 (R3 — 헤드/상세 모순 방지)', () => {
+  it('bucket 外 issue 会显示为 "其他检查" fallback row（R3 — 防止 header/detail 矛盾）', () => {
     const rows = deriveStatusRows({
       valid: false,
       error_count: 1,
@@ -103,9 +103,9 @@ describe('deriveStatusRows', () => {
     const byKey = Object.fromEntries(rows.map((row) => [row.key, row]))
     expect(byKey.other).toBeDefined()
     expect(byKey.other.tone).toBe('error')
-    expect(byKey.other.count).toBe(2) // info는 제외
+    expect(byKey.other.count).toBe(2) // 排除 info
     expect(byKey.other.detail).toContain('Only .py')
-    // NETWORK_PROFILE_MISSING/CREDENTIAL_ENV_*는 moldyMetadata 버킷으로 흡수된다.
+    // NETWORK_PROFILE_MISSING/CREDENTIAL_ENV_* 会归入 moldyMetadata bucket。
     const networkRows = deriveStatusRows({
       valid: false,
       error_count: 1,
@@ -126,12 +126,12 @@ describe('deriveStatusRows', () => {
 })
 
 describe('mergeRailFiles', () => {
-  it('라이브 brief가 있으면 우선한다', () => {
+  it('存在 live brief 时优先使用', () => {
     const merged = mergeRailFiles(brief(), [{ path: 'old.md', size: 1, role: 'asset' }])
     expect(merged.map((file) => file.path)).toEqual(['SKILL.md'])
   })
 
-  it('brief가 없거나 비어 있으면 파일 API로 폴백 (진입 직후/improve 시드)', () => {
+  it('brief 不存在或为空时 fallback 到文件 API（刚进入/improve seed）', () => {
     expect(
       mergeRailFiles(undefined, [{ path: 'SKILL.md', size: 10, role: 'skill' }]).map(
         (file) => file.path,
@@ -146,7 +146,7 @@ describe('mergeRailFiles', () => {
 })
 
 describe('hasScripts / hasEvals', () => {
-  it('scripts/ 접두 파일과 evals/evals.json을 감지한다', () => {
+  it('检测以 scripts/ 开头的文件以及 evals/evals.json', () => {
     const files = [
       { path: 'SKILL.md', size: 1 },
       { path: 'scripts/run.py', size: 1 },

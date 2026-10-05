@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 class AgentSubAgentLink(Base):
     """Association: agent <-> agent (self-referential, parent → sub).
 
-    parent_agent_id 가 sub_agent_id 를 호출(위임) 가능. PK는 (parent, sub) 복합키
-    이므로 같은 (parent, sub) link는 1번만 존재한다. position 으로 UI 정렬.
+    parent_agent_id 可以调用（委派给）sub_agent_id。PK 是 (parent, sub) 复合键，
+    因此相同 (parent, sub) link 只存在 1 次。按 position 进行 UI 排序。
     """
 
     __tablename__ = "agent_subagents"
@@ -43,9 +43,9 @@ class AgentSubAgentLink(Base):
         nullable=False,
     )
 
-    # async 컨텍스트에서 link 단독 로딩 시점(예: cascade delete 검증, 단일 link 직접 조회)에
-    # sub_agent 접근이 필요하므로 lazy="joined"가 안전. helpers/service의 명시 selectinload는
-    # 부모 측 N+1 방지용이고, 여기 joined와는 다른 경로에서 작동한다.
+    # 在 async 上下文中单独加载 link 时（例如 cascade delete 验证、直接查询单个 link），
+    # 需要访问 sub_agent，因此 lazy="joined" 更安全。helpers/service 中显式的 selectinload
+    # 用于避免 parent 侧 N+1，与这里的 joined 在不同路径上生效。
     sub_agent: Mapped[Agent] = relationship(
         "Agent",
         foreign_keys=[sub_agent_id],

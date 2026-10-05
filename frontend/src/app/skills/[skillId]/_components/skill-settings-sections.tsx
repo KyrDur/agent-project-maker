@@ -17,8 +17,8 @@ import { getSkillExportUrl, useDeleteSkill } from '@/lib/hooks/use-skills'
 import type { Skill } from '@/lib/types/skill'
 
 /**
- * 설정 탭 (Phase 2 결정 D1) — 목업 5탭이 누락한 자격증명 바인딩·메타데이터
- * 편집을 보존하고, 게시/내보내기/삭제를 에디터 푸터에서 옮겨와 소유한다.
+ * settings tab（Phase 2 决策 D1）— 保留 mock 5-tab 遗漏的凭据绑定·metadata
+ * 编辑，并将 publish/export/delete 从 editor footer 移入本 tab 管理。
  */
 export function SkillSettingsSections({ skill }: { readonly skill: Skill }) {
   const t = useTranslations('skill.studio.settings')
@@ -133,7 +133,7 @@ function SettingsSection({
   )
 }
 
-/** SkillMetadataTab의 4슬롯 출력을 설정 섹션 안에 평면 배치한다. */
+/** 将 SkillMetadataTab 的 4-slot 输出平铺到 settings section 中。 */
 function renderSettingsSectionSlots(slots: SkillDetailTabSlots): ReactNode {
   return (
     <>

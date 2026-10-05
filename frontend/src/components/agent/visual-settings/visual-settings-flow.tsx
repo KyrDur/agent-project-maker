@@ -78,9 +78,9 @@ export interface VisualSettingsFlowProps {
   triggers?: AgentTrigger[]
   mode?: 'create' | 'edit'
   /**
-   * 워크벤치(`/agents/[id]/settings`) 안에서 inline 렌더할 때 true.
-   * - 내부 Toolbar(별도 Save 버튼) 숨김 → workbench 헤더 단일 Save 사용
-   * - controlledState/controlledHandlers가 함께 제공되면 모든 편집 state는 페이지 owns
+   * 在 workbench（`/agents/[id]/settings`）内 inline 渲染时为 true。
+   * - 隐藏内部 Toolbar（单独 Save 按钮）→ 使用 workbench header 的单一 Save
+   * - 同时提供 controlledState/controlledHandlers 时，所有编辑 state 由页面 owns
    */
   embedded?: boolean
   controlledState?: ControlledVisualState
@@ -153,7 +153,7 @@ export function VisualSettingsFlow({
   )
   const isTriggerPending = isCreatingTrigger || isUpdatingTrigger || isDeletingTrigger
 
-  // Internal state (uncontrolled fallback). 사용되지 않을 때도 hooks 규칙상 항상 호출.
+  // Internal state（uncontrolled fallback）。即使未使用，按 hooks 规则也始终调用。
   const [internalName, setInternalName] = useState(agent?.name ?? '')
   const [internalDescription, setInternalDescription] = useState(agent?.description ?? '')
   const [internalSystemPrompt, setInternalSystemPrompt] = useState(agent?.system_prompt ?? '')
@@ -184,7 +184,7 @@ export function VisualSettingsFlow({
     Set<string>
   >(() => new Set(agent?.middleware_configs?.map((mc) => mc.type) ?? []))
 
-  // controlledState 제공 시 모든 편집 state는 페이지(workbench) owns. 그렇지 않으면 internal state.
+  // 提供 controlledState 时，所有编辑 state 由页面（workbench）owns；否则使用 internal state。
   const controlledEditor = useMemo<ControlledVisualEditor | null>(() => {
     if (!embedded || !controlledState || !controlledHandlers) return null
     return { state: controlledState, handlers: controlledHandlers }

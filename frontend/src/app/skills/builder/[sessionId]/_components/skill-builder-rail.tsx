@@ -37,12 +37,12 @@ import {
 export type RailMode = 'status' | 'source'
 
 /**
- * 스킬 빌더 챗 우측 레일 (M7 — skill-studio 목업 차용).
+ * Skill Builder chat 右侧 rail（M7 — 借用 skill-studio mock）。
  *
- * 상태 모드: 목업의 "状态" 카드 — 통과/주의/오류 pill, 검증 행(실제 검증기
- * 이슈 코드 매핑), 런타임 호환 칩(compatibility_result.targets), Credential/
- * 샌드박스/평가 행. 소스 모드: 드래프트 파일 목록 + 읽기 전용 뷰어 — 목업의
- * 소스 탭을 Phase 1로 각색(저장 전 드래프트는 세션 파일 API로만 조회 가능).
+ * 状态模式：mock 的 "状态" 卡片 — pass/warn/error pill、验证 row（映射真实 validator
+ * issue code）、runtime compatibility chip（compatibility_result.targets）、Credential/
+ * sandbox/evaluation row。source 模式：草稿文件列表 + read-only viewer — 将 mock 的
+ * source tab 调整为 Phase 1（保存前的草稿只能通过 session file API 查询）。
  */
 export function SkillBuilderRail({
   conversationId,
@@ -60,7 +60,7 @@ export function SkillBuilderRail({
   const brief = briefByConversation[conversationId]
   const liveValidation = validationByConversation[conversationId]
 
-  // 라이브 이벤트(런마다 갱신)가 세션 스냅샷보다 최신 — 있으면 우선.
+  // live event（每次 run 更新）比 session snapshot 更新 — 存在时优先。
   const validation = liveValidation?.validation_result ?? session.validation_result ?? null
   const liveCompatibility = liveValidation?.validation_result.compatibility_result
   const compatibility =
@@ -97,7 +97,7 @@ export function SkillBuilderRail({
   )
 }
 
-// ── 상태 모드 (목업 "状态" 카드) ─────────────────────────────────────────
+// ── 状态模式（mock "状态" 卡片）────────────────────────────────────────
 
 function StatusPane({
   session,
@@ -332,7 +332,7 @@ function RuntimeChip({
   )
 }
 
-// ── 소스 모드 (목업 소스 탭의 Phase 1 각색) ─────────────────────────────
+// ── source 模式（对 mock source tab 的 Phase 1 调整）────────────────────────────
 
 function SourcePane({
   sessionId,
