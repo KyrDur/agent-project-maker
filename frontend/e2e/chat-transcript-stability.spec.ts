@@ -180,7 +180,7 @@ test.describe('Chat transcript stability QA bundle', () => {
     test.setTimeout(120_000)
     setFailurePhase(testInfo.annotations, 'setup_agent')
     const setup = await setupLangGraphV3Agent(request)
-    const prompt = '사과, 포도, 배 중에 하나 선택하는 ask user 해줘'
+    const prompt = '请用 ask user 让我从苹果、葡萄、梨中选择一个'
     let bodySucceeded = false
 
     try {
@@ -210,7 +210,7 @@ test.describe('Chat transcript stability QA bundle', () => {
         page.locator('[data-moldy-message-role="user"]').filter({ hasText: prompt }),
       ).toBeVisible({ timeout: 30_000 })
 
-      const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 사과' })
+      const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       setFailurePhase(testInfo.annotations, 'wait_ask_user_card')
       await expect(askUserCards).toHaveCount(1, { timeout: 30_000 })
       await expect(askUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
@@ -290,7 +290,7 @@ test.describe('Chat transcript stability QA bundle', () => {
       await expect(
         page.locator('[data-moldy-message-role="user"]').filter({ hasText: askUserPrompt }),
       ).toBeVisible({ timeout: 30_000 })
-      const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 사과' })
+      const askUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       await expect(askUserCards).toHaveCount(1, { timeout: 45_000 })
       await expect(page.getByText('네, 골라봐요!').last()).toBeVisible()
       await expect(askUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
@@ -300,7 +300,7 @@ test.describe('Chat transcript stability QA bundle', () => {
       const conversationUrl = page.url()
       await page.reload()
       await expect(page).toHaveURL(conversationUrl)
-      const hydratedAskUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 사과' })
+      const hydratedAskUserCards = page.locator('[data-tool-ui-id]').filter({ hasText: '🍎 苹果' })
       await expect(hydratedAskUserCards).toHaveCount(1, { timeout: 45_000 })
       await expect(hydratedAskUserCards.first().getByText('어떤 과일이 좋아요?')).toBeVisible()
       await expect(

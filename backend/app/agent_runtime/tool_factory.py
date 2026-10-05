@@ -310,14 +310,14 @@ _E2E_SCRIPTED_SEARCH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
 # shopping ``items`` shape (thumbnail/lprice/mallName). Thumbnails point at
 # frontend public assets so captures render without external network access.
 _E2E_SCRIPTED_SEARCH_ANSWERS: dict[str, str] = {
-    "agentic os 오버뷰": (
+    "agentic os 概览": (
         "에이전틱 OS는 LLM 에이전트가 도구·스킬·메모리를 조합해 스스로 작업을 "
         "계획하고 실행하는 실행 환경을 뜻합니다. 핵심 구성요소는 오케스트레이터, "
         "도구 레지스트리, 장기 기억입니다."
     ),
 }
 _E2E_SCRIPTED_SEARCH_RICH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
-    "agentic os 오버뷰": (
+    "agentic os 概览": (
         {
             "title": "Agentic OS 아키텍처 개요",
             "url": "https://docs.moldy.example/agentic-os",

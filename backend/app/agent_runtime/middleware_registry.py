@@ -20,31 +20,31 @@ MIDDLEWARE_REGISTRY: dict[str, dict[str, Any]] = {
     # ---- context (3) ----
     "summarization": {
         "name": "SummarizationMiddleware",
-        "display_name": "대화 자동 요약",
-        "description": "토큰 한계에 도달하면 대화 히스토리를 자동 요약합니다",
+        "display_name": "对话自动摘要",
+        "description": "达到 token 上限时自动摘要对话历史",
         "category": "context",
         "config_schema": {
             "trigger": {
                 "type": "tuple",
                 "default": ["tokens", 4000],
-                "description": "요약 트리거 조건 (tokens/messages, 값)",
+                "description": "摘要触发条件 (tokens/messages, 值)",
             },
             "keep": {
                 "type": "tuple",
                 "default": ["messages", 20],
-                "description": "요약 시 유지할 메시지 수",
+                "description": "摘要时保留的消息数量",
             },
             "model": {
                 "type": "string",
                 "default": "openai:gpt-5.4-mini",
-                "description": "요약에 사용할 모델",
+                "description": "用于摘要的模型",
             },
         },
         "provider_specific": None,
     },
     "context_editing": {
         "name": "ContextEditingMiddleware",
-        "display_name": "컨텍스트 정리",
+        "display_name": "上下文清理",
         "description": "오래된 도구 결과를 정리하여 컨텍스트 윈도우를 관리합니다",
         "category": "context",
         "config_schema": {},

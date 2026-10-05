@@ -88,7 +88,7 @@ test.describe('Wave 1 — hero flow captures', () => {
 
       // Turn 0 — a warm natural greeting reply (marker-driven, so the opener reads
       // like a real daily assistant instead of the bare scripted sentinel).
-      await sendMessage(page, 'E2E_DAILY_GREETING 안녕하세요! 오늘 뭐부터 도와줄 수 있어요?')
+      await sendMessage(page, 'E2E_DAILY_GREETING 你好！ 오늘 뭐부터 도와줄 수 있어요?')
       await settleStream()
       await capture(page, WAVE, '01b-greeting-reply.png')
 
@@ -102,9 +102,9 @@ test.describe('Wave 1 — hero flow captures', () => {
       await capture(page, WAVE, '02-rich-answer.png')
 
       // Turn 2 — an interactive ask_user card (natural-language trigger).
-      await sendMessage(page, '운동 후 간식을 ask_user로 사과, 포도, 배 중에 골라줘')
+      await sendMessage(page, '请用 ask_user 让我从苹果、葡萄、梨中选择运动后的点心')
       await page
-        .getByText(/어떤 과일이 좋아요|🍎 사과|입력이 필요합니다/)
+        .getByText(/어떤 과일이 좋아요|🍎 苹果|입력이 필요합니다/)
         .last()
         .waitFor({ state: 'visible', timeout: 30_000 })
         .catch(() => {})

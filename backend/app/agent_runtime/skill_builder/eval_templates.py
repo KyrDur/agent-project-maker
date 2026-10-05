@@ -22,7 +22,7 @@ _STRUCTURED_SIGNALS = (
     "extract",
     "structured",
     "액션",
-    "표",
+    "表格",
     "추출",
     "구조화",
     "회의록",

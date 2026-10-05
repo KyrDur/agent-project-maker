@@ -1,5 +1,7 @@
 # Moldy — TASKS
 
+> 本文件保留原型任务记录；当前产品定位与本轮验收以 README.md 为准。
+
 <!-- project-current-source: migration=m77_side_chat_link; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-10 -->
 
 > Last updated: 2026-09-10
@@ -84,238 +86,238 @@
 
 ---
 
-## Phase 0: 프로젝트 부트스트랩
+## Phase 0: 项目初始化
 
 - [x] git init + .gitignore
 - [x] .mise.toml (Python 3.12, Node 22)
 - [x] docker-compose.yml (PostgreSQL)
-- [x] backend/ 스캐폴딩 (pyproject.toml, app factory, config, database)
-- [x] frontend/ 스캐폴딩 (pnpm create next-app, TailwindCSS v4, shadcn/ui)
+- [x] backend/ 搭建基础结构 (pyproject.toml, app factory, config, database)
+- [x] frontend/ 搭建基础结构 (pnpm create next-app, TailwindCSS v4, shadcn/ui)
 
-## Phase 1: Backend — DB + 기본 CRUD
+## Phase 1: Backend — DB 与基本 CRUD
 
-- [x] SQLAlchemy 모델 11개 테이블
-- [x] Alembic 초기 마이그레이션
-- [x] 초기 Mock user dependency + Pydantic 스키마 (현재는 ADR-016 auth dependency로 대체)
-- [x] 시드 데이터 (기본 모델, 템플릿 4개)
-- [x] Agent CRUD API (5 endpoints) + 테스트
-- [x] Template API (2 endpoints) + 테스트
-- [x] Model API (3 endpoints) + 테스트
-- [x] Tool API (5 endpoints) + 테스트
+- [x] SQLAlchemy 模型，11 张表
+- [x] Alembic 初始迁移
+- [x] 初始 Mock user dependency 与 Pydantic schema（现已由 ADR-016 auth dependency 替代）
+- [x] 种子数据（默认模型、4 个模板）
+- [x] Agent CRUD API (5 endpoints) 与测试
+- [x] Template API (2 endpoints) 与测试
+- [x] Model API (3 endpoints) 与测试
+- [x] Tool API (5 endpoints) 与测试
 
-## Phase 2: Backend — 채팅 엔진 (LangChain/LangGraph)
+## Phase 2: Backend — 聊天引擎 (LangChain/LangGraph)
 
 - [x] agent_runtime/model_factory.py
 - [x] agent_runtime/tool_factory.py
-- [x] agent_runtime/executor.py (현재는 `create_deep_agent` facade + split runtime modules)
+- [x] agent_runtime/executor.py（现为 `create_deep_agent` facade 与拆分后的 runtime modules）
 - [x] agent_runtime/streaming.py (LangGraph → SSE)
 - [x] agent_runtime/token_tracker.py
 - [x] Conversation API (4 endpoints) + LangGraph PostgresSaver
-- [x] 채팅 엔진 통합 테스트 — `backend/tests/integration/test_stream_resume.py` 및 scripted chat E2E
+- [x] 聊天引擎集成测试 — `backend/tests/integration/test_stream_resume.py` 与 scripted chat E2E
 
-## Phase 3: Backend — MCP + 대화형 생성 + 사용량
+## Phase 3: Backend — MCP、对话创建与用量
 
-- [x] agent_runtime/mcp_client.py + MCP 연결 테스트 endpoint
-- [x] agent_runtime/creation_agent.py (대화형 생성 메타 에이전트)
-- [x] Agent creation session API (4 endpoints) + 테스트
-- [x] Usage API (2 endpoints) + 테스트
+- [x] agent_runtime/mcp_client.py 与 MCP 连接测试 endpoint
+- [x] agent_runtime/creation_agent.py（对话创建的元智能体）
+- [x] Agent creation session API (4 endpoints) 与测试
+- [x] Usage API (2 endpoints) 与测试
 
-## Phase 4: Frontend — 레이아웃 + 대시보드 + CRUD 화면
+## Phase 4: Frontend — 布局、仪表盘与 CRUD 页面
 
-- [x] TypeScript 타입 + API 클라이언트 + TanStack Query hooks
-- [x] SSE 스트리밍 클라이언트 + Jotai stores
-- [x] 공통 레이아웃 (사이드바, 헤더)
-- [x] 대시보드 (에이전트 카드 그리드 + 사용량 요약)
-- [x] 에이전트 설정 페이지
-- [x] 도구 관리 페이지 (MCP/Custom 등록 모달)
-- [x] 모델 관리 페이지
-- [x] 사용량 대시보드
+- [x] TypeScript 类型、API 客户端与 TanStack Query hooks
+- [x] SSE 流式客户端与 Jotai stores
+- [x] 公共布局（侧边栏、页头）
+- [x] 仪表盘（智能体卡片网格与用量摘要）
+- [x] 智能体设置页面
+- [x] 工具管理页面（MCP/Custom 注册弹窗）
+- [x] 模型管理页面
+- [x] 用量仪表盘
 
-## Phase 5: Frontend — 채팅 + 에이전트 생성
+## Phase 5: Frontend — 聊天与智能体创建
 
-- [x] 에이전트 채팅 페이지
-- [x] 대화형 에이전트 생성 페이지
-- [x] 템플릿 선택 페이지
+- [x] 智能体聊天页面
+- [x] 对话创建智能体页面
+- [x] 模板选择页面
 
-## Phase 7A: Backend — 프리빌트 도구 카탈로그
+## Phase 7A: Backend — 预构建工具目录
 
-- [x] Tool 모델 스키마 변경 (user_id nullable, is_system 플래그) + 마이그레이션
-- [x] 빌트인 도구 구현 (Web Search, Web Scraper, Current DateTime) in tool_factory.py
-- [x] 시드 데이터 (default_tools.py) + main.py 시딩
-- [x] 서비스 레이어 수정 (list_tools 시스템 도구 포함, 삭제 방지)
-- [x] Executor builtin 타입 처리
-- [x] 스키마/타입 업데이트 (is_system)
-- [x] 테스트
+- [x] Tool 模型 schema 修改 (user_id nullable, is_system 标志) 与迁移
+- [x] 内置工具实现 (Web Search, Web Scraper, Current DateTime)，位于 tool_factory.py
+- [x] 种子数据 (default_tools.py) 与 main.py 初始化
+- [x] 服务层修改（list_tools 包含系统工具，防止删除）
+- [x] Executor builtin 类型处理
+- [x] schema/类型更新 (is_system)
+- [x] 测试
 
-## Phase 7B: Backend — 에이전트 생성 시 도구 자동 연결
+## Phase 7B: Backend — 创建智能体时自动绑定工具
 
-- [x] confirm_creation()에서 recommended_tool_names 이름 매칭 → 자동 링크
-- [x] send_message()에서 시스템 도구 컨텍스트 제공
-- [x] 템플릿 생성 시 도구 자동 연결
-- [x] 테스트
+- [x] confirm_creation() 中匹配 recommended_tool_names 名称并自动绑定
+- [x] send_message() 提供系统工具上下文
+- [x] 从模板创建时自动绑定工具
+- [x] 测试
 
-## Phase 7C: Backend — 트리거/스케줄러 시스템
+## Phase 7C: Backend — 触发器与调度系统
 
-- [x] AgentTrigger 모델 + 마이그레이션
-- [x] 트리거 스키마 (Pydantic)
-- [x] 트리거 서비스 (CRUD)
-- [x] 트리거 실행기 (trigger_executor.py)
-- [x] APScheduler 통합 (scheduler.py + main.py)
-- [x] 트리거 API (4 endpoints)
-- [x] 테스트
+- [x] AgentTrigger 模型与迁移
+- [x] 触发器 schema (Pydantic)
+- [x] 触发器服务 (CRUD)
+- [x] 触发器执行器 (trigger_executor.py)
+- [x] APScheduler 集成 (scheduler.py + main.py)
+- [x] 触发器 API (4 endpoints)
+- [x] 测试
 
-## Phase 8: Frontend — 도구/트리거 UI
+## Phase 8: Frontend — 工具与触发器 UI
 
-- [x] TypeScript 타입 + API 클라이언트 + hooks (triggers)
-- [x] 도구 관리 페이지 — 시스템 도구 표시
-- [x] 에이전트 설정 — 트리거 설정 섹션
-- [x] 대시보드 — 에이전트 카드에 도구명 표시
+- [x] TypeScript 类型、API 客户端与 hooks (triggers)
+- [x] 工具管理页面展示系统工具
+- [x] 智能体设置的触发器配置区域
+- [x] 仪表盘智能体卡片展示工具名称
 
-## Phase 9: Backend — 빌트인 도구 확장 (네이버/Google)
+## Phase 9: Backend — 扩展内置工具 (Naver/Google)
 
-- [x] config.py — 네이버/Google API 키 설정 추가
-- [x] naver_tools.py — 네이버 검색 API 제네릭 빌더 (Blog, News, Image, Shopping, Local)
-- [x] google_tools.py — Google Custom Search API 빌더 (Web, News, Image)
-- [x] tool_factory.py — 8개 새 도구 등록 + auth_config 지원
-- [x] executor.py — auth_config 전달
-- [x] default_tools.py — 8개 시드 데이터 추가
-- [x] default_templates.py — 3개 템플릿 추가 (뉴스 모니터, 쇼핑 비교, 맛집 탐색)
-- [x] main.py — 시드 로직 upsert 방식으로 개선
-- [x] 테스트 (15개 통과)
+- [x] config.py 增加 Naver/Google API Key 配置
+- [x] naver_tools.py — Naver 搜索 API 通用构建器 (Blog, News, Image, Shopping, Local)
+- [x] google_tools.py — Google Custom Search API 构建器 (Web, News, Image)
+- [x] tool_factory.py 注册 8 个新工具并支持 auth_config
+- [x] executor.py 传递 auth_config
+- [x] default_tools.py 增加 8 项种子数据
+- [x] default_templates.py 增加 3 个模板（新闻监测、购物比较、餐厅探索）
+- [x] main.py 种子初始化改为 upsert
+- [x] 测试（15 项通过）
 
-## Phase 10A: Backend — Google Chat Webhook 도구 (P1)
+## Phase 10A: Backend — Google Chat Webhook 工具 (P1)
 
-- [x] google_workspace_tools.py — Google Chat Webhook send 구현
-- [x] config.py — google_chat_webhook_url 설정 추가
-- [x] tool_factory.py — prebuilt 레지스트리 등록
-- [x] default_tools.py — 시드 데이터 추가
-- [x] 테스트 (20개 통과)
+- [x] google_workspace_tools.py 实现 Google Chat Webhook send
+- [x] config.py 增加 google_chat_webhook_url 配置
+- [x] tool_factory.py 注册 prebuilt 目录
+- [x] default_tools.py 增加种子数据
+- [x] 测试（20 项通过）
 
-## Phase 10B: Backend — Google OAuth2 인프라 + Gmail 도구 (P2)
+## Phase 10B: Backend — Google OAuth2 基础能力与 Gmail 工具 (P2)
 
-- [x] google-auth, google-api-python-client 의존성 추가
-- [x] config.py — OAuth2 설정 (client_id, client_secret, refresh_token)
-- [x] google_auth.py — OAuth2 토큰 관리 헬퍼 (자동 갱신)
-- [x] scripts/google_oauth_setup.py — 1회성 refresh_token 발급 스크립트
-- [x] google_workspace_tools.py — Gmail Read (목록 조회 + 본문 읽기)
-- [x] google_workspace_tools.py — Gmail Send (이메일 전송)
-- [x] tool_factory.py — Gmail 도구 2개 등록
-- [x] default_tools.py — Gmail 시드 데이터 추가
-- [x] 테스트 (25개 통과)
+- [x] 增加 google-auth、google-api-python-client 依赖
+- [x] config.py — OAuth2 配置 (client_id, client_secret, refresh_token)
+- [x] google_auth.py — OAuth2 令牌管理辅助函数（自动刷新）
+- [x] scripts/google_oauth_setup.py — 一次性获取 refresh_token 的脚本
+- [x] google_workspace_tools.py — Gmail Read（查询列表与读取正文）
+- [x] google_workspace_tools.py — Gmail Send（发送邮件）
+- [x] tool_factory.py 注册 2 个 Gmail 工具
+- [x] default_tools.py 增加 Gmail 种子数据
+- [x] 测试（25 项通过）
 
-## Phase 10C: Backend — Google Calendar 도구 (P3)
+## Phase 10C: Backend — Google Calendar 工具 (P3)
 
-- [x] google_workspace_tools.py — Calendar List Events (일정 조회)
-- [x] google_workspace_tools.py — Calendar Create Event (일정 생성)
-- [x] google_workspace_tools.py — Calendar Update Event (일정 수정)
-- [x] tool_factory.py — Calendar 도구 3개 등록
-- [x] default_tools.py — Calendar 시드 데이터 추가
-- [x] default_templates.py — "이메일 어시스턴트", "Daily Brief" 템플릿 업데이트
-- [x] 테스트 (29개 통과)
+- [x] google_workspace_tools.py — Calendar List Events（查询日程）
+- [x] google_workspace_tools.py — Calendar Create Event（创建日程）
+- [x] google_workspace_tools.py — Calendar Update Event（修改日程）
+- [x] tool_factory.py 注册 3 个 Calendar 工具
+- [x] default_tools.py 增加 Calendar 种子数据
+- [x] default_templates.py 更新“邮件助手”与“Daily Brief”模板
+- [x] 测试（29 项通过）
 
-## Phase 10D: Backend — 에이전트별 도구 설정 (agent_tools.config)
+## Phase 10D: Backend — 每个智能体的工具配置 (agent_tools.config)
 
-- [x] agent_tools 테이블에 config(JSON) 컬럼 추가 + Alembic 마이그레이션
-- [x] AgentToolLink 모델 (association object 패턴) + Agent.tool_links 관계
-- [x] tools_config 빌드 시 agent_tool.config → tool.auth_config에 merge
-- [x] AgentCreate/Update 스키마에 tool_configs 필드 추가
-- [x] agent_service — 도구 연결 시 config 저장
-- [x] conversations.py + trigger_executor.py — merge 로직 적용
-- [x] 테스트 (48개 전체 통과)
+- [x] agent_tools 表新增 config(JSON) 列与 Alembic 迁移
+- [x] AgentToolLink 模型 (association object 模式) 与 Agent.tool_links 关系
+- [x] 构建 tools_config 时，将 agent_tool.config 合并到 tool.auth_config
+- [x] AgentCreate/Update schema 新增 tool_configs 字段
+- [x] agent_service 绑定工具时保存 config
+- [x] conversations.py 与 trigger_executor.py 应用合并逻辑
+- [x] 测试（全部 48 项通过）
 
-## Phase 11: Pre-built 도구 서버 키 상태 표시
+## Phase 11: 展示 Pre-built 工具的服务器 Key 状态
 
-- [x] Backend — ToolResponse에 server_key_available computed 필드 추가
-- [x] Frontend — 도구 카드 3-state UI (키 미설정 / 서버 설정 / 설정 완료)
-- [x] 테스트 (62개 전체 통과)
+- [x] Backend — ToolResponse 增加 server_key_available computed 字段
+- [x] Frontend — 工具卡片三种状态（未配置 Key、服务器已配置、配置完成）
+- [x] 测试（全部 62 项通过）
 
-## Phase 6: 통합 + 폴리시
+## Phase 6: 集成与体验完善
 
-- [x] Scripted E2E 회귀 검증 — 현재 범위/수동 제외 항목은 `docs/e2e-coverage.md` 참조
-- [x] 에러 핸들링, loading skeleton, empty state
-- [x] Docker Compose 전체 구동 설정 (Dockerfile + docker-compose.yml)
-- [ ] 접근성, 키보드 네비게이션, 성능 검증
+- [x] Scripted E2E 回归验证 — 当前范围与手工排除项见 `docs/e2e-coverage.md`
+- [x] 错误处理、loading skeleton、empty state
+- [x] Docker Compose 完整启动配置 (Dockerfile + docker-compose.yml)
+- [ ] 无障碍、键盘导航与性能验证
 
-## Phase 12: UX 개선 — Deep Agent Builder 벤치마킹
+## Phase 12: UX 改进 — 参考 Deep Agent Builder
 
 ### Backend
-- [x] Agent 모델에 is_favorite, model_params 필드 추가
-- [x] Tool 모델에 tags 필드 추가
-- [x] Alembic 마이그레이션 (통합)
-- [x] Agent 즐겨찾기 토글 API (PATCH)
-- [x] Agent 스키마에 is_favorite, model_params 추가
-- [x] Tool 스키마에 tags, agent_count 추가
-- [x] tool_service — agent_count 계산 로직
-- [x] default_tools.py — 시스템 도구 태그 추가
-- [x] executor/model_factory — model_params 전달
-- [x] 테스트 (62개 통과)
+- [x] Agent 模型增加 is_favorite、model_params 字段
+- [x] Tool 模型增加 tags 字段
+- [x] Alembic 迁移（整合）
+- [x] Agent 收藏切换 API (PATCH)
+- [x] Agent schema 增加 is_favorite、model_params
+- [x] Tool schema 增加 tags、agent_count
+- [x] tool_service — agent_count 计算逻辑
+- [x] default_tools.py — 系统工具标签
+- [x] executor/model_factory 传递 model_params
+- [x] 测试（62 项通过）
 
-### Frontend — 다크 모드
-- [x] next-themes 설치 + ThemeProvider 추가
-- [x] 사이드바 테마 전환 버튼
+### Frontend — 深色模式
+- [x] 安装 next-themes 与 ThemeProvider
+- [x] 侧边栏主题切换按钮
 
-### Frontend — 대시보드 검색/정렬/즐겨찾기
-- [x] 대시보드 검색/정렬 UI
-- [x] 에이전트 카드 즐겨찾기 별 토글
-- [x] API 클라이언트 + hooks (toggleFavorite)
+### Frontend — 仪表盘搜索、排序与收藏
+- [x] 仪表盘搜索与排序 UI
+- [x] 智能体卡片收藏星标切换
+- [x] API 客户端与 hooks (toggleFavorite)
 
-### Frontend — 도구 카탈로그 UX
-- [x] 태그 칩 필터
-- [x] 도구 상세 Sheet
+### Frontend — 工具目录 UX
+- [x] 标签筛选
+- [x] 工具详情 Sheet
 
-### Frontend — 모델 파라미터
-- [x] 에이전트 설정 페이지 모델 파라미터 섹션 (temperature/top_p/max_tokens)
+### Frontend — 模型参数
+- [x] 智能体设置中的模型参数区域 (temperature/top_p/max_tokens)
 
-### Frontend — 채팅 UX 강화
-- [x] 도구 호출 상세 접기/펼치기 + 소요시간
-- [x] 메시지 토큰/비용 표시 + 복사 버튼
-- [x] 스트리밍 "생각 중..." 애니메이션
+### Frontend — 聊天 UX 增强
+- [x] 工具调用详情折叠、展开与耗时
+- [x] 消息令牌数、费用与复制按钮
+- [x] 流式“思考中...”动画
 
-## Phase 13: Tier 2 — Fix Agent + Skill 시스템
+## Phase 13: Tier 2 — Fix Agent 与 Skill 系统
 
 ### Fix Agent — Backend
-- [x] fix_agent.py — 대화로 에이전트 수정하는 메타 에이전트
-- [x] fix_agent 스키마 (요청/응답)
+- [x] fix_agent.py — 通过对话修改智能体的元智能体
+- [x] fix_agent schema（请求与响应）
 - [x] fix_agent API (POST /api/agents/:id/fix)
-- [x] 테스트 (62개 통과)
+- [x] 测试（62 项通过）
 
 ### Fix Agent — Frontend
-- [x] Fix Agent 대화 UI 컴포넌트 (FixAgentDialog)
-- [x] 에이전트 설정 페이지에 "AI로 수정하기" 버튼
+- [x] Fix Agent 对话 UI 组件 (FixAgentDialog)
+- [x] 智能体设置中的“通过 AI 修改”按钮
 
-### Skill 시스템 — Backend
-- [x] Skill 모델 + agent_skills 연결 테이블
-- [x] Alembic 마이그레이션
+### Skill 系统 — Backend
+- [x] Skill 模型与 agent_skills 关联表
+- [x] Alembic 迁移
 - [x] Skill CRUD API (5 endpoints)
-- [x] Executor에서 스킬 content를 system_prompt에 주입
-- [x] 테스트 (62개 통과)
+- [x] Executor 将 Skill content 注入 system_prompt
+- [x] 测试（62 项通过）
 
-### Skill 시스템 — Frontend
-- [x] 사이드바에 "스킬" 메뉴 추가
-- [x] 스킬 관리 페이지 (CRUD)
-- [x] 에이전트 설정에서 스킬 연결/해제
+### Skill 系统 — Frontend
+- [x] 侧边栏增加“技能”菜单
+- [x] Skill 管理页面 (CRUD)
+- [x] 智能体设置中的 Skill 绑定与解除
 
-## Phase 14: 미들웨어 시스템 (historical create_agent 전환 → 현재 create_deep_agent runtime)
+## Phase 14: 中间件系统（历史 create_agent 转换 → 当前 create_deep_agent runtime）
 
-### Backend — 런타임 전환 + 데이터 레이어 (Phase A+B) ✅
-- [x] executor.py: create_react_agent → create_agent + middleware (이후 `create_deep_agent`로 전환 완료)
-- [x] middleware_registry.py: 22종 미들웨어 레지스트리 + 인스턴스 빌더
-- [x] Agent 모델: middleware_configs JSON 컬럼 + Alembic 마이그레이션
-- [x] API 스키마: MiddlewareConfigEntry, AgentCreate/Update/Response 확장
-- [x] agent_service: middleware_configs 처리
-- [x] GET /api/middlewares 엔드포인트
-- [x] conversations.py: middleware_configs를 런타임에 전달
+### Backend — 运行时转换与数据层 (Phase A+B) ✅
+- [x] executor.py: create_react_agent → create_agent + middleware（之后已改为 `create_deep_agent`）
+- [x] middleware_registry.py: 22 种中间件目录与实例构建器
+- [x] Agent 模型: middleware_configs JSON 列与 Alembic 迁移
+- [x] API schema: 扩展 MiddlewareConfigEntry、AgentCreate/Update/Response
+- [x] agent_service: middleware_configs 处理
+- [x] GET /api/middlewares endpoint
+- [x] conversations.py: 将 middleware_configs 传给运行时
 
-### Frontend — 미들웨어 UI (Phase C) ✅
-- [x] TypeScript 타입 (MiddlewareConfigEntry, MiddlewareRegistryItem)
-- [x] API 클라이언트 + TanStack Query 훅
-- [x] 미들웨어 선택 다이얼로그 (AddMiddlewaresDialog)
-- [x] Visual Settings Flow 미들웨어 노드 (MiddlewaresNode)
-- [x] 에이전트 설정 페이지 미들웨어 섹션
-- [x] i18n 메시지 추가
+### Frontend — 中间件 UI (Phase C) ✅
+- [x] TypeScript 类型 (MiddlewareConfigEntry, MiddlewareRegistryItem)
+- [x] API 客户端与 TanStack Query hooks
+- [x] 中间件选择对话框 (AddMiddlewaresDialog)
+- [x] Visual Settings Flow 中间件节点 (MiddlewaresNode)
+- [x] 智能体设置中的中间件区域
+- [x] 增加 i18n 文案
 
-### 미들웨어 UX 개선 (Phase D) — 선택적, 필요 시 진행
-- [ ] 미들웨어 프리셋 원클릭 적용 ("기본"/"스마트"/"고급")
-- [ ] 미들웨어 실행 순서 드래그 앤 드롭 (LangChain middleware 리스트 순서 = 실행 순서)
-- [ ] Provider 자동 감지 UI (모델 선택 시 Anthropic/OpenAI 전용 미들웨어 추천)
-- [x] HumanInTheLoopMiddleware 인터럽트 → 프론트엔드 승인/거절 UI 및 E2E
+### 中间件 UX 改进 (Phase D) — 可选，按需进行
+- [ ] 中间件预设一键应用（“基础”/“智能”/“高级”）
+- [ ] 拖动调整中间件执行顺序（LangChain middleware 列表顺序即执行顺序）
+- [ ] Provider 自动识别 UI（选择模型时推荐 Anthropic/OpenAI 专用中间件）
+- [x] HumanInTheLoopMiddleware 中断 → 前端批准、拒绝 UI 与 E2E

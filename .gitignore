@@ -77,7 +77,7 @@ logs/
 # Runtime data (conversations, skills, uploads)
 backend/data/
 backend/data.bak*/
-# worktree에서 backend가 root cwd로 실행될 때 생기는 동일 데이터 경로
+# worktree 后端从根目录启动时生成的相同数据路径
 /data/
 
 # DeepAgent / Codex / Playwright workspaces
@@ -97,17 +97,17 @@ backend/app/seed/system_skill_packages/*/data/
 # Redis dump (M-MCP2)
 dump.rdb
 
-# Redesign drafts (디자인 시안용 로컬 폴더)
+# Redesign drafts（本地设计草稿目录）
 redesign/
 
 # Pixel Office drafts and renderer spike (local-only for now)
 /docs/design-docs/pixel-office-spike/
 
-# Claude — 전체 ignore (이미 트래킹된 .claude/skills/ 등은 영향 없음)
+# Claude — 忽略全部本地文件（已跟踪的 .claude/skills/ 等不受影响）
 .claude/
 
-# Model catalog — 6시간마다 cron으로 자동 갱신되는 산출물 + 외부 소스 raw 스냅샷.
-# curated/, providers.json, schema.json 같은 사람이 편집하는 파일은 추적 유지.
+# Model catalog — cron 每 6 小时自动更新的产物与外部来源原始快照。
+# curated/、providers.json、schema.json 等人工维护的文件继续跟踪。
 backend/app/data/model_catalog/catalog.json
 backend/app/data/model_catalog/fetch_metadata.json
 backend/app/data/model_catalog/sources/

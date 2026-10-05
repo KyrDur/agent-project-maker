@@ -92,7 +92,7 @@ test.describe('HITL tool approval — reject', () => {
 
     const composer = page.locator('textarea[data-moldy-composer-input="true"]').last()
     await expect(composer).toBeVisible()
-    await composer.fill('mcp 도구 사용 승인 HITL')
+    await composer.fill('使用 mcp 工具并请求 HITL 审批')
     await composer.press('Enter')
 
     // 1. The tool call pauses on an approval card before executing.

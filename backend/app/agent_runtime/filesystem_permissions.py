@@ -137,10 +137,10 @@ def build_filesystem_permissions(
     deny every protected shared tree so one agent cannot browse another
     agent's skills, memory, or conversation outputs through built-in file tools.
 
-    ``draft_workspace_path``: 스킬 빌더 세션의 쓰기 가능 드래프트 마운트
-    (ADR-018 상대경로, 예: ``skill-drafts/<session_id>``). allow 규칙이
-    ``/skill-drafts/**`` deny **앞에** 와야 한다 — first-match-wins라 순서가
-    곧 보안이다 (스펙 AD-2/§6-1).
+    ``draft_workspace_path``: 技能 builder 会话的可写草稿挂载
+    （ADR-018 相对路径，例如 ``skill-drafts/<session_id>``）。allow 规则必须
+    位于 ``/skill-drafts/**`` deny **之前** — 因为 first-match-wins，顺序
+    本身就是安全性（规范 AD-2/§6-1）。
     """
 
     if agent_id and not user_id:
@@ -170,9 +170,9 @@ def build_filesystem_permissions(
             )
         )
 
-    # 빌더(드래프트 마운트) 런은 conversation 트리에 쓸 이유가 없다 — 부여하면
-    # user-visible 파일이 아티팩트로 인덱싱되어 히든 에이전트 이름이 라이브러리에
-    # 노출될 수 있다. 드래프트 워크스페이스가 유일한 쓰기 표면이다.
+    # builder（草稿挂载）run 没有理由写入 conversation tree — 如果授予
+    # 权限，user-visible 文件会被索引为 artifact，隐藏 agent 名称可能暴露在 library 中
+    # 。草稿 workspace 是唯一可写表面。
     if not draft_workspace_path:
         permissions.append(
             FilesystemPermission(
@@ -193,9 +193,9 @@ def build_filesystem_permissions(
 
     if draft_workspace_path:
         stripped = draft_workspace_path.strip("/")
-        # 불변식 가드: 빈 문자열이면 _path_and_descendants가 "/**" allow를
-        # 만들어 first-match-wins로 전체 FS가 열린다. 서버 생성 경로라 위반은
-        # 버그이므로 fail-closed.
+        # invariant guard：如果是空字符串，_path_and_descendants 会生成 "/**" allow，
+        # 由于 first-match-wins 会打开整个 FS。该路径由服务器生成，违反此条件属于
+        # bug，因此 fail-closed。
         if not stripped or not stripped.startswith("skill-drafts/"):
             raise ValueError(
                 f"draft_workspace_path must live under skill-drafts/: {draft_workspace_path!r}"
@@ -216,7 +216,7 @@ def build_filesystem_permissions(
             _protected_tree("/agents"),
             _protected_tree("/runtime"),
             _protected_tree("/conversations"),
-            # 타 세션 드래프트 워크스페이스 차단 — unmatched 기본이 allow라 필수.
+            # 阻止访问其他会话的草稿 workspace — unmatched 默认 allow，因此这是必需的。
             _protected_tree("/skill-drafts"),
             # data/uploads holds every user's chat attachment blobs. Unmatched
             # paths default to allow, so without this rule any agent could

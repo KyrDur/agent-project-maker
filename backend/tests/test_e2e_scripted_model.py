@@ -64,7 +64,7 @@ from app.seed.e2e_scripted_model import (
 def test_e2e_scripted_model_emits_execute_in_skill_tool_call() -> None:
     model = E2EScriptedChatModel(model="document-artifact-scripted")
 
-    result = model.invoke([HumanMessage(content="E2E_DOCX 문서를 생성해줘")])
+    result = model.invoke([HumanMessage(content="请生成 E2E_DOCX 文档")])
 
     assert result.tool_calls == [
         {
@@ -86,7 +86,7 @@ def test_e2e_scripted_model_error_marker_raises_on_invoke() -> None:
     model = E2EScriptedChatModel(model="document-artifact-scripted")
 
     with pytest.raises(RuntimeError, match="error simulation"):
-        model.invoke([HumanMessage(content="E2E_ERROR 강제 실패 시나리오")])
+        model.invoke([HumanMessage(content="E2E_ERROR 强制失败场景")])
 
 
 def test_e2e_scripted_model_error_marker_raises_on_stream() -> None:
@@ -359,8 +359,8 @@ def test_e2e_scripted_model_uses_latest_human_message_marker() -> None:
 
     result = model.invoke(
         [
-            HumanMessage(content="E2E_DOCX 문서를 생성해줘"),
-            HumanMessage(content="이제 E2E_XLSX 문서를 생성해줘"),
+            HumanMessage(content="请生成 E2E_DOCX 文档"),
+            HumanMessage(content="现在请生成 E2E_XLSX 文档"),
         ]
     )
 
@@ -444,7 +444,7 @@ def test_e2e_scripted_model_stream_preserves_document_tool_call() -> None:
         slow_stream_delay_seconds=0,
     )
 
-    chunks = list(model.stream([HumanMessage(content="E2E_DOCX 문서를 생성해줘")]))
+    chunks = list(model.stream([HumanMessage(content="请生成 E2E_DOCX 文档")]))
 
     tool_calls = [tool_call for chunk in chunks for tool_call in chunk.tool_calls]
     assert tool_calls == [
@@ -661,7 +661,7 @@ def test_e2e_scripted_model_emits_rich_chat_output_fixture() -> None:
 def test_e2e_scripted_model_emits_daily_greeting_fixture() -> None:
     model = E2EScriptedChatModel(model="document-artifact-scripted")
 
-    result = model.invoke([HumanMessage(content=f"{DAILY_GREETING_MARKER} 안녕하세요!")])
+    result = model.invoke([HumanMessage(content=f"{DAILY_GREETING_MARKER} 你好！")])
 
     assert result.content == DAILY_GREETING_CONTENT
     assert result.tool_calls == []
@@ -672,7 +672,7 @@ def test_e2e_scripted_model_emits_ask_user_tool_call() -> None:
         [{"name": "ask_user"}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 과일을 골라줘")])
+    result = model.invoke([HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 请选择水果")])
 
     assert result.content == ASK_USER_FRUIT_PREFACE_CONTENT
     assert result.tool_calls == [
@@ -690,7 +690,7 @@ def test_e2e_scripted_model_emits_ask_user_tool_call_for_natural_request() -> No
         [{"name": "ask_user"}]
     )
 
-    result = model.invoke([HumanMessage(content="사과, 포도, 배 중에 하나 선택하는 ask user 해줘")])
+    result = model.invoke([HumanMessage(content="请用 ask user 让我从苹果、葡萄、梨中选择一个")])
 
     assert result.content == ASK_USER_FRUIT_PREFACE_CONTENT
     assert result.tool_calls == [
@@ -708,7 +708,7 @@ def test_e2e_scripted_model_emits_hitl_approval_tool_call_for_natural_request() 
         [{"name": "execute_in_skill"}]
     )
 
-    result = model.invoke([HumanMessage(content="mcp 도구 사용 승인 HITL")])
+    result = model.invoke([HumanMessage(content="使用 mcp 工具并请求 HITL 审批")])
 
     assert result.tool_calls == [
         {
@@ -746,7 +746,7 @@ def test_e2e_scripted_model_emits_two_execute_in_skill_tool_calls_for_hitl_multi
         [{"name": "execute_in_skill"}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{HITL_MULTI_MARKER} 멀티 승인 카드")])
+    result = model.invoke([HumanMessage(content=f"{HITL_MULTI_MARKER} 多项审批卡片")])
 
     assert [(call["id"], call["name"]) for call in result.tool_calls] == [
         ("call_e2e_hitl_multi_0", "execute_in_skill"),
@@ -765,7 +765,7 @@ def test_e2e_scripted_model_stream_preserves_hitl_multi_tool_calls() -> None:
         slow_stream_delay_seconds=0,
     ).bind_tools([{"name": "execute_in_skill"}])
 
-    chunks = list(model.stream([HumanMessage(content=f"{HITL_MULTI_MARKER} 멀티 승인 카드")]))
+    chunks = list(model.stream([HumanMessage(content=f"{HITL_MULTI_MARKER} 多项审批卡片")]))
 
     tool_calls = [tool_call for chunk in chunks for tool_call in chunk.tool_calls]
     assert [call["id"] for call in tool_calls] == [
@@ -781,7 +781,7 @@ def test_e2e_scripted_model_returns_final_message_after_hitl_multi_tool_results(
 
     result = model.invoke(
         [
-            HumanMessage(content=f"{HITL_MULTI_MARKER} 멀티 승인 카드"),
+            HumanMessage(content=f"{HITL_MULTI_MARKER} 多项审批卡片"),
             ToolMessage(
                 content="OUTPUT_FILES: moldy-hitl-multi-1.docx",
                 tool_call_id="call_e2e_hitl_multi_0",
@@ -799,14 +799,14 @@ def test_e2e_scripted_model_returns_final_message_after_hitl_multi_tool_results(
 
 def test_e2e_scripted_model_emits_edit_file_tool_call_for_hitl_edit() -> None:
     # Unlike execute_in_skill ([approve, reject]), edit_file carries the
-    # [approve, edit, reject] policy, so its approval card shows the 수정 button →
+    # [approve, edit, reject] policy, so its approval card shows the 修改按钮 →
     # the field editor. The args mix editable fields with a sensitive key so the
     # editor demonstrates the locked-secret display.
     model = E2EScriptedChatModel(model="document-artifact-scripted").bind_tools(
         [{"name": "edit_file"}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{HITL_EDIT_MARKER} 수정 승인 카드")])
+    result = model.invoke([HumanMessage(content=f"{HITL_EDIT_MARKER} 修改审批卡片")])
 
     assert [(call["id"], call["name"]) for call in result.tool_calls] == [
         ("call_e2e_hitl_edit", "edit_file"),
@@ -826,7 +826,7 @@ def test_e2e_scripted_model_acknowledges_rejection_instead_of_completion() -> No
 
     result = model.invoke(
         [
-            HumanMessage(content="문서 생성 도구를 사용해 승인 후 실행해줘"),
+            HumanMessage(content="请使用文档生成工具，经批准后执行"),
             ToolMessage(
                 content=(
                     "User rejected the tool call for `execute_in_skill`. The tool was not executed."
@@ -849,7 +849,7 @@ def test_e2e_scripted_model_still_reports_completion_on_successful_tool_result()
 
     result = model.invoke(
         [
-            HumanMessage(content="문서 생성 도구를 사용해 승인 후 실행해줘"),
+            HumanMessage(content="请使用文档生成工具，经批准后执行"),
             ToolMessage(
                 content="OUTPUT_FILES: moldy-docx-demo.docx",
                 tool_call_id="call_e2e_docx",
@@ -870,7 +870,7 @@ def test_e2e_scripted_model_tool_execution_error_is_not_treated_as_rejection() -
 
     result = model.invoke(
         [
-            HumanMessage(content="문서 생성 도구를 사용해 승인 후 실행해줘"),
+            HumanMessage(content="请使用文档生成工具，经批准后执行"),
             ToolMessage(
                 content="Error: file /conversations/deploy-config.yaml was not found",
                 tool_call_id="call_e2e_hitl_edit",
@@ -891,7 +891,7 @@ def test_e2e_scripted_model_emits_grouped_tool_calls_for_tool_group_marker() -> 
         [{"name": TOOL_GROUP_GROUPED_TOOL}, {"name": TOOL_GROUP_SEPARATE_TOOL}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{TOOL_GROUP_MARKER} 그룹 렌더 확인")])
+    result = model.invoke([HumanMessage(content=f"{TOOL_GROUP_MARKER} 检查分组渲染")])
 
     names = [call["name"] for call in result.tool_calls]
     assert names == (
@@ -908,7 +908,7 @@ def test_e2e_scripted_model_stream_preserves_tool_group_tool_calls() -> None:
         slow_stream_delay_seconds=0,
     ).bind_tools([{"name": TOOL_GROUP_GROUPED_TOOL}, {"name": TOOL_GROUP_SEPARATE_TOOL}])
 
-    chunks = list(model.stream([HumanMessage(content=f"{TOOL_GROUP_MARKER} 그룹 렌더 확인")]))
+    chunks = list(model.stream([HumanMessage(content=f"{TOOL_GROUP_MARKER} 检查分组渲染")]))
 
     names = [call["name"] for chunk in chunks for call in chunk.tool_calls]
     assert names == (
@@ -923,7 +923,7 @@ def test_e2e_scripted_model_returns_final_message_after_tool_group_tool_results(
 
     result = model.invoke(
         [
-            HumanMessage(content=f"{TOOL_GROUP_MARKER} 그룹 렌더 확인"),
+            HumanMessage(content=f"{TOOL_GROUP_MARKER} 检查分组渲染"),
             ToolMessage(content="{}", tool_call_id="call_e2e_tool_group_dt_0"),
             ToolMessage(content="{}", tool_call_id="call_e2e_tool_group_dt_1"),
             ToolMessage(content="{}", tool_call_id="call_e2e_tool_group_dt_2"),
@@ -943,7 +943,7 @@ def test_e2e_scripted_model_emits_search_group_tool_calls_for_search_group_marke
         [{"name": SEARCH_GROUP_TOOL}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{SEARCH_GROUP_MARKER} 검색 그룹 렌더 확인")])
+    result = model.invoke([HumanMessage(content=f"{SEARCH_GROUP_MARKER} 检查搜索分组渲染")])
 
     names = [call["name"] for call in result.tool_calls]
     assert names == [SEARCH_GROUP_TOOL] * SEARCH_GROUP_COUNT
@@ -960,7 +960,7 @@ def test_e2e_scripted_model_stream_preserves_search_group_tool_calls() -> None:
         slow_stream_delay_seconds=0,
     ).bind_tools([{"name": SEARCH_GROUP_TOOL}])
 
-    prompt = f"{SEARCH_GROUP_MARKER} 검색 그룹 렌더 확인"
+    prompt = f"{SEARCH_GROUP_MARKER} 检查搜索分组渲染"
     chunks = list(model.stream([HumanMessage(content=prompt)]))
 
     names = [call["name"] for chunk in chunks for call in chunk.tool_calls]
@@ -974,7 +974,7 @@ def test_e2e_scripted_model_returns_final_message_after_search_group_tool_result
 
     result = model.invoke(
         [
-            HumanMessage(content=f"{SEARCH_GROUP_MARKER} 검색 그룹 렌더 확인"),
+            HumanMessage(content=f"{SEARCH_GROUP_MARKER} 检查搜索分组渲染"),
             ToolMessage(content="{}", tool_call_id="call_e2e_search_group_0"),
             ToolMessage(content="{}", tool_call_id="call_e2e_search_group_1"),
             ToolMessage(content="{}", tool_call_id="call_e2e_search_group_2"),
@@ -989,7 +989,7 @@ def test_e2e_scripted_model_returns_final_message_after_search_group_tool_result
 async def test_e2e_scripted_search_tool_yields_expected_unique_sources() -> None:
     # The scripted search tool drives the LITE source aggregate. Verify that the
     # three scripted queries collectively yield SEARCH_GROUP_SOURCE_COUNT unique
-    # URLs so the E2E "출처 N개" assertion has a stable, documented N.
+    # URLs so the E2E "N 个来源" assertion has a stable, documented N.
     import json
 
     from app.agent_runtime.tool_factory import create_builtin_tool
@@ -1036,7 +1036,7 @@ def test_e2e_scripted_model_does_not_trigger_hitl_for_descriptive_prompt() -> No
         [{"name": "execute_in_skill"}]
     )
 
-    result = model.invoke([HumanMessage(content="도구 승인 절차를 설명해줘")])
+    result = model.invoke([HumanMessage(content="请解释工具审批流程")])
 
     assert result.tool_calls == []
     assert result.content == "E2E scripted document model is ready."
@@ -1047,7 +1047,7 @@ def test_e2e_scripted_model_emits_ask_user_tool_call_from_openai_tool_schema() -
         [{"type": "function", "function": {"name": "ask_user"}}]
     )
 
-    result = model.invoke([HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 과일을 골라줘")])
+    result = model.invoke([HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 请选择水果")])
 
     assert result.tool_calls[0]["name"] == "ask_user"
     assert result.tool_calls[0]["args"] == ASK_USER_FRUIT_TOOL_ARGS
@@ -1060,8 +1060,8 @@ def test_e2e_scripted_model_returns_after_ask_user_tool_result() -> None:
 
     result = model.invoke(
         [
-            HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 과일을 골라줘"),
-            ToolMessage(content="🍎 사과", tool_call_id=ASK_USER_FRUIT_TOOL_CALL_ID),
+            HumanMessage(content=f"{ASK_USER_FRUIT_MARKER} 请选择水果"),
+            ToolMessage(content="🍎 苹果", tool_call_id=ASK_USER_FRUIT_TOOL_CALL_ID),
         ]
     )
 

@@ -457,7 +457,7 @@ SEARCH_GROUP_MARKER = "E2E_SEARCH_GROUP"
 # runtime appends only when ``e2e_scripted_model_enabled`` is set. Each query
 # returns a different multi-domain slice, so the frontend search-group aggregate
 # collapses the 3 calls into ONE container ("网页搜索 · 3次") whose header shows
-# domain badges + "출처 N개". ``tavily_search`` maps to label key ``webSearch``
+# domain badges + "来源 N 个". ``tavily_search`` maps to label key ``webSearch``
 # and carries NO HITL interrupt, so the run streams to completion uninterrupted.
 #
 # Source math (see ``_E2E_SCRIPTED_SEARCH_RESULTS``): 3 calls × 3 results = 9
@@ -483,15 +483,15 @@ def _search_group_tool_calls() -> list[dict[str, Any]]:
 
 
 # W2-6 memory lifecycle fixtures. ONE memory-tool call per turn; the tool's
-# policy branch decides the outcome — write_policy=auto → memory_saved (직접
-# 저장 pill), write_policy=ask → memory_proposed (제안 카드: 승인/수정/거부).
+# policy branch decides the outcome — write_policy=auto → memory_saved (直接
+# 保存 pill), write_policy=ask → memory_proposed (提案卡片：批准/修改/拒绝).
 # The spec flips the policy via PATCH /api/me/memory-settings between scenes.
 MEMORY_SAVE_MARKER = "E2E_MEMORY_SAVE"
-MEMORY_SAVE_CONTENT = "사용자는 결론 먼저, 표 중심의 보고서를 선호한다."
-MEMORY_SAVE_REASON = "사용자가 보고서 형식을 명시적으로 지정함"
+MEMORY_SAVE_CONTENT = "用户偏好先给结论、以表格为主的报告。"
+MEMORY_SAVE_REASON = "用户明确指定了报告格式"
 MEMORY_PROPOSE_MARKER = "E2E_MEMORY_PROPOSE"
-MEMORY_PROPOSE_CONTENT = "매주 월요일 아침에 주간 계획 브리핑을 받고 싶어한다."
-MEMORY_PROPOSE_REASON = "반복 일정 선호로 보임 — 저장 여부는 사용자 확인 필요"
+MEMORY_PROPOSE_CONTENT = "希望每周一早上收到每周计划简报。"
+MEMORY_PROPOSE_REASON = "看起来偏好重复日程 — 是否保存需要用户确认"
 MEMORY_FINAL_CONTENT = "E2E memory tool run complete."
 
 
@@ -500,12 +500,12 @@ MEMORY_FINAL_CONTENT = "E2E memory tool run complete."
 # expanded with result cards. ``E2E_SEARCH_RICH``'s query is curated in
 # ``tool_factory`` to return an ``answer`` (summary box) + content snippets;
 # ``E2E_SEARCH_SHOP``'s ``shop:`` prefix returns the Naver shopping ``items``
-# shape (thumbnail/lprice/mallName → 썸네일+가격 카드).
+# shape (thumbnail/lprice/mallName → 缩略图+价格卡片).
 SEARCH_RICH_MARKER = "E2E_SEARCH_RICH"
-SEARCH_RICH_QUERY = "agentic os 오버뷰"
+SEARCH_RICH_QUERY = "agentic os 概览"
 SEARCH_RICH_FINAL_CONTENT = "E2E rich search rendering complete."
 SEARCH_SHOP_MARKER = "E2E_SEARCH_SHOP"
-SEARCH_SHOP_QUERY = "shop:무선 키보드"
+SEARCH_SHOP_QUERY = "shop:无线键盘"
 SEARCH_SHOP_FINAL_CONTENT = "E2E shop search rendering complete."
 
 
@@ -550,16 +550,16 @@ def _ui_data_marker_kind(human_text: str) -> str | None:
 
 ASK_USER_FRUIT_MARKER = "E2E_ASK_USER_FRUIT"
 ASK_USER_FRUIT_TOOL_CALL_ID = "call_e2e_ask_user_fruit"
-ASK_USER_FRUIT_PREFACE_CONTENT = "네, 골라봐요!"
+ASK_USER_FRUIT_PREFACE_CONTENT = "好的，选一个吧！"
 ASK_USER_FRUIT_FINAL_CONTENT = "E2E ask_user fruit selection received."
 ASK_USER_FRUIT_TOOL_ARGS = {
     "mode": "option_list",
     "title": "需要输入",
-    "question": "어떤 과일이 좋아요?",
+    "question": "你喜欢哪种水果？",
     "options": [
-        {"id": "apple", "label": "🍎 사과"},
-        {"id": "grape", "label": "🍇 포도"},
-        {"id": "pear", "label": "🍐 배"},
+        {"id": "apple", "label": "🍎 苹果"},
+        {"id": "grape", "label": "🍇 葡萄"},
+        {"id": "pear", "label": "🍐 梨"},
     ],
     "minSelections": 1,
     "maxSelections": 1,
@@ -571,22 +571,22 @@ ASK_USER_FRUIT_TOOL_ARGS = {
 # exercised. The follow-up turn (after the ToolMessage) streams ``final``.
 ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
     "E2E_ASK_USER_TEXT": {
-        "preface": "어떤 톤으로 작성할까요?",
+        "preface": "要用什么语气来写？",
         # mode omitted + no options → free-text input card (user-input-ui).
-        "args": {"question": "원하시는 글의 톤을 자유롭게 적어주세요. (예: 친근하게, 전문적으로)"},
+        "args": {"question": "请自由填写你希望的文风。 (例如：亲切、专业)"},
         "final": "E2E ask_user text input received.",
     },
     "E2E_ASK_USER_MULTI": {
-        "preface": "관심 있는 운동을 모두 골라주세요!",
+        "preface": "请选择所有你感兴趣的运动！",
         "args": {
             "mode": "option_list",
             "title": "需要输入",
-            "question": "관심 있는 운동을 모두 선택하세요 (복수 선택 가능)",
+            "question": "请选择所有你感兴趣的运动 (可多选)",
             "options": [
-                {"id": "run", "label": "🏃 러닝"},
-                {"id": "swim", "label": "🏊 수영"},
-                {"id": "yoga", "label": "🧘 요가"},
-                {"id": "climb", "label": "🧗 클라이밍"},
+                {"id": "run", "label": "🏃 跑步"},
+                {"id": "swim", "label": "🏊 游泳"},
+                {"id": "yoga", "label": "🧘 瑜伽"},
+                {"id": "climb", "label": "🧗 攀岩"},
             ],
             "minSelections": 1,
             "maxSelections": 3,
@@ -594,30 +594,30 @@ ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
         "final": "E2E ask_user multi-select received.",
     },
     "E2E_ASK_USER_FLOW": {
-        "preface": "여행 취향을 몇 가지 여쭤볼게요.",
+        "preface": "我来问你几个关于旅行偏好的问题。",
         "args": {
             "mode": "question_flow",
-            "title": "여행 선호 조사",
+            "title": "旅行偏好调查",
             "questions": [
                 {
                     "id": "dest",
-                    "label": "목적지",
-                    "question": "어디로 떠나고 싶으세요?",
+                    "label": "目的地",
+                    "question": "你想去哪里旅行？",
                     "type": "single_select",
-                    "options": ["국내", "아시아", "유럽"],
+                    "options": ["国内", "亚洲", "欧洲"],
                     "required": True,
                 },
                 {
                     "id": "act",
-                    "label": "활동",
-                    "question": "하고 싶은 활동을 모두 고르세요",
+                    "label": "活动",
+                    "question": "请选择所有你想参加的活动",
                     "type": "multi_select",
-                    "options": ["맛집 투어", "휴양", "액티비티", "쇼핑"],
+                    "options": ["美食之旅", "休闲度假", "体验活动", "购物"],
                 },
                 {
                     "id": "note",
                     "label": "注释",
-                    "question": "추가로 원하는 점이 있다면 적어주세요",
+                    "question": "如果还有其他要求，请填写",
                     "type": "text",
                 },
             ],
@@ -640,18 +640,18 @@ def _is_rich_output_request(human_text: str) -> bool:
 
     lowered = human_text.lower()
     surface_groups = (
-        ("체크리스트", "清单", "checklist"),
-        ("표", "表格", "table"),
-        ("代码", "코드", "code"),
-        ("수식", "公式", "math"),
-        ("图片", "이미지", "image"),
-        ("링크", "链接", "link"),
+        ("检查清单", "清单", "checklist"),
+        ("表格", "表格", "table"),
+        ("代码", "代码", "code"),
+        ("公式", "公式", "math"),
+        ("图片", "图片", "image"),
+        ("链接", "链接", "link"),
     )
     mentions_required_surfaces = all(
         any(surface.lower() in lowered for surface in group) for group in surface_groups
     )
-    mentions_quote = "引用" in human_text or "인용" in human_text or "blockquote" in lowered
-    mentions_mermaid = "mermaid" in lowered or "머메이드" in human_text
+    mentions_quote = "引用" in human_text or "引用" in human_text or "blockquote" in lowered
+    mentions_mermaid = "mermaid" in lowered or "Mermaid" in human_text
     return mentions_required_surfaces and mentions_quote and mentions_mermaid
 
 
@@ -661,13 +661,13 @@ def _is_ask_user_fruit_request(human_text: str) -> bool:
 
     lowered = human_text.lower()
     asks_user = "ask user" in lowered or "ask_user" in lowered
-    mentions_fruit_options = all(option in human_text for option in ("사과", "포도", "배"))
+    mentions_fruit_options = all(option in human_text for option in ("苹果", "葡萄", "梨"))
     return asks_user and mentions_fruit_options
 
 
 def _is_hitl_approval_request(human_text: str) -> bool:
-    # Explicit marker always wins so a generic prompt like "도구 승인 절차를
-    # 설명해줘" (explain the tool-approval flow) does not accidentally fire an
+    # Explicit marker always wins so a generic prompt like "工具审批流程
+    # 解释一下" (explain the tool-approval flow) does not accidentally fire an
     # ``execute_in_skill`` tool call.
     if HITL_APPROVAL_MARKER in human_text:
         return True
@@ -676,14 +676,14 @@ def _is_hitl_approval_request(human_text: str) -> bool:
     mentions_tool = "mcp" in lowered or "工具" in human_text or "tool" in lowered
     mentions_hitl = "hitl" in lowered or "批准" in human_text or "approval" in lowered
     # Require an explicit execution intent in addition to the tool/approval
-    # mention so descriptive prompts ("설명/알려줘") are not mistaken for an
+    # mention so descriptive prompts ("解释/告诉我") are not mistaken for an
     # approval-triggering request. Backward compatible with existing specs that
-    # phrase the prompt as "도구 사용 승인" / "tool ... HITL".
+    # phrase the prompt as "工具使用审批" / "tool ... HITL".
     mentions_execution = (
         "已启用" in human_text
         or "运行" in human_text
-        or "사용" in human_text
-        or "실행" in human_text
+        or "使用" in human_text
+        or "执行" in human_text
         or "use" in lowered
         or "run" in lowered
     )
@@ -828,7 +828,7 @@ class E2EScriptedChatModel(BaseChatModel):
             # rejection notice. Distinguish it from a genuine tool EXECUTION error
             # (e.g. an approved edit that ran and failed) by the message text, not
             # just status="error" — otherwise an edit-approve whose tool errors
-            # would wrongly read as "취소했어요".
+            # would wrongly read as "已取消".
             if _is_rejected_tool_message(messages[-1]):
                 message = AIMessage(content=HITL_REJECTED_ACK_CONTENT)
                 return ChatResult(generations=[ChatGeneration(message=message)])
@@ -929,7 +929,7 @@ class E2EScriptedChatModel(BaseChatModel):
             return ChatResult(generations=[ChatGeneration(message=message)])
 
         if _is_hitl_edit_request(human_text):
-            # ONE edit_file call → an edit-capable approval card (수정 button +
+            # ONE edit_file call → an edit-capable approval card (修改 button +
             # field editor). Fresh args dict so the module constant can't be
             # mutated downstream.
             message = AIMessage(
