@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.credentials import service as credential_service
 from app.models.model import Model
-from app.models.system_llm_setting import SystemLlmSetting
+from app.models.user_llm_setting import UserLlmSetting
+from tests.conftest import TEST_USER_ID
 
 SYSTEM_MODEL_NAME = "gpt-5.4"
 
@@ -21,14 +22,15 @@ async def configure_system_llm(db: AsyncSession) -> None:
 
     credential = await credential_service.create(
         db,
-        user_id=None,
+        user_id=TEST_USER_ID,
         definition_key="openai",
         name="builder-key",
         data={"api_key": "sk-test"},
-        is_system=True,
+        is_system=False,
     )
     db.add(
-        SystemLlmSetting(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
             role="text_primary",
             credential_id=credential.id,
             model_name=SYSTEM_MODEL_NAME,

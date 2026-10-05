@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.marketplace.payloads import canonical_json_hash
-from app.models.agent_project import AgentProjectEvalRun, utcnow
+from app.models.agent_project import AgentProjectEvalRun, AgentProjectVersion, utcnow
 from app.schemas.agent_project_optimization import (
     OptimizationDraft,
     OptimizationProposalSet,
@@ -151,37 +151,52 @@ async def generate(
     parent = await projects.get_version(db, agent_id, user_id, run.version_id)
     profile = (run.comparison_json or {}).get("eval_spec", {}).get("capability_profile")
     profile = profile or capability_profile(parent.snapshot_json)
+    role_calls: list[dict[str, Any]] = []
     try:
-        raw = await json_call(
-            db,
-            parent.snapshot_json,
-            user_id,
-            "optimization_proposal",
-            "Propose 2-3 distinct, reasonable optimization strategies with minimal "
-            "evidence-driven TEXT changes addressing the supplied failure groups. "
-            "These are proposals for human review, not authorization to change the Agent. "
-            "Each proposal must include title, what_changes, why_it_may_work, benefits, risks "
-            "and targeted_case_ids. "
-            "Use only capabilities from capability_profile.capabilities. "
-            "Allowed targets: instructions/output_instructions (system_prompt), "
-            "skill_content (frozen skill content only), "
-            "tool_description (linked tool/MCP description). "
-            "Use resource_id for skill_id/tool_id/mcp_tool_id. Use append or replace_section with "
-            "one exact old_content anchor. replace_value is ONLY for tool_description with exact "
-            "old_content. No whole-prompt rewrites, test answers, case-specific exceptions, "
-            "credential/model changes, rubric changes or test changes. "
-            "At most 3000 added characters. Changes for missing historical Skill content "
-            "will be deferred, never applied to live Skills. "
-            "Return the supplied schema; group_index is zero-based.",
-            {
-                "snapshot": parent.snapshot_json,
-                "groups": analysis["groups"],
-                "bad_cases": analysis["bad_cases"],
-                "judge_results": run.results_json,
-                "capability_profile": profile,
-                "schema": OptimizationProposalSet.model_json_schema(),
-            },
-        )
+        from app.services.agent_project_llm import capture_calls
+
+        with capture_calls(role_calls):
+            raw = await json_call(
+                db,
+                {
+                    **parent.snapshot_json,
+                    "evaluation_roles": (run.comparison_json or {}).get("resolved_roles", {}),
+                    "role_configurations": (run.comparison_json or {}).get("role_configurations"),
+                },
+                user_id,
+                "optimization_proposal",
+                "Propose 2-3 distinct, reasonable optimization strategies with minimal "
+                "evidence-driven TEXT changes addressing the supplied failure groups. "
+                "These are proposals for human review, not authorization to change the Agent. "
+                "Each proposal must include title, what_changes, why_it_may_work, benefits, risks "
+                "and targeted_case_ids. "
+                "Use only capabilities from capability_profile.capabilities. "
+                "Allowed targets: instructions/output_instructions (system_prompt), "
+                "runtime_config for existing middleware settings only, "
+                "skill_content (frozen skill content only), "
+                "tool_description (linked tool/MCP description). "
+                "Use resource_id for skill_id/tool_id/mcp_tool_id. Use "
+                "append or replace_section with "
+                "one exact old_content anchor. replace_value is ONLY for "
+                "tool_description with exact "
+                "old_content. No whole-prompt rewrites, test answers, case-specific exceptions, "
+                "credential/model changes, rubric changes or test changes. "
+                "runtime_config uses replace_value, resource_id model_call_limit.run_limit "
+                "or tool_call_limit.limit (1-30), model_retry.max_retries or "
+                "tool_retry.max_retries "
+                "(0-3), content an integer JSON string and exact old_content. "
+                "At most 3000 added characters. Changes for missing historical Skill content "
+                "will be deferred, never applied to live Skills. "
+                "Return the supplied schema; group_index is zero-based.",
+                {
+                    "snapshot": parent.snapshot_json,
+                    "groups": analysis["groups"],
+                    "bad_cases": analysis["bad_cases"],
+                    "judge_results": run.results_json,
+                    "capability_profile": profile,
+                    "schema": OptimizationProposalSet.model_json_schema(),
+                },
+            )
         drafts = draft_list(raw)
         analyzed_case_ids = {
             str(item["case_id"]) for item in analysis["bad_cases"] if item.get("case_id")
@@ -214,6 +229,9 @@ async def generate(
                 )
             )
     except Exception as exc:
+        await optimization.save_failed_stage_calls(
+            db, agent_id, user_id, run_id, "proposal", role_calls, "optimization_proposal_invalid"
+        )
         raise optimization.fail("optimization_proposal_invalid") from exc
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
@@ -230,6 +248,9 @@ async def generate(
     if existing:
         await db.commit()
         return existing
+    for value in values:
+        value["generation_calls"] = role_calls
+        value["model_role"] = "builder"
     save_many(run, values)
     await db.commit()
     return values[0]
@@ -244,6 +265,8 @@ async def decide(
     decision: str,
     decision_reason: str | None = None,
 ) -> dict[str, Any]:
+    if not decision_reason or not decision_reason.strip():
+        raise optimization.fail("project_decision_reason_required")
     project = await projects.require_project(db, agent_id, user_id)
     await projects.lock_project(db, project)
     run = await evaluation.get_run(db, agent_id, user_id, run_id)
@@ -254,6 +277,16 @@ async def decide(
         await db.commit()
         return value
     if decision == "accepted":
+        existing_candidate = await db.scalar(
+            select(AgentProjectVersion).where(
+                AgentProjectVersion.project_id == project.id,
+                AgentProjectVersion.parent_version_id == run.version_id,
+            )
+        )
+        if existing_candidate and existing_candidate.snapshot_json.get("created_from", {}).get(
+            "optimization_proposal_id"
+        ):
+            raise optimization.fail("optimization_proposal_already_decided", 409)
         accepted = next(
             (
                 item
@@ -264,6 +297,14 @@ async def decide(
         )
         if accepted:
             raise optimization.fail("optimization_proposal_already_decided", 409)
+        latest = await db.scalar(
+            select(AgentProjectVersion)
+            .where(AgentProjectVersion.project_id == project.id)
+            .order_by(AgentProjectVersion.version_number.desc())
+            .limit(1)
+        )
+        if latest is None or latest.id != run.version_id:
+            raise optimization.fail("optimization_source_not_latest", 409)
         parent = await projects.get_version(db, agent_id, user_id, run.version_id)
         if canonical_json_hash(parent.snapshot_json) != value["source_config_hash"]:
             raise optimization.fail("snapshot_hash_mismatch", 409)
@@ -294,6 +335,22 @@ async def decide(
             summary="; ".join(change["reason"] for change in diffs)[:1000],
         )
         value["version_id"] = str(version.id)
+    project.decisions_json = [
+        *(project.decisions_json or []),
+        projects.snapshot_value(
+            {
+                "id": str(uuid.uuid4()),
+                "stage": "optimization",
+                "choice": value.get("title", proposal_id.hex),
+                "reason": decision_reason.strip(),
+                "version_id": str(run.version_id),
+                "run_id": str(run.id),
+                "created_at": utcnow().isoformat(),
+                "requirements_hash": (run.comparison_json or {}).get("requirements_hash"),
+            }
+        ),
+    ]
+    project.completion_json = None
     decided_at = utcnow().isoformat()
     value.update(status=decision, decided_at=decided_at, decision_reason=decision_reason)
     if decision == "accepted":
@@ -341,14 +398,53 @@ async def regression(
             raise optimization.fail("evaluation_request_conflict", 409)
         await db.commit()
         return prior
+    previous_runs = (
+        await db.scalars(
+            select(AgentProjectEvalRun).where(
+                AgentProjectEvalRun.project_id == project.id,
+                AgentProjectEvalRun.version_id == uuid.UUID(value["version_id"]),
+            )
+        )
+    ).all()
+    existing = next(
+        (
+            r
+            for r in previous_runs
+            if (r.comparison_json or {}).get("regression", {}).get("proposal_id")
+            == str(proposal_id)
+        ),
+        None,
+    )
+    if existing is not None:
+        await db.commit()
+        return existing
     optimization.terminal_semantic(source)
+    from app.services.agent_project_llm import check_role_configurations
+
+    await check_role_configurations(
+        db, user_id, (source.comparison_json or {}).get("role_configurations")
+    )
     dataset = await evaluation.get_set(db, project.id, source.eval_set_id)
     if not dataset.frozen:
         raise optimization.fail("optimization_regression_inputs_changed", 409)
     await evaluation.expire_runs(db, project.id)
     plan = {
         key: deepcopy((source.comparison_json or {})[key])
-        for key in ("eval_spec", "spec_hash", "rubric_hash", "roles", "execution_mode")
+        for key in (
+            "eval_spec",
+            "spec_hash",
+            "rubric_hash",
+            "roles",
+            "execution_mode",
+            "requirements",
+            "requirements_hash",
+            "decisions",
+            "resolved_roles",
+            "resolved_examinee",
+            "role_configurations",
+            "validation_source",
+            "quality_report",
+        )
         if key in (source.comparison_json or {})
     }
     plan["regression"] = {"source_run_id": str(source.id), "proposal_id": str(proposal_id)}

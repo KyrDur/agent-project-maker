@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl'
 import { AssistantThread } from '@/components/chat/assistant-thread'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
+import { useSystemLlmSettings } from '@/lib/hooks/use-system-llm-settings'
 import { builderApi } from '@/lib/api/builder'
 import { HiTLContext } from '@/lib/chat/hitl-context'
 import { BUILDER_TOOLKIT } from '@/lib/chat/tool-ui-registry'
@@ -44,6 +45,8 @@ export default function ConversationalCreationPage({
   const { initialMessage, sessionId: restoredSessionId } = use(searchParams)
   const t = useTranslations('agent.conversational')
   const router = useRouter()
+  const models = useSystemLlmSettings()
+  const builderModel = models.data?.find((setting) => setting.role === 'builder')
   const [messages, setMessages] = useState<Message[]>([])
   const [sessionId, setSessionId] = useState<string | null>(restoredSessionId ?? null)
   const sessionIdRef = useRef<string | null>(restoredSessionId ?? null)
@@ -222,7 +225,9 @@ export default function ConversationalCreationPage({
             <HiTLContext.Provider value={hitlValue}>
               <AssistantThread
                 variant="builder"
-                builderModelLabel={t('builderModelLabel')}
+                builderModelLabel={t('builderModelLabel', {
+                  model: builderModel?.model_name ?? t('modelNotConfigured'),
+                })}
                 builderAgentSubtitle={t('builderAgentSubtitle')}
                 agentName={t('builderAgentName')}
                 emptyContent={<WelcomeContent />}

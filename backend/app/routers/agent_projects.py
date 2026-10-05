@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_runtime.builder_i18n import locale_scope
 from app.dependencies import CurrentUser, get_current_user, get_db, verify_csrf
 from app.exceptions import AppError
 from app.schemas.agent_project import (
@@ -19,6 +20,9 @@ from app.schemas.agent_project import (
     EvalRunResponse,
     EvalSetResponse,
     EvalSetWrite,
+    ProjectCompletionRequest,
+    ProjectDecision,
+    ProjectRequirements,
     VersionCreate,
     VersionCreated,
 )
@@ -49,7 +53,8 @@ class ProjectRoute(APIRoute):
 
         async def safe_handler(request):
             try:
-                return await handler(request)
+                with locale_scope(request.cookies.get("moldy_locale")):
+                    return await handler(request)
             except RequestValidationError as exc:
                 raise AppError(
                     code="VALIDATION_ERROR", message="Invalid project request", status=422
@@ -293,12 +298,13 @@ async def decide_optimization_proposal(
     run_id: uuid.UUID,
     proposal_id: uuid.UUID,
     body: ProposalDecision,
+    background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
     from app.services import agent_project_proposals
 
-    return await agent_project_proposals.decide(
+    value = await agent_project_proposals.decide(
         db,
         agent_id,
         user.id,
@@ -307,6 +313,20 @@ async def decide_optimization_proposal(
         body.decision,
         body.decision_reason,
     )
+
+    if body.decision == "accepted":
+        row = await agent_project_proposals.regression(
+            db,
+            agent_id,
+            user.id,
+            run_id,
+            proposal_id,
+            uuid.uuid5(proposal_id, "automatic-regression"),
+        )
+        if row.status == "pending":
+            background.add_task(evaluation.execute_run, row.id, agent_id, user.id)
+        value = {**value, "regression_run_id": str(row.id)}
+    return value
 
 
 @router.post(
@@ -426,3 +446,114 @@ async def bootstrap_builder_project(
     if project.builder_session_id:
         background.add_task(builder_project_lifecycle.bootstrap, agent_id, user.id)
     return {"accepted": bool(project.builder_session_id)}
+
+
+@router.put("/requirements", response_model=AgentProjectResponse)
+async def update_requirements(
+    agent_id: uuid.UUID,
+    body: ProjectRequirements,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_practice import write_requirements
+
+    return await write_requirements(db, agent_id, user.id, body)
+
+
+@router.post("/decisions", response_model=AgentProjectResponse)
+async def record_project_decision(
+    agent_id: uuid.UUID,
+    body: ProjectDecision,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_practice import record_decision
+
+    return await record_decision(db, agent_id, user.id, body)
+
+
+@router.get("/completion")
+async def project_completion(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_practice import completion
+
+    return await completion(db, agent_id, user.id)
+
+
+@router.post("/completion")
+async def complete_project(
+    agent_id: uuid.UUID,
+    body: ProjectCompletionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_practice import completion
+
+    return await completion(db, agent_id, user.id, body.analysis)
+
+
+@router.get("/interview")
+async def project_interview(
+    agent_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.services.agent_project_materials import interview
+
+    return await interview(db, agent_id, user.id)
+
+
+from app.schemas.agent_project_simulation import (
+    SimulationCreate,
+    SimulationMessage,
+    SimulationReset,
+    SimulationResponse,
+)
+from app.services import agent_project_simulation as simulation
+
+
+@router.post("/simulation-sessions", response_model=SimulationResponse, status_code=201)
+async def create_simulation(
+    agent_id: uuid.UUID,
+    body: SimulationCreate,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await simulation.create(db, agent_id, user.id, body)
+
+
+@router.get("/simulation-sessions/{session_id}", response_model=SimulationResponse)
+async def read_simulation(
+    agent_id: uuid.UUID,
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await simulation.get(db, agent_id, user.id, session_id)
+
+
+@router.post("/simulation-sessions/{session_id}/messages", response_model=SimulationResponse)
+async def send_simulation(
+    agent_id: uuid.UUID,
+    session_id: uuid.UUID,
+    body: SimulationMessage,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await simulation.send(db, agent_id, user.id, session_id, body)
+
+
+@router.post(
+    "/simulation-sessions/{session_id}/reset", response_model=SimulationResponse, status_code=201
+)
+async def reset_simulation(
+    agent_id: uuid.UUID,
+    session_id: uuid.UUID,
+    body: SimulationReset,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await simulation.reset(db, agent_id, user.id, session_id, body.request_id)

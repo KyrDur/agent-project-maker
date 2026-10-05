@@ -87,6 +87,14 @@ class AgentCreationIntent(BaseModel):
         default_factory=list, min_length=1, description="사용 사례 (최소 1개)"
     )
     constraints: list[str] = Field(default_factory=list, description="제약 조건")
+    project_requirements: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            "Draft goal, inputs, deliverables, business_rules "
+            "and success_conditions for simulation practice"
+        ),
+    )
+    confirmation_reason: str | None = None
     required_capabilities: list[str] = Field(default_factory=list, description="所需能力")
 
     @field_validator("identity_mode")
@@ -110,7 +118,9 @@ class ToolRecommendation(BaseModel):
     tool_name: str
     description: str
     reason: str
-    kind: Literal["tool", "mcp", "skill", "planned"] = "tool"
+    kind: Literal["tool", "mcp", "skill", "planned", "generated_skill"] = "tool"
+    content: str | None = Field(default=None, max_length=20000)
+    input_schema: dict[str, Any] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +151,8 @@ class DraftAgentConfig(BaseModel):
     planned_tools: list[dict[str, Any]] = Field(
         default_factory=list, description="尚未连接、可在评测 mock 环境中使用的工具接口"
     )
+    generated_skills: list[dict[str, Any]] = Field(default_factory=list)
+    capability_reason: str | None = None
     middlewares: list[str] = Field(default_factory=list, description="미들웨어 이름 목록")
     model_name: str = Field(default="")
     primary_task_type: str = ""

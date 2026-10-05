@@ -10,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.credentials import service as credential_service
 from app.models.system_llm_setting import SystemLlmSetting
+from app.models.user_llm_setting import UserLlmSetting
 from app.services.system_credential_resolver import (
     SystemModelNotConfiguredError,
     resolve_system_model,
 )
+from tests.conftest import TEST_USER_ID
 
 pytestmark = pytest.mark.asyncio
 
@@ -29,11 +31,11 @@ async def _make_system_credential(
 ) -> uuid.UUID:
     cred = await credential_service.create(
         db,
-        user_id=None,
+        user_id=TEST_USER_ID,
         definition_key=definition_key,
         name=name,
         data=data,
-        is_system=True,
+        is_system=False,
     )
     await db.commit()
     return cred.id
@@ -62,7 +64,8 @@ async def test_readiness_returns_platform_text_roles(client: AsyncClient, db: As
         db, definition_key="openai", data={"api_key": "sk-test"}
     )
     db.add(
-        SystemLlmSetting(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
             role="evaluation_generator",
             credential_id=cred_id,
             model_name="gpt-5.4",
@@ -195,7 +198,7 @@ async def test_put_nonexistent_credential_404(client: AsyncClient) -> None:
         json={"credential_id": str(uuid.uuid4()), "model_name": "x"},
     )
     assert resp.status_code == 404
-    assert "system LLM credential" in resp.json()["error"]["message"]
+    assert "personal LLM credential" in resp.json()["error"]["message"]
 
 
 async def test_put_non_llm_credential_422(client: AsyncClient, db: AsyncSession) -> None:
@@ -210,18 +213,18 @@ async def test_put_non_llm_credential_422(client: AsyncClient, db: AsyncSession)
     )
     assert resp.status_code == 422
     # Same detail message as the 404 path — reason logged server-side only.
-    assert "system LLM credential" in resp.json()["error"]["message"]
+    assert "personal LLM credential" in resp.json()["error"]["message"]
 
 
-async def test_put_user_credential_rejected(client: AsyncClient, db: AsyncSession) -> None:
+async def test_put_system_credential_rejected(client: AsyncClient, db: AsyncSession) -> None:
     # A non-system (user) credential must not be selectable as a system slot.
     cred = await credential_service.create(
         db,
-        user_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
+        user_id=None,
         definition_key="openai",
         name="user-key",
         data={"api_key": "sk-user"},
-        is_system=False,
+        is_system=True,
     )
     await db.commit()
     resp = await client.put(
@@ -295,7 +298,7 @@ async def test_platform_test_rejects_provider_credential_mismatch(
 
 async def test_resolve_raises_when_unconfigured(db: AsyncSession) -> None:
     with pytest.raises(SystemModelNotConfiguredError) as exc:
-        await resolve_system_model(db, "text_primary")
+        await resolve_system_model(db, "text_primary", TEST_USER_ID)
     assert exc.value.role == "text_primary"
 
 
@@ -306,7 +309,8 @@ async def test_resolve_returns_model_with_base_url(db: AsyncSession) -> None:
         data={"api_key": "sk-or", "base_url": "https://openrouter.ai/api/v1"},
     )
     db.add(
-        SystemLlmSetting(
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
             role="text_primary",
             credential_id=cred_id,
             model_name="anthropic/claude-sonnet-4.6",
@@ -314,7 +318,7 @@ async def test_resolve_returns_model_with_base_url(db: AsyncSession) -> None:
     )
     await db.commit()
 
-    resolved = await resolve_system_model(db, "text_primary")
+    resolved = await resolve_system_model(db, "text_primary", TEST_USER_ID)
     assert resolved.provider == "openrouter"
     assert resolved.model_name == "anthropic/claude-sonnet-4.6"
     assert resolved.api_key == "sk-or"
@@ -325,10 +329,12 @@ async def test_resolve_raises_when_model_name_missing(db: AsyncSession) -> None:
     cred_id = await _make_system_credential(
         db, definition_key="anthropic", data={"api_key": "sk-a"}
     )
-    db.add(SystemLlmSetting(role="image", credential_id=cred_id, model_name=None))
+    db.add(
+        UserLlmSetting(user_id=TEST_USER_ID, role="image", credential_id=cred_id, model_name=None)
+    )
     await db.commit()
     with pytest.raises(SystemModelNotConfiguredError):
-        await resolve_system_model(db, "image")
+        await resolve_system_model(db, "image", TEST_USER_ID)
 
 
 # --------------------------------------------------------------------------- #
@@ -440,17 +446,17 @@ async def non_super_client():
         yield ac
 
 
-async def test_get_requires_super_user(non_super_client: AsyncClient) -> None:
+async def test_get_allows_regular_user(non_super_client: AsyncClient) -> None:
     resp = await non_super_client.get(BASE)
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
-async def test_put_requires_super_user(non_super_client: AsyncClient) -> None:
+async def test_put_allows_regular_user(non_super_client: AsyncClient) -> None:
     resp = await non_super_client.put(
         f"{BASE}/text_primary",
         json={"credential_id": None, "model_name": None},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 async def test_invalid_credential_detail_is_byte_identical(
@@ -480,8 +486,8 @@ async def test_role_unique_constraint(db: AsyncSession) -> None:
     """Duplicate role rows are rejected at the DB layer (UNIQUE(role))."""
     import sqlalchemy.exc
 
-    db.add(SystemLlmSetting(role="text_primary"))
-    db.add(SystemLlmSetting(role="text_primary"))
+    db.add(UserLlmSetting(user_id=TEST_USER_ID, role="text_primary"))
+    db.add(UserLlmSetting(user_id=TEST_USER_ID, role="text_primary"))
     with pytest.raises(sqlalchemy.exc.IntegrityError):
         await db.commit()
 

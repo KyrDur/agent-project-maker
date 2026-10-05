@@ -14,8 +14,16 @@ Category = Literal[
     "tool_description_issue",
     "output_issue",
     "external_unfixable",
+    "no_supported_change",
 ]
-Target = Literal["instructions", "skill_content", "tool_description", "output_instructions", "none"]
+Target = Literal[
+    "instructions",
+    "skill_content",
+    "tool_description",
+    "output_instructions",
+    "runtime_config",
+    "none",
+]
 
 
 class BadCase(BaseModel):

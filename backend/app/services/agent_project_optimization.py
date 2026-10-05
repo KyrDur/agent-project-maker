@@ -61,6 +61,33 @@ def case_evidence(case: dict[str, Any], result: dict[str, Any]) -> dict[str, Any
     }
 
 
+async def save_failed_stage_calls(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+    user_id: uuid.UUID,
+    run_id: uuid.UUID,
+    stage: str,
+    calls: list[dict[str, Any]],
+    code: str,
+) -> None:
+    await db.rollback()
+    project = await projects.require_project(db, agent_id, user_id)
+    await projects.lock_project(db, project)
+    run = await evaluation.get_run(db, agent_id, user_id, run_id)
+    await db.refresh(run, ["comparison_json"])
+    attempts = (run.comparison_json or {}).get("stage_failures", [])
+    run.comparison_json = {
+        **(run.comparison_json or {}),
+        "stage_failures": [
+            *attempts,
+            projects.snapshot_value(
+                {"stage": stage, "code": code, "calls": calls, "created_at": utcnow().isoformat()}
+            ),
+        ],
+    }
+    await db.commit()
+
+
 async def analyze(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, run_id: uuid.UUID
 ) -> dict[str, Any]:
@@ -76,6 +103,10 @@ async def analyze(
         r["case_id"]: case_evidence(cases[r["case_id"]], r)
         for r in run.results_json or []
         if r["status"] != "passed"
+        or (
+            not any(x["status"] != "passed" for x in run.results_json or [])
+            and any(v.get("score", 1) < 1 for v in r.get("metric_scores", {}).values())
+        )
     }
     external = []
     eligible = {}
@@ -94,32 +125,50 @@ async def analyze(
             )
         else:
             eligible[case_id] = item
+    role_calls: list[dict[str, Any]] = []
     proposal = AnalysisProposal(analyses=[], groups=[])
     if eligible:
         try:
-            raw = await json_call(
-                db,
-                version.snapshot_json,
-                user_id,
-                "bad_case_analyzer",
-                "Analyze only these failed cases from the frozen experiment. "
-                "Infer likely causes conservatively, citing observable evidence. "
-                "evidence must be JSON pointer strings into each case evidence object, "
-                "for example /actual_output or /metric_scores/groundedness/score. "
-                "Do not claim inaccessible internal reasoning. Group similar failures into "
-                "at most five shared causes; prefer general fixes over case wording hacks. "
-                "Each fixable case belongs to exactly one group with the same category and target "
-                "as its analysis. External outages: external_unfixable, target none, "
-                "and must not appear in fixable groups. Frozen Skill text may be absent: propose "
-                "Skill changes as deferred advice rather than claiming access to a live Skill. "
-                "Return the supplied schema only.",
-                {
-                    "snapshot": version.snapshot_json,
-                    "eval_spec": (run.comparison_json or {})["eval_spec"],
-                    "cases": list(eligible.values()),
-                    "schema": AnalysisProposal.model_json_schema(),
-                },
-            )
+            from app.services.agent_project_llm import capture_calls
+
+            with capture_calls(role_calls):
+                raw = await json_call(
+                    db,
+                    {
+                        **version.snapshot_json,
+                        "evaluation_roles": (run.comparison_json or {}).get("resolved_roles", {}),
+                        "role_configurations": (run.comparison_json or {}).get(
+                            "role_configurations"
+                        ),
+                    },
+                    user_id,
+                    "bad_case_analyzer",
+                    "Analyze failed cases or imperfect metrics from the frozen experiment. "
+                    "Do not label passing cases as failures; identify bounded improvements. "
+                    "Infer likely causes conservatively, citing observable evidence. "
+                    "evidence must be JSON pointer strings into each case evidence object, "
+                    "for example /actual_output or /metric_scores/groundedness/score. "
+                    "Do not claim inaccessible internal reasoning. Group similar failures into "
+                    "at most five shared causes; prefer general fixes over case wording hacks. "
+                    "Each fixable case belongs to exactly one group with the "
+                    "same category and target "
+                    "as its analysis. External outages: external_unfixable, target none, "
+                    "and must not appear in fixable groups. Frozen Skill text "
+                    "may be absent: propose "
+                    "Skill changes as deferred advice rather than claiming access to a live Skill. "
+                    "When evidence does not justify a verifiable change, use "
+                    "category no_supported_change, "
+                    "target none, cite the actual weak metric or output, and "
+                    "explain testing boundaries. "
+                    "Do not create a group or invent a failure for that case. "
+                    "Return the supplied schema only.",
+                    {
+                        "snapshot": version.snapshot_json,
+                        "eval_spec": (run.comparison_json or {})["eval_spec"],
+                        "cases": list(eligible.values()),
+                        "schema": AnalysisProposal.model_json_schema(),
+                    },
+                )
             proposal = AnalysisProposal.model_validate(raw)
             records = {str(item.case_id): item for item in proposal.analyses}
             if len(records) != len(proposal.analyses) or set(records) != set(eligible):
@@ -127,7 +176,9 @@ async def analyze(
             for case_id, item in records.items():
                 for reference in item.evidence:
                     observation(eligible[case_id], reference)
-                if (item.category == "external_unfixable") != (item.recommended_target == "none"):
+                if (item.category in {"external_unfixable", "no_supported_change"}) != (
+                    item.recommended_target == "none"
+                ):
                     raise ValueError("Invalid external target")
             grouped = []
             for group in proposal.groups:
@@ -138,10 +189,19 @@ async def analyze(
                     if item.category != group.category or item.recommended_target != group.target:
                         raise ValueError("Group contradicts case analysis")
                     grouped.append(str(case_id))
-            fixable = {k for k, v in records.items() if v.category != "external_unfixable"}
+            fixable = {k for k, v in records.items() if v.recommended_target != "none"}
             if len(set(grouped)) != len(grouped) or set(grouped) != fixable:
                 raise ValueError("Invalid grouping coverage")
         except Exception as exc:
+            await save_failed_stage_calls(
+                db,
+                agent_id,
+                user_id,
+                run_id,
+                "analysis",
+                role_calls,
+                "optimization_analysis_failed",
+            )
             raise fail("optimization_analysis_failed") from exc
     analyses = [*external, *(item.model_dump(mode="json") for item in proposal.analyses)]
     for item in analyses:
@@ -159,7 +219,14 @@ async def analyze(
     run.bad_cases_json = projects.snapshot_value(analyses)
     run.comparison_json = {
         **(run.comparison_json or {}),
-        "analysis": projects.snapshot_value({"groups": groups, "version": "analysis_v1"}),
+        "analysis": projects.snapshot_value(
+            {
+                "groups": groups,
+                "version": "analysis_v1",
+                "model_role": "judge_optimizer",
+                "calls": role_calls,
+            }
+        ),
     }
     await db.commit()
     return {"bad_cases": run.bad_cases_json, "groups": groups}
@@ -260,7 +327,19 @@ async def create_candidate(
     )
     core = {
         key: deepcopy((parent_run.comparison_json or {})[key])
-        for key in ("eval_spec", "spec_hash", "rubric_hash", "roles", "execution_mode")
+        for key in (
+            "eval_spec",
+            "spec_hash",
+            "rubric_hash",
+            "roles",
+            "execution_mode",
+            "requirements",
+            "requirements_hash",
+            "decisions",
+            "resolved_roles",
+            "resolved_examinee",
+            "role_configurations",
+        )
         if key in (parent_run.comparison_json or {})
     }
     core["optimization"] = {

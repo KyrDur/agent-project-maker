@@ -150,6 +150,9 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def override_get_current_user() -> CurrentUser:
+    from app.services.llm_user_context import llm_user_id
+
+    llm_user_id.set(TEST_USER_ID)
     return CurrentUser(
         id=TEST_USER_ID,
         email="test@test.com",

@@ -12,6 +12,31 @@ export interface EvalSetQualityReport {
 
 type JsonObject = Record<string, unknown>
 
+export interface ProjectRequirements {
+  goal: string
+  inputs: string
+  deliverables: string
+  business_rules: string
+  success_conditions: string
+}
+export interface ProjectDecision {
+  stage: 'requirements' | 'capabilities' | 'case_review' | 'optimization'
+  choice: string
+  reason: string
+  version_id: string
+  eval_set_id?: string
+  case_ids?: string[]
+}
+export interface ProjectCompletion {
+  status: 'completed' | 'incomplete'
+  reasons: string[]
+  analysis: string | null
+}
+export interface ProjectInterview {
+  evidence_hash: string
+  questions: { question: string; references: string[]; answer_points: string[] }[]
+}
+
 export interface AgentProject {
   id: string
   user_id: string
@@ -19,10 +44,15 @@ export interface AgentProject {
   builder_session_id: string | null
   title: string
   requirements_json:
-    | (JsonObject & { bootstrap?: { stage: string; error: string | null; run_id: string | null } })
+    | (JsonObject & {
+        task?: ProjectRequirements
+        bootstrap?: { stage: string; error: string | null; run_id: string | null }
+      })
     | null
   eval_spec_json: EvaluationSpec | null
   report_json: (JsonObject & { optimization?: OptimizationState }) | null
+  decisions_json?: ProjectDecision[] | null
+  completion_json?: ProjectCompletion | null
   created_at: string
   updated_at: string
 }
@@ -56,12 +86,17 @@ export interface EvaluationCase {
   evaluation_type?: 'normal' | 'edge' | 'failure'
   difficulty?: 'easy' | 'medium' | 'hard'
   source?: 'ai_generated' | 'imported' | 'official_benchmark'
+  initial_state?: Record<string, unknown>
+  judgment_basis?: string | null
   expected_behavior?: Record<string, unknown> | null
   id: string
   name: string
   input: string
   context: { role: 'user' | 'assistant'; content: string }[]
   expected: {
+    state?: { path: string; value: unknown }[]
+    tool_arguments?: { name: string; arguments: Record<string, unknown> }[]
+    necessary_order?: string[]
     answer?: string | null
     exact_answer?: string | null
     required_tools: string[]
@@ -71,7 +106,20 @@ export interface EvaluationCase {
   }
   tags: string[]
   enabled: boolean
-  mock_tool_data?: Record<string, { description?: string; result?: unknown; error?: string | null }>
+  mock_tool_data?: Record<
+    string,
+    {
+      description?: string
+      result?: unknown
+      error?: string | null
+      operation?: string
+      collection?: string
+      match_fields?: string[]
+      update_fields?: string[]
+      fail_on_calls?: number[]
+      responses?: { arguments?: Record<string, unknown>; result?: unknown; error?: string }[]
+    }
+  >
 }
 
 export interface EvaluationSet {
@@ -93,6 +141,11 @@ export interface EvaluationResult {
   output: string
   expected: EvaluationCase['expected']
   status: 'passed' | 'failed' | 'errored'
+  model_calls?: Record<string, unknown>[]
+  judge_calls?: Record<string, unknown>[]
+  termination_reason?: string
+  final_state?: Record<string, unknown>
+  error_phase?: string
   tool_calls: { name: string }[]
   tool_trace?: {
     name: string
@@ -115,6 +168,11 @@ export interface EvaluationMetrics {
   failed?: number
   errored?: number
   pass_rate?: number
+  execution_errors?: number
+  judge_errors?: number
+  executed_cases?: number
+  executed_pass_rate?: number | null
+  complete?: boolean
   metric_scores?: Record<string, { score: number; evaluated_cases: number }>
 }
 
@@ -218,9 +276,32 @@ export interface PortfolioReport {
   evidence: {
     project: { name: string; goal: string }
     results: {
+      latest_version?: number | null
+      current_version?: number | null
+      current?: { pass_rate: number | null; passed: number; total: number; complete: boolean } | null
       best_version: number | null
+      baseline_version?: number | null
+      comparisons?: {
+        source_version: number
+        target_version: number
+        source_run_id: string
+        target_run_id: string
+        kind: 'adjacent' | 'cumulative'
+        comparable: boolean
+        changes: {
+          outcome: 'improved' | 'unchanged' | 'regressed'
+          pass_rate: { before: number; after: number; delta: number }
+          metrics: Record<
+            string,
+            { before: number | null; after: number | null; delta: number | null }
+          >
+          regressed_cases: string[]
+        } | null
+      }[]
       baseline: PortfolioEvaluation | null
       best: PortfolioEvaluation | null
+      candidate?: PortfolioEvaluation | null
+      candidate_version?: number | null
       metric_deltas: Record<string, number>
     }
     versions: {
@@ -293,4 +374,20 @@ export interface OptimizationProposal {
   diffs: { target: string; before: string; after: string; reason: string }[]
   deferred_changes: { target: string; content: string; limitation: string }[]
   can_accept: boolean
+}
+
+export interface SimulationSession {
+  id: string
+  version_id: string
+  scenario_id: string
+  state_json: Record<string, unknown>
+  messages_json: Record<string, unknown>[]
+  turns_json: {
+    request_id: string
+    input: string
+    output: string
+    evidence: Record<string, unknown>
+  }[]
+  created_at: string
+  updated_at: string
 }

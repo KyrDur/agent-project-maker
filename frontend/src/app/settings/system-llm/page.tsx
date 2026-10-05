@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { SlidersHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { FormFieldShell } from '@/components/shared/form-field-shell'
 import { PageHeader } from '@/components/shared/page-header'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
-import { useSession } from '@/lib/auth/session'
-import { useCredentialTypes, useSystemCredentials } from '@/lib/hooks/use-credentials'
+import { useCredentialTypes, useCredentials } from '@/lib/hooks/use-credentials'
 import { useDiscoverModels } from '@/lib/hooks/use-models'
 import {
   useSystemLlmSettings,
@@ -49,33 +47,8 @@ function providerLabel(provider: string | null | undefined, definitions: Credent
   return definitions.find((d) => d.key === provider)?.display_name ?? getProviderLabel(provider)
 }
 
-/**
- * AI Models — operators pick a System Credential + model for each platform
- * role slot. super_user only: Builder, Agent Project evaluation generation,
- * judge/optimizer and image generation read these at runtime. Credential
- * registration reuses the encrypted System Credentials flow.
- *
- * Backend enforces `require_super_user` on every endpoint; this guard hides
- * the chrome and avoids 403 noise for users who land via a bookmarked URL.
- */
+/** Personal API keys and model roles are available to every authenticated user. */
 export default function SystemLlmSettingsPage() {
-  const t = useTranslations('systemLlm')
-  const router = useRouter()
-  const { data: user, isPending } = useSession()
-  const denied = !isPending && !!user && !user.is_super_user
-
-  useEffect(() => {
-    if (denied) router.replace('/')
-  }, [denied, router])
-
-  if (isPending || denied) {
-    return (
-      <SettingsShell>
-        <p className="text-sm text-muted-foreground">{t('loading')}</p>
-      </SettingsShell>
-    )
-  }
-
   return (
     <SettingsShell>
       <SystemLlmSettingsPageInner />
@@ -86,7 +59,7 @@ export default function SystemLlmSettingsPage() {
 function SystemLlmSettingsPageInner() {
   const t = useTranslations('systemLlm')
   const { data: settings, isLoading } = useSystemLlmSettings()
-  const { data: credentials } = useSystemCredentials()
+  const { data: credentials } = useCredentials()
   const { data: credentialTypes } = useCredentialTypes()
 
   const providerOptions = useMemo(() => {
@@ -128,7 +101,7 @@ function SystemLlmSettingsPageInner() {
           />
           {platformSettings.map((setting) => (
             <SlotCard
-              key={setting.role}
+              key={`${setting.role}:${setting.updated_at}:${setting.credential_id}:${setting.model_name}`}
               setting={setting}
               credentials={llmCredentials}
               providerOptions={providerOptions}
@@ -154,7 +127,11 @@ function QuickSetupCard({
   const test = useTestSystemLlmSetting()
   const discover = useDiscoverModels()
   const [createOpen, setCreateOpen] = useState(false)
-  const configured = settings.find((s) => s.provider && s.credential_id && s.model_name)
+  const configured = settings.find((s) =>
+    s.provider && s.credential_id && s.model_name &&
+    providerOptions.some((option) => option.key === s.provider) &&
+    credentials.some((credential) => credential.id === s.credential_id),
+  )
   const initialProvider =
     configured?.provider && providerOptions.some((option) => option.key === configured.provider)
       ? configured.provider
@@ -242,7 +219,7 @@ function QuickSetupCard({
       title={t('quickSetup.title')}
       description={t('quickSetup.description')}
     >
-      <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] md:items-end">
+      <div className="grid gap-4 md:grid-cols-5 md:items-end">
         <FormFieldShell id="quick-provider" label={t('provider')}>
           <Select
             value={provider ?? ''}
@@ -346,9 +323,10 @@ function QuickSetupCard({
       </div>
       <p className="mt-3 text-xs text-muted-foreground">{t('quickSetup.note')}</p>
       <CredentialCreateModal
+        key={`${provider}:${createOpen}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        mode="system"
+        mode="user"
         presetDefinitionKey={provider ?? undefined}
         initialName={selectedProviderLabel ?? undefined}
         onCreated={(id) => {
@@ -612,9 +590,10 @@ function SlotCard({
         </Button>
       </div>
       <CredentialCreateModal
+        key={`${provider}:${createOpen}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        mode="system"
+        mode="user"
         presetDefinitionKey={provider ?? undefined}
         initialName={selectedProviderLabel ?? undefined}
         onCreated={(id) => {

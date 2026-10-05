@@ -35,6 +35,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
+from app.agent_runtime.builder_v3.nodes.failure_retry import failure_propose, failure_wait
 from app.agent_runtime.builder_v3.nodes.phase1_init import phase1_init
 from app.agent_runtime.builder_v3.nodes.phase2_intent import (
     phase2_analyze_intent,
@@ -70,6 +71,8 @@ from app.agent_runtime.builder_v3.state import BuilderState
 
 def _route_after_phase2_analyze(state: BuilderState) -> str:
     """intent_confirmed=True면 phase3로, 아니면 ask_user wait로."""
+    if state.get("error_message"):
+        return "failure_propose"
     if state.get("intent_confirmed") and state.get("intent"):
         return "phase3_recommend_tools"
     return "phase2_intent_wait"
@@ -117,7 +120,21 @@ def build_graph() -> StateGraph:
     """8-phase StateGraph (uncompiled). 테스트용."""
     g: StateGraph = StateGraph(BuilderState)
 
-    # 모든 노드 dict-only (Command 사용 X). 라우팅은 conditional_edges가 결정.
+    g.add_node("failure_propose", failure_propose)
+    g.add_node(
+        "failure_wait",
+        failure_wait,
+        destinations=(
+            "phase2_analyze_intent",
+            "phase3_recommend_tools",
+            "phase4_recommend_middlewares",
+            "phase5_generate_prompt",
+            "phase7_save",
+        ),
+    )
+    g.add_edge("failure_propose", "failure_wait")
+    # 所有生成阶段只有成功后才能进入确认。
+    # 所有节点 dict-only (Command 사용 X). 라우팅은 conditional_edges가 결정.
     g.add_node("phase1_init", phase1_init)
     g.add_node("phase2_analyze_intent", phase2_analyze_intent)
     g.add_node("phase2_intent_wait", phase2_intent_wait)
@@ -155,26 +172,38 @@ def build_graph() -> StateGraph:
     g.add_conditional_edges(
         "phase2_analyze_intent",
         _route_after_phase2_analyze,
-        ["phase2_intent_wait", "phase3_recommend_tools"],
+        ["phase2_intent_wait", "phase3_recommend_tools", "failure_propose"],
     )
     g.add_edge("phase2_intent_wait", "phase2_analyze_intent")
 
     # Phase 3/4/5: approval은 같은 패턴 (last_revision_message로 재진입 or 다음 phase)
-    g.add_edge("phase3_recommend_tools", "phase3_approval")
+    g.add_conditional_edges(
+        "phase3_recommend_tools",
+        lambda state: "failure_propose" if state.get("error_message") else "phase3_approval",
+        ["failure_propose", "phase3_approval"],
+    )
     g.add_conditional_edges(
         "phase3_approval",
         _route_after_approval("phase4_recommend_middlewares", "phase3_recommend_tools"),
         ["phase3_recommend_tools", "phase4_recommend_middlewares"],
     )
 
-    g.add_edge("phase4_recommend_middlewares", "phase4_approval")
+    g.add_conditional_edges(
+        "phase4_recommend_middlewares",
+        lambda state: "failure_propose" if state.get("error_message") else "phase4_approval",
+        ["failure_propose", "phase4_approval"],
+    )
     g.add_conditional_edges(
         "phase4_approval",
         _route_after_approval("phase5_generate_prompt", "phase4_recommend_middlewares"),
         ["phase4_recommend_middlewares", "phase5_generate_prompt"],
     )
 
-    g.add_edge("phase5_generate_prompt", "phase5_approval")
+    g.add_conditional_edges(
+        "phase5_generate_prompt",
+        lambda state: "failure_propose" if state.get("error_message") else "phase5_approval",
+        ["failure_propose", "phase5_approval"],
+    )
     g.add_conditional_edges(
         "phase5_approval",
         _route_after_approval("phase6_choice_propose", "phase5_generate_prompt"),
@@ -199,7 +228,11 @@ def build_graph() -> StateGraph:
         ["phase7_save", "phase6_image_generate"],
     )
 
-    g.add_edge("phase7_save", "phase8_propose")
+    g.add_conditional_edges(
+        "phase7_save",
+        lambda state: "failure_propose" if state.get("error_message") else "phase8_propose",
+        ["failure_propose", "phase8_propose"],
+    )
     g.add_edge("phase8_propose", "phase8_build_wait")
     # Phase 8: completed=True or error → END, 수정 요청 → router
     g.add_conditional_edges(
@@ -223,20 +256,32 @@ def get_node_targets() -> dict[str, set[str]]:
     pytest 그래프 도달성 테스트에서 사용.
     """
     return {
+        "failure_propose": {"failure_wait"},
+        "failure_wait": {
+            "phase2_analyze_intent",
+            "phase3_recommend_tools",
+            "phase5_generate_prompt",
+            "phase4_recommend_middlewares",
+            "phase7_save",
+        },
         "phase1_init": {"phase2_analyze_intent"},
-        "phase2_analyze_intent": {"phase2_intent_wait", "phase3_recommend_tools"},
+        "phase2_analyze_intent": {
+            "phase2_intent_wait",
+            "phase3_recommend_tools",
+            "failure_propose",
+        },
         "phase2_intent_wait": {"phase2_analyze_intent"},
-        "phase3_recommend_tools": {"phase3_approval"},
+        "phase3_recommend_tools": {"phase3_approval", "failure_propose"},
         "phase3_approval": {"phase3_recommend_tools", "phase4_recommend_middlewares"},
-        "phase4_recommend_middlewares": {"phase4_approval"},
+        "phase4_recommend_middlewares": {"phase4_approval", "failure_propose"},
         "phase4_approval": {"phase4_recommend_middlewares", "phase5_generate_prompt"},
-        "phase5_generate_prompt": {"phase5_approval"},
+        "phase5_generate_prompt": {"phase5_approval", "failure_propose"},
         "phase5_approval": {"phase5_generate_prompt", "phase6_choice_propose"},
         "phase6_choice_propose": {"phase6_choice_wait", "phase7_save"},
         "phase6_choice_wait": {"phase6_image_generate", "phase7_save"},
         "phase6_image_generate": {"phase6_image_approval"},
         "phase6_image_approval": {"phase6_image_generate", "phase7_save"},
-        "phase7_save": {"phase8_propose"},
+        "phase7_save": {"phase8_propose", "failure_propose"},
         "phase8_propose": {"phase8_build_wait"},
         "phase8_build_wait": {"router", END},
         "router": {

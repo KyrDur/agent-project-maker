@@ -90,6 +90,7 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
         decision_reason: '先修复身份校验',
       }
       runs[0].comparison_json = { proposals: [result] }
+      runs = [{...baseline, id: 'r2', version_id: 'v2', status: 'completed', comparison_json: {regression: {proposal_id: 'proposal1', source_run_id: 'r1'}}}, runs[0]]
       return HttpResponse.json(result)
     }),
     http.post(`${path}/eval-runs/r1/proposals/proposal1/regression`, async ({ request }) => {
@@ -128,18 +129,18 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
   await userEvent.click(screen.getByRole('button', { name: '接受建议并创建新版本' }))
   expect(await screen.findByText('已从 V1 创建 V2，原版本保持不变。')).toBeInTheDocument()
   expect(screen.getByText('选择理由：先修复身份校验')).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: '运行同一评测集回归' }))
+  expect(screen.queryByRole('button', {name: '运行同一评测集回归'})).not.toBeInTheDocument()
   expect(await screen.findByRole('link', { name: '查看报告和版本比较' })).toHaveAttribute(
     'href',
     '#evaluation-report',
   )
-  expect(screen.getByRole('button', { name: '新建一次回归评估' })).toBeEnabled()
+  expect(screen.queryByRole('button', { name: '新建一次回归评估' })).not.toBeInTheDocument()
 })
 
 it('retains rejected proposals and offers a new proposal', async () => {
   server.use(
     http.post(`${path}/eval-runs/r1/proposals/proposal1/decision`, async ({ request }) => {
-      expect(await request.json()).toEqual({ decision: 'rejected', decision_reason: null })
+      expect(await request.json()).toEqual({ decision: 'rejected', decision_reason: '选择其他方案' })
       const result = { ...proposal, status: 'rejected' as const }
       runs[0].comparison_json = { proposals: [result] }
       return HttpResponse.json(result)
@@ -147,6 +148,7 @@ it('retains rejected proposals and offers a new proposal', async () => {
   )
   render(<Flow />)
   await userEvent.click(await screen.findByRole('button', { name: '生成 AI 优化建议' }))
+  await userEvent.type(screen.getByRole('textbox', { name: '决策理由（必填）' }), '选择其他方案')
   await userEvent.click(await screen.findByRole('button', { name: '拒绝建议' }))
   expect(await screen.findByText('已拒绝，建议和变更预览保留在历史中。')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: '运行同一评测集回归' })).not.toBeInTheDocument()

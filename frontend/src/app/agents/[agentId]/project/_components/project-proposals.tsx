@@ -25,13 +25,14 @@ export function ProjectProposals({
   const locale = useLocale()
   const { generate, decide, regression } = useProjectProposals(agentId, run.id)
   const generationId = useRef<string | null>(null)
-  const regressionIds = useRef<Record<string, string>>({})
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const items = run.comparison_json?.proposals ?? []
   const busy = generate.isPending || decide.isPending || regression.isPending
   const version = (id: string) =>
     projectT('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
-  const hasFailures = run.results_json?.some((r) => r.status === 'failed')
+  const hasFailures = run.results_json?.some(
+    (r) => r.status === 'failed' || Object.values(r.metric_scores ?? {}).some((m) => m.score < 1),
+  )
   return (
     <section className="space-y-4" aria-label={t('proposals')}>
       <h4 className="font-medium">{t('proposals')}</h4>
@@ -67,9 +68,7 @@ export function ProjectProposals({
               {formatDisplayDateTime(item.created_at, { locale })}
             </p>
             {item.what_changes && <p>{t('whatChanges', { value: item.what_changes })}</p>}
-            {item.why_it_may_work && (
-              <p>{t('whyItMayWork', { value: item.why_it_may_work })}</p>
-            )}
+            {item.why_it_may_work && <p>{t('whyItMayWork', { value: item.why_it_may_work })}</p>}
             {!!item.targeted_case_ids?.length && (
               <p>{t('targetedCases', { value: item.targeted_case_ids.join(', ') })}</p>
             )}
@@ -137,32 +136,32 @@ export function ProjectProposals({
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={busy || !item.can_accept}
-                  onClick={() =>
-                    decide.mutate({
-                      id: item.id,
-                      decision: 'accepted',
-                      reason: reasons[item.id]?.trim(),
-                    })
-                  }
-                >
-                  {t('accept')}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() =>
-                    decide.mutate({
-                      id: item.id,
-                      decision: 'rejected',
-                      reason: reasons[item.id]?.trim(),
-                    })
-                  }
-                >
-                  {t('reject')}
-                </Button>
-                {!item.can_accept && <p>{t('cannotApply')}</p>}
+                  <Button
+                    disabled={busy || !item.can_accept || !reasons[item.id]?.trim()}
+                    onClick={() =>
+                      decide.mutate({
+                        id: item.id,
+                        decision: 'accepted',
+                        reason: reasons[item.id]?.trim(),
+                      })
+                    }
+                  >
+                    {t('accept')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={busy || !reasons[item.id]?.trim()}
+                    onClick={() =>
+                      decide.mutate({
+                        id: item.id,
+                        decision: 'rejected',
+                        reason: reasons[item.id]?.trim(),
+                      })
+                    }
+                  >
+                    {t('reject')}
+                  </Button>
+                  {!item.can_accept && <p>{t('cannotApply')}</p>}
                 </div>
               </div>
             )}
@@ -179,22 +178,7 @@ export function ProjectProposals({
                     source: version(item.source_version_id),
                   })}
                 </p>
-                <Button
-                  disabled={busy || running}
-                  onClick={() => {
-                    regressionIds.current[item.id] ??= crypto.randomUUID()
-                    regression.mutate(
-                      { id: item.id, requestId: regressionIds.current[item.id] },
-                      {
-                        onSuccess: () => {
-                          delete regressionIds.current[item.id]
-                        },
-                      },
-                    )
-                  }}
-                >
-                  {t(running ? 'regressionRunning' : latest ? 'rerunRegression' : 'runRegression')}
-                </Button>
+                <p role="status">{t(running ? 'regressionRunning' : 'automaticRegression')}</p>
                 {latest && (
                   <p>
                     {projectT(`runStatuses.${latest.status}`)} ·{' '}

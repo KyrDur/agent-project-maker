@@ -20,7 +20,9 @@ export function ProjectResults({ agentId }: { agentId: string }) {
   const evaluationReports = useEvaluationReports(agentId).data
   const scope = evaluationReports?.reports.find((run) => run.score !== null)?.comparison_key
   const bestRunId = scope ? evaluationReports?.best_run_ids[scope] : undefined
-  const latestRun = evaluation.runs.data?.find((run) => run.id === bestRunId)
+  const latestRun =
+    evaluation.runs.data?.find((run) => run.comparison_json?.regression) ??
+    evaluation.runs.data?.find((run) => run.id === bestRunId)
   const [style, setStyle] = useState<ResumeStyle>('ai_product')
   const [copyState, setCopyState] = useState<'copied' | 'copyFailed' | null>(null)
   const [showReport, setShowReport] = useState(false)
@@ -48,6 +50,17 @@ export function ProjectResults({ agentId }: { agentId: string }) {
         {report.isError && <ErrorState title={t('error')} onRetry={() => void report.refetch()} />}
         {data && results && (
           <>
+            <p>{t('latestVersion', { version: results.latest_version ?? t('unavailable') })}</p>
+            <p>
+              {t('currentResult', {
+                version: results.current_version ?? t('unavailable'),
+                passed: results.current?.passed ?? t('unavailable'),
+                total: results.current?.total ?? t('unavailable'),
+                rate: results.current?.complete
+                  ? percent(results.current.pass_rate)
+                  : t('unavailable'),
+              })}
+            </p>
             <p>{t('best', { version: results.best_version ?? t('unavailable') })}</p>
             <p>
               {t('evaluation', {
@@ -59,7 +72,7 @@ export function ProjectResults({ agentId }: { agentId: string }) {
             <p>
               {t('improvement', {
                 before: percent(results.baseline?.pass_rate),
-                after: percent(results.best?.pass_rate),
+                after: percent(results.candidate?.pass_rate),
               })}
             </p>
             <dl className="grid gap-2 sm:grid-cols-2">
@@ -78,6 +91,60 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 </div>
               ))}
             </dl>
+            {results.comparisons?.map((comparison) => (
+              <details key={`${comparison.source_run_id}:${comparison.target_run_id}`}>
+                <summary>
+                  {t('roundComparison', {
+                    source: comparison.source_version,
+                    target: comparison.target_version,
+                  })}
+                </summary>
+                {!comparison.comparable || !comparison.changes ? (
+                  <p>{t('notComparable')}</p>
+                ) : (
+                  <>
+                    <p>
+                      {t(`outcomes.${comparison.changes.outcome}`)} ·{' '}
+                      {percent(comparison.changes.pass_rate.before)} →{' '}
+                      {percent(comparison.changes.pass_rate.after)}
+                    </p>
+                    <dl className="space-y-2">
+                      {Object.entries(comparison.changes.metrics).map(([name, metric]) => (
+                        <div key={name}>
+                          <dt>{name}</dt>
+                          <dd>
+                            {metric.before == null
+                              ? t('unavailable')
+                              : formatDisplayNumber(metric.before, {
+                                  locale,
+                                  maximumFractionDigits: 3,
+                                })}{' '}
+                            →{' '}
+                            {metric.after == null
+                              ? t('unavailable')
+                              : formatDisplayNumber(metric.after, {
+                                  locale,
+                                  maximumFractionDigits: 3,
+                                })}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p>
+                      {t('newFailures', {
+                        cases: comparison.changes.regressed_cases.join(', ') || t('none'),
+                      })}
+                    </p>
+                  </>
+                )}
+                <p>
+                  {t('runReferences', {
+                    source: comparison.source_run_id,
+                    target: comparison.target_run_id,
+                  })}
+                </p>
+              </details>
+            ))}
             <ol className="space-y-2" aria-label={t('journey')}>
               {data.versions.map((v) => (
                 <li key={v.version}>
@@ -196,7 +263,7 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 value={style}
                 onChange={(e) => setStyle(e.target.value as ResumeStyle)}
               >
-                {(['ai_product', 'product', 'engineering'] as const).map((value) => (
+                {(['ai_product'] as const).map((value) => (
                   <option key={value} value={value}>
                     {t(`styles.${value}`)}
                   </option>

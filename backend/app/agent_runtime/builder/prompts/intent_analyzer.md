@@ -25,6 +25,7 @@ You must respond only in the JSON format below:
   "response_tone": "Tone and style of response",
   "use_cases": ["Use Case 1", "Use Case 2", "Use Case 3"],
   "constraints": ["Constraints"],
+  "project_requirements": {"goal": "Task goal", "inputs": "Inputs and boundaries", "deliverables": "Expected output", "business_rules": "Necessary rules or explicitly none", "success_conditions": "Concrete observable success conditions"},
   "required_capabilities": ["Essential Feature 1", "Essential Feature 2"]
 }
 
@@ -53,8 +54,8 @@ You must respond only in the JSON format below:
 - output_style Not specified → “Brief summary and main points” default value
 
 ## Precautions
-- Do not ask additional questions to the user. Perform the best analysis possible with only the information given.
-- Even ambiguous requests return a complete intent by filling in reasonable default values.
+- Generate a complete draft for the user to review, with unknown business rules clearly marked as unconfirmed simulation assumptions.
+- Never invent factual business policies. The confirmation step lets the user correct goals, inputs, outputs, rules and success conditions.
 - Does not include any text other than JSON.
 
 ## Output locale

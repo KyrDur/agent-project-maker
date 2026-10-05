@@ -18,6 +18,8 @@ class AgentProjectResponse(BaseModel):
     requirements_json: dict[str, Any] | None
     eval_spec_json: dict[str, Any] | None
     report_json: dict[str, Any] | None
+    decisions_json: list[dict[str, Any]] | None = None
+    completion_json: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -55,7 +57,43 @@ class CaseContext(BaseModel):
     content: str = Field(max_length=10000)
 
 
+class ProjectRequirements(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    goal: str = Field(min_length=1, max_length=4000)
+    inputs: str = Field(min_length=1, max_length=4000)
+    deliverables: str = Field(min_length=1, max_length=4000)
+    business_rules: str = Field(min_length=1, max_length=4000)
+    success_conditions: str = Field(min_length=1, max_length=4000)
+
+
+class ProjectDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    stage: Literal["requirements", "capabilities", "case_review", "optimization"]
+    choice: str = Field(min_length=1, max_length=4000)
+    reason: str = Field(min_length=1, max_length=2000)
+    version_id: uuid.UUID
+    eval_set_id: uuid.UUID | None = None
+    case_ids: list[uuid.UUID] = Field(default_factory=list, max_length=20)
+
+
+class StateAssertion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    path: str = Field(
+        min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$"
+    )
+    value: Any
+
+
+class ToolAssertion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=64)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
 class CaseExpected(BaseModel):
+    state: list[StateAssertion] = Field(default_factory=list, max_length=20)
+    tool_arguments: list[ToolAssertion] = Field(default_factory=list, max_length=20)
+    necessary_order: list[str] = Field(default_factory=list, max_length=30)
     answer: str | None = Field(default=None, max_length=10000)
     exact_answer: str | None = Field(default=None, max_length=10000)
     required_tools: list[str] = Field(default_factory=list, max_length=30)
@@ -64,11 +102,34 @@ class CaseExpected(BaseModel):
     format_rule: Literal["json_object", "json_array"] | None = None
 
 
+class MockResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    result: Any = None
+    error: str | None = Field(default=None, max_length=500)
+
+
 class MockToolBehavior(BaseModel):
     model_config = ConfigDict(extra="forbid")
     description: str = Field(default="Frozen evaluation mock", max_length=1000)
     result: Any = None
     error: str | None = Field(default=None, max_length=500)
+    responses: list[MockResponse] = Field(default_factory=list, max_length=50)
+    fail_on_calls: list[int] = Field(default_factory=list, max_length=20)
+    operation: Literal["static", "query", "update"] = "static"
+    collection: str | None = Field(default=None, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    match_fields: list[str] = Field(default_factory=list, max_length=20)
+    update_fields: list[str] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def valid_operation(self) -> Self:
+        if any(n < 1 for n in self.fail_on_calls):
+            raise ValueError("Call numbers start at one")
+        if self.operation != "static" and (not self.collection or not self.match_fields):
+            raise ValueError("State operations need a collection and match fields")
+        if self.operation == "update" and not self.update_fields:
+            raise ValueError("Updates need explicit writable fields")
+        return self
 
 
 class EvaluationCase(BaseModel):
@@ -76,6 +137,8 @@ class EvaluationCase(BaseModel):
     evaluation_type: Literal["normal", "edge", "failure"] = "normal"
     difficulty: Literal["easy", "medium", "hard"] = "medium"
     source: Literal["ai_generated", "imported", "official_benchmark"] = "ai_generated"
+    initial_state: dict[str, Any] = Field(default_factory=dict)
+    judgment_basis: str | None = Field(default=None, max_length=4000)
     expected_behavior: dict[str, Any] | None = None
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     name: str = Field(min_length=1, max_length=200)
@@ -147,7 +210,7 @@ class EvalGenerationRequest(BaseModel):
 
 
 class EvalCaseGenerationRequest(EvalGenerationRequest):
-    evaluation_focus: list[str] = Field(min_length=2, max_length=8)
+    evaluation_focus: list[str] | None = Field(default=None, min_length=2, max_length=8)
     evaluation_focus_reason: str | None = Field(default=None, max_length=1000)
 
 
@@ -205,3 +268,8 @@ class JudgeScore(BaseModel):
     score: float = Field(ge=0, le=1, allow_inf_nan=False)
     passed: bool
     reason: str = Field(min_length=1, max_length=2000)
+
+
+class ProjectCompletionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    analysis: str = Field(default="", max_length=10000)

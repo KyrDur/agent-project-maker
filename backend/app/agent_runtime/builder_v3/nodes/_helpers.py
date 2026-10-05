@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import uuid
 from typing import Any
@@ -106,6 +107,9 @@ def parse_approval_response(response: Any) -> tuple[bool, str]:
 
     Phase 3/4/5 wait 노드가 공통으로 사용.
     """
+    if isinstance(response, str):
+        with contextlib.suppress(ValueError):
+            response = json.loads(response)
     if isinstance(response, dict):
         approved = bool(response.get("approved"))
         revision = response.get("revision_message") or response.get("message") or ""

@@ -54,7 +54,11 @@ async def phase4_recommend_middlewares(state: BuilderState) -> dict:
         )
     except Exception:  # pragma: no cover
         logger.exception("Middleware recommendation failed")
-        mw_objs = []
+        return {
+            "current_phase": 4,
+            "error_message": tr("generation_failed_retry"),
+            "last_revision_message": None,
+        }
 
     mw_data = [m.model_dump(mode="json") for m in mw_objs]
     summary_text = (
@@ -77,6 +81,7 @@ async def phase4_recommend_middlewares(state: BuilderState) -> dict:
 
     return {
         "messages": msgs,
+        "error_message": None,
         "middlewares": mw_data,
         "last_revision_message": None,
         "current_phase": 4,

@@ -71,6 +71,7 @@ export function SettingsSidebar() {
       items: [
         { href: '/settings/artifacts', label: tSettings('nav.artifacts'), icon: FilesIcon },
         { href: '/settings/credentials', label: tSettings('nav.credentials'), icon: KeyRoundIcon },
+        { href: '/settings/system-llm', label: tSettings('nav.systemLlm'), icon: SlidersHorizontalIcon },
         { href: '/settings/models', label: tSettings('nav.models'), icon: BrainIcon },
         {
           href: '/settings/schedules',
@@ -97,11 +98,6 @@ export function SettingsSidebar() {
               href: '/settings/system-credentials',
               label: tSettings('nav.systemCredentials'),
               icon: KeyRoundIcon,
-            },
-            {
-              href: '/settings/system-llm',
-              label: tSettings('nav.systemLlm'),
-              icon: SlidersHorizontalIcon,
             },
             {
               href: '/settings/admin-audit',

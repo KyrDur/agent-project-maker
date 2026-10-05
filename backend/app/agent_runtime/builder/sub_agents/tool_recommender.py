@@ -1,8 +1,4 @@
-"""Phase 3 — 도구 추천 서브에이전트.
-
-AgentCreationIntent를 분석하여 에이전트에 필요한 도구를 추천한다.
-사용 가능한 도구 카탈로그를 동적으로 주입한다 (AD-7).
-"""
+"""阶段 3：生成模拟工具和文本指南的能力方案。"""
 
 from __future__ import annotations
 
@@ -17,9 +13,7 @@ from app.schemas.builder import AgentCreationIntent, ToolRecommendation
 logger = logging.getLogger(__name__)
 
 _FALLBACK_PROMPT = (
-    "AgentCreationIntent를 분석하여 에이전트에 적합한 도구를 추천한다. "
-    "카탈로그에 있는 도구 또는 mock 환경에서 먼저 사용할 planned 도구를 추천하고, "
-    "JSON 배열로만 응답한다."
+    "分析确认需求，仅推荐模拟接口、文本指南或生成文本指南。仅返回 JSON 数组，简单任务允许空数组。"
 )
 
 SYSTEM_PROMPT = load_prompt("tool_recommender.md") or _FALLBACK_PROMPT
@@ -116,23 +110,27 @@ async def recommend_tools(
         recommendations: list[ToolRecommendation] = []
         for item in raw_list:
             if not isinstance(item, dict):
-                continue
+                raise ValueError("Invalid recommendation item")
             name = item.get("tool_name", "")
             canonical_kind = name_to_kind.get(name.lower())
             requested_kind = item.get("kind")
-            if canonical_kind is None and requested_kind == "planned":
+            if canonical_kind is None and requested_kind in {"planned", "generated_skill"}:
                 if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name):
-                    logger.warning("Filtered out invalid planned item: %s", name)
-                    continue
-                item["kind"] = "planned"
+                    raise ValueError("Invalid simulation tool name")
+                item["kind"] = requested_kind
+                if requested_kind == "generated_skill":
+                    from app.skills.inspector import parse_skill_md
+
+                    parse_skill_md(str(item.get("content") or ""), require_metadata=True)
             elif canonical_kind is None:
-                logger.warning("Filtered out non-existent item: %s", name)
-                continue
+                raise ValueError("Unavailable capability")
             else:
                 # LLM 이 답한 kind 보다 카탈로그 정답 우선 — 환각 방지
+                if canonical_kind != "skill":
+                    raise ValueError("Only simulated tools and text skills are supported")
                 item["kind"] = canonical_kind
             recommendations.append(ToolRecommendation(**item))
         return recommendations
     except (ValueError, TypeError) as exc:
         logger.error("Tool recommendation failed after retries: %s", exc)
-        return []
+        raise ValueError("builder_capability_generation_invalid") from exc

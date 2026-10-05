@@ -47,7 +47,7 @@ it('waits for explicit creation and then opens the lifecycle overview', async ()
   expect(await screen.findByText('Example Agent')).toBeInTheDocument()
   expect(await screen.findByText('生命周期进度')).toBeInTheDocument()
   expect(screen.getByText('当前版本')).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: /Evaluation/ }))
+  await userEvent.click(screen.getByRole('button', { name: /评测\s*评测证据/ }))
   expect(screen.getByRole('button', { name: '运行评测' })).toBeDisabled()
   expect(create).toHaveBeenCalledOnce()
 })
@@ -56,7 +56,7 @@ it('loads an existing project without creating another one', async () => {
   server.use(http.get(path, () => HttpResponse.json(project)))
   render(<ProjectWorkbench agentId="agent-id" />)
   expect(await screen.findByText('生命周期进度')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /Overview/ })).toHaveAttribute('aria-current', 'page')
+  expect(screen.getByRole('button', { name: /概览/ })).toHaveAttribute('aria-current', 'page')
   expect(create).not.toHaveBeenCalled()
   expect(screen.queryByRole('button', { name: '创建项目' })).not.toBeInTheDocument()
 })
@@ -148,8 +148,8 @@ it('uses real lifecycle data for best version, latest evaluation and optimizatio
   expect(screen.getAllByText('V2').length).toBeGreaterThan(0)
   expect((await screen.findAllByText('90%')).length).toBeGreaterThan(0)
   expect(screen.getByText('需要先检索资料。')).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: /Optimization/ }))
-  expect(await screen.findByText('优化')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: /优化\s*优化闭环/ }))
+  expect(await screen.findByRole('heading', { name: '优化' })).toBeInTheDocument()
 })
 
 it('keeps creation available after an API failure', async () => {
@@ -184,7 +184,7 @@ it('automatically resumes a Builder project and shows Chinese lifecycle progress
       </QueryClientProvider>
     </NextIntlClientProvider>,
   )
-  await userEvent.click(await screen.findByRole('button', { name: /Settings/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /设置\s*项目设置/ }))
   expect(await screen.findByText('构建与基线评估')).toBeInTheDocument()
   expect(await screen.findByText('当前步骤：生成 20 个评估用例')).toBeInTheDocument()
   expect(bootstrap).toHaveBeenCalledOnce()

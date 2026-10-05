@@ -121,20 +121,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         {/* Card column */}
         <div className="auth-card-column">
           <div className="auth-card-wrap">
-            {/* Floating mascot */}
-            <div aria-hidden className="auth-mascot">
-              <div className="auth-mascot-halo" />
-              <Image
-                src="/project-maker.svg"
-                alt=""
-                width={170}
-                height={170}
-                className="auth-mascot-image"
-                draggable={false}
-                priority
-              />
-            </div>
-
             {/* Card */}
             <div className="auth-card">
               {/* Tab switcher */}

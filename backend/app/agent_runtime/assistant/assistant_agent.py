@@ -74,11 +74,12 @@ async def build_assistant_agent(
     # ADR-019: the assistant text model is the operator-selected ``builder``
     # role. Raises ``SystemModelNotConfiguredError`` if unset (surfaced by the
     # caller) — no silent ``.env`` fallback.
-    resolved = await resolve_system_model(db, "builder")
+    resolved = await resolve_system_model(db, "builder", user_id)
     model: BaseChatModel = create_chat_model(
         resolved.provider,
         resolved.model_name,
         api_key=resolved.api_key,
+        allow_env_fallback=False,
         base_url=resolved.base_url,
     )
 

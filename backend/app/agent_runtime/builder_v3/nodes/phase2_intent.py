@@ -60,13 +60,31 @@ _OUTPUT_STYLE_OPTIONS = [
 ]
 
 
-def _build_phase2_ask_user_payload(name_options: list[str]) -> dict[str, Any]:
+def _build_phase2_ask_user_payload(
+    name_options: list[str], intent: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Phase 2 설정 확인을 ask_user question_flow payload로 만든다."""
     cleaned_names = [name for name in name_options if name.strip()]
     return {
         "mode": "question_flow",
         "title": tr("confirm_agent_settings_ce5874"),
         "questions": [
+            *[
+                {
+                    "id": key,
+                    "label": tr("requirement_" + key),
+                    "type": "single_select",
+                    "options": [{"id": value, "label": value}],
+                    "required": True,
+                }
+                for key, value in ((intent or {}).get("project_requirements") or {}).items()
+            ],
+            {
+                "id": "requirements_reason",
+                "label": tr("requirements_reason"),
+                "type": "text",
+                "required": True,
+            },
             {
                 "id": "agent_name",
                 "label": tr("agent_name_8b57e7"),
@@ -192,8 +210,8 @@ async def _suggest_name_options(user_request: str) -> list[str]:
             if len(cleaned) >= 2:
                 return cleaned[:3]
     except Exception:
-        logger.warning("Name suggestion failed, using fallback options", exc_info=True)
-    return [tr("search_agent_cbfa49"), tr("helper_bot_68e74f"), tr("assistant_d74087")]
+        logger.warning("Name suggestion failed; creation remains paused", exc_info=True)
+    raise ValueError("builder_name_generation_invalid")
 
 
 def _format_intent_summary(intent: dict[str, Any]) -> str:
@@ -272,6 +290,12 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
             "error_message": tr("an_error_occurred_while_resolving_1678d2"),
         }
 
+    from app.schemas.agent_project import ProjectRequirements
+
+    try:
+        ProjectRequirements.model_validate(intent_obj.project_requirements)
+    except ValueError:
+        return {"current_phase": 2, "error_message": tr("generation_failed_retry")}
     suggested = (intent_obj.agent_name or "").strip()
     if (
         suggested
@@ -289,7 +313,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
     # 사용자가 다른 이름을 원하면 Phase 8 router에서 phase 2로 점프 가능.
     msgs, tool_call_id = make_pending_tool_card(
         "ask_user",
-        _build_phase2_ask_user_payload(name_options),
+        _build_phase2_ask_user_payload(name_options, intent_obj.model_dump(mode="json")),
         intro_text=tr("now_let_s_analyze_user_c8f8bf"),
     )
 
@@ -298,6 +322,7 @@ async def phase2_analyze_intent(state: BuilderState) -> dict:
         # intent는 임시 저장 (intent_confirmed=False 상태)
         "intent": intent_obj.model_dump(mode="json"),
         "phase2_name_options": name_options,
+        "error_message": None,
         "pending_tool_call_id": tool_call_id,
     }
 
@@ -313,7 +338,7 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
     answer = interrupt(
         {
             "type": "ask_user",
-            **_build_phase2_ask_user_payload(name_options),
+            **_build_phase2_ask_user_payload(name_options, state.get("intent")),
         }
     )
 
@@ -356,6 +381,24 @@ async def phase2_intent_wait(state: BuilderState) -> dict:
     if not receipt_text:
         receipt_text = selected_name
 
+    from app.schemas.agent_project import ProjectRequirements
+
+    task = dict(intent_dict.get("project_requirements") or {})
+    for field in ProjectRequirements.model_fields:
+        value = _selected_label(field, structured_answers, structured_labels)
+        if value:
+            task[field] = value
+    reason = _selected_label("requirements_reason", structured_answers, structured_labels)
+    if not reason or not all(task.get(k) for k in ProjectRequirements.model_fields):
+        return {
+            "messages": close_pending_tool_card(
+                pending_tc_id, "ask_user", tr("requirements_reason")
+            ),
+            "pending_tool_call_id": None,
+            "intent_confirmed": False,
+        }
+    intent_dict["project_requirements"] = ProjectRequirements.model_validate(task).model_dump()
+    intent_dict["confirmation_reason"] = reason
     intent_dict["agent_name"] = selected_name
     if selected_tone:
         intent_dict["response_tone"] = selected_tone

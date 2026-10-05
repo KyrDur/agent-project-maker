@@ -22,6 +22,7 @@ async def build_skill_builder_chat_model(db: AsyncSession) -> SkillBuilderChatMo
             resolved.provider,
             resolved.model_name,
             api_key=resolved.api_key,
+            allow_env_fallback=False,
             base_url=resolved.base_url,
         ),
         model_name=resolved.model_name,

@@ -1,7 +1,4 @@
-"""Phase 2 — 의도 분석 서브에이전트.
-
-사용자의 자연어 요청을 AgentCreationIntent JSON으로 변환한다.
-"""
+"""阶段 2：把用户自然语言需求转换为结构化 AgentCreationIntent。"""
 
 from __future__ import annotations
 
@@ -14,9 +11,7 @@ from app.schemas.builder import AgentCreationIntent
 logger = logging.getLogger(__name__)
 
 _FALLBACK_PROMPT = (
-    "당신은 AI 에이전트 생성을 위한 의도 분석 전문가입니다. "
-    "사용자의 자연어 요청을 AgentCreationIntent JSON으로 변환합니다. "
-    "JSON 외 다른 텍스트를 포함하지 않습니다."
+    "你是智能体需求分析专家。仅返回 AgentCreationIntent JSON；未知规则明确标记为待确认的模拟假设。"
 )
 
 SYSTEM_PROMPT = load_prompt("intent_analyzer.md") or _FALLBACK_PROMPT
@@ -29,22 +24,9 @@ def _build_task_description(user_request: str) -> str:
 async def analyze_intent(user_request: str) -> AgentCreationIntent:
     """사용자 요청을 분석하여 AgentCreationIntent를 반환한다.
 
-    파싱 실패 시 1회 재시도 후 기본 Intent를 반환한다.
+    解析失败后暂停阶段，允许用户重试。
     """
     description = _build_task_description(user_request)
 
-    try:
-        data = await invoke_with_json_retry(SYSTEM_PROMPT, description)
-        return AgentCreationIntent(**data)
-    except (ValueError, TypeError) as exc:
-        logger.error("Intent parsing failed after retries: %s, using fallback", exc)
-
-    # fallback
-    return AgentCreationIntent(
-        agent_name="Custom Agent",
-        agent_description=tr("agent_created_upon_user_request_d1f519", v0=f"{user_request}"),
-        primary_task_type=tr("perform_common_tasks_136765"),
-        identity_mode="per_user",
-        use_cases=[tr("handling_user_requests_b68392")],
-        required_capabilities=[tr("normal_conversation_fb5742")],
-    )
+    data = await invoke_with_json_retry(SYSTEM_PROMPT, description)
+    return AgentCreationIntent(**data)

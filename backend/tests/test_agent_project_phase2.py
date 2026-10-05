@@ -43,6 +43,12 @@ async def setup_project(db, monkeypatch):
     monkeypatch.setattr(
         evaluation, "async_session", async_sessionmaker(db.bind, expire_on_commit=False)
     )
+    from app.services import agent_project_llm
+    from tests.project_practice_helpers import author_practice, fixed_examinee, fixed_judge
+
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", fixed_judge)
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", fixed_examinee)
+    await author_practice(db, agent, TEST_USER_ID)
     return agent
 
 
@@ -58,7 +64,11 @@ async def dataset(db, agent):
             ],
         ),
     )
-    return await evaluation.judge_set(db, agent.id, TEST_USER_ID, row.id)
+    row = await evaluation.judge_set(db, agent.id, TEST_USER_ID, row.id)
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(db, agent, TEST_USER_ID, row.id)
+    return row
 
 
 @pytest.mark.asyncio
@@ -235,7 +245,12 @@ async def test_run_api_and_cross_project_boundaries(client, db, setup_project, m
 
 
 @pytest.mark.asyncio
-async def test_concurrent_version_and_run_submission(tmp_path):
+async def test_concurrent_version_and_run_submission(tmp_path, monkeypatch):
+    from app.services import agent_project_llm
+    from tests.project_practice_helpers import fixed_examinee, fixed_judge
+
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", fixed_judge)
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", fixed_examinee)
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'concurrent.db'}")
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with engine.begin() as conn:
@@ -256,6 +271,26 @@ async def test_concurrent_version_and_run_submission(tmp_path):
     versions = await asyncio.gather(create(), create())
     assert {version.version.version_number for version in versions} == {2}
     assert {version.outcome for version in versions} == {"created", "replayed"}
+    from app.schemas.agent_project import ProjectDecision
+    from app.services import agent_project_practice as practice
+
+    async with factory() as session:
+        for stage in ("requirements", "capabilities", "case_review"):
+            await practice.record_decision(
+                session,
+                agent.id,
+                TEST_USER_ID,
+                ProjectDecision(
+                    stage=stage,
+                    choice="Use V2",
+                    reason="Concurrent submission test",
+                    version_id=versions[0].version.id,
+                    eval_set_id=cases.id if stage == "case_review" else None,
+                    case_ids=[uuid.UUID(c["id"]) for c in cases.cases_json]
+                    if stage == "case_review"
+                    else [],
+                ),
+            )
     request_run = EvalRunCreate(
         request_id=uuid.uuid4(), version_id=versions[0].version.id, eval_set_id=cases.id
     )
@@ -358,7 +393,7 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
     class Graph:
         async def ainvoke(self, payload, options):
             assert payload["messages"][-1]["content"] == "Hi"
-            assert options["callbacks"] == []
+            assert len(options["callbacks"]) == 1
             return {
                 "messages": [
                     AIMessage(
@@ -416,45 +451,21 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
 
 
 @pytest.mark.asyncio
-async def test_project_examinee_falls_back_to_platform_model_without_user_credential(
-    db, setup_project, monkeypatch
-):
+async def test_project_examinee_missing_binding_does_not_switch_to_another_model(db, monkeypatch):
     from app.services import agent_project_llm
-    from app.services.system_credential_resolver import ResolvedSystemModel
+    from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
 
-    agent = setup_project
+    _, _, agent = await seed_agent(db)
+    await db.commit()
+    await projects.create_project(db, agent.id, TEST_USER_ID)
     version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
-    sentinel = object()
-    seen: dict[str, object] = {}
 
-    async def resolve_system_model(_db, role: str):
-        seen["role"] = role
-        return ResolvedSystemModel(
-            provider="deepseek",
-            model_name="deepseek-flash",
-            api_key="sk-platform",
-            base_url="https://api.deepseek.com/v1",
-        )
+    async def forbidden(*_args):
+        pytest.fail("Missing Agent credentials must not borrow another role or model")
 
-    def create_chat_model(provider, model_name, **kwargs):
-        seen.update(provider=provider, model_name=model_name, kwargs=kwargs)
-        return sentinel
-
-    monkeypatch.setattr(agent_project_llm, "resolve_system_model", resolve_system_model)
-    monkeypatch.setattr("app.agent_runtime.model_factory.create_chat_model", create_chat_model)
-
-    model, key = await agent_project_llm.resolve_examinee_model(
-        db, version.snapshot_json, TEST_USER_ID
-    )
-
-    assert model is sentinel
-    assert key == "sk-platform"
-    assert seen["role"] == "evaluation_generator"
-    assert seen["provider"] == "deepseek"
-    assert seen["model_name"] == "deepseek-flash"
-    assert seen["kwargs"]["api_key"] == "sk-platform"
-    assert seen["kwargs"]["base_url"] == "https://api.deepseek.com/v1"
-    assert seen["kwargs"]["allow_env_fallback"] is False
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", forbidden)
+    with pytest.raises(LLMCredentialRequiredError):
+        await agent_project_llm.resolve_examinee_model(db, version.snapshot_json, TEST_USER_ID)
 
 
 @pytest.mark.asyncio

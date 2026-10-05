@@ -203,7 +203,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
             await db.scalars(
                 select(AgentProjectEvalRun)
                 .where(AgentProjectEvalRun.project_id == project.id)
-                .order_by(AgentProjectEvalRun.created_at)
+                .order_by(AgentProjectEvalRun.created_at, AgentProjectEvalRun.id)
                 .execution_options(populate_existing=True)
             )
         ).all()
@@ -307,23 +307,115 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
         for r in run.results_json or []
     ):
         limitations.append("Stored runtime import failures may require a supported Linux runtime.")
+    candidate = next(
+        (
+            r
+            for r in reversed(runs)
+            if (r.comparison_json or {}).get("regression")
+            and report_for_run(r).comparison_key == scope
+        ),
+        None,
+    )
+    if candidate:
+        baseline = (
+            by_run.get((candidate.comparison_json or {}).get("regression", {}).get("source_run_id"))
+            or baseline
+        )
     baseline_summary = run_summary(baseline) if baseline else None
     best_summary = run_summary(best) if best else None
+    candidate_summary = run_summary(candidate) if candidate else None
+    from app.services.agent_project_optimization_rules import compare_runs
+
+    comparisons = []
+    for right in runs:
+        source = (right.comparison_json or {}).get("regression", {}).get("source_run_id")
+        left = by_run.get(source)
+        if not left or not right.completed_at:
+            continue
+        try:
+            change = compare_runs(left, right)
+            comparisons.append(
+                {
+                    "source_version": by_version[str(left.version_id)].version_number,
+                    "target_version": by_version[str(right.version_id)].version_number,
+                    "source_run_id": str(left.id),
+                    "target_run_id": str(right.id),
+                    "kind": "adjacent",
+                    "comparable": True,
+                    "changes": change,
+                }
+            )
+        except ValueError:
+            comparisons.append(
+                {
+                    "source_version": by_version[str(left.version_id)].version_number,
+                    "target_version": by_version[str(right.version_id)].version_number,
+                    "source_run_id": str(left.id),
+                    "target_run_id": str(right.id),
+                    "kind": "adjacent",
+                    "comparable": False,
+                    "changes": None,
+                }
+            )
+    if candidate:
+        root = candidate
+        seen = set()
+        while str(root.id) not in seen:
+            seen.add(str(root.id))
+            parent_run = by_run.get(
+                (root.comparison_json or {}).get("regression", {}).get("source_run_id")
+            )
+            if not parent_run:
+                break
+            root = parent_run
+        if (
+            root.id != candidate.id
+            and by_version[str(candidate.version_id)].version_number
+            - by_version[str(root.version_id)].version_number
+            > 1
+        ):
+            try:
+                changes = compare_runs(root, candidate)
+                comparisons.append(
+                    {
+                        "source_version": by_version[str(root.version_id)].version_number,
+                        "target_version": by_version[str(candidate.version_id)].version_number,
+                        "source_run_id": str(root.id),
+                        "target_run_id": str(candidate.id),
+                        "kind": "cumulative",
+                        "comparable": True,
+                        "changes": changes,
+                    }
+                )
+            except ValueError:
+                comparisons.append(
+                    {
+                        "source_version": by_version[str(root.version_id)].version_number,
+                        "target_version": by_version[str(candidate.version_id)].version_number,
+                        "source_run_id": str(root.id),
+                        "target_run_id": str(candidate.id),
+                        "kind": "cumulative",
+                        "comparable": False,
+                        "changes": None,
+                    }
+                )
     deltas = {}
-    if baseline_summary and best_summary and baseline_summary["complete"]:
+    if baseline_summary and candidate_summary and baseline_summary["complete"]:
         for name, metric in baseline_summary["metrics"].items():
-            other = best_summary["metrics"].get(name)
+            other = candidate_summary["metrics"].get(name)
             if (
                 other
                 and metric.get("evaluated_cases") == baseline_summary["total"]
-                and other.get("evaluated_cases") == best_summary["total"]
+                and other.get("evaluated_cases") == candidate_summary["total"]
             ):
                 deltas[name] = other["score"] - metric["score"]
     payload = sanitize(
         {
             "project": {
                 "name": project.title,
-                "goal": config.get("description") or UNAVAILABLE,
+                "goal": (project.requirements_json or {}).get("task", {}).get("goal")
+                or config.get("description")
+                or UNAVAILABLE,
                 "intended_use": config.get("description") or UNAVAILABLE,
             },
             "architecture": config,
@@ -364,10 +456,57 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
             },
             "results": {
                 "best_version": selected.version_number if selected else None,
+                "latest_version": versions[-1].version_number if versions else None,
+                "current": run_summary(runs[-1]) if runs else None,
+                "current_version": by_version[str(runs[-1].version_id)].version_number
+                if runs
+                else None,
                 "baseline": baseline_summary,
+                "baseline_version": by_version[str(baseline.version_id)].version_number
+                if baseline
+                else None,
+                "comparisons": comparisons,
                 "best": best_summary,
+                "candidate": candidate_summary,
+                "candidate_version": by_version[str(candidate.version_id)].version_number
+                if candidate
+                else None,
                 "metric_deltas": deltas,
             },
+            "authored_analysis": (project.report_json or {}).get("authored_analysis"),
+            "system_analysis": (project.report_json or {}).get("system_analysis"),
+            "requirements": (baseline.comparison_json or {}).get("requirements", {})
+            if baseline
+            else {},
+            "decisions": [
+                {"stage": d.get("stage"), "choice": d.get("choice"), "reason": d.get("reason")}
+                for d in project.decisions_json or []
+            ],
+            "experiment_references": [
+                {
+                    "reference": f"experiment-{i + 1}",
+                    "version": by_version[str(r.version_id)].version_number,
+                    "status": r.status,
+                    "summary": run_summary(r),
+                    "cases": [
+                        {
+                            "reference": f"experiment-{i + 1}/case-{j + 1}",
+                            "status": x.get("status"),
+                            "metrics": x.get("metric_scores", {}),
+                            "assertions": x.get("assertions", []),
+                            "error": x.get("error"),
+                            "termination_reason": x.get("termination_reason"),
+                            "model_names": [
+                                c.get("model", {}).get("model_name")
+                                for c in x.get("model_calls", [])
+                            ],
+                            "evidence_available": bool(x.get("model_calls")),
+                        }
+                        for j, x in enumerate(r.results_json or [])
+                    ],
+                }
+                for i, r in enumerate(runs)
+            ],
             "limitations": limitations,
         }
     )
@@ -521,7 +660,9 @@ async def save_content(db: AsyncSession, project: AgentProject, key: str, value:
 async def report(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, *, save: bool = False
 ) -> dict[str, Any]:
-    result = render_report(await evidence(db, agent_id, user_id))
+    from app.services.agent_project_materials import render_chinese_report
+
+    result = render_chinese_report(await evidence(db, agent_id, user_id))
     if save:
         await save_content(
             db, await projects.require_project(db, agent_id, user_id), "portfolio_report", result
@@ -533,28 +674,9 @@ async def resume(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, style: str
 ) -> dict[str, Any]:
     data = await evidence(db, agent_id, user_id)
-    starts = {
-        "ai_product": "Developed an evidence-based Agent product case study",
-        "product": "Documented an Agent project's requirements, evaluation and iteration outcomes",
-        "engineering": "Documented immutable Agent configuration "
-        "and reproducible mock evaluation evidence",
-    }
-    bullets = [f"{starts[style]} for {data['project']['name']}."]
-    design, results = data["evaluation_design"], data["results"]
-    if design["case_count"]:
-        bullets.append(
-            f"Evaluated a frozen {design['case_count']}-case dataset covering "
-            f"{', '.join(design['scenarios']) or 'stored scenarios'} using mock external tools."
-        )
-    before = (results["baseline"] or {}).get("pass_rate")
-    after = (results["best"] or {}).get("pass_rate")
-    if before is not None and after is not None:
-        bullets.append(
-            f"Recorded controlled evaluation pass rates of {rate(before)} at baseline "
-            f"and {rate(after)} for selected V{results['best_version']}; "
-            "production impact remains unvalidated."
-        )
-    result = {"style": style, "bullets": bullets, "evidence_hash": canonical_json_hash(data)}
+    from app.services.agent_project_materials import resume_material
+
+    result = resume_material(data)
     await save_content(
         db, await projects.require_project(db, agent_id, user_id), "portfolio_resume", result
     )

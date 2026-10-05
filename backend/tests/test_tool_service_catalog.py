@@ -27,7 +27,7 @@ async def _seed_user(db: AsyncSession) -> None:
 
 
 @pytest.mark.asyncio
-async def test_catalog_includes_tools_mcp_and_skills(db: AsyncSession):
+async def test_catalog_excludes_external_tools_but_preserves_mcp_and_skills(db: AsyncSession):
     await _seed_user(db)
 
     db.add(
@@ -56,7 +56,7 @@ async def test_catalog_includes_tools_mcp_and_skills(db: AsyncSession):
     by_kind: dict[str, list[str]] = {"tool": [], "mcp": [], "skill": []}
     for item in items:
         by_kind.setdefault(item["kind"], []).append(item["name"])
-    assert "Web Search" in by_kind["tool"]
+    assert by_kind["tool"] == []
     assert "list_departments" in by_kind["mcp"]
     assert "seat_layout_guide" in by_kind["skill"]
 

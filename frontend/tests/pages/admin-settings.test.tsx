@@ -10,12 +10,13 @@ vi.mock('@/components/credential/credential-create-modal', () => ({
 }))
 
 const hookMocks = vi.hoisted(() => ({
+  isSuperUser: true,
   updateSystemLlmSetting: vi.fn(),
   testSystemLlmSetting: vi.fn(),
 }))
 
 vi.mock('@/lib/auth/session', () => ({
-  useSession: () => ({ data: { id: 'user-1', is_super_user: true }, isPending: false }),
+  useSession: () => ({ data: { id: 'user-1', is_super_user: hookMocks.isSuperUser }, isPending: false }),
 }))
 
 const credential: Credential = {
@@ -81,6 +82,7 @@ const systemLlmSettings: SystemLlmSettingOut[] = [
 ]
 
 vi.mock('@/lib/hooks/use-credentials', () => ({
+  useCredentials: () => ({ data: [{ ...credential, is_system: false, user_id: 'user-1' }], isLoading: false }),
   useSystemCredentials: () => ({ data: [credential], isLoading: false }),
   useCredentialTypes: () => ({ data: definitions }),
   useDeleteSystemCredential: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -117,6 +119,7 @@ vi.mock('@/lib/hooks/use-models', () => ({
 
 describe('admin settings pages', () => {
   beforeEach(() => {
+    hookMocks.isSuperUser = true
     hookMocks.updateSystemLlmSetting.mockReset()
     hookMocks.updateSystemLlmSetting.mockResolvedValue({})
     hookMocks.testSystemLlmSetting.mockReset()
@@ -146,9 +149,12 @@ describe('admin settings pages', () => {
     ).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders system LLM settings with readable credential and model names first', () => {
+  it('lets a regular user configure personal keys and models', () => {
+    hookMocks.isSuperUser = false
     render(<SystemLlmSettingsPage />)
 
+    expect(screen.getByRole('heading', { name: '我的 AI 配置' })).toBeInTheDocument()
+    expect(screen.getByText('使用你的个人 API Key')).toBeInTheDocument()
     expect(screen.getAllByText('OpenRouter 图像密钥').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('openai/gpt-5.4').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('提供商').length).toBeGreaterThanOrEqual(1)
@@ -175,7 +181,7 @@ describe('admin settings pages', () => {
     const user = userEvent.setup()
     render(<SystemLlmSettingsPage />)
 
-    await user.click(screen.getByRole('button', { name: '应用到三个平台角色' }))
+    await user.click(screen.getByRole('button', { name: '应用到创建、评测和优化' }))
 
     await waitFor(() => {
       expect(hookMocks.updateSystemLlmSetting).toHaveBeenCalledTimes(3)

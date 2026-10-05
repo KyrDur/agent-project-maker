@@ -232,6 +232,9 @@ def create_app() -> FastAPI:
     # protocol (RateLimitExceeded vs Exception). Cast satisfies pyright.
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
+    from app.services.llm_user_context import LlmUserContextMiddleware
+
+    app.add_middleware(LlmUserContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,

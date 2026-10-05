@@ -788,6 +788,11 @@ class E2EScriptedChatModel(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
+        from app.agent_runtime.e2e_project_practice_script import project_practice_response
+
+        practice_response = project_practice_response(messages)
+        if practice_response is not None:
+            return ChatResult(generations=[ChatGeneration(message=practice_response)])
         skill_eval_response = _skill_eval_arm_response(messages)
         if skill_eval_response is not None:
             return ChatResult(generations=[ChatGeneration(message=skill_eval_response)])

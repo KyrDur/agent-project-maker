@@ -85,6 +85,8 @@ async def validate_tools(db: AsyncSession, user_id: uuid.UUID, tools: Sequence[T
                 code="builder_tool_unavailable", message=tr("builder_tool_unavailable"), status=422
             )
         if definition.credential_definition_keys:
+            if tool.credential_id is None and definition.credential_optional:
+                continue
             credential = (
                 await get_for_user(db, tool.credential_id, user_id) if tool.credential_id else None
             )

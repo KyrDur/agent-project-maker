@@ -174,7 +174,10 @@ async def test_evaluation_to_report_to_new_version_loop(
                 {
                     "name": "Answer",
                     "input": "Hello",
-                    "expected": {"answer": "Hello back", "exact_answer": "Hello back"},
+                    "expected": {
+                        **({"answer": "Hello back"} if semantic_scoring else {}),
+                        "exact_answer": "Hello back",
+                    },
                 }
             ],
         ),
@@ -205,6 +208,9 @@ async def test_evaluation_to_report_to_new_version_loop(
         }
 
     monkeypatch.setattr(semantic, "json_call", judge)
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(db, agent, user_id, dataset.id)
     first = await evaluation.create_run(
         db,
         agent.id,
@@ -255,6 +261,7 @@ async def test_evaluation_to_report_to_new_version_loop(
     v2 = (
         await projects.create_version(db, agent.id, user_id, VersionCreate(request_id=uuid.uuid4()))
     ).version
+    await author_practice(db, agent, user_id, dataset.id, version_id=v2.id)
     second = await evaluation.create_run(
         db,
         agent.id,

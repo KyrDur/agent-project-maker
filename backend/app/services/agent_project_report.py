@@ -50,6 +50,10 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
         canonical_json_hash(
             {
                 "dataset": run.dataset_hash,
+                "requirements_hash": plan.get("requirements_hash"),
+                "resolved_roles": plan.get("resolved_roles"),
+                "role_configurations": plan.get("role_configurations"),
+                "resolved_examinee": plan.get("resolved_examinee"),
                 "eval_set_id": str(run.eval_set_id),
                 "eval_spec": plan.get("eval_spec"),
                 "scoring": summary["scoring"],

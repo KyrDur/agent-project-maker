@@ -63,9 +63,9 @@ async def _seed_model(db: AsyncSession, *, is_default: bool = True) -> Model:
 
 async def _seed_tool(db: AsyncSession) -> Tool:
     tool = Tool(
-        name="Web Search",
-        definition_key="builtin:web_search",
-        description="Search the web",
+        name="HTTP Request",
+        definition_key="http_request",
+        description="HTTP request tool",
     )
     db.add(tool)
     await db.flush()
@@ -192,7 +192,7 @@ async def test_confirm_build_success(db: AsyncSession):
         "name": "날씨 봇",
         "description": "날씨를 알려주는 봇",
         "system_prompt": "You are a weather bot.",
-        "tools": ["Web Search"],
+        "tools": ["HTTP Request"],
         "middlewares": [],
         "model_name": "GPT-4o",
         "identity_mode": "per_user",
@@ -276,7 +276,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
     """동일 draft.tools 안에 Tool 과 McpTool 이 섞여 있어도 양쪽 모두 링크."""
     await _seed_user(db)
     await _seed_model(db)
-    tool = await _seed_tool(db)  # name="Web Search"
+    tool = await _seed_tool(db)  # name="HTTP Request"
     _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments"])
     await db.commit()
 
@@ -286,7 +286,7 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
         "name": "혼합",
         "description": "d",
         "system_prompt": "p",
-        "tools": ["Web Search", "list_departments"],
+        "tools": ["HTTP Request", "list_departments"],
         "middlewares": [],
         "model_name": "GPT-4o",
     }
@@ -335,7 +335,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     """draft.tools 안에 Tool + McpTool + Skill 이 섞여도 모두 정확히 분리 링크."""
     await _seed_user(db)
     await _seed_model(db)
-    tool = await _seed_tool(db)  # name="Web Search"
+    tool = await _seed_tool(db)  # name="HTTP Request"
     _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments"])
     skills = await _seed_skills(db, names=["seat_layout_guide"])
     await db.commit()
@@ -346,7 +346,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
         "name": "所有时间",
         "description": "d",
         "system_prompt": "p",
-        "tools": ["Web Search", "list_departments", "seat_layout_guide"],
+        "tools": ["HTTP Request", "list_departments", "seat_layout_guide"],
         "middlewares": [],
         "model_name": "GPT-4o",
     }
@@ -391,11 +391,11 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
-    assert len(agent.skill_links) == 0
+    from app.exceptions import AppError
+
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
 
 
 @pytest.mark.asyncio
@@ -432,10 +432,11 @@ async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
     }
     await db.commit()
 
-    agent = await confirm_build(db, session)
-    assert agent is not None
-    assert len(agent.tool_links) == 0
-    assert len(agent.mcp_tool_links) == 0
+    from app.exceptions import AppError
+
+    with pytest.raises(AppError) as exc:
+        await confirm_build(db, session)
+    assert exc.value.code == "builder_tool_unavailable"
 
 
 @pytest.mark.asyncio
@@ -601,8 +602,11 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     }
     await db.commit()
 
-    with pytest.raises(ValueError, match="사용 가능한 모델이 없습니다"):
+    from app.exceptions import AppError
+
+    with pytest.raises(AppError) as exc:
         await confirm_build(db, session)
+    assert exc.value.code == "builder_runtime_setup"
 
     # Session should be rolled back to PREVIEW
     reloaded = await get_session(db, session.id, TEST_USER_ID)

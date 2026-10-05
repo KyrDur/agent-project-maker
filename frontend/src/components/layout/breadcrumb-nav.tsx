@@ -12,6 +12,7 @@ import { useSkill } from '@/lib/hooks/use-skills'
 
 const ROUTE_LABELS: Record<string, string> = {
   tools: 'nav.tools',
+  project: 'nav.project',
   artifacts: 'sidebar.nav.artifacts',
   models: 'nav.models',
   schedules: 'nav.schedules',

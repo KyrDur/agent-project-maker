@@ -1,11 +1,8 @@
-"""Phase 3 — 도구 추천 (generate + approval 2-노드 패턴).
-
-phase3_recommend_tools: tool_recommender 호출 → ToolMessage(recommendation_approval) emit
-phase3_approval: interrupt(approval) → 승인이면 Phase 4, 수정이면 self-loop으로 재추천
-"""
+"""阶段 3：生成能力建议，等待用户确认或修改。"""
 
 from __future__ import annotations
 
+import json
 import logging
 
 from langgraph.types import interrupt
@@ -26,12 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 async def phase3_recommend_tools(state: BuilderState) -> dict:
-    """도구 추천 LLM 호출 → state.tools 갱신 + RecommendationApprovalCard 카드 emit.
-
-    Revision (사용자 수정요청) 시 ``recommend_tools`` 에 직전 추천 + 수정
-    메시지를 first-class 인자로 전달 — LLM 이 "이것만 / X 빼고" 같은
-    한정 표현을 정확히 반영하도록 한다.
-    """
+    """结合需求和上一轮修改意见生成可确认的能力方案。"""
     intent_dict = state.get("intent") or {}
     catalog = state.get("tools_catalog") or []
     revision = state.get("last_revision_message")
@@ -55,7 +47,7 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
         )
     except Exception:  # pragma: no cover
         logger.exception("Tool recommendation failed")
-        tool_objs = []
+        return {"current_phase": 3, "error_message": tr("generation_failed_retry")}
 
     tools_data = [t.model_dump(mode="json") for t in tool_objs]
     summary_text = (
@@ -88,7 +80,7 @@ async def phase3_recommend_tools(state: BuilderState) -> dict:
 
 
 async def phase3_approval(state: BuilderState) -> dict:
-    """interrupt(approval). 승인/수정 응답을 state에 반영. 라우팅은 graph가."""
+    """保存能力选择理由和用户编辑的文本指南。"""
     response = interrupt(
         {
             "type": "approval",
@@ -98,7 +90,7 @@ async def phase3_approval(state: BuilderState) -> dict:
     )
 
     approved, revision = parse_approval_response(response)
-    return build_approval_result(
+    result = build_approval_result(
         state=state,
         approved=approved,
         revision=revision,
@@ -110,3 +102,39 @@ async def phase3_approval(state: BuilderState) -> dict:
         revision_default=tr("please_recommend_another_tool_4a42a8"),
         clear_field="tools",
     )
+
+    if approved:
+        payload = response
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except ValueError:
+                payload = {}
+        reason = str(payload.get("reason") or "").strip() if isinstance(payload, dict) else ""
+        if not reason:
+            return {
+                **result,
+                "last_revision_message": tr("capabilities_reason"),
+                "capability_reason": None,
+            }
+        edited = payload.get("skill_contents", {})
+        tools = [dict(t) for t in state.get("tools") or []]
+        from app.skills.inspector import parse_skill_md
+
+        try:
+            for item in tools:
+                if item.get("kind") == "generated_skill" and item["tool_name"] in edited:
+                    content = str(edited[item["tool_name"]])
+                    if not content or len(content) > 20000:
+                        raise ValueError("builder_skill_content_invalid")
+                    parse_skill_md(content, require_metadata=True)
+                    item["content"] = content
+        except (ValueError, TypeError, KeyError):
+            return {
+                **result,
+                "last_revision_message": tr("generation_failed_retry"),
+                "capability_reason": None,
+                "tools": tools,
+            }
+        result.update(capability_reason=reason, tools=tools)
+    return result

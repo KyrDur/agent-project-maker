@@ -147,7 +147,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 }))
 
 vi.mock('@/components/layout/chat-navigator', () => ({
-  ChatNavigator: () => <div data-testid="chat-navigator">에이전트</div>,
+  ChatNavigator: () => <div data-testid="chat-navigator">智能体</div>,
 }))
 
 describe('AppSidebar', () => {
@@ -185,11 +185,11 @@ describe('AppSidebar', () => {
 
   it('renders navigation items', () => {
     render(<AppSidebar />)
-    expect(screen.getByText('智能体模板')).toBeInTheDocument()
+    expect(screen.queryByText('智能体模板')).not.toBeInTheDocument()
     expect(screen.getByText('市场')).toBeInTheDocument()
-    expect(screen.getByText('行动')).toBeInTheDocument()
+    expect(screen.getByText('能力')).toBeInTheDocument()
     expect(screen.getByText('工具')).toBeInTheDocument()
-    expect(screen.getByText('MCP服务器')).toBeInTheDocument()
+    expect(screen.getByText('MCP 服务器')).toBeInTheDocument()
     expect(screen.getByText('技能')).toBeInTheDocument()
   })
 
@@ -241,7 +241,7 @@ describe('AppSidebar', () => {
 
     render(<AppSidebar />)
 
-    await user.click(screen.getByRole('button', { name: '行动' }))
+    await user.click(screen.getByRole('button', { name: '能力' }))
 
     expect(sidebarMocks.setOpen).toHaveBeenCalledWith(true)
   })
@@ -294,9 +294,9 @@ describe('AppSidebar', () => {
     render(<AppSidebar />)
 
     const navigator = screen.getByTestId('chat-navigator')
-    const templates = screen.getByRole('link', { name: '智能体模板' })
+    const marketplace = screen.getByRole('link', { name: '市场' })
 
-    expect(navigator.compareDocumentPosition(templates) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+    expect(navigator.compareDocumentPosition(marketplace) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
   })

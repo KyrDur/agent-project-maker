@@ -1,5 +1,8 @@
 # Phase 6 — Release validation record
 
+> Historical record. The current simulation-practice repair and acceptance status is
+> documented in [agent-project-practice-acceptance.md](agent-project-practice-acceptance.md).
+
 This is a validation/documentation phase. No Agent Project Maker product feature,
 runtime, builder, evaluation or optimization behavior was changed.
 

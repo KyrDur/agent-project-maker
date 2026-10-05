@@ -12,7 +12,7 @@
       "deferred": "Manual follow-up (historical Skill content unavailable): {value}",
       "accept": "Accept and create version",
       "reject": "Reject proposal",
-      "decisionReason": "Why choose this strategy? (optional)",
+      "decisionReason": "Decision reason (required)",
       "decisionReasonPlaceholder": "Example: prioritize tool calling because it is the highest launch risk.",
       "savedDecisionReason": "Decision reason: {value}",
       "defaultProposalTitle": "Evidence-driven optimization",
@@ -48,7 +48,8 @@
         "low_diversity": "Too many duplicate cases. Edit or regenerate cases."
       },
       "bestReason": "Reason: highest valid score on the same eval set and scoring rule.",
-      "createdFrom": "Created from {source} · proposal {proposal}"
+      "createdFrom": "Created from {source} · proposal {proposal}",
+      "automaticRegression": "Regression runs automatically after accepting a proposal."
     },
     "evaluationReport": {
       "title": "Evaluation Report",
@@ -345,7 +346,8 @@
       "evaluation_model_failed": "The user-owned model call failed.",
       "evaluation_format_rule_missing": "The deterministic format metric requires a rule.",
       "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
-      "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted."
+      "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted.",
+      "evaluation_role_configuration_changed": "Personal model configuration changed. Start a new experiment scope; the old and new scopes cannot be compared directly."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -475,7 +477,8 @@
       "tool_selection_issue": "Tool Selection",
       "tool_description_issue": "Tool Description",
       "output_issue": "Output Issues",
-      "external_unfixable": "External / Infrastructure"
+      "external_unfixable": "External / Infrastructure",
+      "no_supported_change": "No evidence supports a verifiable change"
     },
     "optimizationStops": {
       "all_cases_pass": "Stopped: all cases pass.",
@@ -547,7 +550,18 @@
       "failedCaseDetails": "Failed case details",
       "failureReasonUnavailable": "Failure reason unavailable",
       "toolCalls": "Tool calls",
-      "none": "None"
+      "none": "None",
+      "roundComparison": "V{source} → V{target} regression",
+      "notComparable": "Different or incomplete experiments cannot be compared.",
+      "newFailures": "New failing cases: {cases}",
+      "runReferences": "Source run: {source}; regression run: {target}",
+      "outcomes": {
+        "improved": "Improved",
+        "unchanged": "Unchanged",
+        "regressed": "Regressed"
+      },
+      "latestVersion": "Latest version: V{version}",
+      "currentResult": "Current result (V{version}): {passed}/{total}; all-case pass rate {rate}"
     },
     "bootstrap": {
       "title": "Build and baseline evaluation",
@@ -559,14 +573,84 @@
         "focus": "Confirm Evaluation Focus",
         "cases": "Generate 20 Eval Cases",
         "baseline": "Run baseline evaluation",
-        "results": "View results"
+        "results": "View results",
+        "validation": "Validate test set"
       },
       "blocked": "This step could not finish. Check your personal model credentials and model availability, then retry. Existing versions and test cases are preserved.",
       "reason": "Blocking reason code: {code}",
       "credentials": "Personal credentials",
       "models": "Model settings",
-      "retry": "Retry workflow"
-    }
+      "retry": "Retry workflow",
+      "newScope": "Prepare a new experiment after configuration changes / retry"
+    },
+    "practice": {
+      "title": "Requirements, decisions and completion",
+      "intro": "This is simulated project practice. Interfaces query or change state; skills provide knowledge and procedures; behavior rules guide model output. Tool-free designs are valid. Confirm requirements and capabilities, then the system designs, validates and evaluates cases automatically. Inspect the actual evidence.",
+      "goal": "Task goal",
+      "inputs": "Inputs and boundaries",
+      "deliverables": "Expected deliverables",
+      "business_rules": "Business rules (explicitly state if none)",
+      "success_conditions": "Success conditions",
+      "saveRequirements": "Save requirements (changes start a new experiment scope)",
+      "saved": "Saved",
+      "version": "Related version",
+      "stage": "Decision stage",
+      "stages": {
+        "requirements": "Requirements confirmation",
+        "capabilities": "Capability design",
+        "case_review": "Case review",
+        "optimization": "Optimization selection"
+      },
+      "capabilityEvidence": "Inspect frozen interfaces, skills and behavior rules",
+      "dataset": "Related evaluation set",
+      "selectDataset": "Select an evaluation set",
+      "choice": "Your choice or review conclusion",
+      "reason": "Your reasoning",
+      "saveDecision": "Save decision and reason",
+      "analysis": "Personal reflection (optional)",
+      "completionHelp": "The system checks completion against actual evaluation evidence. No manual scoring is required; you can add your own reflections.",
+      "complete": "Check and record completion",
+      "completed": "Project completed (Agent qualification is separate)",
+      "incomplete": "Missing experiment evidence",
+      "interview": "Generate AI product manager interview questions",
+      "references": "Evidence references",
+      "error": "Save failed. Check requirements, version, cases and required reasons.",
+      "errorCounts": "Execution errors: {execution}; judge errors: {judge}",
+      "executedRate": "Task pass rate among executed cases: {passed}/{total} ({value}%)",
+      "executionEvidence": "Actual model calls, judge calls and final state (null means historical evidence is missing)",
+      "judgmentBasis": "Judgment basis",
+      "initialState": "Simulation initial state JSON",
+      "businessAssertions": "Extended rules JSON (state, tool_arguments, necessary_order)",
+      "errors": {
+        "project_comparable_experiment_required": "Valid V1 and V2 experiments with the same frozen scope are required",
+        "project_decisions_required": "Confirm requirements and capabilities with your reasons",
+        "project_optimization_decision_required": "An optimization decision reason is required",
+        "project_analysis_required": "Experiment analysis is required"
+      }
+    },
+    "automaticEvaluation": "Model B designs cases automatically; the system validates and freezes them. Model C scores them with visible evidence.",
+    "simulation": {
+      "title": "Simulation chat",
+      "description": "Try a selected version against a frozen scenario. Chat is not graded; operations change only this session’s simulated data. Each version and scenario uses a separate session.",
+      "version": "Version",
+      "scenario": "Scenario",
+      "normal": "Normal scenario (default)",
+      "notReady": "Scenarios are not ready. Wait for automatic generation or retry.",
+      "retry": "Retry scenario preparation",
+      "you": "You",
+      "agent": "Agent",
+      "noOutput": "No final output. Inspect the evidence and termination reason.",
+      "evidence": "Model calls, tool operations and termination",
+      "state": "Current simulated state",
+      "message": "Message",
+      "send": "Send",
+      "reset": "Reset session",
+      "retryMessage": "Retry the same message",
+      "error": "The simulation request failed. You can retry the same request.",
+      "restoreError": "Unable to restore this session. Retry reading it.",
+      "running": "Running simulation…"
+    },
+    "analysisEvidence": "Model C analysis source and evidence"
   },
   "metadata": {
     "title": "Agent Project Maker",
@@ -782,7 +866,7 @@
       "artifacts": "Files",
       "credentials": "Credentials",
       "systemCredentials": "System Credentials",
-      "systemLlm": "Platform AI",
+      "systemLlm": "My AI settings",
       "skills": "Skills",
       "schedules": "Schedules",
       "usage": "Usage",
@@ -958,10 +1042,10 @@
       }
     },
     "aiSetup": {
-      "title": "Finish platform AI setup first",
-      "adminDescription": "Builder, evaluation generation, and optimization judging need platform models. One API key can configure the baseline setup.",
-      "userDescription": "Platform AI setup is not complete. Ask an admin to finish setup before creating or evaluating agents.",
-      "action": "Configure AI Models",
+      "title": "Configure your AI model",
+      "adminDescription": "Add your own API key and choose a model to create, evaluate, and optimize projects.",
+      "userDescription": "Add your own API key and choose a model to create, evaluate, and optimize projects.",
+      "action": "Configure my AI",
       "notConfigured": "Not configured",
       "roles": {
         "builder": "Builder",
@@ -980,7 +1064,7 @@
     "noSearchResults": "No search results.",
     "empty": {
       "title": "Create your first agent",
-      "description": "Choose how you want to start from the cards above."
+      "description": "Describe what you need to create an agent through conversation."
     },
     "usageSummary": {
       "title": "Usage this month",
@@ -1184,7 +1268,7 @@
       "example": "Example: \"Create an agent that searches the web\" or \"Create an agent that sends stock prices every morning at 9.\"",
       "back": "Go back",
       "sessionLabel": "Session #{id}",
-      "builderModelLabel": "Conversational Agent Builder · GPT-4 Turbo",
+      "builderModelLabel": "Conversational builder · {model}",
       "builderAgentSubtitle": "Agent Builder",
       "builderAgentName": "Agent Builder",
       "breadcrumb": {
@@ -1192,7 +1276,8 @@
         "conversational": "Build by Chat"
       },
       "restoring": "Restoring build session…",
-      "restoreError": "Could not restore the build session. Check your connection and retry; your session is preserved."
+      "restoreError": "Could not restore the build session. Check your connection and retry; your session is preserved.",
+      "modelNotConfigured": "Personal model A is not configured"
     },
     "card": {
       "status": {
@@ -2291,6 +2376,12 @@
       "recommended": "Recommended",
       "planned": "Planned (mock-ready)",
       "reason": "Reason",
+      "purpose": "Purpose",
+      "middlewarePurposes": {
+        "model_retry": "Automatically retries failed model requests to handle temporary failures. The retry count is configurable; poor answer quality does not trigger a rewrite.",
+        "model_call_limit": "Caps model calls per run or conversation to prevent repeated calls and endless loops. Reaching the limit ends the run or raises an error, depending on configuration.",
+        "pii": "Detects a configured type of personal information and redacts, masks, hashes, or blocks it. Email detection is the default; names, customer names, and all sensitive information are not automatically detected."
+      },
       "feedbackPlaceholder": "Feedback Placeholder",
       "approved": "Approved",
       "approve": "Approve",
@@ -2300,7 +2391,10 @@
       "closeFeedback": "Close Feedback",
       "middlewareTitle": "Middleware recommendations",
       "toolTitle": "Tool recommendations",
-      "empty": "No items yet."
+      "empty": "No items yet.",
+      "confirmationReason": "Reason for confirming the capability plan (required)",
+      "skillPreview": "Text skill guide (editable)",
+      "retry": "Retry this stage"
     },
     "toolCall": {
       "calling": "Calling",
@@ -2604,6 +2698,9 @@
   },
   "tool": {
     "page": {
+      "simulationDescription": "Projects use simulated tools to evaluate agent behavior without external service authorization.",
+      "simulationEmptyTitle": "Bundled external tools have been removed",
+      "simulationEmptyDescription": "Simulated tools are defined by project requirements and test cases. View their parameters, simulated data, and call results in each project.",
       "title": "Tools",
       "description": "Manage tools agents can use, including built-ins, custom tools, and MCP tools.",
       "viewMode": "View Mode",
@@ -3115,8 +3212,8 @@
     }
   },
   "systemLlm": {
-    "title": "Platform AI",
-    "description": "Configure platform AI roles separately from Agent runtime models.",
+    "title": "My AI settings",
+    "description": "Add your own API key and select models for project creation, execution, evaluation, and optimization.",
     "loading": "Loading",
     "configured": "Configured",
     "notConfigured": "Not Configured",
@@ -3124,12 +3221,12 @@
     "model": "Models",
     "test": "Test",
     "testing": "Testing",
-    "systemCredential": "System Credentials",
+    "systemCredential": "My API key",
     "none": "None",
     "selectProvider": "Select provider",
     "selectCredential": "Select Credential",
     "selectModel": "Select model",
-    "emptyCredentials": "No system credentials are available yet.",
+    "emptyCredentials": "Add your own API key first.",
     "loadModels": "Load Models",
     "selectCredentialFirst": "Select Credential First",
     "modelLoadFailed": "Model Load Failed",
@@ -3139,28 +3236,28 @@
     "saving": "Saving",
     "save": "Save",
     "operatorOnly": {
-      "title": "Admin configuration",
-      "description": "Platform AI uses system credentials. Agent runtime still uses personal models and personal credentials."
+      "title": "Use your personal API key",
+      "description": "Keys are encrypted and isolated by account. Creation, evaluation, and optimization use only your settings, never administrator keys."
     },
     "quickSetup": {
       "title": "Quick setup",
-      "description": "Use one provider, system credential, and model for Builder, evaluation generation, and judge/optimizer roles.",
-      "addCredential": "Add system credential",
-      "apply": "Apply to three platform roles",
-      "note": "Only credential references and model names are saved; API keys stay encrypted on the backend and are never stored in the browser."
+      "description": "Add one API key and choose a model for creation, evaluation generation, judging, and optimization.",
+      "addCredential": "Add my API key",
+      "apply": "Apply to creation, evaluation, and optimization",
+      "note": "These settings apply only to your account. Experiments freeze model and evaluation settings when they start."
     },
     "roles": {
       "builder": {
-        "label": "Builder AI",
-        "description": "Used for agent creation, edit assistant, skill builder, and build-time text generation."
+        "label": "Model A: generation and execution",
+        "description": "Creates instructions and text Skills, runs the Agent and proposes concrete changes."
       },
       "evaluation_generator": {
-        "label": "Evaluation Generator AI",
-        "description": "Used for Agent Project Eval Plan, EvalSet, and test case generation."
+        "label": "Model B: test design",
+        "description": "Designs the plan, 20 formal cases, simulated data and expected behavior."
       },
       "judge_optimizer": {
-        "label": "Judge & Optimizer AI",
-        "description": "Used for semantic judging, bad-case analysis, root cause analysis, reports, and optimization proposals."
+        "label": "Model C: judging and analysis",
+        "description": "Scores actual outputs, cites evidence and analyzes failures and weak metrics."
       },
       "image": {
         "label": "Image Generation AI",
@@ -3170,7 +3267,7 @@
     "toast": {
       "loadModelsFailed": "Operation failed.",
       "saved": "Saved successfully.",
-      "simpleSaved": "Platform AI roles are configured.",
+      "simpleSaved": "Your personal AI settings are saved.",
       "testSucceeded": "Test passed.",
       "testFailed": "Test failed.",
       "saveFailed": "Operation failed."
@@ -4557,7 +4654,7 @@
       "admin": "Admin",
       "marketplaceAdmin": "Marketplace Admin",
       "systemCredentials": "System Credentials",
-      "systemLlm": "Platform AI",
+      "systemLlm": "My AI settings",
       "adminAudit": "All Activity"
     },
     "profile": {
@@ -4864,7 +4961,7 @@
     "marketplaceAdmin": "Marketplace Admin",
     "adminAudit": "All Activity",
     "systemCredentials": "System Credentials",
-    "systemLlm": "Platform AI",
+    "systemLlm": "My AI settings",
     "skills": "Skills",
     "create": "Create",
     "createAgent": "Create Agent",
@@ -4876,7 +4973,8 @@
     "skillEvaluation": "Evaluation",
     "skillVersions": "Versions",
     "skillSource": "Source",
-    "skillBuilder": "Builder"
+    "skillBuilder": "Builder",
+    "project": "Project"
   },
   "connections": {
     "pageTitle": "Page title",

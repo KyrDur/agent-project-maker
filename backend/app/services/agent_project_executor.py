@@ -24,6 +24,24 @@ class SnapshotExecutionUnavailable(Exception):
         self.evidence = evidence or {}
 
 
+def snapshot_recursion_limit(graph: Any, middleware: list[Any]) -> int:
+    """Budget graph steps for complete model turns, including middleware hooks.
+
+    Model/tool middleware still enforce their own limits; the graph limit is
+    only a bounded fallback against an execution graph that cannot terminate.
+    """
+    if not hasattr(graph, "get_graph"):
+        return 30
+    turns = 30
+    for item in middleware:
+        if item.__class__.__name__ == "ModelCallLimitMiddleware":
+            limits = [getattr(item, key, None) for key in ("run_limit", "thread_limit")]
+            turns = min([turns, *(limit for limit in limits if isinstance(limit, int))])
+    # One extra turn lets before_model apply the configured limit and jump to end.
+    nodes = max(1, len(graph.get_graph().nodes))
+    return min(1024, nodes * (max(1, turns) + 1))
+
+
 async def execute_snapshot(
     db: AsyncSession, snapshot: dict[str, Any], case: dict[str, Any], user_id: uuid.UUID
 ) -> dict[str, Any]:
@@ -51,14 +69,23 @@ async def execute_snapshot(
 
     from deepagents.backends import StateBackend
     from langchain_core.messages import AIMessage
+    from langgraph.errors import GraphRecursionError
     from langsmith import tracing_context
 
     from app.agent_runtime.runtime_policy import resolve_runtime_policy
     from app.services.agent_project_llm import resolve_model
 
+    api_key = ""
+    model_calls: list[dict[str, Any]] = []
+    output = ""
     try:
         with tracing_context(enabled=False):
             llm, api_key = await resolve_model(db, snapshot, user_id, role="examinee")
+            from app.services.agent_project_call_evidence import CallEvidence, model_descriptor
+
+            descriptor = model_descriptor(llm)
+            if snapshot.get("resolved_examinee") and snapshot["resolved_examinee"] != descriptor:
+                raise SnapshotExecutionUnavailable("evaluation_examinee_configuration_changed")
             graph = build_agent(
                 llm,
                 tools,
@@ -72,27 +99,68 @@ async def execute_snapshot(
                 name="project_evaluation",
                 runtime_policy=resolve_runtime_policy(config.get("runtime_policy")),
             )
-            messages = [*case.get("context", []), {"role": "user", "content": case["input"]}]
-            result = await graph.ainvoke(
-                {"messages": messages}, {"recursion_limit": 30, "callbacks": []}
+            from langchain_core.messages import messages_from_dict, messages_to_dict
+
+            history = (
+                messages_from_dict(case["_conversation_messages"])
+                if case.get("_conversation_messages")
+                else case.get("context", [])
             )
-        if result.get("__interrupt__"):
-            raise SnapshotExecutionUnavailable("evaluation_requires_approval")
+            messages = [*history, {"role": "user", "content": case["input"]}]
+            result = await graph.ainvoke(
+                {"messages": messages},
+                {
+                    "recursion_limit": snapshot_recursion_limit(graph, middleware),
+                    "callbacks": [CallEvidence(model_calls, descriptor)],
+                },
+            )
         answers = [
             message for message in result.get("messages", []) if isinstance(message, AIMessage)
         ]
         output = answers[-1].text if answers else ""
+        model_limits = [
+            limit
+            for m in middleware
+            if m.__class__.__name__ == "ModelCallLimitMiddleware"
+            for limit in (getattr(m, "run_limit", None), getattr(m, "thread_limit", None))
+            if isinstance(limit, int)
+        ]
+        # Private middleware state is omitted from graph output. Use captured
+        # calls and the middleware's terminal message to detect an exhausted budget.
+        if (
+            model_limits
+            and len(model_calls) >= min(model_limits)
+            and output.startswith("Model call limits exceeded:")
+        ):
+            raise SnapshotExecutionUnavailable("evaluation_step_limit")
+        if any(m.__class__.__name__ == "ToolCallLimitMiddleware" for m in middleware) and (
+            output.startswith("Tool call limit reached:")
+            or (output.startswith("'") and " tool call limit reached:" in output)
+        ):
+            raise SnapshotExecutionUnavailable("evaluation_tool_call_limit")
+        if result.get("__interrupt__"):
+            raise SnapshotExecutionUnavailable("evaluation_requires_approval")
         calls = [call for message in answers for call in message.tool_calls]
         called_tools = [{"name": event["name"]} for event in tool_trace] or [
             {"name": call["name"]} for call in calls
         ]
         evidence = {
             "output": output,
+            "model_calls": model_calls,
+            "termination_reason": "completed",
+            "final_state": tool_trace[-1]["state_after"]
+            if tool_trace
+            else case.get("initial_state", {}),
             "limitations": limitations,
             "execution_mode": "mock_sandbox",
             "tool_calls": called_tools,
             "tool_trace": tool_trace,
             "mock_missing_tools": sorted(set(missing)),
+            **(
+                {"conversation_messages": messages_to_dict(result.get("messages", []))}
+                if "_conversation_messages" in case
+                else {}
+            ),
             "handoffs": [
                 call.get("args", {}).get("subagent_type")
                 for call in calls
@@ -109,12 +177,53 @@ async def execute_snapshot(
                 secret_values=[api_key] if api_key else [],
             )
         )
-    except SnapshotExecutionUnavailable:
-        raise
-    except Exception as exc:
-        if exc.__class__.__name__ == "LLMCredentialRequiredError":
-            raise SnapshotExecutionUnavailable("snapshot_credential_unavailable") from exc
-        raise SnapshotExecutionUnavailable("evaluation_execution_failed") from exc
+    except BaseException as exc:
+        import asyncio
+
+        evidence = snapshot_value(
+            redact_protocol_data(
+                "project_evaluation",
+                {
+                    "output": output,
+                    "execution_mode": "mock_sandbox",
+                    "model_calls": model_calls,
+                    "tool_trace": tool_trace,
+                    "tool_calls": [{"name": t["name"]} for t in tool_trace],
+                    "final_state": tool_trace[-1]["state_after"]
+                    if tool_trace
+                    else case.get("initial_state", {}),
+                    "termination_reason": "timeout"
+                    if isinstance(exc, asyncio.CancelledError)
+                    else "failed",
+                },
+                redact_memory=False,
+                secret_values=[api_key] if api_key else [],
+            )
+        )
+        if isinstance(exc, asyncio.CancelledError):
+            # Persist partial evidence before the surrounding timeout handles cancellation.
+            from app.services.agent_project_llm import _calls
+
+            collector = _calls.get()
+            if collector is not None:
+                collector.append({"partial_execution": evidence})
+            raise
+        if isinstance(exc, SnapshotExecutionUnavailable):
+            evidence["termination_reason"] = exc.code
+            exc.evidence = {**evidence, **exc.evidence}
+            raise
+        code = (
+            "evaluation_step_limit"
+            if isinstance(exc, GraphRecursionError)
+            or exc.__class__.__name__ == "ModelCallLimitExceededError"
+            else (
+                "snapshot_credential_unavailable"
+                if exc.__class__.__name__ == "LLMCredentialRequiredError"
+                else "evaluation_execution_failed"
+            )
+        )
+        evidence["termination_reason"] = code
+        raise SnapshotExecutionUnavailable(code, evidence) from exc
 
 
 def snapshot_middlewares(config: dict[str, Any]) -> list:

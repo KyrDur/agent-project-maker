@@ -58,7 +58,7 @@ it('selects historical runs and keeps failures and suggestions tied to that run'
   await userEvent.click(await screen.findByRole('combobox', { name: '选择历史评估（版本 B）' }))
   await userEvent.click(await screen.findByRole('option', { name: /V1/ }))
   expect(await screen.findByText('Clarify instructions')).toBeInTheDocument()
-  expect(screen.getByText('Bad Cases · 失败案例（1）')).toBeInTheDocument()
+  expect(screen.getByText('失败案例（1）')).toBeInTheDocument()
   await userEvent.click(screen.getByText('Missing answer'))
   expect(screen.getByText('Required answer absent')).toBeVisible()
   expect(screen.getByText('-50 个百分点')).toBeInTheDocument()

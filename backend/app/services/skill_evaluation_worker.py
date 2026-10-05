@@ -181,9 +181,19 @@ class SkillEvaluationWorker:
         run_timeout = effective_run_timeout_seconds(
             len(context.evals), uses_baseline_comparison=context.baseline_comparison
         )
+
+        async def evaluate_as_owner():
+            from app.services.llm_user_context import llm_user_id
+
+            token = llm_user_id.set(run.user_id)
+            try:
+                return await self.evaluator.evaluate(db, context)
+            finally:
+                llm_user_id.reset(token)
+
         try:
             result = await asyncio.wait_for(
-                self.evaluator.evaluate(db, context),
+                evaluate_as_owner(),
                 timeout=run_timeout,
             )
         except EvalRunCancelled:

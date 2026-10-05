@@ -14,8 +14,8 @@ export interface SystemLlmReadiness {
   model_name: string | null
 }
 
-// Operator-managed System LLM role slots (ADR-019). super_user only; the PUT
-// route requires CSRF — `apiFetch` injects `X-CSRF-Token` for mutations.
+// Personal role slots (legacy URL retained). Every request is owner-scoped; PUT
+// requires CSRF — `apiFetch` injects `X-CSRF-Token` for mutations.
 export const systemLlmSettingsApi = {
   list: () => apiFetch<SystemLlmSettingOut[]>('/api/system-llm-settings'),
   readiness: () => apiFetch<SystemLlmReadiness[]>('/api/system-llm-settings/readiness'),

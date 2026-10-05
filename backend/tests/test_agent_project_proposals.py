@@ -32,6 +32,12 @@ async def refund_project(db, client, monkeypatch):
     agent.system_prompt = "Help customers with the refund workflow."
     await db.commit()
     project = await projects.create_project(db, agent.id, USER)
+    from app.services import agent_project_llm
+    from tests.project_practice_helpers import author_practice, fixed_examinee, fixed_judge
+
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", fixed_judge)
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", fixed_examinee)
+    await author_practice(db, agent, USER)
     v1 = (await projects.list_versions(db, agent.id, USER))[0]
     spec = phase3.plan()
     spec["capability_profile"] = {"capabilities": ["workflow"]}
@@ -167,6 +173,7 @@ async def refund_project(db, client, monkeypatch):
     monkeypatch.setattr(semantic, "json_call", judge)
     monkeypatch.setattr(optimization, "json_call", analyze)
     monkeypatch.setattr(proposals, "json_call", propose)
+    await author_practice(db, agent, USER, dataset.id)
     path = f"/api/agents/{agent.id}/project"
     assert (await client.post(f"{path}/eval-sets/{dataset.id}/quality")).json()[
         "quality_report_json"
@@ -200,21 +207,42 @@ async def test_proposal_review_regression_best_and_immutable_history(client, db,
     proposal_path = f"{endpoint}/{proposal['id']}"
     assert (await client.post(proposal_path + "/regression", json=request)).status_code == 409
     rejected = (
-        await client.post(proposal_path + "/decision", json={"decision": "rejected"})
+        await client.post(
+            proposal_path + "/decision",
+            json={"decision": "rejected", "decision_reason": "Choose a different bounded approach"},
+        )
     ).json()
     assert rejected["status"] == "rejected"
     assert (
-        await client.post(proposal_path + "/decision", json={"decision": "accepted"})
+        await client.post(
+            proposal_path + "/decision",
+            json={
+                "decision": "accepted",
+                "decision_reason": "Addresses the observed verification gap",
+            },
+        )
     ).status_code == 409
     assert len(await projects.list_versions(db, agent.id, USER)) == 1
     second = (await client.post(endpoint, json={"request_id": str(uuid.uuid4())})).json()
     proposal_path = f"{endpoint}/{second['id']}"
     accepted = (
-        await client.post(proposal_path + "/decision", json={"decision": "accepted"})
+        await client.post(
+            proposal_path + "/decision",
+            json={
+                "decision": "accepted",
+                "decision_reason": "Addresses the observed verification gap",
+            },
+        )
     ).json()
     assert accepted["status"] == "accepted"
     assert (
-        await client.post(proposal_path + "/decision", json={"decision": "accepted"})
+        await client.post(
+            proposal_path + "/decision",
+            json={
+                "decision": "accepted",
+                "decision_reason": "Addresses the observed verification gap",
+            },
+        )
     ).json() == accepted
     versions = (await client.get(path + "/versions")).json()
     assert len(versions) == 2
@@ -271,7 +299,13 @@ async def test_invalid_proposal_and_foreign_scope_do_not_create_versions(
         await client.post(other_path, json={"request_id": str(uuid.uuid4())})
     ).status_code == 404
     assert (
-        await client.post(endpoint + f"/{uuid.uuid4()}/decision", json={"decision": "accepted"})
+        await client.post(
+            endpoint + f"/{uuid.uuid4()}/decision",
+            json={
+                "decision": "accepted",
+                "decision_reason": "Addresses the observed verification gap",
+            },
+        )
     ).status_code == 404
 
 
@@ -339,7 +373,9 @@ async def test_no_supported_patch_cannot_be_accepted(client, db, refund_project,
 
 
 @pytest.mark.asyncio
-async def test_builder_bootstrap_stops_before_focus_checkpoint(db, refund_project, monkeypatch):
+async def test_builder_bootstrap_automatically_runs_validated_cases(
+    db, refund_project, monkeypatch
+):
     from sqlalchemy import select
 
     from app.models.agent_project import AgentProjectEvalRun
@@ -350,7 +386,7 @@ async def test_builder_bootstrap_stops_before_focus_checkpoint(db, refund_projec
     db.add(session)
     await db.flush()
     project.builder_session_id = session.id
-    project.eval_spec_json = phase3.plan()
+    project.eval_spec_json = {**phase3.plan(), "version_id": str(v1.id)}
     await db.commit()
     before_count = len(
         (
@@ -363,13 +399,37 @@ async def test_builder_bootstrap_stops_before_focus_checkpoint(db, refund_projec
     monkeypatch.setattr(lifecycle, "async_session", factory)
     monkeypatch.setattr(lifecycle, "engine", db.bind)
 
-    async def fail(*_args):
-        raise SnapshotExecutionUnavailable("evaluation_timeout")
+    original_generate = semantic.generate
 
-    monkeypatch.setattr(evaluation, "execute_snapshot", fail)
+    async def generated(
+        db, agent_id, user_id, version_id, *, cases=False, dataset_id=None, **kwargs
+    ):
+        if not cases:
+            return await original_generate(db, agent_id, user_id, version_id, **kwargs)
+        from app.services.agent_project_practice import requirements_hash
+
+        return await evaluation.write_set(
+            db,
+            agent_id,
+            user_id,
+            EvalSetWrite(
+                name="Automatic test",
+                cases=[
+                    {
+                        "name": "Automatic case",
+                        "input": "hello",
+                        "expected": {"exact_answer": "hello"},
+                    }
+                ],
+            ),
+            new_id=dataset_id,
+            rubric={**phase3.plan(), "requirements_hash": requirements_hash(project)},
+        )
+
+    monkeypatch.setattr(semantic, "generate", generated)
     await lifecycle.bootstrap(agent.id, USER)
     await db.refresh(project, ["requirements_json"])
-    assert project.requirements_json["bootstrap"]["stage"] == "focus"
+    assert project.requirements_json["bootstrap"]["stage"] == "results"
     assert project.requirements_json["bootstrap"]["error"] is None
     assert (
         len(
@@ -379,5 +439,77 @@ async def test_builder_bootstrap_stops_before_focus_checkpoint(db, refund_projec
                 )
             ).all()
         )
-        == before_count
+        == before_count + 1
     )
+
+
+@pytest.mark.asyncio
+async def test_second_review_uses_v2_and_all_three_versions_are_reported(
+    client, db, refund_project, monkeypatch
+):
+    agent, _, v1, _, run, path = refund_project
+    first = (
+        await client.post(
+            f"{path}/eval-runs/{run.id}/proposals", json={"request_id": str(uuid.uuid4())}
+        )
+    ).json()
+    accepted = await client.post(
+        f"{path}/eval-runs/{run.id}/proposals/{first['id']}/decision",
+        json={"decision": "accepted", "decision_reason": "Repair the observed verification gap"},
+    )
+    assert accepted.status_code == 200
+    data = accepted.json()
+    v2_run = await evaluation.get_run(db, agent.id, USER, uuid.UUID(data["regression_run_id"]))
+    assert v2_run.status == "completed"
+    first_analyzer = optimization.json_call
+    async def second_analyzer(*args):
+        value = await first_analyzer(*args)
+        ids = [c["case_id"] for c in args[-1]["cases"]]
+        value["analyses"] = [{**value["analyses"][0], "case_id": cid,
+            "root_cause": "Verification evidence is not explicit", "evidence": ["/metric_scores"]}
+            for cid in ids]
+        value["groups"][0]["case_ids"] = ids
+        return value
+    monkeypatch.setattr(optimization, "json_call", second_analyzer)
+    first_generator = proposals.json_call
+
+    async def second_generator(*args):
+        value = await first_generator(*args)
+        for item in value["proposals"]:
+            for change in item["changes"]:
+                change["content"] += " Explain the verification evidence."
+        return value
+
+    monkeypatch.setattr(proposals, "json_call", second_generator)
+    second = (
+        await client.post(
+            f"{path}/eval-runs/{v2_run.id}/proposals", json={"request_id": str(uuid.uuid4())}
+        )
+    ).json()
+    assert "source_version_id" in second, second
+    assert second["source_version_id"] == str(v2_run.version_id)
+    response = await client.post(
+        f"{path}/eval-runs/{v2_run.id}/proposals/{second['id']}/decision",
+        json={"decision": "accepted", "decision_reason": "Make the verified outcome explicit"},
+    )
+    assert response.status_code == 200
+    v3_run = await evaluation.get_run(
+        db, agent.id, USER, uuid.UUID(response.json()["regression_run_id"])
+    )
+    versions = await projects.list_versions(db, agent.id, USER)
+    assert [v.version_number for v in versions] == [3, 2, 1]
+    assert versions[0].parent_version_id == v2_run.version_id
+    assert v3_run.cases_snapshot_json == run.cases_snapshot_json
+    assert (
+        v3_run.comparison_json["role_configurations"] == run.comparison_json["role_configurations"]
+    )
+    replay = await proposals.regression(
+        db, agent.id, USER, v2_run.id, uuid.UUID(second["id"]), uuid.uuid4()
+    )
+    assert replay.id == v3_run.id
+    report = (await client.get(path + "/report")).json()["evidence"]
+    assert {
+        (c["source_version"], c["target_version"]) for c in report["results"]["comparisons"]
+    } == {(1, 2), (2, 3), (1, 3)}
+    assert report["results"]["best_version"] == 2  # 同分保留较早版本。
+    assert v1.snapshot_json["agent"]["system_prompt"] == agent.system_prompt

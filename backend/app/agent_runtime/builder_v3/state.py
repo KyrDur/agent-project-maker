@@ -38,6 +38,7 @@ class PhaseTodo(TypedDict):
 
 
 class BuilderState(TypedDict, total=False):
+    capability_reason: str | None
     runtime_model_id: str | None
     runtime_setup_payload: dict[str, Any] | None
     """LangGraph StateGraph가 관리하는 빌더 세션 상태.

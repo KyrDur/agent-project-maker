@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { toApprove, toReject } from '@/lib/chat/decision-mappers'
+import { toApprove, toReject, toRespond } from '@/lib/chat/decision-mappers'
 import { useHiTL } from '@/lib/chat/hitl-context'
 
 export type ApprovalDecision = 'approved' | 'revision' | null
@@ -13,6 +13,7 @@ export interface UseApprovalFormOptions {
   /** 승인 시 디스플레이 텍스트 */
   approveDisplay?: string
   /** status.type 'complete' 여부 */
+  approvePayload?: () => Record<string, unknown>
   isComplete: boolean
 }
 
@@ -44,7 +45,10 @@ export function useApprovalForm(options: UseApprovalFormOptions): ApprovalFormSt
   const handleApprove = async () => {
     if (submitted) return
     setSubmitted('approved')
-    await hitl?.onResumeDecisions([toApprove()], approveDisplay)
+    await hitl?.onResumeDecisions(
+      [options.approvePayload ? toRespond(JSON.stringify(options.approvePayload())) : toApprove()],
+      approveDisplay,
+    )
   }
 
   const handleRevision = async () => {

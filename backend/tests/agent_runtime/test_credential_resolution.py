@@ -255,3 +255,21 @@ async def test_auto_match_skips_system_credentials(db: AsyncSession) -> None:
 
     with pytest.raises(LLMCredentialRequiredError):
         await resolve_llm_api_key_for_agent(db, agent)
+
+
+@pytest.mark.asyncio
+async def test_explicit_system_binding_never_supplies_user_key(db: AsyncSession) -> None:
+    credential = await credential_service.create(
+        db,
+        user_id=None,
+        definition_key="openai",
+        name="Legacy platform key",
+        data={"api_key": "test-admin-key"},
+        is_system=True,
+    )
+    agent = await _make_agent_with_model(db, provider="openai")
+    agent.llm_credential_id = credential.id
+    await db.commit()
+    await db.refresh(agent, attribute_names=["llm_credential"])
+    with pytest.raises(LLMCredentialRequiredError):
+        await resolve_llm_api_key_for_agent(db, agent)

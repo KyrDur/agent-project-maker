@@ -49,7 +49,7 @@ async def get_or_create_skill_builder_agent(db: AsyncSession, user_id: uuid.UUID
     if existing is not None:
         return existing
 
-    resolved = await resolve_system_model(db, "builder")
+    resolved = await resolve_system_model(db, "builder", user_id)
     agent = Agent(
         user_id=user_id,
         name=SKILL_BUILDER_AGENT_NAME,

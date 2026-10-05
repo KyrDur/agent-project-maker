@@ -181,6 +181,7 @@ async def confirm_build(
     if not config:
         return None
 
+    created_skill_ids: list[uuid.UUID] = []
     try:
         selected_model_id = model_id or config.get("runtime_model_id")
         runtime_source = config.get("runtime_model_source")
@@ -196,6 +197,24 @@ async def confirm_build(
         tools_to_link, mcp_tools_to_link, skills_to_link = await _resolve_tools(
             db, session.user_id, config.get("tools", [])
         )
+        from app.skills.service import create_text_skill
+
+        for draft in config.get("generated_skills", []):
+            skill_id = uuid.uuid5(session.id, "generated-skill:" + draft["tool_name"])
+            was_present = await db.get(Skill, skill_id)
+            if not was_present:
+                created_skill_ids.append(skill_id)
+            skill = await create_text_skill(
+                db,
+                user_id=session.user_id,
+                name=draft["tool_name"],
+                slug=draft["tool_name"],
+                description=draft.get("description"),
+                content=draft["content"],
+                version="1",
+                skill_id=skill_id,
+            )
+            skills_to_link.append(skill)
         resolved_names = {
             item.name.lower() for item in [*tools_to_link, *mcp_tools_to_link, *skills_to_link]
         }
@@ -265,6 +284,7 @@ async def confirm_build(
             .where(Agent.id == agent.id)
             .options(
                 selectinload(Agent.model),
+                selectinload(Agent.llm_credential),
                 selectinload(Agent.tool_links).selectinload(AgentToolLink.tool),
                 selectinload(Agent.mcp_tool_links).selectinload(AgentMcpToolLink.mcp_tool),
                 selectinload(Agent.skill_links).selectinload(AgentSkillLink.skill),
@@ -278,6 +298,14 @@ async def confirm_build(
         if session.status == BuilderStatus.COMPLETED and session.agent_id:
             logger.exception("Post-build work failed; preserving completed Agent and Project")
             return await get_agent_by_id(db, session.agent_id)
+        # 只清理本次尚未提交的生成文件；不删除已有指南或已完成的 Agent。
+        import shutil
+
+        from app.skills.service import _skill_root
+
+        for skill_id in created_skill_ids:
+            if await db.get(Skill, skill_id) is None:
+                shutil.rmtree(_skill_root(skill_id), ignore_errors=True)
         session.status = BuilderStatus.PREVIEW
         await db.commit()
         raise
@@ -294,41 +322,55 @@ async def get_builder_personal_bindings(
     return await usable_bindings(db, user_id)
 
 
-async def get_builder_system_runtime(db: AsyncSession):
-    """Return the operator-selected Builder runtime as a model/credential binding."""
+async def get_builder_system_runtime(db: AsyncSession, user_id: uuid.UUID | None = None):
+    """Return the owner-selected Builder runtime as a model/credential binding."""
 
     from app.credentials import service as credential_service
     from app.exceptions import AppError
     from app.services.builder_runtime_readiness import RuntimeBinding
-    from app.services.system_credential_resolver import get_effective_setting
+    from app.services.system_credential_resolver import (
+        SystemModelNotConfiguredError,
+        get_effective_setting,
+    )
 
-    _, setting = await get_effective_setting(db, "builder")
+    try:
+        _, setting = await get_effective_setting(db, "builder", user_id)
+    except SystemModelNotConfiguredError:
+        setting = None
     if setting is None or setting.credential_id is None or not setting.model_name:
         raise AppError(
             code="builder_runtime_setup",
             message=tr("builder_runtime_setup"),
             status=422,
         )
-    credential = await credential_service.get_system(db, setting.credential_id)
-    if credential is None:
+    credential = await credential_service.get_for_user(db, setting.credential_id, setting.user_id)
+    if credential is None or credential.status != "active":
         raise AppError(
             code="builder_runtime_setup",
             message=tr("builder_runtime_setup"),
             status=422,
         )
 
+    payload = await credential_service.decrypt_with_external(credential.data_encrypted)
+    if not (payload.get("api_key") or payload.get("token")):
+        raise AppError(
+            code="builder_runtime_setup", message=tr("builder_runtime_setup"), status=422
+        )
+    base_url = payload.get("base_url") or None
     result = await db.execute(
         select(Model).where(
             Model.provider == credential.definition_key,
             Model.model_name == setting.model_name,
+            Model.base_url == base_url,
         )
     )
-    model = result.scalar_one_or_none()
+    model = result.scalars().first()
     if model is None:
         model = Model(
             provider=credential.definition_key,
             model_name=setting.model_name,
             display_name=setting.model_name,
+            base_url=base_url,
             is_visible=True,
         )
         db.add(model)
@@ -347,13 +389,13 @@ async def _resolve_confirm_runtime_binding(
     from app.services.builder_runtime_readiness import require_binding
 
     if runtime_source == "system_builder":
-        return await get_builder_system_runtime(db)
+        return await get_builder_system_runtime(db, user_id)
     try:
         return await require_binding(db, user_id, selected_model_id)
     except AppError:
         if selected_model_id:
             raise
-        return await get_builder_system_runtime(db)
+        return await get_builder_system_runtime(db, user_id)
 
 
 async def _resolve_tools(
@@ -495,7 +537,18 @@ async def run_v3_message_stream(
     from app.agent_runtime.streaming import stream_agent_response
 
     async with async_session_factory() as db:
-        tools_catalog = await get_tools_catalog(db, user_id)
+        catalog = await get_tools_catalog(db, user_id)
+        text_skill_ids = {
+            str(skill_id)
+            for skill_id in await db.scalars(
+                select(Skill.id).where(Skill.user_id == user_id, Skill.kind == "text")
+            )
+        }
+        tools_catalog = [
+            item
+            for item in catalog
+            if item.get("kind") == "skill" and item.get("id") in text_skill_ids
+        ]
         default_model_name = await _get_default_model_name(db, user_id)
         middlewares_catalog = _get_middlewares_catalog()
 

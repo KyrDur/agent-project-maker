@@ -166,28 +166,16 @@ async def record_tool_audit(
 
 
 async def get_tools_catalog(db: AsyncSession, user_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Return the user's available items: ``Tool`` + ``McpTool`` + ``Skill``.
+    """Return personal MCP tools and skills; exclude legacy external tool instances.
 
     Each item carries a ``kind`` field (``"tool" | "mcp" | "skill"``) so the
     builder phase3 추천기 LLM 이 상황에 맞는 종류를 선택할 수 있고, phase8
     confirm 이 종류별로 적절한 link 테이블에 매칭한다.
     """
 
-    tool_rows = await db.execute(
-        select(Tool.id, Tool.name, Tool.description, Tool.definition_key).where(
-            Tool.visible_to(user_id)
-        )
-    )
-    items: list[dict[str, Any]] = [
-        {
-            "id": str(row.id),
-            "kind": "tool",
-            "name": row.name,
-            "description": row.description or "",
-            "definition_key": row.definition_key,
-        }
-        for row in tool_rows.all()
-    ]
+    # Bundled external tool instances are outside simulated project practice.
+    # Keep their storage/runtime definitions readable for historical snapshots.
+    items: list[dict[str, Any]] = []
 
     mcp_rows = await db.execute(
         select(

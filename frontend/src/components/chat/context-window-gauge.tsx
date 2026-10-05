@@ -197,7 +197,7 @@ function RuntimeDetails({
       {ready !== undefined ? (
         <div className="flex items-center justify-between gap-3">
           <span>{t('runtimeReadiness')}</span>
-          <span className={ready ? 'text-emerald-700' : 'text-amber-700'}>
+          <span className={ready ? 'text-status-success' : 'text-status-warn'}>
             {ready ? t('ready') : t('needsSetup')}
           </span>
         </div>

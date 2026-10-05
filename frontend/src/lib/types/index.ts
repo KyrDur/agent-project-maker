@@ -652,6 +652,14 @@ export interface BuilderSession {
 }
 
 export interface BuilderIntent {
+  project_requirements?: {
+    goal: string
+    inputs: string
+    deliverables: string
+    business_rules: string
+    success_conditions: string
+  }
+  confirmation_reason?: string | null
   agent_name: string
   agent_description: string
   primary_task_type: string
@@ -667,7 +675,9 @@ export interface BuilderToolRecommendation {
   tool_name: string
   description: string
   reason: string
-  kind?: 'tool' | 'mcp' | 'skill' | 'planned'
+  kind?: 'tool' | 'mcp' | 'skill' | 'planned' | 'generated_skill'
+  content?: string
+  input_schema?: Record<string, unknown>
 }
 
 export interface BuilderMiddlewareRecommendation {
@@ -682,6 +692,8 @@ export interface BuilderDraftConfig {
   system_prompt: string
   tools: string[]
   planned_tools?: BuilderToolRecommendation[]
+  generated_skills?: BuilderToolRecommendation[]
+  capability_reason?: string | null
   middlewares: string[]
   model_name: string
   primary_task_type: string
@@ -828,4 +840,3 @@ export interface MiddlewareRegistryItem {
   config_schema: Record<string, unknown>
   provider_specific: string | null
 }
-

@@ -190,6 +190,13 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
         agent_description="사용자 요청에 따라 생성된 에이전트: x",
         primary_task_type="x",
         use_cases=["x"],
+        project_requirements={
+            "goal": "测试任务",
+            "inputs": "模拟输入",
+            "deliverables": "回复",
+            "business_rules": "仅模拟",
+            "success_conditions": "符合给定信息",
+        },
     )
 
     async def _fake_analyze(req: str):
@@ -233,7 +240,17 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
     )
 
     # resume — 사용자가 "옵션 A" 선택
-    result2 = await compiled.ainvoke(Command(resume="옵션 A"), config=config)
+    result2 = await compiled.ainvoke(
+        Command(
+            resume=json.dumps(
+                {
+                    "mode": "question_flow",
+                    "answers": {"agent_name": ["옵션 A"], "requirements_reason": ["测试所需"]},
+                }
+            )
+        ),
+        config=config,
+    )
     assert "__interrupt__" in result2  # phase 3 approval에서 또 interrupt
     # state 검증
     state = await compiled.aget_state(config)
@@ -262,7 +279,14 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
         agent_name="리서치 에이전트",
         agent_description="자료를 조사하고 정리하는 에이전트",
         primary_task_type="자료 조사",
-        use_cases=["자료 조사"],
+        use_cases=["资料调查"],
+        project_requirements={
+            "goal": "调查资料",
+            "inputs": "给定资料",
+            "deliverables": "总结",
+            "business_rules": "不虚构事实",
+            "success_conditions": "准确总结",
+        },
     )
 
     async def _fake_analyze(req: str):
@@ -303,13 +327,14 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
     )
     assert interrupt_payload["type"] == "ask_user"
     assert interrupt_payload["mode"] == "question_flow"
-    assert len(interrupt_payload["questions"]) == 3
+    assert len(interrupt_payload["questions"]) == 9
     assert not any(q["id"] == "identity_mode" for q in interrupt_payload["questions"])
 
     response = {
         "mode": "question_flow",
         "answers": {
             "agent_name": ["리서치봇"],
+            "requirements_reason": ["只基于给定资料验证总结"],
             "response_tone": ["professional"],
             "output_style": ["detailed"],
         },

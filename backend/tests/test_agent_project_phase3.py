@@ -87,10 +87,10 @@ def generated_cases():
 
 
 @pytest.mark.asyncio
-async def test_project_llm_roles_use_platform_system_slots(monkeypatch):
+async def test_project_llm_roles_use_personal_three_roles(monkeypatch):
     seen_roles: list[str] = []
 
-    async def resolve_system_model(_db, role: str):
+    async def resolve_system_model(_db, role: str, _user_id=None):
         seen_roles.append(role)
         return ResolvedSystemModel(
             provider="openai",
@@ -112,7 +112,6 @@ async def test_project_llm_roles_use_platform_system_slots(monkeypatch):
         "bad_case_analyzer",
         "optimizer",
         "optimization_proposal",
-        "unknown_future_role",
     ):
         await llm.resolve_model(db, {}, TEST_USER_ID, role)
 
@@ -121,10 +120,11 @@ async def test_project_llm_roles_use_platform_system_slots(monkeypatch):
         "evaluation_generator",
         "judge_optimizer",
         "judge_optimizer",
-        "judge_optimizer",
-        "judge_optimizer",
-        "judge_optimizer",
+        "builder",
+        "builder",
     ]
+    with pytest.raises(ValueError, match="unknown_project_model_role"):
+        await llm.resolve_model(db, {}, TEST_USER_ID, "unknown_future_role")
 
 
 @pytest.mark.parametrize("mutation", ["duplicate", "custom", "type", "weight", "count"])
@@ -170,7 +170,9 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
     original = deepcopy(version.snapshot_json)
 
     async def generate_json(_db, snapshot, user, role, instruction, payload):
-        assert snapshot == original and user == TEST_USER_ID
+        assert {
+            k: v for k, v in snapshot.items() if k != "role_configurations"
+        } == original and user == TEST_USER_ID
         return plan() if role == "planner" else generated_cases()
 
     monkeypatch.setattr(semantic, "json_call", generate_json)
@@ -181,7 +183,8 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
     spec = response.json()
     assert len(spec["metrics"]) == 3 and spec["case_count"] == 20
     response = await client.post(path + "/eval-sets/generate", json=body)
-    assert response.status_code == 422
+    assert response.status_code == 201
+    assert response.json()["evaluation_focus_reason"] is None
     response = await client.post(path + "/eval-sets/generate", json=focus_body(version.id))
     assert response.status_code == 201
     dataset = response.json()
@@ -204,6 +207,11 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
     authored.cases[0].input = "Edited before submission"
     await evaluation.write_set(db, agent.id, TEST_USER_ID, authored, uuid.UUID(dataset["id"]))
     await evaluation.judge_set(db, agent.id, TEST_USER_ID, uuid.UUID(dataset["id"]))
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(
+        db, agent, TEST_USER_ID, dataset["id"] if isinstance(dataset, dict) else dataset.id
+    )
     run = await evaluation.create_run(
         db,
         agent.id,
@@ -386,13 +394,14 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
     async def execute(_db, _snapshot, case, _user):
         return {
             "output": "Login reviewed" if case["name"] == "Case 0" else "Revenue doubled",
+            "tool_trace": [{"name": "search", "output": ["Login reviewed"]}],
             "tool_calls": [{"name": "search"}],
             "handoffs": [],
         }
 
     async def judge(_db, _snapshot, _user, role, _instruction, payload):
         assert role == "judge" and "system_prompt" not in payload
-        assert payload["mock_source_data"]["search"]["result"] == ["Login reviewed"]
+        assert payload["observed_sources"] == [["Login reviewed"]]
         supported = payload["actual_output"] == "Login reviewed"
         return {
             "metric_scores": {
@@ -409,6 +418,11 @@ async def test_semantic_results_persist_and_aggregate(db, setup_project, monkeyp
 
     monkeypatch.setattr(evaluation, "execute_snapshot", execute)
     monkeypatch.setattr(semantic, "json_call", judge)
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(
+        db, agent, TEST_USER_ID, dataset["id"] if isinstance(dataset, dict) else dataset.id
+    )
     run = await evaluation.create_run(
         db,
         agent.id,
@@ -485,19 +499,29 @@ async def test_required_forbidden_and_deterministic_format(db, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_json_call_redacts_judge_secret_and_rejects_invalid_json(db, monkeypatch, caplog):
+@pytest.mark.parametrize(
+    ("locale", "language"), [("zh-CN", "Simplified Chinese"), ("en", "English")]
+)
+async def test_json_call_redacts_judge_secret_and_rejects_invalid_json(
+    db, monkeypatch, caplog, locale, language
+):
+    from app.agent_runtime.builder_i18n import locale_scope
+
     secret = 'private"judge\\secret'
 
     class Model:
         async def ainvoke(self, messages, config):
             assert config["callbacks"] == []
+            assert f"prose in {language}" in messages[0]["content"]
+            assert "Preserve JSON keys" in messages[0]["content"]
             return AIMessage(content=json.dumps({"reason": f"Evidence {secret}"}))
 
     async def resolve(*_args):
         return Model(), secret
 
     monkeypatch.setattr(llm, "resolve_model", resolve)
-    result = await llm.json_call(db, {}, TEST_USER_ID, "judge", "Grade", {})
+    with locale_scope(locale):
+        result = await llm.json_call(db, {}, TEST_USER_ID, "judge", "Grade", {})
     assert secret not in json.dumps(result) and "<redacted>" in result["reason"]
     assert secret not in caplog.text
 
@@ -532,6 +556,11 @@ async def test_invalid_judge_is_not_counted_as_pass(db, setup_project, monkeypat
 
     monkeypatch.setattr(evaluation, "execute_snapshot", execute)
     monkeypatch.setattr(semantic, "json_call", invalid)
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(
+        db, agent, TEST_USER_ID, dataset["id"] if isinstance(dataset, dict) else dataset.id
+    )
     run = await evaluation.create_run(
         db,
         agent.id,
@@ -584,6 +613,11 @@ async def test_real_json_wrapper_redaction_survives_persistence(db, setup_projec
 
     monkeypatch.setattr(llm, "resolve_model", resolve)
     monkeypatch.setattr(evaluation, "execute_snapshot", execute)
+    from tests.project_practice_helpers import author_practice
+
+    await author_practice(
+        db, agent, TEST_USER_ID, dataset["id"] if isinstance(dataset, dict) else dataset.id
+    )
     run = await evaluation.create_run(
         db,
         agent.id,
@@ -619,3 +653,86 @@ def test_one_custom_business_metric_is_allowed():
         }
     )
     assert len(EvalSpec.model_validate(data).metrics) == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", [True, False])
+async def test_snapshot_budget_allows_tool_workflow_and_preserves_model_limit(
+    db, setup_project, monkeypatch, finish
+):
+    from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+
+    class ToolModel(FakeMessagesListChatModel):
+        def bind_tools(self, *_args, **_kwargs):
+            return self
+
+    names = [f"step_{index}" for index in range(4)]
+    responses = [
+        AIMessage(content="", tool_calls=[{"name": name, "args": {}, "id": name}]) for name in names
+    ]
+    if finish:
+        responses.append(AIMessage(content="Completed report"))
+    model = ToolModel(responses=responses)
+
+    async def resolve(*_args, **_kwargs):
+        return model, "test-key"
+
+    monkeypatch.setattr(llm, "resolve_model", resolve)
+    version = (await projects.list_versions(db, setup_project.id, TEST_USER_ID))[0]
+    snapshot = deepcopy(version.snapshot_json)
+    snapshot["agent"].update(
+        system_prompt="Use the supplied tools then finish.",
+        tool_links=[],
+        mcp_tool_links=[],
+        skill_links=[],
+        planned_tools=[{"tool_name": name, "description": name} for name in names],
+        middleware_configs=[
+            {"type": name, "params": {}}
+            for name in ("pii", "context_editing", "model_call_limit", "tool_call_limit")
+        ],
+    )
+    case = {
+        "input": "Write report",
+        "mock_tool_data": {name: {"result": "Synthetic fact"} for name in names},
+    }
+    if finish:
+        result = await execute_snapshot(db, snapshot, case, TEST_USER_ID)
+        assert result["output"] == "Completed report"
+        assert len(result["tool_trace"]) == 4
+    else:
+        with pytest.raises(SnapshotExecutionUnavailable, match="evaluation_step_limit") as caught:
+            await execute_snapshot(db, snapshot, case, TEST_USER_ID)
+        result = caught.value.evidence
+        assert result["termination_reason"] == "evaluation_step_limit"
+        assert result["model_calls"] and len(result["tool_trace"]) <= 5
+    assert result["execution_mode"] == "mock_sandbox"
+
+
+@pytest.mark.asyncio
+async def test_snapshot_step_limit_preserves_scrubbed_tool_evidence(db, setup_project, monkeypatch):
+    from langgraph.errors import GraphRecursionError
+
+    async def resolve(*_args, **_kwargs):
+        return object(), "private-test-key"
+
+    monkeypatch.setattr(llm, "resolve_model", resolve)
+
+    def build(_llm, tools, *_args, **_kwargs):
+        class Graph:
+            async def ainvoke(self, *_args):
+                await tools[0].ainvoke({"query": "private-test-key"})
+                raise GraphRecursionError("Internal graph failure")
+
+        return Graph()
+
+    module = ModuleType("app.agent_runtime.runtime_component_builder")
+    monkeypatch.setattr(module, "build_agent", build, raising=False)
+    monkeypatch.setitem(sys.modules, module.__name__, module)
+    version = (await projects.list_versions(db, setup_project.id, TEST_USER_ID))[0]
+    case = {"input": "Evaluate", "mock_tool_data": {"read": {"result": "Synthetic fact"}}}
+    with pytest.raises(SnapshotExecutionUnavailable, match="evaluation_step_limit") as caught:
+        await execute_snapshot(db, version.snapshot_json, case, TEST_USER_ID)
+    assert caught.value.evidence["tool_calls"] == [{"name": "read"}]
+    assert len(caught.value.evidence["tool_trace"]) == 1
+    assert "private-test-key" not in json.dumps(caught.value.evidence)
+    assert "Internal graph failure" not in json.dumps(caught.value.evidence)

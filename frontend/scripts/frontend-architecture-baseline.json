@@ -12,7 +12,6 @@
     "client-page:src/app/agents/[agentId]/settings/page.tsx",
     "client-page:src/app/agents/[agentId]/visual-settings/page.tsx",
     "client-page:src/app/agents/new/conversational/page.tsx",
-    "client-page:src/app/agents/new/manual/page.tsx",
     "client-page:src/app/agents/new/page.tsx",
     "client-page:src/app/agents/new/template/page.tsx",
     "client-page:src/app/marketplace/[item-id]/page.tsx",
@@ -40,8 +39,6 @@
     "direct-api-import:src/components/chat/use-conversation-row-actions.tsx",
     "direct-api-import:src/components/skill/skill-file-editor-pane.tsx",
     "direct-api-import:src/components/skill/use-skill-file-remote-cache.ts",
-    "private-route-import:src/app/agents/new/manual/page.tsx->src/app/agents/[agentId]/settings/_components/form-mode/form-mode",
-    "private-route-import:src/app/agents/new/manual/page.tsx->src/app/agents/[agentId]/settings/_components/right-panel/right-panel",
     "tabs:src/app/(auth)/layout.tsx",
     "tabs:src/app/settings/usage/page.tsx"
   ],

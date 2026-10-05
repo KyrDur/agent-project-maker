@@ -1,7 +1,7 @@
 // System LLM settings domain types — mirrors backend
 // `app/schemas/system_llm_setting.py` (ADR-019).
 //
-// Operators pick one System Credential + model per role. provider is derived
+// Users pick their own private credential + model per role. provider is derived
 // from the credential's `definition_key` (single source of truth), base_url is
 // surfaced so LiteLLM/openai_compatible endpoints are visible at a glance.
 
@@ -14,7 +14,7 @@ export const SYSTEM_LLM_ROLES = [
 
 export type SystemLlmRole = (typeof SYSTEM_LLM_ROLES)[number]
 
-/** Credential definition_keys allowed for a System LLM slot. */
+/** Credential definition_keys allowed for a personal AI slot. */
 export const SYSTEM_LLM_CREDENTIAL_KEYS = [
   'deepseek',
   'moonshot',

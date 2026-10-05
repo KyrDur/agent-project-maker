@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class SystemLlmSettingOut(BaseModel):
@@ -27,7 +27,15 @@ class SystemLlmSettingUpdate(BaseModel):
     """PUT body — selects (or clears) the credential/model for a role."""
 
     credential_id: uuid.UUID | None = None
-    model_name: str | None = None
+    model_name: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_selection(self):
+        if (self.credential_id is None) != (self.model_name is None):
+            raise ValueError("Select both credential and model, or clear both")
+        if self.model_name is not None and not self.model_name.strip():
+            raise ValueError("Model name cannot be blank")
+        return self
 
 
 class SystemLlmTestRequest(BaseModel):

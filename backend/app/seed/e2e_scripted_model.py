@@ -50,6 +50,7 @@ async def seed_e2e_scripted_model(db: AsyncSession) -> Model | None:
         await db.flush()
         logger.info("seed_e2e_scripted_model: created %s", E2E_SCRIPTED_MODEL_NAME)
         await _seed_scripted_system_llm(db)
+        await _seed_scripted_personal_llm(db)
         return model
 
     model.display_name = E2E_SCRIPTED_DISPLAY_NAME
@@ -61,6 +62,7 @@ async def seed_e2e_scripted_model(db: AsyncSession) -> Model | None:
     await db.flush()
     logger.info("seed_e2e_scripted_model: refreshed %s", E2E_SCRIPTED_MODEL_NAME)
     await _seed_scripted_system_llm(db)
+    await _seed_scripted_personal_llm(db)
     return model
 
 
@@ -130,3 +132,54 @@ __all__ = [
     "E2E_SCRIPTED_SYSTEM_CREDENTIAL_NAME",
     "seed_e2e_scripted_model",
 ]
+
+
+async def _seed_scripted_personal_llm(db: AsyncSession) -> None:
+    from app.credentials import service as credential_service
+    from app.models.credential import Credential
+    from app.models.user import User
+    from app.models.user_llm_setting import UserLlmSetting
+
+    user = (
+        await db.execute(select(User).where(User.email == settings.e2e_user_email))
+    ).scalar_one_or_none()
+    if user is None:
+        return
+    name = "[e2e] Scripted personal model"
+    cred = (
+        await db.execute(
+            select(Credential).where(
+                Credential.user_id == user.id,
+                Credential.is_system.is_(False),
+                Credential.name == name,
+            )
+        )
+    ).scalar_one_or_none()
+    if cred is None:
+        cred = await credential_service.create(
+            db,
+            user_id=user.id,
+            definition_key=E2E_SCRIPTED_PROVIDER,
+            name=name,
+            data={"api_key": "e2e-scripted"},
+            source="seed",
+        )
+    for role in ("builder", "evaluation_generator", "judge_optimizer", "text_primary"):
+        row = (
+            await db.execute(
+                select(UserLlmSetting).where(
+                    UserLlmSetting.user_id == user.id,
+                    UserLlmSetting.role == role,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            db.add(
+                UserLlmSetting(
+                    user_id=user.id,
+                    role=role,
+                    credential_id=cred.id,
+                    model_name=E2E_SCRIPTED_MODEL_NAME,
+                )
+            )
+    await db.flush()

@@ -58,24 +58,12 @@ async def export_zip(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) 
         if selected
         else portfolio.UNAVAILABLE,
     }
-    headings = [
-        ("Problem", "Project Overview"),
-        ("Agent Architecture", "Agent Architecture"),
-        ("Tools & Skills", "Agent Architecture"),
-        ("Evaluation", "Evaluation Design"),
-        ("Bad Cases", "Bad Case Analysis"),
-        ("Optimization", "Optimization & Regression"),
-        ("Results", "Final Results"),
-    ]
-    sections = {s["title"]: s["body"] for s in report["sections"]}
-    files["README.md"] = (
-        "# "
-        + str(data["project"]["name"])
-        + "\n\n"
-        + "\n\n".join(f"## {title}\n\n{sections[source]}" for title, source in headings)
-        + "\n\n## Limitations\n\n"
-        + "\n".join(data["limitations"])
-    )
+    from app.services.agent_project_materials import interview_material, resume_material
+
+    files["README.md"] = report["markdown"]
+    files["evidence.json"] = json_text(data)
+    files["resume.json"] = json_text(resume_material(data))
+    files["interview.json"] = json_text(interview_material(data))
     for version in versions:
         prefix = f"versions/v{version.version_number}"
         files[f"{prefix}/agent.json"] = json_text(config_of(version.snapshot_json))

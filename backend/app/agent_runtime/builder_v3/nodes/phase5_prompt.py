@@ -53,7 +53,7 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
         prompt = await generate_system_prompt(intent_obj, tools_objs, mw_objs)
     except Exception:  # pragma: no cover
         logger.exception("Prompt generation failed")
-        prompt = ""
+        return {"current_phase": 5, "error_message": tr("generation_failed_retry")}
 
     msgs, tool_call_id = make_pending_tool_card(
         ToolNames.PROMPT_APPROVAL,
@@ -69,6 +69,7 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
     return {
         "messages": msgs,
         "system_prompt": prompt,
+        "error_message": None,
         "last_revision_message": None,
         "current_phase": 5,
         "pending_tool_call_id": tool_call_id,

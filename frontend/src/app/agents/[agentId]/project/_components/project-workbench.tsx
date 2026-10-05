@@ -8,6 +8,8 @@ import { SettingsSectionCard } from '@/components/shared/settings-section-card'
 import { ErrorState } from '@/components/shared/error-state'
 import { Button } from '@/components/ui/button'
 import { useAgentProject } from '../_hooks/use-agent-project'
+import { ProjectSimulation } from './project-simulation'
+import { ProjectPractice } from './project-practice'
 import { ProjectVersions } from './project-versions'
 import { ProjectEvaluation } from './project-evaluation'
 import { ProjectComparison } from './project-comparison'
@@ -55,12 +57,21 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
               <ProjectNavigation active={activeTab} onChange={setActiveTab} />
               <div className="p-4 sm:p-5">
                 {activeTab === 'overview' ? (
-                  <LifecycleOverview
-                    agentId={agentId}
-                    project={project.data}
-                    versions={versions.data}
-                    onNavigate={setActiveTab}
-                  />
+                  <div className="space-y-5">
+                    <ProjectSimulation agentId={agentId} versions={versions.data ?? []} />
+                    <ProjectPractice
+                      key={project.data.id}
+                      agentId={agentId}
+                      project={project.data}
+                      versions={versions.data ?? []}
+                    />
+                    <LifecycleOverview
+                      agentId={agentId}
+                      project={project.data}
+                      versions={versions.data}
+                      onNavigate={setActiveTab}
+                    />
+                  </div>
                 ) : null}
                 {activeTab === 'versions' ? (
                   <div className="space-y-5">
@@ -89,7 +100,15 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                             ),
                           })}
                         </p>
-                        {(project.data.requirements_json?.bootstrap?.error || bootstrap.isError) && (
+                        <Button
+                          variant="outline"
+                          disabled={bootstrap.isPending}
+                          onClick={() => bootstrap.mutate()}
+                        >
+                          {t('bootstrap.newScope')}
+                        </Button>
+                        {(project.data.requirements_json?.bootstrap?.error ||
+                          bootstrap.isError) && (
                           <div role="alert" className="space-y-2">
                             <p>{t('bootstrap.blocked')}</p>
                             <p>

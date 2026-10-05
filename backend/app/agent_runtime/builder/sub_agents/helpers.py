@@ -22,6 +22,7 @@ from langchain_core.runnables import RunnableConfig
 from app.agent_runtime.builder_i18n import localize, localized_prompt
 from app.agent_runtime.model_factory import create_chat_model
 from app.database import async_session
+from app.services.llm_user_context import llm_user_id
 from app.services.system_credential_resolver import (
     ResolvedSystemModel,
     SystemModelNotConfiguredError,
@@ -78,7 +79,7 @@ def strip_code_fences(text: str) -> str:
 # model, the ``ResolvedSystemModel`` value differs and the chat model is rebuilt.
 # This keeps the ~5-10ms ``create_chat_model`` (httpx + SSL) cost off the hot
 # path without pinning a stale model across setting changes.
-_MODEL_CACHE: dict[str, tuple[ResolvedSystemModel, BaseChatModel]] = {}
+_MODEL_CACHE: dict[tuple[str, str], tuple[ResolvedSystemModel, BaseChatModel]] = {}
 
 
 async def _resolve_cached_model(role: str) -> BaseChatModel:
@@ -88,18 +89,20 @@ async def _resolve_cached_model(role: str) -> BaseChatModel:
     """
     async with async_session() as db:
         resolved = await resolve_system_model(db, role)
-    cached = _MODEL_CACHE.get(role)
+    cache_key = (str(llm_user_id.get()), role)
+    cached = _MODEL_CACHE.get(cache_key)
     if cached is not None and cached[0] == resolved:
         return cached[1]
     model = create_chat_model(
         resolved.provider,
         resolved.model_name,
         api_key=resolved.api_key,
+        allow_env_fallback=False,
         base_url=resolved.base_url,
         timeout=_API_CALL_TIMEOUT_SECONDS,
         max_retries=0,
     )
-    _MODEL_CACHE[role] = (resolved, model)
+    _MODEL_CACHE[cache_key] = (resolved, model)
     return model
 
 
@@ -158,15 +161,6 @@ async def _invoke_with_api_retry(
             if attempt < _API_MAX_RETRIES - 1:
                 await asyncio.sleep(_API_RETRY_DELAY * (attempt + 1))
 
-    # 재시도 소진 → 폴백 모델 시도
-    if fallback:
-        logger.info("Falling back to system text_fallback model")
-        try:
-            return await fallback.ainvoke(messages, config=invoke_config)
-        except Exception as fallback_exc:
-            logger.error("Fallback model also failed: %s", fallback_exc)
-            raise fallback_exc from last_exc
-
     raise last_exc  # type: ignore[misc]
 
 
@@ -196,7 +190,7 @@ async def invoke_with_json_retry(
     """
     system_prompt = localized_prompt(system_prompt)
     model = await _get_builder_model()
-    fallback = await _get_fallback_model()
+    fallback = None
     description = task_description
 
     for attempt in range(max_retries):
@@ -248,7 +242,7 @@ async def invoke_for_text(
     """
     system_prompt = localized_prompt(system_prompt)
     model = await _get_builder_model()
-    fallback = await _get_fallback_model()
+    fallback = None
     description = task_description
 
     for attempt in range(max_retries):

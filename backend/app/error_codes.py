@@ -285,7 +285,7 @@ def marketplace_credential_required(detail: str) -> ConflictError:
 def system_llm_not_configured() -> ConflictError:
     return ConflictError(
         "SYSTEM_LLM_NOT_CONFIGURED",
-        "시스템 LLM 설정이 필요합니다",
+        "请先在“我的 AI 配置”中填写自己的 API Key 并选择模型。",
     )
 
 

@@ -109,7 +109,7 @@ async def generate_followup_suggestion(
         return E2E_FOLLOWUP_SUGGESTION
 
     try:
-        resolved = await resolve_system_model(db, "builder")
+        resolved = await resolve_system_model(db, "builder", user_id)
     except SystemModelNotConfiguredError:
         return None
 

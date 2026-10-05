@@ -7,4 +7,4 @@ from pydantic import BaseModel, ConfigDict
 
 class ResumeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    style: Literal["ai_product", "product", "engineering"] = "ai_product"
+    style: Literal["ai_product"] = "ai_product"

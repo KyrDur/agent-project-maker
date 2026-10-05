@@ -111,23 +111,31 @@ async def judge_set(
     covered = {tag for case in cases for tag in case.get("tags", [])}
     capabilities = set(profile.get("capabilities", [])) if isinstance(profile, dict) else set()
     coverage = 1.0 if not capabilities else len(capabilities & covered) / len(capabilities)
-    valid = sum(
-        bool(case.get("input") and (case.get("expected_behavior") or case.get("expected")))
-        for case in cases
-    ) / max(len(cases), 1)
+
+    def has_basis(case: dict[str, Any]) -> bool:
+        expected = case.get("expected", {})
+        return bool(
+            case.get("judgment_basis")
+            or any(
+                expected.get(k)
+                for k in (
+                    "answer",
+                    "state",
+                    "tool_arguments",
+                    "necessary_order",
+                    "required_tools",
+                    "forbidden_tools",
+                    "format_rule",
+                    "handoff",
+                )
+            )
+            or expected.get("exact_answer") is not None
+        )
+
+    valid = sum(bool(case.get("input")) for case in cases) / max(len(cases), 1)
     unique_inputs = len({str(case.get("input", "")).strip().lower() for case in cases})
     diversity = unique_inputs / max(len(cases), 1)
-    evaluable = sum(
-        bool(
-            (case.get("expected_behavior") or case.get("expected"))
-            and (
-                case.get("expected", {}).get("answer")
-                if isinstance(case.get("expected"), dict)
-                else True
-            )
-        )
-        for case in cases
-    ) / max(len(cases), 1)
+    evaluable = sum(has_basis(case) for case in cases) / max(len(cases), 1)
     scores = {
         "coverage_score": coverage,
         "validity_score": valid,
@@ -140,7 +148,13 @@ async def judge_set(
         issues.append("missing_capabilities")
     if diversity < 0.8:
         issues.append("low_diversity")
-    status = "approved" if overall >= 0.75 and not (capabilities - covered) else "rejected"
+    if evaluable < 1:
+        issues.append("missing_judgment_basis")
+    status = (
+        "approved"
+        if overall >= 0.75 and evaluable == 1 and not (capabilities - covered)
+        else "rejected"
+    )
     dataset.quality_report_json = {
         "eval_set_id": str(dataset.id),
         **scores,
@@ -205,7 +219,66 @@ async def create_run(
 
     if not dataset.quality_report_json or dataset.quality_report_json.get("status") != "approved":
         raise error("agent_project_eval_set_quality_required", 409)
-    plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json)
+    from app.services.agent_project_practice import (
+        checked_decisions,
+        requirements,
+        requirements_hash,
+    )
+
+    try:
+        decisions = checked_decisions(project, version.id, dataset)
+    except ValueError as exc:
+        raise error("project_requirements_required", 409) from exc
+    for case in cases:
+        expected = case.get("expected", {})
+        if not (
+            case.get("judgment_basis")
+            or expected.get("answer")
+            or expected.get("exact_answer") is not None
+            or expected.get("state")
+            or expected.get("format_rule")
+            or expected.get("required_tools")
+            or expected.get("forbidden_tools")
+            or expected.get("tool_arguments")
+            or expected.get("necessary_order")
+        ):
+            raise error("evaluation_judgment_basis_required", 409)
+    rubric = dataset.rubric_json or project.eval_spec_json or {}
+    if rubric.get("requirements_hash") and rubric["requirements_hash"] != requirements_hash(
+        project
+    ):
+        raise error("evaluation_requirements_changed", 409)
+    plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json) or {}
+    plan.update(
+        requirements=requirements(project),
+        requirements_hash=requirements_hash(project),
+        decisions=decisions,
+    )
+    if not plan.get("eval_spec") and any(
+        c.get("expected", {}).get("answer") or c.get("judgment_basis") for c in cases
+    ):
+        raise error("evaluation_semantic_plan_required", 409)
+    from app.services.agent_project_llm import (
+        check_role_configurations,
+        pinned_roles,
+        role_configurations,
+    )
+
+    try:
+        configurations = plan.get("role_configurations") or await role_configurations(db, user_id)
+        await check_role_configurations(db, user_id, configurations)
+    except Exception as exc:
+        raise error("evaluation_role_configuration_changed", 409) from exc
+    plan["role_configurations"] = configurations
+    plan["resolved_roles"] = pinned_roles(configurations)
+    from app.services.agent_project_call_evidence import model_descriptor
+    from app.services.agent_project_llm import resolve_model
+
+    try:
+        examinee, _ = await resolve_model(db, version.snapshot_json, user_id, "examinee")
+    except Exception as exc:
+        raise error("snapshot_credential_unavailable", 409) from exc
+    plan["resolved_examinee"] = model_descriptor(examinee)
     dataset.frozen = True
     return await insert_frozen_run(
         db,
@@ -313,6 +386,39 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
                 "passed": expected["handoff"] in evidence.get("handoffs", []),
             }
         )
+    trace = evidence.get("tool_trace", [])
+    for rule in expected.get("tool_arguments", []):
+        checks.append(
+            {
+                "kind": "tool_arguments",
+                "target": rule["name"],
+                "passed": any(
+                    t["name"] == rule["name"]
+                    and not t.get("error")
+                    and all(
+                        t.get("arguments", {}).get(k) == v
+                        for k, v in rule.get("arguments", {}).items()
+                    )
+                    for t in trace
+                ),
+            }
+        )
+    order = expected.get("necessary_order", [])
+    if order:
+        cursor = 0
+        for event in trace:
+            if cursor < len(order) and event["name"] == order[cursor] and not event.get("error"):
+                cursor += 1
+        checks.append({"kind": "necessary_order", "passed": cursor == len(order)})
+    for rule in expected.get("state", []):
+        value = evidence.get("final_state", {})
+        try:
+            for part in rule["path"].split("."):
+                value = value[int(part)] if isinstance(value, list) else value[part]
+            passed = value == rule["value"]
+        except (KeyError, IndexError, ValueError, TypeError):
+            passed = False
+        checks.append({"kind": "final_state", "target": rule["path"], "passed": passed})
     from app.services.agent_project_semantic import format_check
 
     if expected.get("format_rule"):
@@ -351,6 +457,10 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
             if canonical_json_hash(version.snapshot_json) != version.config_hash:
                 raise SnapshotExecutionUnavailable("snapshot_hash_mismatch")
             snapshot = deepcopy(version.snapshot_json)
+            if plan:
+                snapshot["evaluation_roles"] = plan.get("resolved_roles", {})
+                snapshot["role_configurations"] = plan.get("role_configurations")
+                snapshot["resolved_examinee"] = plan.get("resolved_examinee")
             cases = deepcopy(row.cases_snapshot_json or [])
             if not cases:
                 raise SnapshotExecutionUnavailable("evaluation_dataset_invalid")
@@ -370,8 +480,12 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     "judge_reasons": {},
                 }
                 try:
-                    async with asyncio.timeout(30):
-                        evidence = await execute_snapshot(db, snapshot, case, user_id)
+                    from app.services.agent_project_llm import capture_calls
+
+                    partial: list[dict[str, Any]] = []
+                    with capture_calls(partial):
+                        async with asyncio.timeout(30):
+                            evidence = await execute_snapshot(db, snapshot, case, user_id)
                     checks = score_case(case, evidence)
                     result.update(
                         evidence,
@@ -379,7 +493,7 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                         assertions=checks,
                         status="passed" if all(c["passed"] for c in checks) else "failed",
                     )
-                    if plan:
+                    if plan and plan.get("eval_spec"):
                         async with asyncio.timeout(95):
                             result.update(
                                 await grade_case(
@@ -388,12 +502,32 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                             )
                 except SnapshotExecutionUnavailable as exc:
                     result.update(exc.evidence)
-                    result.update(status="errored", error=str(exc))
+                    result.update(
+                        status="errored",
+                        error=str(exc),
+                        error_phase="judge"
+                        if result["execution_status"] == "completed"
+                        else "execution",
+                    )
                 except TimeoutError:
-                    result.update(status="errored", error="evaluation_timeout")
+                    for item in partial:
+                        result.update(item.get("partial_execution", {}))
+                    result.update(
+                        status="errored",
+                        error="evaluation_timeout",
+                        error_phase="judge"
+                        if result["execution_status"] == "completed"
+                        else "execution",
+                    )
                 except Exception:
                     # Provider exceptions may contain secrets; never persist or log them.
-                    result.update(status="errored", error="evaluation_execution_failed")
+                    result.update(
+                        status="errored",
+                        error="evaluation_execution_failed",
+                        error_phase="judge"
+                        if result["execution_status"] == "completed"
+                        else "execution",
+                    )
                 result.update(
                     passed=result["status"] == "passed",
                     actual_output=result["output"],
@@ -413,6 +547,17 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "failed": len(results) - passed - errored,
                 "errored": errored,
                 "pass_rate": passed / len(results),
+                "execution_errors": sum(r.get("error_phase") == "execution" for r in results),
+                "judge_errors": sum(r.get("error_phase") == "judge" for r in results),
+                "executed_cases": sum(r.get("execution_status") == "completed" for r in results),
+                "executed_pass_rate": passed
+                / sum(r.get("execution_status") == "completed" for r in results)
+                if any(r.get("execution_status") == "completed" for r in results)
+                else None,
+                "scored_pass_rate": passed / (len(results) - errored)
+                if len(results) > errored
+                else None,
+                "complete": len(results) == len(cases),
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
             }

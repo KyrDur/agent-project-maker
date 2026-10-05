@@ -42,8 +42,10 @@ def _build_draft(state: BuilderState) -> DraftAgentConfig:
         name=intent.agent_name,
         description=intent.agent_description,
         system_prompt=state.get("system_prompt") or "",
-        tools=[t.tool_name for t in tools if t.kind != "planned"],
+        tools=[t.tool_name for t in tools if t.kind not in {"planned", "generated_skill"}],
         planned_tools=planned_tools,
+        generated_skills=[t.model_dump(mode="json") for t in tools if t.kind == "generated_skill"],
+        capability_reason=state.get("capability_reason"),
         middlewares=[m.middleware_name for m in mws],
         model_name=state.get("default_model_name", ""),
         primary_task_type=intent.primary_task_type,
@@ -59,24 +61,26 @@ async def _persist_session(
     current_phase: int,
     tools: list[dict[str, Any]],
     middlewares: list[dict[str, Any]],
+    intent: dict[str, Any] | None = None,
 ) -> None:
     """builder_session에 phase 결과를 저장하고 status=PREVIEW로 전환."""
     if not session_id:
-        return
+        raise ValueError("builder_session_missing")
     try:
         sid = uuid.UUID(session_id)
-    except (TypeError, ValueError):
-        return
+    except (TypeError, ValueError) as exc:
+        raise ValueError("builder_session_invalid") from exc
 
     try:
         async with async_session_factory() as db:
             stmt = select(BuilderSession).where(BuilderSession.id == sid)
             row = (await db.execute(stmt)).scalar_one_or_none()
             if not row:
-                return
+                raise ValueError("builder_session_missing")
             payload: dict[str, Any] = draft.model_dump(mode="json")
             # image_url은 항상 명시적으로 set — None은 사용자가 phase6에서 skip한 의미.
             payload["image_url"] = image_url
+            row.intent = intent
             row.draft_config = payload
             row.system_prompt = draft.system_prompt
             # ToolRecommendation/MiddlewareRecommendation 전체 객체 저장
@@ -88,22 +92,28 @@ async def _persist_session(
             await db.commit()
     except Exception:  # pragma: no cover
         logger.warning("Phase 7 persist failed", exc_info=True)
+        raise
 
 
 async def phase7_save(state: BuilderState) -> dict:
-    draft = _build_draft(state)
-    draft_dict: dict[str, Any] = draft.model_dump(mode="json")
-    # image_url은 항상 명시적으로 set — None이면 사용자가 phase6에서 skip한 의미.
-    draft_dict["image_url"] = state.get("image_url")
+    try:
+        draft = _build_draft(state)
+        draft_dict: dict[str, Any] = draft.model_dump(mode="json")
+        # image_url은 항상 명시적으로 set — None이면 사용자가 phase6에서 skip한 의미.
+        draft_dict["image_url"] = state.get("image_url")
 
-    await _persist_session(
-        state.get("session_id", ""),
-        draft,
-        state.get("image_url"),
-        7,
-        list(state.get("tools") or []),
-        list(state.get("middlewares") or []),
-    )
+        await _persist_session(
+            state.get("session_id", ""),
+            draft,
+            state.get("image_url"),
+            7,
+            list(state.get("tools") or []),
+            list(state.get("middlewares") or []),
+            state.get("intent"),
+        )
+    except Exception:
+        logger.exception("Builder draft persistence failed")
+        return {"current_phase": 7, "error_message": tr("generation_failed_retry")}
 
     msgs, _ = make_tool_card(
         "draft_config_card",

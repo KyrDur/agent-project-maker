@@ -118,7 +118,9 @@ async def phase8_propose(state: BuilderState) -> dict:
         session = await db.get(BuilderSession, uuid.UUID(session_id)) if session_id else None
         bindings = await get_builder_personal_bindings(db, session.user_id) if session else []
         try:
-            system_binding = await get_builder_system_runtime(db)
+            system_binding = (
+                await get_builder_system_runtime(db, session.user_id) if session else None
+            )
         except AppError:
             system_binding = None
     chosen = state.get("runtime_model_id")

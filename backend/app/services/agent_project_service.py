@@ -30,6 +30,11 @@ def snapshot_value(value: Any, key: str = "") -> Any:
         return None
     if isinstance(value, uuid.UUID):
         return str(value)
+    if key in {"credential_id", "llm_credential_id", "default_credential_id"}:
+        try:
+            return str(uuid.UUID(str(value)))
+        except (ValueError, TypeError):
+            return "<redacted>"
     if key == "credential_bindings" and isinstance(value, dict):
         bindings = {}
         for name, reference in value.items():
@@ -138,18 +143,38 @@ async def build_snapshot(
         }
         for link in sorted(agent.tool_links, key=lambda link: str(link.tool_id))
     ]
-    config["skill_links"] = [
-        {
+    import hashlib
+
+    from app.skills.service import get_file_bytes
+
+    config["skill_links"] = []
+    for link in sorted(agent.skill_links, key=lambda link: str(link.skill_id)):
+        skill = link.skill
+        frozen = {
             "skill_id": link.skill_id,
             "config": link.config,
-            "slug": link.skill.slug,
-            "version": link.skill.version,
-            "current_revision_id": link.skill.current_revision_id,
-            "content_hash": link.skill.content_hash,
-            "execution_profile": link.skill.execution_profile,
+            "slug": skill.slug,
+            "version": skill.version,
+            "current_revision_id": skill.current_revision_id,
+            "content_hash": skill.content_hash,
+            "execution_profile": skill.execution_profile,
+            "kind": skill.kind,
         }
-        for link in sorted(agent.skill_links, key=lambda link: str(link.skill_id))
-    ]
+        if skill.kind == "text":
+            try:
+                content = get_file_bytes(skill, "SKILL.md")
+            except FileNotFoundError:
+                frozen["content_unavailable"] = True
+                config["skill_links"].append(frozen)
+                continue
+            if len(content) > 100000 or hashlib.sha256(content).hexdigest() != skill.content_hash:
+                raise AppError(
+                    code="snapshot_skill_content_invalid",
+                    message="snapshot_skill_content_invalid",
+                    status=422,
+                )
+            frozen["content"] = content.decode("utf-8")
+        config["skill_links"].append(frozen)
     # MCP connection configuration can hold literal secrets. Keep references and
     # cached tool schemas; never serialize server headers, env, args or credentials.
     config["mcp_tool_links"] = [
@@ -183,11 +208,21 @@ async def create_project(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UU
         .limit(1)
     )
     planned_tools: list[dict[str, Any]] | None = None
+    task_draft = None
     if builder_id:
         builder_session = await db.get(BuilderSession, builder_id)
         planned_tools = (
             (builder_session.draft_config or {}).get("planned_tools") if builder_session else None
         )
+        if builder_session:
+            from app.schemas.agent_project import ProjectRequirements
+
+            try:
+                task_draft = ProjectRequirements.model_validate(
+                    (builder_session.intent or {}).get("project_requirements")
+                ).model_dump(mode="json")
+            except ValueError:
+                task_draft = None
     snapshot = await build_snapshot(db, agent, planned_tools)
     # The unique agent_id constraint resolves concurrent creates. The savepoint
     # keeps project + V1 atomic and lets a losing request return the winner.
@@ -198,19 +233,53 @@ async def create_project(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UU
                 user_id=agent.user_id,
                 title=snapshot_value(agent.name),
                 builder_session_id=builder_id,
+                requirements_json={"task": snapshot_value(task_draft)} if task_draft else None,
             )
             db.add(project)
             await db.flush()
-            db.add(
-                AgentProjectVersion(
-                    project_id=project.id,
-                    version_number=1,
-                    status="original",
-                    snapshot_json=snapshot,
-                    config_hash=canonical_json_hash(snapshot),
-                )
+            version = AgentProjectVersion(
+                project_id=project.id,
+                version_number=1,
+                status="original",
+                snapshot_json=snapshot,
+                config_hash=canonical_json_hash(snapshot),
             )
+            db.add(version)
             await db.flush()
+            if builder_id and builder_session and task_draft:
+                from app.services.agent_project_practice import requirements_hash
+
+                choices = [
+                    (
+                        "requirements",
+                        task_draft["goal"],
+                        (builder_session.intent or {}).get("confirmation_reason"),
+                    ),
+                    (
+                        "capabilities",
+                        "; ".join(
+                            t.get("tool_name", "") for t in (builder_session.tools_result or [])
+                        )
+                        or "instructions",
+                        (builder_session.draft_config or {}).get("capability_reason"),
+                    ),
+                ]
+                project.decisions_json = [
+                    snapshot_value(
+                        {
+                            "id": str(uuid.uuid5(builder_id, "decision:" + stage)),
+                            "stage": stage,
+                            "choice": choice,
+                            "reason": reason,
+                            "version_id": str(version.id),
+                            "config_hash": version.config_hash,
+                            "requirements_hash": requirements_hash(project),
+                            "created_at": utcnow().isoformat(),
+                        }
+                    )
+                    for stage, choice, reason in choices
+                    if isinstance(reason, str) and reason.strip()
+                ]
     except IntegrityError:
         existing = await get_project(db, agent_id, user_id)
         if existing is None:
