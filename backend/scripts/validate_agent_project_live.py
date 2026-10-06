@@ -174,7 +174,7 @@ async def iterate(aid, owner, folder, receipt, budget, rounds):
         receipt["completion"] = await practice.completion(db, aid, owner)
 
 
-async def build(category, owner, output, budget, rounds):
+async def build(category, owner, output, budget, rounds, instructions_only=False):
     folder = output / category
     folder.mkdir(exist_ok=True)
     receipt_path = folder / "acceptance.json"
@@ -198,6 +198,9 @@ async def build(category, owner, output, budget, rounds):
         receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
 
     try:
+        if receipt_path.exists() and receipt.get("instructions_only", False) != instructions_only:
+            raise ValueError("acceptance_configuration_conflict_use_separate_output")
+        receipt["instructions_only"] = instructions_only
         async with async_session() as db:
             if not receipt.get("builder_session_id"):
                 request = (
@@ -266,6 +269,20 @@ async def build(category, owner, output, budget, rounds):
             raise RuntimeError("builder_step_limit")
         save()
         aid = uuid.UUID(receipt["agent_id"])
+        async with async_session() as db:
+            agent = await portfolio.projects.owned_agent(db, aid, owner)
+            session = await builder_service.get_session(db, sid, owner)
+            if session is None:
+                raise ValueError("builder_session_not_found")
+            planned = (session.draft_config or {}).get("planned_tools")
+            config = (await portfolio.projects.build_snapshot(db, agent, planned))["agent"]
+            receipt["capabilities"] = {
+                key: len([link for link in config.get(key, []) if link.get("enabled", True)])
+                for key in ("tool_links", "mcp_tool_links", "planned_tools", "skill_links")
+            }
+        save()
+        if instructions_only and any(receipt["capabilities"].values()):
+            raise ValueError("instructions_only_capabilities_not_empty")
         # Uses the exact automatic baseline worker, not a handcrafted runtime fixture.
         await builder_project_lifecycle.bootstrap(aid, owner)
         # Another scheduled worker may own the advisory lock. Wait for its actual result.
@@ -323,6 +340,7 @@ async def build(category, owner, output, budget, rounds):
             receipt["runs"] = [
                 {
                     "id": str(r.id),
+                    "version_id": str(r.version_id),
                     "status": r.status,
                     "metrics": r.metrics_json,
                     "plan": r.comparison_json,
@@ -374,6 +392,14 @@ async def build(category, owner, output, budget, rounds):
 
 
 async def main(args):
+    if args.instructions_only:
+        if args.categories != ["纯对话"]:
+            raise ValueError("instructions_only_requires_pure_dialogue_category")
+        TASKS["纯对话"] = {
+            **TASKS["纯对话"],
+            "business_rules": TASKS["纯对话"]["business_rules"]
+            + "；能力方案只使用模型指令，不创建或绑定工具、Skill 或 MCP。",
+        }
     args.output.mkdir(parents=True, exist_ok=True)
     budget = Budget(args.budget, args.output / "call-budget.json")
     original = model_factory.create_chat_model
@@ -408,7 +434,9 @@ async def main(args):
         async def validate(category, rounds):
             async with semaphore:
                 for _attempt in range(args.attempts if not rounds else 1):
-                    await build(category, owner, args.output, budget, rounds)
+                    await build(
+                        category, owner, args.output, budget, rounds, args.instructions_only
+                    )
                     receipt = json.loads((args.output / category / "acceptance.json").read_text())
                     (args.output / category / f"attempt-{budget.count}.json").write_text(
                         json.dumps(receipt, ensure_ascii=False, indent=2)
@@ -441,6 +469,7 @@ if __name__ == "__main__":
     parser.add_argument("--budget", type=int, default=480)
     parser.add_argument("--iterations", type=int, choices=range(3), default=2)
     parser.add_argument("--concurrency", type=int, choices=range(1, 3), default=1)
+    parser.add_argument("--instructions-only", action="store_true")
     parser.add_argument(
         "--output", type=Path, default=Path("../output/quality-revision-20261007/live-builder")
     )

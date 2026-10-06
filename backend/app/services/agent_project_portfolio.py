@@ -549,6 +549,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                         "reason": d.get("reason"),
                         "author": decision_author(d),
                         "version": aliases.get(str(d.get("version_id"))),
+                        "source_run_id": aliases.get(str(d.get("run_id"))),
                         "type": "confirmation",
                     }
                     for d in project.decisions_json or []

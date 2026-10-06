@@ -25,6 +25,44 @@ def quality_plan():
     return raw
 
 
+def test_resume_attributes_regression_to_the_confirmed_source_run():
+    from app.services.agent_project_materials import resume_material
+
+    decision = {
+        "stage": "optimization",
+        "author": "user_confirmed",
+        "version": "V1",
+        "source_run_id": "experiment-2",
+        "choice": "先核验订单",
+        "reason": "优先修复工具",
+    }
+    comparison = {
+        "source_version": 1,
+        "target_version": 2,
+        "source_run_id": "experiment-2",
+        "kind": "adjacent",
+        "comparable": True,
+        "changes": {
+            "pass_rate": {"before": 0.6, "after": 0.55},
+            "fixed_cases": ["a", "b", "c", "d"],
+            "regressed_cases": ["e", "f", "g", "h", "i"],
+        },
+    }
+    data = {
+        "project": {"name": "客服", "goal": "模拟验证"},
+        "decisions": [decision],
+        "evaluation_design": {},
+        "results": {"comparisons": [comparison]},
+    }
+    text = " ".join(resume_material(data)["bullets"])
+    assert "60.0%→55.0%" in text
+    assert "修复 4 条、新增失败 5 条" in text
+    assert "优先修复工具" in text
+    # Another experiment on the same source version is not this personal decision.
+    decision["source_run_id"] = "experiment-8"
+    assert "%" not in " ".join(resume_material(data)["bullets"])
+
+
 @pytest.mark.asyncio
 async def test_judge_protocol_retry_preserves_the_original_evidence(db, monkeypatch):
     raw = quality_plan()

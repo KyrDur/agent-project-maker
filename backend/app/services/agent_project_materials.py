@@ -306,7 +306,9 @@ def resume_material(data: dict[str, Any]) -> dict[str, Any]:
     for stage, label in [("requirements", "确认需求"), ("capabilities", "确认能力方案")]:
         d = next((d for d in decisions if d["stage"] == stage), None)
         if d:
-            text = f"{label}：{d['choice']}；取舍理由：{d['reason']}。"
+            choice = str(d["choice"]).rstrip("。.;； ")
+            reason = str(d["reason"]).rstrip("。.;； ")
+            text = f"{label}：{choice}；取舍理由：{reason}。"
             bullets.append(text)
             claims.append(
                 {
@@ -336,12 +338,14 @@ def resume_material(data: dict[str, Any]) -> dict[str, Any]:
     d = next((d for d in decisions if d["stage"] == "optimization"), None)
     if d:
         text = f"确认修改方案：{d['choice']}；原理由“{d['reason']}”。"
-        target = str(d.get("version") or "")
         comparison = next(
             (
                 c
                 for c in data["results"].get("comparisons", [])
-                if f"V{c['target_version']}" == target and c.get("comparable")
+                if d.get("source_run_id")
+                and c.get("source_run_id") == d["source_run_id"]
+                and c.get("kind") == "adjacent"
+                and c.get("comparable")
             ),
             None,
         )

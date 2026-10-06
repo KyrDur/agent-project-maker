@@ -115,4 +115,4 @@ pnpm dev
 本项目基于 natural-mold 原型演进，保留原始许可与 [第三方声明](NOTICES.md)。[原型技术说明中文译本](README_PROTOTYPE_ZH_CN.md) 保留历史来源，当前产品能力以本页与验收记录为准。
 
 
-真实模型开发验收脚本位于 `backend/scripts/validate_agent_project_judge.py`、`validate_agent_project_live.py` 和 `validate_agent_project_snapshots.py`。它们使用项目所属用户的当前个人配置，并记录开发演示来源、实际调用量及预设上限。真实验收会新增模拟项目或新评分范围；裁判校准不改写项目成绩。运行前检查验收记录与预算，使用明确的项目 ID。不要把固定响应通过数当作真实模型能力结果。
+真实模型开发验收脚本位于 `backend/scripts/validate_agent_project_judge.py`、`validate_agent_project_live.py` 和 `validate_agent_project_snapshots.py`。它们使用项目所属用户的当前个人配置，并记录开发演示来源、实际调用量及预设上限。真实验收会新增模拟项目或新评分范围；裁判校准不改写项目成绩。运行前检查验收记录与预算，使用明确的项目 ID。 `validate_agent_project_live.py --instructions-only` 仅用于另建输出目录下的纯对话无工具/无 Skill 验收，记录实际能力数量；不会删除已有项目的能力来改变成绩。不要把固定响应通过数当作真实模型能力结果。
