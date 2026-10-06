@@ -1,7 +1,7 @@
 # Moldy Frontend
 
 这是基于 Next.js 16 + React 19 的 Moldy Web 客户端。完整项目设置请
-先参考根目录 [`README.md`](../README.md) / [`README_KO.md`](../README_KO.md)。
+先参考根目录 [`README.md`](../README.md) / [原型技术说明中文译本](../README_PROTOTYPE_ZH_CN.md)。
 
 ## 快速开始
 

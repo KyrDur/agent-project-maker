@@ -1,6 +1,6 @@
 # progress.txt — Agent Edit Workbench (통합 워크벤치 리뉴얼)
 
-## 프로젝트 컨텍스트
+## 项目 context
 
 - **목표**: `/agents/[agentId]/settings`를 단일 통합 화면(좌측 폼/비주얼 토글 + 우측 Fix·테스트·오프너·스케줄·설정 5탭)으로 재설계
 - **Base**: main @ 0609210 (PR #77 머지)
@@ -67,7 +67,7 @@ interface AgentUpdate {
 - shadcn Tabs는 `Tabs/TabsList/TabsTrigger/TabsContent` 사용
 - `params: Promise<{ agentId: string }>` + `use(params)` 패턴 (Next.js 16)
 
-## 팀원 간 계약
+## 团队成员间契约
 
 - **사티아 M2 → 전원**: design spec + deletion analysis 완성되면 M3~M6 착수 가능
 - **젠슨 M1 → 저커버그 M6**: opener_questions 스키마 확정 후 FE 타입 동기화

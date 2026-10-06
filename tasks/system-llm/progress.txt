@@ -92,7 +92,7 @@ SystemLlmSettingOut = {role, credential_id:uuid|null, credential_name:str|null, 
 - ✅ (fast-follow, 베조스 요청) FK SET NULL 국소 테스트 추가: test_credential_delete_sets_slot_null — **전용 engine**(create_async_engine sqlite+aiosqlite + StaticPool + event.listens_for(connect)로 PRAGMA foreign_keys=ON) 안에서 cred insert→setting bind→cred delete→credential_id IS NULL assert→eng.dispose(). conftest 전역 engine 무수정 → 전역 영향 0(1219 passed). PRAGMA 없으면 SQLite가 SET NULL 무시 → false-pass라 PRAGMA 필수. 전역 PRAGMA 채택은 ADR019-OPEN-2로 이연.
 
 ## 失败教训
-(아직 없음)
+（暂无）
 
 ## S4 완료 패턴 (저커버그, M5 — 2026-05-26)
 - 신규 파일: lib/types/system-llm-setting.ts(SystemLlmSettingOut/Update + SYSTEM_LLM_ROLES + SYSTEM_LLM_CREDENTIAL_KEYS), lib/api/system-llm-settings.ts(list GET, update PUT — apiFetch가 mutation에 X-CSRF-Token 자동주입), lib/hooks/use-system-llm-settings.ts(useSystemLlmSettings query + useUpdateSystemLlmSetting mutation, queryKey ['system-llm-settings'] invalidate).

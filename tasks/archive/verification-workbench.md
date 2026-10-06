@@ -211,7 +211,7 @@ dialogs/  form-mode/  right-panel/  triggers-tab.tsx
 - ReactFlow 노드 데이터(`nodes` state)가 `useNodesState(initialNodes)`로 한 번만 init되고 useEffect로 갱신됨(L296~). controlled 모드에서 page state가 변경되면 read 값(name/description/...)이 바뀌고 useEffect 의존성에 포함되어 노드도 재계산됨 → 정상 ✅
 - `useEdgesState(computedEdges)` + useEffect 동기화도 동일 패턴 → 정상
 
-### 최종 판정
+### 最终判定
 
 | 항목 | 이전 | 현재 |
 |---|---|---|

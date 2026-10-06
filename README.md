@@ -1,3 +1,5 @@
+<!-- project-current-source: migration=m85_project_simulation; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-10-06 -->
+
 <div align="center">
 
 <img src="frontend/public/project-maker.svg" alt="Agent Project Maker" width="120">
@@ -62,7 +64,7 @@
 
 ## 本地开发
 
-技术栈：Next.js 16、React 19、TypeScript、FastAPI、SQLAlchemy、PostgreSQL、Alembic、LangGraph/deepagents。
+技术栈：Next.js 16、React 19、TypeScript、FastAPI、SQLAlchemy、PostgreSQL、Alembic、LangGraph/`deepagents` 0.7.11；后端检查工具 Ruff 0.16.5。
 
 需要 Node.js 22、pnpm、uv 和 Docker。参考 [项目设置](docs/agent-project-setup.md) 配置数据库、认证与加密环境，新增存储通过 Alembic 迁移。环境中的模型密钥不替代用户的三个个人角色配置。
 
@@ -92,4 +94,4 @@ pnpm dev
 
 历史快照、固定返回用例继续可读；缺失的模型参数、Skill 正文或用户理由明确标记，不回填。原型遗留语言与功能文档仍在清理，不能把历史描述视为本轮已实现或已验收的能力。
 
-本项目基于 natural-mold 原型演进，保留原始许可与 [第三方声明](NOTICES.md)。
+本项目基于 natural-mold 原型演进，保留原始许可与 [第三方声明](NOTICES.md)。[原型技术说明中文译本](README_PROTOTYPE_ZH_CN.md) 保留历史来源，当前产品能力以本页与验收记录为准。

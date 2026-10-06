@@ -1,203 +1,203 @@
-# 삭제 분석 보고서 — M4
+# 删除分析报告 — M4
 
-> 작성: 베조스 (QA) | 날짜: 2026-04-06
-> 분석 범위: M4 scope (정리 + Creation Agent 교체)
+> 作者：贝索斯 (QA) | 日期：2026-04-06
+> 分析范围：M4 scope（整理 + Creation Agent 替换）
 
 ---
 
 ## 可立即删除
 
-| 항목 | 파일 | 라인 | 이유 |
+| 项目 | 文件 | 行 | 原因 |
 |------|------|------|------|
-| `TokenTrackingCallback` 클래스 | `agent_runtime/token_tracker.py` | 전체 (9-27) | 프로덕션 코드에서 미사용. 토큰 추적은 LangGraph usage_metadata로 대체됨. grep 참조 0건. |
-| SSE 파싱 로직 (trigger_executor) | `agent_runtime/trigger_executor.py` | 67-77 | `execute_agent_stream()` → `build_agent()` + `invoke()` 전환 시 불필요. delta 누적 + JSON 파싱 11줄. |
-| `json` import (trigger_executor) | `agent_runtime/trigger_executor.py` | 3 | SSE 파싱 제거 후 미사용. |
-| streaming.py 미들웨어 필터 | `agent_runtime/streaming.py` | 13-27, 42-76 | `_is_tool_selector_json()` + character-by-character 버퍼링. 아래 상세 판단 참조. |
+| `TokenTrackingCallback` class | `agent_runtime/token_tracker.py` | 整个文件 (9-27) | production code 中未使用。token 跟踪已由 LangGraph usage_metadata 替代。grep 引用 0 项。 |
+| SSE 解析逻辑 (trigger_executor) | `agent_runtime/trigger_executor.py` | 67-77 | `execute_agent_stream()` → `build_agent()` + `invoke()` 切换后不再需要。delta 累积 + JSON 解析 11 行。 |
+| `json` import (trigger_executor) | `agent_runtime/trigger_executor.py` | 3 | 删除 SSE 解析后未使用。 |
+| streaming.py middleware filter | `agent_runtime/streaming.py` | 13-27, 42-76 | `_is_tool_selector_json()` + character-by-character buffering。参见下方详细判断。 |
 
 ---
 
-## 수정 필요 (교체)
+## 需要修改（替换）
 
-| 항목 | 현재 | 변경 후 | 영향 범위 |
+| 项目 | 当前 | 变更后 | 影响范围 |
 |------|------|---------|----------|
-| `creation_agent.py` `run_creation_conversation()` | `model.ainvoke()` 직접 호출 (L151, L166) | `create_deep_agent()` 기반 에이전트로 교체 | 함수 내부만 변경. 시그니처/반환 형태 유지 가능. |
-| `trigger_executor.py` `execute_trigger()` | `execute_agent_stream()` SSE 스트림 소비 (L53-77) | `build_agent()` + `agent.invoke()` 직접 호출 | 함수 내부만 변경. SSE 파싱 제거, invoke 결과에서 content 추출. |
-| `trigger_executor.py` import | `from executor import execute_agent_stream` (L8) | `from executor import build_agent` | import 경로 변경 |
-| `creation_agent.py` import | `from model_factory import create_chat_model` (L10) | `create_deep_agent` + `create_chat_model` 조합 | import 추가 |
+| `creation_agent.py` `run_creation_conversation()` | 直接调用 `model.ainvoke()`（L151, L166） | 替换为基于 `create_deep_agent()` 的 agent | 仅修改函数内部。可保持 signature/返回形式。 |
+| `trigger_executor.py` `execute_trigger()` | 消费 `execute_agent_stream()` SSE stream（L53-77） | 直接调用 `build_agent()` + `agent.invoke()` | 仅修改函数内部。删除 SSE 解析，从 invoke 结果提取 content。 |
+| `trigger_executor.py` import | `from executor import execute_agent_stream`（L8） | `from executor import build_agent` | import 路径变更 |
+| `creation_agent.py` import | `from model_factory import create_chat_model`（L10） | `create_deep_agent` + `create_chat_model` 组合 | 新增 import |
 
 ---
 
-## 유지
+## 保留
 
-| 항목 | 파일 | 유지 이유 |
+| 项目 | 文件 | 保留原因 |
 |------|------|----------|
-| `CREATION_SYSTEM_PROMPT` 상수 | `creation_agent.py` L12-141 | 4단계 에이전트 생성 워크플로우 정의. deep agent 전환 후에도 시스템 프롬프트로 사용. |
-| JSON 추출/파싱 로직 | `creation_agent.py` L177-199 | `extract_json_from_markdown()`, `strip_json_blocks()` — 응답 후처리. 에이전트 프레임워크와 무관. |
-| `PatchedLLMToolSelectorMiddleware` | `middleware_registry.py` L269-298 | 아래 상세 판단 참조. |
-| `middleware_registry.py` 전체 | `middleware_registry.py` | `build_middleware_instances()`, `get_provider_middleware()`, `get_middleware_registry()` — executor.py, agents.py, schemas/agent.py에서 활발히 사용. |
-| `streaming.py` `format_sse()` + `stream_agent_response()` | `streaming.py` | conversations.py SSE 스트리밍에서 여전히 사용. |
-| `mcp_client.py` `test_mcp_connection()`, `list_mcp_tools()` | `mcp_client.py` | UI에서 MCP 서버 연결 테스트/도구 목록 조회에 사용. |
-| `config.py` 전체 설정 | `config.py` | 모든 설정이 활발히 참조됨. skill_storage_dir, skill_max_package_bytes 등 M3 유지 대상 포함. |
+| `CREATION_SYSTEM_PROMPT` 常量 | `creation_agent.py` L12-141 | 定义 4 阶段 agent 创建 workflow。切换 deep agent 后仍作为 system prompt 使用。 |
+| JSON 提取/解析逻辑 | `creation_agent.py` L177-199 | `extract_json_from_markdown()`, `strip_json_blocks()` — response 后处理。与 agent framework 无关。 |
+| `PatchedLLMToolSelectorMiddleware` | `middleware_registry.py` L269-298 | 参见下方详细判断。 |
+| 整个 `middleware_registry.py` | `middleware_registry.py` | `build_middleware_instances()`, `get_provider_middleware()`, `get_middleware_registry()` — 被 executor.py, agents.py, schemas/agent.py 大量使用。 |
+| `streaming.py` `format_sse()` + `stream_agent_response()` | `streaming.py` | conversations.py SSE streaming 中仍在使用。 |
+| `mcp_client.py` `test_mcp_connection()`, `list_mcp_tools()` | `mcp_client.py` | UI 用于 MCP server 连接测试/tool list 查询。 |
+| `config.py` 全部设置 | `config.py` | 所有设置均被积极引用。包括 M3 保留项 skill_storage_dir, skill_max_package_bytes 等。 |
 
 ---
 
-## streaming.py 미들웨어 필터 판단
+## streaming.py middleware filter 判断
 
-**결론: 삭제 가능 (불필요)**
+**结论：可删除（不需要）**
 
 ### 依据
 
-1. **LLMToolSelectorMiddleware는 deepagents에 의해 자동 적용되지 않음.** 사용자가 agent middleware_configs에 명시적으로 `"llm_tool_selector"`를 설정한 경우에만 활성화.
+1. **LLMToolSelectorMiddleware 不会由 deepagents 自动应用。** 仅当用户在 agent middleware_configs 中显式设置 `"llm_tool_selector"` 时启用。
 
-2. **필터가 방어하는 시나리오가 실제로 발생하지 않음.** LLMToolSelectorMiddleware는 `wrap_model_call()` 훅에서 실행되며, structured output(`{"tools":[...]}`)은 내부적으로 소비되고 스트림에 노출되지 않음.
+2. **该 filter 防御的场景实际上不会发生。** LLMToolSelectorMiddleware 在 `wrap_model_call()` hook 中执行，structured output（`{"tools":[...]}`）会在内部被消费，不会暴露到 stream。
 
-3. **deepagents의 PatchToolCallsMiddleware는 다른 문제를 해결.** dangling tool call 패치이며, `{"tools":[...]}` JSON 필터링과 무관.
+3. **deepagents 的 PatchToolCallsMiddleware 解决的是另一个问题。** 它用于修补 dangling tool call，与过滤 `{"tools":[...]}` JSON 无关。
 
-4. **character-by-character 버퍼링은 성능 부담.** 모든 스트리밍 청크를 글자 단위로 분석하는 로직이 실질적 이점 없이 복잡성만 추가.
+4. **character-by-character buffering 带来性能负担。** 对所有 streaming chunk 逐字符分析，几乎没有实际收益，只增加复杂度。
 
-### 삭제 범위
-- `_is_tool_selector_json()` 함수 (L13-27)
-- character-by-character 버퍼링 로직 (L42-76)
-- `stream_agent_response()`를 단순화: delta를 직접 yield
+### 删除范围
+- `_is_tool_selector_json()` 函数（L13-27）
+- character-by-character buffering 逻辑（L42-76）
+- 简化 `stream_agent_response()`：直接 yield delta
 
 ---
 
-## middleware_registry.py 패치 판단
+## middleware_registry.py patch 判断
 
-**결론: 유지 필요**
+**结论：需要保留**
 
 ### 依据
 
-1. **deepagents가 const 정규화를 내부적으로 처리하지 않음.** PatchToolCallsMiddleware는 dangling tool call만 처리. GPT-4o의 `{"const": "tool_name"}` → `"tool_name"` 정규화 로직 없음.
+1. **deepagents 内部不处理 const normalization。** PatchToolCallsMiddleware 只处理 dangling tool call。没有 GPT-4o 的 `{"const": "tool_name"}` → `"tool_name"` normalization 逻辑。
 
-2. **langchain LLMToolSelectorMiddleware (tool_selection.py L243-244)가 string을 기대.** const dict가 전달되면 `"Model selected invalid tools"` ValueError 발생.
+2. **langchain LLMToolSelectorMiddleware（tool_selection.py L243-244）期待 string。** 如果传入 const dict，会发生 `"Model selected invalid tools"` ValueError。
 
-3. **사용자가 llm_tool_selector를 GPT-4o와 함께 설정할 수 있음.** UI에서 미들웨어 선택 가능. 패치 제거 시 GPT-4o + llm_tool_selector 조합이 깨짐.
+3. **用户可能会把 llm_tool_selector 与 GPT-4o 一起设置。** UI 中可选择 middleware。删除 patch 会破坏 GPT-4o + llm_tool_selector 组合。
 
-4. **비용 대비 효과:** 패치 코드 30줄. 제거 시 위험 > 유지 비용.
+4. **成本效益：** patch code 30 行。删除风险 > 保留成本。
 
-### 조치
-- `PatchedLLMToolSelectorMiddleware` 유지
-- `_resolve_middleware_class()` 특수 케이스 유지
-- 향후 langchain이 const 처리를 내장하면 그때 제거
-
----
-
-## 시드 데이터 불일치
-
-**결론: 불일치 없음 (1건 경미한 타입 힌트 이슈)**
-
-### 검증 결과
-- M1 제거 항목 (create_mcp_tool 등): 시드에서 참조 0건 ✓
-- M2 제거 항목 (Message 모델 등): 시드에서 참조 0건 ✓
-- M3 제거 항목 (skill_executor 등): 시드에서 참조 0건 ✓
-- 도구 시드 (17개): 전부 `tool_factory.py` `_BUILTIN_BUILDERS` / `_PREBUILT_REGISTRY`에 대응 ✓
-- 모델 시드 (3개): 전부 `model_factory.py` `PROVIDER_MAP`에 대응 ✓
-- 템플릿 시드 (7개): 참조 도구가 모두 시드에 존재 ✓
-
-### 경미한 이슈
-- `models/template.py` L20: `recommended_tools: Mapped[dict | None]` — 실제 데이터는 `list[str]`. 스키마에서도 `list[str] | None` 기대. 타입 힌트가 `dict`로 되어있어 불일치. 기능적 문제 없음 (JSON 컬럼은 둘 다 수용).
-- **권장:** M4-S6에서 `Mapped[list | None]`로 수정.
+### 措施
+- 保留 `PatchedLLMToolSelectorMiddleware`
+- 保留 `_resolve_middleware_class()` 特殊 case
+- 未来 langchain 内置 const 处理后再删除
 
 ---
 
-## Dead Code 스캔 결과
+## seed 数据不一致
 
-| 항목 | 파일 | 상태 | 조치 |
+**结论：无不一致（1 个轻微类型提示问题）**
+
+### 验证结果
+- M1 删除项（create_mcp_tool 等）：seed 中引用 0 项 ✓
+- M2 删除项（Message model 等）：seed 中引用 0 项 ✓
+- M3 删除项（skill_executor 等）：seed 中引用 0 项 ✓
+- tool seed（17 个）：全部对应 `tool_factory.py` `_BUILTIN_BUILDERS` / `_PREBUILT_REGISTRY` ✓
+- model seed（3 个）：全部对应 `model_factory.py` `PROVIDER_MAP` ✓
+- template seed（7 个）：引用的 tool 全部存在于 seed ✓
+
+### 轻微问题
+- `models/template.py` L20: `recommended_tools: Mapped[dict | None]` — 实际数据为 `list[str]`。schema 中也期望 `list[str] | None`。type hint 写成 `dict`，存在不一致。无功能问题（JSON column 两者都接受）。
+- **建议：** 在 M4-S6 将其修改为 `Mapped[list | None]`。
+
+---
+
+## Dead Code 扫描结果
+
+| 项目 | 文件 | 状态 | 措施 |
 |------|------|------|------|
-| `TokenTrackingCallback` | `token_tracker.py` | 미사용 (grep 0건) | **삭제** |
-| M1 제거 함수 참조 | 전체 | grep 0건 | ✓ 정리 완료 |
-| M2 제거 모델 참조 | 전체 | grep 0건 | ✓ 정리 완료 |
-| M3 제거 파일 참조 | 전체 | grep 0건 | ✓ 정리 완료 |
-| 미사용 import | 전체 | 발견 없음 | ✓ 깨끗 |
-| 미사용 config 설정 | `config.py` | 발견 없음 | ✓ 모두 참조됨 |
-| 미사용 의존성 | `pyproject.toml` | 발견 없음 | ✓ 모두 사용됨 |
-| TODO/FIXME/HACK | 전체 | M1-M3 관련 없음 | ✓ 깨끗 |
+| `TokenTrackingCallback` | `token_tracker.py` | 未使用（grep 0 项） | **删除** |
+| M1 删除函数引用 | 全部 | grep 0 项 | ✓ 整理完成 |
+| M2 删除 model 引用 | 全部 | grep 0 项 | ✓ 整理完成 |
+| M3 删除文件引用 | 全部 | grep 0 项 | ✓ 整理完成 |
+| 未使用 import | 全部 | 未发现 | ✓ clean |
+| 未使用 config 设置 | `config.py` | 未发现 | ✓ 全部被引用 |
+| 未使用依赖 | `pyproject.toml` | 未发现 | ✓ 全部使用中 |
+| TODO/FIXME/HACK | 全部 | 无 M1-M3 相关 | ✓ clean |
 
 ---
 
-## 테스트 영향
+## 测试影响
 
-| 테스트 파일 | 현재 테스트 수 | 영향 범위 | 조치 |
+| 测试文件 | 当前测试数 | 影响范围 | 措施 |
 |------------|-------------|----------|------|
-| `test_creation_agent.py` | 10 | mock 대상 변경 (`create_chat_model` → `create_deep_agent`) | 10건 전부 재작성 |
-| `test_agent_creation_extended.py` | 14 | patch 경로 변경 (간접 영향) | patch decorator 수정 |
-| `test_trigger_executor.py` | 11 | mock 대상 변경 (`execute_agent_stream` → `build_agent`) | 7건 재작성, 4건 유지 |
-| `test_streaming.py` | — | character-by-character 필터 테스트 제거 | 필터 관련 assertion 삭제, 단순화 |
-| `test_executor.py` | 14 | 영향 없음 | 유지 |
+| `test_creation_agent.py` | 10 | mock 对象变更（`create_chat_model` → `create_deep_agent`） | 重写全部 10 项 |
+| `test_agent_creation_extended.py` | 14 | patch 路径变更（间接影响） | 修改 patch decorator |
+| `test_trigger_executor.py` | 11 | mock 对象变更（`execute_agent_stream` → `build_agent`） | 重写 7 项，保留 4 项 |
+| `test_streaming.py` | — | 删除 character-by-character filter 测试 | 删除 filter 相关 assertion，简化 |
+| `test_executor.py` | 14 | 无影响 | 保留 |
 
 ---
 
-## creation_agent.py 상세 분석
+## creation_agent.py 详细分析
 
-### 현재 구조
-- **단일 함수:** `run_creation_conversation()` (L144-214, 71줄)
-- **패턴:** `create_chat_model("openai", "gpt-4o")` → `model.ainvoke(lc_messages)` → JSON 추출
-- **도구 사용 없음:** 순수 언어 생성 (function calling 미사용)
-- **상태 관리:** 외부에서 `conversation_history` 리스트로 전달 (stateless)
+### 当前结构
+- **单一函数：** `run_creation_conversation()`（L144-214，71 行）
+- **pattern：** `create_chat_model("openai", "gpt-4o")` → `model.ainvoke(lc_messages)` → JSON 提取
+- **不使用 tool：** 纯语言生成（不使用 function calling）
+- **状态管理：** 从外部以 `conversation_history` list 传入（stateless）
 
-### 외부 참조 그래프
+### 外部引用图
 ```
 run_creation_conversation()
   ← agent_creation_service.send_message() (L53)
     ← routers/agent_creation.py POST /api/agents/create-session/{id}/message (L41-54)
 ```
 
-### deep agent 전환 영향도
-- **시그니처 변경 불필요:** 반환 dict 형태 유지 가능
-- **핵심 변경:** L151 모델 생성 + L166 ainvoke → create_deep_agent + invoke
-- **JSON 파싱 로직 유지:** L177-199 (에이전트 프레임워크와 무관)
-- **서비스/라우터 변경 없음:** 인터페이스 동일
+### 切换 deep agent 的影响度
+- **无需修改 signature：** 可保持返回 dict 形式
+- **核心变更：** L151 model 创建 + L166 ainvoke → create_deep_agent + invoke
+- **保留 JSON 解析逻辑：** L177-199（与 agent framework 无关）
+- **service/router 无变更：** interface 相同
 
 ---
 
-## trigger_executor.py 상세 분석
+## trigger_executor.py 详细分析
 
-### 현재 구조
-- **단일 함수:** `execute_trigger()` (L16-92, 77줄)
-- **패턴:** `execute_agent_stream(...)` async for → SSE 파싱 → delta 누적
-- **SSE 파싱:** L67-77 (11줄) — `"data: "` 접두사 파싱, JSON decode, delta/content 추출
+### 当前结构
+- **单一函数：** `execute_trigger()`（L16-92，77 行）
+- **pattern：** `execute_agent_stream(...)` async for → SSE 解析 → delta 累积
+- **SSE 解析：** L67-77（11 行）— 解析 `"data: "` prefix，JSON decode，提取 delta/content
 
-### 외부 참조 그래프
+### 外部引用图
 ```
 execute_trigger()
-  ← scheduler.py add_trigger_job() (L39, APScheduler 콜백 등록)
+  ← scheduler.py add_trigger_job()（L39，APScheduler callback 注册）
 ```
 
-### direct invoke 전환 영향도
-- **SSE 파싱 전체 제거:** L67-77 (11줄)
-- **교체 패턴:** `build_agent()` + `agent.invoke({"messages": [...]}, config)` → result["messages"][-1].content
-- **chat_service 호출 유지:** get_agent_with_tools, create_conversation, build_effective_prompt, build_tools_config, build_agent_skills — 전부 유지
-- **DB 로직 유지:** trigger 상태 업데이트, run_count 증가
+### 切换 direct invoke 的影响度
+- **删除整个 SSE 解析：** L67-77（11 行）
+- **替换 pattern：** `build_agent()` + `agent.invoke({"messages": [...]}, config)` → result["messages"][-1].content
+- **保留 chat_service 调用：** get_agent_with_tools, create_conversation, build_effective_prompt, build_tools_config, build_agent_skills — 全部保留
+- **保留 DB 逻辑：** 更新 trigger 状态、增加 run_count
 
 ---
 
-## 삭제 체크리스트 (S7 검증용)
+## 删除检查表（S7 验证用）
 
-### 즉시 삭제
-- [ ] `token_tracker.py` 파일 삭제 (또는 TokenTrackingCallback 클래스 삭제)
-- [ ] `streaming.py` `_is_tool_selector_json()` 함수 제거
-- [ ] `streaming.py` character-by-character 버퍼링 로직 제거 → 단순 스트리밍으로 교체
+### 立即删除
+- [ ] 删除 `token_tracker.py` 文件（或 TokenTrackingCallback class）
+- [ ] 删除 `streaming.py` `_is_tool_selector_json()` 函数
+- [ ] 删除 `streaming.py` character-by-character buffering 逻辑 → 替换为简单 streaming
 
-### 교체 (S3: trigger_executor)
+### 替换（S3: trigger_executor）
 - [ ] `trigger_executor.py` `execute_agent_stream` import → `build_agent` import
-- [ ] `trigger_executor.py` `json` import 제거
-- [ ] `trigger_executor.py` SSE 파싱 루프 (L67-77) → `build_agent()` + `invoke()` 직접 호출
-- [ ] `test_trigger_executor.py` mock 대상 변경 (7건): `execute_agent_stream` → `build_agent`
+- [ ] 删除 `trigger_executor.py` `json` import
+- [ ] 将 `trigger_executor.py` SSE 解析 loop（L67-77）→ 直接调用 `build_agent()` + `invoke()`
+- [ ] 修改 `test_trigger_executor.py` mock 对象（7 项）：`execute_agent_stream` → `build_agent`
 
-### 교체 (S4: creation_agent)
+### 替换（S4: creation_agent）
 - [ ] `creation_agent.py` `model.ainvoke()` → `create_deep_agent()` + `invoke()`
-- [ ] `creation_agent.py` import 변경
-- [ ] `test_creation_agent.py` mock 대상 변경 (10건)
-- [ ] `test_agent_creation_extended.py` patch 경로 수정
+- [ ] 修改 `creation_agent.py` import
+- [ ] 修改 `test_creation_agent.py` mock 对象（10 项）
+- [ ] 修改 `test_agent_creation_extended.py` patch 路径
 
-### 정리 (S5: streaming/middleware)
-- [ ] `streaming.py` 미들웨어 필터 코드 제거 (위 즉시 삭제 항목)
-- [ ] `streaming.py` 테스트 수정 (character-by-character assertion 제거)
-- [ ] `PatchedLLMToolSelectorMiddleware` 유지 확인
+### 整理（S5: streaming/middleware）
+- [ ] 删除 `streaming.py` middleware filter code（见上方立即删除项）
+- [ ] 修改 `streaming.py` 测试（删除 character-by-character assertion）
+- [ ] 确认保留 `PatchedLLMToolSelectorMiddleware`
 
-### 정리 (S6: 시드/코드)
-- [ ] `models/template.py` L20 타입 힌트 수정: `Mapped[dict | None]` → `Mapped[list | None]`
-- [ ] `token_tracker.py` 삭제 확인
-- [ ] 전체 ruff check 통과
-- [ ] 전체 pytest 통과
+### 整理（S6: seed/code）
+- [ ] 修改 `models/template.py` L20 type hint：`Mapped[dict | None]` → `Mapped[list | None]`
+- [ ] 确认删除 `token_tracker.py`
+- [ ] 完整 ruff check 通过
+- [ ] 完整 pytest 通过

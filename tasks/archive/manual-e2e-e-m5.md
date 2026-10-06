@@ -1,24 +1,24 @@
-# Manual E2E — 백로그 E M5
+# Manual E2E — backlog E M5
 
-**작성자**: 베조스 (QA DRI)
+**作者**：贝索斯 (QA DRI)
 **日期**：2026-04-19
-**검증 방식**: **코드 경로 정적 추적** (static trace) + 자동 회귀 (pytest/lint/build)
-**브라우저 실측**: **미수행** — docker-compose + DB + dev server 구동 시간 비용. 정적 추적으로 불변식 전수 검증한 뒤 사티아 판정에 위임. S6 게이트 통과 후 PR 리뷰 단계에서 사용자 수동 검증 권장.
+**验证方式**：**代码路径静态追踪**（static trace）+ 自动回归（pytest/lint/build）
+**浏览器实测**：**未执行** — docker-compose + DB + dev server 启动成本较高。通过静态追踪完整验证 invariants 后，交由萨提亚判定。S6 gate 通过后，建议在 PR review 阶段由用户手动验证。
 
 ---
 
-## 0. 자동 회귀 결과 (PASS 전수)
+## 0. 自动回归结果（全部 PASS）
 
-| 항목 | 기대 | 실제 | 판정 |
+| 项目 | 预期 | 实际 | 判定 |
 |------|------|------|------|
 | Backend pytest | 646 pass | `646 passed, 1 deselected, 3 warnings in 80.53s` | ✅ PASS |
 | Backend ruff | 0 error | `All checks passed!` | ✅ PASS |
-| Frontend lint | 기존 1건(use-chat-runtime.ts:74)만 | `1 problem (0 errors, 1 warning)` 동일 위치 | ✅ PASS (신규 깨짐 0) |
+| Frontend lint | 仅现有 1 项（use-chat-runtime.ts:74） | `1 problem (0 errors, 1 warning)` 相同位置 | ✅ PASS（新增破坏 0） |
 | Frontend build | PASS | `✓ Generating static pages (14/14)` | ✅ PASS |
-| F 흡수 grep | 외부 호출 0 | `rg "PrebuiltAuthDialog\|CustomAuthDialog\|MCPServerAuthDialog" src/app src/components --glob '!*auth-dialog.tsx'` → 0 | ✅ PASS |
-| 백엔드 변경 | 0 | `git diff --shortstat main...HEAD -- backend/` → empty | ✅ PASS |
+| F 吸收 grep | 外部调用 0 | `rg "PrebuiltAuthDialog\|CustomAuthDialog\|MCPServerAuthDialog" src/app src/components --glob '!*auth-dialog.tsx'` → 0 | ✅ PASS |
+| 后端变更 | 0 | `git diff --shortstat main...HEAD -- backend/` → empty | ✅ PASS |
 
-**커맨드 기록**:
+**命令记录**：
 ```bash
 cd backend && uv run pytest        # 646 passed
 cd backend && uv run ruff check .  # All checks passed

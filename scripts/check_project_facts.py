@@ -24,7 +24,12 @@ ADR_LIKE_FILE: Final = re.compile(r"docs/design-docs/adr-.*\.md$", re.IGNORECASE
 ADR_ROW: Final = re.compile(r"^\|\s*(ADR-\d{3})\s*\|.*?\]\(([^)]+)\)", re.MULTILINE)
 MARKDOWN_LINK: Final = re.compile(r"\[[^]]+\]\(([^)]+)\)")
 VERSION_CLAUSE: Final = re.compile(r"(<=|>=|==|!=|<|>)(\d+(?:\.\d+)*)")
-FACT_SURFACES: Final = ("README.md", "README_KO.md", "AGENTS.md", "docs/ARCHITECTURE.md")
+FACT_SURFACES: Final = (
+    "README.md",
+    "README_PROTOTYPE_ZH_CN.md",
+    "AGENTS.md",
+    "docs/ARCHITECTURE.md",
+)
 CURRENT_CONTRACT_SURFACES: Final = (*FACT_SURFACES, "TASKS.md", "docs/PRD.md")
 CURRENT_SOURCE_CONTRACT: Final = re.compile(
     r"<!-- project-current-source: migration=([\w-]+); deepagents=([0-9.]+); "
@@ -331,7 +336,7 @@ def _validate_current_facts(
         raise RuntimeError("current fact is missing derived Ruff constraint in AGENTS.md")
     deepagents_markers = {
         "README.md": f"`deepagents` {deepagents_version}",
-        "README_KO.md": f"`deepagents` {deepagents_version}",
+        "README_PROTOTYPE_ZH_CN.md": f"`deepagents` {deepagents_version}",
         "AGENTS.md": f"**deepagents** {deepagents_version}",
         "docs/ARCHITECTURE.md": f"`{deepagents}` (lock: {deepagents_version})",
     }
@@ -340,7 +345,7 @@ def _validate_current_facts(
             raise RuntimeError(f"current fact is missing locked Deep Agents version in {path}")
     ruff_markers = {
         "README.md": f"Ruff {ruff_version}",
-        "README_KO.md": f"Ruff {ruff_version}",
+        "README_PROTOTYPE_ZH_CN.md": f"Ruff {ruff_version}",
         "AGENTS.md": f"`{ruff}` (lock: {ruff_version}",
     }
     for path, marker in ruff_markers.items():

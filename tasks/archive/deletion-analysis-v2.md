@@ -1,7 +1,7 @@
-# 삭제 분석 보고서 v2
+# 删除分析报告 v2
 
-> v2 Builder/Assistant 교체를 위한 기존 creation_agent, fix_agent 의존성 분석
-> 분석일: 2026-04-07 | 분석자: bezos (QA)
+> 为替换 v2 Builder/Assistant 而分析现有 creation_agent、fix_agent 依赖关系
+> 分析日期：2026-04-07 | 分析者：bezos (QA)
 
 ---
 
@@ -9,143 +9,143 @@
 
 | 文件 | 原因 |
 |------|------|
-| `backend/app/agent_runtime/creation_agent.py` | v2 Builder 오케스트레이터로 완전 대체. 외부 의존성: `agent_creation_service.py`만 import → 동시에 교체 가능 |
-| `backend/app/agent_runtime/fix_agent.py` | v2 Assistant로 완전 대체. 외부 의존성: `routers/fix_agent.py`만 import → 동시에 교체 가능 |
-| `backend/app/schemas/fix_agent.py` | v2 `schemas/assistant.py`로 대체. 외부 의존성: `routers/fix_agent.py`만 import |
-| `backend/tests/test_creation_agent.py` | 삭제 대상인 `creation_agent.py` 테스트. 10개 테스트 케이스 전부 대상 |
-| `backend/tests/test_fix_agent.py` | 삭제 대상인 `fix_agent.py`와 `routers/fix_agent.py` 테스트. ~20개 테스트 케이스 전부 대상 |
-| `frontend/tests/unit/api/creation-session.test.ts` | `creation-session.ts` API 클라이언트 테스트 |
-| `frontend/tests/mocks/fixtures.ts` (부분) | `CreationMessageResult` 타입 import → 타입 삭제 시 해당 fixture도 제거/교체 필요 |
+| `backend/app/agent_runtime/creation_agent.py` | 完全由 v2 Builder orchestrator 替代。外部依赖：仅 `agent_creation_service.py` import → 可同时替换 |
+| `backend/app/agent_runtime/fix_agent.py` | 完全由 v2 Assistant 替代。外部依赖：仅 `routers/fix_agent.py` import → 可同时替换 |
+| `backend/app/schemas/fix_agent.py` | 由 v2 `schemas/assistant.py` 替代。外部依赖：仅 `routers/fix_agent.py` import |
+| `backend/tests/test_creation_agent.py` | 被删除的 `creation_agent.py` 的测试。10 个测试 case 全部属于删除范围 |
+| `backend/tests/test_fix_agent.py` | 被删除的 `fix_agent.py` 和 `routers/fix_agent.py` 的测试。约 20 个测试 case 全部属于删除范围 |
+| `frontend/tests/unit/api/creation-session.test.ts` | `creation-session.ts` API client 测试 |
+| `frontend/tests/mocks/fixtures.ts`（部分） | `CreationMessageResult` 类型 import → 删除类型时，该 fixture 也需删除/替换 |
 
 ---
 
-## 삭제 시 수정 필요 (의존성)
+## 删除时需要修改（依赖关系）
 
 ### Backend
 
-| 삭제 대상 | 의존 파일 | 수정 내용 |
+| 删除对象 | 依赖文件 | 修改内容 |
 |-----------|----------|----------|
-| `creation_agent.py` | `backend/app/services/agent_creation_service.py:8` | `from app.agent_runtime.creation_agent import run_creation_conversation` 삭제. `send_message()` 함수 (L39-73) 내부의 `run_creation_conversation()` 호출을 v2 Builder 호출로 교체 |
-| `routers/agent_creation.py` | `backend/app/main.py:160,175` | `from app.routers import agent_creation` import 삭제, `app.include_router(agent_creation.router)` 삭제. v2 `routers/builder.py` 추가 |
-| `routers/fix_agent.py` | `backend/app/main.py:163,176` | `from app.routers import fix_agent` import 삭제, `app.include_router(fix_agent.router)` 삭제. v2 `routers/assistant.py` 추가 |
-| `creation_agent.py` | `backend/pyproject.toml:93` | `"app/agent_runtime/creation_agent.py" = ["E501"]` ruff 예외 설정 삭제 |
-| `schemas/agent_creation.py` | `backend/app/routers/agent_creation.py:11-15` | 라우터 삭제 시 함께 삭제됨 (의존 단절) |
-| `models/agent_creation_session.py` | `backend/app/models/__init__.py:2,24` | import 및 `__all__` export 삭제 (또는 v2 `BuilderSession` 모델로 교체) |
-| `models/agent_creation_session.py` | `backend/app/models/user.py:26-28` | `creation_sessions` relationship 삭제 (또는 v2 builder_sessions로 교체) |
-| `models/agent_creation_session.py` | `backend/app/services/agent_creation_service.py:10` | import 삭제 — 서비스 전체 교체 시 함께 처리 |
-| `agent_creation_service.py` | `backend/app/routers/agent_creation.py:16` | 라우터 삭제 시 함께 삭제됨 |
-| `test_agent_creation_extended.py` | 자체 (14 테스트) | `agent_creation_service`, `AgentCreationSession` 전면 참조. 전체 삭제 후 v2 테스트로 교체 |
+| `creation_agent.py` | `backend/app/services/agent_creation_service.py:8` | 删除 `from app.agent_runtime.creation_agent import run_creation_conversation`。把 `send_message()` 函数（L39-73）内部的 `run_creation_conversation()` 调用替换为 v2 Builder 调用 |
+| `routers/agent_creation.py` | `backend/app/main.py:160,175` | 删除 `from app.routers import agent_creation` import，删除 `app.include_router(agent_creation.router)`。新增 v2 `routers/builder.py` |
+| `routers/fix_agent.py` | `backend/app/main.py:163,176` | 删除 `from app.routers import fix_agent` import，删除 `app.include_router(fix_agent.router)`。新增 v2 `routers/assistant.py` |
+| `creation_agent.py` | `backend/pyproject.toml:93` | 删除 `"app/agent_runtime/creation_agent.py" = ["E501"]` ruff 例外配置 |
+| `schemas/agent_creation.py` | `backend/app/routers/agent_creation.py:11-15` | 删除路由时一并删除（依赖断开） |
+| `models/agent_creation_session.py` | `backend/app/models/__init__.py:2,24` | 删除 import 及 `__all__` export（或替换为 v2 `BuilderSession` model） |
+| `models/agent_creation_session.py` | `backend/app/models/user.py:26-28` | 删除 `creation_sessions` relationship（或替换为 v2 builder_sessions） |
+| `models/agent_creation_session.py` | `backend/app/services/agent_creation_service.py:10` | 删除 import — 替换整个 service 时一并处理 |
+| `agent_creation_service.py` | `backend/app/routers/agent_creation.py:16` | 删除路由时一并删除 |
+| `test_agent_creation_extended.py` | 自身（14 个测试） | 全面引用 `agent_creation_service`, `AgentCreationSession`。整体删除后替换为 v2 测试 |
 
 ### Frontend
 
-| 삭제 대상 | 의존 파일 | 수정 내용 |
+| 删除对象 | 依赖文件 | 修改内容 |
 |-----------|----------|----------|
-| `lib/api/creation-session.ts` | `app/agents/new/conversational/page.tsx:34` | `creationSessionApi`, `CreationMessageResult` import 삭제. v2 Builder API 클라이언트로 교체 |
-| `lib/types/index.ts` (부분) | `creation-session.ts:2`, `conversational/page.tsx:35` | `CreationSession` (L295-302), `DraftConfig` (L304-311) 인터페이스 삭제. v2 Builder 타입으로 교체 |
-| `components/agent/fix-agent-dialog.tsx` | `app/agents/[agentId]/settings/page.tsx:27,190` | `FixAgentDialog` import 및 렌더링 삭제. v2 Assistant 진입점으로 교체 |
-| `app/agents/new/conversational/page.tsx` | `tests/pages/agent-conversational.test.tsx:2`, `agents/new/page.tsx:26` | 전체 페이지 삭제 또는 v2 Builder 페이지로 교체 |
-| `tests/pages/agent-conversational.test.tsx` | 자체 | conversational 페이지 테스트. 전체 삭제 후 v2 Builder 페이지 테스트로 교체 |
-| `tests/pages/dashboard.test.tsx` (부분) | L67-68 | `'대화로 만들기'` 링크 → `/agents/new/conversational` 경로 assertion 수정 필요 |
-| `tests/pages/agents-new.test.tsx` (부분) | L27-30 | conversational option 경로 assertion 수정 필요 |
-| E2E: `e2e/smoke.spec.ts` (부분) | L163-164 | settings 페이지의 'AI로 수정하기' 버튼 assertion → v2 Assistant 진입점으로 수정 |
-| E2E: `e2e/smoke.spec.ts` (부분) | L357-389 | `Smoke Test - Conversational Creation` 테스트 블록 전체 → v2 Builder 페이지 테스트로 교체 |
-| `messages/ko.json` (부분) | L52, L715 | `conversational` 관련 i18n 키 수정/교체 |
+| `lib/api/creation-session.ts` | `app/agents/new/conversational/page.tsx:34` | 删除 `creationSessionApi`, `CreationMessageResult` import。替换为 v2 Builder API client |
+| `lib/types/index.ts`（部分） | `creation-session.ts:2`, `conversational/page.tsx:35` | 删除 `CreationSession`（L295-302）、`DraftConfig`（L304-311）interface。替换为 v2 Builder 类型 |
+| `components/agent/fix-agent-dialog.tsx` | `app/agents/[agentId]/settings/page.tsx:27,190` | 删除 `FixAgentDialog` import 和渲染。替换为 v2 Assistant 入口 |
+| `app/agents/new/conversational/page.tsx` | `tests/pages/agent-conversational.test.tsx:2`, `agents/new/page.tsx:26` | 删除整个 page，或替换为 v2 Builder page |
+| `tests/pages/agent-conversational.test.tsx` | 自身 | conversational page 测试。整体删除后替换为 v2 Builder page 测试 |
+| `tests/pages/dashboard.test.tsx`（部分） | L67-68 | `'通过对话创建'` 链接 → 需要修改 `/agents/new/conversational` 路径 assertion |
+| `tests/pages/agents-new.test.tsx`（部分） | L27-30 | 需要修改 conversational option 路径 assertion |
+| E2E: `e2e/smoke.spec.ts` (部分) | L163-164 | settings page 的 '用 AI 修改' 按钮 assertion → 修改为 v2 Assistant 入口 |
+| E2E: `e2e/smoke.spec.ts`（部分） | L357-389 | 整个 `Smoke Test - Conversational Creation` 测试块 → 替换为 v2 Builder page 测试 |
+| `messages/ko.json`（部分） | L52, L715 | 修改/替换 `conversational` 相关 i18n key |
 
-### DB/마이그레이션
+### DB/migration
 
-| 대상 | 수정 내용 |
+| 对象 | 修改内容 |
 |------|----------|
-| `agent_creation_sessions` 테이블 | **삭제하지 않음**. v2에서 `builder_sessions`로 확장/대체하는 마이그레이션 작성. 기존 데이터는 PoC이므로 drop+recreate도 가능하지만, Alembic 마이그레이션으로 추적 필요 |
-| `alembic/versions/aa5b4cc59ddb_initial_tables.py` | 변경 불필요 (이미 적용된 마이그레이션). 새 마이그레이션에서 테이블 변경/대체 |
+| `agent_creation_sessions` table | **不删除**。编写在 v2 中扩展/替换为 `builder_sessions` 的 migration。现有数据是 PoC，因此也可以 drop+recreate，但需要用 Alembic migration 跟踪 |
+| `alembic/versions/aa5b4cc59ddb_initial_tables.py` | 无需修改（已应用的 migration）。在新 migration 中修改/替换 table |
 
 ---
 
-## 재사용 가능 로직 (v2로 이관)
+## 可复用逻辑（迁移到 v2）
 
-| 함수/로직 | 위치 | v2에서 활용 방법 |
+| 函数/逻辑 | 位置 | v2 中的使用方式 |
 |-----------|------|-----------------|
-| `confirm_creation()` 도구 이름 매칭 | `agent_creation_service.py:94-105` | Builder의 `build_final_agent` 단계에서 `recommended_tool_names` → Tool DB 레코드 자동 링크 로직 재사용. `func.lower(Tool.name).in_(lower_names)` 패턴 |
-| `confirm_creation()` 스킬 이름 매칭 | `agent_creation_service.py:107-118` | Builder의 `build_final_agent`에서 동일하게 스킬 자동 링크 |
-| `confirm_creation()` 모델 매칭 | `agent_creation_service.py:82-92` | `display_name` → Model ID 리졸브. Builder에서 재사용 |
-| `confirm_creation()` Agent 생성 | `agent_creation_service.py:120-135` | Agent ORM 인스턴스 생성 + tool_links/skill_links 설정 패턴 |
-| `_apply_changes()` 도구 추가/제거 | `routers/fix_agent.py:81-133` | Assistant의 도구 수정 기능에서 batch resolve 패턴 재사용. `func.lower(Tool.name).in_()` + 현재 tool_ids diff |
-| `_apply_changes()` 모델 변경 | `routers/fix_agent.py:98-104` | Assistant의 모델 변경 도구에서 display_name → model_id 변환 재사용 |
-| `extract_json_from_markdown()` | `message_utils.py` | **삭제 대상 아님**. 유틸리티로 v2에서도 계속 사용 |
-| `strip_json_blocks()` | `message_utils.py` | **삭제 대상 아님**. 유틸리티로 v2에서도 계속 사용 |
-| `convert_to_langchain_messages()` | `message_utils.py` | **삭제 대상 아님**. v2에서도 활용 가능 |
+| `confirm_creation()` 工具名匹配 | `agent_creation_service.py:94-105` | 在 Builder 的 `build_final_agent` 阶段复用 `recommended_tool_names` → 自动链接 Tool DB record 的逻辑。`func.lower(Tool.name).in_(lower_names)` pattern |
+| `confirm_creation()` skill 名匹配 | `agent_creation_service.py:107-118` | 在 Builder 的 `build_final_agent` 中同样自动链接 skill |
+| `confirm_creation()` model 匹配 | `agent_creation_service.py:82-92` | `display_name` → resolve Model ID。在 Builder 中复用 |
+| `confirm_creation()` Agent 创建 | `agent_creation_service.py:120-135` | Agent ORM instance 创建 + tool_links/skill_links 设置 pattern |
+| `_apply_changes()` 添加/删除工具 | `routers/fix_agent.py:81-133` | 在 Assistant 的工具修改功能中复用 batch resolve pattern。`func.lower(Tool.name).in_()` + 当前 tool_ids diff |
+| `_apply_changes()` model 变更 | `routers/fix_agent.py:98-104` | 在 Assistant 中复用 display_name → model_id 转换 |
+| `extract_json_from_markdown()` | `message_utils.py` | **不是删除对象**。作为 utility 在 v2 中继续使用 |
+| `strip_json_blocks()` | `message_utils.py` | **不是删除对象**。作为 utility 在 v2 中继续使用 |
+| `convert_to_langchain_messages()` | `message_utils.py` | **不是删除对象**。在 v2 中也可使用 |
 
 ---
 
-## 프론트엔드 영향 요약
+## 前端影响摘要
 
-### 삭제 파일 (6개)
-1. `frontend/src/lib/api/creation-session.ts` — v2 Builder API 클라이언트로 교체
-2. `frontend/src/components/agent/fix-agent-dialog.tsx` — v2 Assistant 진입 UI로 교체
-3. `frontend/src/app/agents/new/conversational/page.tsx` — v2 Builder 페이지로 교체
-4. `frontend/tests/unit/api/creation-session.test.ts` — v2 Builder API 테스트로 교체
-5. `frontend/tests/pages/agent-conversational.test.tsx` — v2 Builder 페이지 테스트로 교체
-6. `frontend/tests/mocks/fixtures.ts` (부분) — `CreationMessageResult` mock 제거
+### 删除文件（6 个）
+1. `frontend/src/lib/api/creation-session.ts` — 替换为 v2 Builder API client
+2. `frontend/src/components/agent/fix-agent-dialog.tsx` — 替换为 v2 Assistant 入口 UI
+3. `frontend/src/app/agents/new/conversational/page.tsx` — 替换为 v2 Builder page
+4. `frontend/tests/unit/api/creation-session.test.ts` — 替换为 v2 Builder API 测试
+5. `frontend/tests/pages/agent-conversational.test.tsx` — 替换为 v2 Builder page 测试
+6. `frontend/tests/mocks/fixtures.ts`（部分） — 删除 `CreationMessageResult` mock
 
-### 수정 파일 (6개)
-1. `frontend/src/lib/types/index.ts` — `CreationSession`, `DraftConfig` 타입 삭제 → v2 Builder 타입 추가
-2. `frontend/src/app/agents/[agentId]/settings/page.tsx` — `FixAgentDialog` import/렌더 삭제 → v2 Assistant 진입점
-3. `frontend/src/app/agents/new/page.tsx:26` — `/agents/new/conversational` 라우팅 → v2 Builder 경로
-4. `frontend/src/app/page.tsx:44-45` — 대시보드 '대화로 만들기' Quick Action 경로/라벨 수정
-5. `frontend/src/components/layout/breadcrumb-nav.tsx:18` — `conversational` breadcrumb 키 수정
-6. `frontend/messages/ko.json` — conversational, fix 관련 i18n 키 교체
+### 修改文件（6 个）
+1. `frontend/src/lib/types/index.ts` — 删除 `CreationSession`, `DraftConfig` 类型 → 新增 v2 Builder 类型
+2. `frontend/src/app/agents/[agentId]/settings/page.tsx` — 删除 `FixAgentDialog` import/渲染 → v2 Assistant 入口
+3. `frontend/src/app/agents/new/page.tsx:26` — 将 `/agents/new/conversational` routing → v2 Builder 路径
+4. `frontend/src/app/page.tsx:44-45` — 修改 dashboard '通过对话创建' Quick Action 的路径/label
+5. `frontend/src/components/layout/breadcrumb-nav.tsx:18` — 修改 `conversational` breadcrumb key
+6. `frontend/messages/ko.json` — 替换 conversational、fix 相关 i18n key
 
-### 수정 테스트 (3개)
-1. `frontend/tests/pages/dashboard.test.tsx:67-68` — 경로 assertion
+### 修改测试（3 个）
+1. `frontend/tests/pages/dashboard.test.tsx:67-68` — 路径 assertion
 2. `frontend/tests/pages/agents-new.test.tsx:27-30` — conversational option assertion
-3. `frontend/e2e/smoke.spec.ts:163,357-389` — fix agent 버튼 + conversational 페이지 E2E
+3. `frontend/e2e/smoke.spec.ts:163,357-389` — fix agent 按钮 + conversational page E2E
 
 ---
 
-## 삭제 순서 (의존성 기반)
+## 删除顺序（基于依赖）
 
-v2 코드가 준비된 후, 다음 순서로 교체:
+v2 代码准备好后，按以下顺序替换：
 
-### Phase A: Backend (순서 중요)
-1. 새 v2 파일 추가 (builder/, assistant/, 새 라우터/서비스/스키마)
-2. `main.py`에 v2 라우터 등록
-3. `main.py`에서 기존 라우터 제거 (`agent_creation`, `fix_agent`)
-4. 기존 라우터 삭제: `routers/agent_creation.py`, `routers/fix_agent.py`
-5. 기존 서비스 삭제: `services/agent_creation_service.py`
-6. 기존 런타임 삭제: `agent_runtime/creation_agent.py`, `agent_runtime/fix_agent.py`
-7. 기존 스키마 삭제: `schemas/agent_creation.py`, `schemas/fix_agent.py`
-8. 모델 교체: `models/agent_creation_session.py` → `models/builder_session.py`
-9. `models/__init__.py`, `models/user.py` 업데이트
-10. `pyproject.toml` ruff 예외 삭제 (L93)
-11. Alembic 마이그레이션 작성
-12. 기존 테스트 삭제 + v2 테스트 추가
+### Phase A: Backend（顺序重要）
+1. 新增 v2 文件（builder/, assistant/, 新 router/service/schema）
+2. 在 `main.py` 注册 v2 router
+3. 从 `main.py` 移除现有 router（`agent_creation`, `fix_agent`）
+4. 删除现有 router：`routers/agent_creation.py`, `routers/fix_agent.py`
+5. 删除现有 service：`services/agent_creation_service.py`
+6. 删除现有 runtime：`agent_runtime/creation_agent.py`, `agent_runtime/fix_agent.py`
+7. 删除现有 schema：`schemas/agent_creation.py`, `schemas/fix_agent.py`
+8. 替换 model：`models/agent_creation_session.py` → `models/builder_session.py`
+9. 更新 `models/__init__.py`, `models/user.py`
+10. 删除 `pyproject.toml` ruff 例外（L93）
+11. 编写 Alembic migration
+12. 删除现有测试 + 新增 v2 测试
 
-### Phase B: Frontend (Backend API 안정 후)
-1. v2 API 클라이언트 + 타입 추가
-2. v2 Builder 페이지, Assistant UI 추가
-3. 기존 파일 삭제 (`creation-session.ts`, `fix-agent-dialog.tsx`, `conversational/page.tsx`)
-4. 참조 수정 (settings, new, dashboard, breadcrumb, i18n)
-5. 기존 테스트 삭제 + v2 테스트 추가
-6. E2E 테스트 수정
+### Phase B: Frontend（Backend API 稳定后）
+1. 新增 v2 API client + 类型
+2. 新增 v2 Builder page、Assistant UI
+3. 删除现有文件（`creation-session.ts`, `fix-agent-dialog.tsx`, `conversational/page.tsx`）
+4. 修改引用（settings, new, dashboard, breadcrumb, i18n）
+5. 删除现有测试 + 新增 v2 测试
+6. 修改 E2E 测试
 
 ---
 
-## 영향 범위 요약
+## 影响范围摘要
 
-| 카테고리 | 삭제 | 수정 | 신규 (v2) |
+| 类别 | 删除 | 修改 | 新增 (v2) |
 |----------|------|------|----------|
-| Backend 런타임 | 2 | 0 | ~4 (builder/*, assistant/*) |
-| Backend 라우터 | 2 | 1 (main.py) | 2 (builder.py, assistant.py) |
-| Backend 서비스 | 1 | 0 | 2 (builder_service, assistant_service) |
-| Backend 스키마 | 2 | 0 | 2 (builder.py, assistant.py) |
-| Backend 모델 | 1 (교체) | 2 (__init__, user) | 1 (builder_session) |
-| Backend 설정 | 0 | 1 (pyproject.toml) | 0 |
-| Backend 테스트 | 2 | 1 (extended) | ~2 |
-| Frontend 페이지 | 1 | 3 | ~2 |
-| Frontend 컴포넌트 | 1 | 0 | ~2 |
+| Backend runtime | 2 | 0 | ~4 (builder/*, assistant/*) |
+| Backend router | 2 | 1 (main.py) | 2 (builder.py, assistant.py) |
+| Backend service | 1 | 0 | 2 (builder_service, assistant_service) |
+| Backend schema | 2 | 0 | 2 (builder.py, assistant.py) |
+| Backend model | 1（替换） | 2 (__init__, user) | 1 (builder_session) |
+| Backend 配置 | 0 | 1 (pyproject.toml) | 0 |
+| Backend 测试 | 2 | 1 (extended) | ~2 |
+| Frontend page | 1 | 3 | ~2 |
+| Frontend 组件 | 1 | 0 | ~2 |
 | Frontend API | 1 | 0 | 2 |
-| Frontend 타입 | 0 | 1 | 0 (v2 타입 추가) |
+| Frontend 类型 | 0 | 1 | 0（新增 v2 类型） |
 | Frontend i18n | 0 | 1 | 0 |
-| Frontend 테스트 | 2 | 3 | ~2 |
-| E2E 테스트 | 0 | 1 | 0 |
-| DB 마이그레이션 | 0 | 0 | 1 |
-| **합계** | **15** | **14** | **~22** |
+| Frontend 测试 | 2 | 3 | ~2 |
+| E2E 测试 | 0 | 1 | 0 |
+| DB migration | 0 | 0 | 1 |
+| **合计** | **15** | **14** | **~22** |

@@ -149,31 +149,31 @@ Legend：`[D]`=删除 / `[S]`=简化（部分编辑）/ `[K]`=保留
 #### 5-1. 整体删除（legacy 专用）
 
 - `[D] backend/tests/test_agent_tool_config.py` — **整个文件（142 lines, 4 tests）**。一旦 drop `tool_configs` / `agent_config` 字段，所有 test 都会 broken。**但前提是确认 drop agent_tools.config。**
-- `[D] backend/tests/test_tools.py:509-577` — `test_build_tools_config_mcp_uses_server_credential` (legacy server_credential 경로).
-- `[D] backend/tests/test_tools.py:267-404` — `_seed_mcp_server_with_tools` 및 `test_list_mcp_servers_returns_tool_count` / `test_update_mcp_server_*` / `test_delete_mcp_server_cascades_tools` (MCP server CRUD 섹션 전체)
+- `[D] backend/tests/test_tools.py:509-577` — `test_build_tools_config_mcp_uses_server_credential`（legacy server_credential 路径）。
+- `[D] backend/tests/test_tools.py:267-404` — `_seed_mcp_server_with_tools` 以及 `test_list_mcp_servers_returns_tool_count` / `test_update_mcp_server_*` / `test_delete_mcp_server_cascades_tools`（整个 MCP server CRUD 部分）
 - `[D] backend/tests/test_tools.py:60-74` — `test_register_mcp_server`
-- `[D] backend/tests/test_tools.py:93-146` — `test_patch_tool_auth_config_preserves_unset_fields` (auth-config PATCH 라우터 삭제 시)
+- `[D] backend/tests/test_tools.py:93-146` — `test_patch_tool_auth_config_preserves_unset_fields`（删除 auth-config PATCH 路由时）
 - `[D] backend/tests/test_tools.py:148-175` — `test_patch_mcp_tool_rejects_other_user`
 - `[D] backend/tests/test_tools.py:177-221` — `test_tool_response_masks_auth_config_string_values`
-- `[K] backend/tests/test_tools.py:24-59` — `test_create_custom_tool` 등 CUSTOM 관련은 유지
+- `[K] backend/tests/test_tools.py:24-59` — 保留 `test_create_custom_tool` 等 CUSTOM 相关内容
 - `[D] backend/tests/test_tools_router_extended.py:62-85` — `test_test_mcp_connection_success`
 - `[D] backend/tests/test_tools_router_extended.py:86-99` — `test_test_mcp_connection_server_not_found`
-- `[D] backend/tests/test_tools_router_extended.py:100-150` — `test_update_auth_config_*` 3종 (라우터 삭제 시)
+- `[D] backend/tests/test_tools_router_extended.py:100-150` — `test_update_auth_config_*` 3 类（删除路由时）
 - `[D] backend/tests/test_tools_router_extended.py:152-175` — `test_mcp_server_register_via_api`
-- `[K] backend/tests/test_tools_router_extended.py:177-430` — provider_name / connection 관련 유지
-- `[D] backend/tests/test_conversations_router.py:40-58, 270-282` — `AgentToolLink(... config={"extra": "cfg"})` 및 merged auth assertion 제거. **테스트 자체는 유지하되 fixture 단순화**: `auth_config`/`link.config` 없이 PREBUILT connection 경로로 재작성 or agent_tools.config 시나리오 전체 삭제 중 선택. **추천: fixture 단순화**.
+- `[K] backend/tests/test_tools_router_extended.py:177-430` — 保留 provider_name / connection 相关内容
+- `[D] backend/tests/test_conversations_router.py:40-58, 270-282` — 删除 `AgentToolLink(... config={"extra": "cfg"})` 以及 merged auth assertion。**测试本身保留，但简化 fixture**：在不使用 `auth_config`/`link.config` 的情况下改写为 PREBUILT connection 路径，或在删除整个 agent_tools.config 场景中二选一。**建议：简化 fixture**。
 
-#### 5-2. 부분 삭제 (connection path 유지)
+#### 5-2. 部分删除（保留 connection path）
 
-**`test_connection_mcp_resolve.py` (850 lines)** — 함수별 유지/삭제 표:
+**`test_connection_mcp_resolve.py` (850 lines)** — 按函数列出的保留/删除表：
 
-| line | 함수 | 결정 | 근거 |
+| line | 函数 | 决定 | 依据 |
 |---|---|---|---|
 | 216 | `test_build_tools_config_uses_connection_extra_config` | `[K]` | connection path |
-| 382 | `test_build_tools_config_legacy_mcp_server_fallback` | `[D]` | legacy fallback 경로 |
+| 382 | `test_build_tools_config_legacy_mcp_server_fallback` | `[D]` | legacy fallback 路径 |
 | 427 | `test_build_tools_config_legacy_fallback_inline_auth_config` | `[D]` | legacy `auth_config` |
-| 468 | `test_connection_takes_precedence_over_mcp_server` | `[D]` | precedence 테스트이나 legacy 쪽이 제거되면 의미 없음 |
-| 522 | `test_template_regex_contract` | `[K]` | env_vars 템플릿 |
+| 468 | `test_connection_takes_precedence_over_mcp_server` | `[D]` | 虽是 precedence 测试，但删除 legacy 一侧后即失去意义 |
+| 522 | `test_template_regex_contract` | `[K]` | env_vars 模板 |
 | 656 | `test_resolve_env_vars_rejects_non_dict_shape` | `[K]` | |
 | 671 | `test_tool_config_error_is_app_error` | `[K]` | |
 | 690 | `test_build_tools_config_forwards_connection_headers` | `[K]` | connection path |
@@ -181,127 +181,127 @@ Legend：`[D]`=删除 / `[S]`=简化（部分编辑）/ `[K]`=保留
 | 817 | `test_response_tolerates_legacy_non_string_env_var_values` | `[K]` | |
 | 857 | `test_response_redacts_env_var_secret_values` | `[K]` | |
 | 889 | `test_extra_config_rejects_migration_sentinel_leak` | `[K]` | |
-| 910 | `test_m9_generates_env_vars_from_credential_field_keys` | `[K]` | m9 contract — downgrade 불가 명시해도 m9 contract 자체는 유지 |
-| 938-1029 | `test_mcp_credential_*` 4종 | `[K]` | connection path |
+| 910 | `test_m9_generates_env_vars_from_credential_field_keys` | `[K]` | m9 contract — 即使声明 downgrade 不可用，m9 contract 本身仍保留 |
+| 938-1029 | `test_mcp_credential_*` 4 类 | `[K]` | connection path |
 | 1125 | `test_response_validator_does_not_mutate_input_dict` | `[K]` | |
 | 1169 | `test_response_redacts_header_values` | `[K]` | |
 | 1217 | `test_distinct_transport_headers_create_separate_mcp_groups` | `[K]` | |
 | 1281 | `test_executor_server_key_is_deterministic_across_calls` | `[K]` | |
-| 1318 | `test_m9_skips_unrecoverable_credential_backed_server` | `[S]` | m9 helper 테스트는 유지하되 DB 생성 fixture에서 `MCPServer` 참조 → 파일 로드 실패 위험. **fixture 재작성 필요** — m9 모듈 helper만 직접 호출하는 방식으로 격리. |
+| 1318 | `test_m9_skips_unrecoverable_credential_backed_server` | `[S]` | 保留 m9 helper 测试，但 DB 创建 fixture 中引用 `MCPServer` → 存在文件加载失败风险。**需要重写 fixture** — 隔离为仅直接调用 m9 模块 helper 的方式。 |
 
-**`test_connection_custom_resolve.py` (850 lines)** — 함수별:
+**`test_connection_custom_resolve.py` (850 lines)** — 按函数：
 
-| line | 함수 | 결정 | 근거 |
+| line | 函数 | 决定 | 依据 |
 |---|---|---|---|
 | 224 | `test_custom_resolves_current_user_connection_not_other_user` | `[K]` | |
 | 288 | `test_custom_with_active_connection_resolves_credential` | `[K]` | |
 | 327 | `test_custom_disabled_connection_fails_closed` | `[K]` | |
 | 360 | `test_custom_connection_with_null_credential_fails_closed` | `[K]` | |
-| 399 | `test_custom_bridge_override_when_tool_credential_rotated` | `[D]` | **bridge override 제거** |
+| 399 | `test_custom_bridge_override_when_tool_credential_rotated` | `[D]` | **删除 bridge override** |
 | 448 | `test_custom_bridge_override_blocked_by_disabled_connection` | `[D]` | bridge override |
-| 499 | `test_custom_resolves_raises_when_connection_missing_despite_fk` | `[S]` | connection_id NULL 경로 → ToolConfigError 기대값 변경 |
+| 499 | `test_custom_resolves_raises_when_connection_missing_despite_fk` | `[S]` | connection_id NULL 路径 → 修改 ToolConfigError 预期值 |
 | 528 | `test_custom_legacy_credential_path_preserved` | `[D]` | legacy path |
 | 565 | `test_custom_legacy_inline_auth_config_returned_as_is` | `[D]` | legacy path |
 | 601 | `test_custom_rejects_connection_credential_user_mismatch` | `[K]` | |
 | 650 | `test_m11_revision_ids_and_marker_are_stable` | `[K]` | m11 contract |
 | 661 | `test_m11_migrate_custom_credentials_source_contract` | `[K]` | m11 contract |
-| 719 | `test_m11_preserves_tool_credential_id_for_legacy_fallback` | `[S]` | m11 당시 `tool.credential_id` 존재 전제 — m12 이후에도 m11 helper 자체는 돌아가지만 통합 검증 맥락 상 **변경 필요**. 젠슨에게 위임. |
+| 719 | `test_m11_preserves_tool_credential_id_for_legacy_fallback` | `[S]` | 以 m11 当时存在 `tool.credential_id` 为前提 — m12 之后 m11 helper 本身仍能运行，但从集成验证语境看**需要修改**。交给詹森。 |
 | 747 | `test_m11_downgrade_only_deletes_seed_marker_rows` | `[K]` | |
 | 794 | `test_m11_upgrade_dedup_preexisting_custom_duplicates` | `[K]` | |
 
-**`test_connection_prebuilt_resolve.py`** — provider_name NULL fallback 시나리오 (line 552: `auth_config={"api_key": "legacy-inline-key"}`)만 제거. 나머지 `[K]`.
+**`test_connection_prebuilt_resolve.py`** — 仅删除 provider_name NULL fallback 场景（line 552: `auth_config={"api_key": "legacy-inline-key"}`）。其余 `[K]`。
 
-**`test_executor.py`** — `tools_config` 입력 기반 (fixture). MCP legacy fallback 포함 케이스 재확인 필요. 젠슨이 S3 구현 중 `build_tools_config` 출력 시그니처 확정 후 2차 정리.
+**`test_executor.py`** — 基于 `tools_config` 输入 (fixture)。需要重新确认包含 MCP legacy fallback 的 case。詹森在 S3 实现中确定 `build_tools_config` 输出签名后做第2轮整理。
 
-#### 5-3. agent_tools.config 관련 테스트
+#### 5-3. agent_tools.config 相关测试
 
 - `[D] backend/tests/test_agent_service_extended.py:89-110` — `test_create_agent_with_tool_configs`
 - `[D] backend/tests/test_agent_service_extended.py:180-210` — `test_update_agent_tool_configs_only`
-- `[S] backend/tests/test_assistant_read_tools.py:53, 326` — `AgentToolLink(... config=None)` → `AgentToolLink(... )` (model change 따라 자동 fail)
-- `[S] backend/tests/test_assistant_write_tools.py:53` — 동일
-- `[S] backend/tests/test_chat_service.py:227` — 동일
-- `[S] backend/tests/test_connection_mcp_resolve.py:119, 616, 740` — 동일
-- `[S] backend/tests/test_connection_custom_resolve.py:213, test_connection_prebuilt_resolve.py:198` — 동일
-- `[S] backend/tests/test_trigger_executor.py:55` — `config={"agent_override": "ov"}` → 제거. agent_override 검증 블록도 함께 제거.
-- `[S] backend/tests/test_tools.py:567` — OK (이미 `config` 없이 추가)
+- `[S] backend/tests/test_assistant_read_tools.py:53, 326` — `AgentToolLink(... config=None)` → `AgentToolLink(... )`（随 model change 自动 fail）
+- `[S] backend/tests/test_assistant_write_tools.py:53` — 同上
+- `[S] backend/tests/test_chat_service.py:227` — 同上
+- `[S] backend/tests/test_connection_mcp_resolve.py:119, 616, 740` — 同上
+- `[S] backend/tests/test_connection_custom_resolve.py:213, test_connection_prebuilt_resolve.py:198` — 同上
+- `[S] backend/tests/test_trigger_executor.py:55` — 删除 `config={"agent_override": "ov"}`。agent_override 验证块也一并删除。
+- `[S] backend/tests/test_tools.py:567` — OK（已经在没有 `config` 的情况下添加）
 
-#### 5-4. Assistant 내부 도구 (★ agent_tools.config drop 시 수정 필수)
+#### 5-4. Assistant 内部工具（★ drop agent_tools.config 时必须修改）
 
-- `[S] backend/app/agent_runtime/assistant/tools/write_tools.py:312-330` — `update_tool_config` 도구 정의 전체 삭제 또는 no-op. **필수**. 그대로 두면 `link.config` AttributeError.
-- `[S] backend/app/agent_runtime/assistant/tools/read_tools.py:60-103` — `get_agent_config` 반환 dict에서 `tools_info`의 `config` 키 제거.
-- `[S] backend/app/agent_runtime/assistant/tools/read_tools.py:124-146` — `get_tool_config` 도구 정의 자체 제거 or 단순화 (config 반환 제거 시 거의 무의미 → **삭제 권장**).
-- `[S] backend/app/schemas/assistant.py:57-62` — `AgentToolInfo.agent_config` 필드 제거 (존재 시).
+- `[S] backend/app/agent_runtime/assistant/tools/write_tools.py:312-330` — 删除整个 `update_tool_config` 工具定义，或改为 no-op。**必须**。保留原样会导致 `link.config` AttributeError。
+- `[S] backend/app/agent_runtime/assistant/tools/read_tools.py:60-103` — 从 `get_agent_config` 返回 dict 的 `tools_info` 中删除 `config` 键。
+- `[S] backend/app/agent_runtime/assistant/tools/read_tools.py:124-146` — 删除 `get_tool_config` 工具定义本身，或做简化（删除 config 返回后几乎没有意义 → **建议删除**）。
+- `[S] backend/app/schemas/assistant.py:57-62` — 删除 `AgentToolInfo.agent_config` 字段（若存在）。
 
-> **이 §5-4 를 빠뜨리면 AI 에이전트 생성 대화 중 도구가 터짐. 젠슨 S3에서 필수 포함.**
+> **如果漏掉 §5-4，AI agent 创建对话中的工具会报错。詹森 S3 必须包含。**
 
 ---
 
-## agent_tools.config 안전성 판단
+## agent_tools.config 安全性判断
 
-### 조사 결과
+### 调查结果
 
-**Write 경로**:
-1. `POST /api/agents` (routers/agents.py → agent_service.create_agent:60-106) — API body의 `tool_configs: [{tool_id, config}]`를 `AgentToolLink.config`에 저장.
-2. `PUT /api/agents/{id}` (agent_service.update_agent:109-144) — `tool_configs` 입력 시 config 업데이트.
-3. **Assistant 내부 `update_tool_config` 도구** (write_tools.py:327) — AI 에이전트 생성 중 대화형으로 link.config를 덮어씀.
+**Write 路径**：
+1. `POST /api/agents`（routers/agents.py → agent_service.create_agent:60-106）— 将 API body 的 `tool_configs: [{tool_id, config}]` 保存到 `AgentToolLink.config`。
+2. `PUT /api/agents/{id}`（agent_service.update_agent:109-144）— 输入 `tool_configs` 时更新 config。
+3. **Assistant 内部 `update_tool_config` 工具**（write_tools.py:327）— 在 AI agent 创建过程中，以对话方式覆盖 link.config。
 
-**Read 경로**:
+**Read 路径**：
 1. `GET /api/agents/{id}` → `_agent_to_response` (routers/agents.py:40) → `ToolBrief.agent_config`
-2. `chat_service.build_tools_config:445` → `merged_auth = {**cred_auth, **(link.config or {})}` — **실제 런타임 auth에 merge됨**
-3. `read_tools.py:70, 142` — assistant `get_agent_config` / `get_tool_config` JSON 응답
+2. `chat_service.build_tools_config:445` → `merged_auth = {**cred_auth, **(link.config or {})}` — **实际 merge 到 runtime auth 中**
+3. `read_tools.py:70, 142` — assistant `get_agent_config` / `get_tool_config` JSON 响应
 
-**프론트엔드 사용 여부**:
+**前端使用情况**：
 - `agent_config` / `tool_configs` / `toolConfigs` / `agentConfig` grep: **No matches found** in `frontend/src/`
-- **프론트엔드 UI는 이 필드를 절대 전송/표시하지 않음**
+- **前端 UI 从不发送/展示该字段**
 
-**현재 DB에 값이 저장되어 있을 가능성**:
+**当前 DB 中可能已存储值的情况**：
 - **LOW to MEDIUM**.
-- PoC 환경(mock user) + UI write 경로 없음 → 대부분의 실제 세팅에서 NULL.
-- 그러나 (a) 과거 TASKS의 "per-agent tool config (예: Google Chat webhook_url)" 목적으로 API 직접 호출 / assistant write tool / pytest fixture가 있음 → 운영 DB에 non-NULL row 존재 가능.
-- pre-check 쿼리 권장: `SELECT COUNT(*) FROM agent_tools WHERE config IS NOT NULL`
+- PoC 环境（mock user）+ 没有 UI write 路径 → 大多数实际设置中为 NULL。
+- 但过去 TASKS 曾以 "per-agent tool config (例如 Google Chat webhook_url)" 为目的，存在直接调用 API / assistant write tool / pytest fixture → 生产 DB 中可能存在 non-NULL row。
+- 建议 pre-check 查询：`SELECT COUNT(*) FROM agent_tools WHERE config IS NOT NULL`
 
-### 판단
+### 判断
 
-**[주의 — agent_tools.config drop은 원자적으로 3개 부분을 동시 정리해야 함]**
+**[注意 — drop agent_tools.config 时必须原子性地同时清理 3 个部分]**
 
 依据：
-1. Merge 로직(`chat_service.py:445`)은 live — 저장된 값이 runtime auth에 실제로 반영된다 (`test_conversations_router.py:280` 증명).
-2. 하지만 **쓰기 경로는 프론트엔드에서 사용하지 않음** → UI 회귀 없음.
-3. Assistant 내부 `update_tool_config` 도구가 live write — **같이 제거하지 않으면 AI 에이전트 생성 대화에서 AttributeError 발생**.
-4. Pydantic 스키마(`ToolConfigEntry`, `AgentUpdate.tool_configs`, `ToolBrief.agent_config`)는 API 외부 contract 변경 — API 클라이언트에 영향.
+1. Merge 逻辑（`chat_service.py:445`）仍是 live — 保存的值会实际反映到 runtime auth 中（`test_conversations_router.py:280` 证明）。
+2. 但**前端未使用 write 路径** → 无 UI 回归。
+3. Assistant 内部 `update_tool_config` 工具是 live write — **如果不一起删除，会在 AI agent 创建对话中发生 AttributeError**。
+4. Pydantic schema（`ToolConfigEntry`, `AgentUpdate.tool_configs`, `ToolBrief.agent_config`）属于 API 外部 contract 变更 — 会影响 API 客户端。
 
-**M6에서 drop 여부**: **YES — 단, 아래 3개 파일은 반드시 **같은 PR**에 포함**:
-1. `backend/app/schemas/agent.py` (ToolConfigEntry / tool_configs / agent_config 필드 제거)
-2. `backend/app/services/agent_service.py` (tool_configs 처리 로직 제거)
-3. `backend/app/agent_runtime/assistant/tools/write_tools.py`, `read_tools.py` (update_tool_config, get_tool_config, get_agent_config.tools[].config 제거)
+**M6 中是否 drop**：**YES — 但下面 3 个文件必须包含在**同一个 PR**中**：
+1. `backend/app/schemas/agent.py`（删除 ToolConfigEntry / tool_configs / agent_config 字段）
+2. `backend/app/services/agent_service.py`（删除 tool_configs 处理逻辑）
+3. `backend/app/agent_runtime/assistant/tools/write_tools.py`, `read_tools.py`（删除 update_tool_config, get_tool_config, get_agent_config.tools[].config）
 
-pre-migration 데이터 백업 권고(m12 upgrade 전):
+建议备份 pre-migration 数据（m12 upgrade 前）：
 ```sql
--- 백업: non-null config가 있다면 사용자에게 노출해 재설정 유도
+-- 备份：若存在 non-null config，则向用户展示并引导重新设置
 SELECT agent_id, tool_id, config FROM agent_tools WHERE config IS NOT NULL;
 ```
 
 ---
 
-## scope creep 차단 체크리스트
+## scope creep 阻断检查表
 
-- [x] 옵션 D (PATCH /api/tools/{id} connection_id) 관련 변경 **0건** — PATCH `/auth-config` 엔드포인트 삭제는 기존 dead API 정리일 뿐 옵션 D 아님. 옵션 D의 새 `connection_id` 파라미터 추가는 M6.1.
-- [x] `ConnectionBindingDialog` / `triggerContext` 관련 로직 변경 **0건** — `useUpdateMCPServer` 사용처는 dead API 정리 목적의 필수 최소 삭제만, binding dialog 리팩토링은 M6.1.
-- [x] M5.5 (`agent_tools.connection_id` override) 관련 변경 **0건**
-- [x] 백엔드 신규 기능 **0건** (m12 migration만 추가)
-- [x] 프론트엔드 신규 기능 **0건**
+- [x] 与选项 D（PATCH /api/tools/{id} connection_id）相关的变更 **0 项** — 删除 PATCH `/auth-config` endpoint 只是清理现有 dead API，不属于选项 D。选项 D 新增 `connection_id` 参数属于 M6.1。
+- [x] 与 `ConnectionBindingDialog` / `triggerContext` 相关的逻辑变更 **0 项** — `useUpdateMCPServer` 使用处仅做清理 dead API 所必需的最小删除，binding dialog 重构属于 M6.1。
+- [x] 与 M5.5（`agent_tools.connection_id` override）相关的变更 **0 项**
+- [x] 后端新功能 **0 项**（仅新增 m12 migration）
+- [x] 前端新功能 **0 项**
 
-**⚠ scope 경계 fuzzy**:
-- `frontend/src/app/tools/page.tsx` 의 MCP 섹션 제거는 CHECKPOINT.md §S4 "thin cleanup"을 초과할 가능성. **저커버그 S4에서 별도 판단 필요** — 타입/API 삭제로 빌드 에러 나는 곳만 최소 수정 vs 전체 MCP 섹션 drop.
-- `PATCH /api/tools/{tool_id}/auth-config` 라우터 삭제 여부 — 기술적으로 dead이지만 삭제는 API contract 변경. 보수 판정: **유지 + internal no-op 처리** 가능하나, 권장은 **삭제** (M6 목표는 "legacy 전체 제거").
+**⚠ scope 边界模糊**：
+- 移除 `frontend/src/app/tools/page.tsx` 的 MCP 部分可能超出 CHECKPOINT.md §S4 "thin cleanup" 的范围。**需由扎克伯格 S4 单独判断** — 是只做类型/API 删除导致 build error 的最小修改，还是 drop 整个 MCP 部分。
+- 是否删除 `PATCH /api/tools/{tool_id}/auth-config` 路由 — 技术上是 dead，但删除属于 API contract 变更。保守判断：可以**保留 + internal no-op 处理**，但建议**删除**（M6 目标是 "彻底删除 legacy"）。
 
 ---
 
-## 젠슨에게 주는 지시 (S3 input)
+## 给詹森的指示（S3 input）
 
-### 1. m12 migration 작성 순서 (upgrade)
+### 1. m12 migration 编写顺序（upgrade）
 
-피차이가 S2에서 상세 스펙을 확정하겠지만 권장 순서:
+皮查伊会在 S2 确定详细规格，但建议顺序如下：
 ```
 1. PRE-CHECK (warning only):
    SELECT COUNT(*) FROM tools WHERE credential_id IS NOT NULL AND connection_id IS NULL
@@ -314,55 +314,55 @@ SELECT agent_id, tool_id, config FROM agent_tools WHERE config IS NOT NULL;
    ALTER TABLE tools DROP COLUMN credential_id, auth_config, mcp_server_id
    ALTER TABLE agent_tools DROP COLUMN config
 4. Table drop:
-   DROP TABLE mcp_servers   -- credential FK ondelete=SET NULL 이므로 단순 drop
+   DROP TABLE mcp_servers   -- 因 credential FK ondelete=SET NULL，可直接 drop
 ```
-downgrade: 구조 복구만, 데이터 복구 불가 (progress.txt 이미 명시).
+downgrade：仅恢复结构，无法恢复数据（progress.txt 已注明）。
 
-### 2. `_resolve_legacy_tool_auth` 처리 방식
+### 2. `_resolve_legacy_tool_auth` 处理方式
 
-**완전 삭제**. 모든 호출처:
-- PREBUILT `provider_name IS NULL` 분기 (chat_service.py:433) — **분기 자체 제거**, PREBUILT는 provider_name 강제. provider_name NULL row는 m10에서 이미 백필되었어야 함 (progress.txt: "m10 백필 실패 row" = 이론상 0).
-- CUSTOM `connection_id IS NULL` 분기 (chat_service.py:319) — **ToolConfigError raise**로 변경. M4/M5에서 모든 CUSTOM tool이 connection 경유로 이관됨 (m11 migration).
-- BUILTIN else (chat_service.py:441-443) — BUILTIN은 auth 필요 없음 → `cred_auth = {}` 로 변경. 혹시 legacy BUILTIN 중 credential 쓰는 것 있는지 검색 필요 — 없으면 완전 제거.
+**完全删除**。所有调用处：
+- PREBUILT `provider_name IS NULL` 分支 (chat_service.py:433) — **删除分支本身**，PREBUILT 强制 provider_name。provider_name NULL row 应已在 m10 中完成 backfill (progress.txt: "m10 backfill 失败 row" = 理论上 0)。
+- CUSTOM `connection_id IS NULL` 分支（chat_service.py:319）— 改为 **raise ToolConfigError**。M4/M5 中所有 CUSTOM tool 都已通过 connection 完成迁移（m11 migration）。
+- BUILTIN else（chat_service.py:441-443）— BUILTIN 不需要 auth → 改为 `cred_auth = {}`。还需搜索是否存在使用 credential 的 legacy BUILTIN — 若没有则完全删除。
 
-**PRE-CHECK 미충족 시 migration 실패 처리**: `credential_id IS NOT NULL AND connection_id IS NULL` row가 존재하면 upgrade abort하고 수동 이관 요구. 이미 CHECKPOINT.md §리스크 #3에 명시.
+**PRE-CHECK 未满足时让 migration 失败**：若存在 `credential_id IS NOT NULL AND connection_id IS NULL` row，则 abort upgrade 并要求手动迁移。已在 CHECKPOINT.md §风险 #3 中说明。
 
-### 3. 테스트 편집 가이드라인
+### 3. 测试编辑指南
 
-핵심 3가지:
+核心 3 点：
 
-**(a) Import/fixture sweep 먼저**
-- 모든 테스트 파일에서 `from app.models.tool import ..., MCPServer, ...` → `MCPServer` 제거하고 grep 0 확인
-- `AgentToolLink(... config=...)` → `AgentToolLink(...)` 일괄 삭제. ripgrep 회차:
+**(a) 先做 Import/fixture sweep**
+- 从所有测试文件中的 `from app.models.tool import ..., MCPServer, ...` 移除 `MCPServer`，并确认 grep 为 0
+- 将 `AgentToolLink(... config=...)` → `AgentToolLink(...)` 批量删除。ripgrep 轮次：
   ```
   rg "AgentToolLink\([^)]*config=" backend/tests/
   ```
-- `Tool(... auth_config=...)` / `Tool(... credential_id=...)` / `Tool(... mcp_server_id=...)` 모두 제거. PREBUILT tool fixture는 connection 경유로 재작성.
+- 全部删除 `Tool(... auth_config=...)` / `Tool(... credential_id=...)` / `Tool(... mcp_server_id=...)`。PREBUILT tool fixture 改写为经由 connection。
 
-**(b) connection path 테스트 **유지 필수****
-- `test_connection_mcp_resolve.py` / `test_connection_custom_resolve.py` / `test_connection_prebuilt_resolve.py` 의 connection-path `[K]` 테스트는 m12 이후 **반드시 통과해야 M6 ready**. 삭제하지 말 것.
-- m9/m10/m11 migration helper 테스트도 유지 (downgrade 불가 선언이 있어도 helper contract는 여전히 유효).
+**(b) connection path 测试**必须保留****
+- `test_connection_mcp_resolve.py` / `test_connection_custom_resolve.py` / `test_connection_prebuilt_resolve.py` 的 connection-path `[K]` 测试在 m12 之后**必须通过才能视为 M6 ready**。不要删除。
+- m9/m10/m11 migration helper 测试也保留（即使声明 downgrade 不可用，helper contract 仍然有效）。
 
-**(c) scope 엄수**
-- `test_agent_tool_config.py` 파일 전체 삭제는 agent_tools.config drop 확정 시에만. 만약 사용자가 "agent_tools.config 유지"로 scope 변경하면 이 파일도 유지해야 함.
-- `test_tools.py`, `test_tools_router_extended.py`에서 `[D]` 표시된 MCP 전용 테스트만 삭제. CUSTOM / provider_name / connection_id 관련 테스트는 grep 으로 재확인 후 유지.
+**(c) 严格遵守 scope**
+- 只有在确定 drop agent_tools.config 时，才删除整个 `test_agent_tool_config.py` 文件。如果用户把 scope 改为 "保留 agent_tools.config"，则该文件也必须保留。
+- `test_tools.py`, `test_tools_router_extended.py` 中只删除标记为 `[D]` 的 MCP 专用测试。CUSTOM / provider_name / connection_id 相关测试用 grep 再次确认后保留。
 
-### 추가 권고
+### 追加建议
 
-- **`PATCH /api/tools/{tool_id}/auth-config` 라우터 삭제 여부는 사티아와 사전 합의**. M6 스코프 외로 남기면 dead code이되 안전. 삭제 권고하나 최종 결정은 사티아.
-- **`ToolCustomCreate.auth_config`/`credential_id` 필드** 삭제 범위 — 프론트가 이 필드를 여전히 보내는지 grep 필수. `frontend/src/lib/types/index.ts:359` 참조로 보낼 가능성 있음 (CUSTOM 생성 시 legacy auth 경로). 확인 후 결정.
-- **cascade 경로 검증**: m12 upgrade 후 `uv run pytest` full run에서 `AttributeError: 'Tool' object has no attribute 'auth_config'` 류 에러가 0이어야 함. grep:
+- **是否删除 `PATCH /api/tools/{tool_id}/auth-config` 路由，要提前与萨提亚达成一致**。若留在 M6 scope 外，虽是 dead code 但安全。建议删除，但最终决定由萨提亚做出。
+- **`ToolCustomCreate.auth_config`/`credential_id` 字段**的删除范围 — 必须 grep 前端是否仍在发送这些字段。`frontend/src/lib/types/index.ts:359` 的引用表明可能会发送（创建 CUSTOM 时使用 legacy auth 路径）。确认后再决定。
+- **验证 cascade 路径**：m12 upgrade 后运行完整 `uv run pytest`，`AttributeError: 'Tool' object has no attribute 'auth_config'` 一类错误必须为 0。grep：
   ```
   rg "\.auth_config|\.credential_id|\.mcp_server(_id)?|\.mcp_server\b" backend/app/
   ```
-  이것을 S3 끝에 **반드시** 실행.
+  这一步在 S3 结束时**必须**执行。
 
 ---
 
-## 검증 체크
+## 验证检查
 
-- [x] 파일:라인 단위 제거 목록 완비
-- [x] agent_tools.config safety 판단 — 3-파트 동시 정리 요구 명시
-- [x] 테스트 유지/삭제 함수별 표
-- [x] scope creep 차단 체크리스트
-- [x] 젠슨 S3 가이드 3개 핵심
+- [x] 已完备文件:行级别的删除列表
+- [x] agent_tools.config safety 判断 — 已明确要求同时清理 3 个部分
+- [x] 测试按函数列出的保留/删除表
+- [x] scope creep 阻断检查表
+- [x] 詹森 S3 指南的 3 个核心点

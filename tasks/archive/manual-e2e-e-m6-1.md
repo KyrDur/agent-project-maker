@@ -1,6 +1,6 @@
 # M6.1 수동 E2E 시나리오
 
-**작성자**: 베조스 (QA DRI)
+**作者**：贝索斯 (QA DRI)
 **작성일**: 2026-04-25 (M7 시나리오 추가: 2026-04-25)
 **브랜치**: `feature/backlog-e-m6-1` (8 commits: M2 `10c55dc` / M3 `7d3fef0` / M4 `87b173e` / M5 `b24ef1b` / M7 `0dc1610` + `5e872e2` / docs `1c04481` + `b40e399`)
 **대상**: `tool.connection_id` single source of truth + MCP legacy drop + MCP 신규 등록 복원 (M7)

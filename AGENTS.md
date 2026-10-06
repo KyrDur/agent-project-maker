@@ -1,6 +1,6 @@
 # Moldy — AI Agent Builder
 
-<!-- project-current-source: migration=m77_side_chat_link; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-10 -->
+<!-- project-current-source: migration=m85_project_simulation; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-10-06 -->
 
 一个无需代码即可创建、聊天并调度 AI Agent 的 Web 应用。
 **已根据 ADR-016 完成多用户认证**（JWT + super_user）。运营者（super_user）与普通用户的权限已分离。

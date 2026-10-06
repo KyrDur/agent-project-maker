@@ -1,6 +1,6 @@
 # E2E Coverage Matrix
 
-<!-- e2e-current-source: profile-personalization=covered; refreshed=2026-09-08 -->
+<!-- e2e-current-source: profile-personalization=covered; refreshed=2026-10-06 -->
 
 Living record of Playwright E2E coverage across Moldy's feature surface.
 Update this whenever you add/change a spec or ship a user-facing feature.

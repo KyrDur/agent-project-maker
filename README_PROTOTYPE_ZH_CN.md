@@ -1,3 +1,7 @@
+<!-- project-current-source: migration=m85_project_simulation; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-10-06 -->
+
+> 这是原型项目技术说明的中文译本，保留原有日期、来源和历史设计。当前产品目标、三模型分工与验收状态请阅读 [README.md](README.md)。
+
 <div align="center">
 
 <img src="docs/images/moldy-mascot.webp" alt="Moldy 吉祥物" width="160">
@@ -14,11 +18,11 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-韩语 · [English](README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+简体中文 · [当前项目说明](README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 [Overview](#-overview) · [快速回答](#-快速回答) · [Quick Start](#-quick-start) · [可信依据](#-可信依据) · [功能](#-功能) · [架构](#-架构)
 
-<!-- project-current-source: migration=m76_pinned_conv_summaries; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-08 -->
+<!-- project-prototype-source: migration=m76_pinned_conv_summaries; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-08 -->
 
 **最后更新：** 2026年9月5日 · **Repository:** [YooSuhwa/natural-mold](https://github.com/YooSuhwa/natural-mold) · **License:** [MIT](LICENSE)
 
