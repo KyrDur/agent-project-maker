@@ -1175,7 +1175,11 @@ export function useChatRuntime({
             return
           }
           toast.error(tReconnect('failed'), { id: TOAST_ID_RECONNECT_FAILED })
-          reportClientError('useChatRuntime', 'Stream resume failed:', err)
+          if (err instanceof StreamApiError && err.status >= 400 && err.status < 500) {
+            reportClientWarning('useChatRuntime', 'Stream resume rejected:', err)
+          } else {
+            reportClientError('useChatRuntime', 'Stream resume failed:', err)
+          }
         },
       })
       try {
@@ -1194,7 +1198,11 @@ export function useChatRuntime({
           if (options.propagateFailure && !resumeWasAccepted) throw err
           return
         }
-        reportClientError('useChatRuntime', 'Stream error:', err)
+        if (err instanceof StreamApiError && err.status >= 400 && err.status < 500) {
+          reportClientWarning('useChatRuntime', 'Stream request rejected:', err)
+        } else {
+          reportClientError('useChatRuntime', 'Stream error:', err)
+        }
         if (options.propagateFailure && !resumeWasAccepted) throw err
       }
     },

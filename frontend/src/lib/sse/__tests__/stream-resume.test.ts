@@ -5,6 +5,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Decision } from '@/lib/types'
 import { streamResumeDecisions } from '../stream-resume'
+import { streamBuilderResume } from '../stream-builder-resume'
+import { serializeQuestionFlowResponse } from '@/lib/chat/decision-mappers'
 
 // ---------------------------------------------------------------------------
 // 将 fetchEventSource 替换为 fake — 只捕获 body 就足够（stream 本身为空
@@ -97,5 +99,46 @@ describe('streamResumeDecisions', () => {
     await drain(streamResumeDecisions('conv-3', [{ type: 'approve' }]))
     expect(captured[0].headers['Content-Type']).toBe('application/json')
     expect(captured[0].headers['Accept']).toBe('text/event-stream')
+  })
+})
+
+describe('streamBuilderResume', () => {
+  it('submits long confirmed requirements without truncating answers or the authored reason', async () => {
+    const goal = 'Validate customer support using simulated order and refund records. '.repeat(20)
+    const reason = 'I want to verify queries and recovery before adding more scenarios. '.repeat(10)
+    const response = serializeQuestionFlowResponse(
+      [
+        { id: 'goal', label: 'Goal', type: 'single_select', options: [{ id: goal, label: goal }] },
+        { id: 'requirements_reason', label: 'Reason', type: 'text' },
+      ],
+      { goal: [goal], requirements_reason: [reason] },
+    )
+    const decisions: Decision[] = [{ type: 'respond', message: response.message }]
+    await drain(
+      streamBuilderResume(
+        'builder-long',
+        decisions,
+        undefined,
+        response.displayText,
+        'interrupt-1',
+      ),
+    )
+    expect(captured[0].body).toEqual({
+      locale: expect.any(String),
+      decisions,
+      display_text: expect.stringMatching(/…$/),
+      interrupt_id: 'interrupt-1',
+    })
+    const body = captured[0].body as { display_text: string; decisions: Decision[] }
+    expect(Array.from(body.display_text).length).toBeLessThanOrEqual(200)
+    expect(JSON.parse(body.decisions[0].message ?? '').answers).toEqual({
+      goal: [goal],
+      requirements_reason: [reason],
+    })
+  })
+
+  it('leaves a short display summary unchanged', async () => {
+    await drain(streamBuilderResume('builder-short', [{ type: 'approve' }], undefined, 'Confirmed'))
+    expect(captured[0].body).toMatchObject({ display_text: 'Confirmed' })
   })
 })

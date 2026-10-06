@@ -2139,7 +2139,7 @@
       "allowForSession": "Allow for the rest of this session"
     },
     "userInput": {
-      "placeholder": "Placeholder",
+      "placeholder": "Enter your answer…",
       "sending": "Sending",
       "sent": "Sent",
       "send": "Send",
@@ -2160,7 +2160,13 @@
       "customAnswerPlaceholder": "Type your own answer…",
       "selectionRange": "Select {min} to {max}",
       "confirmSelection": "Confirm ({count})",
-      "resumeFailed": "Could not send the response. Try again."
+      "resumeFailed": "Submission failed. Your answers are preserved. Retry, or go back to review and revise them.",
+      "requirementsReasonLabel": "Why do you agree with these requirements and simulation rules?",
+      "requirementsReasonHelp": "Explain in your own words whether these requirements match the Agent you want and why you agree to validate it with these simulation rules. Your words will be saved in the project report and will not be scored. Go back to revise requirements that do not match your intent.",
+      "requirementsReview": "Review the requirements and simulation rules you confirmed",
+      "requirementsReasonExampleLabel": "Example: ecommerce support (use your own reasoning)",
+      "requirementsReasonExample": "I want to first verify that the Agent understands customer questions and correctly queries and handles simulated orders, so I agree with these requirements and will validate the workflow using simulated data.",
+      "requirementsReasonPlaceholder": "For example: I want to validate …, so I agree with these requirements and the … simulation rules."
     },
     "clarifying": {
       "directInput": "Direct Input",

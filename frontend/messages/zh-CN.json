@@ -2139,7 +2139,7 @@
       "allowForSession": "留出本次会议的剩余时间"
     },
     "userInput": {
-      "placeholder": "占位符",
+      "placeholder": "请输入你的回答…",
       "sending": "发送",
       "sent": "已发送",
       "send": "发送",
@@ -2151,7 +2151,7 @@
       "expiresIn": "到期时间",
       "expired": "已过期",
       "autoSkipped": "自动跳过",
-      "stepStatus": "{total} 的步骤 {current}",
+      "stepStatus": "第 {current} 步，共 {total} 步",
       "back": "返回",
       "next": "下一步",
       "complete": "完成",
@@ -2160,7 +2160,13 @@
       "customAnswerPlaceholder": "输入您自己的答案...",
       "selectionRange": "选择{min}至{max}",
       "confirmSelection": "确认（{count}）",
-      "resumeFailed": "无法发送响应。再试一次。"
+      "resumeFailed": "提交失败，已保留填写内容。请重试；仍有问题时可返回检查并修改。",
+      "requirementsReasonLabel": "为什么认可这些需求和模拟规则？",
+      "requirementsReasonHelp": "请用自己的话说明：这些需求是否符合你想做的 Agent，以及为什么同意先用这些模拟规则验证它。这句话会原样保存在项目报告中，不用于评分。如果需求不符合你的想法，可以返回修改。",
+      "requirementsReview": "查看前面已确认的需求和模拟规则",
+      "requirementsReasonExampleLabel": "示例：电商客服（请按自己的实际想法填写）",
+      "requirementsReasonExample": "我希望先验证 Agent 能否理解客户问题，并正确查询和处理模拟订单，所以认可这些需求，先用模拟数据验证流程。",
+      "requirementsReasonPlaceholder": "例如：我希望先验证……，所以认可这些需求，并同意使用……模拟规则。"
     },
     "clarifying": {
       "directInput": "直接输入",

@@ -105,6 +105,27 @@ class TestDecisionsToBuilderResponse:
 
 class TestResumeRouterContract:
     @pytest.mark.asyncio
+    async def test_long_authored_answers_with_bounded_display_summary(
+        self, client: AsyncClient, db: AsyncSession
+    ):
+        session_id = await _seed_session(db)
+        captured, fake = _capture_resume_payload()
+        # Full answers carry the decision; display_text is only a short summary.
+        authored_answer = '{"requirements_reason": "' + "Validate simulated orders. " * 100 + '"}'
+        with patch("app.routers.builder.builder_service.run_v3_resume_stream", side_effect=fake):
+            response = await client.post(
+                f"/api/builder/{session_id}/messages/resume",
+                json={
+                    "decisions": [{"type": "respond", "message": authored_answer}],
+                    "display_text": "s" * 199 + "…",
+                    "interrupt_id": "confirmed-requirements",
+                },
+            )
+        assert response.status_code == 200
+        assert captured[0]["response"] == authored_answer
+        assert captured[0]["interrupt_id"] == "confirmed-requirements"
+
+    @pytest.mark.asyncio
     async def test_resume_accepts_standard_decisions(self, client: AsyncClient, db: AsyncSession):
         """标准 ``{decisions: [{type:'respond', message:'选项 A'}]}`` → 200 + builder
         helper 转为 string ``"选项 A"`` 后传给 graph。"""

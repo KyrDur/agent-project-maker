@@ -21,7 +21,12 @@ export async function* streamBuilderResume(
     {
       locale: getActiveClientLocale(),
       decisions,
-      display_text: displayText,
+      // This optional transport summary is bounded by the router. The full
+      // authored answers and reasons remain unchanged in decisions[].message.
+      display_text:
+        displayText && Array.from(displayText).length > 200
+          ? `${Array.from(displayText).slice(0, 199).join('')}…`
+          : displayText,
       interrupt_id: interruptId ?? null,
     },
     signal,
