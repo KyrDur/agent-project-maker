@@ -32,7 +32,7 @@ async def test_update_profile_changes_display_name_and_letter_avatar(raw_client:
         json={
             "display_name": "用户",
             "avatar_mode": "initials",
-            "avatar_initials": "체",
+            "avatar_initials": "体",
             "avatar_color": "sky",
         },
         headers={"X-CSRF-Token": csrf},
@@ -42,7 +42,7 @@ async def test_update_profile_changes_display_name_and_letter_avatar(raw_client:
     user = resp.json()
     assert user["display_name"] == "用户"
     assert user["avatar_mode"] == "initials"
-    assert user["avatar_initials"] == "체"
+    assert user["avatar_initials"] == "体"
     assert user["avatar_color"] == "sky"
     assert user["avatar_image_url"] is None
 

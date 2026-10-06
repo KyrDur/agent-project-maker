@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { protocolSubagentNames } from '../subagent-names-events'
 
 describe('protocolSubagentNames', () => {
-  it('moldy.subagent_names custom 이벤트에서 매핑을 파싱한다', () => {
+  it('从 moldy.subagent_names custom 事件中解析映射', () => {
     const event = {
       method: 'custom',
       event_id: 'run-1:subagent_names',
@@ -21,7 +21,7 @@ describe('protocolSubagentNames', () => {
     })
   })
 
-  it('custom: prefixed method 형식도 인식한다', () => {
+  it('也识别 custom: prefixed method 形式', () => {
     const event = {
       method: 'custom:moldy.subagent_names',
       params: { data: { payload: { names: { a: 'A' } } } },
@@ -30,7 +30,7 @@ describe('protocolSubagentNames', () => {
     expect(protocolSubagentNames(event)).toEqual({ a: 'A' })
   })
 
-  it('다른 custom 이벤트(compaction 등)는 무시한다', () => {
+  it('忽略其他 custom 事件（compaction 等）', () => {
     const event = {
       method: 'custom',
       params: { data: { name: 'moldy.compaction', payload: { state: 'running' } } },
@@ -39,7 +39,7 @@ describe('protocolSubagentNames', () => {
     expect(protocolSubagentNames(event)).toBeNull()
   })
 
-  it('빈 문자열/비문자열 display name은 제외한다', () => {
+  it('排除空字符串/非字符串 display name', () => {
     const event = {
       method: 'custom',
       params: {
@@ -50,7 +50,7 @@ describe('protocolSubagentNames', () => {
     expect(protocolSubagentNames(event)).toEqual({ c: '作者' })
   })
 
-  it('names가 비었으면 null을 반환한다', () => {
+  it('names 为空时返回 null', () => {
     const event = {
       method: 'custom',
       params: { data: { name: 'moldy.subagent_names', payload: {} } },

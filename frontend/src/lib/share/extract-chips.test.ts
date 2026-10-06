@@ -18,8 +18,8 @@ describe('extractChips', () => {
   it('content 전용 turn은 빈 배열을 반환한다', () => {
     const turn = _turn([
       { id: 'm1-1', event: 'message_start', data: { id: 'm1' } },
-      { id: 'm1-2', event: 'content_delta', data: { delta: '안녕' } },
-      { id: 'm1-3', event: 'message_end', data: { content: '안녕', usage: {} } },
+      { id: 'm1-2', event: 'content_delta', data: { delta: '你好' } },
+      { id: 'm1-3', event: 'message_end', data: { content: '你好', usage: {} } },
     ])
     expect(extractChips(turn)).toEqual([])
   })

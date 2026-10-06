@@ -20,10 +20,10 @@ import {
 } from 'lucide-react'
 
 // ──────────────────────────────────────────────
-// toolIcon — 채팅 도구 pill/그룹 헤더의 leading 아이콘 해석.
+// toolIcon——解析聊天工具 pill/group header 的 leading 图标。
 //
-// 런타임 주입 빌트인 + 알려진 registry 도구는 "미리 정해진 세트"라 이름 기준
-// 고정 매핑을 둔다. 매핑에 없는 도구(임의 MCP 등)는 generic 렌치로 폴백.
+// runtime 注入的内置工具 + 已知 registry 工具属于"预定义集合"，因此按名称使用
+// 固定映射。映射中没有的工具（任意 MCP 等）回退为 generic 扳手图标。
 // (도구가 가진 backend ``icon_id``를 채팅까지 노출하는 건 후속 — 현재 ToolBrief는
 // icon_id를 싣지 않는다.)
 // ──────────────────────────────────────────────

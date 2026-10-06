@@ -33,36 +33,36 @@ function serverMessage(overrides: Partial<MoldyMessage>): MoldyMessage {
 describe('appendPendingNewSubmitMessage', () => {
   it('inserts the optimistic human bubble at the captured base index in the normal case', () => {
     const messages = [
-      new HumanMessage({ id: 'u-1', content: '첫 질문' }),
+      new HumanMessage({ id: 'u-1', content: '第一个问题' }),
       new AIMessage({ id: 'a-1', content: '回应' }),
     ]
 
-    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('두번째 질문', 2))
+    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('第二个问题', 2))
 
     expect(result).toHaveLength(3)
-    expect(isHumanMessage(result[2]) ? result[2].content : null).toBe('두번째 질문')
+    expect(isHumanMessage(result[2]) ? result[2].content : null).toBe('第二个问题')
   })
 
   it('clamps the insertion to the tail when the raw list shrinks below baseMessageCount', () => {
     // baseMessageCount captured at 4, but the list shrank to 2 messages between
     // capture and render. The captured index must not insert mid-list.
     const messages = [
-      new HumanMessage({ id: 'u-1', content: '첫 질문' }),
+      new HumanMessage({ id: 'u-1', content: '第一个问题' }),
       new AIMessage({ id: 'a-1', content: '回应' }),
     ]
 
-    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('두번째 질문', 4))
+    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('第二个问题', 4))
 
     expect(result).toHaveLength(3)
     // The optimistic bubble lands at the tail, never mid-list.
-    expect(isHumanMessage(result[2]) ? result[2].content : null).toBe('두번째 질문')
+    expect(isHumanMessage(result[2]) ? result[2].content : null).toBe('第二个问题')
     expect(result.slice(0, 2)).toEqual(messages)
   })
 
   it('does not insert when the pending message is already visible', () => {
-    const messages = [new HumanMessage({ id: 'u-1', content: '이미 보임' })]
+    const messages = [new HumanMessage({ id: 'u-1', content: '已显示' })]
 
-    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('이미 보임', 0))
+    const result = appendPendingNewSubmitMessage(messages, pendingSubmit('已显示', 0))
 
     expect(result).toBe(messages)
   })
@@ -94,7 +94,7 @@ describe('messagesFromServerMessages', () => {
 
   it('does not attach a non-empty tool_calls array for plain assistant text turns', () => {
     const converted = messagesFromServerMessages([
-      serverMessage({ id: 'assistant-text', role: 'assistant', content: '안녕하세요' }),
+      serverMessage({ id: 'assistant-text', role: 'assistant', content: '你好' }),
     ])
 
     const message = converted[0]

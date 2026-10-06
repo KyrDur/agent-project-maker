@@ -241,10 +241,10 @@ async def test_messages_envelope_reports_canceled_latest_run(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """취소된 run 은 active_run 에서 사라지지만 latest_run 으로는 보여야 한다.
+    """canceled run 会从 active_run 消失，但仍应通过 latest_run 可见。
 
-    프론트가 refetch/새로고침 후에도 "被遗弃" notice 를 durable 하게 렌더하는
-    근거 데이터 — active_run 만 있으면 terminal 상태가 유실된다.
+    这是 frontend 在 refetch/刷新 后仍能 durable 渲染 "被遗弃" notice 的
+    依据数据 — 只有 active_run 会丢失 terminal 状态。
     """
     agent, conversation = await _seed_agent_conversation(db)
     run = await conversation_run_service.create_run(
@@ -273,7 +273,7 @@ async def test_messages_envelope_latest_run_prefers_newest(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """취소 이후 새 turn 이 완료되면 latest_run 은 최신 run 을 가리킨다."""
+    """cancel 后新的 turn 完成时，latest_run 应指向最新 run。"""
     agent, conversation = await _seed_agent_conversation(db)
     canceled = await conversation_run_service.create_run(
         db,
@@ -479,8 +479,8 @@ async def test_run_stream_emits_stale_gap_marker_when_last_event_evicted(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """last_event_id 가 ring buffer 에서 evict 되면 silent gap 대신 stale 마커 +
-    buffer 잔여분 replay 로 degrade 한다."""
+    """当 last_event_id 从 ring buffer 中被 evict 时，用 stale marker +
+    replay buffer 剩余部分来 degrade，而不是 silent gap。"""
     agent, conversation = await _seed_agent_conversation(db)
     run = await conversation_run_service.create_run(
         db,
@@ -512,7 +512,7 @@ async def test_run_stream_emits_stale_gap_marker_when_last_event_evicted(
             "data": {"delta": "first"},
         }
     )
-    # buffer_size=2 — 세 번째 publish 로 event 1 이 evict 된다.
+    # buffer_size=2 — 第3次 publish 时 event 1 被 evict。
     broker.publish_nowait(
         {
             "id": f"{run.id}-3",
@@ -531,7 +531,7 @@ async def test_run_stream_emits_stale_gap_marker_when_last_event_evicted(
     assert resp.status_code == 200
     assert resp.headers["x-resume-mode"] == "live"
     assert "broker_gap" in resp.text
-    # buffer 에 남은 두 이벤트는 정상 replay
+    # 正常 replay buffer 中剩余的两个事件
     assert "first" in resp.text
     assert "second" in resp.text
 

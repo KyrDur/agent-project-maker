@@ -74,8 +74,8 @@ def test_stored_query_becomes_schema_default_and_is_overridable() -> None:
     model_cls = cast(type[Any], model_cls)
     instance_default = model_cls()
     assert instance_default.query == "pinned"
-    instance_overridden = model_cls(query="새 키워드")
-    assert instance_overridden.query == "새 키워드"
+    instance_overridden = model_cls(query="新关键词")
+    assert instance_overridden.query == "新关键词"
 
 
 def test_create_tool_for_runtime_attaches_args_schema() -> None:
@@ -90,10 +90,10 @@ def test_create_tool_for_runtime_attaches_args_schema() -> None:
     assert "query" in schema.model_fields
 
 
-def test_create_tool_for_runtime_uses_vertex_safe_name_for_korean_tool_name() -> None:
+def test_create_tool_for_runtime_uses_vertex_safe_name_for_non_ascii_tool_name() -> None:
     """Provider tool schemas require ASCII-ish function names."""
 
-    tool = create_tool_for_runtime(_naver_news_config(name="네이버 뉴스 검색"))
+    tool = create_tool_for_runtime(_naver_news_config(name="新闻搜索"))
 
     assert tool is not None
     assert tool.name == "naver_search_news"
@@ -124,10 +124,10 @@ async def test_runtime_arg_overrides_stored_query_at_invocation() -> None:
         with patch("app.agent_runtime.tool_factory.httpx.AsyncClient") as client_cls:
             client_cls.return_value.__aenter__ = AsyncMock(return_value=object())
             client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-            await tool_coroutine(tool)(query="한컴 최신 뉴스")
+            await tool_coroutine(tool)(query="Hancom 最新新闻")
 
     assert "verify" in client_cls.call_args.kwargs
-    assert captured["params"]["query"] == "한컴 최신 뉴스"
+    assert captured["params"]["query"] == "Hancom 最新新闻"
 
 
 @pytest.mark.asyncio
@@ -145,8 +145,8 @@ async def test_registry_tool_reuses_shared_http_client_across_invocations() -> N
         with patch("app.agent_runtime.tool_factory.httpx.AsyncClient") as client_cls:
             client_cls.return_value.__aenter__ = AsyncMock(return_value=object())
             client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-            await tool_coroutine(tool)(query="첫 번째")
-            await tool_coroutine(tool)(query="두 번째")
+            await tool_coroutine(tool)(query="第一个")
+            await tool_coroutine(tool)(query="第二个")
 
     assert client_cls.call_count == 1
     assert len(captured_clients) == 2

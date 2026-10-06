@@ -2,10 +2,10 @@
 
 CHECKPOINT.md M1 done-when:
 - publish/subscribe (single + multi listener)
-- ring buffer maxlen 초과 시 oldest drop
-- subscribe(after_id=...) → after_id 이후만
-- close 후 subscribe = buffer만 받고 즉시 종료
-- queue maxsize 초과 시 slow listener disconnect (다른 listener 정상)
+- ring buffer maxlen 超出时 oldest drop
+- subscribe(after_id=...) → 仅 after_id 之后
+- close 后 subscribe = 仅接收 buffer 并立即结束
+- queue maxsize 超出时 slow listener disconnect（其他 listener 正常）
 - registry idempotency / evict_expired / close_for_conversation
 """
 
@@ -31,8 +31,9 @@ def _make_event(seq: int, *, msg_id: str = "run-1") -> BrokeredEvent:
     }
 
 
-async def _collect(broker: EventBroker, *, after_id: str | None = None,
-                   limit: int | None = None) -> list[BrokeredEvent]:
+async def _collect(
+    broker: EventBroker, *, after_id: str | None = None, limit: int | None = None
+) -> list[BrokeredEvent]:
     events: list[BrokeredEvent] = []
     async for evt in broker.subscribe(after_id=after_id):
         events.append(evt)
@@ -61,7 +62,7 @@ async def test_publish_subscribe_single_listener() -> None:
 
 
 async def test_subscribe_after_id_replays_only_newer() -> None:
-    """Plan 시나리오 — 5개 publish → subscribe(after_id=event3) → 4,5만."""
+    """Plan 场景 — 5个 publish → subscribe(after_id=event3) → 仅4,5。"""
     broker = EventBroker("run-1")
     for i in range(1, 6):
         await broker.publish(_make_event(i))
@@ -81,15 +82,13 @@ async def test_subscribe_no_after_id_replays_full_buffer() -> None:
 
 
 async def test_subscribe_after_id_unknown_yields_nothing_in_replay() -> None:
-    """after_id가 buffer에 없으면 (이미 evict 또는 미래 id) replay 단계에서
-    아무것도 안 내보낸다. 라이브 모드에서 새 publish만 받는다."""
+    """如果 after_id 不在 buffer 中（已经 evict 或为未来 id），则 replay 阶段
+    不输出任何内容。live 模式下只接收新的 publish。"""
     broker = EventBroker("run-1")
     for i in range(1, 4):
         await broker.publish(_make_event(i))
 
-    consumer_task = asyncio.create_task(
-        _collect(broker, after_id="nonexistent-id", limit=1)
-    )
+    consumer_task = asyncio.create_task(_collect(broker, after_id="nonexistent-id", limit=1))
     await asyncio.sleep(0)
     await broker.publish(_make_event(99))
 
@@ -132,7 +131,7 @@ async def test_ring_buffer_drops_oldest() -> None:
 
 
 async def test_subscribe_after_ring_eviction_returns_buffer_only() -> None:
-    """버퍼가 oldest를 drop한 후 새 listener는 남아있는 것만 본다."""
+    """buffer drop oldest 后，新 listener 只看到剩余内容。"""
     broker = EventBroker("run-1", buffer_size=3)
     for i in range(1, 6):
         await broker.publish(_make_event(i))
@@ -170,12 +169,12 @@ async def test_close_terminates_subscribe() -> None:
 
 
 async def test_subscribe_aclose_releases_listener_slot() -> None:
-    """N-3: subscribe AsyncGenerator 가 끊기면 ``_listeners.discard`` 가 실행되어
-    broker._listeners 가 0 으로 수렴해야 한다.
+    """N-3: subscribe AsyncGenerator 断开时，应执行 ``_listeners.discard``，
+    broker._listeners 应收敛到 0。
 
-    그렇지 않으면 publish path 가 dead queue 에 ``put_nowait`` 를 시도하다
-    backpressure 가 잘못 작동하거나 메모리 누수. router 통합에서는 httpx ASGI
-    disconnect 타이밍이 비결정적이라 이 invariant 는 unit 으로 잡는다.
+    否则 publish path 会尝试向 dead queue 执行 ``put_nowait``，
+    导致 backpressure 错误工作或内存泄漏。router 集成中 httpx ASGI
+    disconnect 时机具有不确定性，因此该 invariant 由 unit 测试覆盖。
     """
     broker = EventBroker("run-1")
     await broker.publish(_make_event(1))
@@ -183,16 +182,16 @@ async def test_subscribe_aclose_releases_listener_slot() -> None:
     agen = broker.subscribe()
     first = await agen.__anext__()
     assert first["id"] == "run-1-1"
-    # listener 가 등록된 상태.
+    # listener 已注册状态。
     assert len(broker._listeners) == 1  # noqa: SLF001 — invariant probe
 
-    # client disconnect 시뮬레이션 — generator close.
+    # 模拟 client disconnect — generator close。
     await agen.aclose()
 
     assert len(broker._listeners) == 0, (  # noqa: SLF001
-        "subscribe finally 블록이 listener 를 정리하지 않음"
+        "subscribe finally 块未清理 listener"
     )
-    # broker 는 살아있어야 (다른 listener 등록 가능).
+    # broker 应保持存活（可注册其他 listener）。
     assert not broker.is_closed
     broker.close()
 
@@ -234,7 +233,7 @@ async def test_close_is_idempotent() -> None:
 
 
 async def test_slow_listener_disconnect() -> None:
-    """가득 찬 queue를 가진 slow listener는 disconnect되고 fast listener는 정상."""
+    """拥有已满 queue 的 slow listener 会 disconnect，fast listener 正常。"""
     broker = EventBroker("run-1", listener_queue_maxsize=3)
 
     fast_received: list[BrokeredEvent] = []
@@ -246,7 +245,7 @@ async def test_slow_listener_disconnect() -> None:
             fast_received.append(evt)
 
     async def slow_consume() -> None:
-        # 등록만 하고 첫 await 후 절대 진행하지 않게 한다.
+        # 只注册，并使其在第一次 await 后绝不继续。
         agen = broker.subscribe()
         started.set()
         # Pull a single event then sleep — queue will fill.
@@ -307,7 +306,7 @@ def test_registry_get_or_create_idempotent() -> None:
 
 
 def test_registry_get_or_create_replaces_closed() -> None:
-    """Closed broker는 같은 run_id로 재생성 시 새 인스턴스로 교체."""
+    """Closed broker 使用相同 run_id 重新创建时替换为新实例。"""
     reg = BrokerRegistry()
     b1 = reg.get_or_create("run-x")
     b1.close()
@@ -325,7 +324,7 @@ def test_registry_evict_expired_removes_closed() -> None:
     reg = BrokerRegistry()
     b = reg.get_or_create("run-x")
     b.close()
-    # ttl=0 → 모든 닫힌 broker는 즉시 evict 대상.
+    # ttl=0 → 所有已关闭 broker 立即成为 evict 对象。
     evicted = reg.evict_expired(ttl_seconds=0)
     assert evicted == 1
     assert reg.get("run-x") is None
@@ -343,7 +342,7 @@ def test_registry_evict_expired_respects_ttl() -> None:
     reg = BrokerRegistry()
     b = reg.get_or_create("run-x")
     b.close()
-    # ttl=300s → 방금 닫힌 broker는 아직 evict 대상 아님.
+    # ttl=300s → 刚关闭的 broker 尚不是 evict 对象。
     evicted = reg.evict_expired(ttl_seconds=300)
     assert evicted == 0
     assert reg.get("run-x") is not None
@@ -373,7 +372,7 @@ def test_registry_close_for_conversation_skips_already_closed() -> None:
 def test_registry_close_for_conversation_logs_when_count_positive(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """M-6: 정상 운영 중 발생 빈도 추적용 — closed > 0 이면 logger.info."""
+    """M-6: 用于跟踪正常运行中的发生频率 — closed > 0 时 logger.info。"""
     import logging
 
     caplog.set_level(logging.INFO, logger="app.agent_runtime.event_broker")
@@ -381,25 +380,20 @@ def test_registry_close_for_conversation_logs_when_count_positive(
     reg.get_or_create("run-1", conversation_id="conv-A")
     reg.get_or_create("run-2", conversation_id="conv-A")
     reg.close_for_conversation("conv-A")
-    assert any(
-        "close_for_conversation conv=conv-A closed=2" in r.message
-        for r in caplog.records
-    )
+    assert any("close_for_conversation conv=conv-A closed=2" in r.message for r in caplog.records)
 
 
 def test_registry_close_for_conversation_silent_when_no_match(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """매치 없으면 로그 안 남김 (cron noise 방지)."""
+    """没有匹配时不留日志（防止 cron noise）。"""
     import logging
 
     caplog.set_level(logging.INFO, logger="app.agent_runtime.event_broker")
     reg = BrokerRegistry()
     reg.get_or_create("run-1", conversation_id="conv-A")
     reg.close_for_conversation("conv-B")
-    assert not any(
-        "close_for_conversation" in r.message for r in caplog.records
-    )
+    assert not any("close_for_conversation" in r.message for r in caplog.records)
 
 
 # --------------------------------------------------------------------------
@@ -414,19 +408,19 @@ def test_module_level_registry_singleton() -> None:
 
 
 # ---------------------------------------------------------------------------
-# In-band memory caps (M2 보강 — M4 APScheduler GC 도래 전 안전망)
+# In-band memory caps（M2 补强 — M4 APScheduler GC 到来前的安全网）
 # ---------------------------------------------------------------------------
 
 
 def test_registry_lru_cap_evicts_oldest_closed() -> None:
-    """``max_brokers`` 도달 시 가장 오래된 closed broker가 먼저 evict."""
+    """达到 ``max_brokers`` 时，最旧的 closed broker 优先 evict。"""
     reg = BrokerRegistry(max_brokers=3)
     b1 = reg.get_or_create("r1")
     b2 = reg.get_or_create("r2")
     b3 = reg.get_or_create("r3")
     b1.close()
     b2.close()  # b1, b2 closed; b3 live
-    # 4번째 broker 등록 — b1(가장 먼저 들어온 closed) 이 빠져야 함
+    # 注册第4个 broker — b1（最先进入的 closed）应被移除
     reg.get_or_create("r4")
     assert reg.get("r1") is None  # evicted
     assert reg.get("r2") is b2  # closed but still under cap
@@ -435,38 +429,38 @@ def test_registry_lru_cap_evicts_oldest_closed() -> None:
 
 
 def test_registry_lru_cap_force_closes_live_when_all_live() -> None:
-    """모든 broker가 live여도 cap 도달 시 가장 오래된 live를 강제 close + pop."""
+    """即使所有 broker 都是 live，达到 cap 时也强制 close + pop 最旧的 live。"""
     reg = BrokerRegistry(max_brokers=2)
     b1 = reg.get_or_create("r1")
     reg.get_or_create("r2")
-    # b1, b2 모두 live. 새 broker 추가 시 b1이 강제 close + pop.
+    # b1, b2 都是 live。添加新 broker 时应强制 close + pop b1。
     reg.get_or_create("r3")
     assert reg.get("r1") is None
-    assert b1.is_closed  # 강제 close됨
+    assert b1.is_closed  # 已被强制 close
     assert reg.get("r2") is not None
     assert reg.get("r3") is not None
 
 
 def test_registry_evict_expired_force_closes_stale_live() -> None:
-    """``max_live_age_seconds`` 초과한 live broker는 강제 close되고 다음 호출에서 evict."""
+    """超过 ``max_live_age_seconds`` 的 live broker 会被强制 close，并在下次调用时 evict。"""
     from datetime import timedelta
 
     reg = BrokerRegistry(max_live_age_seconds=10)
     broker = reg.get_or_create("stale-live")
-    # created_at을 인위적으로 과거로 조작
+    # 人为将 created_at 调整到过去
     broker.created_at = broker.created_at - timedelta(seconds=20)
-    # 1차 호출: 강제 close (return 0 — 아직 closed_at + ttl 미경과)
+    # 第1次调用：强制 close（return 0 — closed_at + ttl 尚未到期）
     evicted = reg.evict_expired(ttl_seconds=300)
     assert evicted == 0
     assert broker.is_closed
-    # 2차 호출: ttl=0이면 즉시 pop
+    # 第2次调用：ttl=0 时立即 pop
     evicted = reg.evict_expired(ttl_seconds=0)
     assert evicted == 1
     assert reg.get("stale-live") is None
 
 
 def test_registry_evict_expired_skips_recent_live() -> None:
-    """방금 생성된 live broker는 강제 close 대상 아님."""
+    """刚创建的 live broker 不应被强制 close。"""
     reg = BrokerRegistry(max_live_age_seconds=1800)
     broker = reg.get_or_create("recent-live")
     reg.evict_expired()
@@ -475,17 +469,17 @@ def test_registry_evict_expired_skips_recent_live() -> None:
 
 
 def test_registry_evict_expired_uses_naive_datetime_comparison() -> None:
-    """M-4: 시스템 timezone 이 UTC 가 아니어도 cutoff 가 정확해야 함.
+    """M-4: 即使系统 timezone 不是 UTC，cutoff 也必须准确。
 
-    이전 구현은 ``naive_dt.timestamp()`` 가 로컬 tz 로 해석되는 함정 — 이
-    함수에 의존하지 않고 timedelta 차이로만 비교하는지 검증.
+    旧实现存在 ``naive_dt.timestamp()`` 被解释为本地 tz 的陷阱 — 验证是否
+    不依赖该函数，仅通过 timedelta 差值进行比较。
     """
     from datetime import timedelta
 
     reg = BrokerRegistry()
     b = reg.get_or_create("run-x")
     b.close()
-    # closed_at 을 정확히 ttl + 1초 과거로 — 로컬 tz 와 무관하게 evict 되어야.
+    # 将 closed_at 精确设为 ttl + 1秒之前 — 无论本地 tz 如何都应 evict。
     assert b.closed_at is not None
     b.closed_at = b.closed_at - timedelta(seconds=301)
     evicted = reg.evict_expired(ttl_seconds=300)
@@ -517,7 +511,7 @@ def test_registry_close_all_is_idempotent() -> None:
     reg.get_or_create("r1")
     reg.get_or_create("r2")
     assert reg.close_all() == 2
-    # 두 번째 호출은 모두 이미 closed → 0 반환
+    # 第2次调用时全部已 closed → 返回 0
     assert reg.close_all() == 0
 
 
@@ -528,19 +522,17 @@ def test_registry_close_all_on_empty_registry_returns_zero() -> None:
 
 @pytest.mark.asyncio
 async def test_subscribe_when_already_closed_emits_sentinel() -> None:
-    """이미 closed된 broker에 subscribe해도 sentinel 분기로 즉시 종료.
+    """即使对已 closed 的 broker 执行 subscribe，也应通过 sentinel 分支立即结束。
 
-    B1 fix의 already-closed-at-subscribe 분기 회귀 가드 — ``listeners.add``
-    가 skip되면서 self-sentinel을 큐에 넣어 ``await queue.get()`` 단계에서
-    무한 대기에 갇히지 않도록 한 변경의 검증. (실제 race 시뮬은 monkey
-    patch가 필요하지만 본 케이스가 fix된 분기를 그대로 통과한다.)
+    B1 fix 的 already-closed-at-subscribe 分支回归保护 — ``listeners.add``
+    被 skip 时向 queue 放入 self-sentinel，防止在 ``await queue.get()`` 阶段
+    陷入无限等待。虽然模拟真实 race 需要 monkey patch，但本用例会直接经过
+    已 fix 的分支。
     """
     broker = EventBroker("race-test")
     broker.close()  # already closed before subscribe
     received: list[BrokeredEvent] = []
     async for evt in broker.subscribe():
         received.append(evt)
-    # close 후 subscribe → buffer 비었으니 0개 받고 즉시 종료. 무한 대기 X.
+    # close 后 subscribe → buffer 为空，因此接收0个并立即结束。不会无限等待 X。
     assert received == []
-
-

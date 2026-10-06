@@ -73,8 +73,8 @@ function usageFromRecord(payload: Record<string, unknown>): TokenUsageBreakdown 
   if (estimatedCost !== undefined) {
     usage.estimated_cost = estimatedCost
   }
-  // 스트리밍 timing (TTFT/총시간/tok-s) — usage 옆에 실려 오므로 함께 복사.
-  // 새 객체를 명시 빌드하는 화이트리스트라 추가하지 않으면 drop된다.
+  // streaming timing（TTFT/总时长/tok-s）随 usage 一起传来，因此一并复制。
+  // 这里是显式构建新对象的白名单，不加入就会被 drop。
   const ttftMs = numberValue(payload.ttft_ms)
   if (ttftMs !== undefined) usage.ttft_ms = ttftMs
   const generationMs = numberValue(payload.generation_ms)
@@ -115,10 +115,10 @@ export function usageFromMessage(message: BaseMessage): TokenUsageBreakdown | nu
   const usageMetadata = (message as { usage_metadata?: unknown }).usage_metadata
   const native = isRecord(usageMetadata) ? usageFromRecord(usageMetadata) : null
 
-  // ``additional_kwargs.metadata.usage`` 는 우리 usage 이벤트 프로젝션이 써 넣은
-  // enriched usage (token + cost + 스트리밍 timing). native ``usage_metadata`` 는
-  // 토큰만 있고 cost/timing 이 없으므로, 토큰은 native 기준으로 두되 cost/timing 은
-  // enriched 에서 보강한다(둘 다 같은 응답이라 토큰은 동일).
+  // ``additional_kwargs.metadata.usage`` 是我们的 usage 事件 projection 写入的
+  // enriched usage（token + cost + streaming timing）。native ``usage_metadata``
+  // 只有 token，没有 cost/timing，因此 token 以 native 为准，cost/timing 则
+  // 从 enriched 补全（两者对应同一响应，因此 token 相同）。
   const additionalKwargs = (message as { additional_kwargs?: unknown }).additional_kwargs
   const metadata =
     isRecord(additionalKwargs) && isRecord(additionalKwargs.metadata)

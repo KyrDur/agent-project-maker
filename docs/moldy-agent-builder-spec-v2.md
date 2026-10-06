@@ -534,7 +534,7 @@ AgentCreationIntent와 도구 목록을 분석하여 적합한 미들웨어를 �
 | CircuitBreakerMiddleware | middlewares/circuit-breaker.yaml | 연속 실패 시 도구 호출 일시 차단 |
 | FallbackMiddleware | middlewares/fallback.yaml | 주 도구 실패 시 대체 도구 자동 전환 |
 
-### 성능
+### 性能
 | 미들웨어명 | 경로 | 설명 |
 |-----------|------|------|
 | SummarizationMiddleware | middlewares/summarization.yaml | 대화 히스토리 자동 요약으로 토큰 절약 |
@@ -546,7 +546,7 @@ AgentCreationIntent와 도구 목록을 분석하여 적합한 미들웨어를 �
 |-----------|------|------|
 | TodoListMiddleware | middlewares/todo-list.yaml | 작업 계획 수립 및 진행 추적 (write_todos 도구 제공) |
 
-### 보안
+### 安全
 | 미들웨어명 | 경로 | 설명 |
 |-----------|------|------|
 | InputSanitizer | middlewares/input-sanitizer.yaml | 악의적 입력 필터링 |

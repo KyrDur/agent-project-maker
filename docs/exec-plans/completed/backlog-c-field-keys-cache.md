@@ -129,7 +129,7 @@ aiosqlite in-memory 사용. 기존 `test_tools.py`의 `_make_credential` 헬퍼 
 
 ---
 
-## 검증
+## 验证
 
 ```bash
 # Backend

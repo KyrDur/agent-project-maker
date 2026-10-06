@@ -93,7 +93,7 @@ async def test_get_provider_keys_decrypts_anthropic(db: AsyncSession) -> None:
 async def test_get_provider_keys_maps_google_genai_to_google(
     db: AsyncSession,
 ) -> None:
-    """``google_genai`` definition maps to ``google`` env_key (ADR-013 §결정 4)."""
+    """``google_genai`` definition maps to ``google`` env_key (ADR-013 §决定 4)。"""
 
     await credential_service.create(
         db,

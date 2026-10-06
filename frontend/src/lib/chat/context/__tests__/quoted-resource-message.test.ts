@@ -17,7 +17,7 @@ describe('quoted resource transcript', () => {
     expect(quotedResourcesFromText(text.replace('[{', '[invalid{'))).toBeNull()
     const mixed = [
       reference,
-      { kind: 'file', id: reference.id, label: 'file.txt', text: '파일 내용' },
+      { kind: 'file', id: reference.id, label: 'file.txt', text: '文件内容' },
     ]
     expect(
       quotedResourcesFromText(text.replace(JSON.stringify([reference]), JSON.stringify(mixed))),

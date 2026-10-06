@@ -4,55 +4,57 @@ import { builtinToolIcon, toolIcon } from '../tool-icons'
 import { toolCallChildLabel } from '../tool-group-meta'
 
 describe('toolIcon', () => {
-  it('알려진 빌트인 도구는 의미 아이콘', () => {
+  it('已知内置工具使用语义图标', () => {
     expect(toolIcon('current_datetime')).toBe(ClockIcon)
     expect(toolIcon('web_search')).toBe(SearchIcon)
   })
 
-  it('접두사 매핑(naver_/google_)', () => {
+  it('前缀映射（naver_/google_）', () => {
     expect(toolIcon('naver_blog_search')).toBe(SearchIcon)
     expect(toolIcon('google_news_search')).toBe(SearchIcon)
   })
 
-  it('모르는 도구는 렌치 폴백', () => {
+  it('未知工具回退为扳手图标', () => {
     expect(toolIcon('some_random_mcp_tool')).toBe(WrenchIcon)
   })
 })
 
 describe('builtinToolIcon', () => {
-  it('빌트인은 아이콘, 모르는 도구는 null(icon_id/렌치 폴백을 호출 측에 위임)', () => {
+  it('内置工具返回图标，未知工具返回 null（icon_id/扳手回退交由调用方）', () => {
     expect(builtinToolIcon('current_datetime')).toBe(ClockIcon)
     expect(builtinToolIcon('some_custom_tool')).toBeNull()
   })
 })
 
 describe('toolCallChildLabel', () => {
-  it('대표 인자(query/file_path)를 우선', () => {
+  it('优先使用代表性参数（query/file_path）', () => {
     expect(toolCallChildLabel({ query: 'react 19' }, undefined)).toBe('react 19')
-    expect(toolCallChildLabel({ file_path: 'src/app/page.tsx' }, undefined)).toBe('src/app/page.tsx')
+    expect(toolCallChildLabel({ file_path: 'src/app/page.tsx' }, undefined)).toBe(
+      'src/app/page.tsx',
+    )
   })
 
-  it('대표 인자가 없으면 첫 문자열 인자', () => {
+  it('没有代表性参数时使用第一个字符串参数', () => {
     expect(toolCallChildLabel({ foo: 'bar baz' }, undefined)).toBe('bar baz')
   })
 
-  it('인자가 없으면 결과 미리보기(첫 줄)', () => {
-    expect(toolCallChildLabel({}, '2026-06-27 14:03\n추가 내용')).toBe('2026-06-27 14:03')
+  it('没有参数时使用结果预览（第一行）', () => {
+    expect(toolCallChildLabel({}, '2026-06-27 14:03\n附加内容')).toBe('2026-06-27 14:03')
   })
 
-  it('JSON 결과는 raw가 아니라 대표 스칼라 값만', () => {
+  it('JSON 结果不显示 raw，而只显示代表性标量值', () => {
     expect(toolCallChildLabel({}, '{"now_iso": "2026-06-27T06:41:51+09:00", "tz": "KST"}')).toBe(
       '2026-06-27T06:41:51+09:00',
     )
     expect(toolCallChildLabel({}, '{"results":[{"title":"hello","url":"x"}]}')).toBe('hello')
   })
 
-  it('아무것도 없으면 null(호출 측이 도구명 폴백)', () => {
+  it('什么都没有时返回 null（调用方回退为工具名）', () => {
     expect(toolCallChildLabel({}, undefined)).toBeNull()
     expect(toolCallChildLabel({ n: 5 }, { obj: true })).toBeNull()
   })
 
-  it('긴 값은 말줄임', () => {
+  it('长值省略显示', () => {
     const long = 'a'.repeat(80)
     const out = toolCallChildLabel({ query: long }, undefined) ?? ''
     expect(out.length).toBeLessThanOrEqual(48)

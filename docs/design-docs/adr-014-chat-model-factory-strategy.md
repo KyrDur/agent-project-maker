@@ -1,7 +1,7 @@
 # ADR-014: Chat Model Factory — Provider Quirks 분리 (Strategy 패턴 도입)
 
 - **상태**: 승인됨 (2026-05-08)
-- **DRI**: 피차이 (System Architect)
+- **DRI**：Pichai（System Architect）
 - **관련**: PR #139 (chat runtime 회귀 일괄 fix), HANDOFF follow-up #1 + #5
 - **영역**: `app/agent_runtime/model_factory.py`, `app/services/model_test.py`
 

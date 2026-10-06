@@ -59,7 +59,7 @@
         ]
       }
     },
-    "final_response": "문서 생성이 완료되었습니다.",
+    "final_response": "文档生成已完成。",
     "input_requested_count": 0,
     "methods": [
       "lifecycle",

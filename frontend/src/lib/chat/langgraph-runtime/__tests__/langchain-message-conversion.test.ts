@@ -153,7 +153,7 @@ describe('convertMoldyLangChainMessage', () => {
     })
   })
 
-  it('실패 terminal-notice 버블을 custom.terminalNotice로 승격한다 (G2)', () => {
+  it('将失败 terminal-notice 气泡提升为 custom.terminalNotice（G2）', () => {
     const message = new AIMessage({
       id: 'moldy-failed-run1',
       content: 'model provider request failed',
@@ -167,7 +167,7 @@ describe('convertMoldyLangChainMessage', () => {
     expect(customMetadata(converted).terminalNotice).toBe('failed')
   })
 
-  it('일반 어시스턴트 메시지에는 terminalNotice 플래그가 없다', () => {
+  it('普通 assistant 消息没有 terminalNotice 标记', () => {
     const converted = convertMoldyLangChainMessage(
       new AIMessage({ id: 'assistant-plain', content: 'hello' }),
       converterMetadata(),

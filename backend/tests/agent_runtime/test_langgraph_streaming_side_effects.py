@@ -47,8 +47,8 @@ async def test_langgraph_streaming_emits_file_event_after_artifact_tool_result()
     payloads = [sse_payload(chunk) for chunk in chunks]
     assert recorder.prepared is True
     assert recorder.calls == [("execute_in_skill", "call-1")]
-    # W2-4 — execute_in_skill 결과는 file_event에 더해 terminal ui_data
-    # custom 이벤트도 투영된다 (UI_DATA_TOOL_TRANSFORMERS).
+    # W2-4 — execute_in_skill 结果除 file_event 外还会投影 terminal ui_data
+    # custom 事件（UI_DATA_TOOL_TRANSFORMERS）。
     assert [payload["method"] for payload in payloads] == [
         "lifecycle",
         "tools",
@@ -65,7 +65,7 @@ async def test_langgraph_streaming_emits_file_event_after_artifact_tool_result()
         },
     }
     ui_data = payloads[3]["params"]["data"]
-    # side-effect 관례상 custom name은 무접두 "ui_data" (프론트가 양형 정규화).
+    # 按 side-effect 惯例，custom name 使用无前缀 "ui_data"（frontend 会规范化两种形式）。
     assert ui_data["name"] == "ui_data"
     assert ui_data["payload"]["type"] == "terminal"
     assert ui_data["payload"]["props"] == {"lines": "done"}

@@ -264,7 +264,7 @@
 
 **[주의 — agent_tools.config drop은 원자적으로 3개 부분을 동시 정리해야 함]**
 
-근거:
+依据：
 1. Merge 로직(`chat_service.py:445`)은 live — 저장된 값이 runtime auth에 실제로 반영된다 (`test_conversations_router.py:280` 증명).
 2. 하지만 **쓰기 경로는 프론트엔드에서 사용하지 않음** → UI 회귀 없음.
 3. Assistant 내부 `update_tool_config` 도구가 live write — **같이 제거하지 않으면 AI 에이전트 생성 대화에서 AttributeError 발생**.

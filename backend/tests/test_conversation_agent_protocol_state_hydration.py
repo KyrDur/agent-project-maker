@@ -543,7 +543,7 @@ async def test_thread_state_uses_active_checkpoint_for_same_id_user_edit_branche
         checkpoint_id="ck-z-old",
         parent_checkpoint_id=None,
         messages=[
-            HumanMessage(id="user-same-id", content="안녕?"),
+            HumanMessage(id="user-same-id", content="你好？"),
             AIMessage(id="assistant-old", content="old"),
         ],
     )
@@ -551,7 +551,7 @@ async def test_thread_state_uses_active_checkpoint_for_same_id_user_edit_branche
         checkpoint_id="ck-a-middle",
         parent_checkpoint_id=None,
         messages=[
-            HumanMessage(id="user-same-id", content="바보"),
+            HumanMessage(id="user-same-id", content="笨蛋"),
             AIMessage(id="assistant-middle", content="middle"),
         ],
     )
@@ -559,7 +559,7 @@ async def test_thread_state_uses_active_checkpoint_for_same_id_user_edit_branche
         checkpoint_id="ck-m-new",
         parent_checkpoint_id=None,
         messages=[
-            HumanMessage(id="user-same-id", content="반가워"),
+            HumanMessage(id="user-same-id", content="很高兴见到你"),
             AIMessage(id="assistant-new", content="new"),
         ],
     )
@@ -576,7 +576,7 @@ async def test_thread_state_uses_active_checkpoint_for_same_id_user_edit_branche
     state = response.json()
     messages = state["values"]["messages"]
     user_metadata = messages[0]["additional_kwargs"]["metadata"]
-    assert messages[0]["content"] == "반가워"
+    assert messages[0]["content"] == "很高兴见到你"
     assert user_metadata["checkpoint_id"] == "ck-m-new"
     assert user_metadata["siblingCheckpointIds"] == ["ck-z-old", "ck-a-middle", "ck-m-new"]
     assert user_metadata["branchIndex"] == 2

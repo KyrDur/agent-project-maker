@@ -77,8 +77,8 @@ export function protocolMemoryRecall(
  * Subscribe to the `moldy.memory_recalled` custom side-channel and store each
  * run's recall briefs into the conversation-scoped atom (latest run replaces).
  *
- * `replay: true`라 리로드/재진입 시에도 칩이 복원된다(subagent_names 계약과
- * 동일). Dedupe by the backend's stable `event_id`
+ * `replay: true`，因此 reload/重新进入时 chip 也会恢复（与 subagent_names contract
+ * 相同）。Dedupe by the backend's stable `event_id`
  * (`<run_id>:memory_recalled`); the seen set resets when the conversation
  * changes so a re-entry replay re-populates the store.
  */

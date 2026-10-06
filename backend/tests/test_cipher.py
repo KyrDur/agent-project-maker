@@ -88,7 +88,7 @@ def test_round_trip_simple_string() -> None:
 
 def test_round_trip_unicode() -> None:
     key = _make_key()
-    plaintext = "안녕하세요 — 한국어 + emoji 🎉"
+    plaintext = "你好 — 韩语 + emoji 🎉"
     ct = encrypt(plaintext, key)
     assert decrypt(ct, [key]) == plaintext
 

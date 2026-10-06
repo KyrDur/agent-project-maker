@@ -1,82 +1,82 @@
-# ADR-009: Credential / Tools / Skills 그린필드 리라이트
+# ADR-009：Credential / Tools / Skills Greenfield 重写
 
-**상태**: Accepted
-**날짜**: 2026-04-29
-**결정자**: 사티아 (PO), 피차이 (아키텍처 DRI)
-**관련**: ADR-007 (credentials field_keys), ADR-008 (Connection entity)
+**状态**：Accepted
+**日期**：2026-04-29
+**决策者**：Satya（PO）、Pichai（架构 DRI）
+**相关**：ADR-007（credentials field_keys）、ADR-008（Connection entity）
 
 ---
 
 ## Context
 
-`Credential` / `Connection` / `Tools` / `Skills` 시스템은 ADR-007 ~ ADR-008과 M6 ~ M11 마이그레이션으로 누적 진화해왔다. 결과:
+`Credential` / `Connection` / `Tools` / `Skills` 系统经过 ADR-007 ~ ADR-008 和 M6 ~ M11 migration 持续演进。结果：
 
-1. **이원화**: Credential과 Connection이 분리되어 N:1 관계, 도구 인증 경로가 PREBUILT/CUSTOM/MCP/BUILTIN 4분류로 분기됨.
-2. **인증 해석 복잡도**: `chat_service.build_tools_config()` (L369-462)에 `_resolve_prebuilt_auth`, `_resolve_custom_auth`, `_gate_connection_active`, `_gate_connection_credential` 등 분기가 누적.
-3. **마이그레이션 누적**: `m11_custom_credential_migration`이 `tool.credential_id` → `tool.connection_id`로 옮겼지만, 기존 컬럼 잔존, downgrade 복잡.
-4. **OAuth/Vault/키 로테이션 부재**: 자동 OAuth refresh, 외부 시크릿 저장소(Vault), 다중 키 로테이션 모두 미지원.
-5. **UI 일관성 부족**: 도구·연결·자격증명·스킬 페이지 각각 다른 카드 그리드, 상태 표시 통일 안 됨.
+1. **二元化**：Credential 与 Connection 分离为 N:1 关系，工具认证路径按 PREBUILT/CUSTOM/MCP/BUILTIN 4 类分支。
+2. **认证解析复杂度**：`chat_service.build_tools_config()`（L369-462）中累积了 `_resolve_prebuilt_auth`、`_resolve_custom_auth`、`_gate_connection_active`、`_gate_connection_credential` 等分支。
+3. **migration 累积**：`m11_custom_credential_migration` 将 `tool.credential_id` → `tool.connection_id`，但旧列仍残留，downgrade 复杂。
+4. **缺少 OAuth/Vault/key rotation**：不支持自动 OAuth refresh、外部 secret store（Vault）、多 key rotation。
+5. **UI 一致性不足**：工具、连接、credential、skill 页面分别使用不同 card grid，状态展示不统一。
 
-이 상태에서 OAuth refresh, External Secrets, 멀티키 로테이션, 동적 폼 검증 등을 추가하면 또 한 번의 M11급 마이그레이션이 필요하다.
+在当前状态下继续加入 OAuth refresh、External Secrets、多 key rotation、动态 form 验证等功能，将再次需要一次 M11 级别的 migration。
 
 ## Decision
 
-Credential/Tool/Skill 스택을 Python(FastAPI/SQLAlchemy)·React(Next.js/shadcn) 기반의 Moldy 고유 모델로 그린필드 리라이트한다. 인증 해석 경로를 단일화하고, OAuth refresh, External Secrets, 멀티키 로테이션, 동적 폼 검증을 같은 도메인 모델 안에 통합한다.
+将 Credential/Tool/Skill stack 基于 Python（FastAPI/SQLAlchemy）·React（Next.js/shadcn）的 Moldy 自有模型进行 greenfield 重写。统一认证解析路径，并在同一 domain model 中集成 OAuth refresh、External Secrets、多 key rotation、动态 form 验证。
 
-### 핵심 결정
+### 核心决策
 
-| # | 결정 | 근거 |
+| # | 决策 | 依据 |
 |---|---|---|
-| 1 | **이원화 폐기** | Credential 단일화. Connection 모델·라우터·서비스 모두 삭제. Tool은 `definition_key + parameters + credential_id FK`로 단일 경로. |
-| 2 | **Cipher V2** | HKDF-SHA256, AES-256-GCM, 단일 블롭 Base64 `[0x01][salt 32B][authTag 16B][ciphertext]`. HKDF info는 `b'moldy-encryption-v1'`. 멀티키 식별은 `credentials.key_id` 별도 컬럼. |
-| 3 | **LLM 모델 통합** | `models` 테이블 유지하되 `api_key_encrypted` 컬럼 제거. `agents.llm_credential_id` FK 추가. `llm_providers` 테이블 폐기. LLM API 키도 신규 Credential로. |
-| 4 | **OAuth2 자동 refresh** | `expirable` typeOptions 토큰 만료 검사 → refresh → 재암호화 → audit log. 동시성: `SELECT ... FOR UPDATE`로 직렬화. |
-| 5 | **External Secrets (Vault)** | HVAC SDK 실구현. feature flag(`settings.external_secrets_enabled`)로 기본 off. `__external__: { provider, ref }` 마커 런타임 해석. |
-| 6 | **자동 키 로테이션** | APScheduler 잡 `rotate_credentials_to_active_key` 주1회. `key_id != active_key_id`인 row 배치 재암호화. audit log `rotate`. |
-| 7 | **마이그레이션** | `m13_greenfield_credentials` 단일 마이그레이션. 모든 관련 테이블 DROP + CREATE + `agents.llm_credential_id` ADD. PoC라 dev DB 폐기 OK. downgrade는 `NotImplementedError`. |
-| 8 | **단일 PR** | 신규 파일 위주 ~80파일. dual 시스템 공존 회피. 마일스톤별 커밋으로 리뷰 가독성 확보. |
-| 9 | **브랜딩 검증** | `scripts/check_branding.py`가 CI 게이트. 설정된 금지 식별자, 패키지 prefix, 자산 SHA-256 블랙리스트를 검사한다. |
+| 1 | **取消二元化** | 统一为 Credential。删除 Connection model/router/service。Tool 统一为 `definition_key + parameters + credential_id FK` 单一路径。 |
+| 2 | **Cipher V2** | HKDF-SHA256、AES-256-GCM、单一 blob Base64 `[0x01][salt 32B][authTag 16B][ciphertext]`。HKDF info 为 `b'moldy-encryption-v1'`。多 key 标识使用独立的 `credentials.key_id` 列。 |
+| 3 | **统一 LLM model** | 保留 `models` 表，但移除 `api_key_encrypted` 列。新增 `agents.llm_credential_id` FK。废弃 `llm_providers` 表。LLM API key 也使用新 Credential。 |
+| 4 | **OAuth2 自动 refresh** | `expirable` typeOptions 检查 token 过期 → refresh → 重新加密 → audit log。并发：使用 `SELECT ... FOR UPDATE` 串行化。 |
+| 5 | **External Secrets（Vault）** | 实现 HVAC SDK。通过 feature flag（`settings.external_secrets_enabled`）默认关闭。runtime 解析 `__external__: { provider, ref }` marker。 |
+| 6 | **自动 key rotation** | APScheduler job `rotate_credentials_to_active_key` 每周 1 次。对 `key_id != active_key_id` 的 row 批量重新加密。audit log `rotate`。 |
+| 7 | **migration** | 单一 migration `m13_greenfield_credentials`。DROP + CREATE 所有关联表 + ADD `agents.llm_credential_id`。PoC 阶段允许丢弃 dev DB。downgrade 为 `NotImplementedError`。 |
+| 8 | **单一 PR** | 以新增文件为主，约 ~80 个文件。避免 dual system 共存。按 milestone commit 保证 review 可读性。 |
+| 9 | **branding 验证** | `scripts/check_branding.py` 作为 CI gate。检查配置的禁用标识符、package prefix、asset SHA-256 blacklist。 |
 
-### 범위 밖
+### 范围外
 
-- 범용 노드 시스템 전체 — 도구는 `ToolDefinition` 단일 타입으로 단순화
-- 임의 코드 실행 표현식 엔진 — `={{ $credentials.<field> }}`만 평가하는 한정 인터폴레이터
-- 엔터프라이즈 전용 모듈 — 현재 제품 범위 밖
-- 외부 UI 컴포넌트 포팅 — React+shadcn으로 새로 작성
+- 通用 node system 全部 — 工具简化为单一 `ToolDefinition` 类型
+- 任意代码执行表达式引擎 — 仅评估 `={{ $credentials.<field> }}` 的受限 interpolator
+- enterprise 专用模块 — 不在当前产品范围内
+- 外部 UI component port — 使用 React+shadcn 重新实现
 
 ## Consequences
 
 ### Positive
 
-- 인증 해석 경로 단일화: `tool.credential_id` 직결, 분기 폐기
-- OAuth/Vault/로테이션 등 운영 기능 1차 도입
-- Cipher V2로 키 라이프사이클 관리 가능
-- UI 일관성: 동일한 DataTable + 상태 칩 + 동적 폼 렌더러
-- 신규 도구·자격증명 추가 비용 감소(정의만 등록)
+- 统一认证解析路径：`tool.credential_id` 直连，取消分支
+- 第 1 阶段引入 OAuth/Vault/rotation 等运维能力
+- 通过 Cipher V2 支持 key lifecycle 管理
+- UI 一致性：统一 DataTable + status chip + dynamic form renderer
+- 降低新增 tool/credential 的成本（只需注册定义）
 
 ### Negative
 
-- dev DB 데이터 폐기 (PoC 단계라 수용)
-- 단일 PR 리뷰 부담 (마일스톤 커밋으로 완화)
-- 학습 곡선: 팀이 신규 도메인 모델 숙지 필요
+- 丢弃 dev DB 数据（PoC 阶段可接受）
+- 单一 PR review 负担（通过 milestone commit 缓解）
+- 学习曲线：团队需要熟悉新的 domain model
 
 ### Risks & Mitigations
 
-| 리스크 | 대응 |
+| 风险 | 应对 |
 |---|---|
-| 브랜딩 정책 위반 | `scripts/check_branding.py` CI 게이트 강제 |
-| OAuth refresh 동시성 | `oauth2_base`에서 `SELECT ... FOR UPDATE` 직렬화 |
-| 채팅/트리거 회귀 | M5에서 chat_service 재작성 후 즉시 채팅+도구+트리거+MCP 시나리오 회귀 테스트 |
-| Vault 의존성 | feature flag 기본 off, env_provider로 폴백 |
-| 라이선스 적합성 | 의존성 라이선스 검토 및 공개 배포 전 최종 확인 |
+| 违反 branding policy | 强制 `scripts/check_branding.py` CI gate |
+| OAuth refresh 并发 | 在 `oauth2_base` 中通过 `SELECT ... FOR UPDATE` 串行化 |
+| chat/trigger regression | M5 重写 chat_service 后立即执行 chat+tool+trigger+MCP 场景 regression test |
+| Vault 依赖 | feature flag 默认关闭，fallback 到 env_provider |
+| license 适配 | review dependency license，并在公开部署前最终确认 |
 
 ## Implementation
 
-마일스톤 정의는 `CHECKPOINT.md`, 상세 파일/스펙은 루트 `PLAN.md`, 작업 추적은 TaskList(`tth-greenfield-credentials` 팀).
+milestone 定义见 `CHECKPOINT.md`，详细文件/spec 见根目录 `PLAN.md`，任务跟踪见 TaskList（`tth-greenfield-credentials` team）。
 
-작업 순서:
-- M0 거버넌스(이 ADR 포함) → M1 브랜딩 검증 + Cipher V2 → M2 Credential + Vault → M3 Tools + MCP → M4 Skills + m13 마이그레이션 → M5 agent_runtime 재배선 + cron → M6 프론트엔드.
+执行顺序：
+- M0 governance（含本 ADR）→ M1 branding 验证 + Cipher V2 → M2 Credential + Vault → M3 Tools + MCP → M4 Skills + m13 migration → M5 agent_runtime 重连 + cron → M6 前端。
 
 ## References
 
-- 이전 ADR: ADR-007(field_keys), ADR-008(Connection — 본 ADR로 폐기 승계)
+- 之前的 ADR：ADR-007（field_keys）、ADR-008（Connection — 由本 ADR 废弃并取代）

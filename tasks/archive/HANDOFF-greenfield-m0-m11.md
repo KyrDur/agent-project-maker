@@ -49,7 +49,7 @@
 
 ## 2. 아키텍처 결정 (ADR-009)
 
-| # | 결정 | 근거 |
+| # | 决策 | 依据 |
 |---|---|---|
 | 1 | Connection 이원화 폐기 | Tool이 직접 `credential_id` FK, 인증 단일 경로 |
 | 2 | Cipher V2 | HKDF-SHA256 + AES-256-GCM, `moldy-encryption-v1` |

@@ -276,12 +276,12 @@ async def test_mcp_server_mutations_write_audit_without_headers(
 
 @pytest.mark.asyncio
 async def test_mcp_probe_writes_audit_with_outcome(client, db: AsyncSession, monkeypatch) -> None:
-    """probe 감사의 action/outcome/reason_code/metadata 계약 잠금.
+    """锁定 probe audit 的 action/outcome/reason_code/metadata 合约。
 
-    Stage 2 적대 리뷰 mutation 실증: action 이름을 변조해도 기존 테스트가
-    전부 그린이었다 — 감사는 규정준수 표면이라 outcome 반전이 조용히
-    통과하면 안 된다. 라우터는 connect_and_list를 이름으로 import하므로
-    app.routers.mcp 경로를 패치한다.
+    Stage 2 对抗 review mutation 实证：即使修改 action 名称，现有测试
+    仍全部 green — audit 属于 compliance surface，因此 outcome 反转不能静默
+    通过。router 按名称 import connect_and_list，因此 patch
+    app.routers.mcp 路径。
     """
 
     async def _stub_ok(**_) -> dict:
@@ -310,8 +310,8 @@ async def test_mcp_probe_writes_audit_with_outcome(client, db: AsyncSession, mon
         .all()
     )
     assert len(rows) == 2
-    # created_at 정렬 대신 outcome으로 행을 식별 — 같은 테스트 안의 연속
-    # 요청은 타임스탬프 tie로 정렬이 비결정일 수 있다.
+    # 不按 created_at 排序，而通过 outcome 识别 row — 同一测试中的连续
+    # request 可能因 timestamp tie 而排序不确定。
     by_outcome = {row.outcome: row for row in rows}
     ok_row, fail_row = by_outcome["success"], by_outcome["failure"]
     assert ok_row.target_type == "mcp_server_probe"
@@ -329,7 +329,7 @@ async def test_mcp_probe_writes_audit_with_outcome(client, db: AsyncSession, mon
 
 @pytest.mark.asyncio
 async def test_mcp_import_writes_audit_with_error_metadata(client, db: AsyncSession) -> None:
-    """import 감사의 부분 실패(success + reason_code)/전량 실패(failure) 판정 잠금."""
+    """锁定 import audit 的部分失败(success + reason_code)/全部失败(failure) 判定。"""
 
     partial = await client.post(
         "/api/mcp-servers/import",
@@ -359,7 +359,7 @@ async def test_mcp_import_writes_audit_with_error_metadata(client, db: AsyncSess
     assert len(rows) == 2
     by_outcome = {row.outcome: row for row in rows}
     partial_row, all_fail_row = by_outcome["success"], by_outcome["failure"]
-    # 일부라도 created/updated가 있으면 success + mcp_import_errors reason
+    # 只要有任何 created/updated，就应为 success + mcp_import_errors reason
     assert partial_row.outcome == "success"
     assert partial_row.reason_code == "mcp_import_errors"
     assert partial_row.event_metadata is not None
@@ -367,7 +367,7 @@ async def test_mcp_import_writes_audit_with_error_metadata(client, db: AsyncSess
     assert partial_row.event_metadata["error_count"] == 1
     assert partial_row.event_metadata["entry_count"] == 2
     assert partial_row.event_metadata["overwrite"] is False
-    # 전량 실패면 failure
+    # 全部失败则为 failure
     assert all_fail_row.outcome == "failure"
     assert all_fail_row.reason_code == "mcp_import_errors"
 

@@ -14,7 +14,7 @@ from app.seed.default_models import (
 
 
 def test_all_default_models_carry_positive_context_window() -> None:
-    """게이지 + 자동압축 임계값의 단일 source — seed에서 빠지면 둘 다 깨진다."""
+    """gauge + auto-compaction threshold 的单一 source — seed 漏掉时两者都会失效。"""
     for model_data in DEFAULT_MODELS:
         cw = model_data.get("context_window")
         assert isinstance(cw, int) and cw > 0, f"{model_data['model_name']} missing context_window"

@@ -34,7 +34,7 @@ async def test_recorder_ingests_deepagents_write_file_outputs(tmp_path: Path) ->
     )
 
     await recorder.prepare()
-    (output_dir / "today_diary.md").write_text("# 오늘 하루 일기\n", encoding="utf-8")
+    (output_dir / "today_diary.md").write_text("# 今天的日记\n", encoding="utf-8")
 
     events = await recorder.collect_after_tool_result(
         tool_name="write_file",

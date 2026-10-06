@@ -1,12 +1,12 @@
-"""HiTL top-level interrupt_on 회귀 가드 (ADR-012 표준 경로).
+"""HiTL top-level interrupt_on 回归保护（ADR-012 标准路径）。
 
-검증 대상:
-- ``HumanInTheLoopMiddleware`` 를 수동 인스턴스화하지 않고 deepagents
-  top-level ``interrupt_on`` 인자로 넘기는가
-- 트리거(invoke) 모드에서는 미들웨어가 주입되지 않는가
-- 도구별 정책(``interrupt_on`` dict)이 build_agent에 그대로 전달되는가
-- 명시 dict 가 없을 때 tool risk metadata 기반 자동 정책이 동작하는가
-- explicit HiTL 설정이 없어도 대화형 ask_user는 respond 정책에 포함되는가
+验证对象：
+- 是否不手动实例化 ``HumanInTheLoopMiddleware``，而通过 deepagents
+  top-level ``interrupt_on`` 参数传入
+- trigger(invoke) 模式下是否不注入 middleware
+- 逐工具策略（``interrupt_on`` dict）是否原样传给 build_agent
+- 没有显式 dict 时，基于 tool risk metadata 的自动策略是否工作
+- 即使没有 explicit HiTL 设置，交互式 ask_user 是否仍包含 respond 策略
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def _expected_policy(*, extra: dict | None = None) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 1. 명시 dict 제공 → top-level interrupt_on 전달
+# 1. 提供显式 dict → 传递 top-level interrupt_on
 # ---------------------------------------------------------------------------
 
 
@@ -66,14 +66,14 @@ async def test_hitl_policy_passed_through_top_level_when_interrupt_on_provided(
     mock_stream: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """interrupt_on dict 명시 → build_agent top-level interrupt_on으로 전달."""
+    """显式 interrupt_on dict → 传给 build_agent top-level interrupt_on。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()
     mock_convert.return_value = []
     mock_build.return_value = MagicMock()
 
-    # send_email 도구 mock — interrupt_on 키와 일치
+    # send_email tool mock — 与 interrupt_on key 一致
     fake_tool = MagicMock()
     fake_tool.name = "send_email"
     mock_factory.return_value = fake_tool
@@ -103,7 +103,7 @@ async def test_hitl_policy_passed_through_top_level_when_interrupt_on_provided(
 
 
 # ---------------------------------------------------------------------------
-# 2. 트리거 모드 차단
+# 2. 阻断 trigger 模式
 # ---------------------------------------------------------------------------
 
 
@@ -120,7 +120,7 @@ async def test_hitl_middleware_not_injected_in_trigger_mode(
     mock_build: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """execute_agent_invoke (is_trigger_mode=True) → HiTL 강제 차단."""
+    """execute_agent_invoke (is_trigger_mode=True) → 强制阻断 HiTL。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_invoke
 
     mock_model_factory.return_value = MagicMock()
@@ -149,16 +149,14 @@ async def test_hitl_middleware_not_injected_in_trigger_mode(
 
     build_kwargs = mock_build.call_args[1]
     middleware = build_kwargs["middleware"]
-    assert _hitl_instances(middleware) == [], (
-        "트리거 모드에서는 HumanInTheLoopMiddleware 가 주입되면 안 됨"
-    )
+    assert _hitl_instances(middleware) == [], "trigger 模式下不应注入 HumanInTheLoopMiddleware"
     assert build_kwargs["interrupt_on"] is None
     tool_names = [tool.name for tool in mock_build.call_args.args[1]]
     assert "ask_user" not in tool_names
 
 
 # ---------------------------------------------------------------------------
-# 3. 도구별 정책 그대로 전달
+# 3. 逐工具策略原样传递
 # ---------------------------------------------------------------------------
 
 
@@ -177,7 +175,7 @@ async def test_hitl_middleware_per_tool_policy_applied(
     mock_stream: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """interrupt_on dict 가 build_agent top-level 인자로 그대로 보존돼야 함."""
+    """interrupt_on dict 必须在 build_agent top-level 参数中原样保留。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()
@@ -213,7 +211,7 @@ async def test_hitl_middleware_per_tool_policy_applied(
 
 
 # ---------------------------------------------------------------------------
-# 4. risk metadata 기반 자동 추출
+# 4. 基于 risk metadata 自动提取
 # ---------------------------------------------------------------------------
 
 
@@ -232,7 +230,7 @@ async def test_hitl_middleware_auto_extraction_from_risk_metadata(
     mock_stream: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """params 에 interrupt_on 이 없으면 risk metadata가 있는 도구만 자동 추출."""
+    """params 中没有 interrupt_on 时，仅自动提取带 risk metadata 的 tool。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()
@@ -283,7 +281,7 @@ async def test_hitl_middleware_auto_extraction_from_risk_metadata(
 
 
 # ---------------------------------------------------------------------------
-# 5. ask_user 기본 respond 정책
+# 5. ask_user 默认 respond 策略
 # ---------------------------------------------------------------------------
 
 
@@ -302,7 +300,7 @@ async def test_ask_user_interrupt_policy_added_without_hitl_middleware_config(
     mock_stream: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """대화형 모드에서는 explicit HiTL 설정이 없어도 ask_user respond 정책 포함."""
+    """交互模式下，即使没有 explicit HiTL 设置，也应包含 ask_user respond 策略。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()

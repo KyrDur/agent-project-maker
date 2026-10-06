@@ -33,9 +33,9 @@ def test_format_sse_basic():
 
 
 def test_format_sse_unicode():
-    result = format_sse("content_delta", {"delta": "안녕하세요"})
+    result = format_sse("content_delta", {"delta": "你好"})
     data = json.loads(result.split("data: ")[1].strip())
-    assert data["delta"] == "안녕하세요"
+    assert data["delta"] == "你好"
 
 
 def test_format_sse_complex_data():

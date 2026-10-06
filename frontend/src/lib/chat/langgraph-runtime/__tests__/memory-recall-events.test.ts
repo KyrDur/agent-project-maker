@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { protocolMemoryRecall } from '../memory-recall-events'
 
 describe('protocolMemoryRecall', () => {
-  it('moldy.memory_recalled custom 이벤트에서 brief 목록을 파싱한다', () => {
+  it('从 moldy.memory_recalled custom 事件中解析 brief 列表', () => {
     const parsed = protocolMemoryRecall({
       method: 'custom',
       event_id: 'run-1:memory_recalled',
@@ -11,20 +11,20 @@ describe('protocolMemoryRecall', () => {
           name: 'moldy.memory_recalled',
           payload: {
             memories: [
-              { id: 'm1', scope: 'user', content: '한국어 선호' },
-              { id: 'm2', scope: 'agent', content: '표로 정리' },
+              { id: 'm1', scope: 'user', content: '偏好韩语' },
+              { id: 'm2', scope: 'agent', content: '整理成表格' },
             ],
           },
         },
       },
     })
     expect(parsed).toEqual([
-      { id: 'm1', scope: 'user', content: '한국어 선호' },
-      { id: 'm2', scope: 'agent', content: '표로 정리' },
+      { id: 'm1', scope: 'user', content: '偏好韩语' },
+      { id: 'm2', scope: 'agent', content: '整理成表格' },
     ])
   })
 
-  it('custom:moldy.memory_recalled method 형태도 인식한다', () => {
+  it('也识别 custom:moldy.memory_recalled method 形式', () => {
     const parsed = protocolMemoryRecall({
       method: 'custom:moldy.memory_recalled',
       params: {
@@ -34,7 +34,7 @@ describe('protocolMemoryRecall', () => {
     expect(parsed).toEqual([{ id: undefined, scope: 'user', content: '注释' }])
   })
 
-  it('scope나 content가 invalid한 항목은 걸러낸다', () => {
+  it('过滤 scope 或 content 无效的项', () => {
     const parsed = protocolMemoryRecall({
       method: 'custom',
       params: {
@@ -42,8 +42,8 @@ describe('protocolMemoryRecall', () => {
           name: 'moldy.memory_recalled',
           payload: {
             memories: [
-              { scope: 'user', content: '유효' },
-              { scope: 'other', content: '스코프 불량' },
+              { scope: 'user', content: '有效' },
+              { scope: 'other', content: 'scope 无效' },
               { scope: 'agent', content: '   ' },
               'not-a-record',
             ],
@@ -51,10 +51,10 @@ describe('protocolMemoryRecall', () => {
         },
       },
     })
-    expect(parsed).toEqual([{ id: undefined, scope: 'user', content: '유효' }])
+    expect(parsed).toEqual([{ id: undefined, scope: 'user', content: '有效' }])
   })
 
-  it('다른 custom 이벤트(subagent_names 등)는 null', () => {
+  it('其他 custom 事件（subagent_names 等）返回 null', () => {
     expect(
       protocolMemoryRecall({
         method: 'custom',
@@ -69,7 +69,7 @@ describe('protocolMemoryRecall', () => {
     ).toBeNull()
   })
 
-  it('memories가 비어 있으면 null (칩 미표시)', () => {
+  it('memories 为空时返回 null（不显示 chip）', () => {
     expect(
       protocolMemoryRecall({
         method: 'custom',

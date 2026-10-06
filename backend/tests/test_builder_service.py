@@ -73,7 +73,7 @@ async def _seed_tool(db: AsyncSession) -> Tool:
 
 
 async def _seed_mcp_tools(db: AsyncSession, *, names: list[str]) -> tuple[McpServer, list[McpTool]]:
-    """McpServer 한 개 + names 만큼의 McpTool 생성."""
+    """创建1个 McpServer + 与 names 数量相同的 McpTool。"""
     server = McpServer(
         user_id=TEST_USER_ID,
         name="Hancom Org Chart",
@@ -92,14 +92,14 @@ async def _seed_mcp_tools(db: AsyncSession, *, names: list[str]) -> tuple[McpSer
 
 
 async def _seed_skills(db: AsyncSession, *, names: list[str]) -> list[Skill]:
-    """Test user 의 ``Skill`` row 들을 생성. slug 는 name 소문자 hyphenate."""
+    """创建 Test user 的 ``Skill`` row。slug 为 name 小写 hyphenate。"""
     skills = []
     for name in names:
         skill = Skill(
             user_id=TEST_USER_ID,
             name=name,
             slug=name.lower().replace(" ", "-").replace("_", "-"),
-            description=f"{name} 가이드",
+            description=f"{name} 指南",
         )
         db.add(skill)
         skills.append(skill)
@@ -117,10 +117,10 @@ async def test_create_session(db: AsyncSession):
     await _seed_user(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "날씨 봇 만들어줘")
+    session = await create_session(db, TEST_USER_ID, "帮我创建天气机器人")
     assert session.id is not None
     assert session.status == BuilderStatus.BUILDING
-    assert session.user_request == "날씨 봇 만들어줘"
+    assert session.user_request == "帮我创建天气机器人"
     assert session.user_id == TEST_USER_ID
     assert session.current_phase == 0
     assert session.draft_config is None
@@ -186,11 +186,11 @@ async def test_confirm_build_success(db: AsyncSession):
     await _seed_tool(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "날씨 봇")
+    session = await create_session(db, TEST_USER_ID, "天气机器人")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "날씨 봇",
-        "description": "날씨를 알려주는 봇",
+        "name": "天气机器人",
+        "description": "提供天气信息的机器人",
         "system_prompt": "You are a weather bot.",
         "tools": ["HTTP Request"],
         "middlewares": [],
@@ -201,7 +201,7 @@ async def test_confirm_build_success(db: AsyncSession):
 
     agent = await confirm_build(db, session)
     assert agent is not None
-    assert agent.name == "날씨 봇"
+    assert agent.name == "天气机器人"
     assert agent.system_prompt == "You are a weather bot."
     assert agent.model_id == model.id
     assert agent.identity_mode == "per_user"
@@ -218,11 +218,11 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
     await _seed_model(db)
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "스케줄 봇")
+    session = await create_session(db, TEST_USER_ID, "定时机器人")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "스케줄 봇",
-        "description": "정해진 시간에 실행되는 봇",
+        "name": "定时机器人",
+        "description": "在指定时间运行的机器人",
         "system_prompt": "Run on schedule.",
         "tools": [],
         "middlewares": [],
@@ -238,23 +238,23 @@ async def test_confirm_build_uses_fixed_identity_from_draft(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_confirm_build_links_mcp_tools(db: AsyncSession):
-    """MCP 도구 회귀 가드.
+    """MCP tool 回归保护。
 
-    Builder phase3 catalog 는 ``Tool + McpTool`` 모두 노출하므로 phase8
-    confirm 도 양쪽을 매칭해야 한다. 사용자가 MCP 서버를 등록해 도구
-    이름이 ``McpTool`` 에만 존재할 때 ``confirm_build`` 가 silent drop
-    하지 않고 ``agent.mcp_tool_links`` 에 정확히 연결하는지 검증.
+    Builder phase3 catalog 同时暴露 ``Tool + McpTool``，因此 phase8
+    confirm 也必须匹配两者。验证用户注册 MCP server 后，当 tool
+    名称只存在于 ``McpTool`` 时，``confirm_build`` 不会 silent drop，
+    而是准确连接到 ``agent.mcp_tool_links``。
     """
     await _seed_user(db)
     await _seed_model(db)
     _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments", "search_employees"])
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "조직도 봇")
+    session = await create_session(db, TEST_USER_ID, "组织架构机器人")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "조직도 봇",
-        "description": "조직도 QA",
+        "name": "组织架构机器人",
+        "description": "组织架构 QA",
         "system_prompt": "you are an org chart assistant",
         "tools": ["list_departments", "search_employees"],
         "middlewares": [],
@@ -264,26 +264,26 @@ async def test_confirm_build_links_mcp_tools(db: AsyncSession):
 
     agent = await confirm_build(db, session)
     assert agent is not None
-    # Tool 테이블에는 없으므로 agent.tool_links 는 비어 있어야 함
+    # Tool 表中不存在，因此 agent.tool_links 应为空
     assert len(agent.tool_links) == 0
-    # McpTool 두 개 모두 연결되어야 함
+    # 两个 McpTool 都必须连接
     linked_ids = {link.mcp_tool_id for link in agent.mcp_tool_links}
     assert linked_ids == {mt.id for mt in mcp_tools}
 
 
 @pytest.mark.asyncio
 async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
-    """동일 draft.tools 안에 Tool 과 McpTool 이 섞여 있어도 양쪽 모두 링크."""
+    """即使同一 draft.tools 中混有 Tool 与 McpTool，也应两侧都建立 link。"""
     await _seed_user(db)
     await _seed_model(db)
     tool = await _seed_tool(db)  # name="HTTP Request"
     _, mcp_tools = await _seed_mcp_tools(db, names=["list_departments"])
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "혼합 봇")
+    session = await create_session(db, TEST_USER_ID, "混合机器人")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "혼합",
+        "name": "混合",
         "description": "d",
         "system_prompt": "p",
         "tools": ["HTTP Request", "list_departments"],
@@ -300,22 +300,22 @@ async def test_confirm_build_mixed_tool_and_mcp(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_confirm_build_links_skills(db: AsyncSession):
-    """Skill 회귀 가드 — Builder 가 skill 을 인지하고 ``agent.skill_links`` 생성.
+    """Skill 回归保护 — Builder 能识别 skill 并生成 ``agent.skill_links``。
 
-    이전에는 phase3 카탈로그/추천이 skill 을 노출하지 않아 사용자가 "스킬을
-    추가해줘" 라고 명시해도 도구만 추천되고 skill_links 는 항상 비어 있었음.
-    catalog + draft_config.tools 흐름이 skill 도 포함하는지 검증.
+    以前 phase3 catalog/recommendation 不暴露 skill，因此即使用户明确说"添加 skill"
+    也只会推荐 tool，skill_links 始终为空。
+    验证 catalog + draft_config.tools 流程是否也包含 skill。
     """
     await _seed_user(db)
     await _seed_model(db)
     skills = await _seed_skills(db, names=["seat_layout_guide", "evac_procedure"])
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "위치 안내 봇")
+    session = await create_session(db, TEST_USER_ID, "位置导航机器人")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "위치 봇",
-        "description": "직원 좌석 안내",
+        "name": "位置机器人",
+        "description": "员工座位导航",
         "system_prompt": "p",
         "tools": ["seat_layout_guide", "evac_procedure"],
         "middlewares": [],
@@ -332,7 +332,7 @@ async def test_confirm_build_links_skills(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
-    """draft.tools 안에 Tool + McpTool + Skill 이 섞여도 모두 정확히 분리 링크."""
+    """即使 draft.tools 中混有 Tool + McpTool + Skill，也应全部准确拆分并建立 link。"""
     await _seed_user(db)
     await _seed_model(db)
     tool = await _seed_tool(db)  # name="HTTP Request"
@@ -340,7 +340,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
     skills = await _seed_skills(db, names=["seat_layout_guide"])
     await db.commit()
 
-    session = await create_session(db, TEST_USER_ID, "혼합")
+    session = await create_session(db, TEST_USER_ID, "混合")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
         "name": "所有时间",
@@ -361,7 +361,7 @@ async def test_confirm_build_mixed_tool_mcp_skill(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
-    """다른 사용자의 skill 은 ``Skill.user_id`` ownership 필터로 차단."""
+    """其他用户的 skill 会被 ``Skill.user_id`` ownership filter 阻止。"""
     await _seed_user(db)
     await _seed_model(db)
 
@@ -400,11 +400,11 @@ async def test_confirm_build_skill_cross_user_blocked(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_confirm_build_mcp_cross_user_blocked(db: AsyncSession):
-    """다른 사용자의 MCP 도구는 ownership 필터로 차단되어 링크되지 않음."""
+    """其他用户的 MCP tool 会被 ownership filter 阻止，不建立 link。"""
     await _seed_user(db)
     await _seed_model(db)
 
-    # 다른 사용자의 server + tool 시드
+    # seed 其他用户的 server + tool
     other_user_id = uuid.uuid4()
     other = User(id=other_user_id, email="other@test.com", name="Other")
     db.add(other)
@@ -449,7 +449,7 @@ async def test_confirm_build_no_model(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "테스트 에이전트",
+        "name": "测试 agent",
         "description": "desc",
         "system_prompt": "prompt",
         "tools": [],
@@ -475,7 +475,7 @@ async def test_confirm_build_idempotent(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "봇",
+        "name": "机器人",
         "description": "d",
         "system_prompt": "p",
         "tools": [],
@@ -509,7 +509,7 @@ def test_get_middlewares_catalog():
     assert isinstance(result, list)
     assert len(result) > 0
     types = {item["type"] for item in result}
-    # deepagents 빌트인 타입(summarization, todo_list 등)은 제외됨
+    # deepagents 内置类型（summarization, todo_list 等）会被排除
     assert "summarization" not in types
     assert "tool_retry" in types
 
@@ -593,7 +593,7 @@ async def test_confirm_build_no_models_raises(db: AsyncSession):
     session = await create_session(db, TEST_USER_ID, "测试")
     session.status = BuilderStatus.CONFIRMING
     session.draft_config = {
-        "name": "봇",
+        "name": "机器人",
         "description": "d",
         "system_prompt": "p",
         "tools": [],

@@ -1,72 +1,72 @@
-# ADR-008: Connection 엔티티 — Credential 바인딩 통합
+# ADR-008：Connection 实体 — 统一 Credential 绑定
 
-## 상태: 폐기 승계 (Superseded by ADR-009)
+## 状态：废弃并由后续文档继承（Superseded by ADR-009）
 
-2026-09-08 정리: 아래는 당시 설계 기록이다. 현재 구조는
-[ADR-009](adr-009-greenfield-credentials.md)의 Credential 직결 방식이며
-Connection 엔티티 재도입을 승인한 문서가 아니다.
+2026-09-08 整理：以下为当时的设计记录。当前结构是
+[ADR-009](adr-009-greenfield-credentials.md) 的 Credential 直连方式，
+本文档并未批准重新引入 Connection 实体。
 
-## 날짜: 2026-04-18
+## 日期：2026-04-18
 
 ## 背景
 
-현재 도구(Tool)-자격증명(Credential) 바인딩은 타입별로 위치와 시맨틱이 다르고, PREBUILT 시스템 도구에서 유저별 분리가 불가능하다.
+当前工具（Tool）-credential（Credential）绑定在不同类型下的位置和语义不一致，并且 PREBUILT system tool 无法做到按用户隔离。
 
-### 문제 1 — PREBUILT 공유 행의 credential 뒤엉킴
+### 问题 1 — PREBUILT 共享 row 的 credential 混用
 
-시스템 도구(`is_system=True`)는 `user_id=NULL`인 공유 행이다. `tool.credential_id`에 유저 A의 credential을 박으면, 유저 B가 같은 도구를 조회·실행할 때 A의 credential이 보이거나 사용된다. 현재 PoC 단계에선 mock user 1명이라 드러나지 않지만, 멀티 유저 인증을 도입하는 순간 **프로덕션 incident**로 전환된다.
+system tool（`is_system=True`）是 `user_id=NULL` 的共享 row。如果把用户 A 的 credential 写入 `tool.credential_id`，用户 B 查询或执行同一工具时，就可能看到或使用 A 的 credential。当前 PoC 阶段只有 1 个 mock user，因此问题未暴露，但一旦引入 multi-user auth，就会转化为 **production incident**。
 
-### 문제 2 — 바인딩 위치 비일관
+### 问题 2 — 绑定位置不一致
 
-| 타입 | credential 바인딩 위치 |
+| 类型 | credential 绑定位置 |
 |------|----------------------|
-| MCP | `mcp_servers.credential_id` (서버 단위) |
-| CUSTOM | `tool.credential_id` (도구 단위) |
-| PREBUILT | `tool.credential_id` (공유 행 단위 — 문제 1) |
+| MCP | `mcp_servers.credential_id`（server 级） |
+| CUSTOM | `tool.credential_id`（tool 级） |
+| PREBUILT | `tool.credential_id`（共享 row 级 — 问题 1） |
 
-유저 입장에선 "이 도구에 내 키가 어디 붙어 있는지"를 세 곳을 봐야 하고, 해석 로직도 `chat_service.build_tools_config`에서 3분기로 나뉜다. 프론트 다이얼로그(`prebuilt-auth-dialog`, `custom-auth-dialog`, `mcp-server-auth-dialog`)도 90% 동일한데 저장 경로 때문에 3개로 분리돼 있다 (백로그 F).
+从用户视角看，要确认“我的 key 绑定到这个工具的哪里”，需要查看三个位置；解析逻辑也在 `chat_service.build_tools_config` 中分为 3 个分支。前端 dialog（`prebuilt-auth-dialog`、`custom-auth-dialog`、`mcp-server-auth-dialog`）有 90% 相同，却因为保存路径不同而拆成 3 个（backlog F）。
 
-### 문제 3 — 해석 경로 중복과 override 시맨틱 불명
+### 问题 3 — 解析路径重复且 override 语义不清
 
-`agent_tools.config` JSON이 도구의 `auth_config`와 shallow merge 되는 관행이 있고, `credential_id`와 inline `auth_config` fallback이 공존해 우선순위가 모호하다. env var fallback(`settings.naver_*`)도 경로에 섞여 "왜 이 키가 써졌는지" 추적이 어렵다.
+目前存在将 `agent_tools.config` JSON 与工具 `auth_config` shallow merge 的惯例，同时 `credential_id` 与 inline `auth_config` fallback 并存，优先级模糊。env var fallback（`settings.naver_*`）也混在路径中，难以追踪“为什么使用了这个 key”。
 
 ---
 
 ## 决定
 
-`connections` 엔티티를 신규 도입해 **유저×도구 타입×provider** 수준에서 credential 바인딩을 통일한다. Tool은 "무엇을 호출할지(정의)", Connection은 "누가 어떤 키로 호출할지(바인딩)"로 관심사를 분리한다.
+新增 `connections` 实体，在**用户×工具类型×provider**层级统一 credential 绑定。Tool 负责“调用什么（定义）”，Connection 负责“谁用哪个 key 调用（绑定）”，实现关注点分离。
 
-### 1. 스키마
+### 1. Schema
 
 ```sql
 connections
   id               UUID  PK
-  user_id          UUID  FK users      NOT NULL                 -- 권한 분리의 기반
+  user_id          UUID  FK users      NOT NULL                 -- 权限隔离基础
   type             VARCHAR(20)  NOT NULL                        -- 'prebuilt' | 'mcp' | 'custom'
-  provider_name    VARCHAR(50)  NOT NULL                        -- PREBUILT: credential_registry enum 5종
-                                                                -- MCP/CUSTOM: 자유 문자열
-  display_name     VARCHAR(200) NOT NULL                        -- UI 레이블 (중복 허용)
+  provider_name    VARCHAR(50)  NOT NULL                        -- PREBUILT: credential_registry enum 5 类
+                                                                -- MCP/CUSTOM: 自由字符串
+  display_name     VARCHAR(200) NOT NULL                        -- UI label（允许重复）
   credential_id    UUID  FK credentials (nullable, ON DELETE SET NULL)
-  extra_config     JSON  nullable                               -- MCP만 사용 (아래 구조)
-  is_default       BOOLEAN NOT NULL DEFAULT false               -- (user_id, type, provider_name) 당 1개
+  extra_config     JSON  nullable                               -- 仅 MCP 使用（结构如下）
+  is_default       BOOLEAN NOT NULL DEFAULT false               -- 每个 (user_id, type, provider_name) 1 个
   status           VARCHAR(20)  NOT NULL DEFAULT 'active'       -- 'active' | 'disabled'
   created_at       TIMESTAMP NOT NULL
   updated_at       TIMESTAMP NOT NULL
 
-  INDEX (user_id, type, provider_name)                          -- hot path: 도구 해석 시 조회
+  INDEX (user_id, type, provider_name)                          -- hot path：解析工具时查询
 ```
 
-- **행 전체 UNIQUE 제약 없음**. UUID PK가 고유성을 보장하고, 같은 provider에 대해 "회사용/개인용"처럼 display_name이 동일/유사한 복수 connection을 허용 (업계 표준: GitHub, Slack).
-- **partial unique index** `uq_connections_one_default_per_scope` — `(user_id, type, provider_name)` WHERE `is_default = true`. "scope 당 default 1개 이하" 불변식을 DB 레벨에서 강제. 앱 레벨 count+clear+insert 패턴은 동시 요청에서 race 발생 가능하므로 DB가 최종 안전망 역할 (Codex adversarial Finding 2). 서비스는 `IntegrityError`를 catch해 409로 변환.
-- `provider_name` validator는 Python/Pydantic 레벨에서 type에 따라 분기:
-  - `type='prebuilt'`: `credential_registry` enum (`naver`, `google_search`, `google_workspace`, `google_chat`, `custom_api_key`)만 허용
-  - `type='mcp'` / `type='custom'`: 자유 문자열 (영문/숫자/언더스코어, 길이 제한)
+- **整行无 UNIQUE 约束**。UUID PK 保证唯一性，并允许同一 provider 下存在“公司用/个人用”等 display_name 相同或相近的多个 connection（行业标准：GitHub, Slack）。
+- **partial unique index** `uq_connections_one_default_per_scope` — `(user_id, type, provider_name)` WHERE `is_default = true`。在 DB 层强制“每个 scope 最多 1 个 default”的不变量。应用层 count+clear+insert 模式在并发请求下可能发生 race，因此 DB 作为最终安全网（Codex adversarial Finding 2）。service 捕获 `IntegrityError` 并转换为 409。
+- `provider_name` validator 在 Python/Pydantic 层根据 type 分支：
+  - `type='prebuilt'`：仅允许 `credential_registry` enum（`naver`, `google_search`, `google_workspace`, `google_chat`, `custom_api_key`）
+  - `type='mcp'` / `type='custom'`：自由字符串（英文/数字/下划线，长度限制）
 
-### 2. `extra_config` 구조
+### 2. `extra_config` 结构
 
-**MCP만 사용**. PREBUILT/CUSTOM은 NULL(서비스/스키마 레벨 강제, 평문 시크릿 채널 방지).
+**仅 MCP 使用**。PREBUILT/CUSTOM 必须为 NULL（在 service/schema 层强制，防止明文 secret channel）。
 
-Pydantic 모델 `ConnectionExtraConfig` (`extra="forbid"`):
+Pydantic 模型 `ConnectionExtraConfig`（`extra="forbid"`）：
 
 ```json
 {
@@ -79,211 +79,211 @@ Pydantic 모델 `ConnectionExtraConfig` (`extra="forbid"`):
 }
 ```
 
-- `url`, `auth_type`은 필수.
-- `headers`, `env_vars`, `transport`, `timeout`은 선택.
-- **`env_vars` 값은 반드시 `${credential.<field_name>}` 템플릿만 허용**. 평문 문자열은 422 반환. 비밀값은 반드시 credential에 저장하고 env_vars는 참조만 할 수 있다 — API 응답도 Pydantic 모델 형태로 echo되므로, 평문 시크릿이 연결 CRUD 응답으로 누출되는 채널이 존재하지 않는다 (Codex adversarial Finding 3).
-- **템플릿 해석 로직의 실제 구현은 M2 MCP 실행 경로에서 수행** (런타임에 credential.decrypt하여 치환).
-- `extra="forbid"`로 알 수 없는 키는 거부 → 새 필드 추가는 반드시 스키마 변경이 동반되므로 은닉 채널 차단.
+- `url`、`auth_type` 为必填。
+- `headers`、`env_vars`、`transport`、`timeout` 为可选。
+- **`env_vars` 的值必须只允许 `${credential.<field_name>}` 模板**。明文字符串返回 422。secret 必须保存在 credential 中，env_vars 只能引用 — API 响应也会以 Pydantic 模型形式 echo，因此不存在通过 connection CRUD 响应泄露明文 secret 的通道（Codex adversarial Finding 3）。
+- **模板解析逻辑的实际实现放在 M2 MCP 执行路径中**（runtime 时解密 credential 后替换）。
+- 通过 `extra="forbid"` 拒绝未知 key → 新增字段必须伴随 schema 变更，从而阻断隐藏通道。
 
-### 3. 도구 타입별 해석 로직
+### 3. 各工具类型解析逻辑
 
 ```python
-# chat_service.build_tools_config (신규 경로)
+# chat_service.build_tools_config（新路径）
 
 if tool.type == PREBUILT:
     conn = get_connection(user_id, type='prebuilt', provider_name=tool.provider_name, is_default=True)
     cred_auth = resolve_credential_data(conn.credential) if conn and conn.credential else {}
-    # env fallback 없음 (결정 4 참조)
+    # 无 env fallback（参见决策 4）
 
 elif tool.type == MCP:
-    conn = get_connection_by_id(tool.connection_id)  # tool.connection_id (M2 신규 FK)
+    conn = get_connection_by_id(tool.connection_id)  # tool.connection_id（M2 新增 FK）
     cred_auth = resolve_credential_data(conn.credential)
     mcp_url = conn.extra_config['url']
     mcp_auth_type = conn.extra_config['auth_type']
-    # headers, env_vars 등 MCP 실행 경로에서 처리
+    # headers、env_vars 等在 MCP 执行路径中处理
 
 elif tool.type == CUSTOM:
-    conn = get_connection_by_id(tool.connection_id)  # tool.connection_id (M4 신규 FK)
+    conn = get_connection_by_id(tool.connection_id)  # tool.connection_id（M4 新增 FK）
     cred_auth = resolve_credential_data(conn.credential)
 
-# agent_tools.connection_id (override) 있으면 해당 connection 사용
+# 若存在 agent_tools.connection_id（override），则使用该 connection
 if link.connection_id is not None:
     conn = get_connection_by_id(link.connection_id)
     cred_auth = resolve_credential_data(conn.credential) if conn.credential else cred_auth
 ```
 
-- `agent_tools.connection_id` (nullable FK): 에이전트별로 기본 connection 대신 다른 것을 쓰고 싶을 때 override.
-- `agent_tools.config` (기존 JSON)은 M6에서 drop.
+- `agent_tools.connection_id`（nullable FK）：当某个 agent 想使用不同于默认的 connection 时进行 override。
+- `agent_tools.config`（现有 JSON）在 M6 中 drop。
 
-### 4. env fallback 정책
+### 4. env fallback 策略
 
-**유저 도구 실행 경로에선 env fallback 제거**. `settings.naver_*` 등을 credential 해석 시점에 읽지 않는다.
+**用户工具执行路径移除 env fallback**。解析 credential 时不再读取 `settings.naver_*` 等。
 
 **依据**：
-- env 키는 개인 귀속이 안 되어 감사/비용 배분 불가
-- "마법처럼 동작"하다 env 제거 시 갑자기 깨지는 은닉 버그 발생
-- 멀티 유저 인증 도입 후에도 env를 모든 유저의 암묵적 기본값으로 두는 건 보안 원칙 위반
+- env key 无法归属到个人，无法进行审计/成本分摊
+- 会“神奇地工作”，但移除 env 后突然损坏，形成隐藏 bug
+- 即使引入 multi-user auth 后仍把 env 作为所有用户的隐式默认值，也违反安全原则
 
-**예외 — 시스템 내부 기능**:
-- `creation_agent` (대화형 에이전트 생성 메타 에이전트)
-- 에이전트 카드 이미지 생성
-- 기타 유저 귀속이 없는 시스템 작업
+**例外 — system 内部功能**：
+- `creation_agent`（对话式 agent 创建 meta agent）
+- agent card 图片生成
+- 其他不归属于具体用户的 system 任务
 
-이들은 connection 개념을 적용하지 않고 env를 직접 읽는 기존 경로를 유지한다. `config.py`의 `settings.openai_api_key` 등은 LLM 시스템 호출 용도로 존속.
+这些功能不使用 connection 概念，继续保留直接读取 env 的现有路径。`config.py` 中的 `settings.openai_api_key` 等继续用于 LLM system 调用。
 
-**M3 이행 전략**: 시드된 시스템 도구(`is_system=True`)가 현재 env로 동작 중이므로, M3 마이그레이션 시 mock user에 대해 env 값을 credential로 자동 복사하고 그 credential을 default connection으로 연결한다. env 값이 없으면 connection도 만들지 않고 "연결 안됨" 상태로 표시. 기존 UX 깨짐 없이 전환.
+**M3 迁移策略**：当前 seed 的 system tool（`is_system=True`）依赖 env 运行，因此 M3 migration 时会针对 mock user 自动将 env 值复制为 credential，并把该 credential 连接为 default connection。若无 env 值，则不创建 connection，并显示为“未连接”。在不破坏现有 UX 的情况下完成迁移。
 
-### 5. `is_default` 시맨틱
+### 5. `is_default` 语义
 
-- 유저가 provider별 첫 connection을 만들면 자동 `is_default=True`
-- UI에서 다른 connection을 default로 승격하면 기존 default는 자동 `is_default=False` (트리거 또는 서비스 레벨에서 원자적 처리)
-- `agent_tools.connection_id = NULL` → 해당 provider의 default connection 사용
+- 用户为某 provider 创建第一个 connection 时自动 `is_default=True`
+- UI 中将其他 connection 提升为 default 时，现有 default 自动变为 `is_default=False`（trigger 或 service 层原子处理）
+- `agent_tools.connection_id = NULL` → 使用该 provider 的 default connection
 - `agent_tools.connection_id = <uuid>` → override
 
-### 6. 이행(마이그레이션) 전략
+### 6. 迁移策略
 
-| 단계 | Alembic | 역할 |
+| 阶段 | Alembic | 作用 |
 |------|---------|------|
-| M1 | `m8_add_connections` | 테이블 + 인덱스 생성 (아직 아무도 참조 안 함) |
-| M2 | `m9_migrate_mcp_to_connections` | `mcp_servers` 각 row → `connections` (type='mcp', extra_config에 url/auth_type 이관) + `tools.connection_id` 컬럼 추가 + `tools.mcp_server_id` 기반 매핑 |
-| M3 | `m10_seed_prebuilt_connections` | mock user에 대해 env 값 → credential → default connection 자동 생성. env 없는 provider는 skip |
-| M4 | `m11_migrate_custom_credentials` | 기존 `tool.credential_id`가 있는 CUSTOM 도구 → 1 credential = 1 connection, 여러 도구가 N:1로 공유 |
+| M1 | `m8_add_connections` | 创建表 + index（尚无人引用） |
+| M2 | `m9_migrate_mcp_to_connections` | 每个 `mcp_servers` row → `connections`（type='mcp'，将 url/auth_type 迁入 extra_config）+ 新增 `tools.connection_id` 列 + 基于 `tools.mcp_server_id` 映射 |
+| M3 | `m10_seed_prebuilt_connections` | 对 mock user 将 env 值 → credential → 自动创建 default connection。没有 env 的 provider 跳过 |
+| M4 | `m11_migrate_custom_credentials` | 现有带 `tool.credential_id` 的 CUSTOM 工具 → 1 credential = 1 connection，多个工具以 N:1 共享 |
 | M6 | `m12_drop_legacy_columns` | `mcp_servers` drop, `tools.credential_id` drop, `tools.auth_config` drop, `tools.mcp_server_id` drop, `agent_tools.config` drop |
 
-- **M2~M5 기간**: legacy 컬럼은 read-only로 유지(코드 경로만 connection 경유로 전환). 언제든 마일스톤 단위로 롤백 가능.
-- **Alembic downgrade**: 모든 마이그레이션에 `downgrade()` 구현 필수. CI에서 `upgrade → downgrade → upgrade` 왕복 검증.
+- **M2~M5 期间**：legacy 列保留为 read-only（仅将代码路径切换到 connection）。可按 milestone 随时 rollback。
+- **Alembic downgrade**：所有 migration 必须实现 `downgrade()`。CI 中验证 `upgrade → downgrade → upgrade` 往返。
 
 ---
 
 ## 替代方案
 
-### 대안 A — `agent_tools` 레벨 바인딩만 (Connection 없음)
+### 方案 A — 仅在 `agent_tools` 层绑定（无 Connection）
 
-`agent_tools`에 `credential_id`, `mcp_config` 등을 추가해 에이전트-도구 조합마다 직접 credential을 매달자.
+给 `agent_tools` 增加 `credential_id`、`mcp_config` 等，在每个 agent-tool 组合上直接绑定 credential。
 
-**기각 이유**:
-- 같은 유저가 5개 에이전트에서 네이버 검색을 쓰면 credential을 5번 중복 지정해야 함 (재사용 불가)
-- provider별 "내 기본 키" 개념이 없어 UX 번거로움
-- MCP 서버 설정(URL, 헤더)도 매 agent_tools마다 중복 저장
+**否决理由**：
+- 同一用户如果 5 个 agent 都使用 Naver 搜索，就要重复指定 credential 5 次（不可复用）
+- 没有按 provider 的“我的默认 key”概念，UX 繁琐
+- MCP server 配置（URL、header）也会在每个 agent_tools 中重复保存
 
-### 대안 B — `tool.credential_id`에 user_id 추가
+### 方案 B — 给 `tool.credential_id` 增加 user_id
 
-`tool` 테이블에 `user_id` 컬럼을 추가해 공유 행을 유저별 행으로 쪼개자.
+给 `tool` 表新增 `user_id` 列，将共享 row 拆为按用户的 row。
 
-**기각 이유**:
-- 시스템 시드 도구가 유저 수만큼 복제됨 (N배 row inflation)
-- 도구 정의(설명, 스키마)와 유저별 바인딩이 섞임 — 관심사 분리 실패
-- 시드 업데이트 시 모든 유저 행을 갱신해야 함
+**否决理由**：
+- system seed tool 会按用户数复制（N 倍 row inflation）
+- 工具定义（说明、schema）与用户绑定混在一起 — 关注点分离失败
+- seed 更新时需要更新所有用户 row
 
-### 대안 C — MCP는 `mcp_servers` 유지, PREBUILT만 Connection 도입
+### 方案 C — MCP 保留 `mcp_servers`，仅 PREBUILT 引入 Connection
 
-MCP는 이미 서버 단위 구조가 있으니 그대로 두고, 문제의 PREBUILT 공유 행만 connection으로 분리.
+MCP 已经有 server 级结构，因此保持不变，只将有问题的 PREBUILT 共享 row 拆到 connection。
 
-**기각 이유**:
-- 바인딩 위치 비일관 문제(문제 2) 미해결 — 여전히 3곳을 봐야 함
-- 프론트 다이얼로그 중복(F) 미해결
-- 장기적으로 인증·상태·override 로직을 두 테이블에서 중복 관리
+**否决理由**：
+- 绑定位置不一致问题（问题 2）未解决 — 仍需查看 3 个位置
+- 前端 dialog 重复（F）未解决
+- 长期来看 auth/state/override 逻辑需要在两张表重复维护
 
-### 대안 D — `credentials`에 `user_id + provider_name` 추가, Connection 없음
+### 方案 D — 给 `credentials` 增加 `user_id + provider_name`，不使用 Connection
 
-credential 자체를 provider 바인딩까지 포함하게 확장.
+扩展 credential 本身，使其同时包含 provider 绑定。
 
-**기각 이유**:
-- credential = 비밀값, connection = 바인딩 메타의 관심사 분리가 깨짐
-- 같은 API 키를 "회사용/개인용"처럼 display_name만 달리 쓰는 케이스가 credential 중복 생성으로 풀림 → 비밀값 이중 저장·회전 시 누락 위험
-- MCP URL/headers 같은 non-secret 설정을 credential 테이블에 섞어야 함
+**否决理由**：
+- credential = secret，connection = 绑定 metadata，两者关注点分离被破坏
+- 同一 API key 若以“公司用/个人用”等不同 display_name 使用，会通过重复创建 credential 解决 → secret 重复保存，轮换时有遗漏风险
+- MCP URL/headers 等 non-secret 配置也必须混入 credential 表
 
 ---
 
 ## 结果
 
-### 긍정
+### 正面影响
 
-- **유저별 credential 분리**: PREBUILT 공유 행 문제 완전 해소. 멀티 유저 인증 도입 시 바로 안전
-- **단일 바인딩 경로**: 도구 해석 시 항상 connection을 거침. `build_tools_config` 로직 단순화
-- **UI 통합**: 3개 auth 다이얼로그 → `ConnectionBindingDialog` 1개 + context prop (백로그 F 흡수)
-- **Agent별 override**: 파워 유저가 에이전트마다 다른 credential 사용 가능
-- **Credential 재사용**: 같은 API 키를 여러 CUSTOM 도구에서 공유 (N:1)
-- **상태 관리**: `is_default`, `status='disabled'` 같은 connection 레벨 on/off 가능
+- **按用户隔离 credential**：彻底解决 PREBUILT 共享 row 问题，引入 multi-user auth 后可立即安全使用
+- **单一绑定路径**：解析工具时始终经过 connection，简化 `build_tools_config` 逻辑
+- **统一 UI**：3 个 auth dialog → 1 个 `ConnectionBindingDialog` + context prop（吸收 backlog F）
+- **按 Agent override**：power user 可为不同 agent 使用不同 credential
+- **Credential 复用**：同一 API key 可由多个 CUSTOM 工具共享（N:1）
+- **状态管理**：可在 connection 层实现 `is_default`、`status='disabled'` 等 on/off
 
-### 부정
+### 负面影响
 
-- **테이블 1개 추가 + 중간 테이블 레이어**: tool → connection → credential 간접도 1단계 증가
-- **마이그레이션 복잡도**: M2~M5에 걸친 긴 이행 기간. 각 마일스톤마다 legacy와 신규 경로 공존
-- **프론트/백 타입 동기화 부담**: 매 마일스톤마다 `lib/types/index.ts` 갱신 필수
+- **新增 1 张表 + 中间层**：tool → connection → credential 增加 1 层间接关系
+- **migration 复杂度**：M2~M5 跨度较长，legacy 与新路径在各 milestone 共存
+- **前后端类型同步负担**：每个 milestone 都必须更新 `lib/types/index.ts`
 
-### 보안
+### 安全
 
-- `connections.user_id`가 NOT NULL이므로 API 라우트에서 `get_current_user().id`로 필터 필수. PoC 단계에서도 IDOR 회귀 테스트 포함
-- credential 자체는 기존 Fernet 암호화(`data_encrypted`) 그대로 유지. connection은 비밀값을 담지 않음
-- env var 경로 제거로 "감사 불가한 암묵적 키 사용" 경로 차단
-- `extra_config.env_vars` 템플릿 참조(`${credential.xxx}`)는 서버 측에서만 해석. 클라이언트 응답에 실제 비밀값 노출 없음
+- 因 `connections.user_id` 为 NOT NULL，API route 必须用 `get_current_user().id` 过滤。即使 PoC 阶段也要包含 IDOR regression test
+- credential 本身继续使用现有 Fernet 加密（`data_encrypted`）。connection 不保存 secret 值
+- 移除 env var 路径，阻断“无法审计的隐式 key 使用”
+- `extra_config.env_vars` 模板引用（`${credential.xxx}`）只在服务端解析，客户端响应中不会暴露真实 secret
 
-### 성능
+### 性能
 
-- `INDEX (user_id, type, provider_name)`로 hot path 조회 O(log n)
-- 도구 해석 시 join 1단계 증가 (tool → connection → credential) — SQLAlchemy `selectinload`로 N+1 방지
-- `is_default` 변경은 같은 (user_id, type, provider_name) 범위 내 UPDATE 2건 — 서비스 레벨 트랜잭션
+- 通过 `INDEX (user_id, type, provider_name)` 使 hot path 查询为 O(log n)
+- 解析工具时增加 1 层 join（tool → connection → credential）— 使用 SQLAlchemy `selectinload` 防止 N+1
+- 修改 `is_default` 时在同一 (user_id, type, provider_name) scope 内执行 2 次 UPDATE — service 层 transaction
 
-### 마이그레이션 리스크
+### Migration 风险
 
-- M2 `mcp_servers → connections` 이관 중 데이터 누락: `upgrade()` 후 row 수 assertion
-- M3 env → credential 자동 복사 시 ENCRYPTION_KEY 미설정이면 skip + 명확한 경고 (ADR-007 패턴 준수)
-- M6 legacy drop 시점에 아직 legacy 경로를 참조하는 코드가 있으면 런타임 에러 — M5 완료 시 grep 전수 검사
+- M2 `mcp_servers → connections` 迁移期间数据遗漏：`upgrade()` 后做 row count assertion
+- M3 env → credential 自动复制时若未设置 ENCRYPTION_KEY，则 skip + 明确 warning（遵循 ADR-007 模式）
+- M6 drop legacy 时，如果仍有代码引用 legacy 路径会产生 runtime error — M5 完成时进行全量 grep 检查
 
 ---
 
-## 테스트 시나리오
+## 测试场景
 
-### M1 (신규 `tests/test_connections.py`, 8 시나리오)
+### M1（新增 `tests/test_connections.py`，8 个场景）
 
-1. **CRUD 기본**: 생성 / 조회 / 수정 / 삭제 (credential 연결 + NULL 둘 다)
-2. **MCP validator**: `type='mcp'`인데 `extra_config.url`이 없으면 422
-3. **PREBUILT validator**: `type='prebuilt'`에 `provider_name='foo'` 같은 non-enum 값은 422
-4. **is_default 자동 설정**: 첫 connection 생성 시 `is_default=True` 자동
-5. **is_default 토글 원자성**: 기존 default가 있는데 다른 connection을 default로 승격하면 기존은 자동 해제
-6. **IDOR 방지**: user_A가 user_B의 connection을 GET/PATCH/DELETE 시도 시 404
-7. **credential ON DELETE SET NULL**: credential 삭제 시 connection.credential_id는 NULL이 되고 connection은 살아있음
-8. **extra_config 타입 불일치**: PREBUILT에 `extra_config={...}` 주면 경고 또는 무시 (validator 판단)
+1. **CRUD 基础**：创建 / 查询 / 修改 / 删除（同时覆盖 credential 已连接 + NULL）
+2. **MCP validator**：`type='mcp'` 但缺少 `extra_config.url` 时返回 422
+3. **PREBUILT validator**：`type='prebuilt'` 且 `provider_name='foo'` 等 non-enum 值时返回 422
+4. **is_default 自动设置**：创建第一个 connection 时自动 `is_default=True`
+5. **is_default toggle 原子性**：已有 default 时将其他 connection 提升为 default，原 default 自动取消
+6. **防止 IDOR**：user_A 尝试 GET/PATCH/DELETE user_B 的 connection 时返回 404
+7. **credential ON DELETE SET NULL**：删除 credential 后 connection.credential_id 变为 NULL，connection 仍存在
+8. **extra_config 类型不匹配**：给 PREBUILT 传 `extra_config={...}` 时 warning 或忽略（由 validator 决定）
 
-### M2 (MCP → Connection 이관)
+### M2（MCP → Connection 迁移）
 
-1. **기존 `mcp_servers` row 전체가 `connections` 테이블로 이관되었는지** (row count + 샘플 비교)
-2. **tools.connection_id가 기존 tools.mcp_server_id 기반으로 정확히 매핑**
-3. **MCP 도구 실행 스모크**: 이관 후 agent가 MCP 도구를 호출 가능
-4. **기존 `test_mcp_connection`, `test_tools_router_extended` 회귀 PASS**
-5. **Alembic 왕복**: `m9` upgrade → downgrade → upgrade PASS
+1. **确认现有 `mcp_servers` row 全部迁移到 `connections` 表**（row count + sample 对比）
+2. **确认 tools.connection_id 基于现有 tools.mcp_server_id 正确映射**
+3. **MCP 工具执行 smoke**：迁移后 agent 仍可调用 MCP 工具
+4. **现有 `test_mcp_connection`、`test_tools_router_extended` regression PASS**
+5. **Alembic 往返**：`m9` upgrade → downgrade → upgrade PASS
 
-### M3 (PREBUILT per-user — **E 핵심 검증 포인트**)
+### M3（PREBUILT per-user — **E 核心验证点**）
 
-1. **다중 유저 격리 (필수)**: mock user 2명(user_A, user_B) 만들고 같은 PREBUILT 도구(예: naver_search)를 각자의 connection으로 실행. 각자 다른 credential이 사용됨을 로그/mock으로 검증 → **공유 행 뒤엉킴 문제 해소 증명**
-2. **env → credential 자동 시드**: `.env`에 `NAVER_CLIENT_ID`가 있으면 mock user에 credential + default connection 자동 생성
-3. **env 제거 후 회귀**: env 값을 일시 제거해도 connection이 있으면 도구 동작. connection 제거 시 명확한 에러
-4. **is_default override**: `agent_tools.connection_id` 지정 시 default 대신 해당 connection 사용
+1. **多用户隔离（必需）**：创建 2 个 mock user（user_A, user_B），让两者使用同一 PREBUILT 工具（如 naver_search）并分别通过自己的 connection 执行。通过 log/mock 验证使用各自不同的 credential → **证明共享 row 混用问题已解决**
+2. **env → credential 自动 seed**：`.env` 中存在 `NAVER_CLIENT_ID` 时，为 mock user 自动创建 credential + default connection
+3. **移除 env 后 regression**：临时移除 env 值，只要 connection 存在工具仍可运行；移除 connection 后给出明确错误
+4. **is_default override**：指定 `agent_tools.connection_id` 时，使用该 connection 而非 default
 
-### M4 (CUSTOM Connection 통합)
+### M4（CUSTOM Connection 统一）
 
-1. **기존 `tool.credential_id` → connection FK 이관 데이터 무결성**
-2. **N:1 credential 공유**: 여러 CUSTOM 도구가 같은 connection을 가리킴 → 실행 시 같은 credential 사용
-3. **CUSTOM 도구 실행 회귀**: HTTP 도구 호출 전체 경로 통과
+1. **现有 `tool.credential_id` → connection FK 迁移的数据完整性**
+2. **N:1 credential 共享**：多个 CUSTOM 工具指向同一个 connection → 执行时使用同一个 credential
+3. **CUSTOM 工具执行 regression**：完整通过 HTTP 工具调用路径
 
-### M5 (UI 통합 + F 흡수)
+### M5（UI 统一 + 吸收 F）
 
-1. **ConnectionBindingDialog**: 3 context (prebuilt/custom/mcp)에서 각각 올바른 스키마로 렌더
-2. **기존 3 다이얼로그 제거 후 agent-browser E2E**: PREBUILT 연결, CUSTOM 생성, MCP 추가 각 플로우 통과
-3. **/connections 페이지 재편**: Connection 중심 리스트 + credential이 하위 보조로 표시
+1. **ConnectionBindingDialog**：在 3 种 context（prebuilt/custom/mcp）中分别按正确 schema 渲染
+2. **移除现有 3 个 dialog 后的 agent-browser E2E**：PREBUILT 连接、CUSTOM 创建、MCP 添加各流程通过
+3. **重构 /connections 页面**：以 Connection 为中心的列表 + credential 作为下级辅助信息展示
 
 ### M6 (Cleanup)
 
-1. **legacy 컬럼 drop 후 전체 테스트 PASS**
-2. **Alembic 양방향 왕복**
-3. **grep 전수**: `mcp_server_id`, `credential_id`가 tool 모델·서비스에 남아 있지 않음
+1. **drop legacy 列后全部测试 PASS**
+2. **Alembic 双向往返**
+3. **全量 grep**：tool 模型/服务中不再残留 `mcp_server_id`、`credential_id`
 
 ---
 
-## 관련 문서
+## 相关文档
 
-- 종료된 실행 기록: `docs/exec-plans/completed/backlog-e-connection-refactor.md` (ADR-009로 폐기 승계)
-- 선행 ADR: ADR-007 (credentials field_keys 캐시), ADR-005 (Builder/Assistant)
-- 후속 작업: 멀티 유저 인증 도입 (E 완료 후 별도 ADR)
-- 유사 서비스 UX 참고: MCP `JSON 가져오기` (Claude Desktop mcpServers config import) — M5 UX 확장 후보로 footnote
+- 已结束的执行记录：`docs/exec-plans/completed/backlog-e-connection-refactor.md`（由 ADR-009 废弃并取代）
+- 前置 ADR：ADR-007（credentials field_keys cache）、ADR-005（Builder/Assistant）
+- 后续工作：引入 multi-user auth（E 完成后另行 ADR）
+- 类似服务 UX 参考：MCP `导入 JSON`（Claude Desktop mcpServers config import）— 作为 M5 UX 扩展候选的 footnote

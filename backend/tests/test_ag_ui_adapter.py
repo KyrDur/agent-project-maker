@@ -31,10 +31,10 @@ def test_message_start_maps_to_run_and_text_start() -> None:
 
 
 def test_text_message_lifecycle_shares_run_scoped_message_id() -> None:
-    """START/CONTENT/END 는 같은 messageId 를 공유해야 표준 client 가 매칭한다.
+    """START/CONTENT/END 必须共享相同 messageId，标准 client 才能匹配。
 
-    message_start 의 ``data.id`` 가 run_id 와 다른 경우에도 세 이벤트 모두
-    run_id 로 통일되고, 원본 id 는 rawEvent 로 보존된다.
+    即使 message_start 的 ``data.id`` 与 run_id 不同，三个事件也都
+    统一使用 run_id，原始 id 保存在 rawEvent。
     """
     start = brokered_moldy_event_to_ag_ui_events(
         {

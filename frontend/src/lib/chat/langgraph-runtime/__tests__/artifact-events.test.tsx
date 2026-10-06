@@ -103,7 +103,7 @@ describe('useLangGraphArtifactEffects', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
     const stream = { kind: 'stream' } as unknown as AnyStream
-    const assistantMessage = new AIMessage({ id: 'assistant-1', content: '초안입니다.' })
+    const assistantMessage = new AIMessage({ id: 'assistant-1', content: '这是草稿。' })
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>
         <Provider store={store}>{children}</Provider>

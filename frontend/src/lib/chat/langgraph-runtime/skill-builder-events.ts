@@ -12,13 +12,13 @@ import {
 } from '@/lib/stores/chat-skill-builder'
 
 /**
- * 스킬 빌더 챗 검증 레일 이벤트 소비 (스펙 AD-5).
+ * 消费 Skill builder chat 验证 rail 事件（spec AD-5）。
  *
- * `moldy.skill_draft`(stream-head, stable id `<run_id>:skill_draft`)와
- * `moldy.skill_validation`(도구 결과 projection)을 custom 채널에서 받아
- * conversationId 스코프 스토어에 최신값으로 반영한다.
- * subagent-names-events 계약 미러: `replay: true`(리로드 복원), event_id 기반
- * dedup + 대화 전환 시 seen 리셋.
+ * 从 custom channel 接收 `moldy.skill_draft`（stream-head, stable id `<run_id>:skill_draft`）
+ * 与 `moldy.skill_validation`（工具结果 projection），
+ * 并按 conversationId scope 将最新值写入 store。
+ * 镜像 subagent-names-events contract：`replay: true`（reload 恢复），基于 event_id
+ * dedup + 对话切换时重置 seen。
  */
 
 interface ProtocolCustomEvent {

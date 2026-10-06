@@ -4,12 +4,12 @@
       "checkpoint_id": null,
       "checkpoint_ns": null,
       "data": {
-        "content": "보고서를 만들겠습니다.",
+        "content": "我来创建报告。",
         "id": "assistant-wire-1",
         "tool_calls": [
           {
             "args": {
-              "title": "주간 보고서"
+              "title": "周报"
             },
             "id": "call-report-1",
             "name": "create_report"
@@ -45,7 +45,7 @@
               "action_requests": [
                 {
                   "args": {
-                    "title": "주간 보고서"
+                    "title": "周报"
                   },
                   "name": "create_report"
                 }
@@ -64,12 +64,12 @@
         ],
         "messages": [
           {
-            "content": "보고서를 만들겠습니다.",
+            "content": "我来创建报告。",
             "id": "assistant-wire-1",
             "tool_calls": [
               {
                 "args": {
-                  "title": "주간 보고서"
+                  "title": "周报"
                 },
                 "id": "call-report-1",
                 "name": "create_report"
@@ -87,7 +87,7 @@
         ],
         "todos": [
           {
-            "content": "작성",
+            "content": "编写",
             "id": "todo-wire-1",
             "status": "done"
           }
@@ -145,7 +145,7 @@
     {
       "messages": [
         {
-          "content": "주간 보고서를 만들어줘",
+          "content": "帮我创建周报",
           "role": "user"
         }
       ]
@@ -190,12 +190,12 @@
       "checkpoint_id": null,
       "checkpoint_ns": null,
       "data": {
-        "content": "보고서를 만들겠습니다.",
+        "content": "我来创建报告。",
         "id": "assistant-wire-1",
         "tool_calls": [
           {
             "args": {
-              "title": "주간 보고서"
+              "title": "周报"
             },
             "id": "call-report-1",
             "name": "create_report"
@@ -254,7 +254,7 @@
               "action_requests": [
                 {
                   "args": {
-                    "title": "주간 보고서"
+                    "title": "周报"
                   },
                   "name": "create_report"
                 }
@@ -287,7 +287,7 @@
         ],
         "todos": [
           {
-            "content": "작성",
+            "content": "编写",
             "id": "todo-wire-1",
             "status": "done"
           }
@@ -316,7 +316,7 @@
           "action_requests": [
             {
               "args": {
-                "title": "주간 보고서"
+                "title": "周报"
               },
               "name": "create_report"
             }
@@ -348,7 +348,7 @@
       "checkpoint_ns": null,
       "data": {
         "args": {
-          "title": "주간 보고서"
+          "title": "周报"
         },
         "event": "tool-started",
         "name": "create_report",
@@ -478,12 +478,12 @@
       "method": "messages",
       "params": {
         "data": {
-          "content": "보고서를 만들겠습니다.",
+          "content": "我来创建报告。",
           "id": "assistant-wire-1",
           "tool_calls": [
             {
               "args": {
-                "title": "주간 보고서"
+                "title": "周报"
               },
               "id": "call-report-1",
               "name": "create_report"
@@ -538,7 +538,7 @@
                 "action_requests": [
                   {
                     "args": {
-                      "title": "주간 보고서"
+                      "title": "周报"
                     },
                     "name": "create_report"
                   }
@@ -557,12 +557,12 @@
           ],
           "messages": [
             {
-              "content": "보고서를 만들겠습니다.",
+              "content": "我来创建报告。",
               "id": "assistant-wire-1",
               "tool_calls": [
                 {
                   "args": {
-                    "title": "주간 보고서"
+                    "title": "周报"
                   },
                   "id": "call-report-1",
                   "name": "create_report"
@@ -580,7 +580,7 @@
           ],
           "todos": [
             {
-              "content": "작성",
+              "content": "编写",
               "id": "todo-wire-1",
               "status": "done"
             }
@@ -608,7 +608,7 @@
             "action_requests": [
               {
                 "args": {
-                  "title": "주간 보고서"
+                  "title": "周报"
                 },
                 "name": "create_report"
               }
@@ -637,7 +637,7 @@
       "params": {
         "data": {
           "args": {
-            "title": "주간 보고서"
+            "title": "周报"
           },
           "event": "tool-started",
           "name": "create_report",

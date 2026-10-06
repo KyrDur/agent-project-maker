@@ -7,8 +7,8 @@ import { useCheckpointForkHandlers, type MoldySubmitState } from '../use-checkpo
 import type { ServerCheckpointContext } from '../thread-state-checkpoints'
 
 const mocks = vi.hoisted(() => ({
-  // useMessageMetadataSnapshot의 useSyncExternalStore가 STREAM_CONTROLLER 심볼로
-  // stream에서 메타데이터 스토어를 읽으므로, 동일 심볼을 노출한다.
+  // useMessageMetadataSnapshot 的 useSyncExternalStore 通过 STREAM_CONTROLLER symbol
+  // 从 stream 读取 metadata store，因此暴露同一个 symbol。
   STREAM_CONTROLLER: Symbol('STREAM_CONTROLLER'),
   loadServerCheckpointContext:
     vi.fn<(conversationId: string) => Promise<ServerCheckpointContext>>(),
@@ -52,8 +52,8 @@ function createStream(): MutableStream {
   }
 }
 
-/** checkpoint를 찾지 못하고 서버 메시지도 없는 컨텍스트 — retryServerCheckpoint가
- *  계속 폴링하며 abortable sleep으로 진입하게 만든다. */
+/** 找不到 checkpoint 且服务器消息也为空的上下文——让 retryServerCheckpoint
+ *  持续 poll，并进入 abortable sleep。 */
 function emptyServerContext(): ServerCheckpointContext {
   return {
     checkpointByMessageId: new Map(),
@@ -67,8 +67,8 @@ function renderHandlers(stream: MutableStream) {
     useCheckpointForkHandlers({
       conversationId: 'conversation-1',
       stream: stream as unknown as UseStreamReturn<MoldySubmitState>,
-      // 로컬 checkpoint를 찾지 못하게 빈 가시 메시지/메시지 목록을 준다 →
-      // 서버 폴링 경로로 떨어진다.
+      // 提供空的可见消息/消息列表，使本地找不到 checkpoint →
+      // 落到服务器 poll 路径。
       visibleMessages: [],
       langChainMessages: [] as readonly BaseMessage[],
     }),
@@ -146,22 +146,22 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
     vi.useRealTimers()
   })
 
-  it('unmount 시 poll 루프를 중단하고 dead stream에 submit하지 않는다', async () => {
-    // 서버 컨텍스트는 매번 checkpoint 없는 결과를 돌려줘 폴링을 계속하게 한다.
+  it('unmount 时中断 poll loop，不向 dead stream submit', async () => {
+    // 服务器上下文每次都返回无 checkpoint 的结果，使 polling 持续进行。
     mocks.loadServerCheckpointContext.mockResolvedValue(emptyServerContext())
 
     const stream = createStream()
     const { result, unmount } = renderHandlers(stream)
 
     let editResult: boolean | undefined
-    // onEdit는 await로 끝나지 않고 폴링 루프(sleep)에 매달린다.
+    // onEdit 不会通过 await 结束，而是挂在 polling loop（sleep）上。
     act(() => {
       void result.current.onEdit(editMessage()).then((value) => {
         editResult = value
       })
     })
 
-    // 첫 서버 로드(마이크로태스크) 이후 sleep 타이머에 진입할 때까지 진행시킨다.
+    // 首次服务器加载（microtask）后推进到进入 sleep timer。
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
@@ -169,8 +169,8 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
     expect(mocks.loadServerCheckpointContext).toHaveBeenCalled()
     expect(stream.submit).not.toHaveBeenCalled()
 
-    // unmount → cleanup이 AbortController.abort()를 호출 → sleep 즉시 resolve →
-    // signal.aborted 가드에서 루프를 빠져나가고 submit 없이 false를 반환한다.
+    // unmount → cleanup 调用 AbortController.abort() → sleep 立即 resolve →
+    // 在 signal.aborted guard 中退出循环，并在不 submit 的情况下返回 false。
     await act(async () => {
       unmount()
       await Promise.resolve()
@@ -182,7 +182,7 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
     expect(editResult).toBe(false)
   })
 
-  it('핸들러 재생성(handler recreate)으로 이전 poll이 취소되어도 submit하지 않는다', async () => {
+  it('即使因 handler recreate 取消之前的 poll，也不会 submit', async () => {
     mocks.loadServerCheckpointContext.mockResolvedValue(emptyServerContext())
 
     const stream = createStream()
@@ -199,8 +199,8 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
       await Promise.resolve()
     })
 
-    // beginServerCheckpointPoll은 새 호출 시 이전 controller를 abort한다.
-    // onReload가 새 poll을 시작하면 첫 onEdit poll의 signal이 발화한다.
+    // beginServerCheckpointPoll 在新调用时 abort 之前的 controller。
+    // onReload 启动新 poll 时，第一个 onEdit poll 的 signal 会触发。
     act(() => {
       void result.current.onReload('missing-parent')
     })
@@ -209,15 +209,15 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
       await Promise.resolve()
     })
 
-    // 첫 onEdit는 취소되어 submit 없이 false로 끝난다.
+    // 第一个 onEdit 被取消，不 submit，最终返回 false。
     expect(firstEditResult).toBe(false)
     expect(stream.submit).not.toHaveBeenCalled()
   })
 
-  it('abort된 sleep은 타이머 만료 없이 즉시 resolve되어 루프를 빠져나간다', async () => {
-    // sleep(250ms) 진입 후 abort가 오면 setTimeout이 만료되기 전에 resolve해야 한다.
-    // 가짜 타이머를 advance하지 않고도 unmount만으로 onEdit가 종료되면 즉시 resolve가
-    // 증명된다.
+  it('abort 的 sleep 无需等待 timer 到期就立即 resolve 并退出循环', async () => {
+    // 进入 sleep(250ms) 后收到 abort，必须在 setTimeout 到期前 resolve。
+    // 即使不 advance fake timer，只靠 unmount 让 onEdit 结束，也能证明它会立即 resolve。
+    // 这证明了这一点。
     mocks.loadServerCheckpointContext.mockResolvedValue(emptyServerContext())
 
     const stream = createStream()
@@ -235,7 +235,7 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
     })
     expect(settled).toBe(false)
 
-    // 타이머를 advance하지 않는다(250ms 미경과). abort만으로 resolve되어야 한다.
+    // 不 advance timer（不足 250ms）。必须仅靠 abort 就 resolve。
     await act(async () => {
       unmount()
       await Promise.resolve()
@@ -249,7 +249,7 @@ describe('useCheckpointForkHandlers abortable server checkpoint polling', () => 
 })
 
 describe('useCheckpointForkHandlers retry fork excludes synthetic notice bubbles (G2)', () => {
-  it('실패 notice 버블을 건너뛰고 마지막 user checkpoint에서 fork한다', async () => {
+  it('跳过失败 notice 气泡，从最后一个 user checkpoint fork', async () => {
     const stream = createStream()
     const userId = 'user-1'
     const failedBubbleId = 'moldy-failed-run-1'
@@ -265,7 +265,7 @@ describe('useCheckpointForkHandlers retry fork excludes synthetic notice bubbles
       useCheckpointForkHandlers({
         conversationId: 'conversation-1',
         stream: stream as unknown as UseStreamReturn<MoldySubmitState>,
-        // user 다음에 합성 실패 버블(assistant role, checkpoint 없음)이 온다.
+        // user 之后出现合成失败气泡（assistant role，无 checkpoint）。
         visibleMessages: [
           { id: userId, role: 'user' },
           { id: failedBubbleId, role: 'assistant' },
@@ -278,9 +278,9 @@ describe('useCheckpointForkHandlers retry fork excludes synthetic notice bubbles
       await result.current.onReload(userId)
     })
 
-    // 합성 notice를 필터하지 않으면 checkpointForReload가 그것을 재생성 대상
-    // assistant로 오인해 null → no-op(retry 버그)이 된다. 필터 덕에 checkpoint가
-    // 있는 마지막 user 턴에서 fork한다.
+    // 如果不过滤合成 notice，checkpointForReload 会把它误认成需要重新生成的
+    // assistant，从而得到 null → no-op（retry bug）。过滤后才能从
+    // 带 checkpoint 的最后一个 user turn fork。
     expect(stream.submit).toHaveBeenCalledWith(null, { forkFrom: 'ck-user' })
   })
 })

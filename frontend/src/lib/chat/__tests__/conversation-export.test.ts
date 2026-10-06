@@ -30,22 +30,22 @@ function msg(partial: Partial<Message>): Message {
 }
 
 describe('conversationToMarkdown', () => {
-  it('제목/헤더/role 라벨/content를 렌더한다', () => {
+  it('渲染标题/header/role 标签/content', () => {
     const md = conversationToMarkdown(
       [
-        msg({ role: 'user', content: '안녕' }),
-        msg({ id: 'm2', role: 'assistant', content: '반가워요' }),
+        msg({ role: 'user', content: '你好' }),
+        msg({ id: 'm2', role: 'assistant', content: '很高兴见到你' }),
       ],
-      { title: '테스트 대화', exportedAt: '2026-07-02T00:00:00Z', labels },
+      { title: '测试对话', exportedAt: '2026-07-02T00:00:00Z', labels },
     )
-    expect(md).toContain('# 테스트 대화')
-    expect(md).toContain('## 사용자 · 2026-07-02T00:00:00Z')
-    expect(md).toContain('안녕')
-    expect(md).toContain('## 어시스턴트')
-    expect(md).toContain('반가워요')
+    expect(md).toContain('# 测试对话')
+    expect(md).toContain('## 用户 · 2026-07-02T00:00:00Z')
+    expect(md).toContain('你好')
+    expect(md).toContain('## 助理')
+    expect(md).toContain('很高兴见到你')
   })
 
-  it('tool_calls와 attachments를 렌더한다', () => {
+  it('渲染 tool_calls 和 attachments', () => {
     const md = conversationToMarkdown(
       [
         msg({
@@ -71,7 +71,7 @@ describe('conversationToMarkdown', () => {
 })
 
 describe('conversationToJson', () => {
-  it('envelope를 파싱 가능한 JSON으로 직렬화한다', () => {
+  it('将 envelope 序列化为可解析的 JSON', () => {
     const envelope = { messages: [msg({ content: 'hi' })] } as MessagesEnvelope
     const json = conversationToJson(envelope)
     expect(JSON.parse(json).messages[0].content).toBe('hi')
@@ -79,7 +79,7 @@ describe('conversationToJson', () => {
 })
 
 describe('exportFilename', () => {
-  it('conversation-{id}-{ts}.{ext} 형식을 만든다', () => {
+  it('生成 conversation-{id}-{ts}.{ext} 格式', () => {
     expect(exportFilename('c1', 'md', '2026-07-02T00-00-00')).toBe(
       'conversation-c1-2026-07-02T00-00-00.md',
     )

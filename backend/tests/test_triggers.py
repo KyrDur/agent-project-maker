@@ -171,7 +171,7 @@ async def test_global_trigger_management_routes(client: AsyncClient):
     resp = await client.post(
         f"/api/agents/{agent_id}/triggers",
         json={
-            "name": "아침 뉴스",
+            "name": "晨间新闻",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 15},
             "input_message": "뉴스 요약",
@@ -185,7 +185,7 @@ async def test_global_trigger_management_routes(client: AsyncClient):
     assert resp.status_code == 200
     triggers = resp.json()
     assert len(triggers) == 1
-    assert triggers[0]["name"] == "아침 뉴스"
+    assert triggers[0]["name"] == "晨间新闻"
     assert triggers[0]["agent_name"] == "Test Agent"
 
     resp = await client.get("/api/triggers/summary")

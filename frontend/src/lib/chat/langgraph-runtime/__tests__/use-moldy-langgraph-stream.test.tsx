@@ -449,7 +449,7 @@ describe('useMoldyLangGraphStream', () => {
     }
 
     await act(async () => {
-      await runtimeOptions.onNew({ content: [{ type: 'text', text: '빠르게 취소' }] })
+      await runtimeOptions.onNew({ content: [{ type: 'text', text: '快速取消' }] })
     })
     const streamOptions = mocks.useStream.mock.calls.at(-1)?.[0] as MockUseStreamOptions
     act(() => streamOptions.onCreated?.({ runId: acceptedRunId }))
@@ -503,13 +503,13 @@ describe('useMoldyLangGraphStream', () => {
     }
 
     await act(async () => {
-      await runtimeOptions.onNew({ content: [{ type: 'text', text: '미영속 취소 입력' }] })
+      await runtimeOptions.onNew({ content: [{ type: 'text', text: '未持久化的取消输入' }] })
     })
     rerender({
       latestRun: {
         id: runId,
         status: 'canceled',
-        input_preview: '미영속 취소 입력',
+        input_preview: '未持久化的取消输入',
         error_message: null,
       } as ConversationRun,
     })
@@ -725,12 +725,12 @@ describe('useMoldyLangGraphStream', () => {
   })
 
   it('keeps the composer runtime idle while post-run hydration is pending (M8-1)', async () => {
-    // 런 종료 직후 서버 상태 하이드레이션(최대 10s 폴링)이 도는 동안에도
-    // assistant-ui 런타임 isRunning은 false여야 한다 — true면 컴포저 Enter가
-    // 하이드레이션 창에서 조용히 드롭된다(전송 버튼은 auto-wait로만 통과).
+    // 即使 run 刚结束、服务器状态 hydration（最多 polling 10s）仍在进行，
+    // assistant-ui runtime 的 isRunning 也必须为 false——若为 true，Composer Enter 会
+    // 在 hydration 窗口中被静默丢弃（发送按钮仅靠 auto-wait 才能通过）。
     mocks.apiFetch.mockImplementation((path: unknown) =>
       String(path).endsWith('/state')
-        ? new Promise(() => {}) // 하이드레이션 pending 고정
+        ? new Promise(() => {}) // hydration 固定为 pending
         : Promise.resolve({ metadata: {}, values: { messages: [] } }),
     )
     mocks.stream.isLoading = false
@@ -761,9 +761,9 @@ describe('useMoldyLangGraphStream', () => {
   })
 
   it('onNew cancels in-flight post-run hydration polling (R1)', async () => {
-    // 하이드레이션 창에서 새 메시지를 보내면 직전 런의 in-flight 폴은 즉시
-    // 종료되어야 한다 — 살아 있으면 늦게 resolve된 stale 서버 스냅샷이
-    // replaceMessages로 재주입되어 낙관 사용자 버블과 중복 렌더된다.
+    // 在 hydration 窗口发送新消息时，上一轮 run 的 in-flight poll 必须立即
+    // 终止——否则晚到的 stale 服务器快照会在 resolve 后
+    // 通过 replaceMessages 重新注入，与乐观 user 气泡重复渲染。
     let resolveState: (value: unknown) => void = () => {}
     const stateCalls = () =>
       mocks.apiFetch.mock.calls.filter(([path]) => String(path).endsWith('/state')).length
@@ -786,7 +786,7 @@ describe('useMoldyLangGraphStream', () => {
     )
     await act(async () => {})
     mocks.stream.isLoading = true
-    // 스트림에 assistant 메시지를 남겨 하이드레이션 준비 판정이 재시도를 타게 한다.
+    // 在 stream 中保留 assistant 消息，使 hydration ready 判定走重试。
     mocks.stream.messages = [new AIMessage({ id: 'assistant-live-1', content: '回应' })]
     rerender()
     await act(async () => {})
@@ -798,9 +798,9 @@ describe('useMoldyLangGraphStream', () => {
       onNew: (message: { content: { type: string; text: string }[] }) => Promise<void>
     }
     await act(async () => {
-      await runtimeOptions.onNew({ content: [{ type: 'text', text: '다음 질문' }] })
+      await runtimeOptions.onNew({ content: [{ type: 'text', text: '下一个问题' }] })
     })
-    // 늦게 도착한 폴 응답은 드롭 — 재시도 폴링(150ms 간격)이 없어야 한다.
+    // 丢弃迟到的 poll 响应——不应再有重试 polling（150ms 间隔）。
     await act(async () => {
       resolveState({ metadata: {}, values: { messages: [] } })
     })
@@ -908,14 +908,14 @@ describe('useMoldyLangGraphStream', () => {
       onNew: (message: { content: { type: string; text: string }[] }) => Promise<void>
     }
     await act(async () => {
-      await runtimeOptions.onNew({ content: [{ type: 'text', text: '사과를 골라줘' }] })
+      await runtimeOptions.onNew({ content: [{ type: 'text', text: '帮我选苹果' }] })
     })
 
     await waitFor(() => {
       const sawPendingUser = mocks.useExternalMessageConverter.mock.calls.some(([options]) => {
         const messages = (options as { messages?: readonly unknown[] }).messages ?? []
         return messages.some(
-          (message) => HumanMessage.isInstance(message) && message.content === '사과를 골라줘',
+          (message) => HumanMessage.isInstance(message) && message.content === '帮我选苹果',
         )
       })
       expect(sawPendingUser).toBe(true)
@@ -944,7 +944,7 @@ describe('useMoldyLangGraphStream', () => {
     const runtimeOptions = mocks.useExternalStoreRuntime.mock.calls.at(-1)?.[0] as {
       onNew: (message: { content: { type: string; text: string }[] }) => Promise<void>
     }
-    const message = { content: [{ type: 'text', text: '같은 질문' }] }
+    const message = { content: [{ type: 'text', text: '相同的问题' }] }
     const first = runtimeOptions.onNew(message)
     void runtimeOptions.onNew(message)
 
@@ -959,7 +959,7 @@ describe('useMoldyLangGraphStream', () => {
         | undefined
       expect(
         latest?.messages?.some(
-          (item) => HumanMessage.isInstance(item) && item.content === '같은 질문',
+          (item) => HumanMessage.isInstance(item) && item.content === '相同的问题',
         ),
       ).toBe(true)
     })
@@ -1555,15 +1555,15 @@ describe('useMoldyLangGraphStream', () => {
 
   it('keeps cached converted history when assistant-ui conversion briefly shrinks during a new run', () => {
     const firstUser = new HumanMessage({ id: 'user-1', content: '你好？' })
-    const firstAssistant = new AIMessage({ id: 'assistant-1', content: '안녕하세요!' })
+    const firstAssistant = new AIMessage({ id: 'assistant-1', content: '你好！' })
     const secondUser = new HumanMessage({ id: 'user-2', content: '很高兴见到你' })
-    const secondAssistant = new AIMessage({ id: 'assistant-2', content: '반갑습니다!' })
+    const secondAssistant = new AIMessage({ id: 'assistant-2', content: '很高兴见到你！' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
     const readyConvertedMessages = [
       { id: 'user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
-      { id: 'assistant-1', role: 'assistant', content: [{ type: 'text', text: '안녕하세요!' }] },
+      { id: 'assistant-1', role: 'assistant', content: [{ type: 'text', text: '你好！' }] },
       { id: 'user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
-      { id: 'assistant-2', role: 'assistant', content: [{ type: 'text', text: '반갑습니다!' }] },
+      { id: 'assistant-2', role: 'assistant', content: [{ type: 'text', text: '很高兴见到你！' }] },
     ]
     mocks.stream.messages = readyMessages
     mocks.useExternalMessageConverter.mockReturnValue(readyConvertedMessages)
@@ -1583,10 +1583,10 @@ describe('useMoldyLangGraphStream', () => {
       }),
     )
 
-    const thirdUser = new HumanMessage({ id: 'user-3', content: '바보야' })
+    const thirdUser = new HumanMessage({ id: 'user-3', content: '笨蛋' })
     const optimisticConvertedMessages = [
       ...readyConvertedMessages,
-      { id: 'user-3', role: 'user', content: [{ type: 'text', text: '바보야' }] },
+      { id: 'user-3', role: 'user', content: [{ type: 'text', text: '笨蛋' }] },
     ]
     mocks.stream.isLoading = true
     mocks.stream.messages = [...readyMessages, thirdUser]
@@ -1612,7 +1612,7 @@ describe('useMoldyLangGraphStream', () => {
 
   it('keeps visible user message text when a live stream briefly reports the same user id with empty content', () => {
     const firstUser = new HumanMessage({ id: 'stable-user-1', content: '你好？' })
-    const firstAssistant = new AIMessage({ id: 'stable-assistant-1', content: '안녕하세요!' })
+    const firstAssistant = new AIMessage({ id: 'stable-assistant-1', content: '你好！' })
     const secondUser = new HumanMessage({ id: 'stable-user-2', content: '很高兴见到你' })
     mocks.stream.messages = [firstUser, firstAssistant, secondUser]
     mocks.useExternalMessageConverter.mockReturnValue([
@@ -1620,7 +1620,7 @@ describe('useMoldyLangGraphStream', () => {
       {
         id: 'stable-assistant-1',
         role: 'assistant',
-        content: [{ type: 'text', text: '안녕하세요!' }],
+        content: [{ type: 'text', text: '你好！' }],
       },
       { id: 'stable-user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
     ])
@@ -1645,7 +1645,7 @@ describe('useMoldyLangGraphStream', () => {
       {
         id: 'stable-assistant-1',
         role: 'assistant',
-        content: [{ type: 'text', text: '안녕하세요!' }],
+        content: [{ type: 'text', text: '你好！' }],
       },
       { id: 'stable-user-2', role: 'user', content: [{ type: 'text', text: '' }] },
     ])
@@ -1656,17 +1656,17 @@ describe('useMoldyLangGraphStream', () => {
       | undefined
     expect(converterOptions?.messages).toEqual([
       expect.objectContaining({ id: 'stable-user-1', content: '你好？' }),
-      expect.objectContaining({ id: 'stable-assistant-1', content: '안녕하세요!' }),
+      expect.objectContaining({ id: 'stable-assistant-1', content: '你好！' }),
       expect.objectContaining({ id: 'stable-user-2', content: '很高兴见到你' }),
     ])
   })
 
   it('keeps completed middle turns when SDK briefly reports an older prefix plus the newest user turn', () => {
     const firstUser = new HumanMessage({ id: 'middle-user-1', content: '你好？' })
-    const firstAssistant = new AIMessage({ id: 'middle-assistant-1', content: '안녕하세요!' })
+    const firstAssistant = new AIMessage({ id: 'middle-assistant-1', content: '你好！' })
     const secondUser = new HumanMessage({ id: 'middle-user-2', content: '很高兴见到你' })
-    const secondAssistant = new AIMessage({ id: 'middle-assistant-2', content: '반갑습니다!' })
-    const thirdUser = new HumanMessage({ id: 'middle-user-3', content: '바보야' })
+    const secondAssistant = new AIMessage({ id: 'middle-assistant-2', content: '很高兴见到你！' })
+    const thirdUser = new HumanMessage({ id: 'middle-user-3', content: '笨蛋' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
     mocks.useExternalMessageConverter.mockImplementation(
       (options: { messages: readonly unknown[] }) =>
@@ -1731,28 +1731,31 @@ describe('useMoldyLangGraphStream', () => {
 
   it('keeps an optimistic converted user turn when server hydration briefly replaces source with an older prefix', async () => {
     const firstUser = new HumanMessage({ id: 'hydration-user-1', content: '你好？' })
-    const firstAssistant = new AIMessage({ id: 'hydration-assistant-1', content: '안녕하세요!' })
+    const firstAssistant = new AIMessage({ id: 'hydration-assistant-1', content: '你好！' })
     const secondUser = new HumanMessage({ id: 'hydration-user-2', content: '很高兴见到你' })
-    const secondAssistant = new AIMessage({ id: 'hydration-assistant-2', content: '반갑습니다!' })
-    const thirdUser = new HumanMessage({ id: 'hydration-user-3', content: '바보야' })
+    const secondAssistant = new AIMessage({
+      id: 'hydration-assistant-2',
+      content: '很高兴见到你！',
+    })
+    const thirdUser = new HumanMessage({ id: 'hydration-user-3', content: '笨蛋' })
     const readyMessages = [firstUser, firstAssistant, secondUser, secondAssistant]
     const readyConvertedMessages = [
       { id: 'hydration-user-1', role: 'user', content: [{ type: 'text', text: '你好？' }] },
       {
         id: 'hydration-assistant-1',
         role: 'assistant',
-        content: [{ type: 'text', text: '안녕하세요!' }],
+        content: [{ type: 'text', text: '你好！' }],
       },
       { id: 'hydration-user-2', role: 'user', content: [{ type: 'text', text: '很高兴见到你' }] },
       {
         id: 'hydration-assistant-2',
         role: 'assistant',
-        content: [{ type: 'text', text: '반갑습니다!' }],
+        content: [{ type: 'text', text: '很高兴见到你！' }],
       },
     ]
     const optimisticConvertedMessages = [
       ...readyConvertedMessages,
-      { id: 'hydration-user-3', role: 'user', content: [{ type: 'text', text: '바보야' }] },
+      { id: 'hydration-user-3', role: 'user', content: [{ type: 'text', text: '笨蛋' }] },
     ]
     mocks.stream.messages = readyMessages
     mocks.useExternalMessageConverter.mockReturnValue(readyConvertedMessages)
@@ -1782,7 +1785,7 @@ describe('useMoldyLangGraphStream', () => {
       values: {
         messages: [
           { type: 'human', id: 'hydration-user-1', content: '你好？' },
-          { type: 'ai', id: 'hydration-assistant-1', content: '안녕하세요!' },
+          { type: 'ai', id: 'hydration-assistant-1', content: '你好！' },
           { type: 'human', id: 'hydration-user-2', content: '很高兴见到你' },
         ],
       },
@@ -2190,10 +2193,10 @@ describe('useMoldyLangGraphStream', () => {
     })
   })
 
-  it('실패한 v3 런을 error_message가 담긴 어시스턴트 에러 알림으로 표시한다 (G2)', async () => {
-    // isLoading=true인 채로 failed notice가 도착해도 isRunning이 false여야 한다
-    // (threadRunNotice.status !== 'failed' 가드 회귀 방어). 가드가 없으면 isLoading이
-    // true라 isRunning이 true가 되어 아래 isRunning 단언이 실패한다.
+  it('将失败的 v3 run 显示为包含 error_message 的 assistant 错误通知（G2）', async () => {
+    // 即使 isLoading=true 时收到 failed notice，isRunning 也必须为 false
+    // （防止 threadRunNotice.status !== 'failed' guard 回归）。没有该 guard 时 isLoading
+    // 为 true，isRunning 也会变成 true，导致下面的 isRunning 断言失败。
     mocks.stream.isLoading = true
     const { result } = renderHook(
       () =>
@@ -2213,7 +2216,7 @@ describe('useMoldyLangGraphStream', () => {
           latest_run: {
             id: 'run-failed',
             status: 'failed',
-            error_message: '모델 제공자 요청이 실패했습니다.',
+            error_message: '模型提供商请求失败。',
           },
         },
       })
@@ -2223,7 +2226,7 @@ describe('useMoldyLangGraphStream', () => {
       expect(result.current.threadRunNotice).toEqual({
         id: 'run-failed',
         status: 'failed',
-        errorMessage: '모델 제공자 요청이 실패했습니다.',
+        errorMessage: '模型提供商请求失败。',
       })
       const converterOptions = mocks.useExternalMessageConverter.mock.calls.at(-1)?.[0] as
         | { messages: readonly unknown[]; isRunning: boolean }
@@ -2233,7 +2236,7 @@ describe('useMoldyLangGraphStream', () => {
         expect.arrayContaining([
           expect.objectContaining({
             id: 'moldy-failed-run-failed',
-            content: '모델 제공자 요청이 실패했습니다.',
+            content: '模型提供商请求失败。',
             additional_kwargs: expect.objectContaining({
               metadata: expect.objectContaining({ moldy_terminal_notice: 'failed' }),
             }),
@@ -2343,8 +2346,8 @@ describe('useMoldyLangGraphStream', () => {
                         question: '你喜欢哪种水果？',
                         options: [
                           { id: 'apple', label: '🍎 苹果' },
-                          { id: 'pear', label: '🍐 배' },
-                          { id: 'grape', label: '🍇 포도' },
+                          { id: 'pear', label: '🍐 梨' },
+                          { id: 'grape', label: '🍇 葡萄' },
                         ],
                       },
                     },
@@ -2415,8 +2418,8 @@ describe('useMoldyLangGraphStream', () => {
                       question: '你喜欢哪种水果？',
                       options: [
                         { id: 'apple', label: '🍎 苹果' },
-                        { id: 'pear', label: '🍐 배' },
-                        { id: 'grape', label: '🍇 포도' },
+                        { id: 'pear', label: '🍐 梨' },
+                        { id: 'grape', label: '🍇 葡萄' },
                       ],
                     },
                   },
@@ -2468,8 +2471,8 @@ describe('useMoldyLangGraphStream', () => {
       question: '你喜欢哪种水果？',
       options: [
         { id: 'apple', label: '🍎 苹果' },
-        { id: 'pear', label: '🍐 배' },
-        { id: 'grape', label: '🍇 포도' },
+        { id: 'pear', label: '🍐 梨' },
+        { id: 'grape', label: '🍇 葡萄' },
       ],
     }
     mocks.stream.messages = []
@@ -3140,7 +3143,7 @@ describe('useMoldyLangGraphStream', () => {
         id: 'intr-multi',
         value: {
           action_requests: [
-            { name: 'ask_user', args: { question: '계속할까요?' } },
+            { name: 'ask_user', args: { question: '要继续吗？' } },
             { name: 'send_email', args: { to: 'team@example.com' } },
           ],
           review_configs: [
@@ -3161,7 +3164,7 @@ describe('useMoldyLangGraphStream', () => {
 
     const firstDecision = result.current.registerDecision(
       1,
-      { type: 'reject', message: '아니요' },
+      { type: 'reject', message: '不' },
       '拒绝',
       'intr-multi',
     )
@@ -3169,8 +3172,8 @@ describe('useMoldyLangGraphStream', () => {
 
     const finalDecision = result.current.registerDecision(
       0,
-      { type: 'respond', message: '네' },
-      '네',
+      { type: 'respond', message: '是' },
+      '是',
       'intr-multi',
     )
     await Promise.all([firstDecision, finalDecision])
@@ -3178,8 +3181,8 @@ describe('useMoldyLangGraphStream', () => {
     expect(mocks.stream.respond).toHaveBeenCalledWith(
       {
         decisions: [
-          { type: 'respond', message: '네' },
-          { type: 'reject', message: '아니요' },
+          { type: 'respond', message: '是' },
+          { type: 'reject', message: '不' },
         ],
       },
       { interruptId: 'intr-multi' },
@@ -3189,7 +3192,7 @@ describe('useMoldyLangGraphStream', () => {
   it('does not merge partial decisions across a same-id interrupt generation change', async () => {
     const payload = {
       action_requests: [
-        { name: 'ask_user', args: { question: '계속할까요?' } },
+        { name: 'ask_user', args: { question: '要继续吗？' } },
         { name: 'send_email', args: { to: 'team@example.com' } },
       ],
       review_configs: [
@@ -3209,7 +3212,7 @@ describe('useMoldyLangGraphStream', () => {
 
     const staleDecision = result.current.registerDecision(
       1,
-      { type: 'reject', message: '아니요' },
+      { type: 'reject', message: '不' },
       '拒绝',
       'intr-multi',
     )
@@ -3229,16 +3232,16 @@ describe('useMoldyLangGraphStream', () => {
 
     const firstDecision = result.current.registerDecision(
       0,
-      { type: 'respond', message: '네' },
-      '네',
+      { type: 'respond', message: '是' },
+      '是',
       'intr-multi',
     )
     expect(mocks.stream.respond).not.toHaveBeenCalled()
 
     const finalDecision = result.current.registerDecision(
       1,
-      { type: 'reject', message: '새 거부' },
-      '새 거부',
+      { type: 'reject', message: '新拒绝' },
+      '新拒绝',
       'intr-multi',
     )
     await Promise.all([firstDecision, finalDecision])
@@ -3246,8 +3249,8 @@ describe('useMoldyLangGraphStream', () => {
     expect(mocks.stream.respond).toHaveBeenCalledWith(
       {
         decisions: [
-          { type: 'respond', message: '네' },
-          { type: 'reject', message: '새 거부' },
+          { type: 'respond', message: '是' },
+          { type: 'reject', message: '新拒绝' },
         ],
       },
       { interruptId: 'intr-multi', namespace: ['tools:latest'] },

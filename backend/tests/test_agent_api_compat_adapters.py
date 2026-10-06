@@ -15,7 +15,7 @@ async def test_dify_chat_messages_blocking_adapter(client, db, monkeypatch):
     await db.commit()
 
     async def fake_invoke(cfg, messages_history, **_kwargs):
-        assert messages_history[-1]["content"] == "요약해줘"
+        assert messages_history[-1]["content"] == "帮我总结"
         assert cfg.runtime_policy.source == "stored"
         assert cfg.runtime_policy.effective.todo.enabled is False
         return "Dify style answer"
@@ -28,7 +28,7 @@ async def test_dify_chat_messages_blocking_adapter(client, db, monkeypatch):
     response = await client.post(
         f"/v1/agents/{deployment.public_id}/chat-messages",
         headers={"Authorization": f"Bearer {cleartext}"},
-        json={"query": "요약해줘", "response_mode": "blocking", "user": "abc-123"},
+        json={"query": "帮我总结", "response_mode": "blocking", "user": "abc-123"},
     )
 
     assert response.status_code == 200

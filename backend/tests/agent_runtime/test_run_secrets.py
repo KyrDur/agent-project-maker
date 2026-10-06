@@ -146,9 +146,9 @@ def test_reset_restores_previous_state_no_leak() -> None:
 
 
 def test_add_skill_secrets_unions_into_cfg_secret_values() -> None:
-    # cfg.secret_values는 worker의 error_message 마스킹이 ContextVar reset 후에도
-    # 읽는 소스다(_redact_run_error_message). lazy 스킬 credential이 여기 들어가지
-    # 않으면 에러 메시지 마스킹을 빠져나간다(2차 리뷰 gap).
+    # cfg.secret_values 是 worker 在 ContextVar reset 后仍用于 error_message 遮蔽的
+    # 数据源（_redact_run_error_message）。如果 lazy skill credential 未进入这里，
+    # 就会绕过错误消息遮蔽（第2次 review gap）。
     from types import SimpleNamespace
 
     from app.agent_runtime.runtime_component_builder import _add_skill_secrets_to_run
@@ -173,7 +173,7 @@ def test_add_skill_secrets_unions_into_cfg_secret_values() -> None:
         }
     )
 
-    # ContextVar 미설정이어도 cfg union은 동작해야 한다(add_run_secrets는 no-op).
+    # 即使 ContextVar 未设置，cfg union 也必须工作（add_run_secrets 为 no-op）。
     _add_skill_secrets_to_run(skill_ctx, cfg)
 
     assert "skill-plaintext-secret-abcdef123" in cfg.secret_values

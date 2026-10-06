@@ -54,7 +54,7 @@ async def test_agent_crud(client: AsyncClient):
     agent = resp.json()
     assert agent["name"] == "Test Agent"
     assert agent["model"]["display_name"] == "GPT-4o"
-    # 채팅 컴포저 컨텍스트 게이지가 참조하는 context_window가 ModelBrief로 노출된다.
+    # chat composer context gauge 引用的 context_window 会通过 ModelBrief 暴露。
     assert agent["model"]["context_window"] == 128000
     assert agent["identity_mode"] == "per_user"
     assert agent["runtime_name"].startswith("agent_")
@@ -395,11 +395,11 @@ async def test_agent_summary_recovers_avatar_file_when_db_path_is_null(
 
 
 def test_builder_sessions_agent_id_fk_set_null():
-    """Builder session FK 가 ``ON DELETE SET NULL`` 이어야 PostgreSQL 에서 agent
-    삭제 시 세션이 cascade-delete 되거나 ForeignKeyViolation 으로 막히지 않는다.
+    """Builder session FK 必须为 ``ON DELETE SET NULL``，以确保 PostgreSQL 中删除 agent
+    时不会 cascade-delete session，也不会被 ForeignKeyViolation 阻止。
 
-    Test runner 의 SQLite 는 기본 FK 비활성화라 runtime fire 검증 불가 →
-    SQLAlchemy metadata 의 FK 정의 자체를 검증해 PostgreSQL 동작을 보장.
+    Test runner 的 SQLite 默认禁用 FK，因此无法 runtime fire 验证 →
+    直接验证 SQLAlchemy metadata 中的 FK 定义，以保证 PostgreSQL 行为。
     """
     from app.models.builder_session import BuilderSession
 
@@ -434,26 +434,26 @@ async def test_opener_questions_create_and_update(client: AsyncClient):
             "description": "test",
             "system_prompt": "prompt",
             "model_id": model_id,
-            "opener_questions": ["오늘 날씨?", "오늘 며칠?"],
+            "opener_questions": ["今天天气？", "今天几号？"],
         },
     )
     assert resp.status_code == 201
     body = resp.json()
-    assert body["opener_questions"] == ["오늘 날씨?", "오늘 며칠?"]
+    assert body["opener_questions"] == ["今天天气？", "今天几号？"]
     agent_id = body["id"]
 
     # Update with new list
     resp = await client.put(
         f"/api/agents/{agent_id}",
-        json={"opener_questions": ["새 질문 1", "새 질문 2", "새 질문 3"]},
+        json={"opener_questions": ["新问题 1", "新问题 2", "新问题 3"]},
     )
     assert resp.status_code == 200
-    assert resp.json()["opener_questions"] == ["새 질문 1", "새 질문 2", "새 질문 3"]
+    assert resp.json()["opener_questions"] == ["新问题 1", "新问题 2", "新问题 3"]
 
     # GET round-trip
     resp = await client.get(f"/api/agents/{agent_id}")
     assert resp.status_code == 200
-    assert resp.json()["opener_questions"] == ["새 질문 1", "새 질문 2", "새 질문 3"]
+    assert resp.json()["opener_questions"] == ["新问题 1", "新问题 2", "新问题 3"]
 
     # Update with empty list — clears the openers
     resp = await client.put(
@@ -472,7 +472,7 @@ async def test_opener_questions_validation_too_many(client: AsyncClient):
 
     resp = await client.put(
         f"/api/agents/{agent_id}",
-        json={"opener_questions": [f"질문 {i}" for i in range(13)]},
+        json={"opener_questions": [f"问题 {i}" for i in range(13)]},
     )
     assert resp.status_code == 422
 
@@ -485,7 +485,7 @@ async def test_opener_questions_validation_empty_item(client: AsyncClient):
 
     resp = await client.put(
         f"/api/agents/{agent_id}",
-        json={"opener_questions": ["좋은 질문", "   "]},
+        json={"opener_questions": ["好问题", "   "]},
     )
     assert resp.status_code == 422
 
@@ -511,11 +511,11 @@ async def test_list_middlewares(client: AsyncClient):
     assert isinstance(data, list)
     assert len(data) > 0
     types = {item["type"] for item in data}
-    # deepagents 자동 주입 타입(summarization, todo_list 등)은 제외됨
+    # deepagents 自动注入类型（summarization, todo_list 等）会被排除
     assert "summarization" not in types
     assert "tool_retry" in types
-    # ``human_in_the_loop`` 는 executor 가 명시 인스턴스화하지만 사용자가
-    # 도구별 ``interrupt_on`` 정책을 정의해야 동작하므로 카탈로그에 노출.
+    # ``human_in_the_loop`` 虽由 executor 显式实例化，但需要用户
+    # 定义逐工具 ``interrupt_on`` 策略才会工作，因此在 catalog 中暴露。
     assert "human_in_the_loop" in types
 
 
@@ -616,7 +616,7 @@ async def test_sub_agent_self_reference_reject(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sub_agent_duplicate_ids_reject(client: AsyncClient):
-    """sub_agent_ids 중복은 schema validator에서 422."""
+    """sub_agent_ids 重复由 schema validator 返回 422。"""
     model_id = await _create_model(client)
     sub_id = await _create_named_agent(client, model_id, "Sub")
 
@@ -635,7 +635,7 @@ async def test_sub_agent_duplicate_ids_reject(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sub_agent_cascade_delete(client: AsyncClient):
-    """Parent 삭제 시 agent_subagents 행도 사라진다."""
+    """删除 Parent 时 agent_subagents 行也会消失。"""
     from sqlalchemy import select
 
     from app.models.agent_subagent import AgentSubAgentLink
@@ -674,7 +674,7 @@ async def test_sub_agent_cascade_delete(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sub_agent_mix_self_and_valid_reject(client: AsyncClient):
-    """sub_agent_ids에 자기 자신 + 유효한 sub_id가 섞여 있어도 400으로 reject."""
+    """即使 sub_agent_ids 中混有自身 + 有效 sub_id，也应 reject 400。"""
     model_id = await _create_model(client)
     valid_sub_id = await _create_named_agent(client, model_id, "ValidSub")
     parent_id = await _create_named_agent(client, model_id, "Parent")
@@ -688,7 +688,7 @@ async def test_sub_agent_mix_self_and_valid_reject(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sub_agent_nonexistent_id_rejected(client: AsyncClient):
-    """존재하지 않는 sub_agent_id → 400 (DB FK 위반으로 500 안 됨)."""
+    """不存在的 sub_agent_id → 400（避免 DB FK 违规导致 500）。"""
     import uuid as _uuid
 
     model_id = await _create_model(client)
@@ -705,7 +705,7 @@ async def test_sub_agent_nonexistent_id_rejected(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_tool_ids_nonexistent_rejected(client: AsyncClient):
-    """존재하지 않는 tool_id → 400 (FK 위반 500 방지)."""
+    """不存在的 tool_id → 400（避免 FK 违规 500）。"""
     import uuid as _uuid
 
     model_id = await _create_model(client)
@@ -719,7 +719,7 @@ async def test_tool_ids_nonexistent_rejected(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_skill_ids_nonexistent_rejected(client: AsyncClient):
-    """존재하지 않는 skill_id → 400."""
+    """不存在的 skill_id → 400。"""
     import uuid as _uuid
 
     model_id = await _create_model(client)
@@ -733,10 +733,10 @@ async def test_skill_ids_nonexistent_rejected(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_sub_agent_cross_user_owner_rejected(client: AsyncClient):
-    """타 사용자가 소유한 agent를 sub_agent로 묶으려 하면 400.
+    """尝试将其他用户拥有的 agent 作为 sub_agent 绑定时返回 400。
 
-    PoC라 default user가 1명이지만, 다른 user_id로 직접 INSERT한 agent를
-    request로 보내면 service의 user_id 필터에 걸려 reject되어야 한다.
+    虽然 PoC 中 default user 只有1个，但若直接 INSERT 一个其他 user_id 的 agent
+    并通过 request 发送，必须被 service 的 user_id filter 拦截并 reject。
     """
     import uuid as _uuid
 
@@ -746,7 +746,7 @@ async def test_sub_agent_cross_user_owner_rejected(client: AsyncClient):
     model_id = await _create_model(client)
     parent_id = await _create_named_agent(client, model_id, "Parent")
 
-    # 다른 user_id로 직접 agent INSERT
+    # 直接 INSERT 其他 user_id 的 agent
     foreign_user_id = _uuid.uuid4()
     foreign_agent_id = _uuid.uuid4()
     async with TestSession() as session:

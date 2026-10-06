@@ -1,9 +1,9 @@
 /**
- * 컴포저 입력 히스토리(↑/↓) — readline 스타일의 순수 로직.
+ * Composer 输入历史（↑/↓）——readline 风格的纯逻辑。
  *
- * 히스토리 소스는 현재 스레드의 user 메시지(서버 영속 → 리로드 생존)이고,
- * 탐색 상태는 훅(use-composer-history)이 ref로 든다. 이 모듈은 텍스트 추출·
- * dedupe·캐럿 줄 판정·인덱스 스텝만 담당해 유닛 테스트를 단순하게 만든다.
+ * 历史来源是当前 thread 的 user 消息（服务器持久化 → reload 后仍存在），
+ * 探索状态由 hook（use-composer-history）保存在 ref 中。该模块只负责文本提取、
+ * dedupe、插入符行判定和索引步进，以简化单元测试。
  */
 
 interface MessageLike {
@@ -15,7 +15,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** assistant-ui ThreadMessage content(문자열 | 파트 배열)에서 평문 텍스트 추출. */
+/** 从 assistant-ui ThreadMessage content（字符串 | part 数组）中提取纯文本。 */
 export function extractMessageText(content: unknown): string {
   if (typeof content === 'string') return content
   if (!Array.isArray(content)) return ''
@@ -32,9 +32,9 @@ export function extractMessageText(content: unknown): string {
 }
 
 /**
- * user 메시지 → 히스토리 목록(오래된 것 → 최신). 빈 항목 제외 +
- * 연속 중복 제거(HISTCONTROL ignoredups). 입력이 배열이 아니면(부분 mock 등)
- * 빈 히스토리로 안전 폴백한다.
+ * user 消息 → 历史列表（从旧到新）。排除空项 +
+ * 移除连续重复项（HISTCONTROL ignoredups）。如果输入不是数组（如部分 mock），
+ * 安全回退为空历史。
  */
 export function collectUserHistory(messages: unknown): string[] {
   if (!Array.isArray(messages)) return []
@@ -49,19 +49,19 @@ export function collectUserHistory(messages: unknown): string[] {
   return history
 }
 
-/** 캐럿이 첫 줄에 있는가 — ↑를 히스토리 탐색으로 승격할 조건. */
+/** 插入符是否位于第一行——将 ↑ 升级为历史探索的条件。 */
 export function caretOnFirstLine(value: string, selectionStart: number): boolean {
   return !value.slice(0, selectionStart).includes('\n')
 }
 
-/** 캐럿이 마지막 줄에 있는가 — ↓를 히스토리 탐색으로 승격할 조건. */
+/** 插入符是否位于最后一行——将 ↓ 升级为历史探索的条件。 */
 export function caretOnLastLine(value: string, selectionEnd: number): boolean {
   return !value.slice(selectionEnd).includes('\n')
 }
 
 /**
- * 히스토리 인덱스 스텝. index는 -1(탐색 안 함) / 0(최신) / 1(그 이전)…
- * 경계를 넘으면 null(이동 없음).
+ * 历史索引步进。index 为 -1（不在探索）/ 0（最新）/ 1（再前一条）…
+ * 超过边界返回 null（不移动）。
  */
 export function stepHistoryIndex(
   historyLength: number,
@@ -77,7 +77,7 @@ export function stepHistoryIndex(
   return index - 1
 }
 
-/** index가 가리키는 히스토리 항목(-1이면 null = draft 복원 지점). */
+/** index 指向的历史项（-1 时为 null = draft 恢复点）。 */
 export function historyItemAt(history: readonly string[], index: number): string | null {
   if (index < 0 || index >= history.length) return null
   return history[history.length - 1 - index]

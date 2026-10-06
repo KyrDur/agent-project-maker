@@ -3,13 +3,13 @@ import type { EnrichedPartState, PartState } from '@assistant-ui/react'
 import { isGroupableTool } from '@/lib/chat/tool-group-meta'
 
 // ──────────────────────────────────────────────
-// 공유 tool-call 그룹핑 헬퍼.
+// 共享 tool-call 分组 helper。
 //
-// 메인 v3 채팅(`assistant-thread.tsx`)과 빌더 렌더(`builder-overrides.tsx`)가
-// 동일한 `MessagePrimitive.GroupedParts` groupBy/노드 판별을 공유한다. 각 표면의
-// leaf 렌더(텍스트/도구 박스 비주얼)는 서로 달라 render fn은 표면별로 두지만,
-// "어떤 part를 어떤 group key로 묶는가"와 "group 노드를 판별/해석하는 법"은
-// 한 곳에서 정의해 두 표면이 어긋나지 않게 한다.
+// 主 v3 聊天（`assistant-thread.tsx`）与 builder 渲染（`builder-overrides.tsx`）
+// 共享同一个 `MessagePrimitive.GroupedParts` groupBy/节点判定。各表面的
+// leaf 渲染（文本/工具框视觉）彼此不同，因此 render fn 按表面分别保留，但
+// "哪些 part 应按哪些 group key 分组"以及"如何判定/解释 group 节点"
+// 统一定义在一处，避免两个表面行为不一致。
 // ──────────────────────────────────────────────
 
 export const GROUP_TOOL_PREFIX = 'group-tool:'
@@ -17,10 +17,10 @@ export const GROUP_TOOL_PREFIX = 'group-tool:'
 const APPROVAL_TOOL = 'request_approval'
 
 /**
- * request_approval은 인터럽트 경계로 그룹을 나눈다 — 그룹 컨테이너는 "한
- * 인터럽트의 N개 액션" 묶음인데(GroupedApprovalCard 계약), 키가 도구명뿐이면
- * 직전 인터럽트의 resolved 카드와 새 인터럽트의 pending 카드가 인접 시 하나로
- * coalesce되어 "승인 대기 2건" 같은 허수 카운트가 뜬다 (M8-3).
+ * request_approval 按 interrupt 边界拆分组——group 容器表示"一个
+ * interrupt 的 N 个 action"集合（GroupedApprovalCard contract），如果 key 只有工具名，
+ * 前一个 interrupt 的 resolved 卡片与新 interrupt 的 pending 卡片相邻时会被
+ * coalesce 成一组，出现"等待批准 2 项"这类虚假计数（M8-3）。
  */
 function approvalInterruptSuffix(part: PartState): string {
   if (part.type !== 'tool-call' || part.toolName !== APPROVAL_TOOL) return ''
@@ -29,12 +29,12 @@ function approvalInterruptSuffix(part: PartState): string {
 }
 
 /**
- * groupBy: tool-call이고 그룹 대상이면 `group-tool:<toolName>` 단일 경로, 아니면 null.
- * key에 toolName을 포함해 "연속 같은 도구"만 합쳐지고, 인접한 다른 도구는 분리된다.
- * request_approval은 `group-tool:request_approval:<interruptId>`로 세분화된다.
+ * groupBy：如果是 tool-call 且属于可分组对象，则使用 `group-tool:<toolName>` 单一路径，否则为 null。
+ * key 中包含 toolName，因此只合并"连续相同工具"，相邻的不同工具会分开。
+ * request_approval 细分为 `group-tool:request_approval:<interruptId>`。
  *
- * 모듈 레벨 const로 둬서 assistant-ui 내부 메모화(identity 기반)가 매 토큰마다
- * 깨지지 않게 한다 — 매 render에서 새 함수를 만들면 streaming 표시가 불안정해진다.
+ * 定义为模块级 const，避免 assistant-ui 内部基于 identity 的 memoization 每个 token
+ * 都失效——如果每次 render 都创建新函数，streaming 显示会不稳定。
  */
 export function groupAssistantParts(part: PartState): readonly [`group-${string}`] | null {
   if (part.type === 'tool-call' && isGroupableTool(part.toolName)) {
@@ -45,28 +45,28 @@ export function groupAssistantParts(part: PartState): readonly [`group-${string}
   return null
 }
 
-/** GroupedParts가 합성하는 group-tool 노드. status는 마지막 part 상태를 미러. */
+/** GroupedParts 合成的 group-tool 节点。status 镜像最后一个 part 的状态。 */
 export type GroupToolNode = {
   readonly type: `group-${string}`
   readonly status?: { type?: string }
   readonly indices: readonly number[]
 }
 
-/** GroupedParts render fn이 받는 노드 — group 노드 / leaf part / indicator 중 하나. */
+/** GroupedParts render fn 接收的节点——group 节点 / leaf part / indicator 三者之一。 */
 export type GroupedRenderInfo = {
   readonly part: GroupToolNode | EnrichedPartState | { readonly type: 'indicator' }
   readonly children: ReactNode
 }
 
-/** part가 group-tool 노드인지(= GROUP_TOOL_PREFIX로 시작하는 합성 type인지). */
+/** 判断 part 是否为 group-tool 节点（= type 是否以 GROUP_TOOL_PREFIX 开头）。 */
 export function isGroupToolNode(part: { readonly type: string }): part is GroupToolNode {
   return part.type.startsWith(GROUP_TOOL_PREFIX)
 }
 
-/** group-tool 노드의 type에서 원래 toolName을 복원. */
+/** 从 group-tool 节点的 type 中恢复原始 toolName。 */
 export function groupToolName(node: GroupToolNode): string {
   const raw = node.type.slice(GROUP_TOOL_PREFIX.length)
-  // request_approval은 `request_approval:<interruptId>`로 인코딩 — 도구명만 복원.
+  // request_approval 编码为 `request_approval:<interruptId>`——只恢复工具名。
   if (raw.startsWith(`${APPROVAL_TOOL}:`)) return APPROVAL_TOOL
   return raw
 }

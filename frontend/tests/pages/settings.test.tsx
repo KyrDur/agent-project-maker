@@ -53,7 +53,7 @@ vi.mock('@/lib/hooks/use-agents', () => ({
     data: [
       {
         id: 'agent-1',
-        name: '리서치 에이전트',
+        name: '研究智能体',
         description: '뉴스를 요약합니다.',
         status: 'active',
         is_favorite: false,
@@ -92,7 +92,7 @@ vi.mock('@/lib/hooks/use-memory', () => ({
         user_id: 'user-1',
         agent_id: null,
         scope: 'user',
-        content: '회의는 오후 3시 이후를 선호합니다.',
+        content: '偏好把会议安排在下午 3 点以后。',
         reason: '일정 선호',
         store_path: '/memories/users/user-1/memory-1.md',
         source_conversation_id: null,
@@ -117,9 +117,9 @@ describe('settings pages', () => {
     updateProfile.mockResolvedValue({
       id: 'user-1',
       name: 'Test User',
-      display_name: '새이름',
+      display_name: '新名字',
       avatar_mode: 'initials',
-      avatar_initials: '새',
+      avatar_initials: '新',
       avatar_color: 'sky',
       avatar_image_url: null,
       email: 'test@example.com',
@@ -145,7 +145,7 @@ describe('settings pages', () => {
         name: 'Test User',
         display_name: '用户',
         avatar_mode: 'initials',
-        avatar_initials: '체',
+        avatar_initials: '用',
         avatar_color: 'sky',
         avatar_image_url: null,
         email: 'test@example.com',
@@ -160,10 +160,10 @@ describe('settings pages', () => {
   it('renders editable profile settings from the active session', () => {
     render(<SettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '公司简介' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '个人资料' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('用户')).toBeInTheDocument()
-    expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
-    expect(screen.getByDisplayValue('체')).toBeInTheDocument()
+    expect(screen.getByLabelText('用户 个人资料图标')).toHaveTextContent('用')
+    expect(screen.getByDisplayValue('用')).toBeInTheDocument()
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
     expect(screen.getAllByText('管理员').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('用户')).not.toBeInTheDocument()
@@ -173,16 +173,16 @@ describe('settings pages', () => {
     render(<SettingsPage />)
 
     await userEvent.clear(screen.getByLabelText('显示名称'))
-    await userEvent.type(screen.getByLabelText('显示名称'), '새이름')
+    await userEvent.type(screen.getByLabelText('显示名称'), '新名字')
     await userEvent.clear(screen.getByLabelText('图标字母'))
-    await userEvent.type(screen.getByLabelText('图标字母'), '새')
+    await userEvent.type(screen.getByLabelText('图标字母'), '新')
     await userEvent.click(screen.getByRole('button', { name: '保存' }))
 
     await waitFor(() => {
       expect(updateProfile).toHaveBeenCalledWith({
-        display_name: '새이름',
+        display_name: '新名字',
         avatar_mode: 'initials',
-        avatar_initials: '새',
+        avatar_initials: '新',
         avatar_color: 'sky',
       })
     })
@@ -198,17 +198,17 @@ describe('settings pages', () => {
   it('renders appearance and language settings', () => {
     render(<AppearanceSettingsPage />)
 
-    expect(screen.getByRole('heading', { name: '外貌与语言' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /라이트/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /다크/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /시스템/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /한국어/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '外观与语言' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /浅色/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /深色/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /系统/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /简体中文/ })).toBeInTheDocument()
   })
 
   it('renders the Agent API management page', () => {
     render(<AgentApiSettingsPage />)
 
-    expect(screen.getByRole('heading', { name: 'Agent API' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '智能体 API' })).toBeInTheDocument()
     expect(
       screen.getByText(
         '部署智能体，颁发服务器端API密钥，并从外部系统调用Agent Project Maker。',
@@ -224,7 +224,7 @@ describe('settings pages', () => {
       data: [
         {
           agent_id: 'agent-1',
-          agent_name: '리서치 에이전트',
+          agent_name: '研究智能体',
           runtime_name: 'agent_runtime_1',
           existing_deployment_id: null,
           existing_public_id: null,
@@ -285,7 +285,7 @@ describe('settings pages', () => {
     expect(screen.getByLabelText('在回答中使用记忆')).toBeChecked()
     expect(screen.getByText('保存前询问')).toBeInTheDocument()
     expect(screen.getByText('用户+智能体')).toBeInTheDocument()
-    expect(screen.getByText('회의는 오후 3시 이후를 선호합니다.')).toBeInTheDocument()
+    expect(screen.getByText('偏好把会议安排在下午 3 点以后。')).toBeInTheDocument()
   })
 
   it('creates a memory from the settings page', async () => {

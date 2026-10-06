@@ -552,7 +552,7 @@ POST /api/builder/{id}/confirm
 
 ---
 
-## 인터페이스 계약
+## 接口契约
 
 ### BuilderState ↔ 노드
 

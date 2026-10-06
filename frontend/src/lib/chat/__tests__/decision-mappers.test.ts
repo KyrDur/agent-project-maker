@@ -1,6 +1,6 @@
 /**
- * Decision 매퍼 회귀 가드 — ADR-012 §Decision schema 와 1:1 대응 contract.
- * Decision shape 변경 시 본 파일이 일괄 영향 범위.
+ * Decision 映射器回归保护——与 ADR-012 §Decision schema 一一对应的 contract。
+ * Decision shape 变更时，本文件是统一影响范围。
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -13,32 +13,32 @@ import {
 } from '../decision-mappers'
 
 describe('toApprove', () => {
-  it('순수 approve decision 반환 (다른 필드 없음)', () => {
+  it('返回纯 approve decision（无其他字段）', () => {
     expect(toApprove()).toEqual({ type: 'approve' })
   })
 })
 
 describe('toReject', () => {
-  it('message 인자 — type=reject + message', () => {
+  it('message 参数——type=reject + message', () => {
     expect(toReject('not allowed')).toEqual({ type: 'reject', message: 'not allowed' })
   })
 
-  it('message 미지정 — type=reject (message 필드 부재)', () => {
+  it('未指定 message——type=reject（无 message 字段）', () => {
     expect(toReject()).toEqual({ type: 'reject' })
   })
 
-  it('빈 문자열 message 도 그대로 보존 (사용자 명시 의도)', () => {
+  it('空字符串 message 也原样保留（用户明确意图）', () => {
     expect(toReject('')).toEqual({ type: 'reject', message: '' })
   })
 })
 
 describe('toEdit', () => {
-  it('edited_action 그대로 포함', () => {
+  it('原样包含 edited_action', () => {
     const edited = { name: 'send_email', args: { to: 'a@b.c' } }
     expect(toEdit(edited)).toEqual({ type: 'edit', edited_action: edited })
   })
 
-  it('빈 args 도 보존', () => {
+  it('空 args 也保留', () => {
     expect(toEdit({ name: 'noop', args: {} })).toEqual({
       type: 'edit',
       edited_action: { name: 'noop', args: {} },
@@ -47,11 +47,11 @@ describe('toEdit', () => {
 })
 
 describe('toRespond', () => {
-  it('message 인자 — type=respond + message', () => {
-    expect(toRespond('빨강')).toEqual({ type: 'respond', message: '빨강' })
+  it('message 参数——type=respond + message', () => {
+    expect(toRespond('红色')).toEqual({ type: 'respond', message: '红色' })
   })
 
-  it('빈 문자열 — message 필드는 빈 값 유지 (응답 결정은 명시적)', () => {
+  it('空字符串——message 字段保持空值（响应决定是明确的）', () => {
     expect(toRespond('')).toEqual({ type: 'respond', message: '' })
   })
 })
@@ -62,11 +62,11 @@ describe('serializeQuestionFlowResponse', () => {
       [
         {
           id: 'tone',
-          label: '답변 톤',
+          label: '回答语气',
           type: 'single_select',
           options: [
             { id: 'concise', label: '简洁明了' },
-            { id: 'detailed', label: '자세하게' },
+            { id: 'detailed', label: '详细地' },
           ],
         },
         {
@@ -93,7 +93,7 @@ describe('serializeQuestionFlowResponse', () => {
         tools: ['Web Search', 'Calendar'],
       },
     })
-    expect(result.displayText).toBe('답변 톤: 간결하게 | 도구: Web Search, Calendar')
+    expect(result.displayText).toBe('回答语气: 简洁明了 | 工具: Web Search, Calendar')
   })
 })
 
@@ -101,7 +101,7 @@ describe('serializeOptionListResponse', () => {
   it('serializes selected option ids with human-readable receipt text', () => {
     const result = serializeOptionListResponse(
       [
-        { id: 'web', label: 'Web Search', description: '최신 정보 검색' },
+        { id: 'web', label: 'Web Search', description: '搜索最新信息' },
         { id: 'calendar', label: 'Calendar' },
       ],
       ['web', 'calendar'],

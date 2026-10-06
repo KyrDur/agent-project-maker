@@ -344,9 +344,9 @@ async def test_trigger_executor_uses_chat_service_prefetch() -> None:
 
 # ---------------------------------------------------------------------------
 # Scenario 2b: get_owned_conversation_with_agent (W3-out retrospective MED
-# follow-up) — single join + agent runtime eager-load chain. SELECT 수가
-# 기존 (get_conversation + get_agent_with_tools) 조합보다 정확히 1 적어야
-# 한다. round-trip 절감의 정량 회귀 가드.
+# follow-up) — single join + agent runtime eager-load chain。SELECT 数量
+# 必须比现有（get_conversation + get_agent_with_tools）组合恰好少1
+# 个。作为 round-trip 减少的定量回归保护。
 # ---------------------------------------------------------------------------
 
 
@@ -356,9 +356,9 @@ async def test_owned_conv_with_agent_saves_one_roundtrip() -> None:
 
     from app.models.conversation import Conversation
 
-    # Seed 는 fresh session 1개에서, 측정은 별도 fresh session 2개에서 — 같은
-    # session 의 identity_map 캐시가 SELECT 를 우회해 카운트가 왜곡되는 것을
-    # 차단한다.
+    # Seed 使用1个 fresh session，测量使用另外2个 fresh session — 防止同一
+    # session 的 identity_map cache 绕过 SELECT 导致计数失真。
+    #
     async with TestSession() as setup_db:
         model = await _seed_user_and_model(setup_db)
         agent = Agent(
@@ -413,12 +413,12 @@ async def test_owned_conv_with_agent_saves_one_roundtrip() -> None:
         finally:
             event.remove(engine, "before_cursor_execute", _on_cursor_new)
 
-    # 정확히 1 적어야 함 (conv lookup + agent base 두 SELECT 가 단일 join SELECT
-    # 로 통합). selectin chain (model/llm_credential/tool_links/mcp_tool_links/
-    # skill_links) 는 양쪽 동일하게 발사되므로 차이는 정확히 -1.
+    # 必须恰好少1（conv lookup + agent base 两个 SELECT 合并为单个 join SELECT
+    # ）。selectin chain (model/llm_credential/tool_links/mcp_tool_links/
+    # skill_links) 两侧都相同发出，因此差值应恰好为 -1。
     assert select_count_new == select_count_old - 1, (
         f"old={select_count_old}, new={select_count_new} — "
-        "단일 join 으로 정확히 1 query 절감 invariant 위반"
+        "single join 未实现恰好减少1个 query 的 invariant"
     )
 
 

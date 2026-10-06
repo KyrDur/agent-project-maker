@@ -54,11 +54,11 @@ async def _seed(db: AsyncSession) -> None:
 async def test_start_build(client: AsyncClient, db: AsyncSession):
     await _seed(db)
 
-    resp = await client.post("/api/builder", json={"user_request": "날씨 봇 만들어줘"})
+    resp = await client.post("/api/builder", json={"user_request": "帮我创建天气机器人"})
     assert resp.status_code == 201
     body = resp.json()
     assert body["status"] == "building"
-    assert body["user_request"] == "날씨 봇 만들어줘"
+    assert body["user_request"] == "帮我创建天气机器人"
     assert body["id"] is not None
 
 
@@ -106,11 +106,11 @@ async def test_confirm_build(client: AsyncClient, db: AsyncSession):
     # Create a BuilderSession directly in PREVIEW state with draft_config
     session = BuilderSession(
         user_id=TEST_USER_ID,
-        user_request="날씨 봇",
+        user_request="天气机器人",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "날씨 봇",
-            "description": "날씨를 알려주는 봇",
+            "name": "天气机器人",
+            "description": "提供天气信息的机器人",
             "system_prompt": "You are a weather bot.",
             "tools": [],
             "middlewares": [],
@@ -124,7 +124,7 @@ async def test_confirm_build(client: AsyncClient, db: AsyncSession):
     resp = await client.post(f"/api/builder/{session.id}/confirm")
     assert resp.status_code == 201
     body = resp.json()
-    assert body["name"] == "날씨 봇"
+    assert body["name"] == "天气机器人"
     assert body["system_prompt"] == "You are a weather bot."
 
 
@@ -158,7 +158,7 @@ async def test_confirm_completed_without_agent(client: AsyncClient, db: AsyncSes
 
     session = BuilderSession(
         user_id=TEST_USER_ID,
-        user_request="날씨 봇",
+        user_request="天气机器人",
         status=BuilderStatus.COMPLETED,
         agent_id=None,
         draft_config={"name": "Weather Bot"},
@@ -225,7 +225,7 @@ async def test_confirm_no_model_returns_422(client: AsyncClient, db: AsyncSessio
         user_request="test",
         status=BuilderStatus.PREVIEW,
         draft_config={
-            "name": "봇",
+            "name": "机器人",
             "description": "d",
             "system_prompt": "p",
             "tools": [],

@@ -1,6 +1,6 @@
 import type { ArtifactKind, ArtifactSummary, MessageAttachmentBrief } from '@/lib/types'
 
-/** filename → 확장자(소문자, 선행 점 제거). 확장자가 없으면 null. */
+/** filename → 扩展名（小写，去掉前导点）。没有扩展名时为 null。 */
 export function extensionFromFilename(filename: string): string | null {
   const dot = filename.lastIndexOf('.')
   if (dot <= 0 || dot === filename.length - 1) return null
@@ -8,8 +8,8 @@ export function extensionFromFilename(filename: string): string | null {
 }
 
 /**
- * mime_type → ArtifactKind. 미리보기 레지스트리는 mime/extension을 우선으로
- * dispatch하지만, kind도 보조 매칭 키이므로 일관되게 채워 둔다.
+ * mime_type → ArtifactKind。预览 registry 优先按 mime/extension
+ * dispatch，但 kind 也是辅助匹配键，因此保持一致填充。
  */
 export function artifactKindFromMime(mimeType: string): ArtifactKind {
   const mime = mimeType.toLowerCase()
@@ -25,13 +25,13 @@ export function artifactKindFromMime(mimeType: string): ArtifactKind {
 }
 
 /**
- * 보낸 메시지 첨부(``MessageAttachmentBrief``)를 기존 artifact 미리보기 레지스트리가
- * 소비할 수 있는 ``ArtifactSummary`` 형태로 매핑한다.
+ * 将已发送消息的附件（``MessageAttachmentBrief``）映射为现有 artifact 预览 registry
+ * 可消费的 ``ArtifactSummary`` 形态。
  *
- * - 첨부는 실제 conversation artifact가 아니므로 artifact 전용 식별자
- *   (agent_id/conversation_id/version 등)는 안전한 기본값으로 둔다.
- * - ``url``/``preview_url``/``download_url``은 모두 업로드 다운로드 URL
- *   (``/api/uploads/{id}``)을 가리킨다 — 이미지/PDF 프리뷰는 이 URL만으로 렌더된다.
+ * - 附件并不是真正的 conversation artifact，因此 artifact 专用标识符
+ *   （agent_id/conversation_id/version 等）使用安全默认值。
+ * - ``url``/``preview_url``/``download_url`` 都指向上传下载 URL
+ *   （``/api/uploads/{id}``）——图片/PDF 预览只依赖这个 URL 即可渲染。
  */
 export function attachmentToArtifactSummary(att: MessageAttachmentBrief): ArtifactSummary {
   return {

@@ -491,7 +491,7 @@ Playwright 자동화 후보:
 
 ## 리스크와 대응
 
-| 리스크 | 대응 |
+| 风险 | 应对 |
 | --- | --- |
 | assistant-ui 버전 변경으로 `useAuiState((s) => s.thread.messages)` shape가 바뀔 수 있음 | 현재 설치본 `@assistant-ui/react@0.12.28` 기준으로 작성했다. 구현 시 타입 에러를 우선 확인하고 selector projection을 최소화한다. |
 | assistant-ui 기본 auto-scroll을 끄면 초기 로드/대화 전환 bottom 이동이 빠질 수 있음 | `sessionKey` reset effect와 component test로 보완한다. 필요하면 initialize/threadSwitch만 assistant-ui 기본값을 유지하는 fallback을 둔다. |

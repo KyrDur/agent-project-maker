@@ -103,10 +103,10 @@ class TestLangchainMessagesToResponse:
 
     def test_string_content_passthrough(self):
         conv_id = uuid.uuid4()
-        result = langchain_messages_to_response([AIMessage(content="안녕하세요")], conv_id)
+        result = langchain_messages_to_response([AIMessage(content="你好")], conv_id)
         assert len(result) == 1
         assert result[0].role == "assistant"
-        assert result[0].content == "안녕하세요"
+        assert result[0].content == "你好"
 
     def test_anthropic_list_content_text_blocks_only(self):
         """text 블록만 concat. tool_use 블록은 무시 (tool_calls로 별도 노출)."""

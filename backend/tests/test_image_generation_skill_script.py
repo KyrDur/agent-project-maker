@@ -17,9 +17,7 @@ def _load_script_module():
         / "scripts"
         / "generate_image.py"
     )
-    spec = importlib.util.spec_from_file_location(
-        "moldy_image_generation_skill", script_path
-    )
+    spec = importlib.util.spec_from_file_location("moldy_image_generation_skill", script_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -76,9 +74,7 @@ def test_generate_image_uses_images_generations_for_gpt_image_model(
     assert calls[0]["timeout"] == 360.0
 
 
-def test_generate_image_saves_content_image_url_data_url(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_generate_image_saves_content_image_url_data_url(tmp_path: Path, monkeypatch) -> None:
     module = _load_script_module()
     monkeypatch.setenv("IMAGE_API_BASE_URL", "https://image.example/v1/")
     monkeypatch.setenv("IMAGE_API_KEY", "secret-key")
@@ -91,9 +87,7 @@ def test_generate_image_saves_content_image_url_data_url(
                         "content": [
                             {
                                 "type": "image_url",
-                                "image_url": {
-                                    "url": "data:image/webp;base64,d2VicC1ieXRlcw=="
-                                },
+                                "image_url": {"url": "data:image/webp;base64,d2VicC1ieXRlcw=="},
                             }
                         ],
                     }
@@ -139,11 +133,7 @@ def test_generate_image_uses_openrouter_chat_completions_default(
                 {
                     "message": {
                         "images": [
-                            {
-                                "image_url": {
-                                    "url": "data:image/png;base64,b3BlbnJvdXRlci1ieXRlcw=="
-                                }
-                            }
+                            {"image_url": {"url": "data:image/png;base64,b3BlbnJvdXRlci1ieXRlcw=="}}
                         ]
                     }
                 }
@@ -153,7 +143,7 @@ def test_generate_image_uses_openrouter_chat_completions_default(
     monkeypatch.setattr(module, "_post_json", fake_post_json)
 
     result = module.generate_image(
-        prompt="울산 관광 가이드맵을 만들어줘",
+        prompt="帮我制作蔚山旅游指南地图",
         output_dir=tmp_path,
         aspect_ratio="3:4",
         image_size="1K",
@@ -168,15 +158,11 @@ def test_generate_image_uses_openrouter_chat_completions_default(
     assert calls[0]["headers"]["Authorization"] == "Bearer openrouter-key"
     assert calls[0]["payload"]["model"] == "openai/gpt-5.4-image-2"
     assert calls[0]["payload"]["modalities"] == ["image", "text"]
-    assert calls[0]["payload"]["messages"] == [
-        {"role": "user", "content": result["prompt"]}
-    ]
+    assert calls[0]["payload"]["messages"] == [{"role": "user", "content": result["prompt"]}]
     assert "image_config" not in calls[0]["payload"]
 
 
-def test_generate_image_model_env_overrides_provider_default(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_generate_image_model_env_overrides_provider_default(tmp_path: Path, monkeypatch) -> None:
     module = _load_script_module()
     monkeypatch.setenv("IMAGE_API_BASE_URL", "https://openrouter.ai/api/v1")
     monkeypatch.setenv("IMAGE_API_KEY", "openrouter-key")
@@ -190,13 +176,7 @@ def test_generate_image_model_env_overrides_provider_default(
             "choices": [
                 {
                     "message": {
-                        "images": [
-                            {
-                                "image_url": {
-                                    "url": "data:image/png;base64,Y3VzdG9tLWJ5dGVz"
-                                }
-                            }
-                        ]
+                        "images": [{"image_url": {"url": "data:image/png;base64,Y3VzdG9tLWJ5dGVz"}}]
                     }
                 }
             ]
@@ -266,7 +246,7 @@ def test_post_json_shortens_html_gateway_timeout_errors(monkeypatch) -> None:
             "Gateway Timeout",
             {},
             io.BytesIO(
-                b'<!DOCTYPE HTML><HTML><HEAD><TITLE>ERROR: The request could not be '
+                b"<!DOCTYPE HTML><HTML><HEAD><TITLE>ERROR: The request could not be "
                 b"satisfied</TITLE></HEAD><BODY><H1>504 Gateway Timeout ERROR</H1>"
                 b"<PRE>Request ID: abc123</PRE></BODY></HTML>"
             ),

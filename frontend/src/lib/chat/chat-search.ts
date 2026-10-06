@@ -1,17 +1,17 @@
 /**
- * 대화 내 검색 (G6). 렌더된 메시지의 DOM 앵커(``data-moldy-message-id``)에서
- * 검색어 위치를 Range로 수집해 CSS Custom Highlight API로 하이라이트하고, 매치를
- * ``jumpToMessage``로 이동한다. v3 채팅의 메시지 소스(스트림/envelope)에 무관하게
- * "화면에 보이는 본문"을 검색한다. ``root``로 특정 thread viewport에 스코프한다.
+ * 对话内搜索（G6）。从已渲染消息的 DOM 锚点（``data-moldy-message-id``）中
+ * 收集搜索词位置的 Range，通过 CSS Custom Highlight API 高亮，并用
+ * ``jumpToMessage`` 跳转到匹配项。不论 v3 聊天的消息源是 stream/envelope，
+ * 都搜索"屏幕上可见的正文"。通过 ``root`` 限定到特定 thread viewport。
  */
 
 const HIGHLIGHT_MATCH = 'moldy-search-match'
 const HIGHLIGHT_CURRENT = 'moldy-search-current'
 const HIGHLIGHT_STYLE_ID = 'moldy-search-highlight-style'
 
-/** 메시지 본문이 아닌 텍스트는 검색에서 제외한다: 메타행(복사/편집/브랜치 피커/
- *  타임스탬프/토큰 수)과 sr-only 라벨. 안 그러면 "复制"/"编辑"이 모든 메시지를,
- *  숫자가 메타를 매치시켜 카운트가 부풀고 보이지 않는 텍스트로 점프한다. */
+/** 搜索时排除非消息正文文本：元数据行（复制/编辑/分支选择器/
+ *  时间戳/token 数）和 sr-only 标签。否则"复制"/"编辑"会匹配所有消息，
+ *  数字也会匹配元数据，导致计数膨胀并跳到不可见文本。 */
 function isNonBodyText(node: Node): boolean {
   const parent = node.parentElement
   if (!parent) return false
@@ -44,10 +44,10 @@ function matchRangesInElement(element: Element, needle: string): Range[] {
 }
 
 /**
- * 메시지 앵커 내부에서 query가 등장하는 각 위치의 Range를 messageId별로 수집한다
- * (대소문자 무시, 텍스트 노드 단위 — 마크다운 렌더로 분할된 노드에 걸친 구문은 놓침).
- * ``root``를 넘겨 해당 thread viewport로 스코프한다(설정 페이지의 이중 마운트 대비).
- * 반환 map의 key 집합 = 매치 메시지 id(DOM 순서).
+ * 在消息锚点内部按 messageId 收集 query 每次出现位置的 Range
+ * （忽略大小写，按文本节点——跨 markdown 渲染分割节点的短语会漏掉）。
+ * 传入 ``root`` 以限定到对应 thread viewport（应对设置页面双重挂载）。
+ * 返回 map 的 key 集合 = 匹配消息 id（DOM 顺序）。
  */
 export function collectMatchRanges(
   query: string,
@@ -89,9 +89,9 @@ function ensureHighlightStyles(): void {
 }
 
 /**
- * CSS Custom Highlight API로 검색어를 인라인 하이라이트한다. 현재 매치 메시지의
- * Range는 ``moldy-search-current``, 나머지 매치는 ``moldy-search-match``로 등록한다.
- * 미지원 브라우저에서는 no-op이며 점프 하이라이트(moldy-jump-highlight)만 동작한다.
+ * 使用 CSS Custom Highlight API 内联高亮搜索词。当前匹配消息的
+ * Range 注册为 ``moldy-search-current``，其余匹配注册为 ``moldy-search-match``。
+ * 不支持的浏览器中为 no-op，仅跳转高亮（moldy-jump-highlight）生效。
  */
 export function applySearchHighlights(
   rangeMap: ReadonlyMap<string, readonly Range[]>,

@@ -37,7 +37,7 @@ def _make_model(
 
 @pytest.mark.asyncio
 async def test_resolve_model_handles_duplicate_model_name_with_provider(db: AsyncSession):
-    """``provider:model_name`` 입력은 provider 까지 매칭해 정확한 row 반환."""
+    """输入 ``provider:model_name`` 时连 provider 一起匹配，返回准确 row。"""
 
     older = datetime(2026, 5, 26, 0, 0, 0)
     newer = datetime(2026, 5, 28, 0, 0, 0)
@@ -71,7 +71,7 @@ async def test_resolve_model_handles_duplicate_model_name_with_provider(db: Asyn
 
 @pytest.mark.asyncio
 async def test_resolve_model_tolerates_duplicate_display_name(db: AsyncSession):
-    """display_name 중복 시 raise 대신 결정적 첫 행(``is_default`` 우선)을 반환."""
+    """display_name 重复时不 raise，而返回确定性的第一行（``is_default`` 优先）。"""
 
     older = datetime(2026, 5, 26, 0, 0, 0)
     newer = older + timedelta(days=2)
@@ -97,13 +97,13 @@ async def test_resolve_model_tolerates_duplicate_display_name(db: AsyncSession):
 
     resolved = await resolve_model(db, "Same Name", strict=True)
     assert resolved is not None
-    # is_default desc → openai_compatible row 가 먼저
+    # is_default desc → openai_compatible row 优先
     assert resolved.provider == "openai_compatible"
 
 
 @pytest.mark.asyncio
 async def test_resolve_model_default_fallback_tolerates_duplicates(db: AsyncSession):
-    """``is_default=True`` row 가 여러 개여도 fallback 이 raise 하지 않음."""
+    """即使存在多个 ``is_default=True`` row，fallback 也不 raise。"""
 
     older = datetime(2026, 5, 26, 0, 0, 0)
     newer = older + timedelta(days=2)
@@ -129,13 +129,13 @@ async def test_resolve_model_default_fallback_tolerates_duplicates(db: AsyncSess
 
     resolved = await resolve_model(db, "no-such-name", strict=False)
     assert resolved is not None
-    # 결정적 순서: is_default desc + created_at asc → older row 선택
+    # 确定性顺序：is_default desc + created_at asc → 选择 older row
     assert resolved.provider == "anthropic"
 
 
 @pytest.mark.asyncio
 async def test_resolve_model_strict_returns_none_when_no_match(db: AsyncSession):
-    """strict 모드에서 매칭 실패 시 fallback 없이 None."""
+    """strict 模式匹配失败时，不 fallback，返回 None。"""
 
     db.add(
         _make_model(
@@ -152,7 +152,7 @@ async def test_resolve_model_strict_returns_none_when_no_match(db: AsyncSession)
 
 @pytest.mark.asyncio
 async def test_resolve_model_falls_back_to_default_when_not_strict(db: AsyncSession):
-    """비 strict 모드에서 매칭 실패 시 is_default row 로 fallback."""
+    """非 strict 模式匹配失败时 fallback 到 is_default row。"""
 
     db.add_all(
         [

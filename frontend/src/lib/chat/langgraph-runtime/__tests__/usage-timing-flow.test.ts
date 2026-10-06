@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { BaseMessage } from '@langchain/core/messages'
 import { usageFromMessage } from '../usage-normalization'
 
-// v3 메시지에 usage 소스가 둘(native usage_metadata=토큰만, enriched
-// additional_kwargs.metadata.usage=토큰+cost+timing)일 때, 토큰은 native 기준으로
-// 두되 cost/timing 은 enriched 에서 보강해야 한다. usageFromMessage 가 native 만
-// 보고 일찍 반환하면 스트리밍 timing 이 유실되던 회귀를 가드.
+// v3 消息有两个 usage 来源（native usage_metadata=只有 token，enriched
+// additional_kwargs.metadata.usage=token+cost+timing）时，token 以 native 为准，
+// 但 cost/timing 需要从 enriched 补全。如果 usageFromMessage 只看 native
+// 就提前返回，会丢失 streaming timing；这里做回归保护。
 function asMessage(value: Record<string, unknown>): BaseMessage {
   return value as unknown as BaseMessage
 }
 
-describe('usageFromMessage — 스트리밍 timing 병합', () => {
-  it('native 토큰 + enriched(additional_kwargs)의 timing/cost 를 병합한다', () => {
+describe('usageFromMessage——合并 streaming timing', () => {
+  it('合并 native token + enriched(additional_kwargs) 的 timing/cost', () => {
     const message = asMessage({
       usage_metadata: { input_tokens: 100, output_tokens: 20 },
       additional_kwargs: {
@@ -38,18 +38,22 @@ describe('usageFromMessage — 스트리밍 timing 병합', () => {
     expect(usage?.estimated_cost).toBe(0.5)
   })
 
-  it('enriched 가 없으면 native usage_metadata 만 반환(timing 없음)', () => {
-    const usage = usageFromMessage(asMessage({ usage_metadata: { input_tokens: 5, output_tokens: 1 } }))
+  it('没有 enriched 时只返回 native usage_metadata（无 timing）', () => {
+    const usage = usageFromMessage(
+      asMessage({ usage_metadata: { input_tokens: 5, output_tokens: 1 } }),
+    )
     expect(usage?.prompt_tokens).toBe(5)
     expect(usage?.ttft_ms).toBeUndefined()
     expect(usage?.tokens_per_second).toBeUndefined()
   })
 
-  it('native cost 가 있으면 유지하고, 없을 때만 enriched cost 로 보강', () => {
+  it('有 native cost 时保留，只有缺失时才用 enriched cost 补全', () => {
     const usage = usageFromMessage(
       asMessage({
         usage_metadata: { input_tokens: 10, output_tokens: 2, estimated_cost: 0.9 },
-        additional_kwargs: { metadata: { usage: { prompt_tokens: 10, completion_tokens: 2, estimated_cost: 0.1 } } },
+        additional_kwargs: {
+          metadata: { usage: { prompt_tokens: 10, completion_tokens: 2, estimated_cost: 0.1 } },
+        },
       }),
     )
     expect(usage?.estimated_cost).toBe(0.9)

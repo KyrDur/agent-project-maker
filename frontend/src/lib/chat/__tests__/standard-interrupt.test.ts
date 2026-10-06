@@ -13,7 +13,7 @@ describe('standardInterruptToToolCalls', () => {
       action_requests: [
         {
           name: 'ask_user',
-          args: { question: '어느 쪽?', options: ['A', 'B'] },
+          args: { question: '哪一边？', options: ['A', 'B'] },
         },
       ],
       review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
@@ -24,7 +24,7 @@ describe('standardInterruptToToolCalls', () => {
         id: 'intr-ask:0',
         name: 'ask_user',
         args: {
-          question: '어느 쪽?',
+          question: '哪一边？',
           options: ['A', 'B'],
           approval_id: 'intr-ask:0',
           allowed_decisions: ['respond'],
@@ -44,11 +44,11 @@ describe('standardInterruptToToolCalls', () => {
           name: 'ask_user',
           args: {
             mode: 'question_flow',
-            title: '에이전트 설정 확인',
+            title: '确认智能体设置',
             questions: [
               {
                 id: 'tone',
-                label: '답변 톤',
+                label: '回答语气',
                 type: 'single_select',
                 options: [{ id: 'concise', label: '简洁明了' }],
                 required: true,
@@ -62,7 +62,7 @@ describe('standardInterruptToToolCalls', () => {
 
     expect(standardInterruptToToolCalls(payload)[0]?.args).toMatchObject({
       mode: 'question_flow',
-      title: '에이전트 설정 확인',
+      title: '确认智能体设置',
       questions: payload.action_requests[0]?.args.questions,
       hitl_interrupt_id: 'intr-flow',
     })
@@ -130,7 +130,7 @@ describe('standardInterruptToToolCalls', () => {
     const payload: StandardInterruptPayload = {
       interrupt_id: 'intr-multi',
       action_requests: [
-        { name: 'ask_user', args: { question: '계속할까요?' } },
+        { name: 'ask_user', args: { question: '要继续吗？' } },
         { name: 'delete_record', args: { id: 7 } },
       ],
       review_configs: [
@@ -264,11 +264,7 @@ describe('createHiTLDecisionCoordinator', () => {
     })
 
     let earlyDecisionSettled = false
-    const earlyDecision = coordinator.registerDecision(
-      1,
-      { type: 'reject', message: '아니요' },
-      '拒绝',
-    )
+    const earlyDecision = coordinator.registerDecision(1, { type: 'reject', message: '不' }, '拒绝')
     void earlyDecision.then(
       () => {
         earlyDecisionSettled = true
@@ -286,8 +282,8 @@ describe('createHiTLDecisionCoordinator', () => {
 
     expect(resume).toHaveBeenCalledTimes(1)
     expect(resume).toHaveBeenCalledWith(
-      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      [{ type: 'approve' }, { type: 'reject', message: '不' }],
+      '批准 | 拒绝',
       'intr-multi',
     )
   })
@@ -306,31 +302,23 @@ describe('createHiTLDecisionCoordinator', () => {
     })
 
     const firstAttempt = coordinator.registerDecision(0, { type: 'approve' }, '批准')
-    const finalAttempt = coordinator.registerDecision(
-      1,
-      { type: 'reject', message: '아니요' },
-      '拒绝',
-    )
+    const finalAttempt = coordinator.registerDecision(1, { type: 'reject', message: '不' }, '拒绝')
     await expect(Promise.all([firstAttempt, finalAttempt])).rejects.toThrow('stale interrupt')
 
     const retryFirst = coordinator.registerDecision(0, { type: 'approve' }, '批准')
-    const retryFinal = coordinator.registerDecision(
-      1,
-      { type: 'reject', message: '아니요' },
-      '拒绝',
-    )
+    const retryFinal = coordinator.registerDecision(1, { type: 'reject', message: '不' }, '拒绝')
     await Promise.all([retryFirst, retryFinal])
 
     expect(resume).toHaveBeenNthCalledWith(
       1,
-      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      [{ type: 'approve' }, { type: 'reject', message: '不' }],
+      '批准 | 拒绝',
       'intr-retry',
     )
     expect(resume).toHaveBeenNthCalledWith(
       2,
-      [{ type: 'approve' }, { type: 'reject', message: '아니요' }],
-      '승인 | 거부',
+      [{ type: 'approve' }, { type: 'reject', message: '不' }],
+      '批准 | 拒绝',
       'intr-retry',
     )
     expect(resume).toHaveBeenCalledTimes(2)
@@ -382,7 +370,7 @@ describe('createHiTLDecisionCoordinator', () => {
 
     expect(resume).toHaveBeenCalledWith(
       [{ type: 'approve' }, { type: 'approve' }],
-      '승인 | 승인',
+      '批准 | 批准',
       'intr-duplicate',
     )
   })

@@ -310,12 +310,12 @@ async def test_stored_summarization_projects_two_runs_without_offload_path_leaks
 
     agent = _build_agent(summarization)
     thread_id = "thread-compact"
-    await _drive(agent, thread_id, "run-before-compaction", "첫 질문 " * 40)
+    await _drive(agent, thread_id, "run-before-compaction", "第一个问题 " * 40)
     first_events, first_persisted, first_trace, first_broker = await _drive(
-        agent, thread_id, "run-first-compaction", "둘째 질문 " * 40
+        agent, thread_id, "run-first-compaction", "第二个问题 " * 40
     )
     second_events, second_persisted, second_trace, second_broker = await _drive(
-        agent, thread_id, "run-second-compaction", "셋째 질문 " * 40
+        agent, thread_id, "run-second-compaction", "第三个问题 " * 40
     )
 
     first_payloads = _compaction_payloads(first_events)
@@ -384,9 +384,9 @@ async def test_stored_auto_compaction_keeps_normal_answer_fallback_functional() 
         runtime_policy=_stored_auto_policy(),
     )
 
-    await _drive(agent, "thread-fallback", "run-before-compaction", "첫 질문 " * 40)
+    await _drive(agent, "thread-fallback", "run-before-compaction", "第一个问题 " * 40)
     events, persisted, trace, broker = await _drive(
-        agent, "thread-fallback", "run-after-compaction", "둘째 질문 " * 40
+        agent, "thread-fallback", "run-after-compaction", "第二个问题 " * 40
     )
 
     payloads = _compaction_payloads(events)
@@ -403,8 +403,8 @@ async def test_compaction_disabled_flows_summary_tokens(
     monkeypatch.setattr(settings, "compaction_marker_enabled", False)
     agent = _build_agent()
     thread_id = "thread-off"
-    await _drive(agent, thread_id, "run-off-before", "첫 질문 " * 40)
-    events, _, _, _ = await _drive(agent, thread_id, "run-off", "둘째 질문 " * 40)
+    await _drive(agent, thread_id, "run-off-before", "第一个问题 " * 40)
+    events, _, _, _ = await _drive(agent, thread_id, "run-off", "第二个问题 " * 40)
 
     # Flag off → no markers, and the legacy v3 path leaves summarization tokens
     # in the stream (no suppress).

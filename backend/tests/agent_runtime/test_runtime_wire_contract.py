@@ -37,12 +37,12 @@ def _raw_events() -> list[dict[str, Any]]:
                 "data": {
                     "id": "assistant-wire-1",
                     "type": "AIMessageChunk",
-                    "content": "보고서를 만들겠습니다.",
+                    "content": "我来创建报告。",
                     "tool_calls": [
                         {
                             "id": "call-report-1",
                             "name": "create_report",
-                            "args": {"title": "주간 보고서"},
+                            "args": {"title": "周报"},
                         }
                     ],
                     "usage_metadata": {
@@ -69,12 +69,12 @@ def _raw_events() -> list[dict[str, Any]]:
                         {
                             "id": "assistant-wire-1",
                             "type": "ai",
-                            "content": "보고서를 만들겠습니다.",
+                            "content": "我来创建报告。",
                             "tool_calls": [
                                 {
                                     "id": "call-report-1",
                                     "name": "create_report",
-                                    "args": {"title": "주간 보고서"},
+                                    "args": {"title": "周报"},
                                 }
                             ],
                         },
@@ -86,13 +86,13 @@ def _raw_events() -> list[dict[str, Any]]:
                             "content": "report.md created",
                         },
                     ],
-                    "todos": [{"id": "todo-wire-1", "content": "작성", "status": "done"}],
+                    "todos": [{"id": "todo-wire-1", "content": "编写", "status": "done"}],
                     "__interrupt__": [
                         {
                             "id": "interrupt-wire-1",
                             "value": {
                                 "action_requests": [
-                                    {"name": "create_report", "args": {"title": "주간 보고서"}}
+                                    {"name": "create_report", "args": {"title": "周报"}}
                                 ],
                                 "review_configs": [
                                     {
@@ -151,7 +151,7 @@ async def _collect_manifest() -> dict[str, Any]:
         chunk
         async for chunk in stream_agent_response_langgraph(
             agent,
-            [{"role": "user", "content": "주간 보고서를 만들어줘"}],
+            [{"role": "user", "content": "帮我创建周报"}],
             {"configurable": {"thread_id": _THREAD_ID}},
             artifact_recorder=recorder,
             persist_callback=persist,

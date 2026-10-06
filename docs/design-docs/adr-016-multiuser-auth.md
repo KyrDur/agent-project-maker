@@ -181,7 +181,7 @@ ALTER TABLE credentials ADD CONSTRAINT ck_credentials_system_user_null
 
 #### POST `/api/auth/register`
 
-| 항목 | 값 |
+| 项目 | 值 |
 |------|----|
 | 인증 | 없음 |
 | Rate limit | IP당 5회/시간 |
@@ -197,7 +197,7 @@ ALTER TABLE credentials ADD CONSTRAINT ck_credentials_system_user_null
 
 #### POST `/api/auth/login`
 
-| 항목 | 값 |
+| 项目 | 值 |
 |------|----|
 | 인증 | 없음 |
 | Rate limit | IP+email당 10회/분 |
@@ -208,7 +208,7 @@ ALTER TABLE credentials ADD CONSTRAINT ck_credentials_system_user_null
 
 #### POST `/api/auth/logout`
 
-| 항목 | 값 |
+| 项目 | 值 |
 |------|----|
 | 인증 | required (access cookie) + CSRF |
 | 200 | `{"ok": true}` |
@@ -217,7 +217,7 @@ ALTER TABLE credentials ADD CONSTRAINT ck_credentials_system_user_null
 
 #### POST `/api/auth/refresh`
 
-| 항목 | 값 |
+| 项目 | 值 |
 |------|----|
 | 인증 | refresh cookie (`moldy_rt`) 필수 |
 | CSRF | **불필요** (cookie만으로 회전 — body 없음) |
@@ -229,7 +229,7 @@ ALTER TABLE credentials ADD CONSTRAINT ck_credentials_system_user_null
 
 #### GET `/api/auth/me`
 
-| 항목 | 값 |
+| 项目 | 值 |
 |------|----|
 | 인증 | required |
 | CSRF | 불필요 (GET) |

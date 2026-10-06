@@ -1,33 +1,33 @@
-"""W3-out M3 — GET /api/conversations/{id}/stream resume endpoint.
+"""W3-out M3 — GET /api/conversations/{id}/stream resume endpoint。
 
-4 분기 검증 (plan 파일 ``M3 — GET resume endpoint``):
-- 시나리오 A: live attach (broker hit) → ``X-Resume-Mode: live`` 로 broker
-  buffer + 후속 publish 가 stream 으로 전달
-- 시나리오 B: replay only (broker miss + DB row completed) → ``X-Resume-Mode:
-  replay`` 로 events 슬라이스 만 emit
-- 시나리오 C: stale streaming (broker miss + DB row status='streaming') →
-  events emit 후 ``event: stale`` 마커 발행
-- 시나리오 D: HiTL interrupt pending → ``409 RESUME_INTERRUPT_PENDING``
+验证4个分支（plan 文件 ``M3 — GET resume endpoint``）：
+- 场景 A: live attach (broker hit) → 以 ``X-Resume-Mode: live`` 将 broker
+  buffer + 后续 publish 传入 stream
+- 场景 B: replay only (broker miss + DB row completed) → 以 ``X-Resume-Mode:
+  replay`` 仅 emit events slice
+- 场景 C: stale streaming (broker miss + DB row status='streaming') →
+  emit events 后发布 ``event: stale`` marker
+- 场景 D: HiTL interrupt pending → ``409 RESUME_INTERRUPT_PENDING``
 
-가드 분기는 모두 ``404 RESUME_NOT_FOUND`` 단일 응답으로 통일 (rules/security.md
-— enumeration oracle 방지). 분기 구분은 서버 로그로만:
-- conv 없음
-- ownership 실패 (다른 user 의 agent)
-- DB row 없음
-- broker live 인데 conv_id 불일치 (cross-tenant)
-- DB row 가 다른 conversation 소속
+所有 guard 分支统一为 ``404 RESUME_NOT_FOUND`` 单一响应（rules/security.md
+— 防止 enumeration oracle）。分支区分仅通过服务器日志：
+- conv 不存在
+- ownership 失败（其他 user 的 agent）
+- DB row 不存在
+- broker live 但 conv_id 不一致（cross-tenant）
+- DB row 属于其他 conversation
 
-``Last-Event-ID`` 헤더는 query 가 비면 fallback.
+若 query 为空，``Last-Event-ID`` header 作为 fallback。
 
-W3-out M6 — POST → GET roundtrip 통합. 라우터-단위 시나리오는 위에서 broker /
-DB row 를 합성으로 주입했지만 M6 는 실제 ``POST /messages`` 로 broker 를
-등록하고 partial flush 를 실재 DB(in-memory aiosqlite) 에 적재한 뒤 ``GET
-/stream`` 으로 이어 받는 cross-handler invariant 를 잡는다 (live attach 도중
-abort, broker 강제 evict 후 DB replay, finalize 미실행 시 stale, interrupt 가
-DB 에 남은 채로 resume). 핵심은 ``async_session`` 을 TestSession 으로
-monkeypatch — partial flush / finalize_turn 이 conftest in-memory DB 와 같은
-엔진을 쓰지 않으면 GET 측 ``trace_storage.get_trace_by_msg_id`` 가 빈 결과를
-받아 RESUME_NOT_FOUND 로 떨어진다.
+W3-out M6 — POST → GET roundtrip 集成。上面的 router 单元场景通过合成方式注入 broker /
+DB row，而 M6 会真正通过 ``POST /messages`` 注册 broker，
+将 partial flush 写入真实 DB（in-memory aiosqlite），随后通过 ``GET
+/stream`` 接续，以捕捉 cross-handler invariant（live attach 过程中
+abort、强制 evict broker 后 DB replay、finalize 未执行时 stale、interrupt
+留在 DB 中时 resume）。关键是将 ``async_session`` monkeypatch 为 TestSession —
+如果 partial flush / finalize_turn 使用的不是与 conftest in-memory DB 相同的
+engine，GET 侧 ``trace_storage.get_trace_by_msg_id`` 会得到空结果并
+落入 RESUME_NOT_FOUND。
 """
 
 from __future__ import annotations
@@ -89,7 +89,7 @@ def _parse_sse_events(body: str) -> list[dict[str, str]]:
 async def test_resume_live_broker_replays_buffer_and_streams_tail(
     client: AsyncClient,
 ) -> None:
-    """broker live → buffered events 전달 + close 시 자연 종료."""
+    """broker live → 传递 buffered events + close 时自然结束。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
 
@@ -143,7 +143,7 @@ async def test_resume_live_broker_replays_buffer_and_streams_tail(
 async def test_resume_live_broker_after_id_skips_already_seen(
     client: AsyncClient,
 ) -> None:
-    """``last_event_id`` 이후 이벤트만 replay."""
+    """仅 replay ``last_event_id`` 之后的事件。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
 
@@ -266,7 +266,7 @@ async def test_resume_replay_after_id_slices_correctly(
 async def test_resume_replay_header_is_case_insensitive(
     client: AsyncClient,
 ) -> None:
-    """일부 reverse proxy 가 헤더를 lowercase 로 전달 — alias 매칭 회귀."""
+    """部分 reverse proxy 会以 lowercase 传递 header — alias 匹配回归。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
     events_payload = [
@@ -307,7 +307,7 @@ async def test_resume_replay_header_is_case_insensitive(
 async def test_resume_replay_uses_last_event_id_header_fallback(
     client: AsyncClient,
 ) -> None:
-    """Query 가 비면 ``Last-Event-ID`` 헤더로 폴백."""
+    """Query 为空时 fallback 到 ``Last-Event-ID`` header。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
     events_payload = [
@@ -354,7 +354,7 @@ async def test_resume_replay_skips_corrupt_event_without_name(
     client: AsyncClient,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """M-2: ``event`` 필드가 비어있는 corrupt row 항목은 silent emit 금지."""
+    """M-2: ``event`` 字段为空的 corrupt row 条目禁止 silent emit。"""
     import logging
 
     caplog.set_level(logging.WARNING, logger="app.routers.conversation_messages")
@@ -362,7 +362,7 @@ async def test_resume_replay_skips_corrupt_event_without_name(
     run_id = str(uuid.uuid4())
     events_payload = [
         {"id": f"{run_id}-1", "event": "message_start", "data": {"id": run_id}},
-        # corrupt row — event 필드 누락
+        # corrupt row — 缺少 event 字段
         {"id": f"{run_id}-2", "data": {"delta": "??"}},
         {"id": f"{run_id}-3", "event": "content_delta", "data": {"delta": "ok"}},
     ]
@@ -388,7 +388,7 @@ async def test_resume_replay_skips_corrupt_event_without_name(
         body = await resp.aread()
 
     events = _parse_sse_events(body.decode())
-    # corrupt evt 는 emit 안 됨 — message_start + content_delta(ok) 만.
+    # corrupt evt 不 emit — 只有 message_start + content_delta(ok)。
     assert [e.get("event") for e in events] == ["message_start", "content_delta"]
     assert any("stream_resume skip corrupt evt" in r.message for r in caplog.records)
 
@@ -397,9 +397,9 @@ async def test_resume_replay_skips_corrupt_event_without_name(
 async def test_resume_stale_payload_falls_back_when_last_event_id_null(
     client: AsyncClient,
 ) -> None:
-    """M-3: row.last_event_id 가 None 이면 events 마지막 id 로 fallback.
+    """M-3: row.last_event_id 为 None 时 fallback 到 events 最后一个 id。
 
-    둘 다 없으면 ``reason='broker_lost_no_id'`` 로 분기해 client NPE 회피.
+    如果两者都没有，则分支到 ``reason='broker_lost_no_id'``，避免 client NPE。
     """
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
@@ -412,7 +412,7 @@ async def test_resume_stale_payload_falls_back_when_last_event_id_null(
                 conversation_id=conv_id,
                 assistant_msg_id=run_id,
                 events=events_payload,
-                last_event_id=None,  # corrupt row — last_event_id 안 채워짐
+                last_event_id=None,  # corrupt row — last_event_id 未填充
                 status="streaming",
             )
         )
@@ -428,7 +428,7 @@ async def test_resume_stale_payload_falls_back_when_last_event_id_null(
     events = _parse_sse_events(body.decode())
     stale = next(e for e in events if e.get("event") == "stale")
     stale_data = json.loads(stale["data"])
-    # events 마지막 id 로 fallback 성공.
+    # 成功 fallback 到 events 最后一个 id。
     assert stale_data["last_event_id"] == f"{run_id}-1"
     assert stale_data["reason"] == "broker_lost"
 
@@ -437,7 +437,7 @@ async def test_resume_stale_payload_falls_back_when_last_event_id_null(
 async def test_resume_stale_payload_no_id_when_events_empty_after_slice(
     client: AsyncClient,
 ) -> None:
-    """events 가 빈 채로 stale → ``broker_lost_no_id`` reason."""
+    """events 为空且 stale → ``broker_lost_no_id`` reason。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
     async with TestSession() as db:
@@ -445,7 +445,7 @@ async def test_resume_stale_payload_no_id_when_events_empty_after_slice(
             MessageEvent(
                 conversation_id=conv_id,
                 assistant_msg_id=run_id,
-                events=[],  # 빈 events
+                events=[],  # 空 events
                 last_event_id=None,
                 status="streaming",
             )
@@ -470,7 +470,7 @@ async def test_resume_stale_payload_no_id_when_events_empty_after_slice(
 async def test_resume_stale_streaming_emits_marker(
     client: AsyncClient,
 ) -> None:
-    """broker miss + DB status='streaming' → events 후 ``event: stale`` 발행."""
+    """broker miss + DB status='streaming' → events 后发布 ``event: stale``。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
     events_payload = [
@@ -541,7 +541,7 @@ async def test_resume_interrupt_pending_returns_409(
 
 
 # ---------------------------------------------------------------------------
-# Error gates — 모두 단일 RESUME_NOT_FOUND (enumeration oracle 방지)
+# Error gates — 全部统一为 RESUME_NOT_FOUND（防止 enumeration oracle）
 # ---------------------------------------------------------------------------
 
 
@@ -560,7 +560,7 @@ async def test_resume_missing_run_id_returns_404(client: AsyncClient) -> None:
 async def test_resume_db_row_belongs_to_other_conversation_returns_404(
     client: AsyncClient,
 ) -> None:
-    """DB row 의 ``conversation_id`` 가 URL 과 다르면 404 (oracle 방지)."""
+    """DB row 的 ``conversation_id`` 与 URL 不同则返回 404（防止 oracle）。"""
     conv_a = await _seed_conv()
     conv_b = await _seed_conv()
     run_id = str(uuid.uuid4())
@@ -581,7 +581,7 @@ async def test_resume_db_row_belongs_to_other_conversation_returns_404(
         f"/api/conversations/{conv_b}/stream",
         params={"run_id": run_id},
     )
-    # 응답은 row 미존재 케이스와 외부적으로 동일 (RESUME_NOT_FOUND).
+    # 外部响应应与 row 不存在的情况相同（RESUME_NOT_FOUND）。
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "RESUME_NOT_FOUND"
 
@@ -590,13 +590,13 @@ async def test_resume_db_row_belongs_to_other_conversation_returns_404(
 async def test_resume_live_broker_belongs_to_other_conversation_returns_404(
     client: AsyncClient,
 ) -> None:
-    """broker live 인데 broker.conversation_id 가 URL 과 다르면 404."""
+    """broker live 但 broker.conversation_id 与 URL 不同则返回 404。"""
     conv_a = await _seed_conv()
     conv_b = await _seed_conv()
     run_id = str(uuid.uuid4())
-    # conv_a 에 live broker 등록.
+    # 为 conv_a 注册 live broker。
     event_broker.registry.get_or_create(run_id, conversation_id=str(conv_a))
-    # conv_b URL 로 GET → broker live 분기에서 conv_id mismatch.
+    # 用 conv_b URL 执行 GET → 在 broker live 分支中 conv_id mismatch。
     resp = await client.get(
         f"/api/conversations/{conv_b}/stream",
         params={"run_id": run_id},
@@ -609,10 +609,10 @@ async def test_resume_live_broker_belongs_to_other_conversation_returns_404(
 async def test_resume_live_broker_with_none_conversation_id_returns_404(
     client: AsyncClient,
 ) -> None:
-    """broker.conversation_id 가 None 이면 fail-closed → 404."""
+    """broker.conversation_id 为 None 时 fail-closed → 404。"""
     conv_id = await _seed_conv()
     run_id = str(uuid.uuid4())
-    # 일부러 conv_id 생략한 broker — 비정상 등록 path 시뮬레이션.
+    # 故意省略 conv_id 的 broker — 模拟异常注册 path。
     event_broker.registry.get_or_create(run_id, conversation_id=None)
 
     resp = await client.get(
@@ -627,7 +627,7 @@ async def test_resume_live_broker_with_none_conversation_id_returns_404(
 async def test_resume_unknown_conversation_returns_404(
     client: AsyncClient,
 ) -> None:
-    """Unknown conv_id → 404 RESUME_NOT_FOUND (역시 단일 응답)."""
+    """Unknown conv_id → 404 RESUME_NOT_FOUND（同样为单一响应）。"""
     resp = await client.get(
         f"/api/conversations/{uuid.uuid4()}/stream",
         params={"run_id": str(uuid.uuid4())},
@@ -641,8 +641,8 @@ async def test_resume_unknown_conversation_logs_unowned_reason(
     client: AsyncClient,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """conv 존재 X 와 ownership 실패가 단일 join 으로 합쳐졌으므로 reason 도
-    ``conv_unowned_or_missing`` 단일 라벨 — round-trip 절감 + oracle 강화."""
+    """conv 存在 X 与 ownership 失败已通过单一 join 合并，因此 reason 也使用
+    ``conv_unowned_or_missing`` 单一标签 — 减少 round-trip + 强化 oracle 防护。"""
     import logging
 
     caplog.set_level(logging.INFO, logger="app.routers.conversation_messages")
@@ -662,7 +662,7 @@ async def test_resume_logs_reject_reason(
     client: AsyncClient,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """가드 분기는 외부 응답 통일하되 서버 로그로 reason 구분 가능해야 함."""
+    """guard 分支对外统一响应，但服务器日志应能通过 reason 区分。"""
     import logging
 
     caplog.set_level(logging.INFO, logger="app.routers.conversation_messages")
@@ -672,19 +672,19 @@ async def test_resume_logs_reject_reason(
         params={"run_id": str(uuid.uuid4())},
     )
     assert resp.status_code == 404
-    # reason=row_missing 분기 로그가 남아야 함 (conv 존재 + DB row 없음).
+    # 应留下 reason=row_missing 分支日志（conv 存在 + DB row 不存在）。
     assert any(
         "stream_resume reject" in r.message and "reason=row_missing" in r.message
         for r in caplog.records
     )
 
 
-# N-3 (client disconnect → listener cleanup), 갭 (multi-listener fan-out /
-# ring buffer overflow + after_id evict) 는 모두 unit-level 의존이라
-# tests/agent_runtime/test_event_broker.py 에서 broker AsyncGenerator 를
-# 직접 검증한다 (httpx ASGITransport 의 disconnect 타이밍은 결정적이지 않아
-# router 통합 테스트로 잡으면 hang 위험). multi-listener fan-out 과 ring
-# overflow 후 subscribe 는 이미 기존 broker unit test 가 보장:
+# N-3（client disconnect → listener cleanup）、gap（multi-listener fan-out /
+# ring buffer overflow + after_id evict）都依赖 unit-level，因此
+# 在 tests/agent_runtime/test_event_broker.py 中直接验证 broker AsyncGenerator
+# （httpx ASGITransport 的 disconnect 时机不确定，若用
+# router 集成测试捕捉会有 hang 风险）。multi-listener fan-out 与 ring
+# overflow 后 subscribe 已由现有 broker unit test 保证：
 # - test_multiple_listeners_broadcast
 # - test_ring_buffer_drops_oldest
 # - test_subscribe_after_ring_eviction_returns_buffer_only
@@ -694,15 +694,15 @@ async def test_resume_logs_reject_reason(
 # W3-out M6 — end-to-end POST → GET resume integration
 # ---------------------------------------------------------------------------
 #
-# 위 시나리오들은 broker / DB row 를 합성으로 주입한 뒤 GET 만 단독 검증한다.
-# M6 는 진짜 POST 핸들러를 통과하면서 (a) `_prepare_stream_context` 가 broker
-# 를 등록하고 (b) partial flush 가 DB 에 status='streaming' row 를 만들고
-# (c) finalize_turn 이 종결 상태로 마감한다는 cross-handler invariant 를 묶어
-# 검증한다. 라우터 변경 시 한 곳만 어긋나도 잡힌다.
+# 上述场景通过合成注入 broker / DB row 后，仅单独验证 GET。
+# M6 会真正经过 POST handler，其中 (a) `_prepare_stream_context` 注册 broker
+# (b) partial flush 在 DB 中创建 status='streaming' row
+# (c) finalize_turn 以终止状态收尾，将这些 cross-handler invariant 一并
+# 验证。router 变更时只要有一处不一致就能捕捉。
 
 
 def _build_events(run_id: str) -> list[dict[str, Any]]:
-    """E2E 시나리오 공용 — 4-event happy path."""
+    """E2E 场景共用 — 4-event happy path。"""
     return [
         {"id": f"{run_id}-1", "event": MESSAGE_START, "data": {"id": run_id, "role": "assistant"}},
         {"id": f"{run_id}-2", "event": CONTENT_DELTA, "data": {"delta": "hi"}},
@@ -726,12 +726,12 @@ def _make_executor_simulator(
     """Build a mock for ``execute_agent_stream`` that simulates the streaming
     layer's dual-write contract (``broker.publish_nowait`` + ``trace_sink``
     append + ``persist_callback`` flush + SSE yield). ``stream_agent_response``
-    의 finally 가 broker.close 를 호출하지만, 우리는 실행기 자체를 패치하므로
-    그 책임을 시뮬레이터가 흉내낸다.
+    的 finally 会调用 broker.close，但我们 patch 了 executor 本身，
+    因此由 simulator 模拟该职责。
 
-    pause_after: 처음 N개 emit 후 ``pause_event.wait()`` 로 멈춤. live attach
-    시나리오 — POST 가 mid-stream 에 머물러 broker 가 살아있는 동안 GET 이
-    들어오는 경합을 결정적으로 재현한다.
+    pause_after: emit 前 N 个后在 ``pause_event.wait()`` 停住。live attach
+    场景 — 确定性复现 POST 停留在 mid-stream、broker 仍存活时 GET
+    进入的竞争。
     """
 
     async def mock_stream(*args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
@@ -764,7 +764,7 @@ def _make_executor_simulator(
 async def _wait_for(
     predicate,
     *,
-    timeout: float = 2.0,  # noqa: ASYNC109 — bespoke poll helper, asyncio.timeout cancel 의미와 다름
+    timeout: float = 2.0,  # noqa: ASYNC109 — bespoke poll helper，与 asyncio.timeout cancel 含义不同
     interval: float = 0.01,
 ) -> None:
     """Poll ``predicate`` until truthy or timeout — race-free fixture sync."""
@@ -779,10 +779,10 @@ async def _wait_for(
 
 @pytest.fixture
 def patch_async_session(monkeypatch: pytest.MonkeyPatch):
-    """`_build_persist_callback` / `_finalize_trace` 가 conftest in-memory DB
-    와 동일 엔진을 쓰도록 router 모듈 안의 ``async_session`` 을 TestSession 으로
-    교체. 미patch 시 partial flush 가 production DB(설정 안 됨)로 향해 silent
-    drop → GET resume 가 row 를 못 찾아 RESUME_NOT_FOUND 로 빠진다.
+    """将 router 模块内的 ``async_session`` 替换为 TestSession，使
+    `_build_persist_callback` / `_finalize_trace` 使用与 conftest in-memory DB
+    相同的 engine。若未 patch，partial flush 会指向 production DB（未配置）并 silent
+    drop → GET resume 找不到 row，落入 RESUME_NOT_FOUND。
     """
     monkeypatch.setattr("app.services.conversation_stream_service.async_session", TestSession)
 
@@ -794,7 +794,7 @@ async def _drive_post_to_completion(
     *,
     content: str = "go",
 ) -> None:
-    """B/C/D 공용 — patch + POST + aread 한 번에. 4번 반복되던 시퀀스 통합."""
+    """B/C/D 共用 — patch + POST + aread 一次完成。整合原来重复4次的序列。"""
     with patch("app.routers.conversation_messages.execute_agent_stream", side_effect=mock_stream):
         async with client.stream(
             "POST",
@@ -810,8 +810,8 @@ async def test_e2e_post_inflight_get_attaches_live_and_receives_tail(
     client: AsyncClient,
     patch_async_session: None,
 ) -> None:
-    """A: POST 가 mid-stream 일 때 GET 이 들어오면 broker live 로 attach,
-    누락된 prefix 를 buffer 에서 replay 한 뒤 라이브 tail 까지 이어 받는다."""
+    """A: POST 处于 mid-stream 时进入 GET，则 attach 到 broker live，
+    从 buffer replay 缺失 prefix 后继续接收 live tail。"""
     conv_id = await _seed_conv()
     captured: dict[str, Any] = {}
     pause = asyncio.Event()
@@ -823,8 +823,8 @@ async def test_e2e_post_inflight_get_attaches_live_and_receives_tail(
     )
 
     async def consume_post() -> None:
-        # POST 는 mock 의 pause 가 풀릴 때까지 mid-stream 에 머문다 — pause.set
-        # 이전에 abort 하지 않고 끝까지 함께 흘려 보낸다 (둘 다 close 까지 따라감).
+        # POST 会一直停留在 mid-stream，直到 mock 的 pause 被解除 — pause.set
+        # 之前不要 abort，而是一起流到结束（两者都跟到 close）。
         async with client.stream(
             "POST",
             f"/api/conversations/{conv_id}/messages",
@@ -839,8 +839,8 @@ async def test_e2e_post_inflight_get_attaches_live_and_receives_tail(
     with patch("app.routers.conversation_messages.execute_agent_stream", side_effect=mock_stream):
         post_task = asyncio.create_task(consume_post())
         try:
-            # mock 이 message_start + content_delta 두 개 를 publish 하고 pause 에
-            # 걸렸는지 확인 — 이 시점에 broker buffer 는 2 events, broker live.
+            # 确认 mock 已 publish message_start + content_delta 两个事件并停在 pause
+            # — 此时 broker buffer 有 2 events，broker live。
             await _wait_for(
                 lambda: (
                     "broker" in captured and len(captured["broker"]._buffer) >= 2  # noqa: SLF001
@@ -862,37 +862,37 @@ async def test_e2e_post_inflight_get_attaches_live_and_receives_tail(
                     return await resp.aread()
 
             get_task = asyncio.create_task(consume_get())
-            # GET listener 가 broker.subscribe 에 등록될 때까지 짧게 양보 —
-            # pause.set 직후 mock 이 곧장 late events 를 publish 해도 listener
-            # queue 에 fan-out 되어야 한다.
+            # 短暂让出，直到 GET listener 注册到 broker.subscribe —
+            # 即使 pause.set 后 mock 立即 publish late events，也必须 fan-out 到 listener
+            # queue 中必须 fan-out。
             #
-            # Race-free invariant: ``EventBroker.subscribe`` 는 첫 ``__anext__``
-            # 에서 ``listeners.add(queue)`` → ``buffer snapshot`` → buffer
-            # 슬라이스 yield 순서를 await 없이 (단일 sync 청크) 처리한다. 외부
-            # observer 가 ``len(_listeners) >= 1`` 을 관측한 시점에 listener
-            # 등록 + snapshot 둘 다 완료된 상태이며, 이후 ``publish_nowait`` 은
-            # 무조건 queue 로 fan-out + ``yielded_ids`` dedup 으로 boundary
-            # 중복도 차단된다 (event_broker.py:194-240).
+            # Race-free invariant: ``EventBroker.subscribe`` 在第一次 ``__anext__``
+            # 中按 ``listeners.add(queue)`` → ``buffer snapshot`` → buffer
+            # slice yield 的顺序无 await 处理（单个 sync chunk）。当外部
+            # observer 观察到 ``len(_listeners) >= 1`` 时，listener
+            # 注册 + snapshot 都已完成，之后的 ``publish_nowait``
+            # 必然 fan-out 到 queue，并通过 ``yielded_ids`` dedup 阻止 boundary
+            # 重复（event_broker.py:194-240）。
             await _wait_for(
                 lambda: len(broker_live._listeners) >= 1  # noqa: SLF001
             )
             pause.set()
             get_body = await get_task
         finally:
-            # Race / assertion 실패로 진입한 경우에도 task leak 을 막는다 —
-            # 회수 안 된 listener task 가 conftest autouse `_clear()` 와 만나면
-            # `queue.get()` 영구 hang 으로 다음 테스트 flake 의 원인이 된다.
+            # 即使因 Race / assertion 失败进入异常路径，也要防止 task leak —
+            # 未回收的 listener task 遇到 conftest autouse `_clear()` 时，
+            # 会在 `queue.get()` 永久 hang，导致后续测试 flake。
             #
-            # Happy path 에서도 POST 측은 ``_finalize_trace`` (DB write 2회) 가
-            # GET 측 stream 종료보다 약간 늦게 끝나므로 무조건 cancel 하면
-            # SQLAlchemy connection mid-rollback 와 충돌한다 (sqlite3 "no
-            # active connection"). 자연 종료를 우선 기다린 뒤 timeout 시에만
-            # cancel — ``shield`` 로 wait_for cancel propagation 차단.
+            # 即使 Happy path，POST 侧 ``_finalize_trace``（DB write 2次）也会
+            # 比 GET 侧 stream 结束稍晚，因此若无条件 cancel
+            # 会与 SQLAlchemy connection mid-rollback 冲突（sqlite3 "no
+            # active connection"）。优先等待自然结束，仅 timeout 时
+            # cancel — 用 ``shield`` 阻止 wait_for cancel propagation。
             pause.set()
-            # ``post_task`` 와 ``get_task`` 가 서로 다른 return 타입 (None vs
-            # bytes) 이라 generic union 으로 묶이는데, ``asyncio.shield`` 는
-            # 단일 generic 만 받아 pyright 가 mismatch 를 잡는다. 정렬 의도가
-            # 맞으므로 ``Any`` 로 cast 하여 침묵.
+            # ``post_task`` 与 ``get_task`` 的 return 类型不同（None vs
+            # bytes），因此会被归入 generic union，但 ``asyncio.shield``
+            # 只接受单一 generic，pyright 会捕捉 mismatch。由于排序意图
+            # 正确，cast 为 ``Any`` 以静默处理。
             from typing import cast
 
             for task in cast(list[asyncio.Task[Any]], [post_task, get_task]):
@@ -909,11 +909,11 @@ async def test_e2e_post_inflight_get_attaches_live_and_receives_tail(
     deltas = [
         json.loads(e["data"]).get("delta") for e in sse_events if e.get("event") == CONTENT_DELTA
     ]
-    # buffer replay (hi) + 라이브 tail ( world) — 둘 다 GET 에 도달.
+    # buffer replay (hi) + live tail ( world) — 两者都到达 GET。
     assert deltas == ["hi", " world"]
     assert sse_events[-1]["event"] == MESSAGE_END
-    # POST header 의 run_id 와 mock 이 받은 run_id 가 일치 — `_prepare_stream
-    # _context` 가 한 turn 에서 같은 id 로 broker / persist / 헤더를 통일.
+    # POST header 的 run_id 与 mock 接收到的 run_id 一致 — `_prepare_stream
+    # _context` 在同一 turn 中统一 broker / persist / header 使用相同 id。
     assert captured["post_run_id_header"] == run_id
 
 
@@ -922,8 +922,8 @@ async def test_e2e_post_completed_then_broker_evicted_get_replays_from_db(
     client: AsyncClient,
     patch_async_session: None,
 ) -> None:
-    """B: POST 가 정상 종료 → ``registry.evict_expired(ttl_seconds=0)`` 으로
-    closed broker 강제 회수 → GET 이 들어오면 DB replay 분기로 떨어진다."""
+    """B: POST 正常结束 → 通过 ``registry.evict_expired(ttl_seconds=0)``
+    强制回收 closed broker → GET 进入时落入 DB replay 分支。"""
     conv_id = await _seed_conv()
     captured: dict[str, Any] = {}
     mock_stream = _make_executor_simulator(_build_events, captured=captured)
@@ -932,7 +932,7 @@ async def test_e2e_post_completed_then_broker_evicted_get_replays_from_db(
 
     run_id = captured["broker"].run_id
 
-    # broker 는 mock finally 에서 close 되어 evict 후보. ttl=0 으로 강제 회수.
+    # broker 在 mock finally 中 close，因此成为 evict 候选。用 ttl=0 强制回收。
     broker = event_broker.registry.get(run_id)
     assert broker is not None and broker.is_closed
     evicted = event_broker.registry.evict_expired(ttl_seconds=0)
@@ -968,10 +968,10 @@ async def test_e2e_post_killed_before_finalize_get_emits_stale(
     patch_async_session: None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """C: partial flush 로 status='streaming' row 가 적재된 상태에서 backend
-    가 finalize 전에 죽은 케이스. ``_finalize_trace`` 를 no-op 으로 패치해 row
-    가 'streaming' 상태로 남도록 해 broker miss → DB replay → ``event: stale``
-    경로를 검증한다.
+    """C: partial flush 已写入 status='streaming' row，但 backend
+    在 finalize 前死亡的情况。将 ``_finalize_trace`` patch 为 no-op，使 row
+    保持 'streaming' 状态，从而验证 broker miss → DB replay → ``event: stale``
+    路径。
     """
     conv_id = await _seed_conv()
     captured: dict[str, Any] = {}
@@ -986,7 +986,7 @@ async def test_e2e_post_killed_before_finalize_get_emits_stale(
     monkeypatch.setattr("app.services.conversation_run_worker._transition", _no_transition)
 
     def events_no_end(run_id: str) -> list[dict[str, Any]]:
-        # message_end 누락 — 백엔드가 도중에 죽은 것을 시뮬레이션.
+        # 缺少 message_end — 模拟 backend 在过程中死亡。
         return [
             {
                 "id": f"{run_id}-1",
@@ -1001,12 +1001,12 @@ async def test_e2e_post_killed_before_finalize_get_emits_stale(
     await _drive_post_to_completion(client, conv_id, mock_stream)
 
     run_id = captured["broker"].run_id
-    # finalize 가 no-op 이라 row.status 는 partial flush 가 적은 'streaming'
-    # 그대로. broker 는 mock finally 에서 close + ttl=0 으로 회수. 추가로
-    # ``_clear()`` 까지 호출해 registry dict 자체를 비워 — 실제 SIGKILL 후
-    # backend 재기동 시점 (broker dict 빈 상태) 과 동일한 invariant 를 만든다.
+    # finalize 为 no-op，因此 row.status 保持 partial flush 写入的 'streaming'
+    # 状态。broker 在 mock finally 中 close，并以 ttl=0 回收。另外
+    # 再调用 ``_clear()`` 清空 registry dict 本身 — 构造与真实 SIGKILL 后
+    # backend 重启时（broker dict 为空）相同的 invariant。
     event_broker.registry.evict_expired(ttl_seconds=0)
-    event_broker.registry._clear()  # noqa: SLF001 — crash-after-restart 시뮬
+    event_broker.registry._clear()  # noqa: SLF001 — 模拟 crash-after-restart
     assert event_broker.registry.get(run_id) is None
     async with TestSession() as db:
         from sqlalchemy import select
@@ -1037,9 +1037,9 @@ async def test_e2e_post_emits_interrupt_then_get_returns_409(
     client: AsyncClient,
     patch_async_session: None,
 ) -> None:
-    """D: POST 가 message_end 없이 ``interrupt`` 만 emit 한 채 종료하면 GET
-    resume 은 graph 가 HiTL 응답을 기다리는 신호로 인식해 409 로 차단한다
-    (client 는 ``/messages/resume`` 으로 와야 함).
+    """D: POST 未 emit message_end，只 emit ``interrupt`` 后结束时，GET
+    resume 应识别为 graph 正等待 HiTL 响应的信号并以 409 阻止
+    （client 应改走 ``/messages/resume``）。
     """
     conv_id = await _seed_conv()
     captured: dict[str, Any] = {}
@@ -1063,8 +1063,8 @@ async def test_e2e_post_emits_interrupt_then_get_returns_409(
     await _drive_post_to_completion(client, conv_id, mock_stream, content="do thing")
 
     run_id = captured["broker"].run_id
-    # broker 는 mock finally 에서 close. ttl=0 으로 회수해 확실히 broker miss
-    # 경로로 떨어지게 한다 (broker live 였다면 subscribe 로 가서 409 가 안 남).
+    # broker 在 mock finally 中 close。以 ttl=0 回收，确保进入 broker miss
+    # 路径（若 broker live，则会走 subscribe，不会得到 409）。
     event_broker.registry.evict_expired(ttl_seconds=0)
     assert event_broker.registry.get(run_id) is None
 

@@ -140,7 +140,7 @@ async def test_scraper_caps_body_size(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tool_factory, "_SCRAPE_MAX_BODY_BYTES", 64)
 
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, text="<html><p>" + "가" * 10_000 + "</p></html>")
+        return httpx.Response(200, text="<html><p>" + "甲" * 10_000 + "</p></html>")
 
     result = await _run_scraper(monkeypatch, handler, f"http://{PUBLIC_IP}/big")
     assert not result.startswith("Error:")

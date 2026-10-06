@@ -1,9 +1,9 @@
 import type { Message, MessagesEnvelope, ToolCallInfo } from '@/lib/types'
 
 /**
- * 대화 export (G5). 프론트가 이미 로드한 ``envelope.messages``를 markdown/json으로
- * 변환한다(백엔드 export API 불필요). 순수 함수 — 사용자에게 보이는 라벨은 i18n으로
- * 호출부(ExportDialog)에서 주입한다. 날짜는 기계 파싱을 위해 ISO 원본을 유지한다.
+ * 对话 export（G5）。将前端已加载的 ``envelope.messages`` 转为 markdown/json
+ * （无需 backend export API）。纯函数——用户可见标签通过 i18n
+ * 由调用方（ExportDialog）注入。日期保留 ISO 原值以便机器解析。
  */
 
 export interface ExportLabels {
@@ -68,7 +68,7 @@ export function exportFilename(
   return `conversation-${conversationId}-${timestamp}.${ext}`
 }
 
-/** 클라이언트 Blob 다운로드 (mcp-servers export 패턴). DOM 부수효과라 유틸 테스트에서 제외. */
+/** 客户端 Blob 下载（mcp-servers export 模式）。属于 DOM 副作用，因此不纳入工具函数测试。 */
 export function downloadTextFile(content: string, filename: string, mime: string): void {
   const blob = new Blob([content], { type: mime })
   const url = URL.createObjectURL(blob)

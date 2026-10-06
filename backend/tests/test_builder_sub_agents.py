@@ -231,7 +231,7 @@ async def test_recommend_middlewares_filters_invalid():
     """Middlewares not in catalog are filtered out."""
     mock_data = [
         {"middleware_name": "tool_retry", "description": "重试", "reason": "必填"},
-        {"middleware_name": "nonexistent_mw", "description": "无", "reason": "필터됨"},
+        {"middleware_name": "nonexistent_mw", "description": "无", "reason": "已过滤"},
     ]
 
     with patch(
@@ -413,13 +413,13 @@ async def test_invoke_for_text_all_short():
 
 @pytest.mark.asyncio
 async def test_invoke_with_json_retry_ignores_trailing_text():
-    """JSON 뒤에 설명 텍스트가 붙어도(LiteLLM gateway류) 첫 JSON을 파싱한다.
+    """即使 JSON 后附带说明文本（LiteLLM gateway 类），也解析第一个 JSON。
 
-    기존 json.loads는 "Extra data"로 실패 → fallback. raw_decode로 trailing
-    텍스트를 무시하므로 1회 시도에 성공한다.
+    现有 json.loads 会因 "Extra data" 失败 → fallback。用 raw_decode 忽略 trailing
+    文本，因此第一次尝试即可成功。
     """
     response = MagicMock()
-    response.content = '{"options": ["a", "b"]}\n\n위 옵션을 추천합니다.'
+    response.content = '{"options": ["a", "b"]}\n\n推荐以上选项。'
 
     mock_model = AsyncMock()
     mock_model.ainvoke = AsyncMock(return_value=response)
@@ -463,7 +463,7 @@ def test_format_catalog_items():
 
 
 def test_format_catalog_includes_kind_prefix():
-    """카탈로그 줄에 [kind] prefix 가 노출되어야 LLM 이 종류 인지 — skill 포함."""
+    """catalog 行必须暴露 [kind] prefix，LLM 才能识别类型 — 包括 skill。"""
     from app.agent_runtime.builder.sub_agents.tool_recommender import _format_catalog
 
     catalog = [

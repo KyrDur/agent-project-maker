@@ -39,7 +39,7 @@ async def _seed_full(db: AsyncSession) -> tuple[uuid.UUID, uuid.UUID]:
         system_prompt="You are a helpful assistant.\nUse tools wisely.\nBe concise.",
         model_id=model.id,
         model_params={"temperature": 0.7, "recursion_limit": 30},
-        opener_questions=["안녕하세요"],
+        opener_questions=["你好"],
     )
     db.add(agent)
     await db.flush()
@@ -386,7 +386,7 @@ async def test_get_chat_openers(db: AsyncSession, patch_read_session):
 
     result = await tool.ainvoke({})
     data = json.loads(result)
-    assert data["chat_openers"] == ["안녕하세요"]
+    assert data["chat_openers"] == ["你好"]
 
 
 # ---------------------------------------------------------------------------
@@ -449,7 +449,7 @@ async def test_list_cron_schedules_with_trigger(db: AsyncSession, patch_read_ses
         user_id=TEST_USER_ID,
         trigger_type="cron",
         schedule_config={"type": "cron", "expression": "0 * * * *"},
-        input_message="테스트 메시지",
+        input_message="测试消息",
     )
     db.add(trigger)
     await db.commit()
@@ -461,7 +461,7 @@ async def test_list_cron_schedules_with_trigger(db: AsyncSession, patch_read_ses
     data = json.loads(result)
     assert len(data) == 1
     assert data[0]["type"] == "cron"
-    assert data[0]["message"] == "테스트 메시지"
+    assert data[0]["message"] == "测试消息"
     assert data[0]["name"] == "定时任务"
     assert data[0]["timezone"] == "Asia/Seoul"
     assert data[0]["conversation_policy"] == "schedule_thread"
@@ -486,7 +486,7 @@ async def test_get_cron_schedule(db: AsyncSession, patch_read_session):
         user_id=TEST_USER_ID,
         trigger_type="cron",
         schedule_config={"type": "cron", "expression": "30 * * * *"},
-        input_message="상세 조회 테스트",
+        input_message="详情查询测试",
     )
     db.add(trigger)
     await db.commit()
@@ -498,7 +498,7 @@ async def test_get_cron_schedule(db: AsyncSession, patch_read_session):
     result = await tool.ainvoke({"schedule_id": str(trigger.id)})
     data = json.loads(result)
     assert data["type"] == "cron"
-    assert data["message"] == "상세 조회 테스트"
+    assert data["message"] == "详情查询测试"
     assert data["timezone"] == "Asia/Seoul"
     assert data["conversation_policy"] == "schedule_thread"
     assert data["auto_pause_after_failures"] is None

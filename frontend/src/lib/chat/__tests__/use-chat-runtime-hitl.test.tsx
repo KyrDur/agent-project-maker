@@ -1,10 +1,10 @@
 /**
- * `case 'interrupt'` 표준 단독 경로 + multi-action / fallback empty 표준 chunk
- * 가 그대로 `onStandardInterrupt`로 전달되는지 검증.
+ * 验证 `case 'interrupt'` 标准单独路径 + multi-action / fallback empty 标准 chunk
+ * 是否原样传递给 `onStandardInterrupt`。
  *
- * Brittleness: assistant-ui의 `useExternalStoreRuntime` /
- * `useExternalMessageConverter`는 internal state를 가지므로 hook을 그대로 렌더한다.
- * jotai/sonner/next-intl는 가벼운 mock으로 격리.
+ * Brittleness：assistant-ui 的 `useExternalStoreRuntime` /
+ * `useExternalMessageConverter` 带有 internal state，因此直接渲染 hook。
+ * jotai/sonner/next-intl 用轻量 mock 隔离。
  */
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Decision, Message, SSEEvent, StandardInterruptPayload } from '@/lib/types'
 import { useChatRuntime } from '../use-chat-runtime'
 
-// ── 가벼운 mocks ──────────────────────────────────────────────────────────
+// ── 轻量 mocks ──────────────────────────────────────────────────────────
 const streamResumeDecisionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/sse/stream-resume', () => ({
@@ -100,7 +100,7 @@ type ResumeSpy = (
   interruptId?: string | null,
 ) => AsyncGenerator<SSEEvent>
 
-// ── 공통 hook 옵션 빌더 ───────────────────────────────────────────────────
+// ── 通用 hook 选项 builder ───────────────────────────────────────────────────
 
 interface HookSpyOptions {
   events: SSEEvent[]
@@ -135,8 +135,8 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('useChatRuntime — case "interrupt" 표준 경로', () => {
-  it('표준 chunk가 도착하면 onStandardInterrupt가 1회 호출된다', async () => {
+describe('useChatRuntime — case "interrupt" 标准路径', () => {
+  it('标准 chunk 到达时 onStandardInterrupt 被调用 1 次', async () => {
     const { onStandardInterrupt, options } = buildHookOptions({
       events: [{ event: 'interrupt', data: STANDARD_PAYLOAD }],
     })
@@ -152,7 +152,7 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     expect(onStandardInterrupt).toHaveBeenCalledWith(STANDARD_PAYLOAD)
   })
 
-  it('표준 chunk가 도착하면 내부 tool UI 호출도 합성한다', async () => {
+  it('标准 chunk 到达时也合成内部 tool UI 调用', async () => {
     const { options } = buildHookOptions({
       events: [{ event: 'interrupt', data: STANDARD_PAYLOAD }],
     })
@@ -194,7 +194,7 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     ])
   })
 
-  it('이미 stream에 나온 ask_user tool call에는 interrupt metadata만 병합한다', async () => {
+  it('对 stream 中已出现的 ask_user tool call 只合并 interrupt metadata', async () => {
     const questionFlowPayload: StandardInterruptPayload = {
       interrupt_id: 'ns-ask-user',
       action_requests: [
@@ -202,13 +202,13 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
           name: 'ask_user',
           args: {
             mode: 'question_flow',
-            title: '에이전트 설정 확인',
+            title: '确认智能体设置',
             questions: [
               {
                 id: 'agent_name',
                 label: '智能体名称',
                 type: 'single_select',
-                options: [{ id: 'research', label: '리서치 에이전트' }],
+                options: [{ id: 'research', label: '研究智能体' }],
                 required: true,
               },
             ],
@@ -253,7 +253,7 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
       name: 'ask_user',
       args: {
         mode: 'question_flow',
-        title: '에이전트 설정 확인',
+        title: '确认智能体设置',
         approval_id: 'ns-ask-user:0',
         allowed_decisions: ['respond'],
         hitl_interrupt_id: 'ns-ask-user',
@@ -263,9 +263,9 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     })
   })
 
-  it('multi-action(action_requests.length >= 2) 표준 chunk는 한 번에 통째로 전달', async () => {
-    // backend는 한 interrupt = 한 묶음(여러 action_requests) 으로 발행 (§4.3).
-    // frontend는 multi-action 배열을 분리하지 않고 그대로 콜백에 위임.
+  it('multi-action(action_requests.length >= 2) 标准 chunk 一次性完整传递', async () => {
+    // backend 按一个 interrupt = 一组（多个 action_requests）发布（§4.3）。
+    // frontend 不拆分 multi-action 数组，直接交给回调。
     const multi: StandardInterruptPayload = {
       interrupt_id: 'ns-multi',
       action_requests: [
@@ -296,12 +296,12 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     expect(arg.review_configs).toHaveLength(3)
   })
 
-  it('fallback 표준 chunk(action_requests=[]) 는 toast 안내 + onStandardInterrupt 미호출', async () => {
+  it('fallback 标准 chunk(action_requests=[]) 显示 toast 提示 + 不调用 onStandardInterrupt', async () => {
     /**
-     * Backend fallback (``aget_state`` 실패): 빈 표준 chunk
-     * ``{interrupt_id: "", action_requests: [], review_configs: []}`` 1회 emit.
-     * turn 이 silent 하게 갇히지 않도록 hook 이 toast 로 사용자에게 안내하고
-     * ``onStandardInterrupt`` 는 호출하지 않는다(액션 카드 렌더 의미 없음).
+     * Backend fallback（``aget_state`` 失败）：空标准 chunk
+     * ``{interrupt_id: "", action_requests: [], review_configs: []}`` emit 1 次。
+     * 为避免 turn silent 地卡住，hook 通过 toast 提示用户，
+     * 且不调用 ``onStandardInterrupt``（渲染操作卡没有意义）。
      */
     vi.mocked(toast.error).mockClear()
     const fallbackStd: StandardInterruptPayload = {
@@ -324,10 +324,10 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     expect(onStandardInterrupt).not.toHaveBeenCalled()
   })
 
-  it('SSE error event 도달 시 toast.error 1회 호출 (silent fail 가드)', async () => {
-    /** ``setStreamError`` 는 setter-only state 라 UI 미노출.
-     * Backend 의 SSE ``error`` event (예: OpenAI 404, model not found) 가
-     * 사용자 화면에 silent 하게 사라지지 않도록 toast 강제 호출. */
+  it('SSE error event 到达时调用 toast.error 1 次（silent fail 保护）', async () => {
+    /** ``setStreamError`` 是 setter-only state，因此 UI 不展示。
+     * Backend 的 SSE ``error`` event（如 OpenAI 404, model not found）不会
+     * 在用户界面 silent 地消失，强制调用 toast。 */
     vi.mocked(toast.error).mockClear()
     const { options } = buildHookOptions({
       events: [
@@ -352,12 +352,12 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     )
   })
 
-  it('한 stream 다중 error event 시 dedup id 로 sonner 가 토스트 교체', async () => {
+  it('一个 stream 内有多个 error event 时，用 dedup id 让 sonner 替换 toast', async () => {
     /**
-     * Backend 가 한 turn 안에 ``error`` SSE event 를 여러 개 emit (e.g. tool
-     * 단계마다 fail 누적) 하면 이전 구현은 토스트가 스택 → 화면 가림. 모든
-     * 호출이 동일 id (``chat-stream-error``) 를 부여해 sonner 가 교체하도록
-     * 보장 (시각적 dedup). 호출 횟수가 아닌 id 일관성을 회귀 가드.
+     * Backend 在一个 turn 内 emit 多个 ``error`` SSE event（e.g. tool
+     * 各阶段累计 fail）时，旧实现会堆叠 toast → 遮挡画面。确保所有
+     * 调用都使用相同 id（``chat-stream-error``），让 sonner 进行替换
+     * （视觉 dedup）。回归保护的是 id 一致性，而不是调用次数。
      */
     vi.mocked(toast.error).mockClear()
     const { options } = buildHookOptions({
@@ -376,7 +376,7 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
     })
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(3))
-    // 모든 호출이 같은 dedup id 보유 — sonner 가 자동 교체
+    // 所有调用都带相同 dedup id——sonner 自动替换
     const calls = vi.mocked(toast.error).mock.calls
     for (const call of calls) {
       expect(call[1]).toEqual(expect.objectContaining({ id: 'chat-stream-error' }))
@@ -385,11 +385,11 @@ describe('useChatRuntime — case "interrupt" 표준 경로', () => {
 })
 
 // ---------------------------------------------------------------------------
-// onResumeDecisions 호출 — body 빌더 통합 (스트림 자체는 stream-resume.test.ts).
+// 调用 onResumeDecisions——body builder 集成（stream 本身见 stream-resume.test.ts）。
 // ---------------------------------------------------------------------------
 
 describe('useChatRuntime — onResumeDecisions', () => {
-  it('hook이 onResumeDecisions 함수를 노출한다 (HiTLContext 호환 §6.3)', () => {
+  it('hook 暴露 onResumeDecisions 函数（兼容 HiTLContext §6.3）', () => {
     const { options } = buildHookOptions({ events: [] })
     const { result } = renderHook(() => useChatRuntime(options), {
       wrapper: createWrapper(),
@@ -397,12 +397,12 @@ describe('useChatRuntime — onResumeDecisions', () => {
 
     expect(typeof result.current.onResumeDecisions).toBe('function')
     expect(typeof result.current.registerDecision).toBe('function')
-    // legacy `onResume`은 더 이상 노출되지 않는다 (회귀 가드).
+    // legacy `onResume` 不再暴露（回归保护）。
     expect('onResume' in result.current).toBe(false)
   })
 
-  it('conversationId와 resumeFn이 모두 없으면 결정을 완료 처리하지 않는다', async () => {
-    // 잘못 연결된 HiTL 컨텍스트가 결정을 전송하지 않고 완료로 보이는 것을 막는다.
+  it('conversationId 和 resumeFn 都不存在时，不把决定标记为完成', async () => {
+    // 防止错误连接的 HiTL 上下文未发送决定却显示为已完成。
     const { options } = buildHookOptions({ events: [] })
     const noConvOptions = { ...options, conversationId: undefined }
     const { result } = renderHook(() => useChatRuntime(noConvOptions), {
@@ -419,7 +419,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
     const multi: StandardInterruptPayload = {
       interrupt_id: 'ns-multi-latest',
       action_requests: [
-        { name: 'ask_user', args: { question: '계속할까요?' } },
+        { name: 'ask_user', args: { question: '要继续吗？' } },
         { name: 'send_email', args: { to: 'team@example.com' } },
       ],
       review_configs: [
@@ -449,11 +449,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
     })
     let earlyDecision!: Promise<void>
     act(() => {
-      earlyDecision = result.current.registerDecision(
-        1,
-        { type: 'reject', message: '아니요' },
-        '拒绝',
-      )
+      earlyDecision = result.current.registerDecision(1, { type: 'reject', message: '不' }, '拒绝')
     })
     expect(resume1).not.toHaveBeenCalled()
 
@@ -461,8 +457,8 @@ describe('useChatRuntime — onResumeDecisions', () => {
     await act(async () => {
       const finalDecision = result.current.registerDecision(
         0,
-        { type: 'respond', message: '네' },
-        '네',
+        { type: 'respond', message: '是' },
+        '是',
       )
       await Promise.all([earlyDecision, finalDecision])
     })
@@ -470,10 +466,10 @@ describe('useChatRuntime — onResumeDecisions', () => {
     expect(resume1).not.toHaveBeenCalled()
     expect(resume2).toHaveBeenCalledTimes(1)
     expect(resume2.mock.calls[0]?.[0]).toEqual([
-      { type: 'respond', message: '네' },
-      { type: 'reject', message: '아니요' },
+      { type: 'respond', message: '是' },
+      { type: 'reject', message: '不' },
     ])
-    expect(resume2.mock.calls[0]?.[2]).toBe('네 | 거부')
+    expect(resume2.mock.calls[0]?.[2]).toBe('是 | 拒绝')
     expect(resume2.mock.calls[0]?.[3]).toBe('ns-multi-latest')
   })
 
@@ -744,7 +740,7 @@ describe('useChatRuntime — onResumeDecisions', () => {
     const oldPending = result.current.registerDecision(
       0,
       { type: 'approve' },
-      '이전 승인',
+      '之前的批准',
       'intr-old',
     )
     const oldRejection = expect(oldPending).rejects.toMatchObject({ name: 'AbortError' })
@@ -755,28 +751,28 @@ describe('useChatRuntime — onResumeDecisions', () => {
     await oldRejection
 
     await expect(
-      result.current.registerDecision(1, { type: 'approve' }, '잘못된 승인', 'intr-old'),
+      result.current.registerDecision(1, { type: 'approve' }, '错误的批准', 'intr-old'),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
     await expect(
-      result.current.registerDecision(1, { type: 'approve' }, '빈 식별자 승인', null),
+      result.current.registerDecision(1, { type: 'approve' }, '空标识符批准', null),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
 
     const first = result.current.registerDecision(
       0,
-      { type: 'reject', message: '현재 거부' },
-      '현재 거부',
+      { type: 'reject', message: '当前拒绝' },
+      '当前拒绝',
       'intr-new',
     )
-    const second = result.current.registerDecision(1, { type: 'approve' }, '현재 승인', 'intr-new')
+    const second = result.current.registerDecision(1, { type: 'approve' }, '当前批准', 'intr-new')
     await Promise.all([first, second])
 
     expect(resume).toHaveBeenCalledOnce()
     expect(resume.mock.calls[0]?.[0]).toEqual([
-      { type: 'reject', message: '현재 거부' },
+      { type: 'reject', message: '当前拒绝' },
       { type: 'approve' },
     ])
     await expect(
-      result.current.registerDecision(0, { type: 'approve' }, '중복 승인', 'intr-new'),
+      result.current.registerDecision(0, { type: 'approve' }, '重复批准', 'intr-new'),
     ).rejects.toMatchObject({ name: 'InvalidStateError' })
     expect(resume).toHaveBeenCalledOnce()
   })

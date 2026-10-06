@@ -39,7 +39,7 @@ interface UseCheckpointForkHandlersOptions {
 
 type VisibleMessageReference = Pick<ThreadMessage, 'id'> & {
   readonly sourceId?: string
-  // checkpointForReload의 isAssistantVisibleMessage가 role로 재생성 대상을 가른다.
+  // checkpointForReload 的 isAssistantVisibleMessage 按 role 区分重生成对象。
   readonly role?: unknown
 }
 
@@ -70,10 +70,10 @@ export function useCheckpointForkHandlers({
     () => checkpointByMessageIdFromMessages(langChainMessages),
     [langChainMessages],
   )
-  // 합성 terminal-notice 버블(실패/취소/stale)은 실제 assistant 턴이 아니므로
-  // checkpoint fork 대상 탐색에서 제외한다. 특히 실패 버블을 남겨두면
-  // checkpointForReload가 그것을 재생성 대상 assistant로 오인해 null로 끝나
-  // retry가 no-op이 된다(G2).
+  // 合成 terminal-notice 气泡（失败/取消/stale）不是真实 assistant turn，因此
+  // 要从 checkpoint fork 目标搜索中排除。尤其如果保留失败气泡，
+  // checkpointForReload 会把它误认成待重生成 assistant 并以 null 结束，
+  // 导致 retry 成为 no-op（G2）。
   const forkVisibleMessages = useMemo(
     () => visibleMessages.filter((message) => !isTerminalNoticeMessageId(message.id)),
     [visibleMessages],
@@ -87,8 +87,8 @@ export function useCheckpointForkHandlers({
     [forkVisibleMessages, metadataByMessageId, checkpointByMessageId],
   )
 
-  // 서버 checkpoint 폴링(최대 10s)을 unmount/handler 재생성 시 취소한다.
-  // 취소가 없으면 dead stream에 ``stream.submit``을 호출할 수 있다.
+  // 服务器 checkpoint polling（最多 10s）在 unmount/handler recreate 时取消。
+  // 若不取消，可能向 dead stream 调用 ``stream.submit``。
   const serverCheckpointAbortRef = useRef<AbortController | null>(null)
   const beginServerCheckpointPoll = useCallback(() => {
     serverCheckpointAbortRef.current?.abort()
@@ -129,8 +129,8 @@ export function useCheckpointForkHandlers({
           checkpointContext,
           (signal = beginServerCheckpointPoll()),
         ))
-      // 서버 폴링을 거쳤고 그 사이 unmount/handler 재생성으로 취소됐다면
-      // dead stream에 submit하지 않는다.
+      // 如果走过服务器 polling，且期间因 unmount/handler recreate 被取消，
+      // 则不要向 dead stream submit。
       if (signal?.aborted) return false
       if (!checkpointId) {
         reportClientWarning('useMoldyLangGraphStream', 'Edit skipped: checkpoint is unavailable.')
@@ -336,8 +336,8 @@ async function retryServerCheckpoint(
   return null
 }
 
-/** abort 가능한 sleep — signal이 발화하면 즉시 resolve해 폴링 루프를 빠르게
- *  빠져나가게 한다(timer leak 방지 포함). */
+/** 可 abort 的 sleep——signal 触发时立即 resolve，让 polling loop 快速
+ *  退出（同时防止 timer leak）。 */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) {

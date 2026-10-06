@@ -36,4 +36,4 @@ def test_other_user_gets_enumeration_safe_not_found(monkeypatch: pytest.MonkeyPa
 
     assert exc_info.value.status == 404
     assert exc_info.value.code == "CONVERSATION_NOT_FOUND"
-    assert exc_info.value.message == "대화를 찾을 수 없습니다"
+    assert exc_info.value.message == "找不到对话"

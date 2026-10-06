@@ -1,7 +1,7 @@
-"""M5 Slice E Stage 3 — Credential env injection (Phase 1 출시 게이트).
+"""M5 Slice E Stage 3 — Credential env injection (Phase 1 发布 gate)。
 
 Spec §8.2~§8.4 + deletion-analysis §1.(b). Targets the resolution surface
-젠슨 shipped in Stage 3:
+Jensen shipped in Stage 3:
 
 * ``app.marketplace.credential_requirements.resolve_credential_bindings``
 * ``app.marketplace.credential_requirements.build_runtime_env``
@@ -65,9 +65,7 @@ async def seeded_user(db_session: AsyncSession) -> uuid.UUID:
         await db_session.execute(select(User).where(User.id == TEST_USER_ID))
     ).scalar_one_or_none()
     if existing is None:
-        db_session.add(
-            User(id=TEST_USER_ID, email="test@test.com", name="Test User")
-        )
+        db_session.add(User(id=TEST_USER_ID, email="test@test.com", name="Test User"))
         await db_session.commit()
     return TEST_USER_ID
 
@@ -321,9 +319,7 @@ class TestEnvInjectionScope:
             skill=skill,
             user=_LightUser(seeded_user),  # type: ignore[arg-type]
         )
-        assert "SECRET_PASTE" not in env, (
-            "host env var leaked through build_runtime_env"
-        )
+        assert "SECRET_PASTE" not in env, "host env var leaked through build_runtime_env"
         assert env == {}
 
 
@@ -377,9 +373,7 @@ class TestOverridePrecedence:
             db_session,
             skill=skill,
             user_id=seeded_user,
-            agent_skill_config={
-                "credential_bindings": {"srt_account": str(cred_b.id)}
-            },
+            agent_skill_config={"credential_bindings": {"srt_account": str(cred_b.id)}},
         )
         assert missing == []
         entry = resolved["srt_account"]
@@ -493,9 +487,7 @@ class TestOwnershipMismatchSilentMissing:
 
         # Seed a second user + their credential.
         other_user_id = uuid.uuid4()
-        db_session.add(
-            User(id=other_user_id, email="other@test.com", name="Other")
-        )
+        db_session.add(User(id=other_user_id, email="other@test.com", name="Other"))
         other_cred = _persist_credential(
             db_session,
             user_id=other_user_id,
@@ -526,9 +518,7 @@ class TestOwnershipMismatchSilentMissing:
         resolved, missing = await resolve_credential_bindings(
             db_session, skill=skill, user_id=seeded_user
         )
-        assert resolved == {}, (
-            "ownership mismatch leaked decrypted credential into resolution"
-        )
+        assert resolved == {}, "ownership mismatch leaked decrypted credential into resolution"
         assert missing == ["srt_account"]
 
 

@@ -326,22 +326,22 @@ def test_build_tree_three_same_id_user_edits_use_checkpoint_iteration_order():
     leaf_a = _CheckpointSlim(
         checkpoint_id="ck-z-old",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "안녕?"), _msg("ai", "a1", "r1")],
+        messages=[_msg("user", "u1", "你好？"), _msg("ai", "a1", "r1")],
     )
     leaf_b = _CheckpointSlim(
         checkpoint_id="ck-a-middle",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "바보"), _msg("ai", "a2", "r2")],
+        messages=[_msg("user", "u1", "笨蛋"), _msg("ai", "a2", "r2")],
     )
     leaf_c = _CheckpointSlim(
         checkpoint_id="ck-m-new",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "반가워"), _msg("ai", "a3", "r3")],
+        messages=[_msg("user", "u1", "很高兴见到你"), _msg("ai", "a3", "r3")],
     )
 
     tree = _build_tree_from_checkpoints([leaf_c, leaf_b, leaf_a])
 
-    assert [getattr(n.message, "content", None) for n in tree.nodes] == ["반가워", "r3"]
+    assert [getattr(n.message, "content", None) for n in tree.nodes] == ["很高兴见到你", "r3"]
     sib_u1 = tree.branches_by_message["u1"]
     assert [s.checkpoint_id for s in sib_u1] == ["ck-z-old", "ck-a-middle", "ck-m-new"]
     assert tree.nodes[0].branch_index == 2
@@ -353,17 +353,17 @@ def test_build_leaf_tree_three_same_id_user_edits_use_checkpoint_iteration_order
     leaf_a = _CheckpointSlim(
         checkpoint_id="ck-z-old",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "안녕?"), _msg("ai", "a1", "r1")],
+        messages=[_msg("user", "u1", "你好？"), _msg("ai", "a1", "r1")],
     )
     leaf_b = _CheckpointSlim(
         checkpoint_id="ck-a-middle",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "바보"), _msg("ai", "a2", "r2")],
+        messages=[_msg("user", "u1", "笨蛋"), _msg("ai", "a2", "r2")],
     )
     leaf_c = _CheckpointSlim(
         checkpoint_id="ck-m-new",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "반가워"), _msg("ai", "a3", "r3")],
+        messages=[_msg("user", "u1", "很高兴见到你"), _msg("ai", "a3", "r3")],
     )
 
     tree = _build_tree_from_leaf_checkpoints(
@@ -371,7 +371,7 @@ def test_build_leaf_tree_three_same_id_user_edits_use_checkpoint_iteration_order
         {"ck-z-old": None, "ck-a-middle": None, "ck-m-new": None},
     )
 
-    assert [getattr(n.message, "content", None) for n in tree.nodes] == ["반가워", "r3"]
+    assert [getattr(n.message, "content", None) for n in tree.nodes] == ["很高兴见到你", "r3"]
     sib_u1 = tree.branches_by_message["u1"]
     assert [s.checkpoint_id for s in sib_u1] == ["ck-z-old", "ck-a-middle", "ck-m-new"]
     assert tree.nodes[0].branch_index == 2
@@ -850,18 +850,18 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
     ck0 = _CheckpointSlim(
         checkpoint_id="ck0",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "안녕?")],
+        messages=[_msg("user", "u1", "你好？")],
     )
     ck1 = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "안녕?"), _msg("ai", "a1", "안녕!")],
+        messages=[_msg("user", "u1", "你好？"), _msg("ai", "a1", "안녕!")],
     )
     ck2 = _CheckpointSlim(
         checkpoint_id="ck2",
         parent_checkpoint_id="ck1",
         messages=[
-            _msg("user", "u1", "안녕?"),
+            _msg("user", "u1", "你好？"),
             _msg("ai", "a1", "안녕!"),
             _msg("user", "u2", "정말 슬펐어"),
         ],
@@ -870,7 +870,7 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
         checkpoint_id="ck3",
         parent_checkpoint_id="ck2",
         messages=[
-            _msg("user", "u1", "안녕?"),
+            _msg("user", "u1", "你好？"),
             _msg("ai", "a1", "안녕!"),
             _msg("user", "u2", "정말 슬펐어"),
             _msg("ai", "a2", "응답1"),
@@ -910,7 +910,7 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
     ow = history.get("messages")
     assert isinstance(ow, Overwrite)
     assert len(ow.value) == 3
-    assert [m.content for m in ow.value] == ["안녕?", "안녕!", "정말 슬펐어"]
+    assert [m.content for m in ow.value] == ["你好？", "안녕!", "정말 슬펐어"]
 
 
 @pytest.mark.asyncio

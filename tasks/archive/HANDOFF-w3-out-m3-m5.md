@@ -31,11 +31,11 @@
 
 ## 의도적 follow-up
 
-- 🟠 cross-tenant LRU sub-cap (인증 도입 PR 과 함께)
+- 🟠 cross-tenant LRU sub-cap（与 auth 引入 PR 一起）
 - 🟡 multi-worker 지원 — Redis pub/sub 또는 sticky routing
 - 🟡 `get_conversation` + `get_agent_for_user` schema-level join (현재 2 round-trip)
-- 🟡 `evict_expired` dirty flag (워커=1 가정 하에 미적용)
-- 🟡 turn 당 events 5000+ 시 `events_chunks` 별도 테이블
+- 🟡 `evict_expired` dirty flag（在 workers=1 假设下未应用）
+- 🟡 每个 turn events 达到 5000+ 时拆分为 `events_chunks` 表
 
 ## 알려진 이슈
 
@@ -50,7 +50,7 @@
 - **Naive UTC 비교**: `.timestamp()` 회피 (로컬 tz 해석). `datetime` 직접 비교
 - **Events 슬라이싱**: `slice_events_after[E: Mapping](events, after_id)` — broker subscribe + DB replay 공유
 
-## 검증
+## 验证
 
 ```bash
 cd backend && uv run alembic upgrade head && uv run ruff check . && uv run pytest tests/ && uv run pyright

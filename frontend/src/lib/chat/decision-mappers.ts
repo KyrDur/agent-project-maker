@@ -1,17 +1,17 @@
 /**
- * 표준 ``Decision`` 객체 빌더 — HiTL ResumeRequest payload 의 4 액션 타입을
- * 인라인 리터럴 대신 일관된 helper 로 생성. 호출처에서 type 누락이나 잘못된
- * 필드 조합(예: respond 에 edited_action 첨부)을 컴파일 시점에 차단.
+ * 标准 ``Decision`` 对象 builder——将 HiTL ResumeRequest payload 的 4 种 action type
+ * 用统一 helper 生成，而不是内联字面量。可在编译阶段阻止调用处遗漏 type 或错误的
+ * 字段组合（例如给 respond 附加 edited_action）。
  *
- * ADR-012 §Decision schema 와 1:1 대응. Decision shape 변경 시 본 파일 한 곳
- * 만 수정하면 호출처 일괄 적용.
+ * 与 ADR-012 §Decision schema 一一对应。Decision shape 变化时，只需修改本文件一处，
+ * 即可统一应用到所有调用方。
  */
 import type { Decision } from '@/lib/types'
 import type { UserInputOption, UserInputQuestion } from '@/lib/types'
 
 export function toApprove(options?: { sessionScope?: boolean }): Decision {
-  // 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 선택 시 scope:'session' 첨부.
-  // 백엔드가 동의를 기록한 뒤 이 키를 벗겨 표준 approve만 미들웨어로 보낸다.
+  // Skill builder AD-4——选择"留出本次会议的剩余时间"时附加 scope:'session'。
+  // backend 记录同意后移除该键，只把标准 approve 发送给 middleware。
   return options?.sessionScope ? { type: 'approve', scope: 'session' } : { type: 'approve' }
 }
 

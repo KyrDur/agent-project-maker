@@ -40,7 +40,7 @@
 - `agents.model_params: JSON | null` 패턴 그대로 사용
 - 마이그레이션 m15까지 진행됨 → 신규는 m16
 
-## 인터페이스 계약
+## 接口契约
 
 ### Agent 타입 (FE/BE 공유)
 ```ts

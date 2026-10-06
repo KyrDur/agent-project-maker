@@ -1,8 +1,8 @@
-"""히든 런타임 에이전트(runtime_profile != 'standard') 노출 차단 계약 (스펙 AD-1).
+"""hidden runtime agent(runtime_profile != 'standard') 暴露阻断合约（规格 AD-1）。
 
-M1 전수 grep으로 확정한 표면: 에이전트 목록/요약, 채팅 네비게이터,
-usage per-agent breakdown, 일일 집계(agent축), Agent API 배포 후보,
-서브에이전트 연결 검증. 변조(PUT/DELETE)는 enumeration-safe 404.
+M1 全量 grep 确认的表面：agent 列表/摘要、chat navigator、
+usage per-agent breakdown、daily aggregate(agent 轴)、Agent API 部署候选、
+subagent 连接验证。修改（PUT/DELETE）返回 enumeration-safe 404。
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def _seed_agents(db: AsyncSession) -> tuple[Agent, Agent]:
-    """표준 에이전트 1 + 히든(skill_builder) 에이전트 1을 만든다."""
+    """创建1个 standard agent + 1个 hidden(skill_builder) agent。"""
 
     model = Model(provider="openai", model_name="gpt-4o", display_name="GPT-4o")
     db.add(model)
@@ -80,7 +80,7 @@ async def test_agent_list_and_summary_exclude_hidden(client: AsyncClient, db: As
 async def test_get_single_hidden_agent_still_readable(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    """빌더 챗 서피스가 에이전트 메타를 읽어야 하므로 GET 단건은 열어 둔다."""
+    """builder chat surface 需要读取 agent metadata，因此保留 GET 单项开放。"""
 
     _, hidden = await _seed_agents(db)
 
@@ -98,12 +98,12 @@ async def test_put_delete_hidden_agent_return_404(client: AsyncClient, db: Async
     delete = await client.delete(f"/api/agents/{hidden.id}")
     assert delete.status_code == 404
 
-    # 존재하지 않는 id와 응답이 동일해야 enumeration-safe.
+    # 必须与不存在的 id 返回相同响应，确保 enumeration-safe。
     missing = await client.put(f"/api/agents/{uuid.uuid4()}", json={"name": "x"})
     assert missing.status_code == 404
     assert missing.json() == put.json()
 
-    # 히든 row는 그대로 살아 있고, 표준 에이전트는 정상 변조 가능.
+    # hidden row 保持存活，standard agent 可正常修改。
     survivor = await db.get(Agent, hidden.id)
     assert survivor is not None and survivor.name == "Hidden Builder"
     ok = await client.put(f"/api/agents/{standard.id}", json={"name": "renamed"})
@@ -172,12 +172,12 @@ async def test_daily_spend_agent_axis_excludes_hidden(db: AsyncSession) -> None:
         to_date=day,
         group_by="target",
     )
-    # aiosqlite는 Uuid 컬럼을 raw select에서 문자열로 돌려줄 수 있어 str로 통일.
+    # aiosqlite 可能在 raw select 中把 Uuid 列作为字符串返回，因此统一为 str。
     target_ids = {str(row["target_id"]) for row in rows}
     assert str(standard.id) in target_ids
     assert str(hidden.id) not in target_ids
 
-    # date축도 히든 spend를 합산하지 않는다 (축 간 정합).
+    # date 轴也不汇总 hidden spend（保持轴间一致）。
     date_rows = await get_daily_spend(
         db,
         user_id=TEST_USER_ID,
@@ -245,8 +245,8 @@ async def test_hidden_agent_absent_from_assistant_subagent_listing(
 async def test_hidden_agent_favorite_and_image_mutations_return_404(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    """R 재검 회귀: PUT/DELETE 외 뮤테이션(favorite/image)도 히든 에이전트에는
-    enumeration-safe 404 — UUID를 알아도 변조 불가."""
+    """R 复查回归：除 PUT/DELETE 外的 mutation(favorite/image) 对 hidden agent
+    也应返回 enumeration-safe 404 — 即使知道 UUID 也不可修改。"""
 
     _standard, hidden = await _seed_agents(db)
 
@@ -260,15 +260,15 @@ async def test_hidden_agent_favorite_and_image_mutations_return_404(
 async def test_hidden_agent_excluded_from_blueprint_name_resolution(
     db: AsyncSession,
 ) -> None:
-    """R 재검 회귀: 블루프린트의 이름 기반 서브에이전트 해석이 히든 에이전트와
-    이름이 충돌해도 히든을 결선하지 않는다."""
+    """R 复查回归：blueprint 按名称解析 subagent 时，即使与 hidden agent
+    同名，也不能连接 hidden。"""
 
     from app.exceptions import ValidationError
     from app.services.agent_blueprint_service import _resolve_sub_agent_ids
 
     standard, hidden = await _seed_agents(db)
-    # 히든과 같은 이름의 표준 에이전트가 없으면 "missing dependency"로
-    # fail-closed — 히든을 조용히 결선하는 것보다 명시적 실패가 맞다.
+    # 若没有与 hidden 同名的 standard agent，则以 "missing dependency"
+    # fail-closed — 明确失败比静默连接 hidden 更正确。
     with pytest.raises(ValidationError):
         await _resolve_sub_agent_ids(
             db,
@@ -276,7 +276,7 @@ async def test_hidden_agent_excluded_from_blueprint_name_resolution(
             user_id=TEST_USER_ID,
         )
 
-    # 같은 이름의 표준 에이전트가 있으면 그쪽이 선택된다.
+    # 若存在同名 standard agent，则选择 standard 那一方。
     twin = Agent(
         user_id=TEST_USER_ID,
         name=hidden.name,

@@ -79,7 +79,7 @@ async def test_tool_display_names_fit_korean_ui(client: AsyncClient) -> None:
         "google_search_image": "Google 이미지 검색",
         "google_search_news": "Google 뉴스 검색",
         "naver_search_blog": "네이버 블로그 검색",
-        "naver_search_news": "네이버 뉴스 검색",
+        "naver_search_news": "Naver 新闻搜索",
         "naver_search_image": "네이버 이미지 검색",
         "naver_search_shop": "네이버 쇼핑 검색",
         "naver_search_local": "네이버 지역 검색",

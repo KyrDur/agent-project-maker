@@ -1,8 +1,8 @@
 # ADR-013: Service-side LLM Key from Credentials (Builder/Assistant Sub-agent)
 
-- **상태**: 승인됨 (2026-05-06)
-- **DRI**: 피차이 (System Architect)
-- **관련**: ADR-005 (Builder/Assistant), ADR-009 (Greenfield Credentials), commit `a7fc92d` (런타임 키 격리)
+- **状态**：已批准（2026-05-06）
+- **DRI**：Pichai（System Architect）
+- **相关**：ADR-005（Builder/Assistant）、ADR-009（Greenfield Credentials）、commit `a7fc92d`（runtime key 隔离）
 - **영역**: `app/agent_runtime/model_factory.py`, `app/agent_runtime/builder/sub_agents/helpers.py`, `app/services/system_credential_resolver.py`, `app/routers/credentials.py`, `app/main.py`
 
 ---
@@ -120,7 +120,7 @@ LLM_DEFINITION_TO_ENV_KEY: dict[str, str] = {
 
 ## § 위험 + 완화
 
-| 위험 | 완화 |
+| 风险 | 缓解 |
 |------|------|
 | Credential rotation 시 sync 누락 → builder 가 stale 키 사용 | CRUD 3곳 (POST/PATCH/DELETE) hook 누락 검증 가드 (M3 신규 테스트). `definition_key` 화이트리스트 분기. |
 | System vs user credential 충돌 | 결정 1 우선순위 명문화. system 1건 + user N건 동시 존재 시 system 우선. |

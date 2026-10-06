@@ -51,15 +51,15 @@ class _Msg:
 
 
 def test_sanitize_strips_bullets_numbering_and_quotes() -> None:
-    assert _sanitize_suggestion("- 표로 정리해줘") == "표로 정리해줘"
-    assert _sanitize_suggestion("1. 표로 정리해줘") == "표로 정리해줘"
-    assert _sanitize_suggestion('"표로 정리해줘"') == "표로 정리해줘"
-    assert _sanitize_suggestion("```\n표로 정리해줘\n```") == "표로 정리해줘"
+    assert _sanitize_suggestion("- 帮我整理成表格") == "帮我整理成表格"
+    assert _sanitize_suggestion("1. 帮我整理成表格") == "帮我整理成表格"
+    assert _sanitize_suggestion('"帮我整理成表格"') == "帮我整理成表格"
+    assert _sanitize_suggestion("```\n帮我整理成表格\n```") == "帮我整理成表格"
 
 
 def test_sanitize_takes_first_line_and_caps_length() -> None:
-    assert _sanitize_suggestion("첫 제안\n둘째 제안") == "첫 제안"
-    long = "가" * 500
+    assert _sanitize_suggestion("第一个建议\n第二个建议") == "第一个建议"
+    long = "甲" * 500
     sanitized = _sanitize_suggestion(long)
     assert sanitized is not None and len(sanitized) <= 120
 
@@ -72,13 +72,13 @@ def test_sanitize_empty_returns_none() -> None:
 def test_transcript_tail_filters_roles_and_limits() -> None:
     messages = [
         _Msg("system", "隐藏徽章"),
-        _Msg("user", "질문1"),
-        _Msg("tool", "도구 출력"),
-        _Msg("assistant", "답변1"),
+        _Msg("user", "问题1"),
+        _Msg("tool", "tool 输出"),
+        _Msg("assistant", "回答1"),
         _Msg("user", ""),
     ]
     tail = _transcript_tail(messages)
-    assert tail == "用户: 질문1\n助理: 답변1"
+    assert tail == "用户: 问题1\n助理: 回答1"
     assert _transcript_tail([_Msg("tool", "x")]) is None
 
 

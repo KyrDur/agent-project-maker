@@ -1,16 +1,16 @@
 /**
- * `onMessagesCommit` 경로(빌더 / AssistantPanel / TestChatPanel) 회귀 가드.
+ * `onMessagesCommit` 路径（builder / AssistantPanel / TestChatPanel）回归保护。
  *
- * 회귀: stream 종료 시 finally 가 `onMessagesCommit(finalMsgs)` 로 streaming
- * 메시지를 부모 state 에 옮기는데, 같은 batch 에 `streamingMessages` 를
- * 비우지 않으면 다음 render 의 `allMessages = [...messages, ...streamingMessages]`
- * 에 동일한 `stream-{uuid}` / `opt-{uuid}` / `tr-{uuid}` id 가 양쪽에 동시
- * 존재 → `useExternalMessageConverter` 가 assistant-ui `MessageRepository.link`
- * 호출 시 "A message with the same id already exists in the parent tree" throw.
+ * 回归：stream 结束时 finally 通过 `onMessagesCommit(finalMsgs)` 将 streaming
+ * 消息移到父 state，但如果同一 batch 中没有清空 `streamingMessages`，
+ * 下一次 render 的 `allMessages = [...messages, ...streamingMessages]`
+ * 中相同的 `stream-{uuid}` / `opt-{uuid}` / `tr-{uuid}` id 会同时存在于两边
+ * → `useExternalMessageConverter` 调用 assistant-ui `MessageRepository.link`
+ * 时 throw "A message with the same id already exists in the parent tree"。
  *
- * 본 테스트는 hook 안에서 부모처럼 `messages` 를 보관하고 `onMessagesCommit`
- * 에서 그대로 append 하는 실제 패턴을 재현해, 회귀가 발생하면 hook 자체가
- * render 중 throw 하도록 한다.
+ * 本测试在 hook 内像父组件一样保存 `messages`，并在 `onMessagesCommit`
+ * 中直接 append，以复现真实模式；若发生回归，hook 自身会在
+ * render 过程中 throw。
  */
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -124,7 +124,7 @@ function conversationRun(status: ConversationRun['status']): ConversationRun {
   }
 }
 
-/** 빌더 / AssistantPanel / TestChatPanel 의 실제 패턴을 재현한 하네스. */
+/** 复现 builder / AssistantPanel / TestChatPanel 的真实模式的 harness。 */
 function useCommitHarness(events: SSEEvent[], onCommit?: (messages: Message[]) => void) {
   const [messages, setMessages] = useState<Message[]>([])
   const streamFn = useMemo(
@@ -200,7 +200,7 @@ function message(id: string, role: Message['role'], content: string): Message {
 }
 
 describe('useChatRuntime — onMessagesCommit dedup', () => {
-  it('refetch가 persisted assistant를 가져온 render에서 streaming turn을 즉시 숨긴다', () => {
+  it('refetch 获取 persisted assistant 的 render 中立即隐藏 streaming turn', () => {
     const previousMessages: Message[] = []
     const persistedUser = message('user-db', 'user', 'probe')
     const persistedAssistant = message('assistant-db', 'assistant', 'done')
@@ -217,7 +217,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     expect(merged.map((m) => m.id)).toEqual(['user-db', 'assistant-db'])
   })
 
-  it('assistant row가 아직 persist되지 않은 refetch에서는 partial assistant를 보존한다', () => {
+  it('assistant row 尚未 persist 的 refetch 中保留 partial assistant', () => {
     const persistedUser = message('user-db', 'user', 'probe')
     const optimisticUser = message('opt-user', 'user', 'probe')
     const partialAssistant = message('stream-assistant', 'assistant', 'partial')
@@ -232,7 +232,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     expect(merged.map((m) => m.id)).toEqual(['user-db', 'stream-assistant'])
   })
 
-  it('부모가 빈 messages 배열을 새 참조로 넘겨도 render loop가 나지 않는다', () => {
+  it('父组件即使以新引用传入空 messages 数组也不会产生 render loop', () => {
     const { result } = renderHook(() => useUnstableEmptyMessagesHarness(), {
       wrapper: createWrapper(),
     })
@@ -244,40 +244,40 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     }).not.toThrow()
   })
 
-  it('stream 종료 후 부모가 commit 을 messages 에 append 해도 중복 id throw 없음', async () => {
+  it('stream 结束后父组件把 commit append 到 messages 也不会发生重复 id throw', async () => {
     /**
-     * 회귀 가드: 수정 전에는 finally 의 setState 가 같은 batch 에 처리되면서
-     * 다음 render 에 `messages` 와 `streamingMessages` 가 동시에 `stream-{uuid}`
-     * 를 담아 `useExternalMessageConverter` 가 throw 했다.
-     * 수정 후에는 `setStreamingMessages([])` 가 `onMessagesCommit` 호출 직전에
-     * 같은 batch 로 들어가 다음 render 의 `allMessages` 가 중복 없이 단일
-     * source 로 유지된다.
+     * 回归保护：修复前 finally 的 setState 在同一 batch 中处理，
+     * 下一次 render 时 `messages` 与 `streamingMessages` 会同时包含 `stream-{uuid}`，
+     * 导致 `useExternalMessageConverter` throw。
+     * 修复后，`setStreamingMessages([])` 会在调用 `onMessagesCommit` 前
+     * 进入同一 batch，使下一次 render 的 `allMessages` 保持为无重复的单一
+     * source。
      */
     const { result } = renderHook(
       () => useCommitHarness([{ event: 'content_delta', data: { content: 'Hello' } }]),
       { wrapper: createWrapper() },
     )
 
-    // 회귀 시 이 호출 종료 후 다음 render 에서 throw.
+    // 回归时，此调用结束后的下一次 render 会 throw。
     await act(async () => {
       await result.current.sendMessage('hi')
     })
 
-    // 1) 부모 messages 에 commit 결과가 들어왔다 (user opt + assistant).
+    // 1) 父 messages 中已加入 commit 结果（user opt + assistant）。
     const ids = result.current.messages.map((m) => m.id)
     expect(ids.length).toBeGreaterThanOrEqual(2)
 
-    // 2) 중복 id 가 없다 — assistant-ui MessageRepository 의 핵심 contract.
+    // 2) 没有重复 id——assistant-ui MessageRepository 的核心 contract。
     expect(new Set(ids).size).toBe(ids.length)
 
-    // 3) assistant 메시지가 한 번만 존재한다.
+    // 3) assistant 消息只存在一次。
     const assistantIds = result.current.messages
       .filter((m) => m.role === 'assistant')
       .map((m) => m.id)
     expect(assistantIds).toHaveLength(1)
   })
 
-  it('Stop은 서버 cancel 성공 후 local stream을 detach한다', async () => {
+  it('Stop 在服务器 cancel 成功后 detach 本地 stream', async () => {
     const started = deferred()
     const release = deferred()
     let resolveCancel!: () => void
@@ -342,7 +342,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     await sendPromise
   })
 
-  it('Stop이 이미 완료된 run 응답을 받으면 local stream을 abort하지 않는다', async () => {
+  it('Stop 收到已完成 run 的响应时不 abort 本地 stream', async () => {
     const started = deferred()
     const release = deferred()
     const cancelMock = vi.mocked(conversationRunsApi.cancel)
@@ -402,7 +402,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     await sendPromise
   })
 
-  it('tool_call 이 포함된 turn 도 중복 없이 commit 된다', async () => {
+  it('包含 tool_call 的 turn 也会无重复地 commit', async () => {
     const { result } = renderHook(
       () =>
         useCommitHarness([
@@ -426,7 +426,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     const ids = result.current.messages.map((m) => m.id)
     expect(new Set(ids).size).toBe(ids.length)
 
-    // assistant + tool result 가 각각 1건씩.
+    // assistant + tool result 各 1 条。
     const roleCount = result.current.messages.reduce<Record<string, number>>((acc, m) => {
       acc[m.role] = (acc[m.role] ?? 0) + 1
       return acc
@@ -435,7 +435,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     expect(roleCount.tool).toBe(1)
   })
 
-  it('동일 도구 반복 호출 result를 tool_call_id 기준으로 매칭한다', async () => {
+  it('同一工具重复调用的 result 按 tool_call_id 匹配', async () => {
     const { result } = renderHook(
       () =>
         useCommitHarness([
@@ -488,7 +488,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     })
   })
 
-  it('새 stream이 시작된 뒤 stale stream cleanup은 commit 하지 않는다', async () => {
+  it('新 stream 开始后，stale stream cleanup 不会 commit', async () => {
     const firstYielded = deferred()
     const releaseFirst = deferred()
     const commitSpy = vi.fn()
@@ -554,7 +554,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     ).toEqual(['new answer'])
   })
 
-  it('usage가 없는 content flush는 token usage atom을 반복 갱신하지 않는다', async () => {
+  it('无 usage 的 content flush 不会反复更新 token usage atom', async () => {
     const { result } = renderHook(
       () =>
         useCommitHarness([
@@ -574,7 +574,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     expect(tokenUsageSetter).toHaveBeenCalledTimes(callsBeforeStream)
   })
 
-  it('messages refetch에서 branch/attachment/feedback/usage 변경도 snapshot 변경으로 본다', () => {
+  it('messages refetch 中 branch/attachment/feedback/usage 变化也视为 snapshot 变化', () => {
     const base: Message = {
       id: 'm1',
       conversation_id: 'c1',
@@ -677,7 +677,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
     ).toBe(false)
   })
 
-  it('memory_saved 이벤트가 오면 memory query를 invalidate하고 toast를 표시한다', async () => {
+  it('收到 memory_saved 事件时 invalidate memory query 并显示 toast', async () => {
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -693,7 +693,7 @@ describe('useChatRuntime — onMessagesCommit dedup', () => {
         event: 'memory_saved',
         data: {
           scope: 'user',
-          content: '회의는 오후 3시 이후를 선호합니다.',
+          content: '偏好把会议安排在下午 3 点以后。',
           id: 'memory-1',
         },
       },

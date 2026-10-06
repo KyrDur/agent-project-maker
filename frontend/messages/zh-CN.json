@@ -2053,7 +2053,7 @@
       }
     },
     "memory": {
-      "title": "内存",
+      "title": "记忆",
       "proposed": "保存建议",
       "saved": "已保存",
       "rejected": "未保存",
@@ -4640,10 +4640,10 @@
       "account": "账户",
       "api": "应用程序编程接口",
       "backToApp": "返回应用程序",
-      "profile": "公司简介",
+      "profile": "个人资料",
       "memory": "内存",
       "security": "安全性",
-      "appearance": "外貌与语言",
+      "appearance": "外观与语言",
       "agentApi": "智能体 API",
       "audit": "活动日志",
       "resources": "资源",
@@ -4659,7 +4659,7 @@
       "adminAudit": "所有活动"
     },
     "profile": {
-      "title": "公司简介",
+      "title": "个人资料",
       "description": "选择 Agent Project Maker 和您的 智能体 如何显示和称呼您。",
       "profileSettings": "个人资料设置",
       "profileSettingsDescription": "您可以随时更改您的显示名称和个人资料图标。",
@@ -4701,7 +4701,7 @@
       "adminBadge": "管理员"
     },
     "memory": {
-      "title": "内存",
+      "title": "记忆",
       "description": "管理 智能体 在对话期间可以读取和写入的长期内存。",
       "loading": "加载内存设置。",
       "scope": {
@@ -4798,13 +4798,13 @@
       }
     },
     "appearance": {
-      "title": "外貌与语言",
+      "title": "外观与语言",
       "description": "调整主题和显示语言。",
       "theme": {
         "title": "主题",
         "description": "选择应用程序的亮度模式。",
-        "light": "光",
-        "dark": "黑暗",
+        "light": "浅色",
+        "dark": "深色",
         "system": "系统"
       },
       "language": {
@@ -4957,7 +4957,7 @@
     "usage": "用量",
     "settings": "设置",
     "security": "安全性",
-    "appearance": "外貌与语言",
+    "appearance": "外观与语言",
     "agentApi": "智能体 API",
     "marketplaceAdmin": "市场管理员",
     "adminAudit": "所有活动",

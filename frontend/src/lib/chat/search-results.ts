@@ -7,11 +7,11 @@ export interface SearchResultItem {
   description?: string
   score?: number
   published_date?: string
-  /** 이미지/쇼핑 결과의 썸네일 URL (Naver thumbnail/image, Google image.thumbnailLink). */
+  /** 图片/购物结果的缩略图 URL（Naver thumbnail/image, Google image.thumbnailLink）。 */
   thumbnail?: string
-  /** 쇼핑 결과의 최저가(KRW) — Naver lprice. */
+  /** 购物结果的最低价（KRW）——Naver lprice。 */
   price?: number
-  /** 쇼핑 결과의 판매처 — Naver mallName. */
+  /** 购物结果的商家——Naver mallName。 */
   mall_name?: string
 }
 
@@ -35,9 +35,9 @@ function parseJsonString(value: string): unknown {
 
 function thumbnailFrom(value: Record<string, unknown>): string | undefined {
   if (typeof value.thumbnail === 'string' && value.thumbnail) return value.thumbnail
-  // Naver 쇼핑은 `image`가 썸네일 URL 문자열이다.
+  // Naver 购物中，`image` 是缩略图 URL 字符串。
   if (typeof value.image === 'string' && value.image.startsWith('http')) return value.image
-  // Google 이미지 검색은 `image: { thumbnailLink }` 객체다.
+  // Google 图片搜索中，`image: { thumbnailLink }` 是对象。
   if (isRecord(value.image) && typeof value.image.thumbnailLink === 'string') {
     return value.image.thumbnailLink
   }
@@ -45,7 +45,7 @@ function thumbnailFrom(value: Record<string, unknown>): string | undefined {
 }
 
 function priceFrom(value: Record<string, unknown>): number | undefined {
-  // Naver 쇼핑 lprice는 숫자 문자열("12900")로 온다.
+  // Naver 购物 lprice 以数字字符串（"12900"）返回。
   const raw = value.lprice
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw
   if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw)
@@ -77,8 +77,8 @@ function normalizeSearchItems(value: unknown): SearchResultItem[] {
 }
 
 /**
- * MCP 도구 결과 래퍼(`[{type:'text', text:'<JSON>'}]`)를 벗겨 내부 JSON을
- * 돌려준다. 검색류 MCP 도구(예: Tavily MCP)가 이 shape로 결과를 싣는다.
+ * 去掉 MCP 工具结果 wrapper（`[{type:'text', text:'<JSON>'}]`），
+ * 返回内部 JSON。搜索类 MCP 工具（如 Tavily MCP）会以这种 shape 承载结果。
  */
 function unwrapMcpTextContent(raw: readonly unknown[]): unknown {
   const textBlock = raw.find(
@@ -89,7 +89,7 @@ function unwrapMcpTextContent(raw: readonly unknown[]): unknown {
   return parseJsonString(textBlock.text as string)
 }
 
-/** 검색 결과 배열 추출 — Tavily/스크립트 도구는 `results`, Naver/Google은 `items`. */
+/** 提取搜索结果数组——Tavily/scripted 工具用 `results`，Naver/Google 用 `items`。 */
 function itemsArrayFrom(raw: Record<string, unknown>): unknown[] | null {
   if (Array.isArray(raw.results)) return raw.results
   if (Array.isArray(raw.items)) return raw.items
@@ -121,7 +121,7 @@ export function parseSearchResults(raw: unknown): SearchResultItem[] {
   return []
 }
 
-/** Tavily `answer`(요약 답변) 추출 — 없으면 null. */
+/** 提取 Tavily `answer`（摘要回答）——没有则返回 null。 */
 export function searchAnswerFromResult(raw: unknown): string | null {
   if (typeof raw === 'string') {
     const parsed = parseJsonString(raw)
@@ -137,10 +137,10 @@ export function searchAnswerFromResult(raw: unknown): string | null {
 }
 
 /**
- * 결과가 "검색 결과 shape"인지 감지 — 이름 매칭이 어긋난 검색 도구(사용자가
- * 이름을 바꾼 registry 도구, MCP 검색 도구)를 GenericToolFallback에서 리치
- * 카드로 라우팅하기 위한 보수적 판정. `results|items` 배열의 첫 레코드가
- * title과 url|link 문자열을 모두 가져야 true.
+ * 检测结果是否属于"搜索结果 shape"——用于在 GenericToolFallback 中将名称不匹配的
+ * 搜索工具（用户改名的 registry 工具、MCP 搜索工具）路由到 rich card。
+ * 使用保守判定：`results|items` 数组的第一条记录必须同时含 title 与 url|link 字符串
+ * 才返回 true。
  */
 export function looksLikeSearchResults(raw: unknown): boolean {
   if (typeof raw === 'string') {
@@ -164,8 +164,8 @@ export function looksLikeSearchResults(raw: unknown): boolean {
 }
 
 /**
- * 도구 결과에서 온 URL은 신뢰 경계 밖(MCP/외부 API)이다 — `<a href>`로
- * 렌더하기 전에 http(s)만 허용해 `javascript:` 류 스킴 주입을 차단한다.
+ * 工具结果中的 URL 来自信任边界之外（MCP/外部 API）——在渲染为 `<a href>` 前
+ * 只允许 http(s)，阻止 `javascript:` 等 scheme 注入。
  */
 export function sanitizeExternalUrl(url: string | undefined): string | undefined {
   if (!url) return undefined
@@ -173,7 +173,7 @@ export function sanitizeExternalUrl(url: string | undefined): string | undefined
   return /^https?:\/\//i.test(trimmed) ? trimmed : undefined
 }
 
-/** 썸네일은 원격 http(s) 외에 로컬(상대 경로) 에셋도 허용한다. */
+/** 缩略图除远程 http(s) 外，也允许本地（相对路径）asset。 */
 export function sanitizeThumbnailUrl(url: string | undefined): string | undefined {
   if (!url) return undefined
   const trimmed = url.trim()

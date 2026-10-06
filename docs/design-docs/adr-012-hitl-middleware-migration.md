@@ -1,61 +1,61 @@
-# ADR-012: HiTL — 자체 구현에서 LangChain `HumanInTheLoopMiddleware` 로 마이그레이션
+# ADR-012：HiTL — 从自研实现迁移到 LangChain `HumanInTheLoopMiddleware`
 
-## 상태: Phase 1~4 완료, Phase 5 진행 중 (Builder v3 wire 통일)
+## 状态：Phase 1~4 完成，Phase 5 进行中（统一 Builder v3 wire）
 
-관련 문서:
-- 마일스톤 진행: `HANDOFF.md` (루트)
-- 분석 PR: feature/hitl-analysis-and-plan (본 PR)
+相关文档：
+- milestone 进度：`HANDOFF.md`（根目录）
+- 分析 PR：feature/hitl-analysis-and-plan（本 PR）
 
-## Phase 4 결정 회고 (2026-05-06)
+## Phase 4 决策复盘（2026-05-06）
 
-옵션 B (ask_user retire) 를 한 차례 시도 후 사용자 검증에서 **자연어 "되물어보기" UX 손실**을 발견하고 즉시 revert. 옵션 A (보존) 가 최종 결정.
+曾尝试方案 B（retire ask_user），但在用户验证中发现**自然语言“追问” UX 丢失**，随即 revert。方案 A（保留）为最终决策。
 
-핵심 인사이트:
-- `HumanInTheLoopMiddleware` = "위험 도구 실행 전 승인 게이트". 도구 호출 시점에만 발동.
-- `ask_user` = "사용자 자연어 질문 도구". LLM이 모호한 입력을 받았을 때 사용자에게 옵션을 제시.
-- **두 책임은 직교** — 미들웨어가 ask_user를 대체할 수 없다. 옵션 B가 단순화 효과는 있지만 UX 시나리오를 통째로 잃는다.
+核心洞察：
+- `HumanInTheLoopMiddleware` = “执行高风险工具前的审批 gate”。仅在工具调用时触发。
+- `ask_user` = “向用户提出自然语言问题的工具”。LLM 收到模糊输入时向用户提供选项。
+- **两项职责正交** — middleware 无法替代 ask_user。方案 B 虽然能简化，但会整体丢失 UX 场景。
 
-§5 옵션 B의 표면 사유 ("도구 description의 implicit prompt 오염")는 사실이지만, 그 비용이 UX 손실보다 작다는 트레이드오프 계산이 잘못이었음. 향후 누군가 다시 옵션 B를 시도하지 않도록 본 회고를 명시.
+§5 方案 B 的表面理由（“tool description 的 implicit prompt 污染”）确实存在，但此前错误估计了 trade-off：该成本小于 UX 丢失。明确记录本复盘，避免未来再次尝试方案 B。
 
 ---
 
-## Phase 5 회고 — ADR-012 마이그레이션 종료 (2026-05-06)
+## Phase 5 复盘 — ADR-012 migration 结束（2026-05-06）
 
-Phase 0~5 모두 완료 시 ADR-012 5단계 마이그레이션 전체 종료. Phase 5 진입 시점의 핵심 결정:
+Phase 0~5 全部完成后，ADR-012 5 阶段 migration 整体结束。进入 Phase 5 时的核心决策：
 
-- **Router-only 어댑터**: graph 본체 (`builder_v3/graph.py`, `state.py`, `phase{2,3,4,5,7,8}*.py`) 변경 0. backend router/services 가 `decisions_to_builder_response` helper 로 표준 → builder native shape 변환. frontend `decisionToBuilderResponse` 어댑터 (PR #135) 의 책임을 그대로 backend 로 이전 — 동작 변경 0, dual-wire 제거.
-- **Phase 6 JSON.parse fallback**: image_choice / image_approval 의 string 분기에 JSON.parse 시도만 추가 (3-5 라인). 기존 dict/string 분기 우선, JSON string 만 신규 처리 — backward compatible.
-- **Clean break**: `BuilderResumeRequest.response` 필드 즉시 제거. Phase 2 dual-path transition 학습 (메인 채팅) 적용 — Builder 는 사용자 영향 범위가 좁아 clean break 안전.
-- **어댑터 retire**: PR #135 (-18) + 테스트 (-55, 8 가드 retire). Phase 5 PR 자체에 신규 가드 ≥3건 보전 (helper 매핑, 422, JSON.parse).
+- **Router-only adapter**：graph 本体（`builder_v3/graph.py`, `state.py`, `phase{2,3,4,5,7,8}*.py`）0 变更。backend router/services 通过 `decisions_to_builder_response` helper 将标准格式 → builder native shape。将 frontend `decisionToBuilderResponse` adapter（PR #135）的职责原样迁移到 backend — 行为 0 变更，移除 dual-wire。
+- **Phase 6 JSON.parse fallback**：仅在 image_choice / image_approval 的 string 分支增加 JSON.parse 尝试（3-5 行）。优先保持现有 dict/string 分支，仅新增处理 JSON string — backward compatible。
+- **Clean break**：立即移除 `BuilderResumeRequest.response` 字段。沿用 Phase 2 dual-path transition（main chat）的经验 — Builder 影响用户范围较小，clean break 安全。
+- **retire adapter**：PR #135（-18）+ test（-55，retire 8 个 guard）。Phase 5 PR 本身保留新增 guard ≥3 个（helper mapping、422、JSON.parse）。
 
-핵심 학습:
-1. **graph 디렉토리는 단일 책임 유지**. wire 어댑터 / 변환 helper 는 services 레이어가 책임. builder_v3/ 안에 `_resume_adapter.py` 두는 것은 graph state machine 의 응집도를 흐림 — services/builder_service.py 안에 helper 두는 것이 올바른 모듈 경계.
-2. **Phase 별 wire 통일 vs graph 보존 트레이드오프**: 메인 채팅은 표준 미들웨어 마이그레이션 (graph 행동 변경 포함) 가치 컸음. Builder 는 8-phase deterministic state machine 패턴이라 router-only 어댑터로 wire 만 통일하는 것이 옳음 — 직교 관계 보존.
-3. **clean break 가드의 가치**: `test_resume_rejects_legacy_response_field_422` 같은 가드는 단순 negative test 가 아니라 "두 wire 형식의 공존 의도가 없다" 는 ADR 결정을 코드로 잠그는 디자인 락. 향후 누군가 호환성 명목으로 dual-shape 다시 추가하는 것을 차단.
+核心学习：
+1. **graph 目录保持单一职责**。wire adapter / conversion helper 由 services 层负责。把 `_resume_adapter.py` 放进 builder_v3/ 会模糊 graph state machine 的内聚性 — 将 helper 放在 services/builder_service.py 才是正确模块边界。
+2. **逐 Phase 统一 wire vs 保留 graph 的 trade-off**：main chat 迁移到标准 middleware（包括 graph 行为变化）价值很高。Builder 属于 8-phase deterministic state machine 模式，因此只通过 router-only adapter 统一 wire 才正确 — 保持两者正交。
+3. **clean break guard 的价值**：`test_resume_rejects_legacy_response_field_422` 这样的 guard 不只是 negative test，而是将“无意让两种 wire format 共存”的 ADR 决策锁进代码的 design lock。防止未来有人以兼容性为由重新加入 dual-shape。
 
 ---
 
 ## 背景
 
-현재 메인 채팅의 HiTL (Human-in-the-Loop) 은 deep agents 도입 이전에 만들어진 자체 구현. 세 갈래로 분산:
+当前 main chat 的 HiTL（Human-in-the-Loop）是在引入 deep agents 之前构建的自研实现，分散在三条路径：
 
-1. `tools/ask_user.py` — LangGraph `interrupt()` 직접 호출하는 special tool
-2. `streaming.py:331-367` — `GraphInterrupt` catch + 자체 SSE INTERRUPT event emit
+1. `tools/ask_user.py` — 直接调用 LangGraph `interrupt()` 的 special tool
+2. `streaming.py:331-367` — catch `GraphInterrupt` + 自定义 SSE INTERRUPT event emit
 3. `routers/conversations.py:813-833` — `POST /messages/resume` + `Command(resume=response)`
 
-미들웨어는 등록만 되고 인스턴스화는 명시 제외 (`middleware_registry.py:419`). `executor.py:477-493` 가 `interrupt_on` dict 만 추출해 자체 처리.
+middleware 只注册但明确不实例化（`middleware_registry.py:419`）。`executor.py:477-493` 只提取 `interrupt_on` dict 后自行处理。
 
-문제:
-1. **트리거 모드 무용** — `ask_user` 호출되면 사용자 응답 없이 영원히 멈춤
-2. **도구별 정책 불가** — all-or-nothing (ask_user 호출 = 무조건 사람 대기)
-3. **Multi tool_call 분산** — 한 AIMessage 의 N tool_call → N interrupt → 사용자 N번 클릭
-4. **deep agents 의 SubAgent 상속 / built-in tool 적용 활용 불가**
+问题：
+1. **trigger 模式无效** — 调用 `ask_user` 后，没有用户响应会永久停止
+2. **无法按工具设 policy** — all-or-nothing（调用 ask_user = 必须等待人工）
+3. **Multi tool_call 分散** — 一个 AIMessage 的 N 个 tool_call → N 个 interrupt → 用户点击 N 次
+4. **无法利用 deep agents 的 SubAgent 继承 / built-in tool 应用**
 
 ---
 
 ## 决定
 
-### 1. 메인 채팅만 표준 `HumanInTheLoopMiddleware` 로 마이그레이션
+### 1. 仅将 main chat 迁移到标准 `HumanInTheLoopMiddleware`
 
 ```python
 from langchain.agents.middleware import HumanInTheLoopMiddleware
@@ -68,35 +68,35 @@ agent = create_deep_agent(
         "send_email": True,
         "write_file": {"allowed_decisions": ["approve", "reject"]},
         "ls": False,
-        "ask_user": {"allowed_decisions": ["respond"]},  # 자체 도구도 표준 경로 wrap
+        "ask_user": {"allowed_decisions": ["respond"]},  # 自定义工具也通过标准路径 wrap
     },
     checkpointer=postgres_saver,
 )
 ```
 
-근거:
-- 트리거 모드: `interrupt_on={"ask_user": False}` 로 자동 승인 가능
-- 도구별 정책: 위험도별 차등 (PRD 의 "위험 액션 전 승인" 정확 매칭)
-- Multi tool_call 일괄: 한 AIMessage 의 모든 tool_call → 한 interrupt
-- LangChain 1.x 안정 + DeepAgents 자동 주입
+依据：
+- trigger 模式：通过 `interrupt_on={"ask_user": False}` 可自动批准
+- 按工具 policy：按风险级别差异化（与 PRD 的“高风险 action 前审批”精确对应）
+- Multi tool_call 批量处理：一个 AIMessage 的全部 tool_call → 一个 interrupt
+- LangChain 1.x 稳定 + DeepAgents 自动注入
 
-### 2. Builder v3 는 자체 패턴 유지
+### 2. Builder v3 保持自有模式
 
-**근거** (분석 결과):
-- Builder v3 는 8-phase deterministic state machine (`backend/app/agent_runtime/builder_v3/graph.py`)
-- 노드가 LLM 호출 사이클이 아닌 **직접** `interrupt()` 호출 — `propose + wait` 분리 (LangGraph 권장 pattern)
-- Phase 별 dialog flow 는 "tool_call interrupt" 메타포에 안 맞음
-- Stale interrupt 검증 (`pending_tool_call_id`) 도 long-running 멀티스텝 전용 — 일반 채팅 불필요
+**依据**（分析结果）：
+- Builder v3 是 8-phase deterministic state machine（`backend/app/agent_runtime/builder_v3/graph.py`）
+- node 不是在 LLM 调用循环中，而是**直接**调用 `interrupt()` — 分离 `propose + wait`（LangGraph 推荐 pattern）
+- 各 Phase 的 dialog flow 不适合“tool_call interrupt”这一隐喻
+- Stale interrupt 验证（`pending_tool_call_id`）也是 long-running multi-step 专用 — 普通 chat 不需要
 
-→ **메인 채팅과 직교 관계.** Builder v3 는 LangGraph native interrupt 사용이 맞음. 표준 미들웨어로 통합 X. wire format 만 선택적으로 통일 가능.
+→ **与 main chat 正交。** Builder v3 继续使用 LangGraph native interrupt 才正确。不与标准 middleware 统一。仅可选择性统一 wire format。
 
-### 3. ResumeRequest payload 표준 형식
+### 3. ResumeRequest payload 标准格式
 
 ```python
-# 신규 (Phase 2)
+# 新增（Phase 2）
 class ResumeRequest(BaseModel):
     decisions: list[Decision]  # length === interrupt_on tool_call count
-    # transition 동안: response 필드도 받아 단일 respond decision 으로 변환
+    # transition 期间：也接收 response 字段并转换为单一 respond decision
     response: str | list[str] | dict | None = None  # @deprecated
 
 class Decision(BaseModel):
@@ -105,150 +105,150 @@ class Decision(BaseModel):
     message: str | None = None         # type=reject | respond
 ```
 
-### 4. INTERRUPT SSE event payload 표준화
+### 4. INTERRUPT SSE event payload 标准化
 
 ```typescript
-// 표준 (Phase 2)
+// 标准（Phase 2）
 { event: 'interrupt', data: {
     action_requests: [{ name: string, args: Record<string, unknown>, description?: string }],
     review_configs: [{ action_name: string, allowed_decisions: ('approve'|'edit'|'reject'|'respond')[] }]
 } }
-// 기존 (transition 동안 dual emit 가능)
+// 现有（transition 期间可 dual emit）
 { event: 'interrupt', data: { interrupt_id: string, value: { type: 'ask_user', question: string, options?: string[] } } }
 ```
 
-### 5. `ask_user` 도구는 보존 (옵션 A)
+### 5. 保留 `ask_user` 工具（方案 A）
 
-옵션 A (선택됨): `ask_user` 도구 그대로 유지 + 표준 미들웨어가 `interrupt_on={"ask_user": True}` 로 wrap.
-- LLM prompt / 도구 description 영향 없음
-- 자체 `interrupt()` 호출은 미들웨어 호출과 양립 (미들웨어가 tool_call 단계에서 interrupt 발행, ask_user 자체는 빈 도구로 retire 가능)
-- 마이그레이션 후 단계적으로 ask_user 단순화
+方案 A（已选择）：原样保留 `ask_user` 工具 + 标准 middleware 使用 `interrupt_on={"ask_user": True}` wrap。
+- 不影响 LLM prompt / tool description
+- 自身 `interrupt()` 调用可与 middleware 调用共存（middleware 在 tool_call 阶段发出 interrupt，ask_user 本身可逐步 retire 为无操作工具）
+- migration 后逐步简化 ask_user
 
-옵션 B (보류): `ask_user` 완전 제거. LLM prompt 변경 필요 + 회귀 위험.
+方案 B（搁置）：完全移除 `ask_user`。需要修改 LLM prompt + regression 风险。
 
-### 6. Frontend UI 활용 — 4 액션은 이미 구현됨
+### 6. 利用 Frontend UI — 4 种 action 已实现
 
-분석 결과:
-- `UserInputUI` (ask_user) — `respond` 액션 (free text + single/multi select)
-- `ApprovalCard` (request_approval) — `approve` / `reject` / `edit` 모두 지원
-- `HiTLContext` + `onResume` callback 패턴
+分析结果：
+- `UserInputUI`（ask_user）— `respond` action（free text + single/multi select）
+- `ApprovalCard`（request_approval）— 已支持 `approve` / `reject` / `edit`
+- `HiTLContext` + `onResume` callback 模式
 
-→ **Phase 2 의 UI 작업은 컴포넌트 신규가 아닌 wire 어댑터** + multi-action 큐 처리.
+→ **Phase 2 的 UI 工作不是新增 component，而是 wire adapter** + multi-action queue 处理。
 
-### 7. Multi-action 일괄 큐 처리 (Phase 2)
+### 7. Multi-action 批量 queue 处理（Phase 2）
 
-현재 `consumeStream` 의 `case 'interrupt'` 는 단일 interrupt 가정 (`onInterrupt(payload)`).
-표준 미들웨어는 한 AIMessage 의 모든 tool_call 묶음 → frontend 가 배열 큐로 처리.
+当前 `consumeStream` 的 `case 'interrupt'` 假设单个 interrupt（`onInterrupt(payload)`）。
+标准 middleware 会把一个 AIMessage 的所有 tool_call 打包 → frontend 以数组 queue 处理。
 
-### 8. APScheduler 트리거는 명시 차단
+### 8. APScheduler trigger 显式禁用
 
-`execute_agent_invoke` 경로 (트리거) 는 사용자 비동기 환경 — interrupt 불가.
-`interrupt_on` config 를 트리거 호출 시 모두 `False` 로 override (또는 미들웨어 자체 미주입).
+`execute_agent_invoke` 路径（trigger）处于用户异步环境 — 无法 interrupt。
+trigger 调用时将 `interrupt_on` config 全部 override 为 `False`（或完全不注入 middleware）。
 
 ---
 
-## 마이그레이션 단계 (Phase 별 PR)
+## Migration 阶段（按 Phase 分 PR）
 
-### Phase 0 — 선행 분석 + ADR (본 PR)
-- 코드 변경 없음. ADR-012 + HANDOFF 갱신만.
+### Phase 0 — 前置分析 + ADR（本 PR）
+- 不改代码。只更新 ADR-012 + HANDOFF。
 
-### Phase 1 — Backend 인프라 (사용자 무영향, ~150 라인)
-**Done-when**: 표준 미들웨어 인스턴스가 deep agent 에 주입되지만 SSE wire 는 자체 형식 유지 (dual-path)
+### Phase 1 — Backend 基础设施（用户无感，~150 行）
+**Done-when**：标准 middleware instance 注入 deep agent，但 SSE wire 继续保留自有格式（dual-path）
 
-- `executor.py`: `interrupt_on` dict → `HumanInTheLoopMiddleware(interrupt_on=...)` 인스턴스 생성, deep agent 에 추가
-- `middleware_registry.py`: `human_in_the_loop` 제외 목록 정리 — 미들웨어 정상 인스턴스화
-- 신규 단위 테스트: 표준 미들웨어 도구별 interrupt_on 적용 / 트리거 모드 자동 승인
+- `executor.py`：`interrupt_on` dict → 创建 `HumanInTheLoopMiddleware(interrupt_on=...)` instance，并加入 deep agent
+- `middleware_registry.py`：整理 `human_in_the_loop` 排除列表 — 正常实例化 middleware
+- 新增单元测试：按工具应用标准 middleware interrupt_on / trigger 模式自动批准
 
-**파일**: `backend/app/agent_runtime/{executor.py, middleware_registry.py}` + 신규 `tests/test_hitl_middleware.py`
+**文件**：`backend/app/agent_runtime/{executor.py, middleware_registry.py}` + 新增 `tests/test_hitl_middleware.py`
 
-### Phase 2 — Wire Format 통합 (사용자 영향, dual-path transition, ~400 라인)
-**Done-when**: INTERRUPT event 표준 형식 + ResumeRequest `decisions: [...]` 형식 둘 다 작동, frontend 4 액션 + multi-action 큐 지원
+### Phase 2 — Wire Format 统一（影响用户，dual-path transition，~400 行）
+**Done-when**：INTERRUPT event 标准格式 + ResumeRequest `decisions: [...]` 格式都可工作，frontend 支持 4 种 action + multi-action queue
 
 Backend:
 - `schemas/conversation.py`: `ResumeRequest{decisions, response?}` (dual-shape)
-- `routers/conversations.py:resume_message`: `decisions` → `Command(resume={"decisions": [...]})`. `response` 가 들어오면 단일 respond decision 으로 변환 (transition)
-- `streaming.py`: GraphInterrupt catch 시 표준 `{action_requests, review_configs}` 형식 emit. 기존 자체 형식도 dual emit (transition)
+- `routers/conversations.py:resume_message`：`decisions` → `Command(resume={"decisions": [...]})`。若传入 `response`，则转换为单一 respond decision（transition）
+- `streaming.py`：catch GraphInterrupt 时 emit 标准 `{action_requests, review_configs}` 格式。现有自定义格式也 dual emit（transition）
 
 Frontend:
-- `lib/types/index.ts`: `SSEEventType` 의 interrupt variant 에 표준 + 기존 두 형식 union
-- `lib/chat/use-chat-runtime.ts:case 'interrupt'`: 표준 payload 처리 (multi-action 큐)
-- `lib/sse/stream-resume.ts`: `{decisions: [...]}` 형식으로 송신
-- `HiTLContext` / `useHiTL`: 배열 처리 + 어댑터
-- `messages/ko.json`: `chat.approval.respond`, `chat.approval.allActionsCompleted` 등 라벨 추가
-- 회귀 테스트 — 표준 형식 + 기존 형식 둘 다 처리
+- `lib/types/index.ts`：`SSEEventType` 的 interrupt variant 使用标准 + 现有两种格式 union
+- `lib/chat/use-chat-runtime.ts:case 'interrupt'`：处理标准 payload（multi-action queue）
+- `lib/sse/stream-resume.ts`：以 `{decisions: [...]}` 格式发送
+- `HiTLContext` / `useHiTL`：数组处理 + adapter
+- `messages/ko.json`：新增 `chat.approval.respond`、`chat.approval.allActionsCompleted` 等 label
+- regression test — 标准格式 + 现有格式都能处理
 
-### Phase 3 — Transition 종료 (~80 라인)
-**Done-when**: dual-path 제거, 표준 형식만 유지
+### Phase 3 — Transition 结束（~80 行）
+**Done-when**：移除 dual-path，只保留标准格式
 
-- backend ResumeRequest 의 `response` 필드 제거
-- frontend 의 기존 `{interrupt_id, value}` 처리 코드 제거
-- streaming.py 의 자체 INTERRUPT emit 제거 (표준 미들웨어 발행만)
+- 移除 backend ResumeRequest 的 `response` 字段
+- 移除 frontend 现有 `{interrupt_id, value}` 处理代码
+- 移除 streaming.py 自定义 INTERRUPT emit（仅保留标准 middleware 发出）
 
-### Phase 4 — `ask_user` 검토 (옵션, ~30 라인)
-**Done-when**: ask_user 도구의 의존성 평가 완료, 단순화 또는 retire 결정
+### Phase 4 — `ask_user` 评估（可选，~30 行）
+**Done-when**：完成 ask_user 工具依赖性评估，决定简化或 retire
 
-- ask_user 의 LLM prompt 영향 분석
-- 표준 미들웨어로 충분히 대체 가능하면 도구 제거
-- 옵션 선택 UX 보존 필요 시 `ask_user` 의 description 조정
+- 分析 ask_user 对 LLM prompt 的影响
+- 若标准 middleware 足以替代则移除工具
+- 若需要保留选项 UX，则调整 `ask_user` description
 
-### Phase 5 — Builder v3 wire format 통일 (~150 라인)
-**Done-when**: Builder v3 의 ResumeRequest 도 표준 `decisions: list[Decision]` 형식 수신, frontend `decisionToBuilderResponse` 어댑터 retire, graph + state + 8 phase 노드 (phase6 외) 변경 0, 회귀 가드 ≥3건 PASS
+### Phase 5 — 统一 Builder v3 wire format（~150 行）
+**Done-when**：Builder v3 的 ResumeRequest 也接收标准 `decisions: list[Decision]` 格式，retire frontend `decisionToBuilderResponse` adapter，graph + state + 8 个 phase node（phase6 除外）0 变更，regression guard ≥3 个 PASS
 
-**사용자 결정 (2026-05-06)**: Router-only 어댑터 + image_choice JSON.parse fallback + Clean break (dual-path 없음)
+**用户决策（2026-05-06）**：Router-only adapter + image_choice JSON.parse fallback + Clean break（无 dual-path）
 
-작업 항목:
-- `decisions_to_builder_response(decisions)` helper 신규 — `backend/app/services/builder_service.py` (graph 디렉토리는 graph/state/nodes 단일 책임 유지, wire 어댑터는 services 가 책임)
-- `routers/builder.py` `BuilderResumeRequest{decisions: list[Decision]}` clean break (legacy `response` 필드 제거)
-- `routers/builder.py` `resume_message` handler — helper 호출 후 `Command(resume=...)` 전달
-- `phase6_image.py` (choice + approval) string JSON.parse fallback 3-5 라인 — backward compatible (기존 dict/string 분기 우선, JSON string 만 추가 처리)
-- frontend `lib/chat/builder-resume-adapter.ts` 삭제 (-18) + `__tests__/builder-resume-adapter.test.ts` 삭제 (-55, 8 가드 retire — Phase 5 PR 자체에 회귀 가드 ≥3건 신규로 보전)
-- `use-chat-runtime.ts:onResumeDecisions` 어댑터 호출 제거, `ResumeFn` 시그니처 `decisions: Decision[]` 로 갱신
-- `stream-builder-resume.ts` 시그니처 + POST body `{decisions, display_text, interrupt_id}`
+工作项：
+- 新增 `decisions_to_builder_response(decisions)` helper — `backend/app/services/builder_service.py`（graph 目录保持 graph/state/nodes 单一职责，wire adapter 由 services 负责）
+- `routers/builder.py` `BuilderResumeRequest{decisions: list[Decision]}` clean break（移除 legacy `response` 字段）
+- `routers/builder.py` `resume_message` handler — 调用 helper 后传入 `Command(resume=...)`
+- `phase6_image.py`（choice + approval）string JSON.parse fallback 3-5 行 — backward compatible（优先现有 dict/string 分支，仅新增处理 JSON string）
+- 删除 frontend `lib/chat/builder-resume-adapter.ts`（-18）+ 删除 `__tests__/builder-resume-adapter.test.ts`（-55，retire 8 个 guard — Phase 5 PR 本身新增 regression guard ≥3 个作为保留）
+- 移除 `use-chat-runtime.ts:onResumeDecisions` adapter 调用，将 `ResumeFn` 签名更新为 `decisions: Decision[]`
+- `stream-builder-resume.ts` 签名 + POST body `{decisions, display_text, interrupt_id}`
 
-회귀 가드 (≥3건, 신규):
-- `test_resume_accepts_standard_decisions` — 표준 wire 200
-- `test_resume_rejects_legacy_response_field_422` — clean break 가드
-- `test_decisions_to_builder_response_mapping` — helper 단위
-- `test_phase6_choice_accepts_json_string` — JSON.parse fallback 회귀 방지
+Regression guard（≥3 个，新增）：
+- `test_resume_accepts_standard_decisions` — 标准 wire 200
+- `test_resume_rejects_legacy_response_field_422` — clean break guard
+- `test_decisions_to_builder_response_mapping` — helper 单元测试
+- `test_phase6_choice_accepts_json_string` — 防止 JSON.parse fallback regression
 
-**보존 (수정 금지)**: `builder_v3/graph.py`, `state.py`, `phase{2,3,4,5,7,8}*.py`, `_helpers.parse_approval_response` (dict|str 호환), `pending_tool_call_id` stale 검증.
+**保留（禁止修改）**：`builder_v3/graph.py`、`state.py`、`phase{2,3,4,5,7,8}*.py`、`_helpers.parse_approval_response`（dict|str 兼容）、`pending_tool_call_id` stale 验证。
 
 ---
 
-## 위험 + 완화
+## 风险 + 缓解
 
-| 위험 | 완화 |
+| 风险 | 缓解 |
 |------|------|
-| Wire format 변경 = breaking change | dual-path transition window — 한 PR 에서 둘 다 받기, 4 PR 후 제거 |
-| Multi-action UI 신규 디자인 부재 | `ApprovalCard` 가 이미 단일 액션 지원 — 배열 렌더링 + 일괄 확정 버튼 추가만 |
-| `ask_user` LLM prompt 변경 시 회귀 | Phase 4 까지 ask_user 보존, 충분한 회귀 테스트 후 결정 |
-| Builder v3 graph 영향 | Router-only 어댑터로 graph + state + 대부분 노드 변경 0. phase6 image_choice/approval 만 backward-compatible JSON.parse fallback 추가 (기존 dict/string 분기 우선, JSON string 만 신규 처리). 회귀 가드 ≥3건으로 매핑 + 422 + JSON.parse 검증. |
-| 트리거 모드에서 interrupt 발생 시 hang | 트리거 호출 시 `interrupt_on` config 강제 override, 회귀 테스트 |
-| Stale interrupt (오래된 카드 클릭) | Builder 의 `pending_tool_call_id` 패턴을 메인 채팅에도 적용 검토 (Phase 2 내) |
+| Wire format 变更 = breaking change | dual-path transition window — 一个 PR 中同时接收两种格式，4 个 PR 后移除 |
+| Multi-action UI 没有新设计 | `ApprovalCard` 已支持单个 action — 只需增加数组渲染 + 批量确认按钮 |
+| `ask_user` LLM prompt 变更时 regression | 保留 ask_user 到 Phase 4，充分 regression test 后再决定 |
+| Builder v3 graph 影响 | 通过 Router-only adapter 让 graph + state + 大多数 node 0 变更。只有 phase6 image_choice/approval 增加 backward-compatible JSON.parse fallback（优先现有 dict/string 分支，只新增 JSON string 处理）。通过 regression guard ≥3 个验证 mapping + 422 + JSON.parse。 |
+| trigger 模式发生 interrupt 时 hang | trigger 调用时强制 override `interrupt_on` config，并做 regression test |
+| Stale interrupt（点击旧 card） | 考虑把 Builder 的 `pending_tool_call_id` 模式也应用到 main chat（Phase 2 内） |
 
 ---
 
-## 검증
+## 验证
 
-각 Phase PR 마다:
+每个 Phase PR：
 - `cd backend && uv run alembic upgrade head && uv run ruff check . && uv run pytest tests/ && uv run pyright app/ tests/`
 - `cd frontend && pnpm lint && pnpm test --run && pnpm build`
 
-Phase 별 신규 회귀 테스트:
-- Phase 1: 도구별 interrupt_on 적용 / 트리거 모드 자동 승인
-- Phase 2: 표준 + 기존 wire 양쪽 작동 / multi-action 일괄 처리
-- Phase 3: 기존 wire 제거 후 회귀 0
-- Phase 4: ask_user retire 시 LLM prompt 회귀
-- Phase 5: builder graph state 회귀 0
+按 Phase 新增 regression test：
+- Phase 1：按工具应用 interrupt_on / trigger 模式自动批准
+- Phase 2：标准 + 现有 wire 两边都可工作 / multi-action 批量处理
+- Phase 3：移除现有 wire 后 regression 0
+- Phase 4：retire ask_user 时做 LLM prompt regression
+- Phase 5：builder graph state regression 0
 
-수동 e2e:
-- 일반 도구 (e.g. write_file) 호출 → approve/reject/edit 각 액션 동작
-- multi tool_call (e.g. delete_file + send_notification) 동시 emit → 배열 검토 → 일괄 결정
-- ask_user 호출 → respond 동작
-- 트리거에서 interrupt-가능 도구 호출 → 자동 승인
+手动 e2e：
+- 调用普通工具（e.g. write_file）→ approve/reject/edit 各 action 正常工作
+- 同时 emit multi tool_call（e.g. delete_file + send_notification）→ 数组 review → 批量 decision
+- 调用 ask_user → respond 正常工作
+- trigger 中调用可 interrupt 工具 → 自动批准
 
 ---
 
-## 결정 근거 요약 (TL;DR)
+## 决策依据摘要（TL;DR）
 
-deep agents 도입 후 자체 HiTL 구현이 표준 미들웨어의 가치 (도구별 정책 / SubAgent 상속 / 트리거 자동 승인 / multi tool_call 일괄) 를 막고 있다. 메인 채팅을 표준 `HumanInTheLoopMiddleware` 로 마이그레이션하면 (a) 트리거 모드에서 HiTL 정책 의미 있게 적용 가능, (b) 도구별 위험도 차등 (PRD 의 핵심 시나리오), (c) 한 AIMessage 의 multi tool_call 사용자 클릭 1번. Builder v3 는 deterministic state machine 패턴이라 직교 관계, 자체 유지가 맞음. 비용은 5 Phase, 약 800 라인, 회귀 위험은 dual-path transition 으로 완화.
+引入 deep agents 后，自研 HiTL 实现阻碍了标准 middleware 的价值（按工具 policy / SubAgent 继承 / trigger 自动批准 / multi tool_call 批量处理）。将 main chat 迁移到标准 `HumanInTheLoopMiddleware` 后，可实现 (a) 在 trigger 模式中有意义地应用 HiTL policy，(b) 按工具风险级别差异化（PRD 核心场景），(c) 一个 AIMessage 的 multi tool_call 只需用户点击 1 次。Builder v3 属于 deterministic state machine 模式，与其正交，应保持自有实现。成本为 5 个 Phase、约 800 行，regression 风险通过 dual-path transition 缓解。

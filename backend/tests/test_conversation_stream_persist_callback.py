@@ -1,12 +1,12 @@
-"""BE-P5(d) — ``build_persist_callback`` 의 run-scoped seen_event_ids 캐시 계약.
+"""BE-P5(d) — ``build_persist_callback`` 的 run-scoped seen_event_ids cache 合约。
 
-partial flush 마다 누적 chunk 의 event id 전체를 재 SELECT 하던 O(T²/64)
-재로드를 제거하면서 지켜야 하는 불변식:
+移除每次 partial flush 都对累计 chunk 的全部 event id 重新 SELECT 的 O(T²/64)
+加载后，必须保持以下 invariant：
 
-- 정상 경로: 첫 flush 에서 1회 시드 후 증분 유지 (이후 DB 재로드 0회)
-- 중복 chunk 재전송: 캐시 기준으로 dedup (유실도 중복도 없음)
-- 실패 경로: 캐시 리셋 → 재시도 chunk 는 DB 재로드 경로로 dedup
-  (캐시가 DB 를 앞서면 재시도 이벤트가 조용히 유실되는 방향이 위험)
+- 正常路径：第一个 flush 时 seed 1次后增量维护（之后 DB reload 0次）
+- 重复 chunk 重传：按 cache dedup（无丢失也无重复）
+- 失败路径：cache reset → retry chunk 走 DB reload 路径 dedup
+  （若 cache 领先 DB，会出现 retry event 静默丢失的危险）
 """
 
 from __future__ import annotations
@@ -86,12 +86,12 @@ async def test_persist_callback_seeds_once_then_dedups_without_reload(
     monkeypatch.setattr(trace_storage, "load_persisted_event_ids", counting_seed)
 
     async def _explode(*_args: object, **_kwargs: object) -> set[str]:
-        raise AssertionError("캐시 경로에서 누적 chunk DB 재로드가 발생하면 안 된다")
+        raise AssertionError("cache 路径中不应发生累计 chunk 的 DB reload")
 
     monkeypatch.setattr(trace_storage, "_load_existing_event_ids", _explode)
 
     await callback(_chunk(run_id, 1, 3))
-    # boundary 중복(id 3) + 신규(4-5) 재전송 — 캐시만으로 dedup 되어야 한다.
+    # boundary 重复（id 3）+ 新增（4-5）重传 — 应仅靠 cache 完成 dedup。
     await callback(_chunk(run_id, 3, 3))
 
     assert seed_calls == 1
@@ -133,12 +133,12 @@ async def test_persist_callback_failure_resets_cache_then_recovers(
     with pytest.raises(RuntimeError, match="transient DB failure"):
         await callback(_chunk(run_id, 4, 2))
 
-    # 스트리밍 쪽 재시도 의미론 — 실패 chunk 가 buffer 앞에 복원되어 다음
-    # flush 에 신규 이벤트와 함께 재전송된다.
+    # streaming 侧 retry 语义 — 失败 chunk 恢复到 buffer 前部，并在下一次
+    # flush 时与新事件一起重传。
     await callback([*_chunk(run_id, 4, 2), *_chunk(run_id, 6, 1)])
 
-    # 실패는 캐시를 무효화해 재시도가 DB 재시드 경로를 타야 한다 — 캐시가
-    # DB 를 앞서 있으면(실패 chunk 를 이미 본 것으로 오인) 재시도 이벤트가
-    # dedup 으로 조용히 유실된다.
+    # 失败会使 cache 失效，retry 必须走 DB 重新 seed 路径 — 若 cache
+    # 领先 DB（误认为已经见过失败 chunk），retry event 会
+    # 被 dedup 静默丢失。
     assert seed_calls == 2
     assert await _stored_ids(run_id) == [f"{run_id}-{i}" for i in range(1, 7)]

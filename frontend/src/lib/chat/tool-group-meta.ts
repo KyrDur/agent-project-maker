@@ -1,20 +1,20 @@
 /**
- * Tool-call 그룹 컨테이너 메타.
+ * Tool-call group container 元数据。
  *
- * 범용 그룹핑(`MessagePrimitive.GroupedParts`)에서 연속 같은 도구를 1개
- * 컨테이너로 묶을 때 쓰는 라벨/그룹가능 여부를 정의한다. 그룹핑 로직 자체는
- * 공식 API가 담당하고, 이 모듈은 "도구별 표시 라벨"과 "그룹 제외 대상"만 책임진다.
+ * 在通用分组（`MessagePrimitive.GroupedParts`）中将连续相同工具合并为一个
+ * container 时，定义要使用的标签/是否可分组。分组逻辑本身由
+ * 官方 API 负责，本模块只负责"各工具显示标签"和"排除分组的对象"。
  */
 
 /**
- * toolName → `chat.toolGroup.labels.*` i18n 키. 매핑이 없으면 `null`을 반환하고,
- * 호출 측은 toolName 자체를 fallback 라벨로 쓴다. (검색류/파일류만 매핑 —
- * 나머지는 그룹 빈도가 낮아 toolName fallback으로 충분.)
+ * toolName → `chat.toolGroup.labels.*` i18n key。未映射时返回 `null`，
+ * 调用方将 toolName 自身作为 fallback 标签。（只映射搜索类/文件类——
+ * 其他工具分组频率较低，使用 toolName fallback 即可。）
  */
 const TOOL_LABEL_KEYS: Readonly<Record<string, string>> = {
   tavily_search: 'webSearch',
   web_search: 'webSearch',
-  // registry definition_key — 런타임 도구 이름의 실제 폴백값 (tool_factory).
+  // registry definition_key——runtime 工具名的实际 fallback 值（tool_factory）。
   naver_search_blog: 'naverBlog',
   naver_search_news: 'naverNews',
   naver_search_image: 'naverImage',
@@ -23,7 +23,7 @@ const TOOL_LABEL_KEYS: Readonly<Record<string, string>> = {
   google_search_web: 'googleSearch',
   google_search_image: 'googleImage',
   google_search_news: 'googleNews',
-  // 과거 하드코딩 이름 — fixture/스냅샷 호환용.
+  // 过去硬编码的名称——用于兼容 fixture/snapshot。
   naver_blog_search: 'naverBlog',
   naver_news_search: 'naverNews',
   google_search: 'googleSearch',
@@ -33,15 +33,15 @@ const TOOL_LABEL_KEYS: Readonly<Record<string, string>> = {
   edit_file: 'editFile',
 }
 
-/** toolName의 그룹 라벨 i18n 키. 없으면 null(호출 측에서 toolName fallback). */
+/** toolName 的 group label i18n key。没有则为 null（由调用方使用 toolName fallback）。 */
 export function toolGroupLabelKey(toolName: string): string | null {
   return TOOL_LABEL_KEYS[toolName] ?? null
 }
 
 /**
- * 검색류 도구. 결과가 `{results:[{title,url}]}` 모양이라 그룹 헤더에 출처
- * 도메인 배지 + "출처 N개" 집계를 띄울 수 있는 도구들. 나머지(파일류 등)는
- * 출처 개념이 없으므로 집계 행을 붙이지 않는다.
+ * 搜索类工具。结果 shape 为 `{results:[{title,url}]}`，因此可在 group header 中显示来源
+ * domain badge + "来源 N 个"汇总。其他（文件类等）没有来源概念，
+ * 因此不添加汇总行。
  */
 const SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'tavily_search',
@@ -60,25 +60,25 @@ const SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'google_news_search',
 ])
 
-/** 해당 도구가 검색류(그룹 헤더에 출처 집계를 띄울 수 있는 도구)인지. */
+/** 判断该工具是否为搜索类（可在 group header 显示来源汇总的工具）。 */
 export function isSearchTool(toolName: string): boolean {
   return SEARCH_TOOLS.has(toolName)
 }
 
 /**
- * 그룹핑에서 제외할 도구. ask_user류처럼 각 호출이 사용자와의 독립 상호작용이라
- * 하나로 뭉치면 안 되는 도구들. `request_approval`은 예외로 그룹 대상이다 — 한
- * 인터럽트의 N개 승인 카드를 하나의 "승인 대기 N건 + 모두 승인" 컨테이너로 묶기
- * 위해서다(GroupedApprovalCard). 나머지 일반 도구는 연속 N≥2면 그룹된다.
+ * 从分组中排除的工具。像 ask_user 一样，每次调用都是与用户独立交互，
+ * 不应合并成一组。`request_approval` 例外，属于可分组对象——用于把一个
+ * interrupt 的 N 张批准卡合并为"等待批准 N 项 + 全部批准"的 container
+ * （GroupedApprovalCard）。其余普通工具连续 N≥2 时会分组。
  */
 const NON_GROUPABLE_TOOLS: ReadonlySet<string> = new Set(['ask_user', 'ask_clarifying_question'])
 
-/** 해당 도구를 그룹 컨테이너로 묶어도 되는지. */
+/** 判断该工具是否可以放入 group container。 */
 export function isGroupableTool(toolName: string): boolean {
   return !NON_GROUPABLE_TOOLS.has(toolName)
 }
 
-/** 호출별 대표 인자 키 — 그룹 자식 제목에 쓸 "구분값"을 이 순서로 찾는다. */
+/** 每次调用的代表性参数 key——用于 group 子项标题，按此顺序寻找"区分值"。 */
 const CHILD_LABEL_ARG_KEYS = [
   'query',
   'q',
@@ -98,7 +98,7 @@ function shortenLabel(value: string): string {
   return trimmed.length > 48 ? `${trimmed.slice(0, 47)}…` : trimmed
 }
 
-/** JSON 값에서 첫 스칼라(문자열/숫자/불리언) 하나를 뽑는다 — raw JSON보다 읽기 좋게. */
+/** 从 JSON 值中取第一个标量（字符串/数字/布尔）——比 raw JSON 更易读。 */
 function firstScalar(value: unknown): string | null {
   if (typeof value === 'string') return value.trim() || null
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
@@ -122,7 +122,7 @@ function resultPreview(result: unknown): string | null {
   if (typeof result !== 'string') return null
   const text = result.trim()
   if (!text) return null
-  // JSON 객체/배열 결과면 대표 스칼라 하나를 뽑아 `{"now_iso": "…",` 대신 값만 표시.
+  // JSON 对象/数组结果会抽取一个代表性标量，只显示值而不是 `{"now_iso": "…",`。
   if (text.startsWith('{') || text.startsWith('[')) {
     try {
       const scalar = firstScalar(JSON.parse(text))
@@ -136,9 +136,9 @@ function resultPreview(result: unknown): string | null {
 }
 
 /**
- * 그룹 자식 pill의 제목 — 도구명(그룹 헤더에 이미 있음) 대신 "이 호출이 뭘 했나"를
- * 보여준다. 대표 인자 → 임의 첫 문자열 인자 → 결과 미리보기 순. 마땅한 게 없으면
- * null(호출 측이 도구명으로 폴백).
+ * group 子 pill 的标题——不再显示工具名（group header 已有），而是展示"这次调用做了什么"。
+ * 顺序：代表性参数 → 任意第一个字符串参数 → 结果预览。都没有合适内容时
+ * 返回 null（调用方回退为工具名）。
  */
 export function toolCallChildLabel(
   args: Record<string, unknown> | undefined,

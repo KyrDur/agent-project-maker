@@ -1,32 +1,32 @@
-## ADR-006: assistant-ui ExternalStoreRuntime 어댑터
+## ADR-006：assistant-ui ExternalStoreRuntime adapter
 
-> **2026-09-07 현재 구현 부록.** 아래 2026-06-13 결정 기록은 당시의 맥락·대안·legacy 경로를 보존한다. 이 부록은 현재 main v3 표면의 동작만 교정하며, AG-UI 전환이나 viewer 교체를 결정하지 않는다.
+> **截至 2026-09-07 的当前实现附录。** 下方 2026-06-13 的决策记录保留当时的背景、方案和 legacy 路径。本附录只校正当前 main v3 界面的行为，不决定 AG-UI 迁移或 viewer 替换。
 
-## 2026-09-07 현재 구현 부록
+## 2026-09-07 当前实现附录
 
-### 런타임과 공식 UI 표면
+### Runtime 与官方 UI 界面
 
-- main `langgraph_v3`는 `useMoldyLangGraphStream`이 Moldy의 conversation-scoped LangGraph stream과 raw state/activity를 소유하고, 결과를 assistant-ui `useExternalStoreRuntime`으로 bridge한다. primary transport는 이 custom LangGraph 경로이며, `@assistant-ui/react-langchain` full runtime hook이나 AG-UI를 primary로 마운트하지 않는다.
-- `AssistantPanel`과 conversational Builder는 legacy `useChatRuntime`을 유지한다. 모든 채팅 표면이 한 hook을 공유한다고 가정하지 않는다.
-- 현재 공개 assistant-ui API는 `AuiConfig`, `Tools`, `defineToolkit`, `useAui`, `useAuiState`를 사용한다. main chat/AssistantPanel은 HITL을 포함한 `ALL_TOOLKIT`, settings TestChatPanel은 `SETTINGS_TEST_TOOLKIT`, Builder는 `BUILDER_TOOLKIT`을 사용한다.
-- 해석된 주요 버전은 `@assistant-ui/react` 0.15.18, assistant-ui core 0.3.17, `@langchain/react` 1.0.35이다. lockfile에서 직접 `@langchain/langgraph-sdk`는 1.9.22이고 React 의존성 아래 중첩 SDK는 1.10.2이므로 둘을 하나의 버전으로 평탄화하지 않는다.
+- main `langgraph_v3` 中，`useMoldyLangGraphStream` 持有 Moldy 的 conversation-scoped LangGraph stream 及 raw state/activity，并将结果 bridge 到 assistant-ui `useExternalStoreRuntime`。primary transport 是这条 custom LangGraph 路径，不会将 `@assistant-ui/react-langchain` full runtime hook 或 AG-UI 作为 primary 挂载。
+- `AssistantPanel` 和 conversational Builder 继续保留 legacy `useChatRuntime`。不要假设所有聊天界面共用同一个 hook。
+- 当前公开的 assistant-ui API 使用 `AuiConfig`、`Tools`、`defineToolkit`、`useAui`、`useAuiState`。main chat/AssistantPanel 使用包含 HITL 的 `ALL_TOOLKIT`，settings TestChatPanel 使用 `SETTINGS_TEST_TOOLKIT`，Builder 使用 `BUILDER_TOOLKIT`。
+- 解析到的主要版本为 `@assistant-ui/react` 0.15.18、assistant-ui core 0.3.17、`@langchain/react` 1.0.35。lockfile 中直接依赖的 `@langchain/langgraph-sdk` 为 1.9.22，而 React 依赖下嵌套 SDK 为 1.10.2，因此不要把两者扁平化为同一版本。
 
-### 현재 대화 계약과 한계
+### 当前对话契约与限制
 
-- 일반 입력은 durable queue input으로 접수되고, 서버 claim 뒤에만 active run이 생긴다. `run_id` 없는 accepted pending input은 실패가 아니다.
-- Steer는 우선 정정 입력을 durable하게 접수하고 predecessor 취소를 요청·확인한 뒤 committed state에서 **새 run**을 시작한다. same-run Steer는 현재 run을 보존한 채 다음 agent step에서 새 지시를 소비하는 별도 계약이며 구현하지 않았다. 이는 실행 중인 provider request의 token을 수정·주입하는 것과도 다르다. checkpoint에 아직 반영되지 않은 외부 tool effect에는 범용 exactly-once 보장이 없다.
-- 실패 retry는 정확한 failed durable input을 새 client request ID로 재접수하고, 불확실한 응답은 같은 request ID로 한 번 reconcile한다. 성공 turn regenerate나 checkpoint fork가 아니다.
-- slash command는 실제 capability만 연다. `/search`는 rendered transcript 검색, `/export`는 로드된 envelope의 Markdown/JSON export이며 backend full-history/PDF export가 아니다. `/compact`는 인증된 수동 action이 없어 disabled다. 알 수 없거나 불가한 command를 모델에 조용히 보내지 않는다.
-- `@file`, `@artifact`, `@skill`, `@conversation`은 multimodal model input이 아니라 authorize 후 고정한 text snapshot이다. 최대 8개, 각 UTF-8 32 KiB, 합계 128 KiB이며, dispatch 때 권한을 다시 확인하되 새 콘텐츠로 snapshot을 교체하지 않는다. label은 표시용이다.
-- terminal metrics는 nullable replay-safe snapshot이다. 누락된 capture는 0이 아니라 `unknown`/`null`이며 root/descendant tool·subagent count와 inclusive total을 구분한다. activity가 잘리면 `activity_truncated`으로 알리고, usage 없는 text-only response는 elapsed time만 있고 activity/token이 비어 있을 수 있다.
-- MCP App은 conversation/run/tool/server provenance로 범위가 정해진 backend proxy와 sandbox renderer를 사용한다. metadata는 권한을 부여하지 않고 browser credential은 노출하지 않는다. 공식 renderer가 capability를 표시할 수 있어도 Moldy는 `openLink`와 `sendMessage`를 명시적으로 deny하며, widget은 보이는 action에 policy error를 받을 수 있다.
-- side chat은 같은 user/agent의 app-shell에서 close/reopen과 same-tab navigation 동안만 유지되고 user 전환 시 초기화된다. reload/cross-device persistence나 main conversation을 side transcript 저장소로 쓰는 동작은 제공하지 않는다. pinned summary는 user-selected display snapshot일 뿐 memory/prompt injection/automatic summary가 아니다. dictation은 editable composer에서 browser `SpeechRecognition` adapter를 사용하며, 별도 transcription backend나 credential flow는 없다. QA는 speech double을 사용하고 실제 microphone end-to-end는 검증하지 않았다.
+- 普通输入作为 durable queue input 接收，只有服务器 claim 后才会产生 active run。没有 `run_id` 的 accepted pending input 并不代表失败。
+- Steer 会先 durable 地接收纠正输入，请求并确认 predecessor 取消，然后从 committed state 启动**新 run**。same-run Steer 是另一种契约：保留当前 run，并在下一个 agent step 消费新指令，目前尚未实现。这也不同于修改或注入正在执行的 provider request token。对于尚未反映到 checkpoint 的外部 tool effect，不提供通用 exactly-once 保证。
+- 失败 retry 会用新的 client request ID 重新接收准确的 failed durable input，并对不确定响应使用相同 request ID 做一次 reconcile。它不是成功 turn regenerate，也不是 checkpoint fork。
+- slash command 只打开实际 capability。`/search` 是 rendered transcript 搜索，`/export` 是已加载 envelope 的 Markdown/JSON export，不是 backend full-history/PDF export。`/compact` 因没有认证的手动 action 而 disabled。未知或不可用 command 不会被静默发送给模型。
+- `@file`、`@artifact`、`@skill`、`@conversation` 不是 multimodal model input，而是在 authorize 后固定的 text snapshot。最多 8 个，每个 UTF-8 32 KiB，总计 128 KiB；dispatch 时会重新检查权限，但不会用新内容替换 snapshot。label 仅用于显示。
+- terminal metrics 是 nullable replay-safe snapshot。缺失 capture 不是 0，而是 `unknown`/`null`；需要区分 root/descendant tool·subagent count 与 inclusive total。如果 activity 被截断，会以 `activity_truncated` 告知；没有 usage 的 text-only response 可能只有 elapsed time，而 activity/token 为空。
+- MCP App 使用按 conversation/run/tool/server provenance 限定范围的 backend proxy 和 sandbox renderer。metadata 不授予权限，也不会暴露 browser credential。即使官方 renderer 可以展示 capability，Moldy 仍会显式 deny `openLink` 和 `sendMessage`，widget 对可见 action 可能收到 policy error。
+- side chat 仅在同一 user/agent 的 app-shell 中于 close/reopen 和 same-tab navigation 期间保留，切换 user 时会初始化。不会提供 reload/cross-device persistence，也不会把 main conversation 当作 side transcript 存储。pinned summary 只是 user-selected display snapshot，并非 memory/prompt injection/automatic summary。dictation 在 editable composer 中使用浏览器 `SpeechRecognition` adapter，没有独立 transcription backend 或 credential flow。QA 使用 speech double，实际 microphone end-to-end 尚未验证。
 
-### 구현 및 검증 경로
+### 实现与验证路径
 
-주요 구현 앵커는 `frontend/src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts`, `frontend/src/components/chat/chat-runtime-section.tsx`, `frontend/src/lib/chat/tool-ui-registry.ts`, `backend/app/services/conversation_run_worker.py`, `backend/app/services/chat_resource_context.py`, `frontend/src/lib/chat/mcp-apps/renderer.tsx`, `frontend/src/components/agent/assistant-side-chat-provider.tsx`이다.
+主要实现锚点为 `frontend/src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts`、`frontend/src/components/chat/chat-runtime-section.tsx`、`frontend/src/lib/chat/tool-ui-registry.ts`、`backend/app/services/conversation_run_worker.py`、`backend/app/services/chat_resource_context.py`、`frontend/src/lib/chat/mcp-apps/renderer.tsx`、`frontend/src/components/agent/assistant-side-chat-provider.tsx`。
 
-기능별 scripted-capture catalog는 `frontend/e2e/chat-message-queue.spec.ts`, `chat-commands-context.spec.ts`, `chat-run-summary.spec.ts`, `chat-mcp-apps.spec.ts`, `chat-recovery-discovery.spec.ts`, `chat-dictation.spec.ts`이다. 전체 suite 대신 다음처럼 하나의 catalog spec만 실행한다.
+按功能划分的 scripted-capture catalog 为 `frontend/e2e/chat-message-queue.spec.ts`、`chat-commands-context.spec.ts`、`chat-run-summary.spec.ts`、`chat-mcp-apps.spec.ts`、`chat-recovery-discovery.spec.ts`、`chat-dictation.spec.ts`。不必跑完整 suite，只运行其中一个 catalog spec，如下所示。
 
 ```sh
 # Select Node 22 with the local toolchain manager first; node --version must print v22.x.
@@ -39,65 +39,65 @@ NEXT_PUBLIC_CHAT_RUNTIME=langgraph_v3 E2E_TEST_HELPERS_ENABLED=true RATE_LIMIT_E
   -- e2e/chat-recovery-discovery.spec.ts --workers=1 --retries=0
 ```
 
-### 상태: 승인됨, 2026-06-13 LangGraph v3 확장 승인
+### 状态：已批准，2026-06-13 批准 LangGraph v3 扩展
 
-### 맥락
-- 3곳(대화, 생성, AssistantPanel)의 채팅 UI를 assistant-ui 라이브러리로 통합
-- 기존 백엔드 SSE API는 변경 없이 유지해야 함
-- 기존 코드: Jotai atoms(streamingMessageAtom 등) + 직접 SSE 소비 패턴
+### 背景
+- 将 3 处（对话、创建、AssistantPanel）的聊天 UI 统一到 assistant-ui 库
+- 现有 backend SSE API 必须保持不变
+- 现有代码：Jotai atoms（streamingMessageAtom 等）+ 直接消费 SSE 的模式
 
-### 결정
-**useExternalStoreRuntime + useExternalMessageConverter** 조합 사용
+### 决策
+**使用 useExternalStoreRuntime + useExternalMessageConverter 组合**
 
-1. **convert-message.ts**: `useExternalMessageConverter.Callback<Message>` 콜백
+1. **convert-message.ts**：`useExternalMessageConverter.Callback<Message>` callback
    - user → `{ role: 'user', content: string }`
    - assistant → `{ role: 'assistant', content: [text, ...tool-calls] }`
-   - tool → `{ role: 'tool', toolCallId, result }` (자동 병합)
+   - tool → `{ role: 'tool', toolCallId, result }`（自动合并）
 
-2. **use-chat-runtime.ts**: `useExternalStoreRuntime` 기반 어댑터 훅
-   - TanStack Query messages + 스트리밍 중 optimistic messages 병합
-   - `useExternalMessageConverter`로 ThreadMessage[] 변환
-   - `onNew`: SSE AsyncGenerator 소비, 스트리밍 상태 축적
-   - `onCancel`: AbortController로 스트림 취소
+2. **use-chat-runtime.ts**：基于 `useExternalStoreRuntime` 的 adapter hook
+   - 合并 TanStack Query messages + streaming 中的 optimistic messages
+   - 通过 `useExternalMessageConverter` 转换为 ThreadMessage[]
+   - `onNew`：消费 SSE AsyncGenerator，累积 streaming 状态
+   - `onCancel`：通过 AbortController 取消 stream
 
-### 대안
-- **옵션 A**: ExternalStoreAdapter.convertMessage (per-message)
-  - 장점: 단순
-  - 단점: tool 메시지 병합 불가 (per-message 스코프)
-- **옵션 B (선택)**: useExternalMessageConverter (batch)
-  - 장점: tool 메시지를 tool-call에 자동 병합, WeakMap 기반 캐싱
-  - 단점: 추가 훅 호출
-- **옵션 C**: 커스텀 RuntimeCore 직접 구현
-  - 장점: 완전한 제어
-  - 단점: 과도한 복잡도, assistant-ui 내부 API 의존
+### 方案
+- **方案 A**：ExternalStoreAdapter.convertMessage（per-message）
+  - 优点：简单
+  - 缺点：无法合并 tool 消息（per-message scope）
+- **方案 B（选择）**：useExternalMessageConverter（batch）
+  - 优点：自动把 tool 消息合并到 tool-call，基于 WeakMap 缓存
+  - 缺点：增加额外 hook 调用
+- **方案 C**：直接实现自定义 RuntimeCore
+  - 优点：完全控制
+  - 缺点：复杂度过高，依赖 assistant-ui 内部 API
 
-### 결과
-- 기존 SSE 인프라(stream-chat.ts, stream-assistant.ts) 그대로 재사용
-- Jotai atoms(streamingMessageAtom 등)은 점진적 제거 가능
-- 대화/AssistantPanel 모두 동일한 useChatRuntime 훅으로 통합
+### 结果
+- 原有 SSE 基础设施（stream-chat.ts, stream-assistant.ts）原样复用
+- Jotai atoms（streamingMessageAtom 等）可逐步移除
+- 对话/AssistantPanel 都统一到同一个 useChatRuntime hook
 
-### 2026-06-13 확장 결정: LangGraph v3 런타임
+### 2026-06-13 扩展决策：LangGraph v3 runtime
 
-기존 `useExternalStoreRuntime` 결정은 legacy Moldy SSE 경로에 유지한다. 다만 DeepAgents/LangGraph v3 스트리밍을 제대로 표현하기 위해 채팅 런타임에 feature-flagged LangGraph v3 경로를 추가한다.
+现有 `useExternalStoreRuntime` 决策继续用于 legacy Moldy SSE 路径。但为了正确表达 DeepAgents/LangGraph v3 streaming，将在聊天 runtime 中增加 feature-flagged LangGraph v3 路径。
 
-결정:
+决策：
 
-- `NEXT_PUBLIC_CHAT_RUNTIME=langgraph_v3`일 때 프론트는 `@langchain/react` `useStream`을 1개만 생성한다.
-- 이 stream은 Moldy BFF의 conversation-scoped Agent Streaming Protocol endpoint를 사용한다.
-- assistant-ui는 계속 채팅 표면을 담당하지만, 의미론적 source of truth는 LangGraph stream이다.
-- `useMoldyLangGraphStream`은 root coordinator messages를 assistant-ui `useExternalStoreRuntime`으로 변환하고, raw stream은 DeepAgents state/subagent selector에 그대로 노출한다.
-- HITL resume은 assistant-ui tool UI에서 decision을 모은 뒤 `stream.respond` / BFF `input.respond` / LangGraph `Command(resume=...)`로 처리한다.
-- approval 이후 SDK thread lifecycle subscription이 terminal 상태에 갇히지 않도록, resume 직후 public `getThread().subscribe('lifecycle', ...)` 경로로 thread stream을 재동기화한다.
-- lifecycle/input subscription은 run 단위가 아니라 thread 단위로 유지한다. BFF는 저장 이벤트 replay, 최신 live broker follow, broker rotation, idle replay throttling을 처리한다.
+- 当 `NEXT_PUBLIC_CHAT_RUNTIME=langgraph_v3` 时，前端只创建 1 个 `@langchain/react` `useStream`。
+- 该 stream 使用 Moldy BFF 的 conversation-scoped Agent Streaming Protocol endpoint。
+- assistant-ui 继续负责聊天界面，但语义上的 source of truth 是 LangGraph stream。
+- `useMoldyLangGraphStream` 将 root coordinator messages 转换为 assistant-ui `useExternalStoreRuntime`，并将 raw stream 原样暴露给 DeepAgents state/subagent selector。
+- HITL resume 由 assistant-ui tool UI 收集 decision 后，通过 `stream.respond` / BFF `input.respond` / LangGraph `Command(resume=...)` 处理。
+- 为避免 approval 后 SDK thread lifecycle subscription 卡在 terminal 状态，resume 后立即通过公开的 `getThread().subscribe('lifecycle', ...)` 路径重新同步 thread stream。
+- lifecycle/input subscription 保持在线程级而非 run 级。BFF 负责已保存事件 replay、跟随最新 live broker、broker rotation、idle replay throttling。
 
-비결정:
+非决策：
 
-- `@assistant-ui/react-langchain`의 full runtime hook을 primary로 마운트하지 않는다. Moldy가 raw `@langchain/react` stream을 직접 소유해야 subagent selector, artifacts, memory, usage, branch/replay 상태를 한 stream에서 공유할 수 있다.
-- `@assistant-ui/react-langgraph`는 참고 구현/utility source로 유지하되 primary runtime으로 채택하지 않는다. 해당 adapter는 generic LangGraph assistant-ui 동작에는 적합하지만, Moldy의 root coordinator transcript와 scoped subagent transcript 분리 요구에는 직접 맞지 않는다.
-- AG-UI는 외부 호환 프로토콜로 유지 가능하지만, Moldy 내부 primary runtime으로 LangGraph v3 이벤트를 AG-UI로 먼저 평탄화하지 않는다.
+- 不将 `@assistant-ui/react-langchain` 的 full runtime hook 作为 primary 挂载。Moldy 必须直接持有 raw `@langchain/react` stream，才能让 subagent selector、artifacts、memory、usage、branch/replay 状态共享同一 stream。
+- `@assistant-ui/react-langgraph` 保留为参考实现/utility source，但不作为 primary runtime。该 adapter 适合通用 LangGraph assistant-ui 行为，但不直接满足 Moldy 将 root coordinator transcript 与 scoped subagent transcript 分离的需求。
+- AG-UI 可继续作为外部兼容协议，但不会先把 LangGraph v3 事件扁平化成 AG-UI，再将其作为 Moldy 内部 primary runtime。
 
-검증 기준:
+验证标准：
 
-- 단위 테스트는 `useMoldyLangGraphStream`이 한 stream만 만들고 assistant-ui로 bridge하며, `stream.respond` 후 lifecycle subscription refresh를 수행하는지 확인한다.
-- 백엔드 테스트는 lifecycle/input thread stream이 broker rotation을 넘어 같은 subscription으로 다음 run 이벤트를 받는지, idle DB replay polling이 과도하지 않은지 확인한다.
-- E2E는 `frontend/e2e/chat-langgraph-v3.spec.ts`에서 live state, HITL approve, subagent output, artifacts, usage tooltip, reload/replay, history, public share를 한 흐름으로 검증한다.
+- 单元测试确认 `useMoldyLangGraphStream` 只创建一个 stream、bridge 到 assistant-ui，并在 `stream.respond` 后刷新 lifecycle subscription。
+- 后端测试确认 lifecycle/input thread stream 在 broker rotation 后仍能通过同一 subscription 接收下一 run 的事件，且 idle DB replay polling 不会过度频繁。
+- E2E 在 `frontend/e2e/chat-langgraph-v3.spec.ts` 中用一条流程验证 live state、HITL approve、subagent output、artifacts、usage tooltip、reload/replay、history、public share。

@@ -49,7 +49,7 @@ if cfg.agent_skills:
     skills_sources = ["/skills/"]
 ```
 
-문제:
+问题：
 - `_DATA_DIR` = `backend/data/`. backend root에 `data/skills/<skill_id>/`가 모두 모임.
 - `["/skills/"]`로 mount하면 deep-agents Filesystem backend는 `_DATA_DIR/skills/` 전체를 LLM `read_file` 대상으로 노출.
 - LLM은 agent에 attach된 skill_id뿐 아니라 **같은 사용자의 다른 skill** 디렉토리도 `read_file("/skills/<other-id>/SKILL.md")`로 읽을 수 있음.
@@ -81,7 +81,7 @@ env = {
 }
 ```
 
-문제:
+问题：
 - subprocess env에 user credential의 mapped env var (예: `KSKILL_SRT_ID`, `KSKILL_SRT_PASSWORD`) 미주입.
 - 따라서 srt-booking/ktx-booking/kipris-search 등 credential-required skill은 SKILL.md instruction을 따라도 실행 시 환경변수가 없어 401/None 반환.
 - `_create_skill_execute_tool` 시그니처가 `(output_dir: Path, thread_id: str)`만 받음 — credential bundle을 받을 통로 없음.
@@ -108,7 +108,7 @@ env = {
 - `.env`, `.env.local`, `*.pem`, `*.key`, `*.p12`, `cookies*`, `token*` 같은 secret-like filename **검사 없음**.
 - `sk-[A-Za-z0-9]`, `-----BEGIN PRIVATE KEY-----`, `AWS_SECRET_ACCESS_KEY`, `GOOGLE_APPLICATION_CREDENTIALS` 등 내용 패턴 **검사 없음**.
 
-문제:
+问题：
 - 사용자가 `.skill` package를 만들 때 실수로 `.env` 포함 → 그대로 marketplace publish → 다른 사용자가 install → credential 누출.
 - 현재는 packager.py 자체에 검사 없고, 호출자(`routers/skills.py:64 upload_package_skill`)에도 secret scan 없음.
 
