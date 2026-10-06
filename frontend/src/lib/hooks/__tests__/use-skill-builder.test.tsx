@@ -133,7 +133,7 @@ describe('skill builder hooks', () => {
         content_hash: 'hash-1',
         size_bytes: 0,
         file_count: 1,
-        changelog_summary: '되돌림',
+        changelog_summary: '回滚',
         created_at: '2026-06-15T00:00:00.000Z',
       },
     })

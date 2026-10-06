@@ -98,7 +98,7 @@ def test_build_skill_zip_bytes_normalizes_paths_and_slug() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 디스크 기반 zip (Phase 1.5 — 바이너리 asset 보존)
+# 基于磁盘的 zip (Phase 1.5 — 保留二进制 asset)
 # ---------------------------------------------------------------------------
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n\x00\x00binary-payload"
@@ -129,7 +129,7 @@ def test_build_skill_zip_bytes_from_dir_preserves_binary_bytes(tmp_path: Path) -
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         assert zf.read("demo/assets/logo.png") == PNG_BYTES
 
-    # 기존 packager 가드를 그대로 통과해야 한다 (zip-slip/size 재검증 경로).
+    # 必须原样通过现有 packager 守卫（zip-slip/size 再验证路径）。
     info = extract_package(zip_bytes, tmp_path / "extracted")
     assert info.files == ["SKILL.md", "assets/logo.png"]
     assert (tmp_path / "extracted" / "assets" / "logo.png").read_bytes() == PNG_BYTES
@@ -158,8 +158,8 @@ def test_build_skill_zip_bytes_from_dir_skips_symlinks(tmp_path: Path) -> None:
 
 
 def test_build_skill_zip_bytes_from_dir_skips_directory_symlinks(tmp_path: Path) -> None:
-    """rglob이 디렉토리 symlink를 따라가지 않는 보증은 Python 버전 의존 동작이라
-    (3.12 기본 no-follow) 회귀로 잠근다 — 외부 트리 유출 방어."""
+    """rglob 不跟随目录 symlink 的保证依赖 Python 版本行为，
+    （3.12 默认 no-follow）因此用回归测试锁定 — 防止外部树泄漏。"""
 
     root = tmp_path / "workspace"
     root.mkdir()
@@ -177,8 +177,8 @@ def test_build_skill_zip_bytes_from_dir_skips_directory_symlinks(tmp_path: Path)
 def test_build_skill_zip_bytes_from_dir_fails_fast_on_oversized_tree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """크기 상한은 파일을 읽기 전(st_size 누적)에 걸려야 한다 — 추출 시점 가드는
-    zip을 이미 메모리에 만든 뒤라 늦다."""
+    """大小上限必须在读取文件前（累计 st_size 时）触发 — 提取阶段的守卫
+    在 zip 已经创建到内存之后才触发，太晚。"""
 
     from app.config import settings
     from app.skills.packager import PackageError

@@ -5,7 +5,7 @@ from app.agent_runtime.skill_builder.eval_templates import select_eval_template
 
 def test_select_eval_template_chooses_structured_extraction_for_action_items() -> None:
     template = select_eval_template(
-        intent="회의록에서 액션 아이템을 추출하고 담당자별 표로 정리하는 스킬",
+        intent="从会议纪要中提取行动项并按负责人整理成表格的技能",
         draft_package={"description": "extract action items into a table"},
     )
 
@@ -16,7 +16,7 @@ def test_select_eval_template_chooses_structured_extraction_for_action_items() -
 
 def test_select_eval_template_chooses_research_for_sources_and_citations() -> None:
     template = select_eval_template(
-        intent="웹 자료를 조사하고 출처와 citation을 포함해서 요약하는 스킬",
+        intent="调研网络资料并包含来源和 citation 进行摘要的技能",
         draft_package={"description": "research assistant with source links"},
     )
 
@@ -26,7 +26,7 @@ def test_select_eval_template_chooses_research_for_sources_and_citations() -> No
 
 def test_select_eval_template_defaults_to_general_task() -> None:
     template = select_eval_template(
-        intent="짧은 이메일 초안을 자연스럽게 다듬는 스킬",
+        intent="自然润色短邮件草稿的技能",
         draft_package={"description": "rewrite short email drafts"},
     )
 

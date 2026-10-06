@@ -1,6 +1,6 @@
-"""M5 Slice E — Runtime isolation (Phase 1 출시 게이트).
+"""M5 Slice E — Runtime isolation (Phase 1 发布门槛).
 
-Spec §9 + deletion-analysis §1.(a). Stage 2 surface (젠슨 2026-05-19):
+Spec §9 + deletion-analysis §1.(a). Stage 2 surface (詹森 2026-05-19):
 
 * ``SkillToolContext`` / ``SkillRuntimeDescriptor`` in
   ``app.marketplace.skill_runtime``.

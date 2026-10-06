@@ -56,9 +56,9 @@ import { conversationQueryKeys } from '@/lib/query-keys/conversations'
 
 const PHASE_TIMELINE_TOOL_NAME = 'phase_timeline'
 
-// Toast dedup ids — sonner 가 같은 id 토스트를 교체해 한 stream 내 다중
-// 에러가 스택되는 회귀 차단. 분류별 독립 슬롯 → SSE error / stale / reconnect /
-// interrupt-state-lost 가 동시에 발생해도 각각 1건씩만 표시.
+// Toast dedup ids — sonner 会替换相同 id 的 toast，阻止同一 stream 内多个
+// 错误堆叠的回归。按分类使用独立槽位 → SSE error / stale / reconnect /
+// interrupt-state-lost 即使同时发生，也各自只显示 1 条。
 const TOAST_ID_STREAM_ERROR = 'chat-stream-error'
 const TOAST_ID_STREAM_STALE = 'chat-stream-stale'
 const TOAST_ID_RECONNECT_FAILED = 'chat-reconnect-failed'
@@ -81,12 +81,12 @@ function isMutationToolName(name: string | undefined): boolean {
 }
 
 /**
- * messages refetch 결과에 새 assistant 메시지가 도착했는지 판정.
+ * 判断 messages refetch 结果中是否到达了新的 assistant 消息。
  *
- * Stream 종료 후 messages query refetch 시 streamingMessages 클리어 여부를
- * 결정하는 휴리스틱. ``run_id``(uuid4) 와 ``messages.id``(uuid5(raw_id)) 형식이
- * 달라 직접 매칭 불가 — set-diff 로 판단. mid-stream 끊김 시 backend 가
- * checkpointer commit 못 해 새 assistant id 가 없으므로 partial 토큰 보존.
+ * Stream 结束后 messages query refetch 时，用于决定是否清除 streamingMessages
+ * 的启发式逻辑。``run_id``(uuid4) 与 ``messages.id``(uuid5(raw_id)) 格式
+ * 不同，无法直接匹配 — 通过 set-diff 判断。mid-stream 中断时 backend
+ * 未能完成 checkpointer commit，因此没有新的 assistant id，要保留 partial token。
  */
 export function hasNewAssistantMessage(
   prev: readonly Message[],
@@ -199,17 +199,17 @@ export function mergeMessagesForRender({
 }
 
 /**
- * 마지막 turn 이 취소된 사실(``envelope.latest_run``)을 fetch 데이터 기반으로
- * 렌더 목록에 반영한다.
+ * 基于 fetch 数据，将最后一个 turn 已被取消这一事实（``envelope.latest_run``）
+ * 反映到渲染列表中。
  *
- * streaming 경로의 optimistic notice 는 refetch 가 streamingMessages 를 비우는
- * 순간 함께 사라질 수 있고(cancel 표시 레이스), 새로고침 후에는 아예 없다.
- * 서버 truth 에서 파생하면 두 경우 모두 안정적으로 표시된다.
+ * streaming 路径中的 optimistic notice 可能在 refetch 清空 streamingMessages 的
+ * 瞬间一起消失（cancel 显示竞态），刷新后则完全不存在。
+ * 若从服务器 truth 推导，两种情况都能稳定显示。
  *
- * - 마지막 메시지가 assistant 면 그 메시지 끝에 notice 텍스트를 덧붙인다
- *   (optimistic ``appendCanceledNotice`` 와 동일한 모양 — 이미 붙어 있으면 무변경).
- * - 출력 전에 취소돼 assistant 메시지가 없으면 run id 로 키된 합성 notice
- *   메시지를 덧붙인다 (id 고정 — 리렌더마다 새 메시지로 보이지 않게).
+ * - 如果最后一条消息是 assistant，则在该消息末尾追加 notice 文本
+ *   （与 optimistic ``appendCanceledNotice`` 形态相同 — 已存在时不变）。
+ * - 如果在输出前就被取消、没有 assistant 消息，则追加一条以 run id 为 key 的合成 notice
+ *   消息（id 固定 — 避免每次重渲染都被视为新消息）。
  */
 export function appendDurableCanceledNotice(
   messages: readonly Message[],
@@ -291,9 +291,9 @@ function isBackendMessageId(id: string | null | undefined): id is string {
 interface StreamFnOptions {
   /** Pre-uploaded attachment ids that should ride along with this message. */
   attachmentIds?: string[]
-  /** W3-out M5 — primary POST 응답 헤더 ``X-Run-Id`` 가 도착하면 1회 호출.
-   *  conversation 라우터의 streamChat/Edit/Regenerate/ResumeDecisions 만 지원.
-   *  그 외 streamFn 은 무시 → resume 시도 자체가 비활성. */
+  /** W3-out M5 — primary POST 响应头 ``X-Run-Id`` 到达时调用 1 次。
+   *  仅支持 conversation 路由器的 streamChat/Edit/Regenerate/ResumeDecisions。
+   *  其他 streamFn 忽略 → resume 尝试本身禁用。 */
   onRunId?: (runId: string) => void
   /** Draft conversation start endpoint returns the created conversation id. */
   onConversationId?: (conversationId: string) => void
@@ -323,26 +323,26 @@ interface RunStreamOptions {
 }
 
 interface UseChatRuntimeOptions {
-  /** TanStack Query에서 가져온 메시지 목록 */
+  /** 从 TanStack Query 获取的消息列表 */
   messages: Message[]
-  /** W7-4 — 서버가 ``token_usages`` 합으로 발행한 conversation 누적 비용(USD).
-   *  fetch 경로의 ``MessageResponse.usage``에는 ``estimated_cost``가 비어 있어서
-   *  여기로 흘려야 Composer 토큰 바의 가격이 새로고침 후에도 유지된다. */
+  /** W7-4 — 服务器基于 ``token_usages`` 总和发布的 conversation 累计费用（USD）。
+   *  fetch 路径的 ``MessageResponse.usage`` 中 ``estimated_cost`` 为空，
+   *  必须从这里传递，才能让 Composer token bar 的价格在刷新后仍然保留。 */
   totalCost?: number
-  /** SSE 스트리밍 함수 (streamChat 또는 streamAssistant) */
+  /** SSE 流式函数（streamChat 或 streamAssistant） */
   streamFn: StreamFn
-  /** 스트리밍 완료 후 호출. didMutate=true면 mutation 도구가 호출되었다는 의미 (invalidate 권장) */
+  /** 流式完成后调用。didMutate=true 表示调用了 mutation 工具（建议 invalidate） */
   onStreamEnd?: (didMutate: boolean) => void
-  /** 스트리밍 메시지 확정 시 호출 — 로컬 히스토리 유지용 (AssistantPanel) */
+  /** 流式消息确认时调用 — 用于保留本地历史记录（AssistantPanel） */
   onMessagesCommit?: (messages: Message[]) => void
   /**
-   * 표준 interrupt(`action_requests` / `review_configs` chunk) 도달 시 호출.
-   * 자체 `ask_user` native interrupt도 백엔드 어댑터를 거쳐 같은 경로로 도달한다.
+   * 标准 interrupt（`action_requests` / `review_configs` chunk）到达时调用。
+   * 自有 `ask_user` native interrupt 也会经过后端适配器走同一路径。
    */
   onStandardInterrupt?: (payload: StandardInterruptPayload) => void
-  /** resume 시 conversationId가 필요 (conversations 페이지용) */
+  /** resume 时需要 conversationId（用于 conversations 页面） */
   conversationId?: string
-  /** 커스텀 resume 함수 (Builder v3 등 conversationId가 없는 컨텍스트용) */
+  /** 自定义 resume 函数（用于 Builder v3 等没有 conversationId 的上下文） */
   resumeFn?: ResumeFn
   /** Optional thumbs up/down adapter (P0-1c). */
   feedbackAdapter?: FeedbackAdapter
@@ -352,18 +352,18 @@ interface UseChatRuntimeOptions {
   dictationAdapter?: DictationAdapter
   /** Durable active run discovered from conversation/message hydration. */
   activeRun?: ConversationRun | null
-  /** envelope.latest_run — 최신 run (terminal 포함). 마지막 turn 의
-   *  canceled/canceling 여부를 fetch 데이터에서 파생해 "被遗弃" notice 를
-   *  durable 하게 렌더하는 근거. activeRun 은 terminal run 을 보고하지 않는다. */
+  /** envelope.latest_run — 最新 run（含 terminal）。基于 fetch 数据推导最后一个 turn 的
+   *  canceled/canceling 状态，并据此持久渲染 "被遗弃" notice。
+   *  activeRun 不会报告 terminal run。 */
   latestRun?: ConversationRun | null
 }
 
 /**
- * 기존 SSE 백엔드와 assistant-ui ExternalStoreRuntime을 연결하는 어댑터 훅.
+ * 连接现有 SSE 后端与 assistant-ui ExternalStoreRuntime 的适配器 hook。
  *
- * - messages: TanStack Query에서 로드한 기존 메시지
- * - streamFn: SSE AsyncGenerator (streamChat, streamAssistant 등)
- * - 내부적으로 isRunning, 스트리밍 메시지 상태를 관리
+ * - messages: 从 TanStack Query 加载的既有消息
+ * - streamFn: SSE AsyncGenerator（streamChat、streamAssistant 等）
+ * - 内部管理 isRunning 和流式消息状态
  */
 export function useChatRuntime({
   messages,
@@ -382,39 +382,39 @@ export function useChatRuntime({
 }: UseChatRuntimeOptions) {
   const [isRunning, setIsRunning] = useState(false)
   const [streamingMessages, setStreamingMessages] = useState<Message[]>([])
-  // streamError는 아직 caller에 노출되지 않은 setter-only 상태. 향후 UI에
-  // 에러 배너를 띄울 때 사용할 자리(현재는 toast로 대체). 지금 제거하지 않고
-  // setter만 유지하는 이유 = SSE 이벤트 경로에서 state transition을 잃지 않기
-  // 위해서.
+  // streamError 目前仍是尚未暴露给 caller 的 setter-only 状态。将来在 UI 中
+  // 显示错误 banner 时使用（目前由 toast 代替）。现在不删除，
+  // 只保留 setter 的原因 = 为了不丢失 SSE 事件路径中的 state transition，
+  // 正因如此。
   const [, setStreamError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const cancelInFlightRef = useRef(false)
   const cancelNoticePendingRef = useRef(false)
-  // 가장 최근에 emit된 interrupt_id (resume 시 stale 검증용)
+  // 最近一次 emit 的 interrupt_id（用于 resume 时的 stale 校验）
   const lastInterruptIdRef = useRef<string | null>(null)
   const pendingHiTLCoordinatorRef = useRef<HiTLDecisionCoordinator | null>(null)
   const resumeHiTLDecisionRef = useRef<
     (decisions: Decision[], displayText?: string, interruptId?: string | null) => Promise<void>
   >(async () => {})
-  // W3-out M5 — primary POST 응답 헤더 ``X-Run-Id`` 와 마지막 SSE event id.
-  // GET ``/stream?run_id=&last_event_id=`` 재연결에 사용. stream 이 끝나거나
-  // 새 stream 이 시작되면 ``prepareStream`` 에서 reset.
+  // W3-out M5 — primary POST 响应头 ``X-Run-Id`` 与最后一个 SSE event id。
+  // 用于 GET ``/stream?run_id=&last_event_id=`` 重连。stream 结束或
+  // 新 stream 开始时，在 ``prepareStream`` 中 reset。
   const runIdRef = useRef<string | null>(null)
   const conversationIdRef = useRef<string | undefined>(conversationId)
   const lastEventIdRef = useRef<string | null>(null)
   const attachedActiveRunIdRef = useRef<string | null>(null)
   const failedActiveRunAttachIdRef = useRef<string | null>(null)
-  // 로컬 stream(POST 전송 or attach)이 현재 소비 중인지. active run attach
-  // effect 가 진행 중인 로컬 stream 을 abort 하고 빼앗는 race 를 막는 가드.
-  // isRunning state 와 달리 effect deps 에 넣지 않아도 되는 동기 ref.
+  // 本地 stream（POST 发送 or attach）当前是否正在消费。用于 active run attach
+  // effect 的守卫，防止其 abort 并抢占正在进行的本地 stream 的竞态。
+  // 与 isRunning state 不同，这是无需放进 effect deps 的同步 ref。
   const streamInFlightRef = useRef(false)
-  // 이 마운트에서 끝까지 소비(정상 종료 or 사용자 cancel)한 run id. stale
-  // envelope 이 그 run 을 여전히 active 로 보고해도 재attach 하지 않는다.
-  // 네트워크 실패로 중단된 run 은 여기 기록되지 않으므로 attach 복구가 허용된다.
+  // 当前挂载周期内已消费到底（正常结束 or 用户 cancel）的 run id。即使 stale
+  // envelope 仍将该 run 报告为 active，也不再 reattach。
+  // 因网络失败而中断的 run 不会记录在这里，因此允许 attach 恢复。
   const consumedRunIdRef = useRef<string | null>(null)
-  // SSE stream race 차단 — Edit/Regenerate fork 도중 이전 generator의 stale
-  // chunk가 새 stream에 끼어드는 것을 막고, 같은 id 중복 chunk를 dedup한다.
-  // ``createStreamGuard``는 순수 함수라 useState 초기값으로 안전.
+  // 阻止 SSE stream race — 在 Edit/Regenerate fork 过程中，防止旧 generator 的 stale
+  // chunk 混入新 stream，并对相同 id 的重复 chunk 做 dedup。
+  // ``createStreamGuard`` 是纯函数，因此可安全用作 useState 初始值。
   const streamGuardRef = useRef(createStreamGuard())
   const prevMessagesRef = useRef(messages)
   const lastTokenUsageRef = useRef<TokenUsage | null>(null)
@@ -437,10 +437,10 @@ export function useChatRuntime({
   const truncateMessagesCache = useCallback(
     (truncateAtIndex: number) => {
       if (!conversationId) return
-      // 캐시는 ``MessagesEnvelope`` ({messages, active_tip_message_id, ...}) 형태.
-      // ``useMessages`` 가 ``select`` 로 ``messages`` 만 노출하므로 setQueryData
-      // 는 envelope 통째로 갱신해야 한다 (이전엔 ``Message[]`` 로 가정해 prev.slice
-      // TypeError 발생).
+      // 缓存形态为 ``MessagesEnvelope``（{messages, active_tip_message_id, ...}）。
+      // ``useMessages`` 通过 ``select`` 只暴露 ``messages``，因此 setQueryData
+      // 必须整体更新 envelope（此前假设为 ``Message[]``，调用 prev.slice
+      // 时发生 TypeError）。
       queryClient.setQueryData<MessagesEnvelope | undefined>(
         conversationQueryKeys.messages(conversationId),
         (prev) => (prev ? { ...prev, messages: prev.messages.slice(0, truncateAtIndex) } : prev),
@@ -465,33 +465,33 @@ export function useChatRuntime({
       runIdRef.current = null
       lastEventIdRef.current = null
       setReconnectState('idle')
-      // stream version 발급 — 이전 stream의 stale event는 이 token 비교로 폐기.
+      // 发放 stream version — 旧 stream 的 stale event 通过比较此 token 丢弃。
       const token = streamGuardRef.current.begin()
       return { signal: controller.signal, token }
     },
     [setReconnectState],
   )
 
-  // 로드된 메시지 + 스트리밍 중인 메시지 병합.
-  // assistant-ui MessageRepository는 id 유일성을 불변식으로 요구한다. builder
-  // 흐름은 onMessagesCommit으로 stream 메시지를 ``messages``에 넣은 뒤에도
-  // ``streamingMessages``가 비워지지 않아(서버 refetch가 없어 hasNewAssistantMessage
-  // 가 false) 동일 id가 양쪽에 남는다 → "same id already exists" 크래시. 먼저
-  // 등장한 항목(=messages의 확정본)을 우선해 중복 id를 제거한다. 일반 대화는
-  // optimistic(opt-*)과 backend uuid가 달라 중복이 없어 영향받지 않는다.
-  // 마지막 turn 취소 여부 — 서버 truth(envelope.latest_run) 파생. isRunning
-  // 동안은 새 turn/attach replay 가 진행 중이므로 표시하지 않는다. canceling
-  // 은 cancel 요청 직후 worker 가 canceled 전이를 끝내기 전 refetch 가 도착한
-  // 케이스 — 사용자는 이미 멈춤을 요청했으므로 동일하게 notice 를 보여준다.
+  // 合并已加载的消息 + 正在流式中的消息。
+  // assistant-ui MessageRepository 要求 id 唯一性作为不变量。builder
+  // 流程在通过 onMessagesCommit 把 stream 消息放入 ``messages`` 后，
+  // ``streamingMessages`` 仍未被清空（因为没有服务器 refetch，hasNewAssistantMessage
+  // 为 false），导致相同 id 同时留在两侧 → "same id already exists" 崩溃。优先保留
+  // 先出现的项（=messages 中的确认版本），并移除重复 id。普通对话中
+  // optimistic(opt-*) 与 backend uuid 不同，不会重复，因此不受影响。
+  // 最后一个 turn 是否取消 — 从服务器 truth（envelope.latest_run）推导。isRunning
+  // 期间正在进行新的 turn/attach replay，因此不显示。canceling
+  // 是指 cancel 请求后、worker 完成 canceled 转换之前 refetch 到达的
+  // 情况 — 用户已经请求停止，因此同样显示 notice。
   const durableCanceledRun =
     !isRunning && (latestRun?.status === 'canceled' || latestRun?.status === 'canceling')
       ? latestRun
       : null
 
   const allMessages = useMemo(() => {
-    // 검색류 N개 그룹핑은 더 이상 메시지 사전변환(deep-research compaction)에
-    // 의존하지 않는다 — 렌더 시점 `MessagePrimitive.GroupedParts`가 모든 표면에서
-    // 일반화해 처리한다(Phase-2b). 여기서는 fetch/stream 병합만 한다.
+    // 搜索类 N 个分组不再依赖消息预转换（deep-research compaction），
+    // 而是在渲染时由 `MessagePrimitive.GroupedParts` 在所有表面统一
+    // 泛化处理（Phase-2b）。这里仅负责 fetch/stream 合并。
     const merged = mergeMessagesForRender({
       messages,
       streamingMessages,
@@ -519,18 +519,18 @@ export function useChatRuntime({
     [],
   )
 
-  // W7-2 — Composer 토큰 바는 persisted messages usage + streaming assistant의
-  // message_end usage로 derive한다. content_delta flush마다 긴 messages 전체를
-  // 다시 순회하지 않도록 persisted messages 변화와 usage 값 변화에만 반응한다.
+  // W7-2 — Composer token bar 由 persisted messages usage + streaming assistant 的
+  // message_end usage 推导。为了避免每次 content_delta flush 都重新遍历整个很长的 messages，
+  // 仅响应 persisted messages 的变化和 usage 值变化。
   useEffect(() => {
     const persistedUsage = sumMessageUsage(messages)
     const inputTokens = persistedUsage.inputTokens + streamingUsageTotals.inputTokens
     const outputTokens = persistedUsage.outputTokens + streamingUsageTotals.outputTokens
     const perMessageCost = persistedUsage.cost + streamingUsageTotals.cost
-    // server-side 합산값(``token_usages`` 테이블)이 있으면 우선. 없으면 메시지
-    // 별 cost를 합산. fetch 경로의 메시지엔 보통 ``estimated_cost``가 비어 있어
-    // 0이지만, streaming.py가 ``message_end``에 cost를 박은 streaming 메시지는
-    // 살아있어 실시간 표시에도 약간 도움.
+    // 若存在 server-side 汇总值（``token_usages`` 表），则优先使用。否则按消息
+    // 汇总 cost。fetch 路径的消息中通常 ``estimated_cost`` 为空，因此为
+    // 0，但 streaming.py 在 ``message_end`` 中写入 cost 的 streaming 消息仍然
+    // 存在，因此对实时显示也有一定帮助。
     const cost = totalCost ?? perMessageCost
     const nextUsage: TokenUsage = { inputTokens, outputTokens, cost }
     if (sameTokenUsage(lastTokenUsageRef.current, nextUsage)) return
@@ -545,7 +545,7 @@ export function useChatRuntime({
     streamingUsageTotals.cost,
   ])
 
-  // Message[] → ThreadMessage[] 변환 (tool 메시지 자동 병합)
+  // Message[] → ThreadMessage[] 转换（自动合并 tool 消息）
   const threadMessages = useExternalMessageConverter({
     callback: convertMessage,
     messages: allMessages,
@@ -570,13 +570,13 @@ export function useChatRuntime({
     [tPage],
   )
 
-  /** SSE 스트림 소비 공통 로직 (onNew, onResumeDecisions 공유)
+  /** SSE 流消费的公共逻辑（onNew、onResumeDecisions 共用）
    *
-   * ``token`` — ``prepareStream()``이 발급한 stream version. 이 stream이 진행
-   * 중인 사이 사용자가 새 stream을 시작하면 (Edit/Regenerate/cancel) version이
-   * 바뀌어 ``isStale(token) === true``가 되고, 이후 chunk는 모두 폐기된다.
-   * AbortController로 fetch는 끊지만 이미 buffer에 yield된 chunk는 막지 못하므로
-   * caller side에서 한 번 더 거른다. */
+   * ``token`` — ``prepareStream()`` 发放的 stream version。在该 stream 进行
+   * 期间如果用户启动新 stream（Edit/Regenerate/cancel），version 会
+   * 改变，``isStale(token) === true``，后续 chunk 全部丢弃。
+   * AbortController 虽然会中断 fetch，但无法阻止已经 yield 到 buffer 的 chunk，
+   * 因此在 caller side 再过滤一次。 */
   const consumeStream = useCallback(
     async (
       stream: AsyncGenerator<SSEEvent>,
@@ -590,16 +590,16 @@ export function useChatRuntime({
       const assistantId = `stream-${crypto.randomUUID()}`
       const assistantCreatedAt = new Date().toISOString()
       let streamArtifacts: ArtifactSummary[] = []
-      // W7 — message_end 시점에 채워지는 4종 토큰 사용량. assistant 메시지에
-      // 박혀 푸터 hover 팝오버가 직접 참조한다.
+      // W7 — 在 message_end 时填充的 4 类 token usage。写入 assistant 消息，
+      // 供 footer hover popover 直接引用。
       let messageUsage: TokenUsageBreakdown | null = null
       let hadLifecycleNotice = false
       let resumeError: Error | null = null
       let resumeCompletionStatus: string | null = null
 
-      // tool_calls 배열은 토큰 단위로 재생성하지 않고 dirty 시점에만 스냅샷.
-      // content_delta가 빈번해도 cachedToolCalls 참조가 유지되어 React.memo 자식이
-      // tool_calls prop을 동일 참조로 비교 가능.
+      // tool_calls 数组不会按 token 重新生成，只在 dirty 时做 snapshot。
+      // 即使 content_delta 很频繁，也保持 cachedToolCalls 引用不变，使 React.memo 子组件
+      // 能用同一引用比较 tool_calls prop。
       let cachedToolCalls: ToolCallInfo[] | null = null
       let toolCallsDirty = true
 
@@ -627,14 +627,14 @@ export function useChatRuntime({
 
       setStreamingMessages(buildStreamState())
 
-      // content_delta 는 백엔드에서 초당 60+ 회 도착하지만 React 가 SSE 이벤트
-      // 사이에선 자동 batching 을 안 한다(각각 별 microtask). 매번 setState 하면
-      // Streamdown 이 누적 텍스트 전체를 재파싱해 길어질수록 누적 비용이 커진다.
-      // rAF tick(약 16ms = 60fps)에 한 번씩만 flush 해서 동일한 시각적 부드러움을
-      // 유지하면서 렌더 횟수를 줄인다.
+      // content_delta 从后端每秒到达 60+ 次，但 React 在 SSE 事件
+      // 之间不会自动 batching（每个都是独立 microtask）。如果每次都 setState，
+      // Streamdown 会重新解析全部累积文本，文本越长累计成本越高。
+      // 每个 rAF tick（约 16ms = 60fps）只 flush 一次，在保持相同视觉流畅度的
+      // 同时减少渲染次数。
       let rafId: number | null = null
-      // 스트림이 throw/abort 없이 끝까지 소비됐는지 — finally 에서
-      // ``consumedRunIdRef`` 기록 여부를 결정한다.
+      // stream 是否在无 throw/abort 的情况下消费到底 — 在 finally 中
+      // 决定是否记录 ``consumedRunIdRef``。
       let endedNormally = false
       const cancelPendingFlush = () => {
         if (rafId === null) return
@@ -653,15 +653,15 @@ export function useChatRuntime({
 
       try {
         for await (const event of stream) {
-          // 이 stream이 stale이면(새 stream이 시작됨) 즉시 종료. AbortController로
-          // fetch는 끊지만 이미 yield된 chunk는 막지 못하므로 caller side gate가 필요.
+          // 如果该 stream 已 stale（新 stream 已开始）则立即结束。AbortController
+          // 会中断 fetch，但无法阻止已 yield 的 chunk，因此需要 caller side gate。
           if (streamGuardRef.current.isStale(token)) return
-          // 동일 stream 내 같은 id 중복 chunk는 무시 (백엔드가 매 chunk마다
-          // ``{msg_id}-{seq}`` 형식의 unique id를 발행). resume 시 boundary
-          // 1개 중복도 같은 dedup 으로 거른다.
+          // 忽略同一 stream 内相同 id 的重复 chunk（后端为每个 chunk
+          // 发布 ``{msg_id}-{seq}`` 格式的 unique id）。resume 时 boundary
+          // 的 1 个重复也通过同一 dedup 过滤。
           if (streamGuardRef.current.isDuplicate(event.id)) continue
-          // W3-out M5 — 가장 최근에 본 event id 를 기억. 끊김 시 GET
-          // ``/stream?last_event_id=`` 로 그 다음부터 이어 받는다.
+          // W3-out M5 — 记住最近看到的 event id。中断时通过 GET
+          // ``/stream?last_event_id=`` 从下一个事件继续接收。
           if (event.id) lastEventIdRef.current = event.id
           switch (event.event) {
             case 'content_delta': {
@@ -676,7 +676,7 @@ export function useChatRuntime({
                 typeof event.data.tool_call_id === 'string' && event.data.tool_call_id.trim()
                   ? event.data.tool_call_id.trim()
                   : null
-              // phase_timeline은 단일 카드 갱신 (불변 패턴 — 같은 인덱스에 새 객체로 교체)
+              // phase_timeline 采用单卡片更新（不变模式 — 在相同索引位置替换为新对象）
               if (toolName === PHASE_TIMELINE_TOOL_NAME) {
                 const idx = toolCalls.findIndex((tc) => tc.name === PHASE_TIMELINE_TOOL_NAME)
                 if (idx >= 0) {
@@ -730,8 +730,8 @@ export function useChatRuntime({
                 }
               }
 
-              // phase_timeline result는 tool_name 기반으로 매칭 (lastTc 의존 X)
-              // — 다른 tool이 사이에 emit되어도 정확히 timeline 카드만 갱신
+              // phase_timeline result 基于 tool_name 匹配（不依赖 lastTc）
+              // — 即使中间 emit 了其他 tool，也只精确更新 timeline 卡片
               if (eventToolName === PHASE_TIMELINE_TOOL_NAME) {
                 const tcIdx = toolCalls
                   .map((tc, i) => (tc.name === PHASE_TIMELINE_TOOL_NAME ? i : -1))
@@ -743,8 +743,8 @@ export function useChatRuntime({
                 }
               }
 
-              // Legacy SSE에는 tool_call_id가 없다. 이때는 같은 tool_name의 아직
-              // result가 붙지 않은 호출에 FIFO로 매칭한다.
+              // Legacy SSE 没有 tool_call_id。此时对相同 tool_name 且尚未
+              // 绑定 result 的调用按 FIFO 匹配。
               const usedToolCallIds = new Set(
                 toolResults.map((result) => result.tool_call_id).filter(Boolean),
               )
@@ -801,9 +801,9 @@ export function useChatRuntime({
               setIsRunning(false)
               const data = event.data as StandardInterruptPayload
               if (data.interrupt_id) lastInterruptIdRef.current = data.interrupt_id
-              // 빈 fallback chunk — backend가 ``aget_state`` 실패로 정확한 액션을
-              // 제시하지 못해 표준 미들웨어 contract만 채워 emit한다(streaming.py).
-              // turn 이 silent 하게 갇히지 않도록 사용자에게 toast 로 안내.
+              // 空 fallback chunk — backend 因 ``aget_state`` 失败无法给出精确 action，
+              // 仅填充标准 middleware contract 后 emit（streaming.py）。
+              // 为避免 turn 静默卡住，通过 toast 提示用户。
               if (data.action_requests.length === 0 && data.review_configs.length === 0) {
                 toast.error(tPage('interruptStateLost'), { id: TOAST_ID_INTERRUPT_LOST })
                 break
@@ -831,10 +831,10 @@ export function useChatRuntime({
             case 'error': {
               const errMsg = (event.data as { message?: string }).message ?? tPage('error')
               setStreamError(errMsg)
-              // SSE error event 가 silent 하게 사라지지 않도록 사용자에게 toast.
-              // ``setStreamError`` 는 setter-only state 라 UI 에 노출 안 됨.
-              // 한 stream 내 다중 error event 시 sonner 가 같은 id 토스트를
-              // 교체하도록 dedup id 부여 — 마지막 메시지만 보이고 스택 방지.
+              // 为避免 SSE error event 静默消失，通过 toast 提示用户。
+              // ``setStreamError`` 是 setter-only state，因此不会暴露到 UI。
+              // 同一 stream 内出现多个 error event 时，为了让 sonner 替换相同 id 的 toast，
+              // 赋予 dedup id — 只显示最后一条消息，避免堆叠。
               toast.error(errMsg, { id: TOAST_ID_STREAM_ERROR })
               resumeError ??= new Error(errMsg)
               break
@@ -842,7 +842,7 @@ export function useChatRuntime({
             case 'message_end': {
               const status = (event.data as { status?: unknown }).status
               if (typeof status === 'string') resumeCompletionStatus = status
-              // 토큰 사용량 업데이트 — 세션 누적 + 메시지 단위 4종 모두.
+              // 更新 token usage — 包括 session 累计值 + 消息级 4 类 usage。
               const usage = (
                 event.data as {
                   usage?: Partial<TokenUsageBreakdown>
@@ -855,26 +855,26 @@ export function useChatRuntime({
                   cache_creation_tokens: usage.cache_creation_tokens ?? 0,
                   cache_read_tokens: usage.cache_read_tokens ?? 0,
                   estimated_cost: usage.estimated_cost,
-                  // 스트리밍 timing — 명시 키 재빌드라 추가하지 않으면 drop된다.
+                  // streaming timing — 因为会显式重建 key，不补上就会被 drop。
                   ttft_ms: usage.ttft_ms,
                   generation_ms: usage.generation_ms,
                   tokens_per_second: usage.tokens_per_second,
                 }
                 messageUsage = breakdown
-                // streamingMessages에 박힌 후 위쪽 useEffect가 토큰 바를
-                // 자동 갱신한다 (allMessages.usage 합산). 별도 누적 호출
-                // 불필요 — 누적 로직은 새로고침 시 atom이 0으로 reset되어
-                // 토큰 바가 사라지는 회귀를 일으켰음.
+                // 写入 streamingMessages 后，上方 useEffect 会自动更新 token bar
+                // （对 allMessages.usage 求和）自动更新。不需要额外的累计调用
+                // — 累计逻辑会在刷新时把 atom reset 为 0，
+                // 曾导致 token bar 消失的回归。
                 setStreamingMessages(buildStreamState())
               }
               break
             }
             case 'stale': {
-              // W3-out M3 — backend broker 가 in-flight turn 중 사망해 GET
-              // resume 이 DB replay 만 받은 신호. message_end 가 도착하지
-              // 않았음을 의미하므로 (a) 토큰이 일부 누락됐을 수 있고 (b)
-              // withAutoResume 의 자동 retry 도 더 이상 의미 없다. 인디케이터
-              // 정리 + toast 알림으로 사용자가 "왜 응답이 멈췄는지" 인지하게.
+              // W3-out M3 — backend broker 在 in-flight turn 期间死亡，GET
+              // resume 仅收到 DB replay 的信号。意味着 message_end 没有到达，
+              // 因此 (a) token 可能部分缺失，且 (b)
+              // withAutoResume 的自动 retry 也不再有意义。通过清理 indicator
+              // 整理 + toast 提示，让用户知道 "为什么响应停止了"。
               setReconnectState('idle')
               setStreamError('broker_lost')
               const staleNotice = tReconnect('stale')
@@ -900,13 +900,13 @@ export function useChatRuntime({
         const isStaleStream = streamGuardRef.current.isStale(token)
         const hadPendingFlush = rafId !== null
         cancelPendingFlush()
-        // stale 이면 새 stream 이 이미 in-flight 플래그를 소유 — 건드리지 않는다.
+        // 如果 stale，则新 stream 已经持有 in-flight 标志 — 不要触碰。
         if (isStaleStream) return
 
         streamInFlightRef.current = false
         if (endedNormally) {
-          // throw/abort 없이 끝난 run 만 "소비 완료"로 기록 — 네트워크 실패로
-          // 중단된 run 은 기록하지 않아 active run attach 복구가 가능하다.
+          // 仅把无 throw/abort、完整结束的 run 记录为 "消费完成" — 因网络失败
+          // 中断的 run 不记录，以便 active run attach 可以恢复。
           consumedRunIdRef.current = runIdRef.current
         }
         setIsRunning(false)
@@ -917,25 +917,25 @@ export function useChatRuntime({
           cancelNoticePendingRef.current = false
         }
         if (onMessagesCommit) {
-          // commit 콜백이 messages 를 책임진다. 같은 batch 에 streaming 을
-          // 비워야 다음 render 의 ``allMessages`` 에 동일 id (stream-{uuid}
-          // / opt-{uuid} / tr-{uuid}) 가 messages 와 streamingMessages 양쪽
-          // 에 동시 존재하지 않는다. 둘 다 존재하면 assistant-ui 의
-          // MessageRepository.link 가 "duplicate id in parent tree" 로 throw.
+          // commit 回调负责 messages。必须在同一 batch 中清空 streaming，
+          // 才能确保下一次 render 的 ``allMessages`` 中相同 id（stream-{uuid}
+          // / opt-{uuid} / tr-{uuid}）不会同时存在于 messages 与 streamingMessages
+          // 两侧。如果同时存在，assistant-ui 的
+          // MessageRepository.link 会以 "duplicate id in parent tree" 抛错。
           setStreamingMessages([])
           onMessagesCommit(finalMsgs)
         } else if (hadPendingFlush || hadCancelNotice || hadLifecycleNotice) {
-          // refetch-driven 경로(일반 채팅): streamingMessages 는 비우지 않고
-          // backend messages refetch 까지 유지 — 답변이 화면에서 잠깐 사라
-          // 졌다 다시 나타나는 깜박임을 막는다. rAF-batched 마지막 flush 만
-          // 동기로 적용해 최종 텍스트가 화면에 즉시 반영되게 한다. cleanup
-          // 은 아래 prevMessagesRef 비교 블록(line 519~)이 담당.
+          // refetch-driven 路径（普通聊天）：不清空 streamingMessages，
+          // 一直保留到 backend messages refetch — 避免答案在屏幕上短暂消失
+          // 后又出现的闪烁。仅将 rAF-batched 的最后一次 flush
+          // 同步应用，让最终文本立即反映到屏幕上。cleanup
+          // 由下方 prevMessagesRef 比较块（line 519~）负责。
           setStreamingMessages(finalMsgs)
         }
-        // interrupt(HiTL)도 그래프가 일시정지된 stream 종료 — backend는 ask_user tool_call을
-        // 이미 DB에 저장한 상태이므로, onStreamEnd로 messages query를 invalidate해야
-        // streaming 비운 직후 UI에서 ask_user input이 사라지지 않고 fetch된 메시지로 채워진다.
-        // didMutate: write 도구가 호출되었나? 호출처는 이를 보고 폼 캐시 invalidate 여부 결정.
+        // interrupt(HiTL) 也是图被暂停后的 stream 结束 — backend 已把 ask_user tool_call
+        // 保存进 DB，因此必须通过 onStreamEnd invalidate messages query，
+        // 才能避免清空 streaming 后 UI 中的 ask_user input 消失，并由 fetch 到的消息补上。
+        // didMutate：是否调用了 write 工具？调用方据此决定是否 invalidate 表单缓存。
         const didMutate = toolCalls.some((tc) => isMutationToolName(tc.name))
         onStreamEnd?.(didMutate)
       }
@@ -977,12 +977,12 @@ export function useChatRuntime({
     if (!conversationId || !activeRunId || !isActiveRunStatus(activeRunStatus)) return
     if (failedActiveRunAttachIdRef.current === activeRunId) return
     if (attachedActiveRunIdRef.current === activeRunId) return
-    // 진행 중인 로컬 stream(POST 전송/기존 attach)을 빼앗지 않는다 — 서버가
-    // conversation 당 active run 1개를 보장하므로 진행 중인 stream 이 곧 이
-    // run 이다 (envelope 스냅샷이 늦게 도착한 케이스).
+    // 不抢占正在进行的本地 stream（POST 发送/既有 attach）— 服务器
+    // 保证每个 conversation 只有 1 个 active run，因此正在进行的 stream 就是这个
+    // run（envelope snapshot 延迟到达的情况）。
     if (streamInFlightRef.current) return
-    // 끝까지 소비(정상 종료/cancel)한 run 의 stale envelope 재attach 방지.
-    // 네트워크 실패로 중단된 run 은 여기 안 걸리므로 attach 로 복구된다.
+    // 防止对已经消费到底（正常结束/cancel）的 run 的 stale envelope 重新 attach。
+    // 因网络失败而中断的 run 不会命中这里，因此可通过 attach 恢复。
     if (consumedRunIdRef.current === activeRunId) return
 
     abortRef.current?.abort()
@@ -1045,9 +1045,9 @@ export function useChatRuntime({
       })
 
     return () => {
-      // unmount/deps 변경 시 이 attach 의 토큰을 먼저 무효화 — abort 이후
-      // consumeStream finally 가 unmount 된 컴포넌트에 setState/onStreamEnd 를
-      // 실행하는 것을 막는다. 새 stream 이 이미 토큰을 교체했다면 건너뛴다.
+      // unmount/deps 变化时先使该 attach 的 token 失效 — 避免 abort 之后
+      // consumeStream finally 对已 unmount 的组件执行 setState/onStreamEnd。
+      // 防止这些调用执行。如果新 stream 已经替换令牌，则跳过。
       if (attachedActiveRunIdRef.current === activeRunId) {
         attachedActiveRunIdRef.current = null
       }
@@ -1061,15 +1061,15 @@ export function useChatRuntime({
     }
   }, [activeRunId, activeRunStatus, conversationId, setReconnectState])
 
-  // messages가 새로 fetch되면(refetch 완료) streaming messages를 clear.
-  // streaming 직후 messages → effective 전환에서 깜박임 방지.
+  // messages 重新 fetch 后（refetch 完成）清除 streaming messages。
+  // 防止 streaming 刚结束时 messages → effective 切换产生闪烁。
   //
-  // W3-out M5 회귀 가드: turn 이 mid-stream 끊긴 경우 backend 가 finalize_turn /
-  // checkpointer commit 을 못 해 assistant row 가 ``messages`` 에 없다. 그 상태로
-  // streamingMessages 를 비우면 사용자가 받은 partial 토큰이 화면에서 사라진다.
-  // 새 assistant 메시지가 refetch 결과에 도착했는지로 "정말 persist 됐는지" 판정.
-  // run_id ↔ messages.id 직접 비교는 형식이 달라 (uuid4 vs uuid5(raw_id)) 매칭
-  // 불가 — id 매칭 대신 ``hasNewAssistantMessage`` set-diff 휴리스틱 사용.
+  // W3-out M5 回归守卫：turn 在 mid-stream 中断时，backend 无法完成 finalize_turn /
+  // checkpointer commit，因此 ``messages`` 中没有 assistant row。在这种状态下
+  // 若清空 streamingMessages，用户已经收到的 partial token 会从屏幕消失。
+  // 通过 refetch 结果中是否到达新的 assistant 消息来判断 "是否真的已 persist"。
+  // run_id ↔ messages.id 格式不同（uuid4 vs uuid5(raw_id)），无法直接
+  // 匹配 — 不做 id 匹配，改用 ``hasNewAssistantMessage`` set-diff 启发式。
   const messagesKey = useMemo(() => messagesCheapKey(messages), [messages])
   useEffect(() => {
     const prevMessages = prevMessagesRef.current
@@ -1084,10 +1084,10 @@ export function useChatRuntime({
     if (hasNewAssistantMessage(prevMessages, messages)) {
       setStreamingMessages([])
     } else {
-      // assistant 미커밋(끊긴 turn) — partial assistant + tool 결과는 유지하되,
-      // user 메시지는 보통 backend 가 POST 진입 직후 저장하므로 ``messages`` 에
-      // 이미 들어있다. optimistic user copy 를 그대로 두면 user 버블이 중복으로
-      // 보인다 (id 가 ``opt-{uuid}`` vs backend UUID 라 매칭 불가).
+      // assistant 未提交（中断的 turn）— 保留 partial assistant + tool 结果，
+      // 但 user 消息通常在 backend 进入 POST 后立即保存，因此已经存在于 ``messages`` 中。
+      // 若继续保留 optimistic user copy，user bubble 会重复
+      // 显示（id 为 ``opt-{uuid}`` vs backend UUID，无法匹配）。
       setStreamingMessages((sm) => sm.filter((m) => m.role !== 'user'))
     }
   }, [isRunning, messages, messagesKey, streamingMessages.length])
@@ -1126,9 +1126,9 @@ export function useChatRuntime({
         conversationIdRef.current = id
       }
       const primary = () => streamFactory(signal, onRunId, onConversationId)
-      // GET ``/stream`` resume 은 conversations 라우터만 지원. builder/assistant
-      // 같은 다른 streamFn 은 conversationId 가 없거나 runId 가 비어 있어
-      // resumeFactory 가 ``null`` → withAutoResume 가 재시도하지 않고 throw.
+      // GET ``/stream`` resume 仅 conversations 路由器支持。builder/assistant
+      // 等其他 streamFn 要么没有 conversationId，要么 runId 为空，因此
+      // resumeFactory 为 ``null`` → withAutoResume 不重试并直接 throw。
       const resumeFactory = (lastEventId: string | undefined) => {
         const activeConversationId = conversationIdRef.current
         if (!activeConversationId) return null
@@ -1144,9 +1144,9 @@ export function useChatRuntime({
       const wrapped = withAutoResume(primary, resumeFactory, {
         signal,
         onReconnecting: () => {
-          // stale stream(이미 새 turn 이 시작됨)의 retry 알림은 무시 — 새 turn
-          // 의 prepareStream 이 idle 로 reset 한 상태를 다시 reconnecting 으로
-          // 덮어쓰지 않게.
+          // 忽略 stale stream（新 turn 已经开始）的 retry 提示 — 避免把新 turn
+          // 的 prepareStream 已 reset 为 idle 的状态再次覆盖成 reconnecting
+          // 覆盖。
           if (streamGuardRef.current.isStale(token)) return
           setReconnectState('reconnecting')
         },
@@ -1155,8 +1155,8 @@ export function useChatRuntime({
           setReconnectState('idle')
         },
         onFailed: (err) => {
-          // 사용자 cancel(AbortError) 또는 stale stream(Edit/Regenerate/새 turn)
-          // 은 toast 무음. 두 가드 모두 통과한 진짜 실패만 사용자 알림.
+          // 用户 cancel（AbortError）或 stale stream（Edit/Regenerate/新 turn）
+          // 都静默处理，不显示 toast。只有同时通过两道守卫的真实失败才通知用户。
           if (streamGuardRef.current.isStale(token)) return
           setReconnectState('idle')
           if (signal.aborted) return
@@ -1229,12 +1229,12 @@ export function useChatRuntime({
   )
 
   /**
-   * HiTL: 표준 interrupt 응답 후 그래프 재개. `decisions.length`는
-   * `action_requests.length`와 일치해야 미들웨어가 valid response로 인식.
+   * HiTL：标准 interrupt 响应后恢复图。`decisions.length` 必须
+   * 与 `action_requests.length` 一致，middleware 才会将其识别为 valid response。
    *
-   * `resumeFn` 주입 시(builder v3): ADR-012 §Phase 5 — 표준 ``Decision[]`` 을
-   * 그대로 builder router 로 전달. Backend ``decisions_to_builder_response``
-   * helper 가 phase 별 native shape 으로 변환한다.
+   * 注入 `resumeFn` 时（builder v3）：ADR-012 §Phase 5 — 将标准 ``Decision[]``
+   * 原样传给 builder router。Backend ``decisions_to_builder_response``
+   * helper 会按 phase 转换为 native shape。
    */
   const onResumeDecisions = useCallback(
     async (decisions: Decision[], displayText?: string, interruptId?: string | null) => {
@@ -1319,8 +1319,8 @@ export function useChatRuntime({
       })
       if (run.status === 'canceling' || run.status === 'canceled') {
         cancelNoticePendingRef.current = true
-        // 사용자가 취소한 run — canceling 상태가 envelope 에 active 로 남아
-        // 있는 동안 attach effect 가 되살리지 않도록 소비 완료로 기록.
+        // 用户取消的 run — 为避免 canceling 状态仍以 active 保留在 envelope 中
+        // 时被 attach effect 重新唤起，将其记录为已消费完成。
         consumedRunIdRef.current = runId
         controller?.abort()
       }
@@ -1351,9 +1351,9 @@ export function useChatRuntime({
         conversationId && message.sourceId
           ? messages.findIndex((m) => m.id === message.sourceId)
           : -1
-      // Refetch race guard — optimistic id(`opt-…`)는 backend UUID 검증에서
-      // 튕긴다(422). 이 경로는 refetch가 streamingMessages를 교체하지 못한
-      // 상태에서 사용자가 곧장 편집을 눌렀을 때 발생한다. 새 turn으로 폴백.
+      // Refetch race guard — optimistic id（`opt-…`）无法通过 backend UUID 校验
+      // （422）。该路径发生在 refetch 未能替换 streamingMessages 的
+      // 状态下，用户立即点击编辑时。回退为新 turn。
       const hasBackendId = isBackendMessageId(message.sourceId)
       const useFork = conversationId && hasBackendId
       await _runStream(
@@ -1383,9 +1383,9 @@ export function useChatRuntime({
           const merged = [...messages, ...streamingMessages]
           const idx = merged.findIndex((m) => m.id === parentId)
           const next = idx >= 0 ? merged[idx + 1] : undefined
-          // Client-only ids(`opt-…`, `stream-…`)는 backend UUID 검증을 통과하지
-          // 못한다 — 빈 targetMessageId로 폴백하면 backend가 최신 assistant tip을
-          // 자동 선택한다.
+          // Client-only ids（`opt-…`、`stream-…`）无法通过 backend UUID 校验，
+          // 因此回退为空 targetMessageId，让 backend 自动选择最新 assistant tip。
+          // 自动选择。
           if (next?.role === 'assistant' && isBackendMessageId(next.id)) {
             targetMessageId = next.id
             // Index inside ``messages`` (not merged) for the cache truncate.
@@ -1432,7 +1432,7 @@ export function useChatRuntime({
     adapters,
   })
 
-  /** 외부에서 자동으로 첫 메시지를 전송할 때 사용 (e.g., URL ?initialMessage=...) */
+  /** 用于从外部自动发送第一条消息（e.g., URL ?initialMessage=...） */
   const sendMessage = useCallback(
     async (content: string) => {
       const trimmed = content.trim()

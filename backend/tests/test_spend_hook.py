@@ -1,8 +1,8 @@
-"""SpendHook 회귀 테스트 — durable chat run lifecycle P5.2.
+"""SpendHook 回归测试 — durable chat run lifecycle P5.2。
 
-cancel 된 run 의 usage 처리 계약:
-- cancel 전에 emit 된 usage 는 spend 큐에 적재되어 비용 집계에 반영된다.
-- usage 가 보고되기 전에 취소된 run 은 hook 을 crash 시키지 않고 조용히 skip 된다.
+cancel 的 run usage 处理契约：
+- cancel 前已 emit 的 usage 会进入 spend 队列并计入成本统计。
+- usage 报告前就取消的 run 不会让 hook crash，而是静默 skip。
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ def _ctx(kind: HookKind = "agent_invoke") -> HookContext:
 async def test_spend_hook_skips_canceled_run_without_usage(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """usage 보고 전에 취소된 run — crash 없이 빈 row 적재도 하지 않는다."""
+    """usage 报告前取消的 run — 不 crash，也不写入空 row。"""
     added: list[SpendEntry] = []
     monkeypatch.setattr(spend_queue, "add", added.append)
 
@@ -45,7 +45,7 @@ async def test_spend_hook_skips_canceled_run_without_usage(
 async def test_spend_hook_enqueues_usage_emitted_before_cancel(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """cancel 직전까지 emit 된 usage 는 그대로 비용 집계 큐에 적재된다."""
+    """cancel 前一刻已 emit 的 usage 会原样进入成本统计队列。"""
     added: list[SpendEntry] = []
     monkeypatch.setattr(spend_queue, "add", added.append)
 

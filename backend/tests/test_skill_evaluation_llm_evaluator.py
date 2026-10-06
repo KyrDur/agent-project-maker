@@ -189,7 +189,7 @@ async def _create_llm_run(
         user_id=TEST_USER_ID,
         skill=skill,
         name="LLM smoke",
-        evals=[{"input": "회의록에서 담당자와 마감일을 뽑아줘", "expected": "담당자/마감일 표"}],
+        evals=[{"input": "从会议纪要中提取负责人和截止日期", "expected": "负责人/截止日期表"}],
     )
     return await skill_evaluation_service.create_run(
         db,

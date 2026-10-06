@@ -1,7 +1,7 @@
-"""m67(agents.runtime_profile) / m68(skill_builder_sessions v2) 마이그레이션 검증.
+"""验证 m67(agents.runtime_profile) / m68(skill_builder_sessions v2) 迁移。
 
-m64 테스트와 동일한 sqlite 라운드트립 방식 — 리비전 체인과 업/다운 그레이드가
-실행 가능한지 가드한다 (실배포는 PostgreSQL, 여기선 구문/체인 회귀만).
+采用与 m64 测试相同的 sqlite 往返方式 — 守卫 版本链与升/降级
+是否可执行（实际部署为 PostgreSQL，这里只检查语法/链路回归）。
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ async def test_m67_upgrade_downgrade_roundtrip_sqlite(
             mod.upgrade()
             columns = {c["name"] for c in inspect(conn).get_columns("agents")}
             assert "runtime_profile" in columns
-            # 기존 row는 server_default로 standard 백필.
+            # 现有 row 通过 server_default 回填为 standard。
             row = conn.exec_driver_sql(
                 "SELECT runtime_profile FROM agents WHERE id='a1'"
             ).fetchone()

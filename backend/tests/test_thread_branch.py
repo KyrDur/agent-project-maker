@@ -721,12 +721,12 @@ async def test_regenerate_does_not_duplicate_user_message(client: AsyncClient):
     parent = _CheckpointSlim(
         checkpoint_id="ck0",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "정말 슬펐어")],
+        messages=[_msg("user", "u1", "真的很难过")],
     )
     leaf = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "정말 슬펐어"), _msg("ai", "a1", "응답1")],
+        messages=[_msg("user", "u1", "真的很难过"), _msg("ai", "a1", "回答1")],
     )
     fake_cp = _FakeCheckpointer([leaf, parent])
 
@@ -751,19 +751,19 @@ async def test_regenerate_does_not_duplicate_user_message(client: AsyncClient):
     # Forked from ck0 (state holds only the user message — no assistant).
     assert cfg.checkpoint_id == "ck0"
     assert "重新生成请求" in cfg.system_prompt
-    assert "응답1" in cfg.system_prompt
-    # langgraph 1.2 DeltaChannel — regenerate 도 fork-edit 와 동일하게
-    # ``Overwrite(value=[pre_msgs])`` 로 messages 채널을 명시 리셋해야
-    # ancestor pending_writes 가 누적되지 않는다. pre_msgs 는 rewound
-    # checkpoint 의 state (= 타깃 직전까지의 메시지).
+    assert "回答1" in cfg.system_prompt
+    # langgraph 1.2 DeltaChannel — regenerate 也和 fork-edit 一样
+    # 必须通过 ``Overwrite(value=[pre_msgs])`` 显式重置 messages 通道，
+    # 才不会累积 ancestor pending_writes。pre_msgs 是 rewound
+    # checkpoint 的 state（= 到目标之前的消息）。
     from langgraph.types import Overwrite
 
     assert isinstance(history, dict)
     ow = history.get("messages")
     assert isinstance(ow, Overwrite)
-    # ck0 state = [user "정말 슬펐어"]; Overwrite 리셋 후 agent 가 새 AI 생성.
+    # ck0 state = [user "真的很难过"]; Overwrite 重置后 agent 生成新的 AI。
     assert len(ow.value) == 1
-    assert ow.value[0].content == "정말 슬펐어"
+    assert ow.value[0].content == "真的很难过"
     assert all(msg.type != "system" for msg in ow.value)
 
 
@@ -780,30 +780,30 @@ async def test_regenerate_rejects_targeted_user_message_id(client: AsyncClient):
     ck0 = _CheckpointSlim(
         checkpoint_id="ck0",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "첫 질문")],
+        messages=[_msg("user", "u1", "第一个问题")],
     )
     ck1 = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "첫 질문"), _msg("ai", "a1", "첫 답변")],
+        messages=[_msg("user", "u1", "第一个问题"), _msg("ai", "a1", "第一个回答")],
     )
     ck2 = _CheckpointSlim(
         checkpoint_id="ck2",
         parent_checkpoint_id="ck1",
         messages=[
-            _msg("user", "u1", "첫 질문"),
-            _msg("ai", "a1", "첫 답변"),
-            _msg("user", "u2", "두 번째 질문"),
+            _msg("user", "u1", "第一个问题"),
+            _msg("ai", "a1", "第一个回答"),
+            _msg("user", "u2", "第二个问题"),
         ],
     )
     leaf = _CheckpointSlim(
         checkpoint_id="ck3",
         parent_checkpoint_id="ck2",
         messages=[
-            _msg("user", "u1", "첫 질문"),
-            _msg("ai", "a1", "첫 답변"),
-            _msg("user", "u2", "두 번째 질문"),
-            _msg("ai", "a2", "두 번째 답변"),
+            _msg("user", "u1", "第一个问题"),
+            _msg("ai", "a1", "第一个回答"),
+            _msg("user", "u2", "第二个问题"),
+            _msg("ai", "a2", "第二个回答"),
         ],
     )
     fake_cp = _FakeCheckpointer([leaf, ck2, ck1, ck0])
@@ -855,15 +855,15 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
     ck1 = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "你好？"), _msg("ai", "a1", "안녕!")],
+        messages=[_msg("user", "u1", "你好？"), _msg("ai", "a1", "你好！")],
     )
     ck2 = _CheckpointSlim(
         checkpoint_id="ck2",
         parent_checkpoint_id="ck1",
         messages=[
             _msg("user", "u1", "你好？"),
-            _msg("ai", "a1", "안녕!"),
-            _msg("user", "u2", "정말 슬펐어"),
+            _msg("ai", "a1", "你好！"),
+            _msg("user", "u2", "真的很难过"),
         ],
     )
     leaf = _CheckpointSlim(
@@ -871,9 +871,9 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
         parent_checkpoint_id="ck2",
         messages=[
             _msg("user", "u1", "你好？"),
-            _msg("ai", "a1", "안녕!"),
-            _msg("user", "u2", "정말 슬펐어"),
-            _msg("ai", "a2", "응답1"),
+            _msg("ai", "a1", "你好！"),
+            _msg("user", "u2", "真的很难过"),
+            _msg("ai", "a2", "回答1"),
         ],
     )
     fake_cp = _FakeCheckpointer([leaf, ck2, ck1, ck0])
@@ -902,15 +902,15 @@ async def test_regenerate_targeted_assistant_uses_correct_checkpoint(
     # ck2 holds [u1, a1, u2] — exactly the state needed to fork a sibling
     # of a2 without duplicating u2.
     assert cfg.checkpoint_id == "ck2"
-    # Regenerate 도 DeltaChannel 누적 차단을 위해 ``Overwrite(pre_msgs)`` 전송.
-    # pre_msgs = ck2 의 state = [user "안녕?", ai "안녕!", user "정말 슬펐어"].
+    # Regenerate 也为了阻止 DeltaChannel 累积而发送 ``Overwrite(pre_msgs)``。
+    # pre_msgs = ck2 的 state = [user "你好?", ai "你好!", user "真的很难过"]。
     from langgraph.types import Overwrite
 
     assert isinstance(history, dict)
     ow = history.get("messages")
     assert isinstance(ow, Overwrite)
     assert len(ow.value) == 3
-    assert [m.content for m in ow.value] == ["你好？", "안녕!", "정말 슬펐어"]
+    assert [m.content for m in ow.value] == ["你好？", "你好！", "真的很难过"]
 
 
 @pytest.mark.asyncio
@@ -918,8 +918,8 @@ async def test_regenerate_flattens_nested_legacy_checkpoint_messages(client: Asy
     """Regenerate writes a flat Overwrite even when legacy checkpoint values are nested."""
 
     _agent_id, conv_id = await _seed_agent_and_conv()
-    user = _msg("user", "u1", "질문")
-    assistant = _msg("ai", "a1", "기존 응답")
+    user = _msg("user", "u1", "问题")
+    assistant = _msg("ai", "a1", "现有响应")
     nested_parent_messages: Any = [[user]]
     nested_leaf_messages: Any = [[user, assistant]]
     parent = _CheckpointSlim(
@@ -937,7 +937,7 @@ async def test_regenerate_flattens_nested_legacy_checkpoint_messages(client: Asy
 
     async def mock_stream(cfg: Any, messages_history: Any, **_kwargs: Any):
         captured.append((cfg, messages_history))
-        yield 'event: message_end\ndata: {"content": "새 응답", "usage": {}}\n\n'
+        yield 'event: message_end\ndata: {"content": "新响应", "usage": {}}\n\n'
 
     with (
         patch("app.agent_runtime.checkpointer.get_checkpointer", return_value=fake_cp),
@@ -984,26 +984,26 @@ async def test_regenerate_without_message_id_uses_active_branch_checkpoint(
     ck0 = _CheckpointSlim(
         checkpoint_id="ck0",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "첫 질문")],
+        messages=[_msg("user", "u1", "第一个问题")],
     )
     older_leaf = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "첫 질문"), _msg("ai", "a-old", "옛 답변")],
+        messages=[_msg("user", "u1", "第一个问题"), _msg("ai", "a-old", "旧回答")],
     )
     ck2 = _CheckpointSlim(
         checkpoint_id="ck2",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "첫 질문"), _msg("ai", "a-new", "새 답변")],
+        messages=[_msg("user", "u1", "第一个问题"), _msg("ai", "a-new", "新回答")],
     )
     newest_leaf = _CheckpointSlim(
         checkpoint_id="ck3",
         parent_checkpoint_id="ck2",
         messages=[
-            _msg("user", "u1", "첫 질문"),
-            _msg("ai", "a-new", "새 답변"),
-            _msg("user", "u2", "추가 질문"),
-            _msg("ai", "a-latest", "추가 답변"),
+            _msg("user", "u1", "第一个问题"),
+            _msg("ai", "a-new", "新回答"),
+            _msg("user", "u2", "追加问题"),
+            _msg("ai", "a-latest", "追加回答"),
         ],
     )
     fake_cp = _FakeCheckpointer([newest_leaf, ck2, older_leaf, ck0])
@@ -1032,7 +1032,7 @@ async def test_regenerate_without_message_id_uses_active_branch_checkpoint(
     assert isinstance(history, dict)
     ow = history.get("messages")
     assert isinstance(ow, Overwrite)
-    assert [m.content for m in ow.value] == ["첫 질문"]
+    assert [m.content for m in ow.value] == ["第一个问题"]
 
 
 @pytest.mark.asyncio
@@ -1050,17 +1050,17 @@ async def test_regenerate_targeted_assistant_can_find_non_newest_branch(
     ck0 = _CheckpointSlim(
         checkpoint_id="ck0",
         parent_checkpoint_id=None,
-        messages=[_msg("user", "u1", "첫 질문")],
+        messages=[_msg("user", "u1", "第一个问题")],
     )
     older_leaf = _CheckpointSlim(
         checkpoint_id="ck1",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "첫 질문"), _msg("ai", "a-old", "옛 답변")],
+        messages=[_msg("user", "u1", "第一个问题"), _msg("ai", "a-old", "旧回答")],
     )
     newest_leaf = _CheckpointSlim(
         checkpoint_id="ck2",
         parent_checkpoint_id="ck0",
-        messages=[_msg("user", "u1", "첫 질문"), _msg("ai", "a-new", "새 답변")],
+        messages=[_msg("user", "u1", "第一个问题"), _msg("ai", "a-new", "新回答")],
     )
     fake_cp = _FakeCheckpointer([newest_leaf, older_leaf, ck0])
 

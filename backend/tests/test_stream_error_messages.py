@@ -18,6 +18,4 @@ def test_public_stream_error_message_hides_provider_budget_details() -> None:
 
 
 def test_public_stream_error_message_preserves_plain_application_errors() -> None:
-    assert public_stream_error_message(RuntimeError("도구 실행에 실패했습니다.")) == (
-        "도구 실행에 실패했습니다."
-    )
+    assert public_stream_error_message(RuntimeError("工具执行失败。")) == ("工具执行失败。")

@@ -73,7 +73,7 @@ vi.mock('@/components/chat/markdown-content', () => ({
 }))
 
 vi.mock('@/components/chat/markdown-components', () => ({
-  // 테스트 자체는 markdown 렌더 검증 안 함 — 빈 객체 stub.
+  // 测试本身不验证 markdown 渲染 — 使用空对象 stub。
   buildMarkdownComponents: () => ({}),
 }))
 
@@ -116,20 +116,20 @@ describe('AssistantPanel', () => {
     mockUseChatRuntime.mockClear()
     mockStreamAssistantResume.mockReset()
     mockInvalidateQueries.mockReset()
-    // jsdom에는 scrollTo가 없으므로 stub 처리
+    // jsdom 中没有 scrollTo，因此用 stub 处理
     Element.prototype.scrollTo = vi.fn()
   })
 
-  // assistant-ui의 ThreadEmptyMessage는 jsdom에서 thread state 초기화가 동기적으로
-  // 끝나지 않아 emptyContent가 비결정적으로 렌더된다. hero title까지만 검증.
-  it('초기 렌더 시 hero title을 표시한다', () => {
+  // assistant-ui 的 ThreadEmptyMessage 在 jsdom 中无法同步完成 thread state 初始化，
+  // 导致 emptyContent 非确定性渲染。只验证到 hero title。
+  it('初始渲染时显示 hero title', () => {
     render(<AssistantPanel agentId="agent-1" agentName="Test Agent" />)
 
-    // EmptyContent의 FixHero가 ``fixHeroTitle({ agentName })`` 키 ("修复{agentName}")로 렌더.
-    expect(screen.getByText('Test Agent 수정')).toBeInTheDocument()
+    // EmptyContent 的 FixHero 用 ``fixHeroTitle({ agentName })`` key（"修复{agentName}"）渲染。
+    expect(screen.getByText('修复Test Agent')).toBeInTheDocument()
   })
 
-  it('쓰기 도구 승인 UI와 HiTL resume 컨텍스트를 AssistantThread에 제공한다', () => {
+  it('向 AssistantThread 提供 write 工具 approval UI 与 HiTL resume context', () => {
     render(<AssistantPanel agentId="agent-1" agentName="Test Agent" />)
 
     const provider = screen.getByTestId('assistant-runtime-provider')
@@ -138,7 +138,7 @@ describe('AssistantPanel', () => {
     expect(thread).toHaveAttribute('data-has-register-decision', 'true')
   })
 
-  it('승인 결정을 Assistant resume SSE로 재개한다', async () => {
+  it('通过 Assistant resume SSE 恢复 approval 决策', async () => {
     const decision: Decision = { type: 'approve' }
     mockStreamAssistantResume.mockImplementation(async function* (): AsyncGenerator<SSEEvent> {
       yield { event: 'message_end', data: { content: 'done' } } as SSEEvent

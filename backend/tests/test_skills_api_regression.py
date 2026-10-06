@@ -1,13 +1,13 @@
 """Slice A regression tests — m41 / m42 schema additions must not break
 existing Skill / AgentSkillLink contracts.
 
-베조스 (M2-S1 후속). 검증 대상은 deletion-analysis.md §3.1~§3.2의 매핑:
+贝索斯 (M2-S1 后续)。验证对象为 deletion-analysis.md §3.1~§3.2 的映射：
 
-* m41 backfill 정책 (OI-5): text → 'user'/'created_by_me', package → 'import'/'imported_by_me'
-* ``to_runtime_dict`` 키 셋 보존 (deepagents 호환)
-* SkillResponse legacy 필드 보존 (frontend 회귀 가드)
-* AgentSkillLink 생성 경로 무변경 (config nullable JSON 추가가 깨지 않음)
-* 신규 row의 server_default가 instance attribute로도 일관되게 회수됨
+* m41 backfill 策略 (OI-5): text → 'user'/'created_by_me', package → 'import'/'imported_by_me'
+* ``to_runtime_dict`` 键集合保留 (deepagents 兼容)
+* SkillResponse legacy 字段保留 (frontend 回归守卫)
+* AgentSkillLink 创建路径不变（新增 config nullable JSON 不会破坏）
+* 新 row 的 server_default 也能作为 instance attribute 一致地取回
 
 These tests do NOT exercise the alembic upgrade path (conftest uses
 ``Base.metadata.create_all`` against in-memory aiosqlite). The migration
@@ -124,8 +124,8 @@ class TestM41ColumnDefaults:
         """Apply the m41 backfill SQL verbatim — package rows must flip.
 
         Mirror of ``m41_skills_marketplace_columns.py:179-184`` UPDATE.
-        Bezos OI-5 / progress.txt L42: 빠뜨리면 모든 기존 package skill이
-        잘못 'created_by_me'로 표시된다.
+        Bezos OI-5 / progress.txt L42: 若遗漏，所有现有 package skill 都会
+        被错误显示为 'created_by_me'。
         """
 
         # Seed pre-m41 snapshots — origin_kind already at 'created_by_me'
@@ -376,7 +376,7 @@ class TestResponseEmbedsAfterSliceA:
             "publication_summary",
             "installation",
         ):
-            assert embed_key in body, f"SkillResponse missing {embed_key} embed — Slice A 회귀"
+            assert embed_key in body, f"SkillResponse missing {embed_key} embed — Slice A 回归"
 
     @pytest.mark.asyncio
     async def test_get_skill_includes_origin_summary_for_text_skill(
@@ -404,7 +404,7 @@ class TestResponseEmbedsAfterSliceA:
 
 
 # ===========================================================================
-# build_skills_prompt — LLM prompt block회귀
+# build_skills_prompt — LLM prompt block 回归
 # ===========================================================================
 
 
@@ -499,7 +499,7 @@ class TestUploadOriginKindForNewUploads:
 
         Bug history: ``create_package_skill`` originally fell through to
         the column default ``'created_by_me'`` (caught by an earlier
-        strict xfail). 젠슨 service-layer fix landed 2026-05-19; this is
+        strict xfail). 詹森 service-layer fix landed 2026-05-19; this is
         the promoted assertion.
         """
 

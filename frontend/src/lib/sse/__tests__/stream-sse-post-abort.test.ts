@@ -1,11 +1,11 @@
 /**
- * streamSSEPost abort 회귀 테스트.
+ * streamSSEPost abort 回归测试。
  *
- * `@microsoft/fetch-event-source` 는 input signal 이 abort 되면 promise 를
- * reject 가 아니라 **resolve** 하고 onclose/onerror 도 호출하지 않는다.
- * bridge 가 catch 에서만 closed 를 세우면 소비 루프가 영원히 대기하는
- * deadlock 이 된다 — Stop(서버 cancel 후 local abort) 시 isRunning 이
- * 풀리지 않던 durable run cancel 회귀의 근본 원인.
+ * 当 input signal abort 时，`@microsoft/fetch-event-source` 的 promise
+ * 不是 reject，而是 **resolve**，且不会调用 onclose/onerror。
+ * 如果 bridge 只在 catch 中设置 closed，消费循环会永远等待，
+ * 形成 deadlock — Stop（server cancel 后 local abort）时 isRunning
+ * 无法解除的 durable run cancel 回归根因。
  */
 import { describe, expect, it, vi } from 'vitest'
 
@@ -25,8 +25,8 @@ vi.mock('@microsoft/fetch-event-source', () => ({
 import { streamSSEPost } from '../parse-sse'
 
 describe('streamSSEPost abort handling', () => {
-  it('abort 시 fetch-event-source 가 resolve 만 해도 AbortError 로 종료된다 (deadlock 방지)', async () => {
-    // 라이브러리의 실제 abort 동작 재현: reject 없이 resolve, onclose/onerror 미호출
+  it('abort 时即使 fetch-event-source 只 resolve，也会以 AbortError 结束（防止 deadlock）', async () => {
+    // 复现库的真实 abort 行为：不 reject，只 resolve，且不调用 onclose/onerror
     fesMock.impl = (_url, init) =>
       new Promise<void>((resolve) => {
         const signal = init.signal
@@ -47,7 +47,7 @@ describe('streamSSEPost abort handling', () => {
     )
 
     const pending = stream.next()
-    // 소비 루프가 resolver 대기에 진입할 시간을 준 뒤 abort
+    // 先让消费循环进入等待 resolver，再执行 abort
     await new Promise((resolve) => setTimeout(resolve, 10))
     controller.abort()
 

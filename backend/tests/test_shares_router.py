@@ -154,13 +154,13 @@ async def test_public_share_view_returns_snapshot(client: AsyncClient):
     assert body["agent"]["name"] == "Share Agent"
     assert body["agent"]["description"] == "An agent for share tests"
     assert body["messages"] == []
-    # W6: trace 영속화 이전 대화는 빈 배열
+    # W6: trace 持久化之前的 对话 返回空数组
     assert body["traces"] == []
 
 
 @pytest.mark.asyncio
 async def test_public_share_view_includes_persisted_traces(client: AsyncClient):
-    """W6 — record_turn으로 시드된 trace가 share 응답에 포함된다."""
+    """W6 — 通过 record_turn 写入 的 trace 会包含在 share 响应中。"""
     from app.services import trace_storage
 
     conv_id = await _seed_conversation()
@@ -200,7 +200,7 @@ async def test_public_share_view_includes_persisted_traces(client: AsyncClient):
     assert len(body["traces"]) == 1
     trace = body["traces"][0]
     assert trace["assistant_msg_id"] == msg_id
-    # 도구 호출 chip 추출에 필요한 모든 이벤트가 그대로 노출
+    # 提取工具调用 chip 所需的所有事件都会原样暴露
     assert [e["event"] for e in trace["events"]] == [
         "message_start",
         "tool_call_start",

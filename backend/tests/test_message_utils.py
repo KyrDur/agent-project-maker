@@ -96,9 +96,9 @@ class TestExtractJsonFromMarkdown:
 
 
 class TestLangchainMessagesToResponse:
-    """Anthropic이 list-of-blocks content를 반환할 때 응답 변환이 text만 추출하는지 검증.
+    """验证 Anthropic 返回 list-of-blocks content 时，响应转换是否只提取 text。
 
-    회귀 방지: 이전 구현은 `str(list)`로 직렬화해 사용자에게 raw dict repr이 노출됐다.
+    防回归：此前实现使用 `str(list)` 序列化，导致 raw dict repr 暴露给用户。
     """
 
     def test_string_content_passthrough(self):
@@ -109,33 +109,33 @@ class TestLangchainMessagesToResponse:
         assert result[0].content == "你好"
 
     def test_anthropic_list_content_text_blocks_only(self):
-        """text 블록만 concat. tool_use 블록은 무시 (tool_calls로 별도 노출)."""
+        """仅对 text 块 concat。忽略 tool_use 块（通过 tool_calls 单独暴露）。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(
             content=[
-                {"type": "text", "text": "직원 정보를 검색해볼게요!", "index": 0},
+                {"type": "text", "text": "我来搜索一下员工信息！", "index": 0},
                 {
                     "type": "tool_use",
                     "id": "toolu_01ABC",
                     "name": "search_employees",
-                    "input": {"query": "이상윤"},
+                    "input": {"query": "李尚允"},
                     "index": 1,
                 },
             ]
         )
         result = langchain_messages_to_response([msg], conv_id)
-        assert result[0].content == "직원 정보를 검색해볼게요!"
+        assert result[0].content == "我来搜索一下员工信息！"
 
     def test_anthropic_multi_text_blocks_concatenated(self):
         conv_id = uuid.uuid4()
         msg = AIMessage(
             content=[
-                {"type": "text", "text": "이상윤 님의 팀 정보:\n"},
-                {"type": "text", "text": "- 소속: 제품기술팀"},
+                {"type": "text", "text": "李尚允的团队信息：\n"},
+                {"type": "text", "text": "- 所属：产品技术团队"},
             ]
         )
         result = langchain_messages_to_response([msg], conv_id)
-        assert result[0].content == "이상윤 님의 팀 정보:\n- 소속: 제품기술팀"
+        assert result[0].content == "李尚允的团队信息：\n- 所属：产品技术团队"
 
     def test_private_reasoning_blocks_are_not_displayed(self):
         private = "PRIVATE_CHAIN_OF_THOUGHT_DO_NOT_LEAK"
@@ -143,10 +143,10 @@ class TestLangchainMessagesToResponse:
             {"type": "reasoning", "text": private, "summary": private},
             {"type": "thinking", "thinking": private},
             {"type": "reasoning_content", "reasoning": private},
-            {"type": "text", "text": "사용자에게 보여줄 답변"},
+            {"type": "text", "text": "展示给用户的回答"},
         ]
 
-        assert content_to_text(content) == "사용자에게 보여줄 답변"
+        assert content_to_text(content) == "展示给用户的回答"
         assert private not in content_to_text(content)
         assert content_to_text({"type": "reasoning", "text": private}) == ""
 
@@ -157,7 +157,7 @@ class TestLangchainMessagesToResponse:
         assert result[0].content == ""
 
     def test_list_content_with_only_tool_use(self):
-        """tool_use만 있는 응답(보조 텍스트 없음)은 빈 문자열."""
+        """仅含 tool_use 的响应（无辅助文本）为空字符串。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(
             content=[
@@ -173,7 +173,7 @@ class TestLangchainMessagesToResponse:
         assert result[0].content == ""
 
     def test_text_block_without_text_field_skipped(self):
-        """text 키가 없거나 비-string이면 스킵."""
+        """没有 text 键或其值不是 string 时跳过。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(
             content=[
@@ -258,7 +258,7 @@ class TestLangchainMessagesToResponse:
 
 
 class TestUsageExtraction:
-    """W7 — AIMessage.usage_metadata가 MessageResponse.usage로 평탄화된다."""
+    """W7 — AIMessage.usage_metadata 会平铺到 MessageResponse.usage。"""
 
     def test_ai_message_with_usage_metadata(self):
         conv_id = uuid.uuid4()
@@ -279,7 +279,7 @@ class TestUsageExtraction:
         assert resp.usage.cache_read_tokens == 300
 
     def test_ai_message_without_cache_details(self):
-        """``input_token_details`` 없으면 cache_*는 0으로 채워진다."""
+        """若无 ``input_token_details``，cache_* 填充为 0。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(content="hi")
         msg.usage_metadata = cast(UsageMetadata, {"input_tokens": 100, "output_tokens": 50})
@@ -297,7 +297,7 @@ class TestUsageExtraction:
         assert resp.usage is None
 
     def test_ai_message_with_zero_tokens_has_no_usage(self):
-        """모든 필드 0이면 ``None`` — 클라이언트가 hover 팝오버 자체를 렌더 안 함."""
+        """所有字段均为 0 时返回 ``None`` — 客户端不会渲染 hover 弹出框本身。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(content="")
         msg.usage_metadata = cast(UsageMetadata, {"input_tokens": 0, "output_tokens": 0})
@@ -305,7 +305,7 @@ class TestUsageExtraction:
         assert resp.usage is None
 
     def test_estimated_cost_calculated_from_model_pricing(self):
-        """W7-4 — agent.model 단가가 주어지면 cost를 계산해 응답에 박는다."""
+        """W7-4 — 若提供 agent.model 单价，则计算 cost 并写入响应。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(content="hi")
         msg.usage_metadata = cast(UsageMetadata, {"input_tokens": 1000, "output_tokens": 500})
@@ -320,7 +320,7 @@ class TestUsageExtraction:
         assert resp.usage.estimated_cost == pytest.approx(0.0105, rel=1e-9)
 
     def test_estimated_cost_none_when_no_pricing(self):
-        """단가가 None이면 cost는 채우지 않음 (envelope 합산이 0)."""
+        """单价为 None 时不填充 cost（envelope 汇总为 0）。"""
         conv_id = uuid.uuid4()
         msg = AIMessage(content="hi")
         msg.usage_metadata = cast(UsageMetadata, {"input_tokens": 100, "output_tokens": 50})

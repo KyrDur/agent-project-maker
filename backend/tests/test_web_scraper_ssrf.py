@@ -95,7 +95,7 @@ async def test_scraper_blocks_metadata_url_without_request(
         return httpx.Response(200, text="<html>secret</html>")
 
     result = await _run_scraper(monkeypatch, handler, "http://169.254.169.254/latest/")
-    assert result.startswith("Error: 허용되지 않는 주소입니다")
+    assert result.startswith("Error: 不允许的地址")
     assert calls == []  # blocked before any network I/O
 
 
@@ -107,7 +107,7 @@ async def test_scraper_blocks_redirect_to_private(monkeypatch: pytest.MonkeyPatc
         return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/"})
 
     result = await _run_scraper(monkeypatch, handler, f"http://{PUBLIC_IP}/start")
-    assert result.startswith("Error: 허용되지 않는 주소입니다")
+    assert result.startswith("Error: 不允许的地址")
     assert len(calls) == 1  # first hop only; the private hop was never fetched
 
 
@@ -119,11 +119,11 @@ async def test_scraper_follows_public_redirect_and_extracts_text(
             return httpx.Response(301, headers={"location": f"http://{PUBLIC_IP}/final"})
         return httpx.Response(
             200,
-            text="<html><script>evil()</script><body><p>본문 텍스트</p></body></html>",
+            text="<html><script>evil()</script><body><p>正文文本</p></body></html>",
         )
 
     result = await _run_scraper(monkeypatch, handler, f"http://{PUBLIC_IP}/start")
-    assert "본문 텍스트" in result
+    assert "正文文本" in result
     assert "evil" not in result
 
 
@@ -132,7 +132,7 @@ async def test_scraper_gives_up_after_max_redirects(monkeypatch: pytest.MonkeyPa
         return httpx.Response(302, headers={"location": f"http://{PUBLIC_IP}/again"})
 
     result = await _run_scraper(monkeypatch, handler, f"http://{PUBLIC_IP}/start")
-    assert result.startswith("Error: 허용되지 않는 주소입니다")
+    assert result.startswith("Error: 不允许的地址")
     assert "redirect" in result
 
 

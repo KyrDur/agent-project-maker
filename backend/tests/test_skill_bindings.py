@@ -38,7 +38,7 @@ _SRT_REQUIREMENT = {
     "definition_key": "srt_account",
     "required": True,
     "label": "SRT账户",
-    "description": "예매에 사용할 SRT 회원 정보",
+    "description": "用于预订的 SRT 会员信息",
     "fields": ["username", "password"],
     "injection": "env",
     "scope": "user",

@@ -5,11 +5,11 @@ import { agentsApi } from '@/lib/api/agents'
 import { agentQueryKeys } from '@/lib/query-keys/agents'
 import type { AgentCreateRequest, AgentUpdateRequest } from '@/lib/types'
 
-// skill_ids 저장은 스킬 목록/상세의 연결 카운트(역집계)를 바꾼다 (Phase 2 §2.3).
-// used_by_count는 목록(['skills', params])·상세(['skills', id]) — 길이 2 키 —
-// 에만 실린다. skillQueryKeys.all(['skills'] prefix)로 쓸면 staleTime: Infinity
-// 계약인 리비전 스냅샷·평가 서브트리(길이 3+)까지 에이전트 저장마다 무효화돼
-// 불변 스냅샷 캐시가 매 방문 refetch 레이어로 격하된다 (R5).
+// 保存 skill_ids 会改变技能列表/详情的连接计数（反向聚合）（Phase 2 §2.3）。
+// used_by_count 只存在于列表（['skills', params]）·详情（['skills', id]）— 长度为 2 的 key —
+// 中。如果用 skillQueryKeys.all（['skills'] prefix）全量清除，staleTime: Infinity
+// 契约下的 revision snapshot·evaluation subtree（长度 3+）也会在每次 agent 保存时失效，
+// 使不可变 snapshot cache 降级为每次访问都 refetch 的层（R5）。
 function invalidateSkillLinkCounts(qc: QueryClient) {
   void qc.invalidateQueries({
     predicate: (query) => query.queryKey[0] === 'skills' && query.queryKey.length === 2,

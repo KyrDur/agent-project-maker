@@ -26,7 +26,7 @@ async def test_create_session_defaults_to_create_mode(db: AsyncSession) -> None:
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="회의록 스킬 만들어줘",
+        user_request="帮我创建会议纪要技能",
     )
     await db.commit()
 
@@ -40,7 +40,7 @@ async def test_get_session_is_user_scoped(db: AsyncSession) -> None:
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="스킬 만들어줘",
+        user_request="帮我创建技能",
     )
     await db.commit()
 
@@ -66,7 +66,7 @@ async def test_create_improve_session_snapshots_owned_skill(db: AsyncSession) ->
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="이 스킬 개선해줘",
+        user_request="帮我改进这个技能",
         mode=SkillBuilderMode.IMPROVE,
         source_skill_id=skill.id,
     )
@@ -101,7 +101,7 @@ async def test_create_improve_session_rejects_unowned_skill(db: AsyncSession) ->
         await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="개선해줘",
+            user_request="帮我改进一下",
             mode=SkillBuilderMode.IMPROVE,
             source_skill_id=skill.id,
         )
@@ -112,14 +112,14 @@ async def test_append_message_and_save_draft(db: AsyncSession) -> None:
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="스킬 만들어줘",
+        user_request="帮我创建技能",
     )
 
     await skill_builder_service.append_message(
         db,
         session,
         role="user",
-        content="자료 정리 스킬",
+        content="资料整理技能",
     )
     await skill_builder_service.save_draft_package(
         db,
@@ -141,7 +141,7 @@ async def test_claim_for_confirming_transitions_review_session(db: AsyncSession)
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="스킬 만들어줘",
+        user_request="帮我创建技能",
     )
     await skill_builder_service.save_draft_package(
         db,
@@ -162,7 +162,7 @@ async def test_claim_for_confirming_rejects_non_review_session(db: AsyncSession)
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="스킬 만들어줘",
+        user_request="帮我创建技能",
     )
 
     claimed = await skill_builder_service.claim_for_confirming(db, session.id, TEST_USER_ID)

@@ -1,7 +1,7 @@
-"""used_by_count 실집계 (Phase 2) — serializer가 agent_skills 역집계로 덮어쓴다.
+"""used_by_count 实际聚合 (Phase 2) — serializer 用 agent_skills 反向聚合覆盖。
 
-컬럼 자체는 쓰기 동기화가 없어 항상 0 — API 응답만 실카운트여야 하고,
-히든 에이전트(runtime_profile != 'standard')와 타 유저 에이전트는 제외된다.
+列本身没有写入同步，因此始终为 0 — API 响应必须是实际计数，
+并排除隐藏智能体(runtime_profile != 'standard')和其他用户智能体。
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ async def test_list_and_detail_return_live_link_count(
     assert detail.status_code == 200, detail.text
     assert detail.json()["used_by_count"] == 2
 
-    # 컬럼은 여전히 0 — serializer 주입이지 컬럼 동기화가 아니다.
+    # 列仍为 0 — 这是 serializer 注入，不是列同步。
     await db.refresh(skill)
     assert skill.used_by_count == 0
 

@@ -137,7 +137,7 @@ export interface MarketplaceItem {
   execution_profile?: ExecutionProfile | null
   origin_summary?: ResourceOriginSummary | null
   publication_summary: ResourcePublicationSummary
-  /** owner / super_user 시점에만 채워진다 — ACL revoke UI 용. */
+  /** 仅在 owner / super_user 视角填充 — 用于 ACL revoke UI。 */
   acl_user_ids?: string[] | null
   installation: InstallationSummary
 }
@@ -224,7 +224,7 @@ export interface AgentBlueprint {
   icon_id?: string | null
   tags?: string[] | null
   categories?: string[] | null
-  /** 목록 응답에서는 생략된다 — 단건 조회(GET /agent-blueprints/{id})에서만 채워짐. */
+  /** 列表响应中省略 — 仅在单项查询（GET /agent-blueprints/{id}）中填充。 */
   spec?: Record<string, unknown> | null
   spec_hash: string
   source_marketplace_item_id?: string | null
@@ -300,8 +300,8 @@ export interface MarketplaceItemPatchBody {
   tags?: string[] | null
   categories?: string[] | null
   locale?: string | null
-  // ``private | restricted | public | unlisted`` 전환. system 으로는 못 바꿈
-  // (super_user 영역). restricted 전환 시 ACL endpoint 도 함께 호출해야 함.
+  // ``private | restricted | public | unlisted`` 切换。不能改为 system
+  // （super_user 区域）。切换为 restricted 时还必须调用 ACL endpoint。
   visibility?: Exclude<MarketplaceVisibility, 'system'> | null
 }
 

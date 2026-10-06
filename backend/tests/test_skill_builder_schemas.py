@@ -14,7 +14,7 @@ from app.schemas.skill_revision import SkillRevisionOperation, SkillRevisionSumm
 def test_skill_builder_start_request_accepts_create_mode_without_source_skill() -> None:
     payload = SkillBuilderStartRequest(
         mode=SkillBuilderMode.CREATE,
-        user_request="회의록 액션 아이템 스킬을 만들어줘.",
+        user_request="帮我创建会议纪要行动项技能。",
     )
 
     assert payload.source_skill_id is None
@@ -24,7 +24,7 @@ def test_skill_builder_start_request_rejects_improve_mode_without_source_skill()
     with pytest.raises(ValidationError):
         SkillBuilderStartRequest(
             mode=SkillBuilderMode.IMPROVE,
-            user_request="기존 스킬을 개선해줘.",
+            user_request="帮我改进现有技能。",
         )
 
 

@@ -1,9 +1,9 @@
-"""m34 alembic migration — round-trip + SQLite batch_alter_table 회귀 가드.
+"""m34 alembic migration — round-trip + SQLite batch_alter_table 回归守卫。
 
-W3-out M2 — ``status`` + ``updated_at`` 컬럼 추가 + ``idx_message_events_status``
-인덱스 + CHECK 제약. SQLite는 ALTER TABLE DROP CONSTRAINT/COLUMN 미지원이라
-downgrade 가 ``op.batch_alter_table`` 우회 없이는 깨진다. 본 테스트가 그
-회귀 가드.
+W3-out M2 — 新增 ``status`` + ``updated_at`` 列 + ``idx_message_events_status``
+索引 + CHECK 约束。SQLite 不支持 ALTER TABLE DROP CONSTRAINT/COLUMN，因此
+若 downgrade 不通过 ``op.batch_alter_table`` 绕过就会失败。本测试负责这一
+回归守卫。
 """
 
 from __future__ import annotations
@@ -53,9 +53,9 @@ def test_metadata_includes_status_and_updated_at_columns() -> None:
 async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
     """``upgrade`` → ``downgrade`` → ``upgrade`` against in-memory SQLite.
 
-    핵심 회귀 가드: SQLite 는 ``ALTER TABLE DROP CONSTRAINT`` 와
-    ``ALTER TABLE DROP COLUMN`` 을 native 로 지원하지 않으므로, downgrade
-    가 ``batch_alter_table`` 로 우회하지 않으면 OperationalError 가 난다.
+    核心回归守卫：SQLite 对 ``ALTER TABLE DROP CONSTRAINT`` 和
+    ``ALTER TABLE DROP COLUMN`` 不提供 native 支持，因此 downgrade
+    若不通过 ``batch_alter_table`` 绕过，会发生 OperationalError。
     """
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
@@ -65,8 +65,8 @@ async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
     engine = create_engine("sqlite://")
     try:
         with engine.connect() as conn:
-            # m33 상태 — message_events 테이블 + linked_message_ids 까지.
-            # m34 가 추가하는 status / updated_at 은 아직 없음.
+            # m33 状态 — message_events 表 + linked_message_ids 为止。
+            # m34 新增的 status / updated_at 尚不存在。
             conn.exec_driver_sql(
                 "CREATE TABLE message_events ("
                 "  id TEXT PRIMARY KEY,"
@@ -85,7 +85,7 @@ async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
 
             alembic_op._proxy = op  # type: ignore[attr-defined]
 
-            # 1) upgrade — status + updated_at + index 추가
+            # 1) upgrade — 新增 status + updated_at + index
             mod.upgrade()
             inspector = inspect(conn)
             cols = {c["name"] for c in inspector.get_columns("message_events")}
@@ -94,8 +94,8 @@ async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
             indexes = {ix["name"] for ix in inspector.get_indexes("message_events")}
             assert "idx_message_events_status" in indexes
 
-            # 2) downgrade — status, updated_at, index, CHECK 모두 제거.
-            #    batch_alter_table 우회가 동작 안 하면 여기서 OperationalError.
+            # 2) downgrade — 删除 status、updated_at、index、CHECK。
+            #    若 batch_alter_table 绕过未生效，会在这里发生 OperationalError。
             mod.downgrade()
             inspector = inspect(conn)
             cols = {c["name"] for c in inspector.get_columns("message_events")}
@@ -104,7 +104,7 @@ async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
             indexes = {ix["name"] for ix in inspector.get_indexes("message_events")}
             assert "idx_message_events_status" not in indexes
 
-            # 3) re-upgrade — m34 가 멱등하게 다시 적용되는지
+            # 3) re-upgrade — m34 是否可幂等地再次应用
             mod.upgrade()
             inspector = inspect(conn)
             cols = {c["name"] for c in inspector.get_columns("message_events")}
@@ -116,10 +116,10 @@ async def test_upgrade_downgrade_roundtrip_sqlite() -> None:
 
 @pytest.mark.asyncio
 async def test_upgrade_preserves_existing_rows_with_default_status() -> None:
-    """m33 이전 row(status 컬럼 없음) → upgrade 후 status='completed' 자동 채움.
+    """m33 之前的 row（无 status 列）→ upgrade 后自动填充 status='completed'。
 
-    DEFAULT 'completed' NOT NULL 의 backfill 동작 검증. PoC 에서는 message_events
-    가 빈 상태이지만, 운영 DB에 존재하는 m33 이전 row 의 회귀 신호로 활용.
+    验证 DEFAULT 'completed' NOT NULL 的 backfill 行为。PoC 中 message_events
+    为空，但可作为运行 DB 中 m33 之前 row 的回归信号。
     """
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
@@ -141,7 +141,7 @@ async def test_upgrade_preserves_existing_rows_with_default_status() -> None:
                 "  completed_at TIMESTAMP"
                 ")"
             )
-            # m33 시점 row 1건 시드
+            # 在 m33 时点 写入 1 条 row
             conn.exec_driver_sql(
                 "INSERT INTO message_events "
                 "(id, conversation_id, assistant_msg_id, events) "
@@ -169,7 +169,7 @@ async def test_upgrade_preserves_existing_rows_with_default_status() -> None:
 
 @pytest.mark.asyncio
 async def test_check_constraint_rejects_invalid_status() -> None:
-    """``status IN ('streaming','completed','failed')`` CHECK 제약이 적용되는지."""
+    """验证是否应用 ``status IN ('streaming','completed','failed')`` CHECK 约束。"""
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
     from sqlalchemy import create_engine
@@ -199,13 +199,13 @@ async def test_check_constraint_rejects_invalid_status() -> None:
 
             mod.upgrade()
 
-            # 유효한 status 는 OK
+            # 有效 status 为 OK
             conn.exec_driver_sql(
                 "INSERT INTO message_events "
                 "(id, conversation_id, assistant_msg_id, events, status) "
                 "VALUES ('e1', 'c1', 'msg-1', '[]', 'streaming')"
             )
-            # 유효하지 않은 status 는 거부
+            # 无效 status 会被拒绝
             with pytest.raises(IntegrityError):
                 conn.exec_driver_sql(
                     "INSERT INTO message_events "

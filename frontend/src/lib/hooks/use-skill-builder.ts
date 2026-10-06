@@ -66,16 +66,16 @@ export function useStartSkillBuilder() {
     mutationFn: (data: SkillBuilderStartRequest) => skillBuilderApi.start(data),
     onSuccess: (session) => {
       qc.setQueryData(skillBuilderKeys.detail(session.id), session)
-      // 빌더 인덱스 목록(staleTime 15s)에 새 세션이 즉시 반영되게 한다.
+      // 让新 session 立即反映到 builder index 列表（staleTime 15s）中。
       qc.invalidateQueries({ queryKey: skillBuilderKeys.lists })
     },
   })
 }
 
 /**
- * 빌더 세션 시작 + 라우팅 + 실패 토스트의 단일 정본 — 진입점 3곳(목록 행
- * "编辑", 컨텍스트 바 "通过聊天改进", 빌더 인덱스/생성 다이얼로그)이 공유한다.
- * 성공 시 세션 라우트로 이동하고 true를 반환한다.
+ * builder session 启动 + 路由 + 失败 toast 的单一权威实现 — 3 个入口（列表行
+ * "编辑"、context bar "通过聊天改进"、builder index/创建 dialog）共用。
+ * 成功时移动到 session route 并返回 true。
  */
 export function useBuilderSessionLauncher() {
   const router = useRouter()
@@ -83,13 +83,13 @@ export function useBuilderSessionLauncher() {
   const startBuilder = useStartSkillBuilder()
 
   async function launch(payload: SkillBuilderStartRequest): Promise<boolean> {
-    // 중앙 이중 제출 가드 — 진입점별 disabled와 무관하게 세션 중복 생성을 차단.
+    // 中央双重提交 guard — 与各入口自身的 disabled 无关，阻止重复创建 session。
     if (startBuilder.isPending) return false
     const originHref = window.location.pathname + window.location.search
     try {
       const session = await startBuilder.mutateAsync(payload)
-      // start가 느릴 때 사용자가 이미 다른 화면으로 이동했다면 강제 내비로
-      // 편집 컨텍스트를 탈취하지 않는다 — 세션은 빌더 인덱스 이력에 남는다.
+      // start 很慢时，如果用户已经移动到其他页面，则不要通过强制导航
+      // 抢走编辑上下文 — session 会保留在 builder index 历史中。
       if (window.location.pathname + window.location.search === originHref) {
         router.push(`/skills/builder/${session.id}`)
       }
@@ -140,6 +140,6 @@ function invalidateInstalledSkillCaches(
   qc.invalidateQueries({ queryKey: skillQueryKeys.detail(skillId) })
   qc.invalidateQueries({ queryKey: skillQueryKeys.files(skillId) })
   qc.invalidateQueries({ queryKey: skillQueryKeys.content(skillId) })
-  // finalize/confirm은 세션 상태(completed)도 바꾼다 — 인덱스 목록 배지 동기화.
+  // finalize/confirm 也会改变 session 状态（completed）— 同步 index 列表 badge。
   qc.invalidateQueries({ queryKey: skillBuilderKeys.lists })
 }

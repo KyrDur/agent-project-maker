@@ -37,9 +37,9 @@ export interface TurnTrace {
   assistant_msg_id: string
   events: TraceEvent[]
   last_event_id: string | null
-  /** 이 turn에서 노출된 assistant 메시지의 parsed UUID 목록.
-   * MessageResponse.id와 동일 형식이라 직접 매칭 가능 (W6 정확도).
-   * null이면 m33 이전 row → chronological 폴백. */
+  /** 此 turn 中暴露的 assistant 消息 parsed UUID 列表。
+   * 与 MessageResponse.id 格式相同，可直接匹配（W6 accuracy）。
+   * null 表示 m33 之前的 row → chronological fallback。 */
   linked_message_ids: string[] | null
   created_at: string
   completed_at: string | null
@@ -75,8 +75,8 @@ export interface SharedConversationView {
   conversation_created_at: string
   agent: SharedAgentBrief
   messages: Message[]
-  /** W6 — turn별 SSE event 시퀀스. 도구/Skill 칩 렌더에 사용. W5 머지
-   * 이전 대화는 빈 배열로 응답되어 자연스럽게 칩이 안 보인다. */
+  /** W6 — 每个 turn 的 SSE event sequence。用于渲染 tool/Skill chip。W5 merge
+   * 之前的对话会返回空数组，因此自然不显示 chip。 */
   traces: TurnTrace[]
   shared_at: string
 }

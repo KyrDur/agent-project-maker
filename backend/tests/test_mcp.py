@@ -196,12 +196,12 @@ async def test_patch_mcp_server(client: AsyncClient, db: AsyncSession) -> None:
 async def test_patch_mcp_server_rejects_inconsistent_payload(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    """update 경로의 transport/url/command 정합성 검증 계약 잠금.
+    """锁定 update 路径的 transport/url/command 一致性验证契约。
 
-    create 경로만 잠겨 있으면 mcp_service.update_server의
-    validate_payload_consistency를 제거해도 전 테스트가 그린이었다
-    (Stage 2 적대 리뷰 mutation 실증) — 비정합 config가 조용히 저장되면
-    런타임 MCP 연결 실패로 이어진다.
+    如果只锁定 create 路径，即使移除 mcp_service.update_server 的
+    validate_payload_consistency，全部测试也曾是绿色
+    （Stage 2 对抗性评审 mutation 实证）— 若不一致的 config 被静默保存，
+    会导致运行时 MCP 连接失败。
     """
 
     create = await client.post(
@@ -215,15 +215,15 @@ async def test_patch_mcp_server_rejects_inconsistent_payload(
     assert create.status_code == 201
     sid = create.json()["id"]
 
-    # streamable_http인데 url을 지우는 PATCH → 422
+    # 在 streamable_http 下删除 url 的 PATCH → 422
     drop_url = await client.patch(f"/api/mcp-servers/{sid}", json={"url": None})
     assert drop_url.status_code == 422
 
-    # transport를 stdio로 바꾸면서 command 미제공 → 422
+    # 将 transport 改为 stdio 同时未提供 command → 422
     to_stdio = await client.patch(f"/api/mcp-servers/{sid}", json={"transport": "stdio"})
     assert to_stdio.status_code == 422
 
-    # 원본 row는 비정합 값으로 오염되지 않았어야 한다.
+    # 原始 row 不应被不一致的值污染。
     row = (await db.execute(select(McpServer).where(McpServer.id == uuid.UUID(sid)))).scalar_one()
     assert row.transport == "streamable_http"
     assert row.url == "https://mcp.example.com"
@@ -686,14 +686,14 @@ async def test_export_mcp_servers_omits_secrets(client: AsyncClient, db: AsyncSe
 
 @pytest.mark.asyncio
 async def test_export_mcp_servers_sorted_by_name(client: AsyncClient, db: AsyncSession) -> None:
-    """export의 이름순 정렬 계약(list_servers order_by_name=True) 잠금 —
-    단일 서버 픽스처로는 정렬 분기가 실행만 되고 단언되지 않았다.
+    """锁定 export 的按名称排序契约(list_servers order_by_name=True) —
+    单服务器测试夹具 只能让排序分支执行，却无法断言排序结果。
 
-    이름 오름차순(alpha 먼저)을 생성 시간 오름차순과 일부러 어긋나게
-    만들어야 한다 — alpha를 먼저 만들면 기본 정렬(created_at desc)이
-    [zeta, alpha]가 되어 이름순 [alpha, zeta]와 구별된다. 반대로 zeta를
-    먼저 만들면 두 정렬이 우연히 일치해 mutation이 그린으로 통과한다
-    (fresh-eyes 리뷰에서 실증된 거짓 자물쇠)."""
+    必须故意让名称升序（alpha 在前）与创建时间升序错开
+    — 如果先创建 alpha，默认排序(created_at desc)为
+    [zeta, alpha]，可与名称序 [alpha, zeta] 区分。反之若先创建 zeta，
+    两种排序会偶然一致，使 mutation 以绿色通过
+    （fresh-eyes 评审中实证的假锁）。"""
 
     db.add(
         McpServer(

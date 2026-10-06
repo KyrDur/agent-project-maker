@@ -36,7 +36,7 @@ export interface ModelBrief {
   display_name: string
   provider: string
   model_name: string
-  /** 컨텍스트 창 한도(토큰). null이면 한도 미설정(게이지 비활성). */
+  /** context window 上限（token）。null 表示未设置上限（gauge 禁用）。 */
   context_window?: number | null
 }
 
@@ -50,7 +50,7 @@ export interface McpToolBrief {
 export interface ToolBrief {
   id: string
   name: string
-  /** 도구 registry 정의의 icon_id. 채팅 도구 pill 아이콘 해석에 쓴다. */
+  /** tool registry 定义中的 icon_id。用于解析聊天 tool pill 图标。 */
   icon_id?: string | null
 }
 
@@ -321,9 +321,9 @@ export interface MessageAttachmentBrief {
 }
 
 /**
- * 대화 파일 목록(`GET /api/conversations/{id}/files`)의 단일 항목.
- * `generated`(에이전트 산출물)와 `attached`(사용자가 보낸 첨부)를 한 형태로 합친다.
- * 백엔드 `FileItem` 스키마와 1:1 대응.
+ * 对话文件列表（`GET /api/conversations/{id}/files`）中的单个 item。
+ * 将 `generated`（agent 产物）与 `attached`（用户发送的附件）合并为同一形式。
+ * 与 backend `FileItem` schema 1:1 对应。
  */
 export interface FileItem {
   source: 'generated' | 'attached'
@@ -335,7 +335,7 @@ export interface FileItem {
   size_bytes?: number | null
   preview_url: string
   download_url: string
-  /** 생성: assistant 메시지 id / 첨부: user 메시지 id. 대화로 이동 앵커. */
+  /** generated：assistant 消息 id / attachment：user 消息 id。用于跳转到对话的 anchor。 */
   message_id?: string | null
   created_at: string
   editable: boolean
@@ -375,25 +375,25 @@ export interface Message {
    * siblings. */
   branch_index?: number | null
   branch_total?: number | null
-  /** W7 — assistant 메시지 끝(``message_end``)에서 채워지는 토큰 사용량.
-   * 4종 분리: input/output 외에 cache_creation/cache_read까지. 메시지 푸터의
-   * hover 팝오버가 직접 참조한다. 백엔드가 발행하지 않거나 user/tool 메시지
-   * 인 경우 ``null``. */
+  /** W7 — 在 assistant 消息末尾（``message_end``）填充的 token usage。
+   * 分为 4 类：除 input/output 外，还有 cache_creation/cache_read。消息 footer 的
+   * hover popover 直接引用。backend 未发布或为 user/tool 消息
+   * 时为 ``null``。 */
   usage?: TokenUsageBreakdown | null
 }
 
-/** W7 — 메시지별 토큰 사용량 4종 분해 (+ 스트리밍 timing). */
+/** W7 — 每条消息的 4 类 token usage breakdown（+ streaming timing）。 */
 export interface TokenUsageBreakdown {
   prompt_tokens: number
   completion_tokens: number
   cache_creation_tokens: number
   cache_read_tokens: number
   estimated_cost?: number
-  /** 스트리밍 timing (live-only, 새로고침 후 undefined). 첫 토큰까지(ms). */
+  /** streaming timing（live-only，刷新后 undefined）。到第一个 token 的时间（ms）。 */
   ttft_ms?: number
-  /** 총 생성 시간(ms). */
+  /** 总生成时间（ms）。 */
   generation_ms?: number
-  /** 출력 토큰/초. */
+  /** 输出 token/秒。 */
   tokens_per_second?: number
 }
 
@@ -404,15 +404,15 @@ export interface TokenUsageBreakdown {
 export interface MessagesEnvelope {
   messages: Message[]
   active_run?: ConversationRun | null
-  /** 최신 run (상태 무관). active_run 은 terminal run 을 보고하지 않으므로
-   * 마지막 turn 의 canceled/canceling 여부는 이 필드로만 알 수 있다.
-   * "被遗弃" notice 의 durable 렌더 근거. */
+  /** 最新 run（不论状态）。active_run 不报告 terminal run，
+   * 因此最后一个 turn 的 canceled/canceling 状态只能通过此字段得知。
+   * "被遗弃" notice 的 durable 渲染依据。 */
   latest_run?: ConversationRun | null
   active_tip_message_id?: string | null
   active_checkpoint_id?: string | null
-  /** W7-4 — conversation 누적 비용 (USD). ``token_usages`` 테이블 합산. 메시지
-   * 단위로 cost를 채울 수 없는 fetch 경로(model_id 없음)에서 Composer 토큰 바
-   * 가 cost를 표시할 수 있게 envelope에 발행. */
+  /** W7-4 — conversation 累计 cost（USD）。对 ``token_usages`` 表求和。在无法按消息
+   * 填充 cost 的 fetch 路径（无 model_id）中，通过 envelope 发布，让 Composer token bar
+   * 可以显示 cost。 */
   total_estimated_cost?: number
 }
 
@@ -496,9 +496,9 @@ export type SSEEventType =
   | 'interrupt'
   | 'stale'
 
-// ── HiTL — interrupt wire (LangChain HumanInTheLoopMiddleware 표준) ──────
+// ── HiTL — interrupt wire（LangChain HumanInTheLoopMiddleware 标准）──────
 
-/** `HITLRequest.action_requests[i]` 한 항목. */
+/** `HITLRequest.action_requests[i]` 中的一个 item。 */
 export interface ActionRequest {
   name: string
   args: Record<string, unknown>
@@ -507,14 +507,14 @@ export interface ActionRequest {
 
 export type DecisionType = 'approve' | 'edit' | 'reject' | 'respond'
 
-/** `HITLRequest.review_configs[i]` — 도구별 허용 결정 화이트리스트. */
+/** `HITLRequest.review_configs[i]` — 每个工具允许决策的 whitelist。 */
 export interface ReviewConfig {
   action_name: string
   allowed_decisions: DecisionType[]
   /**
-   * 스킬 빌더 챗 AD-4 — 승인 카드에 "留出本次会议的剩余时间" 옵션을 노출할지.
-   * 백엔드 wire 계층이 주입한다 (requires_network 드래프트/이미 동의된 도구는
-   * 미주입). langchain ReviewConfig에는 없는 Moldy 확장 필드.
+   * skill builder chat AD-4 — 是否在 approval card 中显示 "留出本次会议的剩余时间" 选项。
+   * 由 backend wire 层注入（requires_network draft/已经同意的工具
+   * 不注入）。这是 langchain ReviewConfig 中不存在的 Moldy 扩展字段。
    */
   session_consent_eligible?: boolean
 }
@@ -529,45 +529,45 @@ export interface StandardInterruptPayload {
 
 export type InterruptPayload = StandardInterruptPayload
 
-/** Resume 송신용 단일 결정. LangChain `HITLResponse.decisions[i]`와 1:1. */
+/** 用于 Resume 发送的单个决策。与 LangChain `HITLResponse.decisions[i]` 1:1。 */
 export interface Decision {
   type: DecisionType
   /**
-   * type='edit' 시 필수: 수정된 tool_call. `name`은 optional — 백엔드가
-   * pending action을 positional index로 매칭해 권위적으로 채우므로, 프론트는
-   * 도구 이름을 모를 때 생략하고 args만 보낼 수 있다.
+   * type='edit' 时必需：修改后的 tool_call。`name` 为 optional — backend 会
+   * 以 positional index 匹配 pending action 并权威填充，因此 frontend 在
+   * 不知道工具名时可以省略，只发送 args。
    */
   edited_action?: { name?: string; args: Record<string, unknown> }
-  /** type='respond' 시 필수, type='reject' 시 선택. */
+  /** type='respond' 时必需，type='reject' 时可选。 */
   message?: string
   /**
-   * 스킬 빌더 챗 AD-4 — "留出本次会议的剩余时间" 동의. type='approve'에만 의미.
-   * 백엔드 커맨드 핸들러가 세션에 기록한 뒤 이 키를 벗겨 표준 approve만
-   * 미들웨어로 내려보낸다 (비표준 decision 필드는 langchain 검증을 깨뜨림).
+   * skill builder chat AD-4 — 同意 "留出本次会议的剩余时间"。仅对 type='approve' 有意义。
+   * backend command handler 记录到 session 后会剥离这个 key，只把标准 approve
+   * 下发给 middleware（非标准 decision 字段会破坏 langchain validation）。
    */
   scope?: 'session'
 }
 
-/** POST `/conversations/:id/messages/resume` 표준 body. */
+/** POST `/conversations/:id/messages/resume` 标准 body。 */
 export interface ResumeDecisionsRequest {
   decisions: Decision[]
 }
 
-// W3-out M3 — backend 가 broker 손실 (in-flight turn 중 backend 가 죽어 GET
-// resume 이 DB replay 만 받은 케이스) 을 client 에 알리는 marker. ``reason``
-// = ``broker_lost`` (events 에 last_event_id 있음) 또는 ``broker_lost_no_id``
-// (events 자체가 빈 채로 status='streaming' row 만 있음 — NPE 회피용 구분).
+// W3-out M3 — backend 向 client 通知 broker 丢失（in-flight turn 期间 backend 死亡，GET
+// resume 只收到 DB replay 的情况）通知 client 的 marker。``reason``
+// = ``broker_lost``（events 中有 last_event_id）或 ``broker_lost_no_id``
+// （events 本身为空，仅有 status='streaming' row — 用于规避 NPE 的区分）。
 export interface StalePayload {
-  // broker_lost(_no_id) — in-flight turn 중 broker 가 사라져 DB replay 로 degrade.
-  // run_worker_lost — active run 인데 로컬 worker 가 없고 heartbeat 도 stale.
-  // broker_gap — 재연결 시 last_event_id 가 ring buffer 에서 evict 되어
-  //   누락 구간이 있을 수 있다는 신호 (buffer 잔여분은 이어서 replay 됨).
+  // broker_lost(_no_id) — in-flight turn 中 broker 消失，degrade 为 DB replay。
+  // run_worker_lost — active run，但没有本地 worker，且 heartbeat 也 stale。
+  // broker_gap — 重连时 last_event_id 已从 ring buffer 中 evict，
+  //   表示可能存在缺失区间（buffer 中剩余部分仍会继续 replay）。
   reason: 'broker_lost' | 'broker_lost_no_id' | 'run_worker_lost' | 'broker_gap'
   last_event_id: string | null
 }
 
-// ``id``: 백엔드가 발행하는 SSE id (``{msg_id}-{seq}`` 형식). caller side에서
-// dedup/stale 폐기에 사용한다. 모든 variant에 공통으로 optional.
+// ``id``：backend 发布的 SSE id（``{msg_id}-{seq}`` 格式）。caller side 用于
+// dedup/丢弃 stale。所有 variant 共用且 optional。
 export type SSEEvent = { id?: string } & (
   | { event: 'message_start'; data: { id: string; role: string } }
   | { event: 'content_delta'; data: { delta?: string; content?: string } }
@@ -588,8 +588,8 @@ export type SSEEvent = { id?: string } & (
       event: 'message_end'
       data: {
         content: string
-        // W7 — usage 4종(input/output/cache_creation/cache_read) + 선택적 비용.
-        // 비어 있을 수 있어 모든 필드 optional로 둔다.
+        // W7 — 4 类 usage（input/output/cache_creation/cache_read）+ 可选 cost。
+        // 可能为空，因此所有字段都设为 optional。
         usage: Partial<TokenUsageBreakdown> & Record<string, number>
         status?: 'completed' | 'failed' | 'canceled'
       }

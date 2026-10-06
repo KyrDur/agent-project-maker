@@ -1,14 +1,14 @@
 /**
- * HiTL resume wire body shape 회귀 가드 — `streamResumeDecisions`가
- * `{decisions: [...]}` body를 보내는지 검증.
+ * HiTL resume wire body shape 回归守卫 — 验证 `streamResumeDecisions`
+ * 是否发送 `{decisions: [...]}` body。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Decision } from '@/lib/types'
 import { streamResumeDecisions } from '../stream-resume'
 
 // ---------------------------------------------------------------------------
-// fetchEventSource를 가짜로 교체 — body 만 캡처하면 충분 (스트림 자체는 빈
-// generator로 즉시 close). 실제 네트워크/SSE 파싱은 검증 대상이 아님.
+// 将 fetchEventSource 替换为 fake — 只捕获 body 就足够（stream 本身为空
+// generator 并立即 close）。不验证真实网络/SSE parsing。
 // ---------------------------------------------------------------------------
 
 interface CapturedCall {
@@ -40,7 +40,7 @@ vi.mock('@microsoft/fetch-event-source', () => ({
         body: init.body ? JSON.parse(init.body as string) : undefined,
         headers: init.headers ?? {},
       })
-      // 200 응답 시뮬레이션 → onopen 통과 → 즉시 onclose.
+      // 模拟 200 响应 → 通过 onopen → 立即 onclose。
       const fakeResponse = {
         ok: true,
         status: 200,
@@ -67,7 +67,7 @@ afterEach(() => {
 })
 
 describe('streamResumeDecisions', () => {
-  it('body는 정확히 {decisions: [...]} 형태로 직렬화된다', async () => {
+  it('body 会精确序列化为 {decisions: [...]} 形式', async () => {
     const decisions: Decision[] = [
       { type: 'approve' },
       {
@@ -84,16 +84,16 @@ describe('streamResumeDecisions', () => {
     expect(captured[0].method).toBe('POST')
     expect(captured[0].url).toContain('/api/conversations/conv-1/messages/resume')
     expect(captured[0].body).toEqual({ decisions })
-    // 표준 wire는 절대로 legacy `response` 필드를 같이 보내지 않는다.
+    // 标准 wire 绝不能同时发送 legacy `response` 字段。
     expect(captured[0].body).not.toHaveProperty('response')
   })
 
-  it('빈 decisions 배열도 그대로 송신 (validation은 미들웨어에 위임)', async () => {
+  it('空 decisions 数组也原样发送（validation 交给 middleware）', async () => {
     await drain(streamResumeDecisions('conv-2', []))
     expect(captured[0].body).toEqual({ decisions: [] })
   })
 
-  it('Content-Type: application/json 헤더가 설정된다', async () => {
+  it('设置 Content-Type: application/json header', async () => {
     await drain(streamResumeDecisions('conv-3', [{ type: 'approve' }]))
     expect(captured[0].headers['Content-Type']).toBe('application/json')
     expect(captured[0].headers['Accept']).toBe('text/event-stream')

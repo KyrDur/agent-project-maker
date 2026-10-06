@@ -34,9 +34,9 @@ export function useSkill(id: string | null | undefined) {
     queryKey: skillQueryKeys.detail(id),
     queryFn: () => skillsApi.get(requiredQueryValue(id, 'skill id')),
     enabled: !!id,
-    // 스튜디오는 같은 detail을 셸·breadcrumb·탭 페이지 3곳이 구독하고 탭
-    // 전환마다 remount한다 — staleTime 0이면 전환마다 enrichment 재조회.
-    // 뮤테이션은 invalidate로 갱신하므로 목록(useSkills)과 동일 상한이 안전.
+    // studio 的 shell·breadcrumb·tab page 三处都订阅同一个 detail，并在每次 tab
+    // 切换时 remount — 如果 staleTime 为 0，每次切换都会重新查询 enrichment。
+    // mutation 通过 invalidate 更新，因此使用与列表（useSkills）相同的上限是安全的。
     staleTime: 30_000,
   })
 }

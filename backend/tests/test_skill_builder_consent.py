@@ -1,10 +1,10 @@
-"""HITL 세션 동의 + test_skill_draft 샌드박스 (M4, 스펙 AD-3/AD-4).
+"""HITL 会话同意 + test_skill_draft 沙箱 (M4, 规范 AD-3/AD-4)。
 
-- ``scope:"session"`` 동의: 기록 + 표준 approve 변환(비표준 키가 미들웨어에
-  도달하지 않음), finalize_skill 불가, requires_network 드래프트 불가
-- 동의 후 resolve → interrupt 정책에서 제외 (1회차 카드 → 동의 → 2회차 무카드)
-- ``test_skill_draft``: fabricated descriptor로 기존 샌드박스 정책 전체 상속
-- 인터럽트 wire의 ``session_consent_eligible`` 플래그 주석
+- ``scope:"session"`` 同意: 记录 + 转换为标准 approve（非标准键不会
+  到达中间件），finalize_skill 不可用，requires_network 草稿不可用
+- 同意后 resolve → 从 interrupt 策略中排除（第 1 次卡片 → 同意 → 第 2 次无卡片）
+- ``test_skill_draft``: fabricated descriptor 继承现有全部沙箱策略
+- 给中断 wire 的 ``session_consent_eligible`` 标志添加注释
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ async def _make_session(
 ) -> SkillBuilderSession:
     session = SkillBuilderSession(
         user_id=TEST_USER_ID,
-        user_request="회의록 스킬",
+        user_request="会议纪要技能",
         status="active",
         conversation_id=conversation_id,
     )
@@ -107,7 +107,7 @@ def _pending(action_names: list[str]) -> list[ThreadInterrupt]:
 
 
 # ---------------------------------------------------------------------------
-# 동의 기록 + scope 제거
+# 记录同意 + 移除 scope
 # ---------------------------------------------------------------------------
 
 
@@ -126,7 +126,7 @@ async def test_consent_recorded_and_scope_stripped(db: AsyncSession) -> None:
     )
 
     assert recorded == ["test_skill_draft"]
-    # 비표준 키는 미들웨어로 내려가지 않는다 — decision dict에서 제거됨.
+    # 非标准键不会下传到中间件 — 已从 decision dict 中移除。
     assert "scope" not in decision
     assert decision == {"type": "approve"}
 
@@ -138,7 +138,7 @@ async def test_consent_recorded_and_scope_stripped(db: AsyncSession) -> None:
 
 
 async def test_consent_not_recorded_for_finalize_skill(db: AsyncSession) -> None:
-    """finalize_skill은 항상 승인 카드 — scope는 벗기되 기록하지 않는다."""
+    """finalize_skill 始终显示审批卡 — 移除 scope，但不记录。"""
 
     conversation_id = uuid.uuid4()
     session = await _make_session(db, conversation_id=conversation_id)
@@ -159,7 +159,7 @@ async def test_consent_not_recorded_for_finalize_skill(db: AsyncSession) -> None
 
 
 async def test_consent_not_recorded_for_network_draft(db: AsyncSession) -> None:
-    """requires_network 드래프트는 세션 동의 불가 (AD-4 경계) — 매번 카드."""
+    """requires_network 草稿不允许会话同意（AD-4 边界）— 每次都显示卡片。"""
 
     conversation_id = uuid.uuid4()
     session = await _make_session(db, conversation_id=conversation_id, requires_network=True)
@@ -197,7 +197,7 @@ async def test_consent_ignores_reject_decisions(db: AsyncSession) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 동의 → 정책 제외 (1회차 카드 → 2회차 무카드)
+# 同意 → 从策略中排除（第 1 次卡片 → 第 2 次无卡片）
 # ---------------------------------------------------------------------------
 
 
@@ -235,9 +235,9 @@ async def test_interrupt_policy_includes_sandbox_until_consented() -> None:
         )
 
     interrupt_on = components.interrupt_on or {}
-    # 1회차: CODE_EXECUTION 위험 메타에서 승인 카드 정책 생성 (approve/reject).
+    # 第 1 次：根据 CODE_EXECUTION 风险元数据生成审批卡策略 (approve/reject)。
     assert interrupt_on["test_skill_draft"] == {"allowed_decisions": ["approve", "reject"]}
-    # AD-3 과승인 방지 — 드래프트 파일 편집은 승인 카드 없이 진행.
+    # AD-3 防止过度审批 — 编辑草稿文件无需审批卡。
     assert "write_file" not in interrupt_on
     assert "edit_file" not in interrupt_on
 
@@ -257,9 +257,9 @@ async def test_interrupt_policy_excludes_consented_sandbox() -> None:
         )
 
     interrupt_on = components.interrupt_on or {}
-    # 2회차(동의 후): 무카드.
+    # 第 2 次（同意后）：无卡片。
     assert "test_skill_draft" not in interrupt_on
-    assert "ask_user" in interrupt_on  # ask_user 인터럽트는 유지
+    assert "ask_user" in interrupt_on  # 保留 ask_user 中断
 
 
 async def test_resolve_threads_consent_and_offer(client, db: AsyncSession) -> None:
@@ -270,7 +270,7 @@ async def test_resolve_threads_consent_and_offer(client, db: AsyncSession) -> No
 
     await configure_system_llm(db)
     start = await client.post(
-        "/api/skill-builder", json={"mode": "create", "user_request": "회의록"}
+        "/api/skill-builder", json={"mode": "create", "user_request": "会议纪要"}
     )
     body = start.json()
     user = CurrentUser(id=TEST_USER_ID, email="test@test.com", name="Test User", is_super_user=True)
@@ -291,7 +291,7 @@ async def test_resolve_threads_consent_and_offer(client, db: AsyncSession) -> No
 
 
 # ---------------------------------------------------------------------------
-# 인터럽트 wire 주석 (session_consent_eligible)
+# 中断 wire 注释 (session_consent_eligible)
 # ---------------------------------------------------------------------------
 
 
@@ -323,7 +323,7 @@ async def test_annotate_session_consent_eligibility_marks_matching_configs() -> 
 
 
 # ---------------------------------------------------------------------------
-# test_skill_draft — fabricated descriptor + 샌드박스 상속
+# test_skill_draft — fabricated descriptor + 沙箱继承
 # ---------------------------------------------------------------------------
 
 
@@ -352,7 +352,7 @@ async def test_test_skill_draft_runs_draft_script_in_sandbox(
     result = await tool.ainvoke({"command": "python scripts/hello.py"})
 
     assert "HELLO_FROM_DRAFT" in result
-    # 저장 전 시험 — 원본 워크스페이스는 그대로, 마운트 복사본으로 실행됐다.
+    # 保存前测试 — 原工作区不变，在挂载副本中执行。
     mounted = tmp_path / "runtime" / f"skill-draft-{session.id}" / "skills" / "notes"
     assert (mounted / "scripts" / "hello.py").is_file()
 
@@ -360,7 +360,7 @@ async def test_test_skill_draft_runs_draft_script_in_sandbox(
 async def test_test_skill_draft_inherits_interpreter_allowlist(
     db: AsyncSession,
 ) -> None:
-    """기존 subprocess 정책 무변경 상속 (§6-6) — 비허용 인터프리터 거부."""
+    """原有 subprocess 策略原样继承 (§6-6) — 拒绝不允许的解释器。"""
 
     session = await _make_session(db)
     tools = _sandbox_tools(session)
@@ -387,16 +387,16 @@ async def test_test_skill_draft_carries_code_execution_risk(db: AsyncSession) ->
 async def test_test_skill_draft_fails_closed_on_intraturn_network_flip(
     db: AsyncSession,
 ) -> None:
-    """R2 회귀: 세션 동의는 run 시작 시 non-network 드래프트에만 적용되는데,
-    같은 턴에서 에이전트가 agents/moldy.yaml에 requires_network를 추가하면
-    승인 카드 없이 네트워크 샌드박스가 열린다 — 도구가 실행 시점 프로필을
-    재검증해 fail-closed로 거부해야 한다."""
+    """R2 回归：会话同意仅在 run 启动时应用于 non-network 草稿，
+    若智能体在同一轮次中向 agents/moldy.yaml 添加 requires_network，
+    就会在无审批卡的情况下打开网络沙箱 — 工具必须在执行时重新验证配置，
+    以 fail-closed 方式拒绝。"""
 
     session = await _make_session(db)
     root = workspace.resolve_workspace_dir(session.draft_workspace_path or "")
     (root / "scripts").mkdir()
     (root / "scripts" / "hello.py").write_text("print('X')\n", encoding="utf-8")
-    # 동의 활성(consented_tools) 상태에서 턴 내 network flip 재현.
+    # 在同意激活(consented_tools)状态下复现轮次内 network flip。
     (root / "agents").mkdir(exist_ok=True)
     (root / "agents" / "moldy.yaml").write_text(_NETWORK_MOLDY_YAML, encoding="utf-8")
 
@@ -416,7 +416,7 @@ async def test_test_skill_draft_fails_closed_on_intraturn_network_flip(
 
     assert result.startswith("Error")
     assert "network" in result
-    # 동의 없이(승인 카드 경유) 실행되는 경로는 그대로 실행된다.
+    # 无同意（经审批卡）的执行路径保持原样执行。
     tools_no_consent = _sandbox_tools(session)
     tool_no_consent = next(t for t in tools_no_consent if t.name == "test_skill_draft")
     ok = await tool_no_consent.ainvoke({"command": "python scripts/hello.py"})

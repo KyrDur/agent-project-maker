@@ -331,7 +331,7 @@ async def test_patch_toggle_is_visible(client: AsyncClient, db: AsyncSession) ->
 
 @pytest.mark.asyncio
 async def test_patch_hidden_default_returns_422(client: AsyncClient, db: AsyncSession) -> None:
-    """기본 모델을 hidden 처리하면 셀렉터가 비어버린다 → 422."""
+    """将默认模型设为 hidden 会导致 选择器 为空 → 422。"""
 
     model = Model(
         provider="anthropic",

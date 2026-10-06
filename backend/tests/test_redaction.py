@@ -1,4 +1,4 @@
-"""M5 Slice E Stage 4 — Redaction contract (Phase 1 출시 게이트).
+"""M5 Slice E Stage 4 — Redaction contract (Phase 1 发布门槛).
 
 Spec §8.5 + §13.2. Targets ``app.marketplace.redaction`` and its two
 integration points:
@@ -64,7 +64,7 @@ class TestRedactCredentialValues:
     def test_short_value_not_replaced(self) -> None:
         """``len(value) < 5`` must NOT trigger replacement — otherwise a
         credential equal to ``"id"`` or ``"a"`` would scrub legitimate
-        bytes everywhere. progress.txt L51 — false-positive 폭증 가드."""
+        bytes everywhere. progress.txt L51 — 防止 false-positive 暴增。"""
 
         text = "id=A and id=A and code=A all are legit literals"
         out = redact_credential_values(text, {"TINY_ENV": "A"})

@@ -94,7 +94,7 @@ down_revision: str | None = \"m70_current\"
         "README_KO.md": (
             "<!-- project-current-source: migration=m71_current; deepagents=0.7.11; "
             "ruff=0.16.5; refreshed=2026-09-05 -->\n"
-            "AI runtime: `deepagents` 0.7.11; Ruff 0.16.5; 현재 migration: `m71_current`\n"
+            "AI runtime: `deepagents` 0.7.11; Ruff 0.16.5; 当前 migration: `m71_current`\n"
         ),
         "AGENTS.md": (
             "<!-- project-current-source: migration=m71_current; deepagents=0.7.11; "
@@ -213,7 +213,7 @@ def test_inspect_project_facts_rejects_wrong_displayed_locked_versions(
         ),
         (
             "README_KO.md",
-            "현재 migration head: M59 / M63; derived head `m71_current`\n",
+            "当前 migration head: M59 / M63; derived head `m71_current`\n",
             "stale marker",
         ),
         (

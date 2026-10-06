@@ -72,17 +72,17 @@ async def test_tool_display_names_fit_korean_ui(client: AsyncClient) -> None:
     names = {item["key"]: item["display_name"] for item in response.json()}
     assert all("—" not in name for name in names.values())
     expected = {
-        "http_request": "HTTP 요청",
-        "gmail_send": "Gmail 보내기",
-        "google_calendar_event": "Google 캘린더",
-        "google_search_web": "Google 웹 검색",
-        "google_search_image": "Google 이미지 검색",
-        "google_search_news": "Google 뉴스 검색",
-        "naver_search_blog": "네이버 블로그 검색",
+        "http_request": "HTTP 请求",
+        "gmail_send": "发送 Gmail",
+        "google_calendar_event": "Google 日历",
+        "google_search_web": "Google 网页搜索",
+        "google_search_image": "Google 图片搜索",
+        "google_search_news": "Google 新闻搜索",
+        "naver_search_blog": "纳维尔博客搜索",
         "naver_search_news": "Naver 新闻搜索",
-        "naver_search_image": "네이버 이미지 검색",
-        "naver_search_shop": "네이버 쇼핑 검색",
-        "naver_search_local": "네이버 지역 검색",
+        "naver_search_image": "纳维尔图片搜索",
+        "naver_search_shop": "纳维尔购物搜索",
+        "naver_search_local": "纳维尔本地搜索",
     }
     for key, display_name in expected.items():
         assert names[key] == display_name
@@ -347,11 +347,11 @@ async def test_other_user_cannot_access(client: AsyncClient, db: AsyncSession) -
 async def test_run_endpoint_stamps_last_used_at(
     client: AsyncClient, db: AsyncSession, monkeypatch
 ) -> None:
-    """POST /api/tools/{id}/run 성공 시 last_used_at 스탬프 계약 잠금.
+    """POST /api/tools/{id}/run 成功时锁定 last_used_at 时间戳契约。
 
-    스탬프는 tool_service.run_tool_instance에 있는데(Stage 2에서 라우터로부터
-    이동) 엔드포인트 경유 테스트가 없어 제거 mutation이 미검출이었다
-    (적대 리뷰 실증). 실패 run은 스탬프가 찍히지 않아야 한다.
+    时间戳位于 tool_service.run_tool_instance 中（Stage 2 从路由器
+    移入），此前没有经过端点的测试，所以删除 mutation 未被检测
+    （对抗性评审实证）。失败 run 不应打时间戳。
     """
 
     from app.tools.runner import ToolRunResult

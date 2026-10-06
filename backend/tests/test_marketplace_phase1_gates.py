@@ -1,5 +1,5 @@
 # ruff: noqa: E501
-"""M9 — Phase 1 출시 게이트 통합 검증 (PRD §13).
+"""M9 — Phase 1 发布门槛集成验证 (PRD §13)。
 
 Eight ship-gates that PRD §13 mandates before Marketplace Phase 1 can
 ship. Other test files cover the gate machinery at unit / integration
@@ -15,10 +15,10 @@ Gate map:
 | 2. Secret safety           | secret_scan + redaction      | test_secret_scan.py + test_redaction.py   |
 | 3. Runtime isolation       | skill_runtime + executor     | test_runtime_isolation.py                 |
 | 4. Credential runtime      | credential_requirements      | test_credential_injection.py              |
-| 5. k-skill sync            | k_skill_importer (CLI)       | test_k_skill_importer.py (젠슨 트랙)        |
+| 5. k-skill sync            | k_skill_importer (CLI)       | test_k_skill_importer.py (詹森轨道)        |
 | 6. Backward compatibility  | skills/agent_skills ORM      | test_skills_api_regression.py             |
-| 7. Listing 승인            | catalog query                | test_marketplace_listing.py + this file   |
-| 8. ADR-016 정합           | router auth + CSRF           | this file                                 |
+| 7. Listing 审批            | catalog query                | test_marketplace_listing.py + this file   |
+| 8. ADR-016 一致性          | router auth + CSRF           | this file                                 |
 
 Each test below either delegates to the dedicated subsystem test (via a
 direct import + run check) or pins a release invariant that doesn't
@@ -75,9 +75,7 @@ def _item(
         moderation_status="approved",
     )
     item.acl_entries = [
-        MarketplaceItemACL(
-            item_id=item.id, user_id=u, permission="install"
-        )
+        MarketplaceItemACL(item_id=item.id, user_id=u, permission="install")
         for u in (acl_users or [])
     ]
     return item
@@ -86,9 +84,7 @@ def _item(
 def _cu(uid: uuid.UUID, *, is_super: bool = False):
     from app.dependencies import CurrentUser
 
-    return CurrentUser(
-        id=uid, email=f"{uid.hex[:8]}@t", name="U", is_super_user=is_super
-    )
+    return CurrentUser(id=uid, email=f"{uid.hex[:8]}@t", name="U", is_super_user=is_super)
 
 
 # ===========================================================================
@@ -97,9 +93,9 @@ def _cu(uid: uuid.UUID, *, is_super: bool = False):
 
 
 class TestGate1AccessControl:
-    """PRD §13 #1 — Access control: private/restricted/public/system
-    item에 대해 owner, ACL user, unrelated user 매트릭스 통과. 비인가 접근
-    404 통일 (enumeration oracle 방지).
+    """PRD §13 #1 — Access control: 对 private/restricted/public/system
+    item 的 owner、ACL user、unrelated user 矩阵通过。未授权访问
+    统一为 404（防止 enumeration oracle）。
 
     Predicate matrix at the access layer (no DB roundtrip). The router-
     level oracle is asserted in ``test_marketplace_access.py``."""
@@ -113,20 +109,13 @@ class TestGate1AccessControl:
         # Each row: (visibility, status, expected view dict by actor).
         # Actors: O=owner, A=acl, U=unrelated, S=super.
         cases = [
-            ("private", "draft",
-             {"O": True, "A": False, "U": False, "S": True}),
-            ("restricted", "published",
-             {"O": True, "A": True, "U": False, "S": True}),
-            ("public", "published",
-             {"O": True, "A": True, "U": True, "S": True}),
-            ("public", "draft",
-             {"O": True, "A": False, "U": False, "S": True}),
-            ("unlisted", "published",
-             {"O": True, "A": True, "U": True, "S": True}),
-            ("system", "published",
-             {"O": True, "A": True, "U": True, "S": True}),
-            ("public", "disabled",
-             {"O": True, "A": False, "U": False, "S": True}),
+            ("private", "draft", {"O": True, "A": False, "U": False, "S": True}),
+            ("restricted", "published", {"O": True, "A": True, "U": False, "S": True}),
+            ("public", "published", {"O": True, "A": True, "U": True, "S": True}),
+            ("public", "draft", {"O": True, "A": False, "U": False, "S": True}),
+            ("unlisted", "published", {"O": True, "A": True, "U": True, "S": True}),
+            ("system", "published", {"O": True, "A": True, "U": True, "S": True}),
+            ("public", "disabled", {"O": True, "A": False, "U": False, "S": True}),
         ]
         actors = {
             "O": (_cu(owner), True),
@@ -166,7 +155,7 @@ class TestGate1AccessControl:
 
 
 class TestGate2SecretSafety:
-    """PRD §13 #2 — Secret safety. ``secret_scan`` 차단 + log/SSE/tool
+    """PRD §13 #2 — Secret safety。``secret_scan`` 阻断 + log/SSE/tool
     result redact. Detailed pattern coverage in ``test_secret_scan.py``
     + ``test_redaction.py``. This gate pins the **count** so accidental
     pattern removal forces a Spec §13.1 update."""
@@ -207,7 +196,7 @@ class TestGate2SecretSafety:
 
 
 class TestGate3RuntimeIsolation:
-    """PRD §13 #3 — Agent에 선택된 skill만 per-thread runtime root에 노출.
+    """PRD §13 #3 — 仅向 Agent 选中的 skill 暴露 per-thread runtime root。
     Full integration in ``test_runtime_isolation.py``. This gate pins
     the contract:
     * ``build_skill_runtime_context`` materializes per-thread roots.
@@ -239,9 +228,9 @@ class TestGate3RuntimeIsolation:
             agent_skills=None,
         )
         ctx = build_skill_runtime_context(cfg, data_dir=tmp_path)
-        assert str(ctx.runtime_root).endswith(
-            "/runtime/gate-thread/skills"
-        ), f"layout drift: {ctx.runtime_root}"
+        assert str(ctx.runtime_root).endswith("/runtime/gate-thread/skills"), (
+            f"layout drift: {ctx.runtime_root}"
+        )
 
     def test_cleanup_no_runtime_dir_is_safe(self, tmp_path: Path) -> None:
         # Empty data dir → 0 removed, no exception.
@@ -254,9 +243,9 @@ class TestGate3RuntimeIsolation:
 
 
 class TestGate4CredentialRuntime:
-    """PRD §13 #4 — required binding 누락 시 실행 차단
-    (``marketplace_credential_required``). binding 존재 시 mapped env
-    var에만 주입. Full integration in ``test_credential_injection.py``."""
+    """PRD §13 #4 — 缺少 required binding 时阻止执行
+    (``marketplace_credential_required``)。存在 binding 时仅注入 mapped env
+    var。Full integration in ``test_credential_injection.py``."""
 
     def test_credential_required_error_code_stable(self) -> None:
         """Pin the public error code — frontend toast + API contract
@@ -283,8 +272,7 @@ class TestGate4CredentialRuntime:
             "k_skill_proxy",
         ):
             assert required in keys, (
-                f"k-skill credential definition {required!r} missing — "
-                f"Spec §6 regression"
+                f"k-skill credential definition {required!r} missing — Spec §6 regression"
             )
 
 
@@ -294,9 +282,9 @@ class TestGate4CredentialRuntime:
 
 
 class TestGate5KSkillSync:
-    """PRD §13 #5 — k-skill importer CLI. 단위 테스트는 jensen이
-    ``test_k_skill_importer.py``에서 다룸 (있다면). 이 게이트는
-    sync 라우터/CLI 진입점이 존재하는지만 가드."""
+    """PRD §13 #5 — k-skill importer CLI.单元测试由 jensen 在
+    ``test_k_skill_importer.py`` 中处理（若存在）。此门槛仅守卫
+    sync 路由器/CLI 入口是否存在。"""
 
     def test_admin_k_skill_sync_endpoint_mounted(self) -> None:
         """``POST /api/marketplace/admin/k-skill/sync`` (super_user only)
@@ -316,7 +304,7 @@ class TestGate5KSkillSync:
         try:
             mod = importlib.import_module("app.scripts.sync_k_skill")
         except ImportError:
-            pytest.skip("k-skill importer CLI not present (M7 미완료)")
+            pytest.skip("k-skill importer CLI not present (M7 未完成)")
         else:
             assert hasattr(mod, "main") or hasattr(mod, "__name__")
 
@@ -327,9 +315,9 @@ class TestGate5KSkillSync:
 
 
 class TestGate6BackwardCompatibility:
-    """PRD §13 #6 — 기존 skill upload/edit/delete + agent skill 연결 +
-    ``/api/skills`` 응답 회귀 통과. ``is_dirty`` 추가가 기존 편집 UX를
-    파괴하지 않음. Full coverage in ``test_skills_api_regression.py``.
+    """PRD §13 #6 — 现有 skill upload/edit/delete + agent skill 连接 +
+    ``/api/skills`` 响应回归通过。新增 ``is_dirty`` 不会破坏现有编辑 UX。
+    Full coverage in ``test_skills_api_regression.py``.
     Here we pin the contract surface (ORM + serializer)."""
 
     def test_skill_model_keeps_legacy_columns(self) -> None:
@@ -385,13 +373,13 @@ class TestGate6BackwardCompatibility:
 
 
 # ===========================================================================
-# Gate 7 — Listing 승인 (public+is_listed=False excluded from catalog)
+# Gate 7 — Listing 审批 (public+is_listed=False excluded from catalog)
 # ===========================================================================
 
 
 class TestGate7Listing:
-    """PRD §13 #7 — public 항목은 ``is_listed=True``로 토글되기 전까지
-    카탈로그 기본 검색에 노출되지 않음. Full coverage in
+    """PRD §13 #7 — public 项在切换为 ``is_listed=True`` 前
+    不会暴露在目录默认搜索中。Full coverage in
     ``test_marketplace_listing.py``. Here we re-pin the base query
     invariant via the access layer."""
 
@@ -423,13 +411,13 @@ class TestGate7Listing:
 
 
 # ===========================================================================
-# Gate 8 — ADR-016 정합 (router auth + CSRF)
+# Gate 8 — ADR-016 一致性 (router auth + CSRF)
 # ===========================================================================
 
 
 class TestGate8AuthCsrf:
-    """PRD §13 #8 — 모든 신규 라우터가 ``get_current_user`` 또는
-    ``require_super_user`` 의존성을 가짐. 상태 변경은 ``verify_csrf``."""
+    """PRD §13 #8 — 所有新增路由器 都依赖 ``get_current_user`` 或
+    ``require_super_user``。状态变更使用 ``verify_csrf``。"""
 
     def test_marketplace_router_every_mutation_has_csrf(self) -> None:
         from app.routers import marketplace as router_mod
@@ -448,12 +436,8 @@ class TestGate8AuthCsrf:
         for block in mutation_re.finditer(src):
             seen += 1
             chunk = block.group(0)
-            assert "verify_csrf" in chunk, (
-                f"mutation route missing verify_csrf: {chunk[:120]}…"
-            )
-        assert seen >= 5, (
-            f"expected ≥5 mutation routes on marketplace router, found {seen}"
-        )
+            assert "verify_csrf" in chunk, f"mutation route missing verify_csrf: {chunk[:120]}…"
+        assert seen >= 5, f"expected ≥5 mutation routes on marketplace router, found {seen}"
 
     def test_get_current_user_dependency_on_all_routes(self) -> None:
         from app.routers import marketplace as router_mod
@@ -466,12 +450,9 @@ class TestGate8AuthCsrf:
         assert "require_super_user" in src
 
     @pytest.mark.asyncio
-    async def test_admin_endpoint_requires_super_user(
-        self, db: AsyncSession
-    ) -> None:
+    async def test_admin_endpoint_requires_super_user(self, db: AsyncSession) -> None:
         """Phase 1 admin endpoint (k-skill sync status) must reject a
         non-super-user. Exercises the dependency wiring end-to-end."""
-
 
         from httpx import ASGITransport, AsyncClient
 
@@ -503,13 +484,10 @@ class TestGate8AuthCsrf:
         app.dependency_overrides[verify_csrf] = _no_csrf
 
         transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
             r = await client.post("/api/marketplace/admin/k-skill/sync")
         assert r.status_code == 403, (
-            f"non-super-user admin call must 403, got {r.status_code} "
-            f"({r.text[:120]})"
+            f"non-super-user admin call must 403, got {r.status_code} ({r.text[:120]})"
         )
 
 
@@ -524,11 +502,5 @@ def test_phase1_gate_classes_present() -> None:
     import sys
 
     mod = sys.modules[__name__]
-    gate_classes = [
-        name
-        for name in dir(mod)
-        if name.startswith("TestGate")
-    ]
-    assert len(gate_classes) == 8, (
-        f"Phase 1 출시 게이트 클래스 누락 — found {gate_classes}"
-    )
+    gate_classes = [name for name in dir(mod) if name.startswith("TestGate")]
+    assert len(gate_classes) == 8, f"缺少 Phase 1 发布门槛类 — found {gate_classes}"

@@ -44,7 +44,7 @@ def _add_model(db: AsyncSession) -> Model:
 def _add_template(db: AsyncSession, slugs: list[str]) -> Template:
     template = Template(
         name=f"tmpl-{uuid.uuid4().hex[:6]}",
-        category="개발",
+        category="开发",
         system_prompt="You document repositories.",
         recommended_skill_slugs=slugs,
     )
@@ -114,7 +114,7 @@ async def test_template_skill_reuses_existing_installation(
 
     assert len(first.skill_links) == 1
     assert len(second.skill_links) == 1
-    # reuse_or_update: 두 번째 생성은 새 Skill 사본을 만들지 않고 기존 설치를 재사용.
+    # reuse_or_update: 第二次创建不会新建 Skill 副本，而是复用现有安装。
     assert first.skill_links[0].skill_id == second.skill_links[0].skill_id
 
     skills = (await db.execute(select(Skill).where(Skill.user_id == user.id))).scalars().all()

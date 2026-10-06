@@ -130,7 +130,7 @@ def test_executor_chain_uses_fallback_when_primary_fails() -> None:
 
 
 def test_context_window_forwarded_to_create_chat_model() -> None:
-    """AgentConfig.context_window → create_chat_model(context_window=...) 배선 (Phase 0)."""
+    """AgentConfig.context_window → create_chat_model(context_window=...) 接线 (Phase 0)。"""
     captured: dict[str, Any] = {}
 
     def _fake(provider: str, model_name: str, *args: Any, **kwargs: Any) -> _FakeChatModel:
@@ -153,7 +153,7 @@ def test_context_window_forwarded_to_create_chat_model() -> None:
 
 
 def test_context_window_absent_when_unset() -> None:
-    """context_window 미설정이면 kwarg 자체를 넘기지 않는다 (내부 sub-agent 등 하위호환)."""
+    """未设置 context_window 时不传递 kwarg 本身（内部 sub-agent 等保持向后兼容）。"""
     captured: dict[str, Any] = {}
 
     def _fake(provider: str, model_name: str, *args: Any, **kwargs: Any) -> _FakeChatModel:

@@ -96,7 +96,7 @@ def test_first_party_hancom_gw_get_tool_is_read_only():
         {
             "definition_key": "mcp",
             "name": "get_budget",
-            "description": "부서 예산 현황 조회. 계정별 예산/집행/잔액 및 집행률.",
+            "description": "查询部门预算现状。按账户查看预算/执行/余额及执行率。",
             "mcp_server_url": "https://hancom-gw-mcp.apps.orca.cloud.hancom.com/mcp",
         }
     )
@@ -111,7 +111,7 @@ def test_untrusted_mcp_get_tool_still_requires_approval():
         {
             "definition_key": "mcp",
             "name": "get_budget",
-            "description": "부서 예산 현황 조회",
+            "description": "查询部门预算现状",
             "mcp_server_url": "https://example.invalid/mcp",
         }
     )

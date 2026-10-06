@@ -188,9 +188,9 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 class TestScenario_10_1_BuiltInSkillInstall:
-    """PRD §10.1: 사용자가 Marketplace에서 ``korean-spell-check`` 같은
-    built-in skill을 찾아 install → 자기 ``skills`` row 생성 → agent 설정에서
-    선택."""
+    """PRD §10.1: 用户在 Marketplace 中找到 ``korean-spell-check`` 这类
+    built-in skill 并 install → 创建自己的 ``skills`` row → 在 agent 设置中
+    选择。"""
 
     @pytest.mark.asyncio
     async def test_built_in_kskill_install_to_user_owned_skill(
@@ -249,8 +249,8 @@ class TestScenario_10_1_BuiltInSkillInstall:
 
 
 class TestScenario_10_2_CredentialRequiredFlow:
-    """PRD §10.2: ``srt-booking`` 설치 시 SRT 계정 credential 필요.
-    binding 없이 install_missing_credentials=needs_setup → install_status='needs_setup'.
+    """PRD §10.2: 安装 ``srt-booking`` 时需要 SRT 账户 credential。
+    无 binding 时 install_missing_credentials=needs_setup → install_status='needs_setup'。
     """
 
     @pytest.mark.asyncio
@@ -308,7 +308,7 @@ class TestScenario_10_2_CredentialRequiredFlow:
 
 
 class TestScenario_10_3_PublishThenInstallByPeer:
-    """PRD §10.3: 사용자 A가 자기 skill을 public publish → 사용자 B가 install."""
+    """PRD §10.3: 用户 A 将自己的 skill public publish → 用户 B install。"""
 
     @pytest.mark.asyncio
     async def test_publisher_b_can_install_a_published_skill(
@@ -384,13 +384,13 @@ class TestScenario_10_4_RestrictedACL:
         ``install_service.install_item`` originally used
         ``db.get(MarketplaceItem, ...)`` without eager-loading
         ``acl_entries``; ``can_install_item`` then triggered a lazy load
-        inside async context → MissingGreenlet → 500. 젠슨 patched the
+        inside async context → MissingGreenlet → 500. 詹森 patched the
         service to use ``select(...).options(selectinload(acl_entries))``
         so non-ACL install attempts now collapse to 404 cleanly.
 
         This test was strict-xfail-pinned during the gap so the fix was
         auto-detected via XPASS. The xfail decorator has been removed —
-        the assertion is now the canonical Phase 1 출시 게이트 #1
+        the assertion is now the canonical Phase 1 发布门槛 #1
         (enumeration oracle) regression guard.
         """
         user_a = uuid.uuid4()  # publisher
@@ -442,9 +442,9 @@ class TestScenario_10_4_RestrictedACL:
 
 
 class TestScenario_10_5_UpdateStrategies:
-    """PRD §10.5: 같은 item에 새 version publish → install된 사용자의
-    installation.update_available=True. 사용자가 ``strategy='overwrite'``
-    또는 ``install_new_copy``를 선택."""
+    """PRD §10.5: 对同一 item 的新 version publish → 已 install 用户的
+    installation.update_available=True。用户选择 ``strategy='overwrite'``
+    或 ``install_new_copy``。"""
 
     @pytest.mark.asyncio
     async def test_update_strategy_overwrite_swaps_version(
@@ -509,8 +509,8 @@ class TestScenario_10_5_UpdateStrategies:
 
 
 class TestScenario_10_6_PublicationStatusBadge:
-    """PRD §10.6: owner의 ``GET /api/skills/{id}`` 응답에
-    ``publication_summary.state`` 가 정확히 표시."""
+    """PRD §10.6: owner 的 ``GET /api/skills/{id}`` 响应中
+    ``publication_summary.state`` 会准确显示。"""
 
     @pytest.mark.asyncio
     async def test_publication_summary_reflects_visibility_change(
@@ -555,9 +555,9 @@ class TestScenario_10_6_PublicationStatusBadge:
 
 
 class TestScenario_10_7_SuperUserListsItem:
-    """PRD §10.7: super_user가 public+is_listed=False 항목을 카탈로그에
-    노출시키는 흐름. Slice C의 admin listed 토글이 아직 없을 수도 있으므로
-    DB-level 토글 + 동일 사용자 시점 catalog 응답 변화로 검증."""
+    """PRD §10.7: super_user 将 public+is_listed=False 项暴露到目录中的
+    流程。由于 Slice C 的 admin listed 切换可能尚未实现，因此通过
+    DB-level 切换 + 同一用户视角下 catalog 响应变化进行验证。"""
 
     @pytest.mark.asyncio
     async def test_super_user_can_promote_unlisted_to_listed(

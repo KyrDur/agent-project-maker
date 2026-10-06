@@ -24,7 +24,7 @@ BASE = "/api/skill-builder"
 
 @pytest.fixture(autouse=True)
 def _tmp_data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """start v2가 드래프트 워크스페이스를 디스크에 만들므로 data_root 격리."""
+    """start v2 会在磁盘创建草稿工作区，因此隔离 data_root。"""
 
     monkeypatch.setattr(settings, "data_root", str(tmp_path))
 

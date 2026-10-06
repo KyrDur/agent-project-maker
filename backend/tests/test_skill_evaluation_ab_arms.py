@@ -1,4 +1,4 @@
-"""Phase 3 §4 — llm-2 실측 A/B 러너 (with/without arm + grader)."""
+"""Phase 3 §4 — llm-2 实测 A/B 运行器 (with/without arm + grader)。"""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ async def _create_run(db: AsyncSession, tmp_path: Path, *, run_config: dict | No
         user_id=TEST_USER_ID,
         skill=skill,
         name="AB smoke",
-        evals=[{"input": "회의록에서 담당자와 마감일을 뽑아줘", "expected": "담당자/마감일 표"}],
+        evals=[{"input": "从会议纪要中提取负责人和截止日期", "expected": "负责人/截止日期表"}],
     )
     return await skill_evaluation_service.create_run(
         db,
@@ -104,8 +104,8 @@ async def test_two_arm_run_measures_real_baseline(db: AsyncSession, tmp_path: Pa
 
     model = FakeUsageChatModel(
         responses=[
-            "with-arm answer: 담당자/마감일 표",  # 1. with-arm
-            "without-arm answer: 일반 상식 답변",  # 2. without-arm
+            "with-arm answer: 负责人/截止日期表",  # 1. with-arm
+            "without-arm answer: 通用常识回答",  # 2. without-arm
             _grader_json(),  # 3. grader
         ]
     )
@@ -123,8 +123,8 @@ async def test_two_arm_run_measures_real_baseline(db: AsyncSession, tmp_path: Pa
     # Real measured per-case metrics — arms actually ran.
     assert row["status"] == "passed"
     assert row["baseline_status"] == "failed"
-    assert row["with_answer_preview"] == "with-arm answer: 담당자/마감일 표"
-    assert row["without_answer_preview"] == "without-arm answer: 일반 상식 답변"
+    assert row["with_answer_preview"] == "with-arm answer: 负责人/截止日期表"
+    assert row["without_answer_preview"] == "without-arm answer: 通用常识回答"
     assert row["tokens"] == 120
     assert row["baseline_tokens"] == 120
     assert isinstance(row["duration_ms"], int)
@@ -310,10 +310,10 @@ async def test_non_pass_status_with_high_score_is_consistent(
 
 
 async def test_scripted_model_answers_eval_arm_prompts() -> None:
-    """E2E scripted 모델이 arm/grader 프롬프트에 결정론적으로 응답한다.
+    """E2E scripted 模型会对 arm/grader 提示词做确定性响应。
 
-    ab_arms의 프롬프트 첫 줄과 scripted 모델의 리터럴 마커가 어긋나면(drift)
-    라이브 E2E에서 평가 런이 조용히 fallback 텍스트를 받게 된다 — 여기서 잠근다.
+    若 ab_arms 的提示词首行与 scripted 模型的字面标记不一致(drift)，
+    实时 E2E 中评估运行会静默收到 fallback 文本 — 在这里锁定。
     """
 
     from langchain_core.messages import HumanMessage, SystemMessage
@@ -330,7 +330,7 @@ async def test_scripted_model_answers_eval_arm_prompts() -> None:
     with_answer = await model.ainvoke(
         [SystemMessage(content=WITH_ARM_SYSTEM_PROMPT), HumanMessage(content="{}")]
     )
-    assert "담당자/마감일" in str(with_answer.content)
+    assert "负责人/截止日期" in str(with_answer.content)
     assert with_answer.usage_metadata is not None
     assert with_answer.usage_metadata["input_tokens"] > 0
 
@@ -348,7 +348,7 @@ async def test_scripted_model_answers_eval_arm_prompts() -> None:
 
 
 async def test_arm_prompts_reach_model_in_order(db: AsyncSession, tmp_path: Path) -> None:
-    """with → without → grader 순서로 각 arm 시스템 프롬프트가 전달된다."""
+    """按 with → without → grader 顺序传递各 arm 的系统提示词。"""
 
     from app.services.skill_evaluation_ab_arms import (
         AB_GRADER_SYSTEM_PROMPT,

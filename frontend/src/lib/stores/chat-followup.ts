@@ -2,12 +2,12 @@ import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 
 /**
- * Follow-up 고스트 제안 상태.
+ * Follow-up ghost 建议状态。
  *
- * - `followupEnabledAtom`: 켜고 끄는 옵션 — 대화 화면(컴포저 툴바)에서 토글하고
- *   localStorage에 영속된다(브라우저 전역 설정).
- * - `chatFollowupSuggestionAtom`: 대화별 현재 제안 1개. 런 종료 시
- *   use-followup-suggestion이 채우고, 새 런 시작·Esc 해제·수락 시 비운다.
+ * - `followupEnabledAtom`：开关选项 — 在对话页面（composer toolbar）中 toggle，
+ *   并持久化到 localStorage（浏览器全局设置）。
+ * - `chatFollowupSuggestionAtom`：每个对话当前 1 条建议。run 结束时由
+ *   use-followup-suggestion 填充，新 run 开始·Esc 解除·接受时清空。
  */
 
 export const followupEnabledAtom = atomWithStorage<boolean>('moldy-followup-enabled', true)

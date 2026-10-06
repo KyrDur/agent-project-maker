@@ -48,8 +48,8 @@ def test_format_sse_complex_data():
 def test_format_sse_with_event_id_emits_id_line():
     result = format_sse("content_delta", {"delta": "hi"}, event_id="msg-1-3")
     assert "id: msg-1-3\n" in result
-    # event/id/data 순서 — 클라이언트 파서가 라인 단위로 처리하므로 무관하지만
-    # 서버 형식 일관성을 위해 검증.
+    # event/id/data 顺序 — 客户端解析器按行处理，因此本身无关，但
+    # 为保证服务器格式一致性进行验证。
     lines = result.strip().split("\n")
     assert lines[0] == "event: content_delta"
     assert lines[1] == "id: msg-1-3"
@@ -400,7 +400,7 @@ async def test_stream_usage_metadata():
     end_data = json.loads(end_event.split("data: ")[1].strip())
     assert end_data["usage"]["prompt_tokens"] == 100
     assert end_data["usage"]["completion_tokens"] == 50
-    # cache_creation/cache_read는 details가 없으면 0으로 채워진다.
+    # cache_creation/cache_read 在没有 details 时填充为 0。
     assert end_data["usage"]["cache_creation_tokens"] == 0
     assert end_data["usage"]["cache_read_tokens"] == 0
 
@@ -424,7 +424,7 @@ async def test_stream_updates_usage_sink_before_generator_cancellation():
 
 @pytest.mark.asyncio
 async def test_stream_usage_metadata_with_cache_tokens():
-    """LangChain ``usage_metadata.input_token_details``의 cache 토큰을 평탄화한다."""
+    """将 LangChain ``usage_metadata.input_token_details`` 的 cache 令牌平铺。"""
     usage = {
         "input_tokens": 1200,
         "output_tokens": 80,
@@ -448,9 +448,9 @@ async def test_stream_usage_metadata_with_cache_tokens():
 
 @pytest.mark.asyncio
 async def test_stream_emits_unique_event_ids_per_chunk():
-    """모든 SSE chunk는 ``id: {msg_id}-{seq}`` 형태의 고유 id를 갖는다.
+    """所有 SSE chunk 都有形如 ``id: {msg_id}-{seq}`` 的唯一 id。
 
-    클라이언트가 dedup 또는 stale 폐기에 사용. seq는 단조 증가.
+    客户端用于 dedup 或丢弃 stale。seq 单调递增。
     """
     chunks = [
         (_make_ai_chunk("Hello "), {}),
@@ -467,15 +467,15 @@ async def test_stream_emits_unique_event_ids_per_chunk():
             if line.startswith("id: "):
                 ids.append(line[4:])
 
-    # 모든 SSE 이벤트가 id를 갖고, 모두 unique
+    # 所有 SSE 事件都有 id，且全部 unique
     assert len(ids) == len(events), "every emitted SSE event must carry an id line"
     assert len(set(ids)) == len(ids), "event ids must be unique across the stream"
 
-    # 형식: ``{uuid}-{seq}``, seq는 1..N
+    # 格式: ``{uuid}-{seq}``，seq 为 1..N
     msg_id = ids[0].rsplit("-", 1)[0]
     seqs = [int(i.rsplit("-", 1)[1]) for i in ids]
     assert seqs == list(range(1, len(ids) + 1))
-    # 모두 같은 message id 접두사
+    # 全部具有相同的 message id 前缀
     assert all(i.startswith(f"{msg_id}-") for i in ids)
 
 
@@ -686,8 +686,8 @@ async def test_stream_flushes_incomplete_json():
 
 @pytest.mark.asyncio
 async def test_stream_run_id_injection_uses_external_id():
-    """``run_id`` 가 주어지면 message_start의 ``id`` 와 SSE event id 의 prefix
-    가 그 값으로 강제된다."""
+    """提供 ``run_id`` 时，message_start 的 ``id`` 与 SSE event id 的 prefix
+    会被强制设为该值。"""
     agent = MockAgent([(_make_ai_chunk("hi"), {})])
     forced_run_id = "deadbeef-1234"
 
@@ -696,13 +696,13 @@ async def test_stream_run_id_injection_uses_external_id():
     start_event = [e for e in events if "message_start" in e][0]
     start_data = json.loads(start_event.split("data: ")[1].strip())
     assert start_data["id"] == forced_run_id
-    # SSE id 라인도 ``{run_id}-<seq>`` 패턴.
+    # SSE id 行也遵循 ``{run_id}-<seq>`` 模式。
     assert f"id: {forced_run_id}-1" in start_event
 
 
 @pytest.mark.asyncio
 async def test_stream_dual_writes_to_broker_and_trace_sink():
-    """broker.publish_nowait + trace_sink.append 가 같은 이벤트 시퀀스를 받는다."""
+    """broker.publish_nowait + trace_sink.append 接收相同的事件序列。"""
     from app.agent_runtime.event_broker import EventBroker
 
     chunks = [
@@ -742,7 +742,7 @@ async def test_stream_dual_writes_to_broker_and_trace_sink():
 
 @pytest.mark.asyncio
 async def test_stream_persist_callback_final_flush_in_finally():
-    """persist_callback 이 주어지면 stream 종료 시 최소한 한 번은 호출된다
+    """提供 persist_callback 时，stream 结束时至少调用一次
     (final flush in finally block)."""
     agent = MockAgent([(_make_ai_chunk("hi"), {})])
     captured_chunks: list[list[dict[str, Any]]] = []
@@ -757,10 +757,10 @@ async def test_stream_persist_callback_final_flush_in_finally():
         )
     ]
 
-    # 짧은 stream (이벤트 < 32, 시간 < 2s) 이라 fire-and-forget partial flush
-    # 는 안 트리거되지만 finally 의 final flush 가 한 번은 호출되어야 한다.
+    # 短 stream（事件 < 32，时间 < 2s），所以 fire-and-forget partial flush
+    # 不会触发，但 finally 的 final flush 至少必须调用一次。
     assert len(captured_chunks) >= 1
-    # 모든 캡처된 이벤트 id 는 ``run-y-`` 프리픽스.
+    # 所有捕获到的事件 id 都以 ``run-y-`` 为前缀。
     flat_ids = [evt["id"] for chunk in captured_chunks for evt in chunk]
     assert all(eid.startswith("run-y-") for eid in flat_ids)
 
@@ -852,7 +852,7 @@ async def test_stream_filters_private_reasoning_from_sse_and_persistence():
                     [
                         {"type": "reasoning", "text": private, "summary": private},
                         {"type": "thinking", "thinking": private},
-                        {"type": "text", "text": "보여줄 답변"},
+                        {"type": "text", "text": "要展示的回答"},
                     ]
                 ),
                 {},
@@ -877,8 +877,8 @@ async def test_stream_filters_private_reasoning_from_sse_and_persistence():
     wire_payload = "\n".join(events)
     persisted_payload = json.dumps(captured_chunks, ensure_ascii=False)
 
-    assert "보여줄 답변" in wire_payload
-    assert "보여줄 답변" in persisted_payload
+    assert "要展示的回答" in wire_payload
+    assert "要展示的回答" in persisted_payload
     assert private not in wire_payload
     assert private not in persisted_payload
     assert all("values" not in evt.get("data", {}) for chunk in captured_chunks for evt in chunk)
@@ -886,7 +886,7 @@ async def test_stream_filters_private_reasoning_from_sse_and_persistence():
 
 @pytest.mark.asyncio
 async def test_stream_broker_close_called_even_on_exception():
-    """astream 이 예외를 던져도 broker.close() 가 finally 에서 실행된다."""
+    """即使 astream 抛出异常，broker.close() 也会在 finally 中执行。"""
     from app.agent_runtime.event_broker import EventBroker
 
     class FailingAgent:
@@ -902,39 +902,39 @@ async def test_stream_broker_close_called_even_on_exception():
     agent = FailingAgent()
     broker = EventBroker("run-fail")
 
-    # streaming.py 는 예외를 emit("error") 로 변환하므로 generator 가 깔끔하게
-    # 종료된다. 우리는 finally 의 broker.close 만 검증.
+    # streaming.py 会将异常转换为 emit("error")，因此 generator 会干净地
+    # 结束。这里只验证 finally 中的 broker.close。
     _ = [e async for e in stream_agent_response(agent, [], {}, broker=broker, run_id="run-fail")]
     assert broker.is_closed is True
 
 
 # ---------------------------------------------------------------------------
-# Backpressure + retry buffer (M2 보강)
+# Backpressure + retry buffer（M2 加强）
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_failed_partial_flush_retries_in_finally():
-    """Partial flush가 실패한 chunk는 retry_buffer를 거쳐 finally에서 재시도.
+    """Partial flush 失败的 chunk 会经过 retry_buffer，并在 finally 中重试。
 
-    DB 일시 장애로 한 chunk가 실패해도 final flush가 한 번 더 시도하여
-    silent data loss를 막는 회귀 가드.
+    即使因 DB 临时故障导致一个 chunk 失败，final flush 也会再尝试一次，
+    防止 silent data loss 的回归守卫。
     """
-    # 32 events 임계치를 넘기는 chunk 1개를 발생시키기 위해 LLM 응답을
-    # 길게 만든다. content_delta 한 번 + message_start/end → 약 3개
-    # 이벤트라 batch_size 임계치는 안 닿지만, time 임계치(2s)를 인위적으로
-    # 강제하기 어렵다. 대신 _FLUSH_BATCH_SIZE를 monkey patch.
+    # 为了产生 1 个超过 32 events 阈值的 chunk，将 LLM 响应
+    # 拉长。一次 content_delta + message_start/end → 大约 3 个
+    # 事件，因此到不了 batch_size 阈值；time 阈值(2s)又难以人为
+    # 很难强制。改为对 _FLUSH_BATCH_SIZE 进行 monkey patch。
     from app.agent_runtime import streaming as streaming_mod
 
     original_batch = streaming_mod._FLUSH_BATCH_SIZE
-    streaming_mod._FLUSH_BATCH_SIZE = 1  # 매 emit마다 flush 시도
+    streaming_mod._FLUSH_BATCH_SIZE = 1  # 每次 emit 都尝试 flush
 
     call_count = {"n": 0}
     received: list[list[dict[str, Any]]] = []
 
     async def flaky_callback(chunk: list[dict[str, Any]]) -> None:
         call_count["n"] += 1
-        # 첫 partial flush만 실패 (retry_buffer 진입). 이후는 성공.
+        # 仅第一次 partial flush 失败（进入 retry_buffer）。之后成功。
         if call_count["n"] == 1:
             raise RuntimeError("DB hiccup")
         received.append(list(chunk))
@@ -950,26 +950,26 @@ async def test_failed_partial_flush_retries_in_finally():
     finally:
         streaming_mod._FLUSH_BATCH_SIZE = original_batch
 
-    # 첫 호출은 실패했지만 final flush가 retry_buffer + 잔여 buffer를 모두
-    # 시도하여 결국 모든 이벤트가 received에 누적됨. 최소 1번은 성공해야 함.
-    assert call_count["n"] >= 2  # 최소 첫 fail + final retry
-    # 모든 이벤트 id가 run-retry- 프리픽스
+    # 第一次调用虽失败，但 final flush 会重试 retry_buffer + 剩余 buffer，
+    # 最终所有事件都会累积到 received 中。至少必须有 1 次成功。
+    assert call_count["n"] >= 2  # 至少第一次 fail + final retry
+    # 所有事件 id 都以 run-retry- 为前缀
     flat_ids = [evt["id"] for chunk in received for evt in chunk]
     assert any(eid.startswith("run-retry-") for eid in flat_ids)
 
 
 @pytest.mark.asyncio
 async def test_inflight_flush_cap_throttles_create_task():
-    """In-flight task가 _MAX_INFLIGHT_FLUSHES를 초과하면 새 chunk는 buffer에 보관.
+    """当 In-flight task 超过 _MAX_INFLIGHT_FLUSHES 时，新 chunk 保留在 buffer 中。
 
-    Backpressure 회귀 가드 — DB가 느려져도 task 폭주가 일어나지 않는다.
+    Backpressure 回归守卫 — 即使 DB 变慢，也不会发生 task 暴增。
     """
     from app.agent_runtime import streaming as streaming_mod
 
     original_batch = streaming_mod._FLUSH_BATCH_SIZE
     original_cap = streaming_mod._MAX_INFLIGHT_FLUSHES
     streaming_mod._FLUSH_BATCH_SIZE = 1
-    streaming_mod._MAX_INFLIGHT_FLUSHES = 1  # 한 번에 1개만 in-flight
+    streaming_mod._MAX_INFLIGHT_FLUSHES = 1  # 同一时间最多 1 个 in-flight
 
     flush_started = asyncio.Event()
     flush_release = asyncio.Event()
@@ -978,16 +978,16 @@ async def test_inflight_flush_cap_throttles_create_task():
     async def slow_callback(chunk: list[dict[str, Any]]) -> None:
         flush_count["n"] += 1
         flush_started.set()
-        # 첫 호출은 release까지 대기 — in-flight 점유
+        # 第一次调用等待 release — 占用 in-flight
         if flush_count["n"] == 1:
             await flush_release.wait()
 
-    # 여러 content_delta를 yield하는 agent → 여러 flush 시도 유발
+    # 多个 content_delta 被 yield，agent 因此触发多次 flush 尝试
     chunks = [(_make_ai_chunk(f"c{i}"), {}) for i in range(5)]
     agent = MockAgent(chunks)
 
     try:
-        # 백그라운드에서 stream 진행
+        # 在后台推进 stream
         events: list[str] = []
 
         async def consume():
@@ -997,48 +997,48 @@ async def test_inflight_flush_cap_throttles_create_task():
                 events.append(e)
 
         consume_task = asyncio.create_task(consume())
-        # 첫 flush 시작 대기 (in-flight=1 점유)
+        # 等待第一次 flush 开始（占用 in-flight=1）
         await asyncio.wait_for(flush_started.wait(), timeout=2.0)
-        # 다른 emit들은 cap 때문에 새 task 안 만들고 buffer에 쌓임.
-        # release하면 finally의 final flush가 잔여를 처리.
+        # 其他 emit 因 cap 不创建新 task，而是堆积在 buffer 中。
+        # release 后由 finally 的 final flush 处理剩余内容。
         flush_release.set()
         await asyncio.wait_for(consume_task, timeout=5.0)
     finally:
         streaming_mod._FLUSH_BATCH_SIZE = original_batch
         streaming_mod._MAX_INFLIGHT_FLUSHES = original_cap
 
-    # 최소 1회는 호출됐고, cap 덕분에 무한 폭주는 안 일어남.
-    # 정확한 호출 수는 timing-dependent라 lower bound만 검증.
+    # 至少调用过 1 次，且由于 cap 不会无限暴增。
+    # 精确调用次数是 timing-dependent，因此只验证 lower bound。
     assert flush_count["n"] >= 1
 
 
 @pytest.mark.asyncio
 async def test_retry_buffer_overflow_drops_oldest():
-    """retry_buffer가 _MAX_RETRY_BUFFER_EVENTS 초과 시 oldest부터 drop.
+    """retry_buffer 超过 _MAX_RETRY_BUFFER_EVENTS 时，从 oldest 开始 drop。
 
-    DB 영속 장애 시나리오 — 모든 partial flush가 실패하고 retry_buffer
-    가 한도를 넘으면 OOM 방지를 위해 oldest event를 drop해야 한다.
+    DB 持久化故障场景 — 所有 partial flush 都失败，retry_buffer
+    超过上限时为了防止 OOM，必须将 oldest event drop。
     """
     from app.agent_runtime import streaming as streaming_mod
 
     original_batch = streaming_mod._FLUSH_BATCH_SIZE
     original_cap = streaming_mod._MAX_RETRY_BUFFER_EVENTS
     streaming_mod._FLUSH_BATCH_SIZE = 1
-    streaming_mod._MAX_RETRY_BUFFER_EVENTS = 3  # 매우 작은 cap으로 즉시 overflow
+    streaming_mod._MAX_RETRY_BUFFER_EVENTS = 3  # 用很小的 cap 立即触发 overflow
 
     flush_count = {"n": 0}
     received: list[list[dict[str, Any]]] = []
 
     async def always_failing(chunk: list[dict[str, Any]]) -> None:
         flush_count["n"] += 1
-        # 모든 partial flush 실패 → retry_buffer로 적재
-        # final flush(>= 5번째 호출 추정)에서만 성공해 capture
+        # 所有 partial flush 失败 → 写入 retry_buffer
+        # 仅在 final flush（预计第 >=5 次调用）时成功并 capture
         if flush_count["n"] < 5:
             raise RuntimeError("DB down")
         received.append(list(chunk))
 
     try:
-        # 여러 content_delta로 여러 partial flush 유발
+        # 用多个 content_delta 触发多次 partial flush
         chunks = [(_make_ai_chunk(f"c{i}"), {}) for i in range(10)]
         agent = MockAgent(chunks)
         _ = [
@@ -1055,11 +1055,9 @@ async def test_retry_buffer_overflow_drops_oldest():
         streaming_mod._FLUSH_BATCH_SIZE = original_batch
         streaming_mod._MAX_RETRY_BUFFER_EVENTS = original_cap
 
-    # 최종 flush로 받은 event 수 합산이 cap(=3) 이하여야 함 — 초과 시 drop됨.
-    # 단, final flush가 retry_buffer + flush_buffer 두 chunk로 호출되므로
-    # received[0]는 retry_buffer (cap 이하), received[1]은 잔여 flush_buffer.
+    # 最终 flush 收到的 event 总数必须 <= cap(=3) — 超过部分应被 drop。
+    # 但 final flush 会将 retry_buffer + flush_buffer 作为两个 chunk 调用，
+    # received[0] 是 retry_buffer（不超过 cap），received[1] 是剩余 flush_buffer。
     if received:
         retry_chunk_size = len(received[0])
-        assert retry_chunk_size <= 3, (
-            f"retry_buffer overflow가 안 일어남: {retry_chunk_size} > cap=3"
-        )
+        assert retry_chunk_size <= 3, f"retry_buffer overflow 未发生: {retry_chunk_size} > cap=3"

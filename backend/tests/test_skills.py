@@ -66,15 +66,15 @@ class TestInspector:
             )
 
     def test_parse_skill_md_normalizes_parser_exceptions(self) -> None:
-        """하위 파서의 예외 표면 정규화 (R8) — 소비자가 예외 tuple을 열거하지
-        않아도 계약 타입(SkillMetadataError=ValueError) 하나로 잡히게 한다.
-        non-string 최상위 키(`on:`=YAML 1.1 불리언)는 frontmatter의 Post(**kw)
-        에서 TypeError, 깨진 YAML은 yaml.YAMLError를 던지던 케이스."""
+        """标准化下游解析器的异常表面 (R8) — 让消费者无需枚举异常 tuple，
+        只捕获一个契约类型(SkillMetadataError=ValueError)。
+        non-string 顶层键(`on:`=YAML 1.1 布尔值)会在 frontmatter 的 Post(**kw)
+        中抛 TypeError，损坏 YAML 则会抛 yaml.YAMLError。"""
 
         for broken in (
-            "---\non: pushed\nname: x\ndescription: y\n---\nbody\n",  # bool 키 → TypeError
-            "---\n2020-01-01: x\nname: n\ndescription: d\n---\nbody\n",  # date 키
-            "---\nname: [unclosed\n---\nbody\n",  # YAML 파서 오류
+            "---\non: pushed\nname: x\ndescription: y\n---\nbody\n",  # bool 键 → TypeError
+            "---\n2020-01-01: x\nname: n\ndescription: d\n---\nbody\n",  # date 键
+            "---\nname: [unclosed\n---\nbody\n",  # YAML 解析器错误
         ):
             with pytest.raises(SkillMetadataError, match="frontmatter"):
                 parse_skill_md(broken, require_metadata=True)

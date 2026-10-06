@@ -1,7 +1,7 @@
-"""리비전 스냅샷 파일 API (Phase 2 — 버전 diff/소스 보기).
+"""版本快照文件 API (Phase 2 — 版本 diff/源查看)。
 
-zip은 디스크 추출 없이 읽고, 내용 조회는 열거 경로 **정확 일치**만 —
-traversal/바이너리/2MB 초과/pruned는 전부 404(fail-closed) 계약을 검증한다.
+zip 不解压到磁盘，内容查询仅允许与枚举路径**精确匹配** —
+验证 traversal/二进制/2MB 超限/pruned 全部返回 404(fail-closed) 的契约。
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ async def _make_skill_with_revision(db: AsyncSession) -> tuple[Skill, SkillRevis
 
 
 def _rewrite_snapshot(revision: SkillRevision, entries: dict[str, bytes]) -> None:
-    """스냅샷 zip을 임의 내용으로 교체 — 바이너리/상한 케이스 조립용."""
+    """将快照 zip 替换为任意内容 — 用于组装二进制/上限用例。"""
 
     path = Path(settings.data_root) / revision.object_key
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -152,7 +152,7 @@ async def test_missing_snapshot_zip_treated_as_pruned_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """pruned 플래그 없이 zip만 유실된 스냅샷 — 500 대신 pruned 계약 (리뷰 R)."""
+    """无 pruned 标志且只丢失 zip 的快照 — 采用 pruned 契约而非 500（评审 R）。"""
 
     skill, revision = await _make_skill_with_revision(db)
     (Path(settings.data_root) / revision.object_key).unlink()
@@ -191,9 +191,9 @@ async def test_binary_sniff_boundary_contract(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """8KB sniff 비대칭 계약 고정 — 첫 널바이트가 8KB 뒤인 파일은 목록엔
-    텍스트(is_binary=False)로 뜨지만 content는 전량 검사로 404(fail-closed).
-    누가 content 검사를 head-sniff로 '일관화'하면 이 테스트가 레드가 된다."""
+    """锁定 8KB sniff 不对称契约 — 首个空字节位于 8KB 之后的文件会在列表中
+    显示为文本(is_binary=False)，但 content 通过全量检查返回 404(fail-closed)。
+    若有人把 content 检查'统一'为 head-sniff，此测试会变红。"""
 
     skill, revision = await _make_skill_with_revision(db)
     late_null = b"a" * 9000 + b"\x00" + b"b" * 10
@@ -203,20 +203,20 @@ async def test_binary_sniff_boundary_contract(
     assert files.status_code == 200, files.text
     entry = files.json()["files"][0]
     assert entry["path"] == "late-null.md"
-    assert entry["is_binary"] is False  # head 8KB에는 널바이트 없음
+    assert entry["is_binary"] is False  # head 8KB 中没有空字节
 
     content = await client.get(
         f"/api/skills/{skill.id}/revisions/{revision.id}/files/content",
         params={"path": "late-null.md"},
     )
-    assert content.status_code == 404  # 전량 검사는 fail-closed
+    assert content.status_code == 404  # 全量检查为 fail-closed
 
 
 async def test_exact_display_cap_is_served(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """정확히 2MB인 파일은 200 — 상한 비교가 >에서 >=로 회귀하면 레드."""
+    """恰好 2MB 的文件返回 200 — 若上限比较从 > 回归为 >=，测试变红。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(revision, {"exact.md": b"a" * (2 * 1024 * 1024)})
@@ -233,7 +233,7 @@ async def test_rollback_pruned_snapshot_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """pruned/zip 유실 리비전 rollback은 409 명시 응답 — files/content와 대칭."""
+    """pruned/zip 丢失版本 rollback 返回显式 409 — 与 files/content 对称。"""
 
     skill, revision = await _make_skill_with_revision(db)
     revision.metadata_json = {"snapshot_pruned": True}
@@ -255,7 +255,7 @@ async def test_corrupt_snapshot_zip_treated_as_unavailable_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """중단된 쓰기 등으로 손상된 zip — 유실과 동일 계약(500 금지, R5)."""
+    """因中断写入等造成的损坏 zip — 与丢失采用相同契约（禁止 500，R5）。"""
 
     skill, revision = await _make_skill_with_revision(db)
     (Path(settings.data_root) / revision.object_key).write_bytes(b"not-a-zip")
@@ -276,11 +276,11 @@ async def test_corrupt_snapshot_zip_treated_as_unavailable_not_500(
 
 
 def _corrupt_member_bytes(path: Path) -> None:
-    """central directory는 살리고 첫 멤버의 압축 데이터만 손상 — open은 성공하고
-    read(CRC/zlib)에서 터지는 부류를 조립한다 (R6)."""
+    """保留 central directory，仅损坏第一个成员的压缩数据 — 组装
+    open 成功但在 read(CRC/zlib) 时失败的类型 (R6)。"""
 
     data = bytearray(path.read_bytes())
-    # local header 30B + filename('SKILL.md'=8B) 이후가 압축 스트림.
+    # local header 30B + filename('SKILL.md'=8B) 之后是压缩流。
     for offset in range(40, 46):
         data[offset] ^= 0xFF
     path.write_bytes(bytes(data))
@@ -290,7 +290,7 @@ async def test_member_level_corruption_treated_as_unavailable_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """멤버 바이트 손상(Bad CRC/zlib) — open 검사를 통과해도 유실과 동일 계약 (R6)."""
+    """成员字节损坏(Bad CRC/zlib) — 即使通过 open 检查，也与丢失采用相同契约 (R6)。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _corrupt_member_bytes(Path(settings.data_root) / revision.object_key)
@@ -314,8 +314,8 @@ async def test_snapshot_invalid_frontmatter_rollback_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """frontmatter 계약 이전의 레거시 SKILL.md 스냅샷 rollback — 형제 케이스
-    (유실/손상/SKILL.md 부재)와 같은 409로 수렴, 디스크 무변경 (R6)."""
+    """frontmatter 契约之前的旧版 SKILL.md 快照 rollback — 与兄弟情况
+    （丢失/损坏/SKILL.md 缺失）统一为 409，磁盘无修改 (R6)。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(revision, {"SKILL.md": b"no frontmatter at all"})
@@ -329,8 +329,8 @@ async def test_snapshot_malformed_yaml_rollback_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """깨진 YAML frontmatter — frontmatter.loads의 ParserError는 ValueError
-    계열이 아니라서 frontmatter 부재(409)와 응답이 갈라졌었다 (R7)."""
+    """损坏的 YAML frontmatter — frontmatter.loads 的 ParserError 不属于 ValueError
+    系列，因此曾与 frontmatter 缺失(409)产生不同响应 (R7)。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(revision, {"SKILL.md": b"---\nname: [unclosed\n---\nbody\n"})
@@ -344,9 +344,9 @@ async def test_snapshot_non_string_yaml_key_rollback_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """non-string 최상위 YAML 키(`on:`) — frontmatter의 Post(**kw)가 TypeError를
-    던져 (ValueError, YAMLError) tuple을 통과하던 클래스. parse_skill_md leaf
-    정규화로 형제와 같은 409 (R8)."""
+    """non-string 顶层 YAML 键(`on:`) — frontmatter 的 Post(**kw) 会抛出 TypeError，
+    穿过 (ValueError, YAMLError) tuple。通过 parse_skill_md leaf
+    标准化为与兄弟类别相同的 409 (R8)。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(
@@ -363,8 +363,8 @@ async def test_snapshot_non_utf8_rollback_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """CRC는 멀쩡한 비 UTF-8 SKILL.md — decode는 zip read 밖에서 터지므로
-    별도 처리 없으면 500 (읽기 API는 errors='replace'로 서빙하는 비대칭, R7)."""
+    """CRC 正常但非 UTF-8 的 SKILL.md — decode 在 zip read 之外失败，
+    若不单独处理会返回 500（读取 API 则以 errors='replace' 提供服务，存在不对称，R7）。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(revision, {"SKILL.md": b"\xff\xfe not utf-8 bytes"})
@@ -378,11 +378,11 @@ async def test_overlong_entry_path_excluded_from_files_list(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """content Query 상한(4096)을 넘는 엔트리는 목록에서도 제외 — 목록엔 있는데
-    못 여는 파일 비대칭을 상수 공유로 닫는다 (R6)."""
+    """超过 content Query 上限(4096)的条目也从列表中排除 — 通过共享常量封闭
+    “列表可见但无法打开”的不对称 (R6)。"""
 
     skill, revision = await _make_skill_with_revision(db)
-    overlong = "/".join(["deep"] * 900) + "/leaf.md"  # 4500자+
+    overlong = "/".join(["deep"] * 900) + "/leaf.md"  # 4500字符+
     assert len(overlong) > 4096
     _rewrite_snapshot(revision, {"SKILL.md": b"ok", overlong: b"unreachable"})
 
@@ -395,7 +395,7 @@ async def test_snapshot_without_skill_md_rollback_conflict_not_500(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """SKILL.md 없는 스냅샷 rollback — 변이 전 검증으로 409 (R5)."""
+    """缺少 SKILL.md 的快照 rollback — 通过变更前验证返回 409 (R5)。"""
 
     skill, revision = await _make_skill_with_revision(db)
     _rewrite_snapshot(revision, {"notes.md": b"no skill md"})
@@ -409,11 +409,11 @@ async def test_long_entry_path_content_served(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """500자 초과 중첩 경로도 목록과 대칭으로 서빙된다 — 목록엔 있는데
-    content는 422로 못 여는 비대칭 방지 (R5)."""
+    """超过 500 字符的嵌套路径也与列表对称地提供服务 — 防止“列表可见但
+    content 因 422 无法打开”的不对称 (R5)。"""
 
     skill, revision = await _make_skill_with_revision(db)
-    long_path = "/".join(["deep"] * 130) + "/leaf.md"  # 650자+
+    long_path = "/".join(["deep"] * 130) + "/leaf.md"  # 650字符+
     assert len(long_path) > 500
     _rewrite_snapshot(revision, {long_path: b"deep content"})
 
@@ -433,7 +433,7 @@ async def test_foreign_skill_revision_files_404(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """타 유저 스킬은 존재 여부와 무관하게 404 — enumeration-safe."""
+    """其他用户的技能无论是否存在都返回 404 — enumeration-safe。"""
 
     foreign_skill = Skill(
         id=uuid.uuid4(),

@@ -10,7 +10,7 @@ Covers the happy paths sat called out in the M6 brief:
 * disable_item → status='disabled', is_listed=False
 
 Module boundary: this file lives in ``tests/`` which is normally
-베조스's area. The brief explicitly carved out
+贝索斯's area. The brief explicitly carved out
 ``tests/test_marketplace_*.py`` for the marketplace surface tests in
 Slice A/B; Slice C publish belongs to the same family. Keep new files
 narrowly named so a future split into ``tests/marketplace/`` is clean.

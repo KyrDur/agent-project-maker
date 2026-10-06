@@ -15,7 +15,7 @@ function _turn(events: TurnTrace['events'], msgId = 'm1'): TurnTrace {
 }
 
 describe('extractChips', () => {
-  it('content 전용 turn은 빈 배열을 반환한다', () => {
+  it('仅含 content 的 turn 返回空数组', () => {
     const turn = _turn([
       { id: 'm1-1', event: 'message_start', data: { id: 'm1' } },
       { id: 'm1-2', event: 'content_delta', data: { delta: '你好' } },
@@ -24,7 +24,7 @@ describe('extractChips', () => {
     expect(extractChips(turn)).toEqual([])
   })
 
-  it('tool_call_start + tool_call_result를 1:1로 매칭한다', () => {
+  it('将 tool_call_start + tool_call_result 按 1:1 匹配', () => {
     const turn = _turn([
       { id: 'm1-1', event: 'message_start', data: { id: 'm1' } },
       {
@@ -49,14 +49,14 @@ describe('extractChips', () => {
     })
   })
 
-  it('"task" 도구는 subagent kind 칩으로 변환된다', () => {
+  it('"task" 工具会转换为 subagent kind chip', () => {
     const turn = _turn([
       {
         id: 'm1-1',
         event: 'tool_call_start',
         data: {
           tool_name: 'task',
-          parameters: { agent_name: 'researcher', input: 'X에 대해 조사' },
+          parameters: { agent_name: 'researcher', input: '调查 X' },
         },
       },
     ])
@@ -70,7 +70,7 @@ describe('extractChips', () => {
     ])
   })
 
-  it('subagent 이름이 없으면 subagent_type으로 폴백', () => {
+  it('没有 subagent 名称时回退到 subagent_type', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -81,7 +81,7 @@ describe('extractChips', () => {
     expect(extractChips(turn)[0].title).toBe('planner')
   })
 
-  it('subagent 이름/타입 모두 없으면 "Sub-agent"', () => {
+  it('subagent 名称/类型都没有时使用 "Sub-agent"', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -92,7 +92,7 @@ describe('extractChips', () => {
     expect(extractChips(turn)[0].title).toBe('Sub-agent')
   })
 
-  it('"write_todos"는 Plan 칩으로 변환되고 진행률을 meta에 단다', () => {
+  it('"write_todos" 会转换为 Plan chip，并把进度写入 meta', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -115,7 +115,7 @@ describe('extractChips', () => {
     ])
   })
 
-  it('write_todos가 todos 비어있으면 meta 없음', () => {
+  it('write_todos 的 todos 为空时没有 meta', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -131,7 +131,7 @@ describe('extractChips', () => {
     })
   })
 
-  it('같은 도구가 여러 번 호출되면 결과를 FIFO로 매칭한다', () => {
+  it('同一工具被多次调用时，按 FIFO 匹配结果', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -160,7 +160,7 @@ describe('extractChips', () => {
     expect(chips[1].meta).toBe('13 chars')
   })
 
-  it('tool_call_start만 있고 result 없어도 success로 표시 (스트림 종료 후 표시용)', () => {
+  it('只有 tool_call_start、没有 result 时也显示为 success（用于 stream 结束后显示）', () => {
     const turn = _turn([
       {
         id: 'm1-1',
@@ -174,7 +174,7 @@ describe('extractChips', () => {
     expect(chips[0].meta).toBeUndefined()
   })
 
-  it('도구명이 비어있는 tool_call_start는 무시한다', () => {
+  it('忽略工具名为空的 tool_call_start', () => {
     const turn = _turn([
       { id: 'm1-1', event: 'tool_call_start', data: { tool_name: '', parameters: {} } },
       {
@@ -190,18 +190,18 @@ describe('extractChips', () => {
 })
 
 describe('findTurnForMessage', () => {
-  it('assistant_msg_id로 매칭되는 turn을 반환', () => {
+  it('返回与 assistant_msg_id 匹配的 turn', () => {
     const t1 = _turn([], 'msg-A')
     const t2 = _turn([], 'msg-B')
     expect(findTurnForMessage([t1, t2], 'msg-B')).toBe(t2)
   })
 
-  it('매칭 없으면 null', () => {
+  it('无匹配时返回 null', () => {
     const t1 = _turn([], 'msg-A')
     expect(findTurnForMessage([t1], 'unknown')).toBeNull()
   })
 
-  it('빈 배열이면 null', () => {
+  it('空数组时返回 null', () => {
     expect(findTurnForMessage([], 'msg-A')).toBeNull()
   })
 })

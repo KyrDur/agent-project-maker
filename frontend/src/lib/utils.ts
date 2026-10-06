@@ -7,8 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * 절대 URL이 아닌 상대 경로(`/api/...`)에 API_BASE를 prepend.
- * `<img src>` 등에서 backend(:8001)로 직접 요청하기 위함.
+ * 对非绝对 URL 的相对路径（`/api/...`）prepend API_BASE。
+ * 用于从 `<img src>` 等直接请求 backend(:8001)。
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null

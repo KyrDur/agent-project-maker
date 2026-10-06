@@ -5,7 +5,7 @@ export interface ChipInfo {
   kind: ChipKind
   status: ChipStatus
   title: string
-  /** 보조 라벨 — 도구는 결과 길이/개수, plan은 todos 카운트 등. */
+  /** 辅助标签 — 工具显示结果长度/数量，plan 显示 todos 计数等。 */
   meta?: string | undefined
 }
 

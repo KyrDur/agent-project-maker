@@ -339,11 +339,11 @@ class TestEnumerationOracleSafety:
         body = resp.json()
         assert body["id"] == str(item.id)
         # 只验证 Publication summary 能正常对 owner 本人暴露。
-        # 카탈로그 서비스는 publication_link가 있을 때만 published_* 상태를
-        # 표시한다 (orphaned owner — source skill을 삭제한 케이스 — 에서는
-        # not_published로 떨어뜨려야 자기 publish 백업본을 다시 install 가능).
-        # 이 fixture는 publication_link 없이 draft row만 만들므로
-        # "draft" 또는 "not_published" 둘 다 valid 한 owner view.
+        # 目录服务仅在存在 publication_link 时才显示 published_* 状态
+        # （对于 orphaned owner — 已删除 source skill 的情况 — 应
+        # 必须降为 not_published，才能将自己的 publish 备份副本重新 install）。
+        # 此 fixture 只创建不带 publication_link 的 draft row，因此
+        # "draft" 或 "not_published" 都是 valid 的 owner view。
         assert body["publication_summary"]["state"] in ("draft", "not_published")
 
     @pytest.mark.asyncio

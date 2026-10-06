@@ -370,10 +370,10 @@ async def test_user_b_cannot_touch_user_a_conversation_surfaces(raw_client: Asyn
         assert resp.status_code == 404, url
         assert resp.json()["error"]["code"] == "CONVERSATION_NOT_FOUND", url
 
-    # 의도된 계약 (PR #292): 소유권 게이트가 body 검증보다 먼저 실행되므로,
-    # 미소유 대화 + invalid body 는 422 가 아니라 404 다 — 미소유 리소스에
-    # validation oracle 을 노출하지 않는다. (Depends 전환의 내재적 순서:
-    # sub-dependency → body 검증. 구 인라인 체크 시절에는 422 가 먼저였다.)
+    # 预期契约 (PR #292)：所有权 门槛 先于 body 验证执行，因此
+    # 非所属 对话 + invalid body 返回 404 而非 422 — 对非所属资源
+    # 不暴露 validation oracle。（Depends 转换的内在顺序：
+    # sub-dependency → body 验证。旧内联检查时期则是 422 在前。）
     invalid_body = await raw_client.patch(
         f"/api/conversations/{conv_id}",
         json={"title": 12345},
@@ -382,8 +382,8 @@ async def test_user_b_cannot_touch_user_a_conversation_surfaces(raw_client: Asyn
     assert invalid_body.status_code == 404
     assert invalid_body.json()["error"]["code"] == "CONVERSATION_NOT_FOUND"
 
-    # artifacts DELETE — #282 전환분 중 유일한 mutation 게이트 (R2에서
-    # decorator → 파라미터 위치로 정렬). 게이트 자체가 빠지면 여기서 잡는다.
+    # artifacts DELETE — #282 转换项中唯一的 mutation 门槛（在 R2 中
+    # 从 decorator → 参数位置对齐）。若门槛本身缺失，会在这里捕获。
     artifact_delete = await raw_client.delete(
         f"/api/conversations/{conv_id}/artifacts/{uuid.uuid4()}",
         headers=b.headers(),
