@@ -161,6 +161,8 @@ def run_summary(run: AgentProjectEvalRun) -> dict[str, Any]:
         "passed": metrics.get("passed") if complete else None,
         "failed": metrics.get("failed") if complete else None,
         "errored": metrics.get("errored") if complete else None,
+        "execution_errors": metrics.get("execution_errors") if complete else None,
+        "judge_errors": metrics.get("judge_errors") if complete else None,
         "pass_rate": run.pass_rate if complete else None,
         "scoring": metrics.get("scoring"),
         "metrics": sanitize(metrics.get("metric_scores", {})) if complete else {},
@@ -456,6 +458,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
             },
             "results": {
                 "best_version": selected.version_number if selected else None,
+                "best_run_id": str(best.id) if best else None,
                 "latest_version": versions[-1].version_number if versions else None,
                 "current": run_summary(runs[-1]) if runs else None,
                 "current_version": by_version[str(runs[-1].version_id)].version_number
@@ -488,6 +491,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                     "version": by_version[str(r.version_id)].version_number,
                     "status": r.status,
                     "summary": run_summary(r),
+                    "eval_spec": (r.comparison_json or {}).get("eval_spec"),
                     "cases": [
                         {
                             "reference": f"experiment-{i + 1}/case-{j + 1}",

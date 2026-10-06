@@ -173,7 +173,25 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
         assert {
             k: v for k, v in snapshot.items() if k != "role_configurations"
         } == original and user == TEST_USER_ID
-        return plan() if role == "planner" else generated_cases()
+        from tests.test_agent_project_scoring import case_for, structured_plan
+
+        spec = structured_plan()
+        if "rubric_review_rules" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Controlled source review"}
+                    for key in payload["rubric_review_rules"]
+                ]
+            }
+        if role == "planner":
+            return spec
+        data = generated_cases()
+        for case in data["cases"]:
+            case.update(
+                metric_applicability=case_for(spec)["metric_applicability"],
+                metric_applicability_reasons={},
+            )
+        return data
 
     monkeypatch.setattr(semantic, "json_call", generate_json)
     path = f"/api/agents/{agent.id}/project"
@@ -185,12 +203,15 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
     response = await client.post(path + "/eval-sets/generate", json=body)
     assert response.status_code == 201
     assert response.json()["evaluation_focus_reason"] is None
-    response = await client.post(path + "/eval-sets/generate", json=focus_body(version.id))
+    response = await client.post(
+        path + "/eval-sets/generate",
+        json={**focus_body(version.id), "evaluation_focus": ["business_quality", "groundedness"]},
+    )
     assert response.status_code == 201
     dataset = response.json()
     assert len(dataset["cases_json"]) == 20 and not dataset["frozen"]
     assert [item["id"] for item in dataset["evaluation_focus_json"]] == [
-        "tool_correctness",
+        "business_quality",
         "groundedness",
     ]
     assert dataset["evaluation_focus_reason"] == "工具调用和事实依据是上线前最大的风险。"

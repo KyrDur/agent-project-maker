@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class AgentProjectResponse(BaseModel):
@@ -91,11 +91,13 @@ class ToolAssertion(BaseModel):
 
 
 class CaseExpected(BaseModel):
+    max_characters: int | None = Field(default=None, ge=1, le=10000)
     state: list[StateAssertion] = Field(default_factory=list, max_length=20)
     tool_arguments: list[ToolAssertion] = Field(default_factory=list, max_length=20)
     necessary_order: list[str] = Field(default_factory=list, max_length=30)
     answer: str | None = Field(default=None, max_length=10000)
     exact_answer: str | None = Field(default=None, max_length=10000)
+    attempted_tools: list[str] = Field(default_factory=list, max_length=30)
     required_tools: list[str] = Field(default_factory=list, max_length=30)
     forbidden_tools: list[str] = Field(default_factory=list, max_length=30)
     handoff: str | None = Field(default=None, max_length=100)
@@ -140,6 +142,8 @@ class EvaluationCase(BaseModel):
     initial_state: dict[str, Any] = Field(default_factory=dict)
     judgment_basis: str | None = Field(default=None, max_length=4000)
     expected_behavior: dict[str, Any] | None = None
+    metric_applicability: dict[str, list[str]] | None = None
+    metric_applicability_reasons: dict[str, str] = Field(default_factory=dict)
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     name: str = Field(min_length=1, max_length=200)
     input: str = Field(min_length=1, max_length=10000)
@@ -214,12 +218,34 @@ class EvalCaseGenerationRequest(EvalGenerationRequest):
     evaluation_focus_reason: str | None = Field(default=None, max_length=1000)
 
 
+class RequirementReference(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    field: Literal["goal", "inputs", "deliverables", "business_rules", "success_conditions"]
+    quote: str = Field(min_length=1, max_length=4000)
+
+
+class ScoringCriterion(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")
+    description: str = Field(min_length=1, max_length=1000)
+    requirement_refs: list[RequirementReference] = Field(min_length=1, max_length=5)
+    fail: str = Field(min_length=1, max_length=1000)
+    partial: str = Field(min_length=1, max_length=1000)
+    full: str = Field(min_length=1, max_length=1000)
+    critical: bool = False
+
+
 class EvalMetric(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")
     type: Literal["llm_judge", "deterministic"]
     weight: float = Field(gt=0, le=1, allow_inf_nan=False)
     criteria: str = Field(min_length=1, max_length=2000)
+    display_name: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, min_length=1, max_length=1000)
+    requirement_refs: list[RequirementReference] = Field(default_factory=list, max_length=5)
+    scoring_mode: Literal["legacy", "all_checks", "criterion_mean"] = "legacy"
+    scoring_criteria: list[ScoringCriterion] = Field(default_factory=list, max_length=8)
 
 
 SCENARIOS = (
@@ -242,6 +268,7 @@ METRICS = {
 class EvalSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
     capability_profile: dict[str, Any] = Field(default_factory=dict)
+    rubric_version: Literal[1, 2] = 1
     metrics: list[EvalMetric] = Field(min_length=3, max_length=5)
     pass_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
 
@@ -260,7 +287,48 @@ class EvalSpec(BaseModel):
             expected = "deterministic" if metric.name == "tool_correctness" else "llm_judge"
             if metric.name != "format_compliance" and metric.type != expected:
                 raise ValueError("Invalid metric type")
+            if self.rubric_version == 2:
+                if not metric.display_name or not metric.description or not metric.requirement_refs:
+                    raise ValueError("Missing metric explanation or requirement source")
+                mode = "all_checks" if metric.type == "deterministic" else "criterion_mean"
+                if metric.scoring_mode != mode:
+                    raise ValueError("Scoring method must match execution")
+                ids = [c.id for c in metric.scoring_criteria]
+                if metric.type == "llm_judge" and (not ids or len(set(ids)) != len(ids)):
+                    raise ValueError("Missing or duplicate scoring criteria")
+                if metric.type == "deterministic" and ids:
+                    raise ValueError("Deterministic rules come from program assertions")
         return self
+
+
+class CriterionEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    reference: str = Field(min_length=1, max_length=200)
+    quote: str = Field(min_length=1, max_length=4000)
+
+
+class CriterionVerdict(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    criterion_id: str
+    level: float = Field(ge=0, le=1, allow_inf_nan=False)
+    reason: str = Field(min_length=1, max_length=2000)
+    evidence: list[CriterionEvidence] = Field(min_length=1, max_length=5)
+
+    @field_validator("level", mode="before")
+    @classmethod
+    def numeric_level(cls, value: Any) -> Any:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("Level must be a number, not a boolean or string")
+        if value not in {0, 0.5, 1}:
+            raise ValueError("Level must be exactly 0, 0.5 or 1")
+        return value
+
+
+class RubricRuleReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    reference: str
+    supported: bool
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class JudgeScore(BaseModel):

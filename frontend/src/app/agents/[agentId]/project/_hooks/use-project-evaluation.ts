@@ -119,7 +119,13 @@ export function useProjectGeneration(agentId: string) {
     }) => agentProjectApi.generateCases(agentId, data.versionId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
   })
-  return { project, plan, cases }
+  const error = plan.error ?? cases.error
+  return {
+    project,
+    plan,
+    cases,
+    errorCode: error && 'code' in error && typeof error.code === 'string' ? error.code : '',
+  }
 }
 
 export function useProjectOptimization(agentId: string, runId: string) {

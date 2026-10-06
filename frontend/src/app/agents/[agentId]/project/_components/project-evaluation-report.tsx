@@ -7,6 +7,8 @@ import { ErrorState } from '@/components/shared/error-state'
 import { formatDisplayDateTime, formatDisplayNumber } from '@/lib/utils/display-format'
 import { useEvaluationReports } from '../_hooks/use-project-evaluation'
 import type { AgentProjectVersionSummary, EvaluationReport } from '../_lib/agent-project-types'
+import { ProjectMetrics } from './project-evaluation'
+import { ProjectMetricScores, useMetricName } from './project-scoring'
 import { ProjectSelect } from './project-select'
 
 export function ProjectEvaluationReport({
@@ -51,8 +53,7 @@ export function ProjectEvaluationReport({
       value: r.evaluation_run_id,
       label: `${version(r)} · ${formatDisplayDateTime(r.created_at, { locale })} · ${percent(r.score)} · ${r.evaluation_run_id.slice(0, 8)}`,
     }))
-  const metricName = (name: string) =>
-    projectT.has(`metricNames.${name}`) ? projectT(`metricNames.${name}`) : name
+  const metricName = useMetricName()
 
   return (
     <div id="evaluation-report">
@@ -75,7 +76,9 @@ export function ProjectEvaluationReport({
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <h3 className="font-medium">{t('score')}</h3>
-                <p className="text-3xl font-semibold">{percent(selected.score)}</p>
+                <p className="text-3xl font-semibold">
+                  {percent(selected.statistics?.pass_rate ?? selected.score)}
+                </p>
               </div>
               <div>
                 <h3 className="font-medium">{t('summary')}</h3>
@@ -95,20 +98,25 @@ export function ProjectEvaluationReport({
                 )}
               </div>
             </div>
+            {selected.statistics && (
+              <ProjectMetrics metrics={selected.statistics} showScores={false} />
+            )}
             <p className="text-sm text-muted-foreground">{t('scoreRule')}</p>
             <p className="text-sm text-muted-foreground">{t('bestRule')}</p>
             <p className="break-all text-sm">{t('dataset', { id: selected.eval_set_id })}</p>
             <section className="space-y-2">
               <h3 className="font-medium">{t('metrics')}</h3>
               {!Object.keys(selected.metrics).length && <p>{t('noMetrics')}</p>}
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(selected.metrics).map(([name, score]) => (
-                  <div key={name}>
-                    <dt>{metricName(name)}</dt>
-                    <dd>{percent(score)}</dd>
-                  </div>
-                ))}
-              </dl>
+              <ProjectMetricScores
+                summaries={
+                  selected.statistics?.metric_scores ??
+                  Object.fromEntries(
+                    Object.entries(selected.metrics).map(([name, score]) => [name, { score }]),
+                  )
+                }
+                spec={selected.eval_spec}
+                total={selected.total}
+              />
             </section>
             <section className="space-y-2">
               <h3 className="font-medium">{t('badCases', { count: selected.bad_case_count })}</h3>
@@ -182,10 +190,18 @@ export function ProjectEvaluationReport({
                           .filter(([name]) => baseline.metrics[name] != null)
                           .map(([name, score]) => (
                             <div key={name}>
-                              <dt>{metricName(name)}</dt>
+                              <dt>
+                                {metricName(
+                                  name,
+                                  selected.eval_spec?.metrics.find((m) => m.name === name),
+                                )}
+                              </dt>
                               <dd>
-                                {percent(baseline.metrics[name])} → {percent(score)} ·{' '}
-                                {delta(baseline.metrics[name], score)}
+                                {projectT('scoring.metricComparison', {
+                                  before: number(baseline.metrics[name] * 100),
+                                  after: number(score * 100),
+                                  delta: `${score >= baseline.metrics[name] ? '+' : ''}${number((score - baseline.metrics[name]) * 100)}`,
+                                })}
                               </dd>
                             </div>
                           ))}

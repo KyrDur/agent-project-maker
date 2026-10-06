@@ -20,6 +20,8 @@ class EvaluationReport(BaseModel):
     status: str
     score: float | None
     metrics: dict[str, float]
+    statistics: dict[str, Any] = Field(default_factory=dict)
+    eval_spec: dict[str, Any] | None = None
     total: int
     passed: int
     bad_case_count: int

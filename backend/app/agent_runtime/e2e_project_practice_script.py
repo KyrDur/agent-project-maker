@@ -12,7 +12,7 @@ SECOND_PATCH = "Explain observed evidence before final answer."
 
 def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
     text = "\n".join(str(m.content) for m in messages)
-    if MARKER not in text:
+    if MARKER not in text and '"rubric_review_rules"' not in text:
         return None
     system = str(messages[0].content)
     if "Intent Analysis Agent" in system:
@@ -64,19 +64,44 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-    if "actual_output" in payload:
+    if "rubric_review_rules" in payload:
+        value = {
+            "rule_reviews": [
+                {"reference": key, "supported": True, "reason": "Fixed response source review"}
+                for key in payload["rubric_review_rules"]
+            ]
+        }
+    elif "actual_output" in payload:
         good = payload["actual_output"].startswith("Complete task using supplied facts.")
         improved = "Verified evidence." in payload["actual_output"]
-        value = {
-            "metric_scores": {
-                m["name"]: {
-                    "score": (1.0 if improved else 0.9) if good else 0.3,
-                    "passed": good,
-                    "reason": "Fixed-response evidence: " + payload["actual_output"],
+        if "metric_applicability" in payload:
+            value = {
+                "criterion_results": {
+                    m["name"]: [
+                        {
+                            "criterion_id": cid,
+                            "level": (1 if improved or cid == "evidence" else 0.5) if good else 0,
+                            "reason": "Fixed-response evidence: " + payload["actual_output"],
+                            "evidence": [
+                                {"reference": "output", "quote": payload["actual_output"]}
+                            ],
+                        }
+                        for cid in payload["metric_applicability"][m["name"]]
+                    ]
+                    for m in payload["metrics"]
                 }
-                for m in payload["metrics"]
             }
-        }
+        else:
+            value = {
+                "metric_scores": {
+                    m["name"]: {
+                        "score": (1.0 if improved else 0.9) if good else 0.3,
+                        "passed": good,
+                        "reason": "Fixed-response evidence: " + payload["actual_output"],
+                    }
+                    for m in payload["metrics"]
+                }
+            }
     elif "cases" in payload and "eval_spec" in payload:
         ids = [c["case_id"] for c in payload["cases"]]
         value = {
@@ -141,18 +166,49 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
                         *payload["capability_profile"]["capabilities"],
                     ],
                     "enabled": True,
+                    "metric_applicability": {
+                        m["name"]: [c["id"] for c in m.get("scoring_criteria", [])]
+                        for m in payload["eval_spec"]["metrics"]
+                        if m["type"] == "llm_judge"
+                    },
+                    "metric_applicability_reasons": {},
                 }
                 for i in range(20)
             ],
         }
     elif "metric_pool" in payload:
         value = {
+            "rubric_version": 2,
             "metrics": [
                 {
                     "name": name,
                     "type": "llm_judge",
                     "weight": weight,
-                    "criteria": "Complete the task using supplied facts and business conditions.",
+                    "criteria": "Use supplied facts and confirmed task conditions.",
+                    "display_name": {
+                        "task_completion": "任务完成",
+                        "groundedness": "事实依据",
+                        "business_quality": "业务质量",
+                    }[name],
+                    "description": "检查已确认的任务条件。",
+                    "scoring_mode": "criterion_mean",
+                    "requirement_refs": [
+                        {"field": "goal", "quote": payload["requirements"]["goal"]}
+                    ],
+                    "scoring_criteria": [
+                        {
+                            "id": cid,
+                            "description": "检查已确认的事实和任务。",
+                            "requirement_refs": [
+                                {"field": field, "quote": payload["requirements"][field]}
+                            ],
+                            "fail": "未满足",
+                            "partial": "部分满足",
+                            "full": "全部满足",
+                            "critical": False,
+                        }
+                        for cid, field in (("condition", "goal"), ("evidence", "business_rules"))
+                    ],
                 }
                 for name, weight in (
                     ("task_completion", 0.4),

@@ -48,7 +48,7 @@ it('shows scores, best version and percentage point differences', async () => {
   render(<ProjectEvaluationReport agentId="agent-id" versions={versions} />)
   expect(await screen.findByText('+50 个百分点')).toBeInTheDocument()
   expect(screen.getByText('V2 · 100%')).toBeInTheDocument()
-  expect(screen.getByText('60% → 90% · +30 个百分点')).toBeInTheDocument()
+  expect(screen.getByText('平均得分 60/100 → 90/100 · +30 分')).toBeInTheDocument()
   expect(screen.getByText('共 2 条用例，通过 2 条')).toBeInTheDocument()
 })
 

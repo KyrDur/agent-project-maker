@@ -90,14 +90,11 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
         await page.getByRole('button', { name: '保存决策与理由' }).click()
         expect((await saved).ok()).toBeTruthy()
       }
-      expect(
-        (
-          await request.post(`${path}/eval-spec/generate`, {
-            headers,
-            data: { version_id: versions[0].id },
-          })
-        ).ok(),
-      ).toBeTruthy()
+      const planResponse = await request.post(`${path}/eval-spec/generate`, {
+        headers,
+        data: { version_id: versions[0].id },
+      })
+      expect(planResponse.status(), await planResponse.text()).toBe(200)
       const generatedCases = await request.post(`${path}/eval-sets/generate`, {
         headers,
         data: { version_id: versions[0].id },
@@ -129,6 +126,16 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
       expect(completed.results_json[0].termination_reason).toBe('completed')
       expect(completed.comparison_json.decisions.length).toBeGreaterThanOrEqual(2)
       expect(completed.pass_rate).toBe(0)
+      expect(completed.comparison_json.eval_spec.rubric_version).toBe(2)
+      expect(completed.comparison_json.rule_validation.source).toBe('model_C_requirement_review')
+      expect(completed.metrics_json.metric_scores.task_completion.evaluated_cases).toBe(20)
+      expect(completed.results_json[0].metric_scores.task_completion.criteria_results).toHaveLength(
+        2,
+      )
+      expect(
+        completed.results_json[0].metric_scores.task_completion.criteria_results[0].evidence[0]
+          .quote,
+      ).toBeTruthy()
       expect(completed.results_json[0].judge_calls.length).toBeGreaterThan(0)
       const status = await (
         await request.post(`${path}/completion`, {
@@ -194,8 +201,9 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
       await expect(page.locator('article').filter({ hasText: chatMessage })).toBeVisible()
       await page.reload()
       await expect(page.locator('article').filter({ hasText: chatMessage })).toBeVisible()
-      await page.getByText('查看模型调用、工具操作和终止原因', { exact: true }).click()
-      await expect(page.locator('pre').filter({ hasText: 'termination_reason' })).toBeVisible()
+      await page.getByText('查看本次执行日志', { exact: true }).click()
+      await expect(page.getByText(/^结束原因:/)).toBeVisible()
+      await expect(page.locator('pre').filter({ hasText: 'termination_reason' })).not.toBeVisible()
       const reset = page.waitForResponse(
         (r) => r.url().includes('/simulation-sessions/') && r.url().endsWith('/reset'),
       )
@@ -246,6 +254,9 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
         await request.post(`${path}/resume/generate`, { headers, data: { style: 'ai_product' } })
       ).json()
       const interview = await (await request.get(`${path}/interview`)).json()
+      expect(report.markdown).toContain('评分口径与覆盖')
+      expect(report.markdown).toContain('/100')
+      expect(report.markdown).toContain('评分覆盖 20/20')
       expect(report.evidence_hash).toBe(resume.evidence_hash)
       expect(report.evidence_hash).toBe(interview.evidence_hash)
       expect(report.evidence.results.baseline.pass_rate).toBe(1)

@@ -48,7 +48,8 @@ from app.services import agent_project_service as projects
 from app.services import builder_project_lifecycle as lifecycle
 from app.services import builder_service
 from tests import test_agent_projects as project_fixtures
-from tests.test_agent_project_phase3 import generated_cases, plan
+from tests.test_agent_project_phase3 import generated_cases
+from tests.test_agent_project_scoring import case_for, structured_plan
 
 TEST_USER_ID = project_fixtures.TEST_USER_ID
 db = project_fixtures.db
@@ -86,15 +87,48 @@ class ScriptedExaminee(BaseChatModel):
 
 async def model_json(_db, _snapshot, _user, role, _instruction, payload):
     if role == "planner":
-        return plan()
+        value = structured_plan()
+        for metric in value["metrics"]:
+            metric["requirement_refs"] = [
+                {"field": "goal", "quote": payload["requirements"]["goal"]}
+            ]
+            for criterion in metric["scoring_criteria"]:
+                criterion["requirement_refs"] = metric["requirement_refs"]
+        return value
     if role == "case_generator":
         data = generated_cases()
+        for case in data["cases"]:
+            case["metric_applicability"] = case_for(payload["eval_spec"])["metric_applicability"]
         capabilities = payload.get("capability_profile", {}).get("capabilities", [])
         if capabilities:
             for case in data["cases"]:
                 case["tags"] = [case["tags"][0], *capabilities]
         return data
     if role == "judge":
+        if "rubric_review_rules" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Controlled source review"}
+                    for key in payload["rubric_review_rules"]
+                ]
+            }
+        if "metric_applicability" in payload:
+            return {
+                "criterion_results": {
+                    m["name"]: [
+                        {
+                            "criterion_id": cid,
+                            "level": 1 if payload["actual_output"] == "Login reviewed" else 0,
+                            "reason": "Mock source evidence",
+                            "evidence": [
+                                {"reference": "output", "quote": payload["actual_output"]}
+                            ],
+                        }
+                        for cid in payload["metric_applicability"][m["name"]]
+                    ]
+                    for m in payload["metrics"]
+                }
+            }
         passed = payload["actual_output"] == "Login reviewed"
         return {
             "metric_scores": {

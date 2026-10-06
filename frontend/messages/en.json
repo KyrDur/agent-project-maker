@@ -35,7 +35,7 @@
         "rejected": "Rejected"
       },
       "qualityStatus": "Eval set quality: {status}",
-      "qualityScore": "Quality score: {value}%",
+      "qualityScore": "Dataset structural check mean: {value}/100 (4 checks, not Agent quality)",
       "qualityStates": {
         "pending": "Not checked",
         "approved": "Approved",
@@ -45,7 +45,8 @@
       "checking": "Checking…",
       "qualityIssues": {
         "missing_capabilities": "Capabilities are missing. Add case tags or regenerate cases.",
-        "low_diversity": "Too many duplicate cases. Edit or regenerate cases."
+        "low_diversity": "Too many duplicate cases. Edit or regenerate cases.",
+        "invalid_scoring_contract": "Missing scoring requirement sources or criterion applicability."
       },
       "bestReason": "Reason: highest valid score on the same eval set and scoring rule.",
       "createdFrom": "Created from {source} · proposal {proposal}",
@@ -54,15 +55,15 @@
     "evaluationReport": {
       "title": "Evaluation Report",
       "selectReport": "Evaluation history (Version B)",
-      "score": "Overall Score",
+      "score": "All-case task pass rate",
       "summary": "Evaluation Summary",
       "summaryValue": "{passed} of {total} cases passed",
       "best": "Best Version",
       "unavailable": "No evaluation score",
       "percent": "{value}%",
       "delta": "{value} percentage points",
-      "scoreRule": "Overall Score is the evaluation pass rate. Metrics retain existing Judge scores. Runs with execution or grading errors have no overall score.",
-      "bestRule": "Best Version has the highest score on the same frozen data and scoring criteria. Ties keep the earlier evaluation. Live Agent settings are not automatically changed.",
+      "scoreRule": "Task pass rate uses all cases; each metric average uses its scored cases. Runs with execution or judge errors are ineligible for best version.",
+      "bestRule": "Choose the valid run with the highest task pass rate in the same frozen scope; ties retain the earlier run. This does not replace the current Agent.",
       "dataset": "Eval set: {id}",
       "metrics": "Metrics",
       "noMetrics": "No stored metrics.",
@@ -156,7 +157,7 @@
         "bestCard": {
           "title": "Best Version",
           "badge": "Best",
-          "overallScore": "Overall Score",
+          "overallScore": "All-case task pass rate",
           "noPreviousComparable": "No previous comparable version yet.",
           "improvement": "{value} percentage points vs. previous comparable version",
           "viewVersions": "View version evolution",
@@ -166,7 +167,7 @@
         "latestCard": {
           "title": "Latest Evaluation",
           "version": "Version",
-          "score": "Score",
+          "score": "All-case task pass rate",
           "cases": "Cases",
           "failedCases": "Failed cases",
           "evaluatedWith": "Evaluated with",
@@ -327,7 +328,9 @@
       "required_tool": "Required tool",
       "forbidden_tool": "Forbidden tool",
       "handoff": "Expected handoff",
-      "format_compliance": "Format Compliance"
+      "format_compliance": "Format Compliance",
+      "character_limit": "Character limit",
+      "attempted_tool": "Necessary tool was attempted"
     },
     "executionErrors": {
       "snapshot_invalid": "The snapshot is incomplete.",
@@ -347,7 +350,9 @@
       "evaluation_format_rule_missing": "The deterministic format metric requires a rule.",
       "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
       "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted.",
-      "evaluation_role_configuration_changed": "Personal model configuration changed. Start a new experiment scope; the old and new scopes cannot be compared directly."
+      "evaluation_role_configuration_changed": "Personal model configuration changed. Start a new experiment scope; the old and new scopes cannot be compared directly.",
+      "evaluation_rubric_invalid": "Invalid scoring contract or case applicability. Review requirement sources and generate a new plan; historical experiments are unchanged.",
+      "evaluation_rubric_unsupported": "Model C found unsupported or ambiguous scoring rules. Review requirements and generation evidence, then retry; these rules will not grade the Agent."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -446,7 +451,8 @@
       "tool_correctness": "Tool Correctness",
       "groundedness": "Groundedness",
       "format_compliance": "Format Compliance",
-      "business_quality": "Business Quality"
+      "business_quality": "Business Quality",
+      "compliance_escalation": "Business rules and human escalation"
     },
     "scenarios": {
       "normal": "Normal",
@@ -541,9 +547,9 @@
       "revoked": "Share revoked.",
       "publicTitle": "Agent Project Case Study",
       "shareUnavailable": "This project share is unavailable or has been revoked.",
-      "reportOverview": "Evaluation overview",
+      "reportOverview": "Best version · all-case task pass rate",
       "bestVersion": "Best Version",
-      "bestEvidence": "Highest evaluation evidence",
+      "bestEvidence": "Highest valid pass rate in the same frozen scope",
       "failedCases": "Failed cases",
       "metricsTitle": "Metrics",
       "scoredCases": "Scored cases: {count}",
@@ -771,6 +777,48 @@
         "refunds": "Refunds"
       },
       "toolRequestOnly": "The model requested the tools below and returned no reply text in this call."
+    },
+    "scoring": {
+      "customMetric": "Project business metric",
+      "viewRule": "View scoring rules and requirement sources",
+      "programRule": "Program checks: 1 if all applicable checks pass, otherwise 0; no score when there are no applicable checks.",
+      "legacyMethod": "Historical content grading: the judge used the saved prose rubric.",
+      "criterionMethod": "Content grading: choose 0, 0.5 or 1 for each criterion; the program computes the mean. A critical zero makes the metric zero.",
+      "legacyEvidence": "Historical structured anchors or criterion citations are missing and are not reconstructed. Prose rules may differ from program checks.",
+      "requirementSource": "Requirement source",
+      "anchor": "{level}: {description}",
+      "critical": "Critical criterion: a failure makes this metric zero.",
+      "technicalIdentifier": "Technical identifier",
+      "averageExplanation": "These are average scores over scored cases, not task pass rates. Unscored cases are excluded; coverage shows how many cases were graded.",
+      "noScores": "No scored metrics yet.",
+      "average": "Average score: {value}/100",
+      "unavailable": "Unavailable",
+      "coverage": "Scoring coverage: {count}/{total} cases",
+      "coverageUnavailable": "Scoring coverage: missing from historical records",
+      "metricPassCount": "Metric passed: {count}/{total} scored cases",
+      "notApplicableCount": "Not applicable: {count} cases",
+      "unscoredCount": "Unscored: {count} cases",
+      "missingRule": "This run has no saved rule for this metric. The current plan cannot replace its historical rubric.",
+      "retrievalNotMeasured": "This experiment does not calculate Hit@K, Recall@K or MRR. Fixture responses do not demonstrate retrieval ranking quality.",
+      "level": "Level: {value}",
+      "evidenceReference": "Evidence reference: {reference}",
+      "noProgramChecks": "No applicable program checks in this case.",
+      "pending": "Evaluation pending: {total} cases. A complete score is not yet available.",
+      "partial": "This is a partial run, not a complete result.",
+      "counts": {
+        "passed": "Tasks passed",
+        "failed": "Tasks failed",
+        "execution_errors": "Execution errors",
+        "judge_errors": "Judge errors"
+      },
+      "caseCount": "{count}/{total} cases",
+      "allPassRate": "All-case task pass rate: {passed}/{total} ({value}%)",
+      "weightNotice": "All applicable metrics and necessary checks must pass. There is no weighted total; weights are retained only for historical compatibility.",
+      "thresholdRule": "The threshold applies to each metric of each case, not to the run-wide average.",
+      "metricComparison": "Average {before}/100 → {after}/100 · {delta} points",
+      "sourceReview": "New criteria require source validation and a model C rule review. This is not industry benchmark calibration.",
+      "caseScore": "Case score: {value}/100",
+      "failedOrWeakCases": "Failed cases or cases with weak metrics: {count}"
     }
   },
   "metadata": {

@@ -46,7 +46,7 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert response.status_code == 200
     report = response.json()
     data = report["evidence"]
-    assert len(report["sections"]) == 7
+    assert any(s["title"] == "评分口径与覆盖" for s in report["sections"])
     assert data["results"]["best_version"] == 2
     assert data["results"]["baseline"]["pass_rate"] == 0.75
     assert data["results"]["best"]["pass_rate"] == 0.9
@@ -84,6 +84,7 @@ async def test_unavailable_never_fabricated(db, experiment):
     assert current["complete"] is False and current["pass_rate"] is None
     assert results == {
         "best_version": None,
+        "best_run_id": None,
         "baseline_version": None,
         "comparisons": [],
         "baseline": None,

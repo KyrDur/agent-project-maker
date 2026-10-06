@@ -47,7 +47,7 @@ export function ProjectOptimization({
   return (
     <div className="space-y-3 border-t border-border pt-4">
       <h4 className="font-medium">{t('badCases')}</h4>
-      <p>{t('failedCases', { count: failedCount })}</p>
+      <p>{t('scoring.failedOrWeakCases', { count: failedCount })}</p>
       {!analysis && (
         <Button variant="outline" disabled={busy || !failedCount} onClick={() => analyze.mutate()}>
           {t('analyzeBadCases')}
@@ -76,7 +76,12 @@ export function ProjectOptimization({
       {analysis && (
         <>
           <h4 className="font-medium">{t('optimizationPlan')}</h4>
-          <details><summary>{t('analysisEvidence')}</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(analysis, null, 2)}</pre></details>
+          <details>
+            <summary>{t('analysisEvidence')}</summary>
+            <pre className="whitespace-pre-wrap break-words text-sm">
+              {JSON.stringify(analysis, null, 2)}
+            </pre>
+          </details>
           <ol className="list-decimal space-y-2 pl-5">
             {analysis.groups.map((group, i) => (
               <li key={i}>

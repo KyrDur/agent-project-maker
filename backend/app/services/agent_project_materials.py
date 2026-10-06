@@ -35,11 +35,87 @@ def comparison_lines(data: dict[str, Any]) -> list[str]:
                 lines.append(f"  {name}：未完整评分，不可比较。")
             else:
                 lines.append(
-                    f"  {name}：{metric['before']:.3f}→{metric['after']:.3f}，"
-                    f"变化 {metric['delta']:+.3f}。"
+                    f"  {METRIC_NAMES.get(name, name)}：平均得分 "
+                    f"{metric['before'] * 100:.1f}/100→{metric['after'] * 100:.1f}/100，"
+                    f"变化 {metric['delta'] * 100:+.1f} 分。"
                 )
         if changes["regressed_cases"]:
             lines.append("新增失败：" + "、".join(changes["regressed_cases"]))
+    return lines
+
+
+METRIC_NAMES = {
+    "task_completion": "任务完成情况",
+    "tool_correctness": "工具操作正确性",
+    "groundedness": "事实依据",
+    "format_compliance": "表达与格式规范",
+    "business_quality": "业务质量",
+    "compliance_escalation": "业务规则遵守与转人工处理",
+}
+
+
+def scoring_lines(data: dict[str, Any]) -> list[str]:
+    def count(value: Any) -> str:
+        return "历史缺失" if value is None else str(value)
+
+    lines = ["指标显示已评分用例的平均得分，不是任务通过率；未评分项不计入平均值。"]
+    for run in data.get("experiment_references", []):
+        summary = run["summary"]
+        spec = run.get("eval_spec") or {}
+        names = {m["name"]: m.get("display_name") for m in spec.get("metrics", [])}
+        lines.append(f"{run['reference']} / V{run['version']}：{rate(summary)}。")
+        lines.append(
+            f"任务失败 {count(summary.get('failed'))}，"
+            f"执行错误 {count(summary.get('execution_errors'))}，"
+            f"裁判错误 {count(summary.get('judge_errors'))}；历史缺失的计数不补造。"
+        )
+        metrics = summary.get("metrics", {})
+        for name in dict.fromkeys([*names, *metrics]):
+            label = METRIC_NAMES.get(name) or names.get(name) or name
+            value = metrics.get(name)
+            if value is None:
+                coverage = 0 if spec.get("rubric_version") == 2 else "历史缺失"
+                lines.append(f"{label}：不可用，评分覆盖 {coverage}/{summary.get('total')}。")
+                continue
+            coverage = value.get("evaluated_cases", "历史缺失")
+            lines.append(
+                f"{label}：平均得分 {value['score'] * 100:.1f}/100，"
+                f"评分覆盖 {coverage}/{summary.get('total')}；来源 {run['reference']}。"
+            )
+        if spec.get("rubric_version") != 2:
+            lines.append("历史文字评分规则未校准为结构化档位，不补造逐条件证据。")
+    lines.append("本轮未测量 Hit@K、Recall@K、MRR；模拟返回不代表检索排序效果。")
+    return lines
+
+
+def case_scoring_lines(case: dict[str, Any], spec: dict[str, Any]) -> list[str]:
+    labels = {m["name"]: m.get("display_name") for m in spec.get("metrics", [])}
+    status = {"passed": "任务通过", "failed": "任务失败", "errored": "评测错误"}
+    lines = [f"{case['reference']}：{status.get(case['status'], case['status'])}。"]
+    if case.get("error"):
+        lines.append(f"错误：{case['error']}。")
+    for name, result in case.get("metrics", {}).items():
+        label = METRIC_NAMES.get(name) or labels.get(name) or name
+        lines.append(
+            f"{label}：本例得分 {result['score'] * 100:.1f}/100；"
+            + ("达标。" if result.get("passed") else "未达标。")
+        )
+        if result.get("reason") and result.get("method") != "deterministic":
+            lines.append(f"判定依据：{result['reason']}")
+        for criterion in result.get("criteria_results", []):
+            lines.append(
+                f"条件 {criterion['criterion_id']}，档位 {criterion['level']}："
+                f"{criterion['reason']}"
+            )
+            for ref in criterion.get("evidence", []):
+                lines.append(f"证据 {ref['reference']}：{ref['quote']}")
+    for rule in case.get("assertions", []):
+        if not rule.get("passed"):
+            lines.append(
+                f"未通过的程序检查：{rule['kind']}；目标：{rule.get('target') or '本例输出'}。"
+            )
+    if not case.get("metrics"):
+        lines.append("本例没有可用的指标评分，不补造得分。")
     return lines
 
 
@@ -91,15 +167,15 @@ def render_chinese_report(data: dict[str, Any]) -> dict[str, Any]:
             ),
         },
         {
+            "title": "评分口径与覆盖",
+            "body": "\n".join(scoring_lines(data)),
+        },
+        {
             "title": "失败与薄弱指标",
             "body": "\n".join(
-                (
-                    f"{c['reference']}：{c['status']}；"
-                    f"错误：{c.get('error') or '无执行错误'}；"
-                    f"指标：{c['metrics']}；"
-                    f"规则检查：{c['assertions']}"
-                )
-                for _, c in failures
+                line
+                for run, case in failures
+                for line in case_scoring_lines(case, run.get("eval_spec") or {})
             )
             or "没有记录到失败；需结合逐项指标覆盖与测试边界判断，不代表通用能力合格。",
         },
@@ -199,7 +275,10 @@ def interview_material(data: dict[str, Any]) -> dict[str, Any]:
         {
             "question": "如何判断结果正确，而不是只复现固定路径？",
             "references": ["eval_spec", *[r["reference"] for r in refs]],
-            "answer_points": ["解释程序规则与内容裁判的分工、通过率分母和未评分项。"],
+            "answer_points": [
+                "解释程序规则与内容裁判的分工、通过率分母和未评分项。",
+                *scoring_lines(data),
+            ],
         },
         {
             "question": "举一个真实失败或薄弱指标案例。",

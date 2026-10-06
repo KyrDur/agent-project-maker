@@ -11,63 +11,72 @@ import type {
   AgentProjectVersionSummary,
   EvaluationCase,
   EvaluationMetrics,
+  EvaluationSpec,
 } from '../_lib/agent-project-types'
+import { ProjectMetricScores, ProjectCaseScores } from './project-scoring'
 import { ProjectSelect } from './project-select'
 import { ProjectEvalPlan } from './project-eval-plan'
 import { ProjectOptimization } from './project-optimization'
 import { ProjectCaseEditor } from './project-case-editor'
 import { ProjectExecutionLog } from './project-execution-log'
 
-export function ProjectMetrics({ metrics }: { metrics: EvaluationMetrics | null }) {
+export function ProjectMetrics({
+  metrics,
+  spec,
+  showScores = true,
+}: {
+  metrics: EvaluationMetrics | null
+  spec?: EvaluationSpec | null
+  showScores?: boolean
+}) {
   const t = useTranslations('agentProject')
-  return metrics ? (
-    <div>
-      <p>
-        {t('metrics', {
-          total: metrics.total,
-          passed: metrics.passed ?? 0,
-          failed: metrics.failed ?? 0,
-          errored: metrics.errored ?? 0,
-        })}
-      </p>
+  if (!metrics) return <p>{t('notRun')}</p>
+  if (metrics.passed == null)
+    return <p role="status">{t('scoring.pending', { total: metrics.total })}</p>
+  return (
+    <div className="space-y-3">
+      {metrics.complete === false && <p role="status">{t('scoring.partial')}</p>}
+      <dl className="grid gap-3 sm:grid-cols-4">
+        {(['passed', 'failed', 'execution_errors', 'judge_errors'] as const).map((key) => (
+          <div key={key}>
+            <dt>{t(`scoring.counts.${key}`)}</dt>
+            <dd>
+              {metrics[key] == null
+                ? t('scoring.unavailable')
+                : t('scoring.caseCount', { count: metrics[key], total: metrics.total })}
+            </dd>
+          </div>
+        ))}
+      </dl>
       {metrics.pass_rate != null && (
-        <p>{t('passRate', { value: Math.round(metrics.pass_rate * 100) })}</p>
-      )}
-      {metrics.execution_errors != null && (
         <p>
-          {t('practice.errorCounts', {
-            execution: metrics.execution_errors,
-            judge: metrics.judge_errors ?? 0,
+          {t('scoring.allPassRate', {
+            passed: metrics.passed,
+            total: metrics.total,
+            value: Math.round(metrics.pass_rate * 100),
           })}
         </p>
       )}
       {metrics.executed_pass_rate != null && (
         <p>
           {t('practice.executedRate', {
-            passed: metrics.passed ?? 0,
+            passed: metrics.passed,
             total: metrics.executed_cases ?? 0,
             value: Math.round(metrics.executed_pass_rate * 100),
           })}
         </p>
       )}
-      {!!Object.keys(metrics.metric_scores ?? {}).length && (
+      {showScores && (
         <>
           <h4 className="font-medium">{t('metricScores')}</h4>
-          <ul>
-            {Object.entries(metrics.metric_scores ?? {}).map(([name, value]) => (
-              <li key={name}>
-                {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}:{' '}
-                {t('scorePercent', { value: Math.round(value.score * 100) })}
-                {' · '}
-                {t('scoredCases', { count: value.evaluated_cases })}
-              </li>
-            ))}
-          </ul>
+          <ProjectMetricScores
+            summaries={metrics.metric_scores}
+            spec={spec}
+            total={metrics.total}
+          />
         </>
       )}
     </div>
-  ) : (
-    <p>{t('notRun')}</p>
   )
 }
 
@@ -385,7 +394,10 @@ export function ProjectEvaluation({
                   </summary>
                   <div className="mt-3 space-y-3">
                     <p role="status">{t(`runStatuses.${run.status}`)}</p>
-                    <ProjectMetrics metrics={run.metrics_json} />
+                    <ProjectMetrics
+                      metrics={run.metrics_json}
+                      spec={run.comparison_json?.eval_spec}
+                    />
                     {['completed', 'failed'].includes(run.status) &&
                       run.comparison_json?.eval_spec && (
                         <ProjectOptimization
@@ -447,20 +459,10 @@ export function ProjectEvaluation({
                                 </li>
                               ))}
                             </ul>
-                            {result.metric_scores && (
-                              <ul>
-                                {Object.entries(result.metric_scores).map(([name, score]) => (
-                                  <li key={name}>
-                                    {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}
-                                    : {t('scorePercent', { value: Math.round(score.score * 100) })}
-                                    {' · '}
-                                    {score.method === 'deterministic'
-                                      ? t('deterministicReason')
-                                      : score.reason}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                            <ProjectCaseScores
+                              result={result}
+                              spec={run.comparison_json?.eval_spec}
+                            />
                             {result.limitations?.map((code) => (
                               <p key={code}>{errorText(code)}</p>
                             ))}

@@ -89,11 +89,15 @@ export interface EvaluationCase {
   initial_state?: Record<string, unknown>
   judgment_basis?: string | null
   expected_behavior?: Record<string, unknown> | null
+  metric_applicability?: Record<string, string[]> | null
+  metric_applicability_reasons?: Record<string, string>
   id: string
   name: string
   input: string
   context: { role: 'user' | 'assistant'; content: string }[]
   expected: {
+    max_characters?: number | null
+    attempted_tools?: string[]
     state?: { path: string; value: unknown }[]
     tool_arguments?: { name: string; arguments: Record<string, unknown> }[]
     necessary_order?: string[]
@@ -157,7 +161,8 @@ export interface EvaluationResult {
   }[]
   assertions: { kind: string; target?: string; passed: boolean }[]
   error: string | null
-  metric_scores?: Record<string, { score: number; passed: boolean; reason: string; method: string }>
+  metric_scores?: Record<string, MetricVerdict>
+  metric_unavailable?: Record<string, string>
   limitations?: string[]
   latency_ms: number
 }
@@ -173,7 +178,8 @@ export interface EvaluationMetrics {
   executed_cases?: number
   executed_pass_rate?: number | null
   complete?: boolean
-  metric_scores?: Record<string, { score: number; evaluated_cases: number }>
+  metric_scores?: Record<string, MetricSummary>
+  rubric_version?: number
 }
 
 export interface EvaluationRun {
@@ -216,7 +222,8 @@ export interface VersionComparison {
 export interface EvaluationSpec {
   capability_profile?: Record<string, unknown>
   version_id: string
-  metrics: { name: string; type: string; weight: number; criteria: string }[]
+  rubric_version?: 1 | 2
+  metrics: ScoringMetric[]
   categories: string[]
   focus_options?: EvaluationFocusOption[]
   case_count: number
@@ -278,8 +285,14 @@ export interface PortfolioReport {
     results: {
       latest_version?: number | null
       current_version?: number | null
-      current?: { pass_rate: number | null; passed: number; total: number; complete: boolean } | null
+      current?: {
+        pass_rate: number | null
+        passed: number
+        total: number
+        complete: boolean
+      } | null
       best_version: number | null
+      best_run_id?: string | null
       baseline_version?: number | null
       comparisons?: {
         source_version: number
@@ -336,6 +349,8 @@ export interface EvaluationReport {
   status: string
   score: number | null
   metrics: Record<string, number>
+  statistics?: EvaluationMetrics
+  eval_spec?: EvaluationSpec | null
   total: number
   passed: number
   bad_case_count: number
@@ -390,4 +405,48 @@ export interface SimulationSession {
   }[]
   created_at: string
   updated_at: string
+}
+
+export interface RequirementReference {
+  field: string
+  quote: string
+}
+export interface ScoringMetric {
+  name: string
+  type: string
+  weight: number
+  criteria: string
+  display_name?: string | null
+  description?: string | null
+  requirement_refs?: RequirementReference[]
+  scoring_mode?: 'legacy' | 'all_checks' | 'criterion_mean'
+  scoring_criteria?: {
+    id: string
+    description: string
+    requirement_refs: RequirementReference[]
+    fail: string
+    partial: string
+    full: string
+    critical: boolean
+  }[]
+}
+export interface MetricSummary {
+  score: number
+  evaluated_cases?: number
+  passed_cases?: number
+  not_applicable_cases?: number
+  unscored_cases?: number
+}
+export interface MetricVerdict {
+  score: number
+  passed: boolean
+  reason: string
+  method: string
+  criteria_results?: {
+    criterion_id: string
+    level: number
+    reason: string
+    evidence: { reference: string; quote: string }[]
+  }[]
+  checks?: { kind: string; target?: string; passed: boolean }[]
 }

@@ -77,6 +77,13 @@ async def write_set(
     cases = []
     for case in body.cases:
         data = case.model_dump(mode="json")
+        if case.metric_applicability is None:
+            data.pop("metric_applicability")
+            data.pop("metric_applicability_reasons")
+        if not case.expected.attempted_tools:
+            data["expected"].pop("attempted_tools")
+        if case.expected.max_characters is None:
+            data["expected"].pop("max_characters")
         data.update(
             project_id=str(project.id),
             created_at=old.get(str(case.id), {}).get("created_at", now),
@@ -124,6 +131,7 @@ async def judge_set(
                     "tool_arguments",
                     "necessary_order",
                     "required_tools",
+                    "attempted_tools",
                     "forbidden_tools",
                     "format_rule",
                     "handoff",
@@ -144,6 +152,20 @@ async def judge_set(
     }
     overall = sum(scores.values()) / 4
     issues = []
+    from app.services.agent_project_rubric import validate_applicability, validate_sources
+    from app.services.agent_project_semantic import spec_value
+
+    stored = dataset.rubric_json or project.eval_spec_json or {}
+    if stored.get("rubric_version") == 2:
+        try:
+            spec = spec_value(stored)
+            from app.services.agent_project_practice import requirements
+
+            validate_sources(spec, requirements(project))
+            for case in cases:
+                validate_applicability(spec, case)
+        except (ValueError, TypeError):
+            issues.append("invalid_scoring_contract")
     if capabilities - covered:
         issues.append("missing_capabilities")
     if diversity < 0.8:
@@ -152,7 +174,10 @@ async def judge_set(
         issues.append("missing_judgment_basis")
     status = (
         "approved"
-        if overall >= 0.75 and evaluable == 1 and not (capabilities - covered)
+        if overall >= 0.75
+        and evaluable == 1
+        and not (capabilities - covered)
+        and "invalid_scoring_contract" not in issues
         else "rejected"
     )
     dataset.quality_report_json = {
@@ -210,7 +235,15 @@ async def create_run(
         except ValueError as exc:
             raise error("evaluation_dataset_invalid") from exc
         if case.enabled:
-            cases.append(projects.snapshot_value(case.model_dump(mode="json")))
+            data = case.model_dump(mode="json")
+            if case.metric_applicability is None:
+                data.pop("metric_applicability")
+                data.pop("metric_applicability_reasons")
+            if not case.expected.attempted_tools:
+                data["expected"].pop("attempted_tools")
+            if case.expected.max_characters is None:
+                data["expected"].pop("max_characters")
+            cases.append(projects.snapshot_value(data))
     if not cases or len(cases) > 20:
         raise error("evaluation_requires_enabled_cases")
     if (dataset.rubric_json or {}).get("formal_benchmark") and len(cases) != 20:
@@ -238,6 +271,7 @@ async def create_run(
             or expected.get("state")
             or expected.get("format_rule")
             or expected.get("required_tools")
+            or expected.get("attempted_tools")
             or expected.get("forbidden_tools")
             or expected.get("tool_arguments")
             or expected.get("necessary_order")
@@ -249,6 +283,17 @@ async def create_run(
     ):
         raise error("evaluation_requirements_changed", 409)
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json) or {}
+    if (plan.get("eval_spec") or {}).get("rubric_version") == 2:
+        from app.services.agent_project_rubric import validate_applicability, validate_sources
+        from app.services.agent_project_semantic import spec_value
+
+        try:
+            spec = spec_value(plan["eval_spec"])
+            validate_sources(spec, requirements(project))
+            for case in cases:
+                validate_applicability(spec, case)
+        except (ValueError, TypeError) as exc:
+            raise error("evaluation_rubric_invalid", 409) from exc
     plan.update(
         requirements=requirements(project),
         requirements_hash=requirements_hash(project),
@@ -363,9 +408,14 @@ async def get_run(
     return row
 
 
-def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str, Any]]:
+def score_case(
+    case: dict[str, Any], evidence: dict[str, Any], *, strict_tools: bool = False
+) -> list[dict[str, Any]]:
     expected = case.get("expected") or {}
     names = {call["name"] for call in evidence.get("tool_calls", [])}
+    successful = {
+        event["name"] for event in evidence.get("tool_trace", []) if not event.get("error")
+    }
     checks = [
         {"kind": "execution_succeeded", "passed": True},
         {"kind": "answer_exists", "passed": bool(evidence.get("output", "").strip())},
@@ -374,8 +424,16 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
         checks.append(
             {"kind": "exact_answer", "passed": evidence.get("output") == expected["exact_answer"]}
         )
+    for name in expected.get("attempted_tools", []):
+        checks.append({"kind": "attempted_tool", "target": name, "passed": name in names})
     for name in expected.get("required_tools", []):
-        checks.append({"kind": "required_tool", "target": name, "passed": name in names})
+        checks.append(
+            {
+                "kind": "required_tool",
+                "target": name,
+                "passed": name in (successful if strict_tools else names),
+            }
+        )
     for name in expected.get("forbidden_tools", []):
         checks.append({"kind": "forbidden_tool", "target": name, "passed": name not in names})
     if expected.get("handoff"):
@@ -383,7 +441,8 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
             {
                 "kind": "handoff",
                 "target": expected["handoff"],
-                "passed": expected["handoff"] in evidence.get("handoffs", []),
+                "passed": expected["handoff"] in evidence.get("handoffs", [])
+                and (not strict_tools or expected["handoff"] in successful),
             }
         )
     trace = evidence.get("tool_trace", [])
@@ -424,6 +483,14 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
     if expected.get("format_rule"):
         checks.append(
             {"kind": "format_compliance", "passed": format_check(case, evidence.get("output", ""))}
+        )
+    if expected.get("max_characters") is not None:
+        checks.append(
+            {
+                "kind": "character_limit",
+                "target": str(expected["max_characters"]),
+                "passed": len(evidence.get("output", "")) <= expected["max_characters"],
+            }
         )
     return checks
 
@@ -486,7 +553,11 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     with capture_calls(partial):
                         async with asyncio.timeout(30):
                             evidence = await execute_snapshot(db, snapshot, case, user_id)
-                    checks = score_case(case, evidence)
+                    checks = score_case(
+                        case,
+                        evidence,
+                        strict_tools=(plan or {}).get("eval_spec", {}).get("rubric_version") == 2,
+                    )
                     result.update(
                         evidence,
                         execution_status="completed",
@@ -560,6 +631,7 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "complete": len(results) == len(cases),
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
+                "rubric_version": (plan or {}).get("eval_spec", {}).get("rubric_version", 1),
             }
             row.pass_rate = passed / len(results)
             row.status = "failed" if errored else "completed"

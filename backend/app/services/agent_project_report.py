@@ -77,6 +77,8 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
         status=run.status,
         score=score,
         metrics={name: value["score"] for name, value in summary["metrics"].items()},
+        statistics=run.metrics_json or {},
+        eval_spec=plan.get("eval_spec"),
         total=len(run.cases_snapshot_json or []),
         passed=sum(item.get("status") == "passed" for item in results),
         bad_case_count=len(failures),

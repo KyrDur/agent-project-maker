@@ -35,7 +35,7 @@
         "rejected": "已拒绝"
       },
       "qualityStatus": "评测集质量：{status}",
-      "qualityScore": "质量评分：{value}%",
+      "qualityScore": "测试集结构检查均分：{value}/100（4 项检查，不代表 Agent 质量）",
       "qualityStates": {
         "pending": "待检查",
         "approved": "已通过",
@@ -45,7 +45,8 @@
       "checking": "正在检查…",
       "qualityIssues": {
         "missing_capabilities": "缺少能力覆盖，请补充用例标签或重新生成。",
-        "low_diversity": "用例重复较多，请修改或重新生成。"
+        "low_diversity": "用例重复较多，请修改或重新生成。",
+        "invalid_scoring_contract": "评分规则缺少有效需求出处或用例适用范围。"
       },
       "bestReason": "原因：同一评测集和评分规则下的最高有效评分。",
       "createdFrom": "来源：{source} · 优化建议 {proposal}",
@@ -54,15 +55,15 @@
     "evaluationReport": {
       "title": "评测报告",
       "selectReport": "选择历史评估（版本 B）",
-      "score": "总分",
+      "score": "全部用例通过率",
       "summary": "评估摘要",
       "summaryValue": "共 {total} 条用例，通过 {passed} 条",
       "best": "最佳版本",
       "unavailable": "暂无有效评分",
       "percent": "{value}%",
       "delta": "{value} 个百分点",
-      "scoreRule": "总分使用评估通过率；各指标保留已有 评判模型 分数。执行或评分出错的运行不计总分。",
-      "bestRule": "在相同冻结数据和评分口径下选取最高分版本，同分保留较早评估。标记不会自动修改线上 智能体 配置。",
+      "scoreRule": "通过率以全部用例为分母；平均得分以各项已评分用例为分母。执行或裁判出错的运行不能作为最佳版本依据。",
+      "bestRule": "相同冻结数据和评分口径下选取通过率最高的有效运行，同分保留较早结果；不会自动替换当前 Agent。",
       "dataset": "评测集：{id}",
       "metrics": "评分指标",
       "noMetrics": "暂无已保存指标。",
@@ -156,7 +157,7 @@
         "bestCard": {
           "title": "最佳版本",
           "badge": "Best",
-          "overallScore": "总分",
+          "overallScore": "全部用例通过率",
           "noPreviousComparable": "暂无可比较的上一版本。",
           "improvement": "相比上一可比版本 {value} 个百分点",
           "viewVersions": "查看版本演进",
@@ -166,7 +167,7 @@
         "latestCard": {
           "title": "最近评测",
           "version": "版本",
-          "score": "得分",
+          "score": "全部用例通过率",
           "cases": "用例数",
           "failedCases": "失败用例",
           "evaluatedWith": "使用评测集",
@@ -327,7 +328,9 @@
       "required_tool": "所需工具",
       "forbidden_tool": "禁止使用的工具",
       "handoff": "预期交接",
-      "format_compliance": "格式合规性"
+      "format_compliance": "格式合规性",
+      "character_limit": "字符数上限",
+      "attempted_tool": "已尝试必要工具"
     },
     "executionErrors": {
       "snapshot_invalid": "快照不完整。",
@@ -347,7 +350,9 @@
       "evaluation_format_rule_missing": "确定性格式度量需要规则。",
       "historical_skill_execution_unavailable": "历史技能包执行不可用。",
       "historical_skill_content_unavailable": "该版本未保存冻结的技能文本，不会使用最新技能替代。",
-      "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。"
+      "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。",
+      "evaluation_rubric_invalid": "评分规则或用例适用范围校验失败。请检查需求出处并重新生成评测计划；历史实验保持不变。",
+      "evaluation_rubric_unsupported": "模型 C 发现评分条件超出已确认需求，或评分档位不明确。请检查需求和生成记录，再重试；不会用这些规则给 Agent 扣分。"
     },
     "compareVersions": "比较版本",
     "needTwoVersions": "创建第二个版本来比较配置。",
@@ -446,7 +451,8 @@
       "tool_correctness": "工具正确性",
       "groundedness": "事实依据",
       "format_compliance": "格式合规性",
-      "business_quality": "业务质量"
+      "business_quality": "业务质量",
+      "compliance_escalation": "业务规则遵守与转人工处理"
     },
     "scenarios": {
       "normal": "正常",
@@ -541,9 +547,9 @@
       "revoked": "分享已撤销。",
       "publicTitle": "智能体项目案例",
       "shareUnavailable": "该项目共享不可用或已被撤销。",
-      "reportOverview": "评测总览",
+      "reportOverview": "最佳版本 · 全部用例通过率",
       "bestVersion": "最佳版本",
-      "bestEvidence": "基于最高评测分数",
+      "bestEvidence": "同一冻结范围内的最高有效通过率",
       "failedCases": "失败用例",
       "metricsTitle": "指标",
       "scoredCases": "已评分用例：{count}",
@@ -771,6 +777,48 @@
         "refunds": "退款记录"
       },
       "toolRequestOnly": "模型请求调用下面的工具，本次没有返回答复文本。"
+    },
+    "scoring": {
+      "customMetric": "项目业务指标",
+      "viewRule": "查看评分规则与需求出处",
+      "programRule": "程序检查：全部适用条件通过得 1 分，否则得 0 分；没有适用检查时不评分。",
+      "legacyMethod": "历史内容评分：裁判按当时保存的文字细则给分。",
+      "criterionMethod": "内容评分：逐条件选择 0／0.5／1 档位，由程序计算平均分；关键条件得 0 时，本指标得 0。",
+      "legacyEvidence": "历史记录缺少结构化评分档位或逐条件证据，不补造；文字细则与程序检查可能存在差异。",
+      "requirementSource": "需求出处",
+      "anchor": "{level} 分：{description}",
+      "critical": "关键条件：不满足时，本指标计 0 分。",
+      "technicalIdentifier": "技术标识",
+      "averageExplanation": "下面是已评分用例的平均得分，不是任务通过率。未评分用例不进入平均值；覆盖数说明评到了多少条。",
+      "noScores": "暂无已评分指标。",
+      "average": "平均得分：{value}/100",
+      "unavailable": "不可用",
+      "coverage": "评分覆盖：{count}/{total} 条用例",
+      "coverageUnavailable": "评分覆盖数：历史记录缺失",
+      "metricPassCount": "单项达标：{count}/{total} 条已评分用例",
+      "notApplicableCount": "不适用：{count} 条",
+      "unscoredCount": "未评分：{count} 条",
+      "missingRule": "该运行没有保存此指标的规则，不能用当前计划补填历史依据。",
+      "retrievalNotMeasured": "本实验未计算 Hit@K、Recall@K 或 MRR；模拟返回不代表经过验证的检索排序效果。",
+      "level": "档位：{value}",
+      "evidenceReference": "证据位置：{reference}",
+      "noProgramChecks": "本用例没有适用的程序检查。",
+      "pending": "评测尚未完成，共 {total} 条用例；暂不显示完整成绩。",
+      "partial": "这是部分运行结果，尚不能作为完整成绩。",
+      "counts": {
+        "passed": "任务通过",
+        "failed": "任务失败",
+        "execution_errors": "执行错误",
+        "judge_errors": "裁判错误"
+      },
+      "caseCount": "{count}/{total} 条",
+      "allPassRate": "全部用例通过率：{passed}/{total}（{value}%）",
+      "weightNotice": "通过要求所有适用指标和必要检查达标，不采用加权总分；权重字段仅保留历史兼容。",
+      "thresholdRule": "阈值用于单条用例的每个指标，不用于把整轮平均分判定为通过。",
+      "metricComparison": "平均得分 {before}/100 → {after}/100 · {delta} 分",
+      "sourceReview": "新评分条件需通过需求原文校验和模型 C 的规则审查；这不等于已通过行业基准校准。",
+      "caseScore": "本例得分：{value}/100",
+      "failedOrWeakCases": "失败或存在薄弱指标的用例：{count}"
     }
   },
   "metadata": {
