@@ -29,7 +29,6 @@ from plan_history_contract import (  # noqa: E402
     PlanContract,
     load_contract,
     load_verified_operations,
-    read_git_history,
 )
 from project_gate_catalog import CATALOG, FINAL_STATIC  # noqa: E402
 from project_gate_receipts import (  # noqa: E402
@@ -604,7 +603,18 @@ def _complete_history() -> tuple[
     PlanContract, tuple[CommitRecord, ...], list[dict[str, JSONValue]]
 ]:
     contract = load_contract(CONTRACT_PATH)
-    commits = list(read_git_history(REPO_ROOT, contract.base_sha, FIXTURE_HISTORY_HEAD))
+    # Imported Git objects are not part of this repository's history. Verify the
+    # authentic archived records rather than depending on an upstream fetch.
+    archived = (FIXTURE_ROOT / "commits.json").read_bytes()
+    assert (
+        hashlib.sha256(archived).hexdigest()
+        == "7516eae3ccffa0f73adb3472c76048b61d2b36c40db679e57071886636c85c48"
+    )
+    commits = [
+        CommitRecord(row["sha"], tuple(row["parents"]), row["tree_sha"], row["message"])
+        for row in json.loads(archived)
+    ]
+    assert commits[-1].sha == FIXTURE_HISTORY_HEAD
     entries = load_verified_operations(EVIDENCE / "operations.ndjson")
     observed_primary = {
         item for commit in commits for item in PRIMARY_TRAILER.findall(commit.message)

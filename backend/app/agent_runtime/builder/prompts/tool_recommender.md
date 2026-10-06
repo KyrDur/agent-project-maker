@@ -10,3 +10,5 @@
 - 未知业务规则不能伪称事实，只使用已确认的模拟假设。
 - 用户要求修改时，重新生成完整方案，并严格遵守其取舍。
 - 不得推荐真实 tool/mcp 连接。每项 reason 说明与确认需求的关系。
+
+Follow the active UI locale for all user-visible text. Preserve identifiers and JSON field names.

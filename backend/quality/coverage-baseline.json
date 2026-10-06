@@ -7,5 +7,6 @@
   "covered": 30842,
   "total": 38451,
   "minimum_percent": 80.21117786273439,
-  "update_policy": "reviewed-manual-only"
+  "update_policy": "reviewed-manual-only",
+  "repository_source_commit": "e7178816961443d96627d8a0d4ffc2574958bfa9"
 }

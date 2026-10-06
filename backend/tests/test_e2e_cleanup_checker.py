@@ -523,9 +523,18 @@ def _final_f2_manifest(
     ],
 )
 def test_checker_accepts_exact_f2_e2e_receipt_binding(
-    tmp_path: Path, node: str, project: str, requested_specs: tuple[str, ...]
+    tmp_path: Path,
+    node: str,
+    project: str,
+    requested_specs: tuple[str, ...],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     payload, receipt = _final_f2_manifest(tmp_path, node, project, requested_specs)
+    # This fixture tests artifact binding; live probes have dedicated socket tests.
+    monkeypatch.setattr(lifecycle, "validate_live_absence", lambda _payload: None)
+    import e2e_cleanup_checker
+
+    monkeypatch.setattr(e2e_cleanup_checker, "validate_live_absence", lambda _payload: None)
     load_and_validate(receipt, repository_root=tmp_path)
 
 

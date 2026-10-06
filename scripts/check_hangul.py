@@ -12,18 +12,29 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from typing import TypedDict
 
 HANGUL = re.compile(r"[\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\uac00-\ud7af\ud7b0-\ud7ff]")
 
 
-def scan(root: Path) -> list[dict[str, object]]:
+class HangulOccurrence(TypedDict):
+    path: str
+    characters: int
+    lines: list[int]
+
+
+def scan(root: Path) -> list[HangulOccurrence]:
     """Return paths, line numbers and counts; never print file contents."""
     git = shutil.which("git")
     if git is None:
         raise RuntimeError("git is required to scan tracked files")
     # Arguments are constant; the executable is resolved from the local PATH.
-    tracked = subprocess.check_output([git, "ls-files", "-z"], cwd=root).decode().split("\0")  # noqa: S603
-    inventory: list[dict[str, object]] = []
+    tracked = (
+        subprocess.check_output([git, "ls-files", "-z"], cwd=root)  # noqa: S603 - fixed git argv
+        .decode()
+        .split("\0")
+    )
+    inventory: list[HangulOccurrence] = []
     for relative in sorted(filter(None, tracked)):
         path = root / relative
         if not path.is_file():

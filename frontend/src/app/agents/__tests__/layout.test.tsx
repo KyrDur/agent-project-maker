@@ -31,5 +31,9 @@ describe('AgentsLayout', () => {
       'data-namespaces',
       expect.stringContaining('skill'),
     )
+    expect(screen.getByTestId('scoped-provider')).toHaveAttribute(
+      'data-namespaces',
+      expect.stringContaining('agentProject'),
+    )
   })
 })
