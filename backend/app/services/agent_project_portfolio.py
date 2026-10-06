@@ -257,6 +257,13 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
 
     from app.services.agent_project_report import report_for_run, select_best_reports
 
+    scope_labels: dict[str, str] = {}
+    run_scopes = {}
+    for run in runs:
+        key = report_for_run(run).comparison_key
+        if key:
+            scope_labels.setdefault(key, f"scope-{len(scope_labels) + 1}")
+        run_scopes[str(run.id)] = scope_labels.get(key) if key else None
     scored = [(run, report_for_run(run)) for run in runs if run.status == "completed"]
     valid = [
         (run, report)
@@ -292,10 +299,13 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     spec = frozen.get("eval_spec")
     cases = baseline.cases_snapshot_json or [] if baseline else []
     rounds = {entry["version_id"]: entry for entry in state.get("rounds", [])}
+    cohort_ids = {str(r.id) for r, _ in cohort}
     journey = []
     for version in versions:
         entry = rounds.get(str(version.id), {})
         run = by_run.get(entry.get("run_id"))
+        if run and str(run.id) not in cohort_ids:
+            run = None
         if not run:
             run = next((r for r, _ in reversed(cohort) if r.version_id == version.id), None)
         if best and version.id == best.version_id:
@@ -557,6 +567,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                 "experiment_references": [
                     {
                         "reference": f"experiment-{i + 1}",
+                        "scope": run_scopes[str(r.id)],
                         "version": by_version[str(r.version_id)].version_number,
                         "status": r.status,
                         "summary": run_summary(r),

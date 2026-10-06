@@ -61,6 +61,9 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert data["bad_cases"]["groups"][0]["root_cause"]
     assert "模拟" in report["markdown"] and "生产部署" in report["markdown"]
     assert "未验证" in report["markdown"]
+    assert "版本表展示范围：范围" in report["markdown"]
+    assert "最新实验（范围" in report["markdown"]
+    assert all(r["scope"].startswith("scope-") for r in data["experiment_references"])
     await db.refresh(ex.project)
     assert ex.project.report_json["portfolio_report"]["evidence_hash"] == report["evidence_hash"]
     assert ex.project.report_json["optimization"]["best_version_id"]

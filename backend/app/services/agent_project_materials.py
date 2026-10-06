@@ -13,6 +13,7 @@ from app.marketplace.payloads import canonical_json_hash
 
 def reference_label(value: str) -> str:
     for prefix, label in [
+        ("scope", "范围"),
         ("experiment", "实验"),
         ("case-card", "案例"),
         ("case", "用例"),
@@ -96,7 +97,10 @@ def scoring_lines(data: dict[str, Any]) -> list[str]:
         summary = run["summary"]
         spec = run.get("eval_spec") or {}
         names = {m["name"]: m.get("display_name") for m in spec.get("metrics", [])}
-        lines.append(f"{run['reference']} / V{run['version']}：{rate(summary)}。")
+        lines.append(
+            f"{run['reference']} / {run.get('scope') or '范围未记录'} / "
+            f"V{run['version']}：{rate(summary)}。"
+        )
         lines.append(
             f"任务失败 {count(summary.get('failed'))}，"
             f"执行错误 {count(summary.get('execution_errors'))}，"
@@ -259,11 +263,32 @@ def decimal_score(value: float) -> str:
 
 def render_chinese_report(data: dict[str, Any]) -> dict[str, Any]:
     cards = data.get("case_cards", [])
+    references = data.get("experiment_references", [])
+    best_scope = next(
+        (
+            r.get("scope")
+            for r in references
+            if r["reference"] == data["results"].get("best_run_id")
+        ),
+        None,
+    )
+    current = data["results"].get("current")
+    latest_line = ""
+    if current:
+        latest_scope = references[-1].get("scope") if references else None
+        errors = current.get("errored")
+        latest_line = (
+            f"\n最新实验（{latest_scope or '范围未记录'}）：{rate(current)}；"
+            f"错误 {errors if errors is not None else '未完成统计'}。"
+        )
     sections = [
         {
             "title": "结论",
             "body": f"{data['project']['name']}｜模拟实践\n目标：{data['project']['goal']}\n"
+            + f"版本表展示范围：{best_scope or '尚未选出有效完成范围'}。"
+            + "不同冻结数据、判据、模型参数、执行协议或验证使用状态不直接比较。\n"
             + "\n".join(f"V{v['version']}：{rate(v.get('evaluation'))}。" for v in data["versions"])
+            + latest_line
             + "\n未验证真实客户效果、生产部署或业务收益。",
         },
         {
@@ -303,7 +328,8 @@ def render_chinese_report(data: dict[str, Any]) -> dict[str, Any]:
             "title": "证据附录",
             "body": "完整试验、逐条件判定与脱敏工具状态见 evidence.json，版本与差异见 versions/。\n"
             + "\n".join(
-                f"{r['reference']} / V{r['version']}：{rate(r['summary'])}。"
+                f"{r['reference']} / {r.get('scope') or '范围未记录'} / "
+                f"V{r['version']}：{rate(r['summary'])}。"
                 for r in data.get("experiment_references", [])
             ),
         },
