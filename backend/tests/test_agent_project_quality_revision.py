@@ -63,6 +63,20 @@ def test_resume_attributes_regression_to_the_confirmed_source_run():
     assert "%" not in " ".join(resume_material(data)["bullets"])
 
 
+def test_demo_interview_does_not_claim_personal_confirmation():
+    from app.services.agent_project_materials import interview_material
+
+    data = {
+        "project": {"name": "演示", "goal": "模拟验证。"},
+        "decisions": [{"stage": "requirements", "author": "codex_demo"}],
+        "results": {"comparisons": []},
+    }
+    introduction = interview_material(data)["introduction"]
+    assert "未保存个人确认" in introduction
+    assert "我能依据" not in introduction
+    assert "。。" not in introduction
+
+
 @pytest.mark.asyncio
 async def test_judge_protocol_retry_preserves_the_original_evidence(db, monkeypatch):
     raw = quality_plan()

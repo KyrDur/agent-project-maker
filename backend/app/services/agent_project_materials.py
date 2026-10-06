@@ -70,6 +70,22 @@ METRIC_NAMES = {
     "compliance_escalation": "业务规则遵守与转人工处理",
 }
 
+STAGE_NAMES = {"requirements": "需求确认", "capabilities": "能力方案", "optimization": "优化确认"}
+AUTHOR_NAMES = {
+    "user": "用户亲写",
+    "user_confirmed": "用户确认",
+    "codex_demo": "Codex 演示",
+    "system": "系统生成",
+}
+REQUIREMENT_NAMES = {
+    "goal": "目标",
+    "inputs": "输入",
+    "deliverables": "产出",
+    "business_rules": "业务规则",
+    "success_conditions": "成功条件",
+    "evaluation_focus": "评判关注项",
+}
+
 
 def scoring_lines(data: dict[str, Any]) -> list[str]:
     def count(value: Any) -> str:
@@ -179,7 +195,7 @@ def readable(value: Any) -> str:
     if value is None:
         return "未记录"
     if isinstance(value, dict):
-        return "；".join(f"{k}：{readable(v)}" for k, v in value.items())
+        return "；".join(f"{k}：{readable(v)}" for k, v in value.items()) or "空记录"
     if isinstance(value, list):
         return "、".join(readable(v) for v in value) or "空结果"
     return str(value)
@@ -224,7 +240,8 @@ def case_lines(card: dict[str, Any]) -> list[str]:
     for change in card["changes"]:
         lines.append(
             f"已确认改动：{change['title']}；理由原文：{change.get('reason') or '未记录'}；"
-            f"作者来源：{change['author']}；来源：{change['source']}。"
+            f"作者来源：{AUTHOR_NAMES.get(change['author'], change['author'])}；"
+            f"来源：{change['source']}。"
         )
     for review in card["reviews"]:
         lines.append(
@@ -253,15 +270,19 @@ def render_chinese_report(data: dict[str, Any]) -> dict[str, Any]:
             "title": "方法与个人贡献",
             "body": (
                 "测试由模型 B 设计，模型 A 执行并提出改动，模型 C 自动评分；"
-                "用户确认需求、能力与逐轮方案。\n"
+                "需求、能力与方案确认的实际作者见下方记录。\n"
             )
             + "\n".join(
-                f"{d['stage']}：{d['choice']}；理由原文：{d['reason']}；"
-                f"来源：{d.get('author', '历史缺失')}。"
+                f"{STAGE_NAMES.get(d['stage'], d['stage'])}：{d['choice']}；"
+                f"理由原文：{d['reason']}；"
+                f"来源：{AUTHOR_NAMES.get(d.get('author'), d.get('author', '历史缺失'))}。"
                 for d in data.get("decisions", [])
             )
             + "\n"
-            + "\n".join(f"{k}：{v}" for k, v in data.get("requirements", {}).items()),
+            + "\n".join(
+                f"{REQUIREMENT_NAMES.get(k, k)}：{readable(v)}"
+                for k, v in data.get("requirements", {}).items()
+            ),
         },
         *[
             {"title": f"案例 {i}：{c['title']}", "body": "\n".join(case_lines(c))}
@@ -382,6 +403,7 @@ def resume_material(data: dict[str, Any]) -> dict[str, Any]:
 
 def interview_material(data: dict[str, Any]) -> dict[str, Any]:
     cards = data.get("case_cards", [])
+    personal = any(d.get("author") in {"user", "user_confirmed"} for d in data.get("decisions", []))
     questions = [
         {
             "question": "测试数据从哪里来，成功如何定义？",
@@ -434,9 +456,13 @@ def interview_material(data: dict[str, Any]) -> dict[str, Any]:
         "evidence_hash": canonical_json_hash(data),
         "questions": questions,
         "introduction": f"这是 {data['project']['name']} 的模拟实践，"
-        f"目标是 {data['project']['goal']}。"
-        "我能依据已保存的个人确认说明取舍；系统承担生成、自动评测与分析。"
-        "成绩及退步见冻结运行。",
+        f"目标是 {str(data['project']['goal']).rstrip('。.;； ')}。"
+        + (
+            "我能依据已保存的个人确认说明取舍；系统承担生成、自动评测与分析。"
+            if personal
+            else "当前只有系统或演示记录，未保存个人确认，不代写本人取舍。"
+        )
+        + "成绩及退步见冻结运行。",
         "case_cards": cards,
         "status": data.get("material_readiness", "missing_actual_cases"),
     }

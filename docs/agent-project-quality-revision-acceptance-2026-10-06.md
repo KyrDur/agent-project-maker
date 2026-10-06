@@ -21,7 +21,7 @@
 
 ## 工程验证（固定响应）
 
-- 相关后端 pytest：169 passed、1 skipped。参考路径同时验证参数 schema，非法 schema 与外部引用均拒绝。跳过的 PostgreSQL 专项另在隔离数据库实际执行，1 passed；m85→m82→head 重复升降级后历史 JSON 保留。真人数据库没有执行迁移或清空。
+- 相关后端 pytest：170 passed、1 skipped。参考路径同时验证参数 schema，非法 schema 与外部引用均拒绝。跳过的 PostgreSQL 专项另在隔离数据库实际执行，1 passed；m85→m82→head 重复升降级后历史 JSON 保留。真人数据库没有执行迁移或清空。
 - 前端项目相关 Vitest：51 passed。Ruff、Pyright、TypeScript、生产构建、lint:all（含 i18n、无障碍、设计系统、架构、类型和 E2E 规则）通过；没有修改检查基线。
 - Playwright scripted-full：8 passed。四类各有 Builder 自动 V1、两轮审批和 V3 基于 V2。写作逐例重复 3 次，每版 60 个结果全部保留；另建验证集后，未标记使用时分析返回 409，明确标记后允许分析。已有冻结版本复用原确认记录，不伪造新增个人理由。
 - 过程日志及附件保存在忽略目录 `output/`：`quality-backend-tests.log`、`quality-frontend-tests.log`、`quality-e2e-final.log`、`quality-postgres.log`、`quality-build.log`、`quality-lint.log`、`quality-pyright.log`、`quality-typescript.log`。
