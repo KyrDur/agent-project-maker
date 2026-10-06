@@ -115,7 +115,11 @@ def case_cards(
                 "reviews": [r for r in reviews if str(r.get("case_id")) == cid],
                 "personal_task": (
                     "\n".join(
-                        f"个人已确认{d.get('stage')}：{d.get('choice')}；理由原文：{d.get('reason')}。"
+                        "个人已确认"
+                        + {"requirements": "需求", "capabilities": "能力方案"}.get(
+                            d.get("stage"), "决策"
+                        )
+                        + f"：{d.get('choice')}；理由原文：{d.get('reason')}。"
                         for d in decisions or []
                         if decision_author(d) in {"user", "user_confirmed"}
                         and d.get("stage") in {"requirements", "capabilities"}

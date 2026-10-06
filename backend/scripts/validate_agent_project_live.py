@@ -114,9 +114,10 @@ async def iterate(aid, owner, folder, receipt, budget, rounds):
                 .order_by(AgentProjectEvalRun.created_at.desc())
                 .limit(1)
             )
-            if run is None or run.status != "completed":
+            if run is None or run.status not in {"completed", "failed"}:
                 receipt["termination"] = "latest_experiment_not_completed"
                 return
+            optimization.terminal_semantic(run)
             rid = run.id
             entry: dict[str, Any] | None = next(
                 (x for x in receipt["iterations"] if x["source_run_id"] == str(rid)), None
@@ -340,14 +341,25 @@ async def build(category, owner, output, budget, rounds):
                 json.dumps(interview_material(report["evidence"]), ensure_ascii=False, indent=2)
             )
             (folder / "portfolio.zip").write_bytes(await export_zip(db, aid, owner))
+            latest = runs[-1] if runs else None
             receipt["baseline_status"] = (
-                "completed" if runs and runs[-1].status == "completed" else "incomplete"
+                "completed"
+                if latest and latest.status == "completed"
+                else "completed_with_errors"
+                if latest
+                and latest.status == "failed"
+                and len(latest.results_json or [])
+                == len(latest.cases_snapshot_json or [])
+                * (latest.comparison_json or {}).get("repetitions", 1)
+                else "incomplete"
             )
             receipt["status"] = (
                 receipt.get("completion", {}).get("status", "incomplete")
                 if rounds
                 else receipt["baseline_status"]
             )
+            if receipt["baseline_status"] != "incomplete":
+                receipt.pop("error", None)
     except Exception as exc:
         receipt["status"] = "incomplete"
         receipt["error"] = getattr(exc, "code", type(exc).__name__)
@@ -411,7 +423,7 @@ async def main(args):
             ready = []
             for category in args.categories:
                 receipt = json.loads((args.output / category / "acceptance.json").read_text())
-                if receipt.get("baseline_status") == "completed":
+                if receipt.get("baseline_status") in {"completed", "completed_with_errors"}:
                     ready.append(category)
             await asyncio.gather(*(validate(category, rounds) for category in ready))
     finally:
