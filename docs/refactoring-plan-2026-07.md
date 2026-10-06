@@ -566,7 +566,7 @@
 ### [BE-P5] SSE 스트리밍 이벤트당 중복 비용 (redaction 2회 + 버려지는 json.dumps + 시크릿셋 재정렬 + O(n²) 이벤트 id 재로드)
 - **우선순위 제안**: **P1** — 토큰당(응답당 10²~10³회) 곱해지는 hot path. 여러 소항목의 복합.
 - **카테고리**: 성능 (per-event CPU + 준-quadratic DB)
-- **증거**:
+- **证据**:
   - **(a) 이벤트당 버려지는 `json.dumps`** — `agent_runtime/protocol_events.py:50-55`, 무조건 호출(`:104`). 직렬화 가능성 검증용으로 stdlib `json.dumps` 전체 인코드 후 결과 폐기. `values` 이벤트는 전체 그래프 상태를 매번 재인코드.
   - **(b) redaction 2회** — `langgraph_streaming.py:338-354`(wire) + `protocol_persistence.py:15-24`(persist). `redact_protocol_data`가 이벤트당 전체 재귀를 **두 번**(`_mask_known_values` + `_redact_sensitive_keys`).
   - **(c) 시크릿셋 매 문자열 노드마다 재구축** — `marketplace/redaction.py:70-80`. run 내 불변인 시크릿셋을 문자열 키/값마다 `set` 재생성 + `sorted(key=len)`.
@@ -602,7 +602,7 @@
 ### [BE-P7] checkpointer 풀 `max_size=10` 전역 병목 + 메인 엔진 풀 라이브러리 기본값
 - **우선순위 제안**: **P2** — CLAUDE.md에 이미 증상 문서화("슬로우 스트리밍/평가 런 다수 동시 → 백엔드 직렬화, 무관한 요청 timeout").
 - **카테고리**: 성능 (커넥션 풀)
-- **증거**:
+- **证据**:
   - `agent_runtime/checkpointer.py:47-53` — `AsyncConnectionPool(min_size=1, max_size=10)`. 모든 스트림 쓰기 + **읽기 폴링**이 이 10 커넥션을 공유·경합.
   - `database.py:15` — `create_async_engine(url, echo=False, pool_pre_ping=True)`. `pool_size`/`max_overflow`/`pool_timeout`/`pool_recycle` 전부 미설정 → 기본 5+10=15, `pool_recycle=-1`. config에 엔진 풀 노브 없음.
   - httpx: tool client 싱글턴(`tool_factory.py:97`) + model client 캐시(`model_factory.py`)는 **양호**.
@@ -668,7 +668,7 @@
 ### [BE-P12] 무제한 목록: `GET /api/memories` 상한 없음 + 마켓플레이스 OFFSET 페이지네이션
 - **우선순위 제안**: **P2**
 - **카테고리**: 성능 (페이지네이션)
-- **증거**:
+- **证据**:
   - `services/memory_service.py:368-373` — limit/커서 없음(라우터 `routers/memory.py:81-96`에 `limit` 파라미터 자체가 없음). 대조로 `list_runtime_memory_records`(`:376`)는 `.limit(RUNTIME_MEMORY_MAX_RECORDS)`로 이미 상한.
   - `marketplace/service.py:207, 460-507` — `.limit(limit).offset(offset)` + post-filter가 페이지 채울 때까지 `raw_offset += batch_size` 재조회 루프.
 - **리팩토링 방안**:
@@ -682,7 +682,7 @@
 ### [BE-P13] async 핸들러 내 동기 CPU/파일 작업 (web_scraper HTML 파싱, 스킬 zip export)
 - **우선순위 제안**: **P3**
 - **카테고리**: 성능 (이벤트 루프 블로킹)
-- **증거**:
+- **证据**:
   - `agent_runtime/tool_factory.py:164-170` — `async def scrape_url` 내 `BeautifulSoup(resp.text,"html.parser")` + `get_text()`. 수 MB HTML 파싱을 루프에서.
   - `routers/skills.py:237` → `skills/package_exporter.py:12-34` — async 핸들러가 동기 zip 빌드 직접 호출.
   - `routers/skill_files.py:40, 53` — 동기 파일 읽기(경미). `image_service.py:139` 정적 PNG 최초 로드 동기(캐시됨, 경미).

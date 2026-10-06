@@ -380,7 +380,7 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     await mockPhase3Apis(page)
     await page.goto(`/skills/${SKILL_ID}/evaluation`)
 
-    await page.getByRole('button', { name: /다시 실행/ }).first().click()
+    await page.getByRole('button', { name: /重新运行/ }).first().click()
     await expect(page.getByTestId('estimate-cost')).toContainText('$0.0231')
     await expect(page.getByText('scripted-eval-model')).toBeVisible()
   })
@@ -389,7 +389,7 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     await mockPhase3Apis(page)
     await page.goto(`/skills/${SKILL_ID}/evaluation`)
 
-    await page.getByRole('button', { name: /다시 실행/ }).first().click()
+    await page.getByRole('button', { name: /重新运行/ }).first().click()
     const toggle = page.getByTestId('estimate-baseline-toggle')
     await expect(toggle).toBeChecked()
     await expect(page.getByTestId('estimate-cost')).toContainText('$0.0231')

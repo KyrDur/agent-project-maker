@@ -4,7 +4,7 @@ import { ToolFallbackPanel } from '@/components/chat/tool-ui/generic-tool-ui'
 
 describe('CollapsiblePill', () => {
   it('does not render lazy body content while collapsed', async () => {
-    const renderBody = vi.fn(() => <div>무거운 결과</div>)
+    const renderBody = vi.fn(() => <div>重型结果</div>)
 
     render(
       <CollapsiblePill
@@ -16,12 +16,12 @@ describe('CollapsiblePill', () => {
     )
 
     expect(renderBody).not.toHaveBeenCalled()
-    expect(screen.queryByText('무거운 결과')).not.toBeInTheDocument()
+    expect(screen.queryByText('重型结果')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Expand' }))
 
     expect(renderBody).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('무거운 결과')).toBeInTheDocument()
+    expect(screen.getByText('重型结果')).toBeInTheDocument()
   })
 
   it('keeps heavy tool results lazy until the panel is opened', async () => {
@@ -31,7 +31,7 @@ describe('CollapsiblePill', () => {
     render(
       <ToolFallbackPanel
         toolName="large_result_tool"
-        args={{ city: '울산' }}
+        args={{ city: '蔚山' }}
         result={circular}
         status="complete"
       />,
@@ -42,11 +42,11 @@ describe('CollapsiblePill', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Expand' }))
 
-    expect(screen.getByText(/직렬화할 수 없는 결과/)).toBeInTheDocument()
+    expect(screen.getByText(/序列化失败/)).toBeInTheDocument()
   })
 
   it('memoizes heavy tool value formatting while expanded for stable payloads', async () => {
-    const args = { city: '울산' }
+    const args = { city: '蔚山' }
     const result = { ok: true, items: Array.from({ length: 10 }, (_, index) => ({ index })) }
     const stringifySpy = vi.spyOn(JSON, 'stringify')
 

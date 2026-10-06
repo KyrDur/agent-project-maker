@@ -52,6 +52,7 @@ const mockInvalidateConversationNavigators = vi.fn()
 
 vi.mock('@/lib/hooks/use-agents', () => ({
   useAgent: (...args: unknown[]) => mockUseAgent(...args),
+  useAgentRuntimeReadiness: () => ({ data: { ready: true } }),
 }))
 
 vi.mock('@/lib/auth/session', () => ({
@@ -72,7 +73,7 @@ vi.mock('@/lib/hooks/use-conversations', () => ({
   },
   invalidateConversationNavigators: (...args: unknown[]) =>
     mockInvalidateConversationNavigators(...args),
-  // W2-7 follow-up 고스트 — 페이지 테스트에선 제안 fetch를 no-op으로.
+  // W2-7 follow-up 幽灵建议 — 页面测试中将建议 fetch 设为 no-op。
   useFollowupSuggestionMutation: () => ({
     mutateAsync: async () => ({ suggestion: null }),
   }),
@@ -336,11 +337,11 @@ describe('ChatPage', () => {
 
     const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Test message')
-    const sendButton = screen.getByRole('button', { name: /전송/ })
+    const sendButton = screen.getByRole('button', { name: /发送/ })
     await user.click(sendButton)
 
     // streamChat: (conversationId, content, signal, options).
-    // P1-7 첨부 도입 후 chat-input이 빈 attachmentIds 배열을 항상 전달.
+    // 引入 P1-7 附件后，chat-input 始终传递空 attachmentIds 数组。
     expect(mockStreamChat).toHaveBeenCalledWith(
       'conv-1',
       'Test message',
@@ -405,7 +406,7 @@ describe('ChatPage', () => {
     )
 
     await user.type(screen.getByPlaceholderText('占位符'), 'Draft message')
-    await user.click(screen.getByRole('button', { name: /전송/ }))
+    await user.click(screen.getByRole('button', { name: /发送/ }))
 
     expect(mockStreamStartConversation).toHaveBeenCalledWith(
       'agent-1',
@@ -461,15 +462,15 @@ describe('ChatPage', () => {
 
     const textarea = screen.getByPlaceholderText('占位符')
     await user.type(textarea, 'Search for something')
-    const sendButton = screen.getByRole('button', { name: /전송/ })
+    const sendButton = screen.getByRole('button', { name: /发送/ })
     await user.click(sendButton)
 
     expect(mockStreamChat).toHaveBeenCalled()
   })
 
-  // streamChat 에러 처리는 useChatRuntime 내부로 이동 (M? assistant-ui 통합).
-  // 페이지 외부에서 mock한 streamChat 결과가 toast.error로 직접 변환되지 않으므로
-  // 단위 테스트로 검증 불가. e2e/smoke 또는 manual QA로 대체.
+  // streamChat 错误处理已移入 useChatRuntime 内部（M? assistant-ui 集成）。
+  // 因为在页面外 mock 的 streamChat 结果不会直接转换成 toast.error，
+  // 无法通过单元测试验证。改用 e2e/smoke 或 manual QA。
   it('removes the chat-local conversation list and keeps compact agent context', () => {
     mockUseAgent.mockReturnValue({ data: mockAgent })
     render(

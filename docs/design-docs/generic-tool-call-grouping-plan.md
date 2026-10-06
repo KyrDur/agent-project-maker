@@ -1,117 +1,117 @@
-# 개발 기획: 범용 Tool-Call 그룹핑 (모든 도구를 그룹 박스로)
+# 开发规划：通用 Tool-Call grouping（把所有工具归入 group box）
 
-> 상태: **Phase-1 구현 완료 (2026-06-25)** · 브랜치 `worktree-feature+generic-tool-call-grouping` · 최초 작성/개정 2026-06-25
-> 결정: **공식 `MessagePrimitive.GroupedParts` 채택 + 그룹 컨테이너 비주얼은 기존 `CollapsiblePill` 재사용** (§5.3의 공식 `tool-group.tsx` vendoring 대신 — 디자인 토큰 일관성 + 검증된 접기 UX + keyframe/가드 작업 회피). tool name 세분화를 위해 `groupPartByType`(type 기준) 대신 inline `groupBy` 사용.
+> 状态：**Phase-1 实现完成（2026-06-25）** · 分支 `worktree-feature+generic-tool-call-grouping` · 初次编写/修订 2026-06-25
+> 决定：**采用官方 `MessagePrimitive.GroupedParts` + group container 视觉复用现有 `CollapsiblePill`**（替代 §5.3 的官方 `tool-group.tsx` vendoring 方案 — 保持 design token 一致 + 复用已验证折叠 UX + 避免 keyframe/guard 工作）。为按 tool name 细分，使用 inline `groupBy`，不使用按 type 的 `groupPartByType`。
 >
-> **실제 구현/검증 (Phase-1, 메인 v3 한정):**
-> - `frontend/src/components/chat/assistant-thread.tsx` — `MessagePrimitive.GroupedParts` + 모듈레벨 `groupAssistantParts`(`group-tool:${toolName}`, `isGroupableTool` 제외) + `renderGroupedAssistantPart`(group N≥2 컨테이너 / N=1 패스스루 / text·tool-call·data·indicator·default leaf 보존, default=null은 `defaultComponents`와 일치 확인).
-> - `frontend/src/components/chat/tool-ui/tool-group-container.tsx` — `CollapsiblePill` 래퍼(라벨·count·running/done key remount).
-> - `frontend/src/lib/chat/tool-group-meta.ts` — `toolGroupLabelKey`(검색/파일류 i18n) + `isGroupableTool`(HiTL/승인 제외).
-> - i18n `chat.toolGroup.{count,labels.*}` (ko/en), vitest 2개, E2E `E2E_TOOL_GROUP` 마커(`current_datetime`×3+`resolve_relative_date`×1, no-network/no-HITL builtin).
-> - 검증: tsc 0 · vitest 1009 그린 · lint(design-system/i18n) 통과 · E2E cold `--retries=0` 통과(N박스→1그룹+count, done 접힘, 펼침 복원).
-> - **Phase-2 남음**: deep-research 특수처리 흡수(§6), 레거시/빌더 표면(test-chat-panel·conversational·assistant-panel) 적용.
+> **实际实现/验证（Phase-1，仅 main v3）：**
+> - `frontend/src/components/chat/assistant-thread.tsx` — `MessagePrimitive.GroupedParts` + module-level `groupAssistantParts`（`group-tool:${toolName}`，排除 `isGroupableTool`）+ `renderGroupedAssistantPart`（group N≥2 container / N=1 passthrough / 保留 text·tool-call·data·indicator·default leaf，已确认 default=null 与 `defaultComponents` 一致）。
+> - `frontend/src/components/chat/tool-ui/tool-group-container.tsx` — `CollapsiblePill` wrapper（label·count·running/done key remount）。
+> - `frontend/src/lib/chat/tool-group-meta.ts` — `toolGroupLabelKey`（搜索/文件类 i18n）+ `isGroupableTool`（排除 HiTL/approval）。
+> - i18n `chat.toolGroup.{count,labels.*}`（ko/en），vitest 2 个，E2E `E2E_TOOL_GROUP` marker（`current_datetime`×3+`resolve_relative_date`×1，no-network/no-HITL builtin）。
+> - 验证：tsc 0 · vitest 1009 green · lint（design-system/i18n）通过 · E2E cold `--retries=0` 通过（N box→1 group+count，done 折叠，展开恢复）。
+> - **Phase-2 剩余**：吸收 deep-research 特殊处理（§6），适配 legacy/builder surface（test-chat-panel·conversational·assistant-panel）。
 >
-> ⚠️ 아래 §4~9는 **구현 전 기획**이며, §5.3의 vendoring 안은 위 결정대로 `CollapsiblePill` 재사용으로 대체되었다.
-> ⚠️ 개정 사유: 초판은 "공식 `GroupedParts`/`ToolGroup` API가 npm 미출시라 커스텀 일반화(Option 3)로 간다"고 결정했으나, **이 전제가 틀렸다**. 공식 grouping 런타임 API는 **우리가 이미 쓰는 `@assistant-ui/react` 0.14.18에 STABLE로 존재**한다(검증 §10·부록 A). 따라서 커스텀 일반화를 버리고 **공식 API로 직접 구현**한다. registry 컴포넌트(`tool-group.tsx`/`tool-fallback.tsx`)는 shadcn copy-paste로 vendoring 후 우리 디자인에 맞춘다.
+> ⚠️ 以下 §4~9 为**实现前规划**，其中 §5.3 的 vendoring 方案已按上面决定替换为复用 `CollapsiblePill`。
+> ⚠️ 修订原因：初稿决定“官方 `GroupedParts`/`ToolGroup` API 尚未在 npm 发布，因此走自定义泛化（Option 3）”，但**这个前提是错的**。官方 grouping runtime API 已在**我们正在使用的 `@assistant-ui/react` 0.14.18 中以 STABLE 形式存在**（验证见 §10·附录 A）。因此放弃自定义泛化，**直接使用官方 API 实现**。registry component（`tool-group.tsx`/`tool-fallback.tsx`）通过 shadcn copy-paste vendoring 后再按我们的 design 调整。
 
 ---
 
-## 0. 한 줄 요약
+## 0. 一句话摘要
 
-지금 그룹핑(여러 박스 → 1개로 뭉치기)은 **검색/딥리서치(tavily) 전용**이고 **레거시 런타임에만** 걸려 있다. 이걸 **모든 도구가 동일하게 동작**(연속 같은 도구 = 1 컨테이너 + 개수 라벨 + running 펼침/done 접힘)하도록 **메인 v3 채팅**에 적용한다. 구현은 **자체 일반화가 아니라 assistant-ui 공식 `MessagePrimitive.GroupedParts` + `groupPartByType`**(이미 0.14.18에 존재)을 쓰고, 그룹 컨테이너 비주얼만 vendored `tool-group.tsx`를 우리 토큰에 맞게 다듬는다.
-
----
-
-## 1. 목표 (Done 기준)
-
-1. **메인 v3 채팅**(`assistant-thread.tsx`)에서 한 assistant 메시지 안의 **연속된 같은 도구 호출 N개**가 **1개의 접을 수 있는 그룹 컨테이너**로 렌더된다.
-2. 그룹 헤더에 **개수 라벨**("웹 검색 · 10회" 등 도구별 라벨 + count).
-3. **running 중 자동 펼침 / 완료 시 접힘.**
-4. 그룹 내부는 호출별 **한 줄 요약**(검색=쿼리, 파일=경로 등) — 기존 `makeAssistantToolUI` per-tool UI를 그대로 렌더.
-5. (선택) 검색류 도구는 **출처를 pill로 별도 집계**(Perplexity식).
-6. 단일 호출(N≤1)은 **그룹핑하지 않고** 기존 개별 박스로 렌더.
-7. 모든 도구에 일반 적용(tavily 특수처리 제거 또는 일반 그룹의 특수 케이스로 흡수).
-8. **(개정 추가)** 그룹핑은 공식 `GroupedParts` API로 구현하여, 향후 assistant-ui 업그레이드 시 커스텀 유지보수 부담이 없도록 한다.
+当前 grouping（多个 box → 合并成 1 个）**仅限搜索/deep research（tavily）**，且**只在 legacy runtime** 生效。目标是让**所有工具表现一致**（连续相同工具 = 1 container + count label + running 展开/done 折叠），并应用到**main v3 聊天**。实现不做自定义泛化，而使用 **assistant-ui 官方 `MessagePrimitive.GroupedParts` + `groupPartByType`**（0.14.18 已存在），group container 视觉仅对 vendored `tool-group.tsx` 做 token 适配。
 
 ---
 
-## 2. 현재 상태 (실측 검증 완료)
+## 1. 目标（Done 标准）
 
-### 2.1 런타임 2개
-- **v3 (메인 채팅)**: `frontend/src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts` + LangGraph SDK(`useStream`). 렌더 진입점은 `frontend/src/components/chat/assistant-thread.tsx`.
-- **레거시**: `frontend/src/lib/chat/use-chat-runtime.ts`. 아직 살아있는 표면 = 대화형 빌더(`app/agents/new/conversational`), Assistant 패널(`components/agent/assistant-panel.tsx`), 설정 테스트챗(`app/agents/[agentId]/settings/_components/right-panel/test-chat-panel.tsx`).
-
-### 2.2 도구 박스 = 자체 구현
-- `frontend/src/components/chat/tool-ui/`의 ~27개 커스텀 컴포넌트가 assistant-ui **`makeAssistantToolUI` 프리미티브**(도구명 → 렌더 함수 매핑)로 등록(`frontend/src/lib/chat/tool-ui-registry.ts`). 비주얼은 100% 자체 구현. **assistant-ui tool-group 미사용.**
-- catch-all: `frontend/src/components/chat/tool-ui/generic-tool-ui.tsx`의 `GenericToolFallback`(`makeAssistantToolUI({ toolName: '*' })`)이 미등록 도구를 처리.
-- reasoning: `frontend/src/components/chat/tool-ui/reasoning-ui.tsx`의 `ReasoningDataUI`(`makeAssistantDataUI`)로 등록(`data-ui-registry.ts`).
-
-### 2.3 현재 그룹핑 = tavily 전용 + 레거시 전용
-- 로직: `frontend/src/lib/chat/deep-research-summary.ts` (253줄)
-  - `compactDeepResearchMessages(messages)` → turn 단위로 `tavily_search` 호출을 모아, **2개 이상**(`tavilyCalls.length <= 1`이면 패스)일 때 개별 호출 N개 + 결과 메시지를 제거하고 **합성 `deep_research_summary` tool_call 1개**로 치환.
-  - 상수: `TAVILY_SEARCH_TOOL_NAME = 'tavily_search'`, `DEEP_RESEARCH_SUMMARY_TOOL_NAME = 'deep_research_summary'`.
-- UI: `frontend/src/components/chat/tool-ui/deep-research-summary-ui.tsx` (172줄) — `makeAssistantToolUI({ toolName: 'deep_research_summary' })`. 출처 dedup·도메인 랭킹·완료 N/M·소요시간 등 **풍부한 요약** 렌더.
-- 와이어링: **`frontend/src/lib/chat/use-chat-runtime.ts:467`** `const merged = compactDeepResearchMessages(...)` — **레거시 런타임에서만 호출**.
-- 테스트: `frontend/src/lib/chat/deep-research-summary.test.ts`.
-
-> ⚠️ 핵심: **메인 v3 채팅(`use-moldy-langgraph-stream.ts`)은 `compactDeepResearchMessages`를 호출하지 않는다.** 즉 메인 채팅엔 그룹핑이 **아예 없어서** "N박스" 문제가 실재한다. 일반화의 1차 타깃이 바로 여기다.
-
-### 2.4 재사용 가능한 자산
-- `frontend/src/components/chat/tool-ui/collapsible-pill.tsx` — 접기/펼치기 UX.
-- `frontend/src/lib/chat/search-results.ts` (90줄) — `parseSearchResults`, `sourceSummariesFromResults`(출처 dedup/도메인 집계). 출처 pill에 재사용.
-- 도구는 **registry 도구**: 예) `tavily_search` = `backend/app/tools/definitions/tavily_search.py` (key `tavily`, `TAVILY_API_KEY` 사용). MCP 아님.
+1. 在**main v3 聊天**（`assistant-thread.tsx`）中，一条 assistant message 内的**连续相同 tool call N 个**会被渲染为**1 个可折叠 group container**。
+2. group header 显示**count label**（如“网页搜索 · 10 次”等按工具的 label + count）。
+3. **running 时自动展开 / 完成后折叠。**
+4. group 内每个 call 显示**单行摘要**（搜索=查询词，文件=路径等）— 继续渲染现有 `makeAssistantToolUI` per-tool UI。
+5. （可选）搜索类工具将**source 另行汇总成 pill**（Perplexity 风格）。
+6. 单次调用（N≤1）**不 grouping**，继续按现有单独 box 渲染。
+7. 通用于所有工具（移除 tavily 特殊处理，或吸收到通用 group 的特殊 case）。
+8. **（修订新增）** grouping 使用官方 `GroupedParts` API，以减少未来 assistant-ui 升级时的自定义维护成本。
 
 ---
 
-## 3. 경험적 근거 (실측 데이터)
+## 2. 当前状态（实测验证完成）
 
-### 3.1 도구 호출은 intra-message (한 메시지에 N개)
-- 출처: dev DB(`natural-mold-postgres-1`, localhost:5432) `message_events` 테이블의 실제 deep-research 대화 2건.
-  - 대화 `cba4e3c9…` → assistant 메시지 1개(`c40c9bcd…`)에 **`tavily_search` ×10 + `read_file` ×1**.
-  - 대화 `992272b8…` → assistant 메시지 1개(`bf62d812…`)에 **`tavily_search` ×4 + `naver_search_news` ×1**.
-  - tool_call id가 모두 `{assistant_msg_id}-{n}` 형태 → **한 메시지 소속 확정**.
-- **결론: 검색 N개는 별개 메시지가 아니라 한 메시지의 N개 part다 → intra-message 그룹핑으로 충분.** 공식 `GroupedParts`는 기본이 **adjacent(인접) 그룹핑**이라 정확히 이 케이스에 맞는다. (cross-message는 §8 참고, 보류.)
+### 2.1 2 个 runtime
+- **v3（main 聊天）**：`frontend/src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts` + LangGraph SDK（`useStream`）。render 入口为 `frontend/src/components/chat/assistant-thread.tsx`。
+- **legacy**：`frontend/src/lib/chat/use-chat-runtime.ts`。仍在使用的 surface = conversational builder（`app/agents/new/conversational`）、Assistant panel（`components/agent/assistant-panel.tsx`）、settings test chat（`app/agents/[agentId]/settings/_components/right-panel/test-chat-panel.tsx`）。
 
-### 3.2 한 메시지에 도구가 섞임
-- tavily 10 + read_file 1 / tavily 4 + naver 1 처럼 **다른 도구가 섞임.**
-- → "모든 도구를 한 그룹"이 아니라 **연속된 같은 도구 이름** 기준으로 그룹. 공식 `groupPartByType`는 part type 기준 그룹이므로, **tool name 기준 세분화**는 `groupBy` 콜백에서 group key에 도구 이름을 포함시켜 처리(§5.2).
+### 2.2 tool box = 自定义实现
+- `frontend/src/components/chat/tool-ui/` 下约 27 个 custom component 通过 assistant-ui **`makeAssistantToolUI` primitive**（tool name → render fn mapping）注册（`frontend/src/lib/chat/tool-ui-registry.ts`）。视觉 100% 自定义。**未使用 assistant-ui tool-group。**
+- catch-all：`frontend/src/components/chat/tool-ui/generic-tool-ui.tsx` 中的 `GenericToolFallback`（`makeAssistantToolUI({ toolName: '*' })`）处理未注册工具。
+- reasoning：`frontend/src/components/chat/tool-ui/reasoning-ui.tsx` 的 `ReasoningDataUI`（`makeAssistantDataUI`）注册于 `data-ui-registry.ts`。
 
-### 3.3 저장 포맷 (참고)
-- `message_events.events`는 Moldy 자체 SSE 프로토콜(`message_start`/`tool_call_start`/`tool_call_result`/`content_delta`/`message_end`). **AG-UI 아님.** resume/replay/share/trace용으로 영속화(ADR-011). 그룹핑 작업과는 무관(프론트 `Message[]`/part 레벨에서 처리).
+### 2.3 当前 grouping = tavily 专用 + legacy 专用
+- 逻辑：`frontend/src/lib/chat/deep-research-summary.ts`（253 行）
+  - `compactDeepResearchMessages(messages)` → 以 turn 为单位汇总 `tavily_search` 调用，**2 个以上**（`tavilyCalls.length <= 1` 则 passthrough）时移除单独的 N 个 call + result message，并替换成**1 个 synthetic `deep_research_summary` tool_call**。
+  - 常量：`TAVILY_SEARCH_TOOL_NAME = 'tavily_search'`、`DEEP_RESEARCH_SUMMARY_TOOL_NAME = 'deep_research_summary'`。
+- UI：`frontend/src/components/chat/tool-ui/deep-research-summary-ui.tsx`（172 行）— `makeAssistantToolUI({ toolName: 'deep_research_summary' })`。渲染 source dedup·domain ranking·完成 N/M·耗时等**丰富摘要**。
+- wiring：**`frontend/src/lib/chat/use-chat-runtime.ts:467`** `const merged = compactDeepResearchMessages(...)` — **只在 legacy runtime 调用**。
+- 测试：`frontend/src/lib/chat/deep-research-summary.test.ts`。
+
+> ⚠️ 核心：**main v3 聊天（`use-moldy-langgraph-stream.ts`）不会调用 `compactDeepResearchMessages`。** 也就是说 main 聊天**完全没有 grouping**，因此“N box”问题真实存在。泛化的第 1 目标就是这里。
+
+### 2.4 可复用资产
+- `frontend/src/components/chat/tool-ui/collapsible-pill.tsx` — 折叠/展开 UX。
+- `frontend/src/lib/chat/search-results.ts`（90 行）— `parseSearchResults`、`sourceSummariesFromResults`（source dedup/domain 汇总）。可复用于 source pill。
+- 工具属于**registry tool**：例如 `tavily_search` = `backend/app/tools/definitions/tavily_search.py`（key `tavily`，使用 `TAVILY_API_KEY`）。不是 MCP。
 
 ---
 
-## 4. 설계 — 3-rule 패턴
+## 3. 经验依据（实测数据）
 
-1. **연속 같은 도구 = 1 컨테이너 + 개수 라벨**: `{도구 라벨} · {N}회` (예: "웹 검색 · 10회", "파일 읽기 · 3회").
-2. **running 펼침 / done 접힘**: 그룹 내 tool-call part의 status가 하나라도 running이면 펼침, 전부 완료면 접힘. (공식 `ToolGroupTrigger`의 `active` prop이 이 신호를 받음.)
-3. **호출별 한 줄 요약** + (검색류) **출처 pill 별도 집계**. 그룹 내부의 각 호출은 **기존 `makeAssistantToolUI` per-tool UI를 그대로** 렌더.
-- **임계값**: N ≥ 2일 때만 그룹. N=1은 기존 개별 박스.
+### 3.1 tool call 是 intra-message（同一 message 内 N 个）
+- 来源：dev DB（`natural-mold-postgres-1`, localhost:5432）`message_events` table 中实际 deep-research conversation 2 个。
+  - conversation `cba4e3c9…` → 1 条 assistant message（`c40c9bcd…`）中 **`tavily_search` ×10 + `read_file` ×1**。
+  - conversation `992272b8…` → 1 条 assistant message（`bf62d812…`）中 **`tavily_search` ×4 + `naver_search_news` ×1**。
+  - 所有 tool_call id 都是 `{assistant_msg_id}-{n}` 形式 → **确认属于同一 message**。
+- **结论：搜索 N 个不是不同 message，而是同一 message 的 N 个 part → intra-message grouping 足够。** 官方 `GroupedParts` 默认是 **adjacent（相邻）grouping**，正好适配这一 case。（cross-message 参见 §8，暂缓。）
 
-> 이 3-rule은 공식 `tool-group.tsx`(ToolGroupRoot/Trigger/Content)의 동작과 동일하다. 즉 **별도 컨테이너를 새로 만들 필요 없이** 공식 컴포넌트를 vendoring해서 라벨/토큰만 바꾸면 된다.
+### 3.2 同一 message 中会混用工具
+- 例如 tavily 10 + read_file 1 / tavily 4 + naver 1，**会混入不同工具。**
+- → 不能“把所有工具放在一个 group”，而应按**连续相同 tool name** grouping。官方 `groupPartByType` 按 part type grouping，因此要实现**按 tool name 细分**，需要在 `groupBy` callback 的 group key 中包含 tool name（§5.2）。
+
+### 3.3 存储格式（参考）
+- `message_events.events` 使用 Moldy 自有 SSE protocol（`message_start`/`tool_call_start`/`tool_call_result`/`content_delta`/`message_end`）。**不是 AG-UI。** 用于 resume/replay/share/trace 持久化（ADR-011）。与 grouping 工作无关（在 frontend `Message[]`/part 层处理）。
 
 ---
 
-## 5. 구현 계획 — 공식 GroupedParts 채택
+## 4. 设计 — 3-rule 模式
 
-### 5.0 핵심 API (0.14.18에 존재, §10 검증)
-- `MessagePrimitive.GroupedParts` (STABLE) — `@assistant-ui/react`의 `MessagePrimitive` 네임스페이스. `groupBy: (part, context) => TKey[] | null` prop을 받아 인접 part를 합성 `group-*` 노드로 묶는다. render fn은 `{ part, children }`를 받고, **group 케이스만 `children`을 렌더**.
-- `groupPartByType(map)` (STABLE) — root에서 import. `groupPartByType({ "tool-call": ["group-tool"] })` 처럼 part type → group key 매핑을 만들어 `groupBy`에 넘기는 헬퍼.
-- 합성 key `"standalone-tool-call"`(human tools·MCP apps 자동 standalone, 그룹에서 제외) — 우리는 당장 불필요하나 인지. (`"mcp-app"`은 deprecated, v0.15 제거.)
+1. **连续相同工具 = 1 container + count label**：`{tool label} · {N} 次`（例如“网页搜索 · 10 次”“读取文件 · 3 次”）。
+2. **running 展开 / done 折叠**：group 内只要任一 tool-call part 的 status 为 running 就展开，全部完成后折叠。（官方 `ToolGroupTrigger` 的 `active` prop 接收该信号。）
+3. **每次调用单行摘要** +（搜索类）**source pill 单独汇总**。group 内每个 call 继续**渲染现有 `makeAssistantToolUI` per-tool UI**。
+- **threshold**：仅 N ≥ 2 时 grouping。N=1 继续使用现有单独 box。
 
-### 5.1 진입점
+> 这 3 条 rule 与官方 `tool-group.tsx`（ToolGroupRoot/Trigger/Content）的行为一致。也就是说**无需重新造 container**，只要 vendoring 官方 component 并修改 label/token 即可。
+
+---
+
+## 5. 实现计划 — 采用官方 GroupedParts
+
+### 5.0 核心 API（0.14.18 已存在，§10 验证）
+- `MessagePrimitive.GroupedParts`（STABLE）— 属于 `@assistant-ui/react` 的 `MessagePrimitive` namespace。接收 `groupBy: (part, context) => TKey[] | null` prop，把相邻 part 合成为 `group-*` node。render fn 接收 `{ part, children }`，且**只有 group case 渲染 `children`**。
+- `groupPartByType(map)`（STABLE）— 从 root import。通过 `groupPartByType({ "tool-call": ["group-tool"] })` 这类写法生成 part type → group key mapping，传给 `groupBy`。
+- synthetic key `"standalone-tool-call"`（human tools·MCP apps 自动 standalone，从 group 中排除）— 当前暂时不需要，但需知晓。（`"mcp-app"` 已 deprecated，将在 v0.15 移除。）
+
+### 5.1 入口
 - `frontend/src/components/chat/assistant-thread.tsx`
-  - 현재 `AssistantMessageParts()` (≈236–239행)에서 `<MessagePrimitive.Content components={ASSISTANT_PART_COMPONENTS} />`로 parts를 렌더. (`Content`는 `Parts`의 alias.)
-  - → 이 자리를 `<MessagePrimitive.GroupedParts groupBy={...}>{renderGroupOrPart}</MessagePrimitive.GroupedParts>`로 교체.
-  - 또 다른 `<MessagePrimitive.Content />` 사용처(≈757행) + `builder-overrides.tsx`(레거시/빌더용)도 점검 — 빌더 표면은 우선 기존 유지 가능.
+  - 当前 `AssistantMessageParts()`（约 236–239 行）使用 `<MessagePrimitive.Content components={ASSISTANT_PART_COMPONENTS} />` 渲染 parts。（`Content` 是 `Parts` 的 alias。）
+  - → 将此处替换为 `<MessagePrimitive.GroupedParts groupBy={...}>{renderGroupOrPart}</MessagePrimitive.GroupedParts>`。
+  - 还需检查另一个 `<MessagePrimitive.Content />` 使用点（约 757 行）+ `builder-overrides.tsx`（legacy/builder 用）— builder surface 第一阶段可以继续保持现状。
 
-### 5.2 그룹핑 로직 (tool name 세분화)
-- `groupPartByType`는 type 기준이라 tavily·read_file이 한 그룹으로 섞일 수 있다. 우리는 **tool name 기준**이 필요하므로 `groupBy` 콜백을 직접 작성:
+### 5.2 grouping 逻辑（按 tool name 细分）
+- `groupPartByType` 按 type grouping，可能把 tavily·read_file 混到一个 group。我们需要**按 tool name**，因此直接编写 `groupBy` callback：
   ```ts
   const groupBy = (part) =>
     part.type === "tool-call" ? [`group-tool:${part.toolName}`] : null;
   ```
-  - group key에 `toolName`을 포함 → **연속 같은 도구만** 한 그룹(인접 다른 도구는 자동 분리). N=1이면 컨테이너 없이 개별 박스로 렌더(render fn에서 `part.indices.length < 2` 분기).
+  - 在 group key 中包含 `toolName` → **只有连续相同工具**进入同一个 group（相邻不同工具会自动分开）。N=1 时不使用 container，而是单独 box 渲染（render fn 中用 `part.indices.length < 2` 分支）。
 - render fn:
   ```tsx
   ({ part, children }) =>
@@ -120,93 +120,93 @@
           <ToolGroupTrigger count={part.indices.length} active={part.status?.type === "running"} label={metaFor(part).label} />
           <ToolGroupContent>{children}</ToolGroupContent>
         </ToolGroupRoot>
-      : children // 비-그룹 part는 기존 렌더 경로 그대로
+      : children // 非 group part 继续走现有 render 路径
   ```
 
-### 5.3 vendoring할 컴포넌트 (shadcn copy-paste, 우리 토큰에 맞춤)
-- `npx shadcn@latest add https://r.assistant-ui.com/tool-group.json https://r.assistant-ui.com/tool-fallback.json` → `frontend/src/components/assistant-ui/{tool-group,tool-fallback}.tsx` 생성. (tool-group이 tool-fallback에 의존하여 함께 설치됨.)
-  - 원본 소스 참고 위치(로컬): `/Users/chester/dev/ref/assistant-ui/packages/ui/src/components/assistant-ui/`.
-  - `tool-group.tsx`는 런타임 의존이 `useScrollLock`뿐 → **0.14.18에서 그대로 동작.**
-  - `tool-fallback.tsx`의 **approval(HiTL) 서브컴포넌트는 0.14.19+ API(`respondToApproval`)** 라 0.14.18에선 일부 미동작 가능 → 우리는 자체 `ApprovalCard`가 있으므로 **approval 파트는 제거/우리 것으로 대체**.
-- vendored 후: 헤더를 `{도구 라벨} · {N}회`로 (label prop 추가), 디자인 토큰을 ADR-010에 맞춤, `collapsible-pill.tsx`와 톤 통일.
-- 도구 메타 맵 (신규, `frontend/src/lib/chat/tool-group-meta.ts`):
-  - `toolName → { label, summaryLine(args) }`. 예: `tavily_search → {label:'웹 검색', summaryLine: a => a.query}`, `read_file → {label:'파일 읽기', summaryLine: a => a.file_path}`. **제네릭 fallback**(label=toolName, summaryLine=주요 arg 1개).
+### 5.3 需要 vendoring 的 component（shadcn copy-paste，按我们的 token 调整）
+- `npx shadcn@latest add https://r.assistant-ui.com/tool-group.json https://r.assistant-ui.com/tool-fallback.json` → 生成 `frontend/src/components/assistant-ui/{tool-group,tool-fallback}.tsx`。（tool-group 依赖 tool-fallback，因此一起安装。）
+  - 原始源码参考位置（本地）：`/Users/chester/dev/ref/assistant-ui/packages/ui/src/components/assistant-ui/`。
+  - `tool-group.tsx` 的 runtime 依赖只有 `useScrollLock` → **在 0.14.18 可直接工作。**
+  - `tool-fallback.tsx` 的 **approval（HiTL）subcomponent 使用 0.14.19+ API（`respondToApproval`）**，在 0.14.18 可能部分不可用 → 我们已有自定义 `ApprovalCard`，因此**移除 approval 部分/替换为我们的实现**。
+- vendored 后：header 改为 `{tool label} · {N} 次`（新增 label prop），design token 对齐 ADR-010，tone 与 `collapsible-pill.tsx` 统一。
+- tool meta map（新增，`frontend/src/lib/chat/tool-group-meta.ts`）：
+  - `toolName → { label, summaryLine(args) }`。例如：`tavily_search → {label:'网页搜索', summaryLine: a => a.query}`，`read_file → {label:'读取文件', summaryLine: a => a.file_path}`。**generic fallback**（label=toolName，summaryLine=1 个主要 arg）。
 
-### 5.4 호출별 한 줄 요약 / 기존 per-tool UI 유지
-- 그룹 내부의 각 `tool-call` part는 **기존 `makeAssistantToolUI` 등록 UI로 렌더**한다(검색=쿼리 한 줄, 파일=경로 등은 이미 per-tool UI가 함). 그룹은 컨테이너 역할만.
-- ⚠️ 검증 필요(§8-1): `GroupedParts`의 `children`이 그룹 내부 part를 렌더할 때 **기존 등록된 per-tool UI 라우팅이 유지**되는지. 안 되면 group render fn 내부에서 `MessagePrimitive.PartByIndex`/`components.tools` 경로로 명시 위임.
+### 5.4 每次调用单行摘要 / 保留现有 per-tool UI
+- group 内每个 `tool-call` part 继续**使用现有 `makeAssistantToolUI` 注册 UI 渲染**（搜索=查询词一行、文件=路径等已由 per-tool UI 处理）。group 仅承担 container 角色。
+- ⚠️ 需要验证（§8-1）：`GroupedParts` 的 `children` 渲染 group 内 part 时，**现有注册的 per-tool UI routing 是否仍然保留**。如果没有，则在 group render fn 内通过 `MessagePrimitive.PartByIndex`/`components.tools` 路径显式委派。
 
-### 5.5 출처 pill (선택, 검색류)
-- `lib/chat/search-results.ts`의 `parseSearchResults` + `sourceSummariesFromResults`로 그룹 내 모든 검색 결과의 **고유 출처/도메인 집계** → 그룹 footer에 pill row. (공식 `sources.tsx`는 `source` **part type** 기반이라 우리 아키텍처(결과가 tool result 안)와 안 맞음 → 우리 파서 유지.)
+### 5.5 source pill（可选，搜索类）
+- 使用 `lib/chat/search-results.ts` 的 `parseSearchResults` + `sourceSummariesFromResults`，对 group 内全部搜索结果的**唯一 source/domain 进行汇总** → 在 group footer 渲染 pill row。（官方 `sources.tsx` 基于 `source` **part type**，与我们的架构（result 在 tool result 中）不匹配 → 保留我们的 parser。）
 
 ---
 
-## 6. 기존 deep-research 그룹핑 정리
+## 6. 清理现有 deep-research grouping
 
-> **결정 (2026-06-26): 제거 + 확장 경로 문서화.** Phase-2(a)에서 검색 그룹 출처 집계(LITE)를 흡수했으므로 tavily 전용 특수처리는 중복이다. **Phase-2(b)에서 제거 대상**: `deep-research-summary.ts`(`compactDeepResearchMessages`) + `deep-research-summary-ui.tsx`(FULL 카드) + `tool-ui-registry.ts`의 `DeepResearchSummaryToolUI` 등록 + `use-chat-runtime.ts:467` 와이어링. ⚠️ **레거시/빌더 표면 그룹핑 적용과 반드시 함께** 한다 — 단독 제거 시 레거시 표면의 tavily ×N이 개별 박스로 퇴화한다.
+> **决定（2026-06-26）：移除 + 文档化扩展路径。** Phase-2(a) 已吸收搜索 group 的 source 汇总（LITE），因此 tavily 专用特殊处理属于重复。**Phase-2(b) 移除对象**：`deep-research-summary.ts`（`compactDeepResearchMessages`）+ `deep-research-summary-ui.tsx`（FULL card）+ `tool-ui-registry.ts` 中的 `DeepResearchSummaryToolUI` 注册 + `use-chat-runtime.ts:467` wiring。⚠️ **必须与 legacy/builder surface 的 grouping 应用一起进行** — 如果单独移除，legacy surface 中的 tavily ×N 会退化为单独 box。
 >
-> **미래에 더 풍부한 검색 표현이 필요하면** (사용자 우려 대응): `deep_research_summary` 합성 메시지를 부활시키지 말고 **`ToolGroupContainer`를 rich 모드로 확장**한다. 이미 그룹 `indices`로 각 검색 `result`에 접근하므로, 펼침 시 **출처 링크 리스트**(FULL의 핵심 가치)를 render-time으로 추가할 수 있다(합성 불필요, 우리 그룹핑과 일관). FULL 카드 원본 마크업이 필요하면 **commit 258d71a0 이전의 `deep-research-summary-ui.tsx`** 참조. 단 제목("React 생태계…")·소요시간(42s)·완료 N·M은 LLM 합성 데이터라 render-time 재현 대상이 아니며 의도적으로 버린다.
+> **如果未来需要更丰富的搜索表达**（回应用户担忧）：不要复活 `deep_research_summary` synthetic message，而是将 **`ToolGroupContainer` 扩展为 rich mode**。由于已经可以通过 group `indices` 访问每个搜索 `result`，展开时可以在 render-time 新增**source link list**（FULL 的核心价值），无需 synthetic，且与我们的 grouping 一致。如果需要 FULL card 原始 markup，可参考 **commit 258d71a0 之前的 `deep-research-summary-ui.tsx`**。其中 title（“React 生态…”）、耗时（42s）、完成 N·M 属于 LLM synthetic data，不属于 render-time 再现目标，因此有意舍弃。
 
-- (참고, 당시 기획) `deep-research-summary.ts` + `deep-research-summary-ui.tsx`의 운명 결정:
-  - **(a) 일반 ToolGroup으로 흡수 + 풍부한 요약 보존(권장 if 가치 있음)**: tavily 그룹의 footer에 기존 집계(출처 dedup/도메인/완료 N·M/소요시간)를 특수 렌더로 유지(§5.5 출처 pill로 흡수).
-  - (b) 풍부한 요약 폐기, 심플 일반 그룹으로 통일(코드↓).
-- 레거시 `use-chat-runtime.ts:467`의 `compactDeepResearchMessages` 호출은: 일반 그룹핑이 v3에 안착하면 **메시지 사전변환 방식 자체를 제거**하고 레거시 표면도 `GroupedParts`로 통일하거나, 단계적으로 둘 다 마이그레이션.
+- （参考，当时规划）决定 `deep-research-summary.ts` + `deep-research-summary-ui.tsx` 的去向：
+  - **(a) 吸收到通用 ToolGroup + 保留丰富摘要（若有价值则推荐）**：在 tavily group footer 中保留现有汇总（source dedup/domain/完成 N·M/耗时）的特殊 render（吸收到 §5.5 source pill）。
+  - (b) 放弃丰富摘要，统一为简单通用 group（代码↓）。
+- legacy `use-chat-runtime.ts:467` 中的 `compactDeepResearchMessages` 调用：通用 grouping 在 v3 稳定后，应**移除消息预转换方式本身**，并让 legacy surface 也统一使用 `GroupedParts`；或分阶段迁移二者。
 
 ---
 
-## 7. 테스트
+## 7. 测试
 
 - **vitest**:
-  - `groupBy` 콜백 + group render 단위 테스트: intra-message, **tool name 기준**, 도구 혼합(tavily+read_file), 임계값(N≥2), running/done 상태 → 펼침/접힘.
-  - vendored `tool-group.tsx` 렌더 테스트(label·count·active).
-  - `deep-research-summary.test.ts` 마이그레이션/업데이트.
-- **chat E2E**(기존 `frontend/e2e/chat-stream-integrity.spec.ts` 확장 또는 신규):
-  - scripted 모델에 **한 메시지 M개 동일 tool_call** 방출 마커 추가(`backend/app/agent_runtime/e2e_scripted_model.py` — 기존 `E2E_HITL_MULTI` 패턴 참고).
-  - 단언: N개 호출이 **1개 그룹 + count**로, running→펼침/done→접힘, 박스 중복 없음.
-  - 기존 베이스라인/known-flake 인지: cg47(`chat-langgraph-v3.spec.ts:47`, subagent 완료 stall, 별도), visual-matrix:146(부하 flake).
-- **가드**: Phase A/B render-integrity 스펙들 확장.
+  - `groupBy` callback + group render unit test：intra-message、**按 tool name**、混合工具（tavily+read_file）、threshold（N≥2）、running/done 状态 → 展开/折叠。
+  - vendored `tool-group.tsx` render test（label·count·active）。
+  - `deep-research-summary.test.ts` 迁移/更新。
+- **chat E2E**（扩展现有 `frontend/e2e/chat-stream-integrity.spec.ts` 或新增）：
+  - 在 scripted model 中新增**单条 message 发出 M 个相同 tool_call** 的 marker（`backend/app/agent_runtime/e2e_scripted_model.py` — 参考现有 `E2E_HITL_MULTI` 模式）。
+  - 断言：N 个 call 渲染为**1 个 group + count**，running→展开/done→折叠，无重复 box。
+  - 注意现有 baseline/known-flake：cg47（`chat-langgraph-v3.spec.ts:47`，subagent 完成 stall，另行处理）、visual-matrix:146（负载 flake）。
+- **guard**：扩展 Phase A/B render-integrity spec。
 
 ---
 
-## 8. 리스크 / 미해결 질문
+## 8. 风险 / 未解决问题
 
-1. **★per-tool UI 라우팅 유지**: `GroupedParts`의 group `children`이 그룹 내부 `tool-call` part를 렌더할 때 기존 `makeAssistantToolUI` 등록 UI가 그대로 적용되는지 **구현 첫 단계에서 검증**(§5.4). 안 되면 명시 위임 경로 필요. — 최대 불확실성.
-2. **vendored tool-fallback approval**: 0.14.18엔 approval API(`respondToApproval`, 0.14.19+) 미존재 → tool-fallback.tsx의 Approval 서브컴포넌트는 제거하고 자체 `ApprovalCard` 사용(§5.3).
-3. **cross-message**: 실측은 intra-message 우세. `GroupedParts`는 인접 그룹이라 충분. 순차 단일호출 메시지를 내는 에이전트가 생기면 `Unstable_PartsGrouped`(non-adjacent, unstable) 검토 — **일단 보류**.
-4. **레거시 런타임**: 일반 그룹핑을 레거시/빌더 표면에도 적용할지(§6). 우선 v3만, 이후 통일.
-5. **`makeAssistantToolUI` deprecated (0.14.24)**: 본 작업은 0.14.18 기준이라 무관하나, **장기적으로 27개 등록을 toolkit `render` API로 이전**해야 함(별도 트랙, §9 참고). 이 작업을 GroupedParts와 엮지 말 것.
-
----
-
-## 9. 견적
-
-- 공식 `GroupedParts`+`groupPartByType` 와이어링 + vendored `tool-group.tsx` 정리 + tool-meta 맵 + 테스트: **~2 dev-days** (커스텀 컨테이너를 새로 안 만들어 초판 대비 단축).
-- 풍부한 deep-research 요약 보존/흡수(6-a) + 출처 pill(5.5): **+0.5~1d.**
-- (별도 트랙, 본 작업과 분리) 0.14.24 업그레이드 타당성 + `makeAssistantToolUI`→toolkit `render` 마이그레이션 영향 분석: 별도 산정.
+1. **★保持 per-tool UI routing**：`GroupedParts` 的 group `children` 渲染 group 内 `tool-call` part 时，必须在**实现第一步就验证**现有 `makeAssistantToolUI` 注册 UI 是否仍按原样应用（§5.4）。如果不行，则需要显式委派路径。— 最大不确定性。
+2. **vendored tool-fallback approval**：0.14.18 中不存在 approval API（`respondToApproval`，0.14.19+）→ 删除 tool-fallback.tsx 的 Approval subcomponent，使用自定义 `ApprovalCard`（§5.3）。
+3. **cross-message**：实测以 intra-message 为主。`GroupedParts` 是相邻 grouping，已足够。如果未来出现按 message 依次只调用一个工具的 Agent，再考虑 `Unstable_PartsGrouped`（non-adjacent，unstable）— **暂缓**。
+4. **legacy runtime**：是否也将通用 grouping 应用到 legacy/builder surface（§6）。先做 v3，之后统一。
+5. **`makeAssistantToolUI` deprecated（0.14.24）**：本工作基于 0.14.18，因此无关，但**长期需要将 27 个注册迁移到 toolkit `render` API**（独立 track，见 §9）。不要与 GroupedParts 工作绑定。
 
 ---
 
-## 10. 공식 API 가용성 검증 (세션 2, 결정적)
+## 9. 估算
 
-- 설치 `@assistant-ui/react` **0.14.18**. npm 최신 = **0.14.24**(monorepo 소스 HEAD와 버전 일치, 소스가 앞서지 않음). 9개 docs 기능 전부 0.14.24에 출시 완료.
-- **0.14.18에 이미 존재(직접 grep 확인)** — `dist/index.d.ts`+`index.js`가 다음을 export:
-  - `groupPartByType`, `GroupByContext` (런타임+타입, root import 가능)
+- 官方 `GroupedParts`+`groupPartByType` wiring + 整理 vendored `tool-group.tsx` + tool-meta map + 测试：**~2 dev-days**（无需新造 custom container，比初稿缩短）。
+- 保留/吸收丰富 deep-research 摘要（6-a）+ source pill（5.5）：**+0.5~1d。**
+- （独立 track，与本工作拆开）0.14.24 升级可行性 + `makeAssistantToolUI`→toolkit `render` migration 影响分析：另行估算。
+
+---
+
+## 10. 官方 API 可用性验证（session 2，确定性）
+
+- 已安装 `@assistant-ui/react` **0.14.18**。npm 最新 = **0.14.24**（与 monorepo 源码 HEAD 版本一致，源码并未超前）。9 个 docs 功能均已在 0.14.24 发布完成。
+- **0.14.18 中已经存在（直接 grep 确认）** — `dist/index.d.ts`+`index.js` 会 export 以下内容：
+  - `groupPartByType`、`GroupByContext`（runtime+type，可从 root import）
   - `MessagePrimitive.GroupedParts` (STABLE), `Unstable_PartsGrouped`, `Unstable_PartsGroupedByParentId`(deprecated)
-  - `ReasoningMessagePartComponent`/`SourceMessagePartComponent`/`FileMessagePartComponent` + `useMessagePart{Reasoning,Source,File,Image}` 훅 + 각 part type 슬롯
-  - `AttachmentPrimitive`, `CompositeAttachmentAdapter`, `SimpleImageAttachmentAdapter` 등 (우리는 이미 attachment 프리미티브 사용 중)
-  - `makeAssistantToolUI`/`makeAssistantDataUI` (0.14.18에서 not deprecated)
-- **없음**: `context-display`(런타임 export 없음, registry 컴포넌트만 + 서버 usage forwarding 필요), `directive-text`(메시지 part 아님 — composer용 `unstable_` directive만), `ToolGroupRoot/Trigger/Content`(런타임 프리미티브 아님 — registry tsx의 로컬 컴포넌트). `toolUI`/`ToolFallback` 리터럴은 **export 아님**(JSDoc example/scaffold용).
-- **초판 부록 A의 오류 원인**: `frontend/node_modules/.pnpm`의 **stale `core@0.1.13`**을 grep해서 0건이 나옴. 실제 `react@0.14.18`이 resolve하는 건 **repo-root `.pnpm`의 `core@0.2.14`**. 재검증 시 root 스토어를 grep할 것.
+  - `ReasoningMessagePartComponent`/`SourceMessagePartComponent`/`FileMessagePartComponent` + `useMessagePart{Reasoning,Source,File,Image}` hook + 各 part type slot
+  - `AttachmentPrimitive`、`CompositeAttachmentAdapter`、`SimpleImageAttachmentAdapter` 等（我们已经在使用 attachment primitive）
+  - `makeAssistantToolUI`/`makeAssistantDataUI`（在 0.14.18 中未 deprecated）
+- **不存在**：`context-display`（无 runtime export，仅有 registry component + 需要 server usage forwarding）、`directive-text`（不是 message part — 只有 composer 用 `unstable_` directive）、`ToolGroupRoot/Trigger/Content`（不是 runtime primitive — 是 registry tsx 的本地 component）。`toolUI`/`ToolFallback` literal **不是 export**（用于 JSDoc example/scaffold）。
+- **初稿附录 A 的错误原因**：grep 了 `frontend/node_modules/.pnpm` 中的**stale `core@0.1.13`**，因此结果为 0。实际 `react@0.14.18` resolve 的是 **repo-root `.pnpm` 中的 `core@0.2.14`**。重新验证时应 grep root store。
 
 ---
 
-## 부록 A — (정정) 공식 grouping 가용성
+## 附录 A — （更正）官方 grouping 可用性
 
-> **초판 부록 A는 "공식 `GroupedParts`/`ToolGroup`이 npm 미출시(dist 0건)"라고 결론냈으나 이는 오류였다.** §10 참조.
+> **初稿附录 A 曾得出“官方 `GroupedParts`/`ToolGroup` 尚未在 npm 发布（dist 0 项）”的结论，这是错误的。** 参见 §10。
 
-- 정정된 사실: 공식 `MessagePrimitive.GroupedParts` + `groupBy` prop + `groupPartByType` 헬퍼는 **현재 0.14.18에서 STABLE로 사용 가능**하다. 따라서 본 문서는 **공식 API 직접 채택**으로 진행한다.
-- 여전히 유효한 주의: **0.14.18 → 0.14.24 업그레이드는 과거 실측에서 vitest 5파일 로드 실패**(import breaking + `@assistant-ui/tap` 0.7→0.9 충돌)를 유발해 revert된 전력이 있다. 본 그룹핑 작업은 **업그레이드가 필요 없으므로**(0.14.18로 충분) 이 리스크와 무관하다. 업그레이드가 필요해지면 **별도 격리 작업**(clean reinstall + 전체 vitest 그린)으로 다룬다.
-- 공식 docs 패턴(참고):
+- 更正事实：官方 `MessagePrimitive.GroupedParts` + `groupBy` prop + `groupPartByType` helper **当前已可在 0.14.18 中以 STABLE 形式使用**。因此本文按**直接采用官方 API**推进。
+- 仍然有效的注意事项：**0.14.18 → 0.14.24 升级在过去实测中曾导致 vitest 5 个文件 load 失败**（import breaking + `@assistant-ui/tap` 0.7→0.9 冲突），因此曾 revert。本 grouping 工作**不需要升级**（0.14.18 已足够），所以与此风险无关。如果未来需要升级，应作为**单独隔离任务**处理（clean reinstall + 全部 vitest green）。
+- 官方 docs 模式（参考）：
   ```tsx
   <MessagePrimitive.GroupedParts groupBy={groupPartByType({ "tool-call": ["group-tool"] })}>
     {({ part, children }) =>
@@ -215,26 +215,26 @@
         : part.type === "tool-call" ? <ToolFallback {...part} /> : children}
   </MessagePrimitive.GroupedParts>
   ```
-  - `ToolGroupRoot/Trigger/Content`·`ToolFallback`는 **registry copy-paste 컴포넌트**(우리가 vendoring·편집). 런타임 락인은 `GroupedParts`/`groupPartByType`뿐.
+  - `ToolGroupRoot/Trigger/Content`·`ToolFallback` 是**registry copy-paste component**（由我们 vendoring·编辑）。runtime lock-in 只有 `GroupedParts`/`groupPartByType`。
 
 ---
 
-## 부록 B — 핵심 파일 인덱스
+## 附录 B — 核心文件索引
 
-| 목적 | 경로 |
+| 目的 | 路径 |
 |------|------|
-| v3 thread 렌더 진입점 | `frontend/src/components/chat/assistant-thread.tsx` (≈239, `MessagePrimitive.Content`→`GroupedParts`로 교체) |
-| per-tool UI 등록 레지스트리 | `frontend/src/lib/chat/tool-ui-registry.ts` (27개 `makeAssistantToolUI`) |
-| catch-all 도구 박스 | `frontend/src/components/chat/tool-ui/generic-tool-ui.tsx` (`ToolFallbackPanel`/`GenericToolFallback`) |
-| 현재 그룹핑 로직(tavily 전용) | `frontend/src/lib/chat/deep-research-summary.ts` |
-| 현재 그룹 박스 UI | `frontend/src/components/chat/tool-ui/deep-research-summary-ui.tsx` |
-| 그룹핑 와이어링(레거시) | `frontend/src/lib/chat/use-chat-runtime.ts:467` |
-| 접기 UX 재사용 | `frontend/src/components/chat/tool-ui/collapsible-pill.tsx` |
-| 출처 집계 재사용 | `frontend/src/lib/chat/search-results.ts` |
-| 신규 도구 메타 맵 | `frontend/src/lib/chat/tool-group-meta.ts` (신규) |
-| vendored 그룹 컨테이너 | `frontend/src/components/assistant-ui/tool-group.tsx` (shadcn add, 신규) |
-| vendored fallback(참고) | `frontend/src/components/assistant-ui/tool-fallback.tsx` (shadcn add; approval 제거) |
-| scripted E2E 모델(테스트 마커) | `backend/app/agent_runtime/e2e_scripted_model.py` |
-| tavily 도구 정의(registry) | `backend/app/tools/definitions/tavily_search.py` |
-| 기존 그룹핑 테스트 | `frontend/src/lib/chat/deep-research-summary.test.ts` |
-| 공식 registry 원본(로컬 참고) | `/Users/chester/dev/ref/assistant-ui/packages/ui/src/components/assistant-ui/{tool-group,tool-fallback}.tsx` |
+| v3 thread render 入口 | `frontend/src/components/chat/assistant-thread.tsx`（≈239，将 `MessagePrimitive.Content`→`GroupedParts`） |
+| per-tool UI 注册 registry | `frontend/src/lib/chat/tool-ui-registry.ts`（27 个 `makeAssistantToolUI`） |
+| catch-all tool box | `frontend/src/components/chat/tool-ui/generic-tool-ui.tsx`（`ToolFallbackPanel`/`GenericToolFallback`） |
+| 当前 grouping 逻辑（tavily 专用） | `frontend/src/lib/chat/deep-research-summary.ts` |
+| 当前 group box UI | `frontend/src/components/chat/tool-ui/deep-research-summary-ui.tsx` |
+| grouping wiring（legacy） | `frontend/src/lib/chat/use-chat-runtime.ts:467` |
+| 复用折叠 UX | `frontend/src/components/chat/tool-ui/collapsible-pill.tsx` |
+| 复用 source 汇总 | `frontend/src/lib/chat/search-results.ts` |
+| 新 tool meta map | `frontend/src/lib/chat/tool-group-meta.ts`（新增） |
+| vendored group container | `frontend/src/components/assistant-ui/tool-group.tsx`（shadcn add，新增） |
+| vendored fallback（参考） | `frontend/src/components/assistant-ui/tool-fallback.tsx`（shadcn add；移除 approval） |
+| scripted E2E model（测试 marker） | `backend/app/agent_runtime/e2e_scripted_model.py` |
+| tavily tool definition（registry） | `backend/app/tools/definitions/tavily_search.py` |
+| 现有 grouping test | `frontend/src/lib/chat/deep-research-summary.test.ts` |
+| 官方 registry 原始代码（本地参考） | `/Users/chester/dev/ref/assistant-ui/packages/ui/src/components/assistant-ui/{tool-group,tool-fallback}.tsx` |

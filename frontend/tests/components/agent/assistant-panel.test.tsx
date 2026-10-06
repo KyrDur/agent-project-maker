@@ -166,7 +166,7 @@ describe('AssistantPanel', () => {
     )
   })
 
-  it('승인 재개가 끝나면 에이전트 설정 캐시를 갱신한다', async () => {
+  it('批准恢复完成后刷新智能体设置缓存', async () => {
     mockStreamAssistantResume.mockImplementation(async function* (): AsyncGenerator<SSEEvent> {
       yield { event: 'message_end', data: { content: 'done' } } as SSEEvent
     })
@@ -186,7 +186,7 @@ describe('AssistantPanel', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['agents', 'agent-1'] })
   })
 
-  it('사이드 채팅을 닫았다 다시 열어도 동일한 세션의 메시지를 유지한다', async () => {
+  it('即使关闭再重新打开侧边聊天，也保留同一会话的消息', async () => {
     function Harness() {
       const [open, setOpen] = useState(true)
       const [messages, setMessages] = useState<Message[]>([])

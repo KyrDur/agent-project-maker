@@ -59,13 +59,13 @@ describe('TriggersTab', () => {
 
     await user.click(screen.getAllByRole('button', { name: '编辑' })[0])
     await user.clear(screen.getByPlaceholderText('名称'))
-    await user.type(screen.getByPlaceholderText('名称'), '수정된 스케줄')
+    await user.type(screen.getByPlaceholderText('名称'), '已修改的日程')
     await user.click(screen.getByRole('button', { name: '编辑日程' }))
 
     await waitFor(() => expect(mockUpdateTriggerAsync).toHaveBeenCalledTimes(1))
     expect(mockUpdateTriggerAsync).toHaveBeenCalledWith({
       triggerId: 'trigger-1',
-      data: expect.objectContaining({ name: '수정된 스케줄' }),
+      data: expect.objectContaining({ name: '已修改的日程' }),
     })
   })
 })

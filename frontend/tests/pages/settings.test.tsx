@@ -54,7 +54,7 @@ vi.mock('@/lib/hooks/use-agents', () => ({
       {
         id: 'agent-1',
         name: '研究智能体',
-        description: '뉴스를 요약합니다.',
+        description: '摘要新闻。',
         status: 'active',
         is_favorite: false,
         image_url: null,
@@ -93,7 +93,7 @@ vi.mock('@/lib/hooks/use-memory', () => ({
         agent_id: null,
         scope: 'user',
         content: '偏好把会议安排在下午 3 点以后。',
-        reason: '일정 선호',
+        reason: '日程偏好',
         store_path: '/memories/users/user-1/memory-1.md',
         source_conversation_id: null,
         source_message_id: null,
@@ -255,7 +255,7 @@ describe('settings pages', () => {
       data: {
         id: 'user-2',
         name: 'Regular User',
-        display_name: '일반 사용자',
+        display_name: '普通用户',
         avatar_mode: 'initials',
         avatar_initials: '太阳',
         avatar_color: 'mint',
@@ -294,7 +294,7 @@ describe('settings pages', () => {
       user_id: 'user-1',
       agent_id: null,
       scope: 'user',
-      content: '문서 초안은 한국어로 먼저 작성합니다.',
+      content: '文档草稿先用韩语编写。',
       reason: null,
       store_path: '/memories/users/user-1/memory-2.md',
       source_conversation_id: null,
@@ -309,14 +309,14 @@ describe('settings pages', () => {
 
     await userEvent.type(
       screen.getByLabelText('新的记忆内容'),
-      '문서 초안은 한국어로 먼저 작성합니다.',
+      '文档草稿先用韩语编写。',
     )
     await userEvent.click(screen.getByRole('button', { name: '添加内存' }))
 
     await waitFor(() => {
       expect(createMemory).toHaveBeenCalledWith({
         scope: 'user',
-        content: '문서 초안은 한국어로 먼저 작성합니다.',
+        content: '文档草稿先用韩语编写。',
         reason: null,
         agent_id: null,
       })

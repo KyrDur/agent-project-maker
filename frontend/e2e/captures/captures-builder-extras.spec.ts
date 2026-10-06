@@ -97,7 +97,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
         .goto(`/agents/${agentId}/conversations/${cid}`, { waitUntil: 'commit', timeout: 120_000 })
         .catch(() => {})
       await page
-        .getByText(/멤버십 크레딧이 얼마나|요가 수업을 예약|멤버십을 취소/)
+        .getByText(/会员积分还有多少|预约瑜伽课程|取消会员/)
         .first()
         .waitFor({ state: 'visible', timeout: 90_000 })
         .catch(() => {})
@@ -112,7 +112,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
     test.setTimeout(360_000)
     const prompt = '帮我创建一个回答健身房会员咨询并协助预约、取消的客户支持机器人'
     await nav(page, `/agents/new/conversational?initialMessage=${encodeURIComponent(prompt)}`)
-    await page.getByText(/세션 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
+    await page.getByText(/会话 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
     await capture(page, WAVE, '10-builder-welcome.png')
 
     // Verified via diagnostics: options are <button role="option">; selecting the
@@ -134,7 +134,7 @@ test.describe('Wave 8 — builder + extras captures', () => {
       // phases (tool/middleware/prompt/image/save/build) use 批准并继续. Never
       // 重新生成 / 请求修改.
       const next = page
-        .getByRole('button', { name: /^(다음|완료|제출|확인|승인하고 진행|승인|진행|건너뛰기|시작하기)$/ })
+        .getByRole('button', { name: /^(下一步|完成|提交|确认|批准并继续|批准|继续|跳过|开始)$/ })
         .last()
       if (
         (await next.count()) > 0 &&

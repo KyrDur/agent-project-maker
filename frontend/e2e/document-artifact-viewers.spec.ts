@@ -201,10 +201,10 @@ async function sendMessage(page: Page, text: string): Promise<void> {
 }
 
 async function approveExecuteInSkill(page: Page): Promise<void> {
-  await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+  await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
     timeout: 30_000,
   })
-  const approveButton = page.getByRole('button', { name: /승인|Approve/ }).last()
+  const approveButton = page.getByRole('button', { name: /批准|Approve/ }).last()
   await expect(approveButton).toBeVisible({ timeout: UI_TIMEOUT_MS })
   await approveButton.click()
   await expect(approveButton).toBeHidden({ timeout: 30_000 })
@@ -279,7 +279,7 @@ async function waitForRunStatus(
 }
 
 async function openArtifactViewer(page: Page, filename: string): Promise<void> {
-  await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+  await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   const artifactButton = page.getByRole('button', { name: new RegExp(filename) }).last()
   await expect(artifactButton).toBeVisible({ timeout: 20_000 })
   await artifactButton.click()
@@ -344,7 +344,7 @@ async function verifyRightRailResize(page: Page, filename: string): Promise<void
   const rail = page.locator('[data-slot="chat-right-rail"]').first()
   const chatPanel = page.locator('section.moldy-panel').first()
   const handle = page.getByRole('separator', {
-    name: /파일 패널 크기 조절|Resize files panel/,
+    name: /调整文件面板大小|Resize files panel/,
   })
 
   await expect(artifactViewerPanel(page, filename)).toBeVisible()
@@ -361,7 +361,7 @@ async function verifyRightRailResize(page: Page, filename: string): Promise<void
   await dragHorizontally(page, handle, 420)
   await expect.poll(() => locatorWidth(rail)).toBeLessThan(20)
 
-  await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+  await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   await expect.poll(() => locatorWidth(rail)).toBeGreaterThan(stableExpandedWidth - 8)
 }
 

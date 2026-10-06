@@ -31,7 +31,7 @@
   `StoreBackend`, `CompositeBackend`가 있다.
 - `langgraph.store.postgres`에는 `PostgresStore`, `AsyncPostgresStore`가 있다.
 
-## 1. 배경
+## 1. 背景
 
 Moldy는 현재 LangGraph `AsyncPostgresSaver` checkpointer로 conversation/thread
 단기 상태를 유지한다. 또 Deep Agents `memory` 옵션에
@@ -101,7 +101,7 @@ CSRF/JWT 인증, SSE 이벤트 구조와 가장 잘 맞는다.
 - 기존 `/agents/{agent_id}/AGENTS.md` legacy memory migration
 - trigger memory write E2E와 proposal 만료/cleanup
 
-## 3. 목표
+## 3. 目标
 
 1. 사용자가 메모리 기능을 켜고 끌 수 있어야 한다.
 2. 사용자는 장기 메모리 저장 시 승인 여부를 선택할 수 있어야 한다.
@@ -113,7 +113,7 @@ CSRF/JWT 인증, SSE 이벤트 구조와 가장 잘 맞는다.
    DB-backed Store로 이동한다.
 8. trigger/schedule 실행에서는 대화형 승인 부재를 고려한 별도 write policy를 둔다.
 
-## 4. 비목표
+## 4. 非目标
 
 1차 범위에서는 다음을 제외한다.
 
@@ -202,7 +202,7 @@ memory_scopes_override: inherit | agent_only | user_and_agent
 trigger_memory_policy_override: inherit | off | auto
 ```
 
-예시:
+示例:
 
 - 일반 업무 에이전트: 계정 기본값 상속
 - 개인 비서 에이전트: 채팅에서 자동 저장

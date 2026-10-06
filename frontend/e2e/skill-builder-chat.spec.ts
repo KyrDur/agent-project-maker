@@ -158,7 +158,7 @@ test.describe('skill builder chat', () => {
     await expect(page.getByTestId('approval-session-consent')).toHaveCount(0)
     // M8-3 回归守卫：由于前一个 resolved 卡片（test_skill_draft）与当前 interrupt 不同，
     // 不应被合并到 group container（"待批准 N 项"）中，而应渲染为单独卡片。
-    await expect(page.getByText(/승인 대기 \d+건/)).toHaveCount(0)
+    await expect(page.getByText(/待批准 \d+项/)).toHaveCount(0)
     await approve()
     await expect(page.getByText('已保存 skill').last()).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('builder-completed-banner')).toBeVisible({ timeout: 30_000 })

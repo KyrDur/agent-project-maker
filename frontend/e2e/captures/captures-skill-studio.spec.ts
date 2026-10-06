@@ -174,7 +174,7 @@ test.describe('Skill studio captures', () => {
 
       // ── 08. 直接编辑 source → 保存（=生成 revision，D2）─────────────
       const editor = page.getByRole('textbox')
-      await expect(editor).toHaveValue(/미정/, { timeout: 15_000 })
+      await expect(editor).toHaveValue(/未定/, { timeout: 15_000 })
       await editor.fill(`${SKILL_BODY_V2}${SKILL_BODY_V3_LINE}\n`)
       await page.getByRole('button', { name: '保存' }).click()
       await expect(page.getByText('已保存')).toBeVisible({ timeout: 20_000 })
@@ -227,9 +227,9 @@ test.describe('Skill studio captures', () => {
 
       // ── 15~16. skill switcher — dropdown + 切换时保持 tab ───────────
       await page.getByTestId('studio-skill-switcher').click()
-      await expect(page.getByRole('menuitem', { name: /주간 리포트 요약/ })).toBeVisible()
+      await expect(page.getByRole('menuitem', { name: /周报摘要/ })).toBeVisible()
       await shot(page, '15-switcher-open.png')
-      await page.getByRole('menuitem', { name: /주간 리포트 요약/ }).click()
+      await page.getByRole('menuitem', { name: /周报摘要/ }).click()
       await page.waitForURL(new RegExp(`/skills/${secondary}/settings`), { timeout: 30_000 })
       await expect(contextBar).toContainText('周报摘要')
       await shot(page, '16-switched-keeps-tab.png')
@@ -252,7 +252,7 @@ test.describe('Skill studio captures', () => {
       await shot(page, '18-builder-scoped-index.png')
 
       // ── 19. 开始改进 → builder chat（seed workspace + 自动发送）──────
-      await page.getByRole('button', { name: /회의록 액션 아이템 개선 시작/ }).click()
+      await page.getByRole('button', { name: /开始改进会议纪要行动项/ }).click()
       await page.waitForURL(/\/skills\/builder\/[0-9a-f-]{36}/, { timeout: 60_000 })
       const improveSessionId = page.url().match(/builder\/([0-9a-f-]{36})/)?.[1] ?? ''
       expect(improveSessionId).not.toBe('')

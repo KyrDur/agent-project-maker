@@ -108,7 +108,7 @@ test.describe('Wave 1 scenario captures', () => {
 
     await starter.click()
     await expect(page.locator('textarea[data-moldy-composer-input="true"]').last()).toHaveValue(
-      /저장소의 위키를 만들어줘/,
+      /为仓库创建 Wiki/,
       { timeout: 10_000 },
     )
     await settle(page)
@@ -136,14 +136,14 @@ test.describe('Wave 1 scenario captures', () => {
 
     // HITL approval 2 次 — code_artifact 流程按 write_file → execute_in_skill 顺序
     // 依次 interrupt，frontend 将连续 approval card 分组显示。
-    await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+    await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
       timeout: 90_000,
     })
     await approveExecuteInSkill(page)
     // 截取第二次 approval（skill 执行）加入 group card 的瞬间。group(compact)
     // 模式下没有单独的“需要批准”headline，因此不用 helper，而是直接点击剩余的
     // approval button。
-    await expect(page.getByText(/승인 대기 2건/)).toBeVisible({ timeout: 90_000 })
+    await expect(page.getByText(/待批准 2 项/)).toBeVisible({ timeout: 90_000 })
     const pendingApprove = page.getByTestId('approval-approve-button')
     await expect
       .poll(async () => pendingApprove.count(), { timeout: 30_000, intervals: [500, 1_000] })
@@ -155,13 +155,13 @@ test.describe('Wave 1 scenario captures', () => {
 
     // run 结束后 mission control 仍保留 — 展开后截图 checklist。
     await expect(missionControl).toBeVisible()
-    await missionControl.getByText(/작업 계획|Task plan/).click()
+    await missionControl.getByText(/工作计划|Task plan/).click()
     await expect(missionControl.getByText('Collect LangGraph v3 runtime evidence')).toBeVisible({
       timeout: 10_000,
     })
     await settle(page)
     await capture(page, WAVE, '04-mission-control-after-run.png')
-    await missionControl.getByText(/작업 계획|Task plan/).click()
+    await missionControl.getByText(/工作计划|Task plan/).click()
 
     // 已完成的 subagent pill — 折叠状态下也能看到结果第一行摘要。
     const subagentSummary = page.locator('[data-moldy-subagent-summary]').first()
@@ -171,7 +171,7 @@ test.describe('Wave 1 scenario captures', () => {
     await capture(page, WAVE, '05-subagent-pill-summary.png')
 
     // artifact rail — 由 write_file 创建的 Python 文件会高亮显示。
-    await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+    await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
     const rail = page.getByRole('complementary')
     const codeArtifactButton = rail.getByRole('button', { name: new RegExp(CODE_ARTIFACT) }).last()
     await expect(codeArtifactButton).toBeVisible({ timeout: 30_000 })

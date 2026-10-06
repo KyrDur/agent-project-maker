@@ -26,8 +26,8 @@ vi.mock('@/lib/hooks/use-usage', () => ({
   useDailyAggregate: () => mockUseDailyAggregate(),
 }))
 
-// SpendLineChart/SpendBarChart는 recharts 의존성으로 jsdom에서 렌더 비용 큼.
-// Container만 stub해도 페이지 레이아웃 검증에는 충분.
+// SpendLineChart/SpendBarChart 依赖 recharts，在 jsdom 中渲染成本较高。
+// 仅 stub Container 就足以验证页面布局。
 vi.mock('@/components/usage/spend-line-chart', () => ({
   SpendLineChart: () => <div data-testid="spend-line-chart" />,
 }))
@@ -73,7 +73,7 @@ describe('UsagePage', () => {
   it('shows empty state when daily entries are empty', () => {
     mockUseDailyAggregate.mockReturnValue({ data: [], isLoading: false })
     render(<UsagePage />)
-    // Chart + Table 두 군데에 동일 EmptyState가 노출됨 — 둘 다 존재하면 OK.
+    // Chart + Table 两处都会显示相同 EmptyState — 两者都存在则 OK.
     expect(screen.getAllByText('还没有使用。').length).toBeGreaterThanOrEqual(1)
   })
 
@@ -95,7 +95,7 @@ describe('UsagePage', () => {
       isLoading: false,
     })
     render(<UsagePage />)
-    // 차트 컴포넌트 stub이 렌더되는지 확인 — 빈 상태 EmptyState가 노출되지 않음.
+    // 确认 chart component stub 被渲染 — 不显示空状态 EmptyState。
     expect(screen.queryByText('还没有使用。')).not.toBeInTheDocument()
   })
 })

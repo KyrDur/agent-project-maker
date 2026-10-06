@@ -1,26 +1,26 @@
 # Agent Edit Workbench — Design Spec
 
 **Status**: Active
-**Owner**: 사티아 (PO) / 저커버그 (구현)
+**Owner**: Satya（PO）/ Zuckerberg（实现）
 **Plan**: `~/.claude/plans/image-41-ticklish-sky.md`
 **Created**: 2026-04-28
 
 ---
 
-## 1. 목표
+## 1. 目标
 
-`/agents/[agentId]/settings`를 **단일 통합 워크벤치**로 재설계.
-- 좌측: 폼/비주얼 토글로 에이전트 설정 편집
-- 우측: Fix·테스트·오프너·스케줄·설정 5탭 패널 (영구 표시)
-- 헤더: 이름/설명 인라인 편집 + 작은 아바타 + 저장/삭제
+将 `/agents/[agentId]/settings` 重新设计为**单一集成工作台**。
+- 左侧：通过 form/visual toggle 编辑 agent 设置
+- 右侧：Fix·测试·开场问题·日程·设置 5-tab panel（永久显示）
+- Header：名称/说明 inline 编辑 + 小 avatar + 保存/删除
 
 ---
 
-## 2. 페이지 트리
+## 2. 页面树
 
 ```
 AgentSettingsPage (page.tsx)
-├── Header (인라인)
+├── Header（inline）
 │   ├── BackButton
 │   ├── AgentAvatar (sm)
 │   ├── InlineInput name (ghost)
@@ -29,35 +29,35 @@ AgentSettingsPage (page.tsx)
 │   └── SaveButton (with isDirty)
 └── MainGrid (lg:grid-cols-2 stack on mobile)
     ├── LeftPanel
-    │   ├── Tabs [폼 | 비주얼]
+    │   ├── Tabs [表单 | 可视化]
     │   └── TabsContent
     │       ├── 'form' → FormMode
     │       │   ├── SectionInstructions (collapsible, fullscreen, char-count)
-    │       │   ├── SectionSubAgents (행 + [⚙])
-    │       │   ├── SectionModel (행 + [⚙])
+    │       │   ├── SectionSubAgents（行 + [⚙]）
+    │       │   ├── SectionModel（行 + [⚙]）
     │       │   └── ToolsMiddlewaresGrid (2col)
-    │       │       ├── ToolsBox ([+도구], 행 리스트)
-    │       │       └── MiddlewaresBox ([+미들웨어], 행 리스트)
+    │       │       ├── ToolsBox（[+工具]，行列表）
+    │       │       └── MiddlewaresBox（[+中间件]，行列表）
     │       └── 'visual' → VisualSettingsFlow (inline, ReactFlowProvider)
     └── RightPanel
-        ├── Tabs [Fix | 테스트 | 오프너 | 스케줄 | 설정]
+        ├── Tabs [Fix | 测试 | 开场问题 | 日程 | 设置]
         └── TabsContent
             ├── 'fix' → AssistantPanel (showHeader=false)
-            ├── 'test' → TestChatPanel (신규)
-            ├── 'opener' → OpenerEditor (신규)
-            ├── 'schedule' → TriggersTab (재사용)
-            └── 'settings' → SettingsPanel (이미지 전용)
+            ├── 'test' → TestChatPanel（新增）
+            ├── 'opener' → OpenerEditor（新增）
+            ├── 'schedule' → TriggersTab（复用）
+            └── 'settings' → SettingsPanel（仅图像）
 
 Dialogs (state-controlled)
-├── ModelDialog (모델 선택 + 파라미터 슬라이더)
-├── SubAgentsDialog (skills 선택)
-├── AddToolModal (tools 선택)
-└── AddMiddlewareModal (middlewares 선택)
+├── ModelDialog（模型选择 + 参数 slider）
+├── SubAgentsDialog（选择 skills）
+├── AddToolModal（选择 tools）
+└── AddMiddlewareModal（选择 middlewares）
 ```
 
 ---
 
-## 3. 헤더 인라인 편집 패턴
+## 3. Header inline 编辑模式
 
 ```tsx
 <header className="flex items-start gap-3 border-b px-6 py-4">
@@ -89,13 +89,13 @@ Dialogs (state-controlled)
 </header>
 ```
 
-핵심: ghost variant로 input을 plain text처럼 보이게 하다가 focus/hover 시 muted 배경으로 편집 가능 표시.
+核心：用 ghost variant 让 input 平时看起来像 plain text，在 focus/hover 时用 muted 背景显示可编辑状态。
 
 ---
 
-## 4. 좌측 폼 모드 섹션 패턴
+## 4. 左侧表单模式 section pattern
 
-### 4.1 공통 섹션 헤더 (행 패턴)
+### 4.1 通用 section header（行模式）
 
 ```tsx
 <div className="flex items-center justify-between rounded-md border px-4 py-3">
@@ -110,13 +110,13 @@ Dialogs (state-controlled)
 </div>
 ```
 
-### 4.2 지침 섹션 (collapsible + fullscreen)
+### 4.2 指令 section（collapsible + fullscreen）
 
 ```tsx
 <Collapsible defaultOpen>
   <div className="flex items-center justify-between">
     <CollapsibleTrigger className="flex items-center gap-1">
-      <ChevronDownIcon /> 지침
+      <ChevronDownIcon /> 指令
     </CollapsibleTrigger>
     <Button variant="ghost" size="icon-sm" onClick={() => setFullscreen(true)}>
       <MaximizeIcon className="size-4" />
@@ -124,7 +124,7 @@ Dialogs (state-controlled)
   </div>
   <CollapsibleContent>
     <Textarea value={systemPrompt} onChange={...} rows={12} className="font-mono text-xs" />
-    <div className="text-right text-xs text-muted-foreground">{count}자</div>
+    <div className="text-right text-xs text-muted-foreground">{count} 字</div>
   </CollapsibleContent>
 </Collapsible>
 
@@ -135,7 +135,7 @@ Dialogs (state-controlled)
 </Dialog>
 ```
 
-### 4.3 도구·미들웨어 그리드 (2칸)
+### 4.3 工具·中间件 grid（2 列）
 
 ```tsx
 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -144,7 +144,7 @@ Dialogs (state-controlled)
 </div>
 ```
 
-각 박스 구조:
+每个 box 结构：
 ```tsx
 <div className="rounded-md border">
   <div className="flex items-center justify-between border-b px-4 py-2">
@@ -182,7 +182,7 @@ Dialogs (state-controlled)
 
 ---
 
-## 5. 다이얼로그 명세
+## 5. Dialog 规范
 
 ### 5.1 ModelDialog
 
@@ -201,8 +201,8 @@ interface ModelDialogProps {
   onReset: () => void
 }
 ```
-- 콘텐츠: 기존 `ModelTab` 콘텐츠 그대로 (ModelSelect + 슬라이더 3개 + 리셋 버튼)
-- 닫기 시 changes는 이미 페이지 state에 반영됨(controlled)
+- 内容：保持现有 `ModelTab` 内容不变（ModelSelect + 3 个 slider + reset 按钮）
+- 关闭时 changes 已经反映在页面 state 中（controlled）
 
 ### 5.2 SubAgentsDialog
 
@@ -214,31 +214,31 @@ interface SubAgentsDialogProps {
   onToggleSkill: (id: string) => void
 }
 ```
-- 콘텐츠: `useSkills` 훅 + Checkbox 리스트 (현 `tools-skills-tab.tsx` skills 영역 재사용)
-- 비어있으면 `/skills` 라우트로 링크
+- 内容：`useSkills` hook + Checkbox 列表（复用当前 `tools-skills-tab.tsx` 的 skills 区域）
+- 若为空则 link 到 `/skills` route
 
 ### 5.3 AddToolModal / AddMiddlewareModal
 
-동일 패턴:
-- 검색 입력(선택사항) + 카테고리 분류(선택사항)
-- Checkbox 리스트
-- 이미 선택된 항목은 "추가됨" 뱃지 + Checkbox checked
-- 모달 닫기 시 selection은 페이지 state에 반영됨
+相同模式：
+- 搜索 input（可选）+ 分类 category（可选）
+- Checkbox 列表
+- 已选择项显示“已添加” badge + Checkbox checked
+- modal 关闭时 selection 反映到页面 state
 
 ---
 
-## 6. 우측 패널 명세
+## 6. 右侧 panel 规范
 
-### 6.1 RightPanel (탭 컨테이너)
+### 6.1 RightPanel（tab container）
 
 ```tsx
 <Tabs value={tab} onValueChange={setTab}>
   <TabsList className="border-b bg-background sticky top-0 z-10">
-    <TabsTrigger value="fix"><WrenchIcon /> Fix 에이전트</TabsTrigger>
-    <TabsTrigger value="test"><MessageSquareIcon /> 테스트</TabsTrigger>
-    <TabsTrigger value="opener"><HelpCircleIcon /> 오프너</TabsTrigger>
-    <TabsTrigger value="schedule"><ClockIcon /> 스케줄</TabsTrigger>
-    <TabsTrigger value="settings"><SettingsIcon /> 설정</TabsTrigger>
+    <TabsTrigger value="fix"><WrenchIcon /> Fix agent</TabsTrigger>
+    <TabsTrigger value="test"><MessageSquareIcon /> 测试</TabsTrigger>
+    <TabsTrigger value="opener"><HelpCircleIcon /> 开场问题</TabsTrigger>
+    <TabsTrigger value="schedule"><ClockIcon /> 日程</TabsTrigger>
+    <TabsTrigger value="settings"><SettingsIcon /> 设置</TabsTrigger>
   </TabsList>
   <TabsContent value="fix"><AssistantPanel showHeader={false} ... /></TabsContent>
   <TabsContent value="test"><TestChatPanel ... /></TabsContent>
@@ -248,13 +248,13 @@ interface SubAgentsDialogProps {
 </Tabs>
 ```
 
-### 6.2 TestChatPanel (신규)
+### 6.2 TestChatPanel（新增）
 
-- 일반 에이전트 채팅. 대화 히스토리는 세션 내 로컬 state로만 관리(서버 저장 X)
-- 초기 구현: 기존 `streamAssistant`(Fix용) 대신 일반 conversation 스트림 사용
-- 빈 화면 empty state에 `agent.opener_questions` 버튼 표시 → 클릭 시 composer 텍스트 주입(전송 X)
+- 普通 agent 聊天。对话 history 仅在 session 内由 local state 管理（不保存到服务器）
+- 初始实现：不用 Fix 专用 `streamAssistant`，而是使用普通 conversation stream
+- 空白页面 empty state 显示 `agent.opener_questions` 按钮 → 点击后注入 composer 文本（不发送）
 
-### 6.3 OpenerEditor (신규)
+### 6.3 OpenerEditor（新增）
 
 ```ts
 interface OpenerEditorProps {
@@ -264,22 +264,22 @@ interface OpenerEditorProps {
 }
 ```
 
-레이아웃:
-- 헤더: "사용자가 대화를 시작할 수 있는 예시 질문을 설정하세요" + `n/12` 카운터 + `[+ 추가]` 버튼
-- 행: 번호 + Input(1~200자) + `[🗑]`
-- 빈 상태: "예시 질문이 없습니다" + 추가 버튼
+布局：
+- Header：“设置用户可用于开始对话的示例问题” + `n/12` counter + `[+ 添加]` 按钮
+- 行：编号 + Input（1~200 字符）+ `[🗑]`
+- 空状态：“没有示例问题” + 添加按钮
 
-### 6.4 SettingsPanel (이미지 전용)
+### 6.4 SettingsPanel（仅图像）
 
 ```tsx
 <div className="flex flex-col items-center gap-4 p-6">
   <AgentAvatar imageUrl={imageUrl} name={name} size="xl" />
   <Button onClick={generate} disabled={isPending}>
-    {imageUrl ? '이미지 재생성' : '이미지 생성'}
+    {imageUrl ? '重新生成图像' : '生成图像'}
   </Button>
   {imageUrl && (
     <Button variant="ghost" onClick={remove}>
-      이미지 제거
+      移除图像
     </Button>
   )}
 </div>
@@ -287,9 +287,9 @@ interface OpenerEditorProps {
 
 ---
 
-## 7. State 흐름
+## 7. State 流程
 
-페이지 컴포넌트 (`settings/page.tsx`)에 모든 form state 보유:
+页面组件（`settings/page.tsx`）持有全部 form state：
 
 ```ts
 const [name, setName] = useState('')
@@ -302,27 +302,27 @@ const [temperature, setTemperature] = useState(0.7)
 const [topP, setTopP] = useState(1.0)
 const [maxTokens, setMaxTokens] = useState(4096)
 const [selectedMiddlewareTypes, setSelectedMiddlewareTypes] = useState<Set<string>>(new Set())
-const [openerQuestions, setOpenerQuestions] = useState<string[]>([])  // 신규
+const [openerQuestions, setOpenerQuestions] = useState<string[]>([])  // 新增
 ```
 
-다이얼로그·모달·우측 패널은 모두 controlled — 페이지 state를 직접 조작.
+dialog·modal·右侧 panel 全部 controlled — 直接操作页面 state。
 
-`isDirty` = 위 모든 값을 원본(`agent` from useAgent)과 비교.
+`isDirty` = 将上述所有值与原始值（来自 useAgent 的 `agent`）比较。
 
-저장은 단일 `[저장]` 버튼 → `useUpdateAgent.mutate({...all fields})`.
+保存使用单一 `[保存]` 按钮 → `useUpdateAgent.mutate({...all fields})`。
 
 ---
 
-## 8. 새 채팅 빈 화면 오프너 표시
+## 8. 新聊天空白页显示开场问题
 
-새 채팅 진입 시 `agent.opener_questions`가 있으면 empty state에 버튼 그룹으로 렌더:
+进入新聊天时，如果存在 `agent.opener_questions`，则在 empty state 中渲染为按钮组：
 
 ```tsx
 <div className="flex flex-wrap justify-center gap-2">
   {agent.opener_questions?.map((q) => (
     <button
       key={q}
-      onClick={() => composer.setText(q)}  // 전송 X, 입력창에만 주입
+      onClick={() => composer.setText(q)}  // 不发送，只注入输入框
       className="rounded-full border px-3 py-1 text-xs hover:bg-accent"
     >
       {q}
@@ -331,44 +331,44 @@ const [openerQuestions, setOpenerQuestions] = useState<string[]>([])  // 신규
 </div>
 ```
 
-`useComposer` 훅(assistant-ui) 활용. `setText`로 composer 입력값 설정만 하고 submit은 사용자 액션에 맡김.
+使用 `useComposer` hook（assistant-ui）。仅通过 `setText` 设置 composer 输入值，submit 留给用户操作。
 
 ---
 
-## 9. i18n 키
+## 9. i18n key
 
 ```jsonc
 {
   "agent": {
     "settings": {
       "tabs": {
-        "form": "폼", "visual": "비주얼",
-        "fix": "Fix 에이전트", "test": "테스트", "opener": "오프너",
-        "schedule": "스케줄", "settings": "설정"
+        "form": "表单", "visual": "可视化",
+        "fix": "Fix agent", "test": "测试", "opener": "开场问题",
+        "schedule": "日程", "settings": "设置"
       },
-      "subAgents": "서브에이전트",
-      "subAgentsEmpty": "서브에이전트가 없습니다",
-      "model": "모델",
-      "tools": "도구함",
-      "addTool": "+ 도구",
-      "middlewares": "미들웨어",
-      "addMiddleware": "+ 미들웨어",
-      "instructionFullscreen": "전체화면",
-      "characterCount": "{count}자"
+      "subAgents": "子 agent",
+      "subAgentsEmpty": "没有子 agent",
+      "model": "模型",
+      "tools": "工具箱",
+      "addTool": "+ 工具",
+      "middlewares": "中间件",
+      "addMiddleware": "+ 中间件",
+      "instructionFullscreen": "全屏",
+      "characterCount": "{count} 字"
     },
     "opener": {
-      "title": "오프너",
-      "description": "사용자가 대화를 시작할 수 있는 예시 질문을 설정하세요",
+      "title": "开场问题",
+      "description": "设置用户可用于开始对话的示例问题",
       "counter": "{count}/{max}",
-      "add": "+ 추가",
-      "placeholder": "예시 질문 입력",
-      "empty": "예시 질문이 없습니다",
-      "maxReached": "최대 {max}개까지 추가할 수 있습니다"
+      "add": "+ 添加",
+      "placeholder": "输入示例问题",
+      "empty": "没有示例问题",
+      "maxReached": "最多可添加 {max} 个"
     },
     "image": {
-      "generate": "이미지 생성",
-      "regenerate": "이미지 재생성",
-      "remove": "이미지 제거"
+      "generate": "生成图像",
+      "regenerate": "重新生成图像",
+      "remove": "移除图像"
     }
   }
 }
@@ -376,16 +376,16 @@ const [openerQuestions, setOpenerQuestions] = useState<string[]>([])  // 신규
 
 ---
 
-## 10. 검증 시나리오
+## 10. 验证场景
 
-1. 라우트 `/agents/{id}/settings` 진입 → 좌(폼)/우(Fix) 분할
-2. 헤더 이름/설명 변경 → [저장] 활성
-3. [폼] → [비주얼] → ReactFlow 그래프 렌더
-4. 행 [⚙] → 다이얼로그 → 변경 → 닫기 → 행 요약 갱신
-5. [+도구] → 모달 → 체크 → 닫기 → 좌측 그리드 좌측에 행 추가
-6. [+미들웨어] → 모달 → 체크 → 닫기 → 좌측 그리드 우측에 행 추가
-7. 행 [🗑] → 즉시 제거(저장 전까지 page state만)
-8. 우측 [오프너] → 항목 추가/삭제/순서 → [저장]
-9. 우측 [설정] → 이미지 생성/재생성/제거
-10. 새 대화 진입 → empty state에 오프너 버튼 → 클릭 → 입력창 주입(전송 X)
-11. 미저장 [←] → confirm
+1. 进入 route `/agents/{id}/settings` → 左（表单）/右（Fix）分栏
+2. 修改 header 名称/说明 → [保存] 激活
+3. [表单] → [可视化] → 渲染 ReactFlow graph
+4. 行 [⚙] → dialog → 修改 → 关闭 → 更新行摘要
+5. [+工具] → modal → 勾选 → 关闭 → 在左侧 grid 的左列新增行
+6. [+中间件] → modal → 勾选 → 关闭 → 在左侧 grid 的右列新增行
+7. 行 [🗑] → 立即移除（保存前仅修改 page state）
+8. 右侧 [开场问题] → 添加/删除/排序 → [保存]
+9. 右侧 [设置] → 生成/重新生成/移除图像
+10. 进入新对话 → empty state 显示开场问题按钮 → 点击 → 注入输入框（不发送）
+11. 有未保存内容时点击 [←] → confirm

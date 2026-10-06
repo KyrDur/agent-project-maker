@@ -203,7 +203,7 @@ describe('ArtifactPanelContent', () => {
     expect(screen.getByText('附')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /sent\.png/ })).toBeInTheDocument()
     // 只读：没有 edit/save/remove 类 action。
-    expect(screen.queryByRole('button', { name: /제거|삭제|편집|수정|저장/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /移除|删除|编辑|修改|保存/ })).toBeNull()
     // 存在下载 affordance（base-ui Button 会给 <a> 添加 role=button）。
     const download = screen.getByRole('button', { name: '下载' })
     expect(download.getAttribute('href')).toContain('/api/uploads/attach-1')

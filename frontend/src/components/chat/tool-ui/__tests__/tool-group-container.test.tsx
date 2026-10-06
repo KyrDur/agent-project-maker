@@ -116,7 +116,7 @@ describe('ToolGroupContainer', () => {
           <div>leaf</div>
         </ToolGroupContainer>,
       )
-      expect(screen.queryByText(/출처/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/来源/)).not.toBeInTheDocument()
     })
 
     it('非搜索组(read_file)不显示来源行', () => {
@@ -131,7 +131,7 @@ describe('ToolGroupContainer', () => {
         </ToolGroupContainer>,
       )
       expect(screen.getByText('读取文件')).toBeInTheDocument()
-      expect(screen.queryByText(/출처/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/来源/)).not.toBeInTheDocument()
       // 也不应显示 domain badge
       expect(screen.queryByText('A')).not.toBeInTheDocument()
     })

@@ -126,7 +126,7 @@ describe('ChatNavigator', () => {
       state: 'expanded',
       toggleSidebar: sidebarMocks.toggleSidebar,
     })
-    // atomWithStorage(collapsedAgentIdsAtom)가 테스트 간 상태를 누수하지 않게 한다
+    // 防止 atomWithStorage(collapsedAgentIdsAtom) 在测试之间泄漏状态
     window.localStorage.clear()
     window.history.replaceState(null, '', '/')
     conversationHookMocks.useConversationPages.mockReturnValue({
@@ -153,32 +153,32 @@ describe('ChatNavigator', () => {
       'group-data-[collapsible=icon]:hidden',
     )
     expect(screen.getByText('Test Agent')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByRole('link', { name: /새 대화/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /新对话/ })).toBeInTheDocument())
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
     expect(
       screen.queryByRole('textbox', { name: '搜索智能体或对话' }),
     ).not.toBeInTheDocument()
 
-    const activeAgentNewChat = screen.getByRole('button', { name: 'Test Agent 새 채팅' })
+    const activeAgentNewChat = screen.getByRole('button', { name: '与 Test Agent 的新聊天' })
     const activeAgentControls = activeAgentNewChat.closest('div')
     if (!activeAgentControls) {
       throw new TypeError('active agent controls container was missing')
     }
     expect(activeAgentControls).toHaveClass('opacity-100')
-    expect(screen.queryByRole('button', { name: 'Test Agent 대화 검색' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Test Agent 会话搜索' })).not.toBeInTheDocument()
   })
 
   it('promotes a remountless draft route replacement to the real active session', async () => {
     render(<ChatNavigator />)
 
-    await waitFor(() => expect(screen.getByRole('link', { name: /새 대화/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('link', { name: /新对话/ })).toBeInTheDocument())
 
     act(() => {
       replaceChatRouteWithoutRemount('/agents/agent-1/conversations/conv-1')
     })
 
     await waitFor(() => {
-      expect(screen.queryByRole('link', { name: /새 대화/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /新对话/ })).not.toBeInTheDocument()
       expect(screen.getByText('Test Conversation').closest('[data-chat-session-href]')).toHaveClass(
         'bg-primary',
       )
@@ -298,7 +298,7 @@ describe('ChatNavigator', () => {
       ?.getAttribute('data-chat-session-href')
     expect(firstHref).toBeTruthy()
 
-    // IME 조합 중에는 단축키가 동작하지 않아야 한다
+    // IME 组合过程中快捷键不应生效
     fireEvent.keyDown(window, {
       key: '!',
       code: 'Digit1',
@@ -308,7 +308,7 @@ describe('ChatNavigator', () => {
     })
     expect(routerMocks.push).not.toHaveBeenCalled()
 
-    // macOS에서 Cmd+Shift+1은 event.key가 '!'로 들어온다 — 물리 키 코드로 매칭해야 한다
+    // 在 macOS 上 Cmd+Shift+1 的 event.key 会是 '!' — 必须按物理键代码匹配
     fireEvent.keyDown(window, { key: '!', code: 'Digit1', metaKey: true, shiftKey: true })
 
     expect(routerMocks.push).toHaveBeenCalledWith(firstHref)
@@ -321,7 +321,7 @@ describe('ChatNavigator', () => {
     document.body.appendChild(textarea)
     textarea.focus()
 
-    // 입력 요소 포커스 중 내비게이션은 작성 중인 draft를 유실시키므로 무시해야 한다
+    // 输入元素聚焦时进行导航会丢失正在编辑的 draft，因此应忽略
     fireEvent.keyDown(textarea, { key: '!', code: 'Digit1', metaKey: true, shiftKey: true })
 
     expect(routerMocks.push).not.toHaveBeenCalled()
@@ -336,7 +336,7 @@ describe('ChatNavigator', () => {
       </Provider>,
     )
 
-    // 활성 에이전트(agent-1)는 collapse override가 없는 한 기본 펼침이다
+    // active 智能体(agent-1)只要没有 collapse override，默认就是展开状态
     expect(screen.getByText('Test Conversation')).toBeInTheDocument()
     const toggle = screen.getByRole('button', { name: '折叠智能体' })
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -382,7 +382,7 @@ describe('ChatNavigator', () => {
 
     await waitFor(() => expect(screen.getByText(formatShortcutLabel(1))).toBeInTheDocument())
     expect(screen.getByText(formatShortcutLabel(2))).toBeInTheDocument()
-    // 단축키는 Digit1~9까지만 매핑되므로 10번째 이후 행에는 힌트를 그리지 않는다
+    // 快捷键只映射到 Digit1~9，因此第 10 行及之后不显示提示
     expect(screen.queryByText(formatShortcutLabel(10))).not.toBeInTheDocument()
   })
 

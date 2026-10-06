@@ -7,27 +7,27 @@ describe('ResourceListState', () => {
       <ResourceListState
         loading
         skeleton={<div data-testid="skeleton">loading</div>}
-        emptyTitle="비어 있음"
+        emptyTitle="为空"
         filteredEmptyTitle="搜索空"
       />,
     )
 
     expect(screen.getByTestId('skeleton')).toBeInTheDocument()
-    expect(screen.queryByText('비어 있음')).not.toBeInTheDocument()
+    expect(screen.queryByText('为空')).not.toBeInTheDocument()
   })
 
   it('renders the base empty state', () => {
     render(
       <ResourceListState
         skeleton={<div />}
-        emptyTitle="아직 항목이 없습니다"
-        emptyDescription="첫 항목을 만들어 보세요."
+        emptyTitle="暂无项目"
+        emptyDescription="创建第一个项目吧。"
         filteredEmptyTitle="搜索空"
       />,
     )
 
-    expect(screen.getByText('아직 항목이 없습니다')).toBeInTheDocument()
-    expect(screen.getByText('첫 항목을 만들어 보세요.')).toBeInTheDocument()
+    expect(screen.getByText('暂无项目')).toBeInTheDocument()
+    expect(screen.getByText('创建第一个项目吧。')).toBeInTheDocument()
   })
 
   it('renders filtered empty state with retry action', async () => {
@@ -38,9 +38,9 @@ describe('ResourceListState', () => {
       <ResourceListState
         isFiltered
         skeleton={<div />}
-        emptyTitle="비어 있음"
-        filteredEmptyTitle="조건에 맞는 항목이 없습니다"
-        filteredEmptyDescription="필터를 조정해 보세요."
+        emptyTitle="为空"
+        filteredEmptyTitle="没有符合条件的项目"
+        filteredEmptyDescription="请调整筛选条件。"
         retryLabel="重置过滤器"
         onRetry={() => {
           retryCount += 1
@@ -50,8 +50,8 @@ describe('ResourceListState', () => {
 
     await user.click(screen.getByRole('button', { name: '重置过滤器' }))
 
-    expect(screen.getByText('조건에 맞는 항목이 없습니다')).toBeInTheDocument()
-    expect(screen.getByText('필터를 조정해 보세요.')).toBeInTheDocument()
+    expect(screen.getByText('没有符合条件的项目')).toBeInTheDocument()
+    expect(screen.getByText('请调整筛选条件。')).toBeInTheDocument()
     expect(retryCount).toBe(1)
   })
 
@@ -63,10 +63,10 @@ describe('ResourceListState', () => {
       <ResourceListState
         error
         skeleton={<div />}
-        emptyTitle="비어 있음"
+        emptyTitle="为空"
         filteredEmptyTitle="搜索空"
-        errorTitle="불러오기 실패"
-        errorDescription="다시 시도해 주세요."
+        errorTitle="加载失败"
+        errorDescription="请重试。"
         onRetry={() => {
           retryCount += 1
         }}
@@ -75,8 +75,8 @@ describe('ResourceListState', () => {
 
     await user.click(screen.getByRole('button', { name: '重试' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('불러오기 실패')
-    expect(screen.getByText('다시 시도해 주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('加载失败')
+    expect(screen.getByText('请重试。')).toBeInTheDocument()
     expect(retryCount).toBe(1)
   })
 })

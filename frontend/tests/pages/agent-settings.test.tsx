@@ -166,8 +166,8 @@ vi.mock('@/components/shared/delete-confirm-dialog', () => ({
   }) =>
     open ? (
       <div data-testid="delete-confirm-dialog">
-        <button onClick={onConfirm}>확인 삭제</button>
-        <button onClick={() => onOpenChange(false)}>취소</button>
+        <button onClick={onConfirm}>确认删除</button>
+        <button onClick={() => onOpenChange(false)}>取消</button>
       </div>
     ) : null,
 }))
@@ -191,18 +191,18 @@ const fullAgent = {
 }
 
 /**
- * 페이지 구조 (M10 이후): form/visual 두 탭 + 좌측은 form/visual 토글, 우측은
- * AssistantPanel. 옛 테스트의 "모델/도구·스킬/트리거" 탭 단위 검증은 모두
- * FormMode 내부 구현으로 흡수되어 페이지 단위로는 의미가 없어졌다.
+ * 页面结构（M10 之后）：form/visual 两个标签 + 左侧为 form/visual 切换，右侧为
+ * AssistantPanel. 旧测试中按"模型/工具·技能/触发器"标签进行的验证都已
+ * 吸收到 FormMode 内部实现中，因此在页面层级已无意义。
  *
- * 페이지 단위 테스트는 다음만 책임진다:
- *   - 로딩 스켈레톤
- *   - 헤더 컨트롤(이름/설명 입력, save/delete 버튼, back 버튼)
- *   - form/visual 탭 존재
- *   - save 클릭 시 updateAgent 호출
+ * 页面级测试只负责以下内容：
+ *   - loading 骨架屏
+ *   - header 控件（名称/描述输入、save/delete 按钮、back 按钮）
+ *   - form/visual 标签存在
+ *   - 点击 save 时调用 updateAgent
  *
- * FormMode 내부의 detail 시나리오는 form-mode 컴포넌트 단위 테스트와 e2e가
- * 책임진다.
+ * FormMode 内部的 detail 场景由 form-mode 组件单元测试和 e2e
+ * 负责。
  */
 describe('AgentSettingsPage', () => {
   beforeEach(() => {
@@ -279,8 +279,8 @@ describe('AgentSettingsPage', () => {
       />,
     )
     // ``tabs.form`` = "形式", ``tabs.visual`` = "视觉"
-    expect(screen.getByRole('tab', { name: /폼/ })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /비주얼/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /表单/ })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /视觉/ })).toBeInTheDocument()
   })
 
   it('renders save + delete + back buttons in header', () => {
@@ -532,7 +532,7 @@ describe('AgentSettingsPage', () => {
       await user.click(saveButton)
       expect(mockUpdateAgent).not.toHaveBeenCalled()
 
-      await user.click(screen.getByRole('button', { name: '汽车' }))
+      await user.click(screen.getByRole('button', { name: '自动' }))
       expect(saveButton).toBeEnabled()
       await user.click(saveButton)
       expect(mockUpdateAgent).toHaveBeenCalledWith(

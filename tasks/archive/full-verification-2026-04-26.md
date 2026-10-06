@@ -231,7 +231,7 @@ POST /api/connections/{custom_conn}/discover-tools → 422
 
 ---
 
-## 참고
+## 参考
 
 - 실행 환경: backend `localhost:8001` (uvicorn 기동 중) + frontend `localhost:3000` + postgres `natural-mold-postgres-1`
 - alembic head: `m14_uniq_mcp_tool_per_conn`

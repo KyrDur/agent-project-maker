@@ -11,7 +11,7 @@
 
 ## 스코프 합의 (2026-04-18)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
 | 스코프 | Backend + 전체 dialog 재배선 (M5 일부 당김) |
 | env fallback | 유지 (ADR-008 §11) — connection 없을 때 settings.* 값 사용 |

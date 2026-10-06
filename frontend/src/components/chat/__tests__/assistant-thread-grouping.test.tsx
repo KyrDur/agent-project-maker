@@ -153,7 +153,7 @@ describe('renderGroupedAssistantPart (group-tool node)', () => {
   it('审批组 N=1: 不使用容器，直接 passthrough 单个审批卡', () => {
     renderGroupNode('request_approval', 1, false, <div data-testid="approval-leaf">card</div>)
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
-    expect(screen.queryByText(/승인 대기/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/待批准/)).not.toBeInTheDocument()
   })
 
   it('中断-suffix 组节点也会渲染为审批容器（M8-3 key 编码）', () => {

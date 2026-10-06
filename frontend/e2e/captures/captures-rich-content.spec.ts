@@ -74,11 +74,11 @@ test.describe('Wave 7 — rich content captures', () => {
 
       // Right-panel tabs (Fix/测试/开场白/日程/设置/API) + left form's 视觉 toggle.
       const tabs: ReadonlyArray<readonly [RegExp, string]> = [
-        [/비주얼/, '02-edit-form-visual.png'],
-        [/테스트/, '03-edit-test.png'],
-        [/오프너/, '04-edit-opener.png'],
-        [/스케줄/, '05-edit-schedule.png'],
-        [/^설정$/, '06-edit-settings.png'],
+        [/视觉/, '02-edit-form-visual.png'],
+        [/测试/, '03-edit-test.png'],
+        [/开场白/, '04-edit-opener.png'],
+        [/日程/, '05-edit-schedule.png'],
+        [/^设置$/, '06-edit-settings.png'],
         [/^API$/, '07-edit-api.png'],
       ]
       for (const [name, file] of tabs) {
@@ -185,7 +185,7 @@ test.describe('Wave 7 — rich content captures', () => {
           { timeout: 30_000 },
         )
         await composer.fill('帮我看看这张会员卡图片')
-        await page.getByRole('button', { name: /전송/ }).click()
+        await page.getByRole('button', { name: /发送/ }).click()
         const upload = await uploadResponse
         if (upload.status() !== 201) throw new Error(`attachment upload failed: ${upload.status()}`)
 
@@ -272,7 +272,7 @@ test.describe('Wave 7 — rich content captures', () => {
       await page
         .goto(`/agents/${agent.id}/conversations/${cid}/traces`, { waitUntil: 'commit', timeout: 120_000 })
         .catch(() => {})
-      await page.getByText(/Trace 상세|트레이스/).first().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+      await page.getByText(/Trace 详情|追踪/).first().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
       await settle(page, 1_800)
       // Capture the trace page as loaded first (proves it rendered).
       await capture(page, WAVE, '18-trace.png')

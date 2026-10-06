@@ -32,13 +32,13 @@ test.describe('Skills page', () => {
 
     await page.goto('/skills')
     await page
-      .getByRole('button', { name: /새 스킬|첫 스킬 만들기/ })
+      .getByRole('button', { name: /新技能|创建第一个技能/ })
       .first()
       .click()
 
     await page.getByRole('tab', { name: '文字' }).click()
-    await page.getByLabel(/이름/).fill('Greeting snippet')
-    await page.getByLabel(/내용 \(마크다운\)/).fill('# Hello\nThis is a snippet.')
+    await page.getByLabel(/名称/).fill('Greeting snippet')
+    await page.getByLabel(/内容 \(Markdown\)/).fill('# Hello\nThis is a snippet.')
 
     await page.getByRole('button', { name: '保存' }).click()
     await expect(page.getByText('已创建')).toBeVisible()

@@ -157,6 +157,6 @@ test.describe('Health check', () => {
     await expect(timeline.locator('[data-status]')).toHaveCount(30)
 
     // Latest probe metadata is surfaced in the panel header
-    await expect(page.getByText(/최근 프로브/)).toBeVisible()
+    await expect(page.getByText(/最近探测/)).toBeVisible()
   })
 })

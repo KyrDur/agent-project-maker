@@ -650,7 +650,8 @@
       "restoreError": "Unable to restore this session. Retry reading it.",
       "running": "Running simulation…"
     },
-    "analysisEvidence": "Model C analysis source and evidence"
+    "analysisEvidence": "Model C analysis source and evidence",
+    "qualityScore": "Evaluation set review score: {value}% (does not represent agent quality)"
   },
   "metadata": {
     "title": "Agent Project Maker",

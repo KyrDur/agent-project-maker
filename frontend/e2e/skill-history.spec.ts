@@ -188,7 +188,7 @@ test.describe('Skill history tab', () => {
     await expect(page.getByTestId('studio-context-bar')).toContainText('Korea Weather')
     await expect(page.getByRole('heading', { name: 'revision 3', exact: true })).toBeVisible()
     await expect(page.getByText('当前', { exact: true }).first()).toBeVisible()
-    await expect(page.getByText(/빌더 개선/)).toBeVisible()
+    await expect(page.getByText(/构建器改进/)).toBeVisible()
     await expect(page.getByText('revision 3 详情')).toBeVisible()
     await expect(page.getByRole('button', { name: 'revision 3 回滚' })).toBeDisabled()
 

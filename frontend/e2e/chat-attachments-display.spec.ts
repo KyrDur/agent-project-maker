@@ -119,7 +119,7 @@ test.describe('Chat attachments display', () => {
       (r) => r.url().includes('/api/uploads') && r.request().method() === 'POST',
     )
     await composer.fill('Here is an image.')
-    await page.getByRole('button', { name: /전송/ }).click()
+    await page.getByRole('button', { name: /发送/ }).click()
     const upload = await uploadResponse
     expect(upload.status()).toBe(201)
     uploadId = ((await upload.json()) as { id: string }).id

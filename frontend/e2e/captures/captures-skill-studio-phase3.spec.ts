@@ -189,7 +189,7 @@ test.describe('Skill studio phase 3 captures', () => {
 
       // ── 07. estimate dialog — 基于真实单价的预估成本 + 执行模型 ───────
       await page
-        .getByRole('button', { name: /다시 실행/ })
+        .getByRole('button', { name: /重新运行/ })
         .first()
         .click()
       await expect(page.getByTestId('estimate-cost')).toBeVisible({ timeout: 20_000 })

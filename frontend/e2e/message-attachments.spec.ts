@@ -84,7 +84,7 @@ test.describe('Message attachments', () => {
       (r) => r.url().includes('/api/uploads') && r.request().method() === 'POST',
     )
     await composer.fill('Here is a file.')
-    await page.getByRole('button', { name: /전송/ }).click()
+    await page.getByRole('button', { name: /发送/ }).click()
 
     // 3. The upload is a real backend write (201) carrying the filename.
     const upload = await uploadResponse

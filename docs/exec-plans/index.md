@@ -10,9 +10,9 @@ No approved execution plan is active in this directory.
 
 ## Completed
 
-- [백로그 C — credentials list N+1 복호화 제거](completed/backlog-c-field-keys-cache.md) — implemented; current field_keys cache verified 2026-09-08.
-- [백로그 E — Connection 엔티티 통합 리팩토링](completed/backlog-e-connection-refactor.md) — closed/superseded by ADR-009, not pending work.
-- [HiTL Phase 2 — Wire Contract](completed/hitl-phase2-contract.md) — APPROVED — 후속 마일스톤(M1·M2) 진입 게이트.
+- [Backlog C — 移除 credentials list N+1 解密](completed/backlog-c-field-keys-cache.md) — implemented; current field_keys cache verified 2026-09-08.
+- [Backlog E — Connection entity 集成重构](completed/backlog-e-connection-refactor.md) — closed/superseded by ADR-009, not pending work.
+- [HiTL Phase 2 — Wire Contract](completed/hitl-phase2-contract.md) — APPROVED — 后续里程碑(M1·M2)进入 gate。
 
 ## Deferred programs
 

@@ -80,7 +80,7 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
     console.log('Opening MCP server wizard')
     await page.goto('/mcp-servers')
     await page
-      .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
+      .getByRole('button', { name: /新 MCP 服务器|添加服务器/ })
       .first()
       .click()
     await expect(page.getByText('登记处')).toBeVisible()
@@ -155,11 +155,11 @@ test.describe('Manual Atlassian Rovo MCP OAuth', () => {
     await capture(page, '05-oauth-complete.png')
 
     await page.getByRole('button', { name: '测试连接' }).click()
-    await expect(page.getByText(/연결됨|개 도구를 찾았습니다/)).toBeVisible({
+    await expect(page.getByText(/已连接|个工具已找到/)).toBeVisible({
       timeout: 120_000,
     })
     await page.getByRole('button', { name: '继续工具' }).click()
-    await expect(page.getByText(/개 도구 발견됨/)).toBeVisible({ timeout: 120_000 })
+    await expect(page.getByText(/个工具已发现/)).toBeVisible({ timeout: 120_000 })
     await capture(page, '06-tools-discovered.png')
 
     await page.getByRole('button', { name: '保存' }).click()

@@ -114,7 +114,7 @@ describe('InstallWizard', () => {
     await waitFor(() => {
       expect(mockInstall).toHaveBeenCalled()
     })
-    expect(await screen.findByText('Research Blueprint 설치 완료')).toBeInTheDocument()
+    expect(await screen.findByText('Research Blueprint已安装')).toBeInTheDocument()
     expect(screen.queryByText('打开蓝图')).not.toBeInTheDocument()
   })
 
@@ -161,7 +161,7 @@ describe('InstallWizard', () => {
     expect(screen.queryByRole('button', { name: '下一步' })).not.toBeInTheDocument()
   })
 
-  it('버전 로드 실패 시 자격증명 단계로 진행하지 않고 에러와 재시도를 보여준다', async () => {
+  it('版本加载失败时不进入凭证步骤，并显示错误与重试', async () => {
     const user = userEvent.setup()
     const refetch = vi.fn()
     mockUseMarketplaceVersion.mockReturnValue({

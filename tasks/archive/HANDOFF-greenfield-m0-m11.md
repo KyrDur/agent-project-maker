@@ -26,7 +26,7 @@
 
 ## 1. 변경 사항 요약
 
-### 백엔드
+### 后端
 - **Cipher V2**: AES-256-GCM + HKDF-SHA256 (info=`moldy-encryption-v1`), 단일 블롭 Base64, 멀티키 식별 `credentials.key_id`
 - **Credential 도메인 신규** (`app/credentials/`): field/domain/interpolation/authenticate/registry/oauth2_base/tester/service + external_secrets/{base,env_provider,vault_provider(HVAC),proxy} + 정의 11개
 - **Tools 도메인 신규** (`app/tools/`): ToolDefinition 단일 경로 + 도구 정의 12개 (HTTP Request 1 + Naver 5 + Google 검색 3 + Gmail/Calendar/Chat 3)

@@ -117,7 +117,7 @@ describe('RuntimePolicySettings', () => {
       screen.getByRole('button', { name: '仅供审核' }),
     )
     expect(screen.getByRole('group', { name: '长对话上下文' })).toContainElement(
-      screen.getByRole('button', { name: '汽车' }),
+      screen.getByRole('button', { name: '自动' }),
     )
   })
 

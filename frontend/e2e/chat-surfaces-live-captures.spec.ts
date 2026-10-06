@@ -175,7 +175,7 @@ test.describe('Live chat surface captures', () => {
         timeout: 30_000,
       })
       await waitForRunStatus(request, setup.conversationId, runId, 'interrupted')
-      await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+      await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
         timeout: 30_000,
       })
       await capture(page, '02-main-chat-v3-planning-hitl.png')
@@ -189,12 +189,12 @@ test.describe('Live chat surface captures', () => {
     test.setTimeout(120_000)
     const prompt = 'Create an agent named SurfaceBot that summarizes product feedback.'
     await page.goto(`/agents/new/conversational?initialMessage=${encodeURIComponent(prompt)}`)
-    await expect(page.getByText(/세션 #/)).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/会话 #/)).toBeVisible({ timeout: 30_000 })
     await expect(page.getByText(prompt).first()).toBeVisible()
 
     await waitForBodySignal(
       page,
-      /진행 상황|프로젝트 초기화|오류|error|quota|rate|한도|System LLM/,
+      /进度|项目初始化|错误|error|quota|rate|限额|System LLM/,
       75_000,
     )
     await waitForStreamToSettle(page)
@@ -218,7 +218,7 @@ test.describe('Live chat surface captures', () => {
 
       await waitForBodySignal(
         page,
-        /운영자가 System LLM|오류|error|quota|rate|한도|개선|설정|모델|프롬프트/,
+        /管理员需要设置 System LLM|错误|error|quota|rate|限额|改进|设置|模型|提示词/,
         75_000,
       )
       await waitForStreamToSettle(page)

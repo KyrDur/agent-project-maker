@@ -3,78 +3,78 @@
 > **Author:** Tim Cook (TTH Designer/UX)
 > **Date:** 2026-04-07
 > **Status:** Draft
-> **Target:** Moldy AI Agent Builder — Frontend UI/UX 전체 개선
+> **Target:** Moldy AI Agent Builder — Frontend UI/UX 全面改进
 
 ---
 
-## 목차
+## 目录
 
-1. [Coming Soon 패턴](#1-coming-soon-패턴)
-2. [에이전트 카드 리디자인](#2-에이전트-카드-리디자인)
-3. [설정 페이지 탭 구조](#3-설정-페이지-탭-구조)
-4. [브레드크럼 디자인](#4-브레드크럼-디자인)
-5. [앱 설정 페이지](#5-앱-설정-페이지)
-6. [도구 상세 Dialog](#6-도구-상세-dialog)
+1. [Coming Soon 模式](#1-coming-soon-模式)
+2. [Agent 卡片重设计](#2-agent-卡片重设计)
+3. [设置页面 tab 结构](#3-设置页面-tab-结构)
+4. [Breadcrumb 设计](#4-breadcrumb-设计)
+5. [App 设置页面](#5-app-设置页面)
+6. [工具详情 Dialog](#6-工具详情-dialog)
 
 ---
 
-## 디자인 원칙
+## 设计原则
 
-| 원칙 | 설명 |
+| 原则 | 说明 |
 |------|------|
-| **Simplicity** | 불필요한 것을 제거하면 본질이 드러난다 |
-| **Consistency** | 같은 패턴은 같은 방식으로. Dialog는 Dialog, Badge는 Badge |
-| **Accessibility** | WCAG 2.1 AA 기준. focus-visible, aria-label, 4.5:1 대비비 |
-| **Progressive Disclosure** | 필요할 때 필요한 정보만. 호버/탭으로 점진적 노출 |
+| **Simplicity** | 去掉不必要的内容，本质就会显现 |
+| **Consistency** | 相同模式用相同方式。Dialog 就是 Dialog，Badge 就是 Badge |
+| **Accessibility** | WCAG 2.1 AA 标准。focus-visible、aria-label、4.5:1 对比度 |
+| **Progressive Disclosure** | 只在需要时显示需要的信息。通过 hover/tab 渐进暴露 |
 
-### 오퍼시티 전략
+### Opacity 策略
 
-두 가지 오퍼시티 패턴을 용도별로 구분한다:
+按用途区分两种 opacity 模式：
 
-| 패턴 | 클래스 | 용도 |
+| 模式 | class | 用途 |
 |------|--------|------|
-| **Dim (반투명)** | `opacity-50 hover:opacity-70` | 기능 존재하나 미출시 (Coming Soon) |
-| **Show/Hide** | `opacity-0 group-hover:opacity-100` | 기능 존재하나 시각적 노이즈 줄임 (카드 액션 버튼) |
+| **Dim（半透明）** | `opacity-50 hover:opacity-70` | 功能存在但尚未发布（Coming Soon） |
+| **Show/Hide** | `opacity-0 group-hover:opacity-100` | 功能存在，但减少视觉噪音（卡片 action 按钮） |
 
-Dim은 "있지만 아직 안 됨", Show/Hide는 "있지만 필요할 때만 보여줌".
+Dim 表示“有，但还不能用”，Show/Hide 表示“有，但只在需要时显示”。
 
 ---
 
-## 1. Coming Soon 패턴
+## 1. Coming Soon 模式
 
-### 문제
+### 问题
 
-현재 `disabled` 버튼(`opacity-40 cursor-not-allowed`)은 왜 비활성인지 사용자에게 알려주지 않는다. 클릭해도 아무 반응이 없어 UX가 막혀 있는 느낌을 준다.
+当前 `disabled` 按钮（`opacity-40 cursor-not-allowed`）不会告诉用户为什么被禁用。点击没有任何反应，会让 UX 有被卡住的感觉。
 
-### 해결
+### 解决方案
 
-`disabled` 속성을 제거하고, 클릭 시 `toast.info`로 "준비 중" 메시지를 보여준다. 시각적으로는 "곧 출시"임을 암시하되, 인터랙션은 살아있다.
+移除 `disabled` 属性，点击时通过 `toast.info` 显示“准备中”消息。视觉上暗示“即将推出”，但交互仍然可用。
 
-### 시각 디자인
+### 视觉设计
 
 ```
 ┌─────────────────────────────┐
-│  [📎] ← opacity-50, 클릭 가능  │
-│        커서: pointer           │
-│        호버 시 opacity-70      │
-│        클릭 → toast.info       │
+│  [📎] ← opacity-50，可点击     │
+│        光标：pointer           │
+│        hover 时 opacity-70     │
+│        点击 → toast.info       │
 └─────────────────────────────┘
 ```
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// 공통 유틸리티 클래스 (모든 Coming Soon 요소에 적용)
+// 通用 utility class（适用于所有 Coming Soon 元素）
 const COMING_SOON_CLASSES = [
-  "opacity-50",              // 기본 상태: 반투명
-  "hover:opacity-70",        // 호버: 약간 선명해짐 (인터랙션 힌트)
-  "cursor-pointer",          // 클릭 가능함을 표시
-  "transition-opacity",      // 부드러운 전환
-  "duration-200",            // 200ms 트랜지션
+  "opacity-50",              // 默认状态：半透明
+  "hover:opacity-70",        // hover：略微更清晰（交互提示）
+  "cursor-pointer",          // 表示可点击
+  "transition-opacity",      // 平滑过渡
+  "duration-200",            // 200ms transition
 ].join(" ");
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
 // components/shared/coming-soon-button.tsx
@@ -85,7 +85,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 interface ComingSoonButtonProps extends Omit<ButtonProps, "onClick" | "disabled"> {
-  featureKey?: string;   // i18n 키 (예: "fileAttach")
+  featureKey?: string;   // i18n key（例如 "fileAttach"）
   children: React.ReactNode;
 }
 
@@ -101,7 +101,7 @@ export function ComingSoonButton({
     e.preventDefault();
     e.stopPropagation();
     toast.info(featureKey ? t(featureKey) : t("default"));
-    // default: "이 기능은 준비 중입니다"
+    // default: “此功能正在准备中”
   };
 
   return (
@@ -119,87 +119,87 @@ export function ComingSoonButton({
 }
 ```
 
-### 사용 예시
+### 使用示例
 
 ```tsx
-// Before (기존)
+// Before（现有）
 <Button disabled className="opacity-40 cursor-not-allowed">
   <PaperclipIcon className="size-4" />
 </Button>
 
-// After (개선)
+// After（改进）
 <ComingSoonButton variant="ghost" size="icon-sm" featureKey="fileAttach">
   <PaperclipIcon className="size-4" />
 </ComingSoonButton>
 ```
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
 - `Button` (variant: ghost)
 - `toast.info` (sonner)
 
 ### 可访问性
 
-- `aria-label`에 "(준비 중)" 포함
-- `disabled` 제거 → 키보드 포커스 가능
-- toast는 `role="status"`로 스크린리더에 전달됨
+- `aria-label` 包含“（准备中）”
+- 移除 `disabled` → 可通过键盘 focus
+- toast 通过 `role="status"` 传递给 screen reader
 
-### 다크모드
+### Dark mode
 
-- `opacity-50/70`은 테마 불문 동작. 추가 다크모드 클래스 불필요.
+- `opacity-50/70` 不受 theme 影响。无需额外 dark mode class。
 
-### 반응형
+### 响应式
 
-- 버튼 사이즈는 기존 `size` prop 따름. 별도 반응형 처리 불필요.
+- 按钮尺寸遵循现有 `size` prop。无需额外响应式处理。
 
 ---
 
-## 2. 에이전트 카드 리디자인
+## 2. Agent 卡片重设计
 
-### 문제
+### 问题
 
-1. 도구 이름을 쉼표로 나열(`tools.map(t => t.name).join(', ')`)하여 카드 높이가 들쭉날쭉
-2. 설정/비주얼설정 버튼이 항상 표시되어 시각적 노이즈
-3. 에이전트 설명보다 메타데이터(도구 목록)가 더 눈에 띔
+1. 用逗号列出工具名称（`tools.map(t => t.name).join(', ')`），导致卡片高度参差不齐
+2. 设置/视觉设置按钮始终显示，造成视觉噪音
+3. metadata（工具列表）比 Agent 描述更醒目
 
-### 해결
+### 解决方案
 
 ```
 ┌──────────────────────────────────────┐
-│  ⭐ Agent Name                [active]│  ← 이름 + 상태 배지 + 즐겨찾기
+│  ⭐ Agent Name                [active]│  ← 名称 + 状态 badge + 收藏
 │                                      │
-│  에이전트 설명 텍스트가 여기에       │  ← 설명 강조 (2줄 제한)
-│  최대 2줄까지 표시됩니다...          │
+│  Agent 描述文本显示在这里             │  ← 强调描述（限制 2 行）
+│  最多显示 2 行...                     │
 │                                      │
-│  🤖 GPT-4o  ·  🔧 3 tools           │  ← 모델 + 도구 개수 배지
+│  🤖 GPT-4o  ·  🔧 3 tools           │  ← 模型 + 工具数量 badge
 │──────────────────────────────────────│
-│  2026-03-15            [⚙️][🎨][⭐]  │  ← 호버 시에만 액션 버튼 표시
+│  2026-03-15            [⚙️][🎨][⭐]  │  ← 仅 hover 时显示 action 按钮
 └──────────────────────────────────────┘
 ```
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// 카드 컨테이너
+// 卡片 container
 "h-full transition-colors hover:border-primary/40 group"
 
-// 카드 설명 (강조)
+// 卡片描述（强调）
 "text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]"
-// min-h로 설명 없는 카드도 동일 높이 확보
+// 用 min-h 保证无描述卡片也保持相同高度
 
-// 메타 정보 (모델 + 도구 배지)
+// metadata（模型 + 工具 badge）
 "flex items-center gap-2 text-xs text-muted-foreground"
 
-// 도구 개수 배지
+// 工具数量 badge
 "inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium"
 
-// 액션 버튼 (호버 시에만)
+// action 按钮（仅 hover 时）
 "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-// 키보드 포커스 시에도 표시
+// 键盘 focus 时也显示
 "focus-within:opacity-100"
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
 // components/agent/agent-card.tsx
@@ -218,14 +218,14 @@ export function ComingSoonButton({
         </div>
       </div>
 
-      {/* 설명 강조 — 고정 높이로 카드 균일화 */}
+      {/* 强调描述 — 固定高度，使卡片一致 */}
       <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem]">
         {agent.description || t("noDescription")}
       </p>
     </CardHeader>
 
     <CardContent className="pt-0">
-      {/* 모델 + 도구 개수 (간결) */}
+      {/* 模型 + 工具数量（简洁） */}
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         {agent.model && (
           <span className="flex items-center gap-1">
@@ -248,7 +248,7 @@ export function ComingSoonButton({
           {formattedDate}
         </span>
 
-        {/* 호버 시에만 액션 버튼 표시 */}
+        {/* 仅 hover 时显示 action 按钮 */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
           <Button variant="ghost" size="icon-sm" asChild>
             <Link href={`/agents/${agent.id}/visual`} onClick={stopProp}>
@@ -267,116 +267,116 @@ export function ComingSoonButton({
 </Link>
 ```
 
-### 핵심 변경 요약
+### 核心变更摘要
 
-| 영역 | Before | After |
+| 区域 | Before | After |
 |------|--------|-------|
-| 도구 표시 | 이름 나열 (가변 높이) | 개수 배지 `🔧 3` (고정 높이) |
-| 설명 | `line-clamp-2` | `line-clamp-2` + `min-h-[2.5rem]` |
-| 액션 버튼 | 항상 표시 | `opacity-0 group-hover:opacity-100` |
-| 즐겨찾기 | 액션 영역에 혼재 | 이름 옆 독립 위치 |
-| 카드 높이 | 도구 수에 따라 가변 | 균일 (min-height 보장) |
+| 工具显示 | 列出名称（高度可变） | 数量 badge `🔧 3`（固定高度） |
+| 描述 | `line-clamp-2` | `line-clamp-2` + `min-h-[2.5rem]` |
+| action 按钮 | 始终显示 | `opacity-0 group-hover:opacity-100` |
+| 收藏 | 混在 action 区域 | 名称旁独立位置 |
+| 卡片高度 | 随工具数量变化 | 统一（保证 min-height） |
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
 - `Card`, `CardHeader`, `CardTitle`, `CardContent`, `CardFooter`
-- `Badge` (상태 표시)
+- `Badge`（状态显示）
 - `Button` (variant: ghost, size: icon-sm)
 
-### 반응형
+### 响应式
 
-- 그리드: `grid gap-4 sm:grid-cols-2 lg:grid-cols-3` (기존 유지)
-- 모바일(1col): 액션 버튼 항상 표시 (`@media (hover: none)` → `opacity-100`)
+- grid：`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`（保持现有）
+- 移动端（1col）：action 按钮始终显示（`@media (hover: none)` → `opacity-100`）
 
 ```tsx
-// 터치 디바이스에서는 항상 표시
+// 在 touch device 上始终显示
 "opacity-0 group-hover:opacity-100 focus-within:opacity-100 touch:opacity-100"
 // Tailwind v4: @media (hover: none) { opacity: 1 }
 ```
 
-### 다크모드
+### Dark mode
 
-- `bg-muted` 배지는 테마 자동 대응
-- `text-muted-foreground`도 테마 자동 대응
-- 추가 다크모드 클래스 불필요
+- `bg-muted` badge 自动适配 theme
+- `text-muted-foreground` 也自动适配 theme
+- 无需额外 dark mode class
 
 ### 可访问性
 
-- 호버로 숨긴 버튼은 `focus-within:opacity-100`으로 키보드 접근 보장
-- `aria-label` 필수: "설정", "비주얼 설정"
-- 카드 전체가 `<Link>` — 내부 버튼은 `onClick={e => e.stopPropagation()}`
+- hover 隐藏的按钮通过 `focus-within:opacity-100` 保证键盘可访问
+- 必须有 `aria-label`：“设置”“视觉设置”
+- 整张卡片是 `<Link>` — 内部按钮使用 `onClick={e => e.stopPropagation()}`
 
 ---
 
-## 3. 설정 페이지 탭 구조
+## 3. 设置页面 tab 结构
 
-### 문제
+### 问题
 
-565줄짜리 단일 스크롤 페이지. 인지 부하가 높고, 원하는 섹션을 찾기 어렵다.
+当前是 565 行的单一滚动页面。认知负荷高，也很难找到目标 section。
 
-### 해결
+### 解决方案
 
-4개 탭으로 분리 + 하단 sticky 저장 바.
+拆成 4 个 tab + 底部 sticky 保存栏。
 
 ```
 ┌─────────────────────────────────────────────┐
-│  ← Back          Agent Name 설정             │
+│  ← Back          Agent Name 设置             │
 │─────────────────────────────────────────────│
-│  [기본정보] [모델] [도구·스킬] [트리거]       │  ← Tabs (sticky)
+│  [基本信息] [模型] [工具·技能] [触发器]       │  ← Tabs（sticky）
 │─────────────────────────────────────────────│
 │                                             │
-│  (탭 콘텐츠 영역 — 스크롤)                   │
+│  （tab 内容区域 — 滚动）                     │
 │                                             │
 │                                             │
 │─────────────────────────────────────────────│
-│  [🗑 삭제]                        [💾 저장]  │  ← sticky 바
+│  [🗑 删除]                        [💾 保存]  │  ← sticky bar
 └─────────────────────────────────────────────┘
 ```
 
-### 탭 분할
+### Tab 拆分
 
-| 탭 | 내용 | 해당 섹션 (기존 라인) |
+| tab | 内容 | 对应 section（现有行） |
 |----|------|----------------------|
-| **기본정보** | 이름, 설명, 시스템 프롬프트 | L181-205 |
-| **모델** | 모델 선택, Temperature, Top P, Max Tokens, 리셋 | L207-283 |
-| **도구·스킬** | 도구 체크리스트, 스킬 체크리스트, 미들웨어 | L285-391 |
-| **트리거** | 기존 트리거 목록, 새 트리거 추가 폼 | L393-520 |
+| **基本信息** | 名称、描述、system prompt | L181-205 |
+| **模型** | 模型选择、Temperature、Top P、Max Tokens、reset | L207-283 |
+| **工具·技能** | 工具 checklist、技能 checklist、middleware | L285-391 |
+| **触发器** | 现有 trigger 列表、新增 trigger form | L393-520 |
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// 탭 리스트 (sticky)
+// tab list（sticky）
 "sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b"
 
-// 탭 콘텐츠 영역
+// tab 内容区域
 "flex-1 overflow-auto py-6"
 
-// 각 탭 콘텐츠 내부
+// 各 tab 内容内部
 "mx-auto w-full max-w-2xl space-y-6"
 
-// 하단 sticky 저장 바
+// 底部 sticky 保存栏
 "sticky bottom-0 border-t bg-background/95 backdrop-blur-sm px-6 py-3"
 
-// 저장 바 레이아웃
+// 保存栏 layout
 "mx-auto flex w-full max-w-2xl items-center justify-between"
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
-// app/agents/[agentId]/settings/page.tsx (리팩토링 후)
+// app/agents/[agentId]/settings/page.tsx（重构后）
 export default function AgentSettingsPage() {
   const [activeTab, setActiveTab] = useState("basic");
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* 헤더 */}
+      {/* header */}
       <div className="px-6 pt-6 pb-4">
         <BackButton />
         <PageHeader title={`${agent.name} ${t("title")}`} />
       </div>
 
-      {/* 탭 네비게이션 (sticky) */}
+      {/* tab navigation（sticky） */}
       {/* i18n: useTranslations("agent.settings") → t("tabs.basic") = "agent.settings.tabs.basic" */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-6">
@@ -388,7 +388,7 @@ export default function AgentSettingsPage() {
           </TabsList>
         </div>
 
-        {/* 탭 콘텐츠 (스크롤) */}
+        {/* tab 内容（scroll） */}
         <div className="flex-1 overflow-auto px-6 py-6">
           <div className="mx-auto w-full max-w-2xl">
             <TabsContent value="basic">
@@ -407,7 +407,7 @@ export default function AgentSettingsPage() {
         </div>
       </Tabs>
 
-      {/* 하단 sticky 저장 바 */}
+      {/* 底部 sticky 保存栏 */}
       <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur-sm px-6 py-3">
         <div className="mx-auto flex w-full max-w-2xl items-center justify-between">
           <DeleteAgentButton agentId={agentId} />
@@ -422,103 +422,103 @@ export default function AgentSettingsPage() {
 }
 ```
 
-### 파일 분리 가이드
+### 文件拆分指南
 
 ```
 app/agents/[agentId]/settings/
-├── page.tsx                    # 탭 컨테이너 + 저장 바 (~80줄)
+├── page.tsx                    # tab container + 保存栏 (~80 行)
 ├── _components/
-│   ├── basic-info-tab.tsx      # 이름, 설명, 시스템 프롬프트 (~60줄)
-│   ├── model-tab.tsx           # 모델 선택, 파라미터 슬라이더 (~100줄)
-│   ├── tools-skills-tab.tsx    # 도구/스킬/미들웨어 체크리스트 (~120줄)
-│   └── triggers-tab.tsx        # 트리거 목록 + 추가 폼 (~150줄)
+│   ├── basic-info-tab.tsx      # 名称、描述、system prompt (~60 行)
+│   ├── model-tab.tsx           # 模型选择、参数 slider (~100 行)
+│   ├── tools-skills-tab.tsx    # 工具/技能/middleware checklist (~120 行)
+│   └── triggers-tab.tsx        # trigger 列表 + 新增 form (~150 行)
 ```
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
 - `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`
-- 기존 사용 중인 모든 컴포넌트 유지 (Badge, Button, Input, Textarea, Slider 등)
+- 保留当前使用的所有 component（Badge, Button, Input, Textarea, Slider 等）
 
-### 반응형
+### 响应式
 
-- 탭: 모바일에서 `overflow-x-auto`로 수평 스크롤 허용
-- 저장 바: 모바일에서 `flex-col gap-2` → 버튼 세로 배치
+- tab：移动端允许 `overflow-x-auto` 横向滚动
+- 保存栏：移动端 `flex-col gap-2` → 按钮纵向排列
 
 ```tsx
-// 모바일 탭 스크롤
+// 移动端 tab scroll
 "overflow-x-auto scrollbar-none"
 
-// 모바일 저장 바
+// 移动端保存栏
 "flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between"
 ```
 
-### 다크모드
+### Dark mode
 
-- `bg-background/95 backdrop-blur-sm`은 테마 자동 대응
-- `border-b`, `border-t`도 테마 변수 사용으로 자동 대응
+- `bg-background/95 backdrop-blur-sm` 自动适配 theme
+- `border-b`, `border-t` 也使用 theme variable，自动适配
 
 ### 可访问性
 
-- `Tabs`는 shadcn/ui가 aria-role 자동 처리 (`role="tablist"`, `role="tab"`, `role="tabpanel"`)
-- 키보드: 좌우 화살표로 탭 전환
-- 저장 단축키 고려: `Ctrl+S` / `Cmd+S` 바인딩 (선택사항)
+- `Tabs` 由 shadcn/ui 自动处理 aria-role（`role="tablist"`, `role="tab"`, `role="tabpanel"`）
+- 键盘：左右箭头切换 tab
+- 可考虑保存快捷键：`Ctrl+S` / `Cmd+S` 绑定（可选）
 
-### 상태 관리 주의사항
+### 状态管理注意事项
 
-- 탭 전환 시 **폼 상태 유지** 필수. 각 탭은 상위 컴포넌트의 state를 공유.
-- `useState`를 page.tsx에 유지하고, 각 탭 컴포넌트에 props로 전달.
-- 또는 `useReducer`로 폼 상태 통합 관리.
+- 切换 tab 时必须**保留 form 状态**。各 tab 共享父 component state。
+- 将 `useState` 保留在 page.tsx，并通过 props 传给各 tab component。
+- 或用 `useReducer` 统一管理 form state。
 
 ---
 
-## 4. 브레드크럼 디자인
+## 4. Breadcrumb 设计
 
-### 문제
+### 问题
 
-1. 현재 `app-header.tsx`에 `Separator(orientation="vertical")`만 있고 경로 정보 없음
-2. 사용자가 현재 위치를 파악하기 어려움
-3. 깊은 경로(에이전트 → 설정)에서 뒤로가기가 불편
+1. 当前 `app-header.tsx` 只有 `Separator(orientation="vertical")`，没有路径信息
+2. 用户难以判断当前所在位置
+3. 深层路径（Agent → 设置）返回不方便
 
-### 해결
+### 解决方案
 
-경로 기반 자동 생성 브레드크럼. Separator(세로선) 제거.
+基于路径自动生成 breadcrumb。移除 Separator（竖线）。
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  [≡]  홈 / 에이전트 / MyBot / 설정              │
+│  [≡]  首页 / Agent / MyBot / 设置              │
 └─────────────────────────────────────────────────┘
 ```
 
-### 경로 매핑
+### 路径映射
 
-| URL 패턴 | 브레드크럼 |
+| URL pattern | breadcrumb |
 |----------|-----------|
-| `/` | 홈 |
-| `/agents/[id]` | 홈 / 에이전트 / {agent.name} |
-| `/agents/[id]/chat` | 홈 / 에이전트 / {agent.name} / 채팅 |
-| `/agents/[id]/settings` | 홈 / 에이전트 / {agent.name} / 설정 |
-| `/tools` | 홈 / 도구 |
-| `/models` | 홈 / 모델 |
-| `/usage` | 홈 / 사용량 |
-| `/settings` | 홈 / 설정 |
+| `/` | 首页 |
+| `/agents/[id]` | 首页 / Agent / {agent.name} |
+| `/agents/[id]/chat` | 首页 / Agent / {agent.name} / 聊天 |
+| `/agents/[id]/settings` | 首页 / Agent / {agent.name} / 设置 |
+| `/tools` | 首页 / 工具 |
+| `/models` | 首页 / 模型 |
+| `/usage` | 首页 / 使用量 |
+| `/settings` | 首页 / 设置 |
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// 브레드크럼 컨테이너
+// breadcrumb container
 "flex items-center gap-1.5 text-sm"
 
-// 브레드크럼 아이템 (링크)
+// breadcrumb item（link）
 "text-muted-foreground hover:text-foreground transition-colors duration-200"
 
-// 현재 페이지 (마지막 아이템)
+// 当前页面（最后一个 item）
 "text-foreground font-medium truncate max-w-[200px]"
 
-// 구분자 (chevron)
+// separator（chevron）
 "text-muted-foreground/60 size-3.5"
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
 // components/layout/breadcrumb-nav.tsx
@@ -529,7 +529,7 @@ import { ChevronRightIcon, HomeIcon } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-// 정적 경로 매핑
+// static 路径 mapping
 const ROUTE_LABELS: Record<string, string> = {
   agents: "nav.agents",
   tools: "nav.tools",
@@ -545,19 +545,19 @@ export function BreadcrumbNav() {
   const t = useTranslations();
   const segments = pathname.split("/").filter(Boolean);
 
-  if (segments.length === 0) return null; // 홈에서는 숨김
+  if (segments.length === 0) return null; // 首页隐藏
 
   const crumbs = segments.map((segment, index) => {
     const href = "/" + segments.slice(0, index + 1).join("/");
     const isLast = index === segments.length - 1;
-    const isId = /^[0-9a-f-]+$/.test(segment); // UUID 감지
+    const isId = /^[0-9a-f-]+$/.test(segment); // 检测 UUID
 
     return { segment, href, isLast, isId };
   });
 
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
-      {/* 홈 아이콘 */}
+      {/* 首页 icon */}
       <Link
         href="/"
         className="text-muted-foreground hover:text-foreground transition-colors"
@@ -587,7 +587,7 @@ export function BreadcrumbNav() {
 }
 ```
 
-### app-header.tsx 변경
+### app-header.tsx 变更
 
 ```tsx
 // Before
@@ -611,108 +611,108 @@ export function AppHeader() {
 }
 ```
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
-- `Separator` 제거
-- 커스텀 `BreadcrumbNav` 컴포넌트 (shadcn에 Breadcrumb가 있으면 활용 가능하나, @base-ui에 없으므로 직접 구현)
+- 移除 `Separator`
+- 自定义 `BreadcrumbNav` component（shadcn 若有 Breadcrumb 可利用，但 @base-ui 没有，因此自行实现）
 
-### 반응형
+### 响应式
 
-- 모바일: 마지막 2 세그먼트만 표시 + `...` 축약
+- 移动端：只显示最后 2 个 segment + `...` 折叠
 
 ```tsx
-// 모바일 축약 (3개 이상 세그먼트)
-"hidden sm:flex"      // 중간 세그먼트 숨김
-"flex sm:hidden"      // 축약(…) 표시
+// 移动端折叠（3 个以上 segment）
+"hidden sm:flex"      // 隐藏中间 segment
+"flex sm:hidden"      // 显示折叠（…）
 ```
 
-### 다크모드
+### Dark mode
 
-- `text-muted-foreground`, `text-foreground`는 테마 자동 대응
-- 추가 다크모드 클래스 불필요
+- `text-muted-foreground`, `text-foreground` 自动适配 theme
+- 无需额外 dark mode class
 
 ### 可访问性
 
-- `<nav aria-label="Breadcrumb">` 랜드마크
-- 현재 페이지: `aria-current="page"` 추가
-- 구분자: `aria-hidden="true"` (스크린리더 무시)
+- `<nav aria-label="Breadcrumb">` landmark
+- 当前页面：添加 `aria-current="page"`
+- separator：`aria-hidden="true"`（screen reader 忽略）
 
-### 동적 이름 해결
+### 动态名称解析
 
-에이전트 ID(UUID)가 경로에 있을 때 이름으로 표시:
-- TanStack Query 캐시에서 에이전트 이름 조회
-- 캐시 없으면 ID 축약 표시 (`agent-abc...`)
+路径中存在 Agent ID(UUID) 时显示名称：
+- 从 TanStack Query cache 查询 Agent 名称
+- cache 中没有则显示缩略 ID（`agent-abc...`）
 
 ---
 
-## 5. 앱 설정 페이지
+## 5. App 设置页面
 
-### 문제
+### 问题
 
-앱 전체 설정(테마, 언어, 프로필)을 관리할 페이지가 없다.
+目前没有管理整个 App 设置（theme、language、profile）的页面。
 
-### 해결
+### 解决方案
 
-카드 기반 설정 레이아웃. 각 설정 그룹을 독립 카드로 분리.
+采用 card-based 设置 layout。每组设置拆成独立 card。
 
 ```
 ┌─────────────────────────────────────────────┐
-│  앱 설정                                     │
+│  App 设置                                     │
 │─────────────────────────────────────────────│
 │                                             │
 │  ┌─────────────────────────────────────┐    │
-│  │  👤 프로필                           │    │
-│  │  이름: Mock User                     │    │
-│  │  이메일: mock@moldy.ai              │    │
+│  │  👤 Profile                           │    │
+│  │  名称：Mock User                     │    │
+│  │  Email：mock@moldy.ai                │    │
 │  └─────────────────────────────────────┘    │
 │                                             │
 │  ┌─────────────┐  ┌─────────────────────┐   │
-│  │  🎨 테마     │  │  🌐 언어            │   │
+│  │  🎨 Theme     │  │  🌐 Language         │   │
 │  │             │  │                     │   │
-│  │  ○ Light   │  │  ● 한국어           │   │
+│  │  ○ Light   │  │  ● 韩语                │   │
 │  │  ● Dark    │  │  ○ English          │   │
 │  │  ○ System  │  │                     │   │
 │  └─────────────┘  └─────────────────────┘   │
 │                                             │
 │  ┌─────────────────────────────────────┐    │
-│  │  🔑 API 키 관리                      │    │
+│  │  🔑 API key 管理                      │    │
 │  │  OpenAI: ●●●●●●●●sk-...abc         │    │
-│  │  Anthropic: 설정되지 않음     [설정]  │    │
+│  │  Anthropic：未设置             [设置]  │    │
 │  └─────────────────────────────────────┘    │
 │                                             │
 └─────────────────────────────────────────────┘
 ```
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// 페이지 컨테이너
+// 页面 container
 "flex flex-1 flex-col gap-6 overflow-auto p-6"
 
-// 콘텐츠 영역
+// 内容区域
 "mx-auto w-full max-w-2xl space-y-6"
 
-// 설정 카드
+// 设置 card
 "rounded-xl ring-1 ring-foreground/10 bg-card p-6"
 
-// 카드 제목
+// card title
 "flex items-center gap-2 text-base font-semibold"
 
-// 설정 항목 행
+// 设置 item row
 "flex items-center justify-between py-3"
 
-// 구분선
+// divider
 "border-t border-foreground/5"
 
-// 2열 그리드 (테마 + 언어)
+// 2-column grid（theme + language）
 "grid gap-4 sm:grid-cols-2"
 
-// 라디오 옵션
+// radio option
 "flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent transition-colors duration-200"
 "data-[state=checked]:border-primary data-[state=checked]:bg-primary/5"
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
 // app/settings/page.tsx
@@ -722,16 +722,16 @@ export default function SettingsPage() {
       <PageHeader title={t("title")} description={t("description")} />
 
       <div className="mx-auto w-full max-w-2xl space-y-6">
-        {/* 프로필 카드 (전체 폭) */}
+        {/* Profile card（full width） */}
         <ProfileCard />
 
-        {/* 테마 + 언어 (2열) */}
+        {/* Theme + Language（2-column） */}
         <div className="grid gap-4 sm:grid-cols-2">
           <ThemeCard />
           <LanguageCard />
         </div>
 
-        {/* API 키 관리 (전체 폭) */}
+        {/* API key 管理（full width） */}
         <ApiKeysCard />
       </div>
     </div>
@@ -740,7 +740,7 @@ export default function SettingsPage() {
 ```
 
 ```tsx
-// 테마 카드 예시
+// theme card 示例
 function ThemeCard() {
   const { theme, setTheme } = useTheme();
   const t = useTranslations("settings.theme");
@@ -780,43 +780,43 @@ function ThemeCard() {
 }
 ```
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
 - `Card`, `CardHeader`, `CardTitle`, `CardContent`
 - `Button`
-- `Input` (프로필 편집 시)
+- `Input`（编辑 profile 时）
 - `PageHeader`
 
-### 반응형
+### 响应式
 
-- 2열 그리드 → 모바일 1열: `grid gap-4 sm:grid-cols-2`
-- API 키 값: 모바일에서 `truncate` + 툴팁
+- 2-column grid → 移动端 1-column：`grid gap-4 sm:grid-cols-2`
+- API key 值：移动端 `truncate` + tooltip
 
-### 다크모드
+### Dark mode
 
-- 테마 토글이 이 페이지에 있으므로 즉각 반영 확인 필요
-- `bg-primary/5`는 테마 자동 대응
+- theme toggle 位于该页面，因此需确认即时生效
+- `bg-primary/5` 自动适配 theme
 
 ### 可访问性
 
-- 테마/언어 선택: `role="radiogroup"` + `role="radio"` + `aria-checked`
-- 또는 시맨틱 `<fieldset>` + `<input type="radio">`
-- API 키: 마스킹된 값에 `aria-label="API key (hidden)"`
-- 각 카드: `<section aria-labelledby="section-title-id">` 랜드마크
-- 포커스 순서: 프로필 → 테마 → 언어 → API 키 (시각적 순서와 일치)
-- 테마 변경 시 `aria-live="polite"` 영역에 "테마가 변경되었습니다" 안내
+- theme/language 选择：`role="radiogroup"` + `role="radio"` + `aria-checked`
+- 或使用 semantic `<fieldset>` + `<input type="radio">`
+- API key：masked value 加 `aria-label="API key (hidden)"`
+- 每张 card：`<section aria-labelledby="section-title-id">` landmark
+- focus 顺序：profile → theme → language → API key（与视觉顺序一致）
+- theme 变更时在 `aria-live="polite"` 区域提示“主题已更改”
 
 ---
 
-## 6. 도구 상세 Dialog
+## 6. 工具详情 Dialog
 
-### 문제
+### 问题
 
-도구 상세가 `Sheet`(사이드바)로 열리지만, 다른 모든 상세/편집 UI는 `Dialog`(중앙 모달)를 사용. 일관성이 깨짐.
+工具详情目前以 `Sheet`（侧栏）打开，但其他所有详情/编辑 UI 都使用 `Dialog`（中央 modal）。一致性被打破。
 
-### 해결
+### 解决方案
 
-`Sheet` → `Dialog`로 변경. 기존 콘텐츠 구조는 유지.
+将 `Sheet` → `Dialog`。保留现有内容结构。
 
 ```
 ┌──────────────────────────────────────────┐
@@ -824,48 +824,48 @@ function ThemeCard() {
 │   ┌──────────────────────────────────┐   │
 │   │  [×]                             │   │
 │   │  Web Search (DuckDuckGo)         │   │
-│   │  DuckDuckGo 검색 엔진으로...     │   │
+│   │  使用 DuckDuckGo 搜索引擎...       │   │
 │   │                                  │   │
-│   │  타입: prebuilt    태그: search   │   │
+│   │  类型：prebuilt    标签：search     │   │
 │   │                                  │   │
 │   │  ┌──────────────────────────┐    │   │
-│   │  │  파라미터                 │    │   │
-│   │  │  query  string  필수     │    │   │
-│   │  │  limit  integer 선택     │    │   │
+│   │  │  参数                     │    │   │
+│   │  │  query  string  必填     │    │   │
+│   │  │  limit  integer 可选     │    │   │
 │   │  └──────────────────────────┘    │   │
 │   │                                  │   │
-│   │  인증: 서버 키 설정됨 ✓         │   │
+│   │  认证：已设置服务器 key ✓         │   │
 │   │                                  │   │
 │   └──────────────────────────────────┘   │
 │                                          │
 └──────────────────────────────────────────┘
 ```
 
-### Tailwind 클래스 가이드
+### Tailwind class 指南
 
 ```tsx
-// Dialog 콘텐츠 (중앙 모달)
+// Dialog 内容（中央 modal）
 "sm:max-w-lg max-h-[85vh] overflow-auto"
 
-// 섹션 간격
+// section 间距
 "space-y-5 pt-4"
 
-// 메타데이터 배지 영역
+// metadata badge 区域
 "flex flex-wrap gap-2"
 
-// 파라미터 테이블
+// 参数 table
 "rounded-lg border divide-y"
 
-// 테이블 행
+// table row
 "flex items-center px-3 py-2 text-sm"
 
-// 테이블 셀
-"flex-1" // 이름
-"w-20 text-muted-foreground" // 타입
-"w-16 text-right" // 필수/선택
+// table cell
+"flex-1" // 名称
+"w-20 text-muted-foreground" // 类型
+"w-16 text-right" // 必填/可选
 ```
 
-### 컴포넌트 구조 (JSX 스케치)
+### Component 结构（JSX sketch）
 
 ```tsx
 // Before (Sheet)
@@ -875,7 +875,7 @@ function ThemeCard() {
       <SheetTitle>{detailTool.name}</SheetTitle>
       <SheetDescription>{detailTool.description}</SheetDescription>
     </SheetHeader>
-    {/* ... 콘텐츠 ... */}
+    {/* ... 内容 ... */}
   </SheetContent>
 </Sheet>
 
@@ -886,120 +886,120 @@ function ThemeCard() {
       <DialogTitle>{detailTool.name}</DialogTitle>
       <DialogDescription>{detailTool.description}</DialogDescription>
     </DialogHeader>
-    {/* ... 콘텐츠 (동일) ... */}
+    {/* ... 内容（相同） ... */}
   </DialogContent>
 </Dialog>
 ```
 
-### 변경 범위
+### 变更范围
 
-| 변경 | Before | After |
+| 变更 | Before | After |
 |------|--------|-------|
-| 컴포넌트 | `Sheet` | `Dialog` |
+| Component | `Sheet` | `Dialog` |
 | import | `SheetContent`, `SheetHeader`, `SheetTitle`, `SheetDescription` | `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription` |
-| 클래스 | `sm:max-w-lg overflow-auto` | `sm:max-w-lg max-h-[85vh] overflow-auto` |
-| 위치 | 우측 사이드바 (슬라이드) | 중앙 모달 (페이드+줌) |
-| 콘텐츠 | 변경 없음 | 변경 없음 |
+| class | `sm:max-w-lg overflow-auto` | `sm:max-w-lg max-h-[85vh] overflow-auto` |
+| 位置 | 右侧侧栏（slide） | 中央 modal（fade+zoom） |
+| 内容 | 无变更 | 无变更 |
 
-### shadcn/ui 컴포넌트
+### shadcn/ui Component
 
 - `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`
-- `Badge` (타입, 태그 표시 — 기존 유지)
+- `Badge`（显示类型、tag — 保持现有）
 
-### 반응형
+### 响应式
 
-- `sm:max-w-lg`: 데스크탑에서 제한된 너비
-- 모바일: Dialog가 전체 너비로 확장 (shadcn Dialog 기본 동작)
-- `max-h-[85vh] overflow-auto`: 콘텐츠 길 때 스크롤
+- `sm:max-w-lg`：桌面端限制宽度
+- 移动端：Dialog 扩展到全宽（shadcn Dialog 默认行为）
+- `max-h-[85vh] overflow-auto`：内容过长时 scroll
 
-### 다크모드
+### Dark mode
 
-- Dialog 컴포넌트가 테마 자동 대응 (bg-background, text-foreground)
-- 추가 다크모드 클래스 불필요
+- Dialog component 自动适配 theme（bg-background, text-foreground）
+- 无需额外 dark mode class
 
 ### 可访问性
 
-- Dialog는 모달 포커스 트랩 자동 제공 (Sheet과 동일)
-- `Escape` 키로 닫기 (기존과 동일)
-- `aria-labelledby`, `aria-describedby` 자동 연결
-- 파라미터 테이블: `role="table"` + `role="row"` + `role="cell"` 또는 시맨틱 `<table>`
-- 닫기 버튼: `aria-label="닫기"` (DialogContent의 X 버튼에 자동 적용됨)
-- 열기 시 첫 포커스: DialogTitle로 이동 (기본 동작)
+- Dialog 自动提供 modal focus trap（与 Sheet 相同）
+- `Escape` 键关闭（与现有相同）
+- 自动连接 `aria-labelledby`, `aria-describedby`
+- 参数 table：`role="table"` + `role="row"` + `role="cell"` 或 semantic `<table>`
+- 关闭按钮：`aria-label="关闭"`（自动应用到 DialogContent 的 X 按钮）
+- 打开时首次 focus：移动到 DialogTitle（默认行为）
 
 ---
 
-## 구현 우선순위
+## 实现优先级
 
-| 순서 | 항목 | 난이도 | 영향도 | 담당 스토리 |
+| 顺序 | 项目 | 难度 | 影响度 | 对应 story |
 |------|------|--------|--------|------------|
-| 1 | Coming Soon 패턴 | 🟢 낮음 | 중 | S4 |
-| 2 | 도구 상세 Dialog | 🟢 낮음 | 중 | S3 |
-| 3 | 에이전트 카드 리디자인 | 🟡 중간 | 높 | S4 |
-| 4 | 브레드크럼 디자인 | 🟡 중간 | 높 | S5 |
-| 5 | 설정 페이지 탭 구조 | 🔴 높음 | 높 | S7 |
-| 6 | 앱 설정 페이지 | 🟡 중간 | 중 | S6 |
+| 1 | Coming Soon 模式 | 🟢 低 | 中 | S4 |
+| 2 | 工具详情 Dialog | 🟢 低 | 中 | S3 |
+| 3 | Agent 卡片重设计 | 🟡 中 | 高 | S4 |
+| 4 | Breadcrumb 设计 | 🟡 中 | 高 | S5 |
+| 5 | 设置页面 tab 结构 | 🔴 高 | 高 | S7 |
+| 6 | App 设置页面 | 🟡 中 | 中 | S6 |
 
 ---
 
-## 공통 참고사항
+## 通用注意事项
 
-### Tailwind v4 주의
+### Tailwind v4 注意
 
-- `@apply` 대신 유틸리티 클래스 직접 사용 권장
-- CSS 변수 기반 테마: `bg-background`, `text-foreground` 등은 `@theme` 블록에서 정의
-- `dark:` 접두사 대신 CSS 변수가 테마 자동 전환
+- 建议直接使用 utility class，而不是 `@apply`
+- 基于 CSS variable 的 theme：`bg-background`, `text-foreground` 等在 `@theme` block 中定义
+- theme 自动切换依赖 CSS variable，而不是 `dark:` prefix
 
-### shadcn/ui (@base-ui 기반) 주의
+### shadcn/ui（基于 @base-ui）注意
 
-- `data-[state=...]` 대신 `data-[...]` 속성 사용하는 경우 있음
-- 구현 전 `frontend/src/components/ui/` 해당 컴포넌트 코드 확인 필수
-- `Trigger` → `TabsTrigger` (shadcn), 네이밍이 다를 수 있음
+- 某些情况下使用 `data-[...]` attribute，而不是 `data-[state=...]`
+- 实现前必须检查 `frontend/src/components/ui/` 中对应 component 代码
+- `Trigger` → `TabsTrigger`（shadcn），命名可能不同
 
-### 트랜지션 가이드
+### Transition 指南
 
-| 용도 | Duration | Easing |
+| 用途 | Duration | Easing |
 |------|----------|--------|
-| 호버 색상 변경 | 150ms | ease-out |
-| 오퍼시티 전환 | 200ms | ease-out |
-| 모달/시트 진입 | 200ms | ease-out |
-| 탭 전환 | 150ms | ease-out |
+| hover 颜色变化 | 150ms | ease-out |
+| opacity 过渡 | 200ms | ease-out |
+| modal/sheet 进入 | 200ms | ease-out |
+| tab 切换 | 150ms | ease-out |
 
-### i18n 키 구조
+### i18n key 结构
 
 ```json
 {
   "common": {
     "comingSoon": {
-      "default": "이 기능은 준비 중입니다",
-      "fileAttach": "파일 첨부 기능은 준비 중입니다"
+      "default": "此功能正在准备中",
+      "fileAttach": "文件附件功能正在准备中"
     }
   },
   "settings": {
-    "title": "설정",
+    "title": "设置",
     "tabs": {
-      "basic": "기본정보",
-      "model": "모델",
-      "tools": "도구·스킬",
-      "triggers": "트리거"
+      "basic": "基本信息",
+      "model": "模型",
+      "tools": "工具·技能",
+      "triggers": "触发器"
     },
     "theme": {
-      "title": "테마",
-      "light": "라이트",
-      "dark": "다크",
-      "system": "시스템"
+      "title": "主题",
+      "light": "浅色",
+      "dark": "深色",
+      "system": "系统"
     },
     "language": {
-      "title": "언어"
+      "title": "语言"
     }
   },
   "nav": {
-    "agents": "에이전트",
-    "tools": "도구",
-    "models": "모델",
-    "usage": "사용량",
-    "settings": "설정",
-    "chat": "채팅",
-    "create": "새로 만들기"
+    "agents": "Agent",
+    "tools": "工具",
+    "models": "模型",
+    "usage": "使用量",
+    "settings": "设置",
+    "chat": "聊天",
+    "create": "新建"
   }
 }
 ```

@@ -28,7 +28,7 @@ natural-mold(Moldy) 프로젝트의 AI 에이전트 실행 엔진을 `langchain.
 
 ## 결정 사항 (인터뷰 결과)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
 | 대화 저장 | Checkpointer 전면 사용. conversations 테이블은 메타데이터(title, pinned)만 유지. messages 테이블 제거 |
 | 자동 추가 도구 | 기본 활성화 + 시스템 프롬프트로 불필요한 호출 제어 |

@@ -1,60 +1,60 @@
-# 백로그 E — Connection 엔티티 통합 리팩토링 (실행 계획)
+# Backlog E — Connection entity 统一重构（执行计划）
 
-**상태**: 종료·폐기 승계 — ADR-009가 Connection 모델을 제거하고 Credential 직결 구조로 대체.
-2026-09-08 소스 대조 후 보관으로 이동했다. 아래 단계와 승인 대기 문구는
-2026-04-18 당시 계획이며 재개할 작업 목록이 아니다.
-**작성일**: 2026-04-18 (M0 보강: 2026-04-18)
-**선행 조건**: 멀티 유저 인증 도입 이전에 완료 필요
-**범위**: 백로그 E + F(CredentialPickerDialog 공통 셸) 통합
+**状态**：已终止·废弃并由后续方案承接 — ADR-009 移除 Connection 模型，并替换为 Credential 直连结构。
+2026-09-08 对照源码后移至归档。以下阶段与等待批准文案是
+2026-04-18 当时的计划，并非待恢复的工作列表。
+**编写日期**：2026-04-18（M0 补强：2026-04-18）
+**前置条件**：需在引入多用户认证前完成
+**范围**：合并 Backlog E + F（CredentialPickerDialog 通用 shell）
 **ADR**: [`adr-008-connection-entity.md`](../../design-docs/adr-008-connection-entity.md)
 
 ---
 
-## M0 합의 사항 (요약)
+## M0 共识事项（摘要）
 
-설계 인터뷰를 통해 다음 결정을 확정했다. 상세 근거는 ADR-008 참조.
+通过设计访谈确认以下决策。详细依据参见 ADR-008。
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
-| `provider_name` | VARCHAR 자유 문자열. PREBUILT는 `credential_registry` enum validator, MCP/CUSTOM은 자유 |
-| UNIQUE 제약 | **없음**. UUID PK + user_id FK + `(user_id, type, provider_name)` 인덱스만 |
-| `user_id` | NOT NULL FK (권한 분리의 기반) |
-| env fallback | **유저 도구 실행 경로에서 제거**. 시스템 내부 기능(creation_agent, 이미지 생성)만 env 유지 |
-| M3 이행 | mock user의 env 값 → credential → default connection 자동 시드 |
-| `is_default` | 유저별 provider별 1개. `agent_tools.connection_id = NULL` → default 사용, 값 있으면 override |
-| `extra_config` | MCP만 사용: `{url, auth_type, headers?, env_vars?, transport?, timeout?}`. PREBUILT/CUSTOM은 NULL |
-| MCP `env_vars` | credential 필드 참조 템플릿(`${credential.xxx}`) 허용. M1은 스키마만, M2에서 해석 구현 |
-| CUSTOM 공유 | 1 credential = 1 connection, 여러 도구가 N:1로 공유 |
-| 롤백 | M2~M5 legacy 컬럼 read-only 유지 + Alembic downgrade 필수 |
+| `provider_name` | VARCHAR 自由字符串。PREBUILT 使用 `credential_registry` enum validator，MCP/CUSTOM 自由 |
+| UNIQUE 约束 | **无**。仅 UUID PK + user_id FK + `(user_id, type, provider_name)` index |
+| `user_id` | NOT NULL FK（权限隔离的基础） |
+| env fallback | **从用户工具执行路径移除**。仅系统内部功能（creation_agent、图像生成）保留 env |
+| M3 迁移 | mock user 的 env 值 → credential → 自动 seed default connection |
+| `is_default` | 每用户每 provider 1 个。`agent_tools.connection_id = NULL` → 使用 default，有值则 override |
+| `extra_config` | 仅 MCP 使用：`{url, auth_type, headers?, env_vars?, transport?, timeout?}`。PREBUILT/CUSTOM 为 NULL |
+| MCP `env_vars` | 允许 credential 字段引用 template（`${credential.xxx}`）。M1 仅 schema，M2 实现解析 |
+| CUSTOM 共享 | 1 credential = 1 connection，多个工具 N:1 共享 |
+| 回滚 | M2~M5 保留 legacy 列 read-only + 必须支持 Alembic downgrade |
 
 ---
 
 ---
 
-## 1. 요구사항 요약
+## 1. 需求摘要
 
-**목표**: MCP/PREBUILT/CUSTOM 도구의 credential 바인딩을 단일 `connections` 엔티티로 통일. 멀티 유저 인증 도입 전 선행 작업.
+**目标**：把 MCP/PREBUILT/CUSTOM 工具的 credential 绑定统一到单一 `connections` entity。在引入多用户认证前完成前置工作。
 
-**해결 대상**:
-1. PREBUILT 공유 행의 credential 뒤엉킴 (user A 연결이 user B 덮어씀)
-2. 바인딩 위치 비일관 (MCP=서버 단위 / CUSTOM=도구 단위 / PREBUILT=공유 행)
-3. 3개 auth 다이얼로그 중복 (백로그 F 흡수)
+**解决对象**：
+1. PREBUILT 共享 row 的 credential 混乱（user A 的连接被 user B 覆盖）
+2. 绑定位置不一致（MCP=服务器粒度 / CUSTOM=工具粒度 / PREBUILT=共享 row）
+3. 3 个 auth dialog 重复（吸收 Backlog F）
 
-**비범위**:
-- 멀티 유저 인증(로그인/세션) — E 완료 후 별도 작업
-- 도구 실행 빌더(`build_naver_search_tool` 등)의 `auth_config` dict 인터페이스는 유지
-- LangGraph PostgresSaver 체크포인트 구조 변경
+**范围外**：
+- 多用户认证（登录/session）— E 完成后单独处理
+- 保留工具执行 builder（`build_naver_search_tool` 等）的 `auth_config` dict 接口
+- 更改 LangGraph PostgresSaver checkpoint 结构
 
 ---
 
-## 2. 현재 구조 (탐색 결과 요약)
+## 2. 当前结构（探索结果摘要）
 
-### Backend 해석 경로
+### Backend 解析路径
 ```
 chat_service.build_tools_config (chat_service.py:164-205)
   ├── MCP: mcp_servers.credential_id → resolve_credential_data → auth_config
   │       OR mcp_servers.auth_config (inline)
-  │       (tool.credential_id는 MCP에서 무시 — PR #47)
+  │       （MCP 中忽略 tool.credential_id — PR #47）
   └── PREBUILT/CUSTOM: tool.credential_id → resolve_credential_data → auth_config
           OR tool.auth_config (inline)
 
@@ -66,7 +66,7 @@ executor._prepare_agent
   └── MCP → _build_mcp_tools → _AuthInjectorInterceptor
 ```
 
-### Provider 5종 (`credential_registry.py`)
+### 5 类 Provider（`credential_registry.py`）
 - `naver` (api_key)
 - `google_search` (api_key)
 - `google_workspace` (oauth2)
@@ -74,22 +74,22 @@ executor._prepare_agent
 - `custom_api_key` (api_key)
 
 ### Frontend
-- `CredentialSelect` / `CredentialFormDialog`: 이미 공용 컴포넌트 존재 (4곳 재사용)
-- 3개 `*-auth-dialog.tsx`: 90% 동일 — 차이는 저장 endpoint와 provider 필터만
-- `/connections` 페이지: Credential CRUD 중심 (Connection 개념 아직 없음)
+- `CredentialSelect` / `CredentialFormDialog`：已有通用 component（4 处复用）
+- 3 个 `*-auth-dialog.tsx`：90% 相同 — 区别仅是保存 endpoint 与 provider filter
+- `/connections` 页面：以 Credential CRUD 为主（尚无 Connection 概念）
 
 ---
 
-## 3. 설계 방향
+## 3. 设计方向
 
-### Connection 엔티티 스키마
+### Connection entity schema
 ```sql
-connections (신규)
+connections（新增）
   id                UUID  PK
   user_id           UUID  FK users (NOT NULL)
   type              VARCHAR(20)   -- 'prebuilt' | 'mcp' | 'custom'
   provider_name     VARCHAR(50)   -- naver, google_search, google_workspace, ...
-  display_name      VARCHAR(200)  -- UI 표시명
+  display_name      VARCHAR(200)  -- UI 显示名称
   credential_id     UUID  FK credentials (nullable, ON DELETE SET NULL)
   extra_config      JSON  nullable   -- MCP: {url, auth_type}
   status            VARCHAR(20)   -- 'active' | 'disabled'
@@ -97,152 +97,152 @@ connections (신규)
   UNIQUE (user_id, type, provider_name, display_name)
 ```
 
-### 도구 타입별 연결
-| 타입 | 해석 로직 |
+### 各工具类型连接
+| 类型 | 解析逻辑 |
 |------|----------|
-| **PREBUILT** | `tool.provider_name` + `current_user_id` → `connections` 조회 (per-user, per-provider). 공유 행 문제 해소 |
-| **MCP** | `tool.connection_id` (1 connection = 1 MCP 서버, extra_config={url, auth_type}) |
-| **CUSTOM** | `tool.connection_id` (현재 credential_id 경로를 connection 간접화) |
+| **PREBUILT** | `tool.provider_name` + `current_user_id` → 查询 `connections`（per-user, per-provider）。解决共享 row 问题 |
+| **MCP** | `tool.connection_id`（1 connection = 1 MCP server，extra_config={url, auth_type}） |
+| **CUSTOM** | `tool.connection_id`（将当前 credential_id 路径间接化为 connection） |
 
-### `mcp_servers` 처리
-Connection으로 흡수 후 drop. 데이터는 마이그레이션으로 이관 (type='mcp', extra_config={url, auth_type}).
+### `mcp_servers` 处理
+吸收到 Connection 后 drop。通过 migration 迁移数据（type='mcp', extra_config={url, auth_type}）。
 
 ### `agent_tools` override
-- `agent_tools.connection_id` (optional FK) 추가 — 특정 에이전트가 기본 connection 대신 다른 것을 사용 가능
-- 기존 `agent_tools.config` inline override는 M6에서 폐기
+- 新增 `agent_tools.connection_id`（optional FK）— 特定 Agent 可使用非 default 的 connection
+- 现有 `agent_tools.config` inline override 在 M6 废弃
 
-### UI 통합 (F 흡수)
-3개 `*-auth-dialog.tsx` → 공통 `ConnectionBindingDialog` + context prop (`{type, provider}`). 저장 endpoint는 통합 connection API 경유.
+### UI 统一（吸收 F）
+3 个 `*-auth-dialog.tsx` → 通用 `ConnectionBindingDialog` + context prop（`{type, provider}`）。保存 endpoint 统一走 connection API。
 
-### env 기반 fallback 유지
-`(auth_config or {}).get("naver_client_id") or settings.naver_client_id` 패턴은 보존. Connection이 없을 때 서버 env 기본값 사용.
+### 保留基于 env 的 fallback
+保留 `(auth_config or {}).get("naver_client_id") or settings.naver_client_id` 模式。无 Connection 时使用服务器 env 默认值。
 
 ---
 
-## 4. 마일스톤 (6 PR)
+## 4. 里程碑（6 PR）
 
-> 단일 PR 불가 규모. 각 마일스톤이 **독립 배포 가능** + **리뷰 가능 크기**. 마일스톤 사이에는 legacy fallback을 유지해 언제든 배포 가능한 상태 유지.
+> 单个 PR 规模不可行。每个 milestone 都应**可独立部署** + **大小适合审查**。milestone 之间保留 legacy fallback，确保随时可部署。
 
-### **M0: ADR + 상세 스펙** (docs PR, 단일 세션 가능)
-- `docs/design-docs/adr-008-connection-entity.md` 작성
-  - 맥락/결정/대안/결과 4 섹션
-  - 스키마 확정, 해석 로직, 이관 전략
-- 이 exec-plan 문서 업데이트 (세부 사항 보강)
-- 테스트 시나리오 목록 (회귀 + 신규)
-- **산출물**: ADR + exec-plan 확정판
+### **M0: ADR + 详细 spec**（docs PR，可单 session）
+- 编写 `docs/design-docs/adr-008-connection-entity.md`
+  - context/decision/alternatives/consequences 4 个 section
+  - 确认 schema、解析逻辑、迁移策略
+- 更新本 exec-plan 文档（补充细节）
+- 测试场景列表（回归 + 新增）
+- **产出**：ADR + exec-plan 最终版
 
-### **M1: Connection 테이블 + CRUD API** (backend PR, 단일 세션)
-- Alembic `m8_add_connections` — 테이블 + 인덱스 + UNIQUE
-- `app/models/connection.py` 신규
+### **M1: Connection 表 + CRUD API**（backend PR，可单 session）
+- Alembic `m8_add_connections` — table + index + UNIQUE
+- 新增 `app/models/connection.py`
 - `app/schemas/connection.py` — CreateConnection, UpdateConnection, ConnectionResponse
-- `app/services/connection_service.py` — CRUD + credential resolution 헬퍼
+- `app/services/connection_service.py` — CRUD + credential resolution helper
 - `app/routers/connections.py` — `GET/POST/PATCH/DELETE /api/connections`
-- `mcp_servers` 테이블 유지 (parallel run)
-- **아직 쓰이지 않음** → 기존 시스템 영향 0
-- 신규 테스트: `tests/test_connections.py`
-- **완료 기준**: 전체 pytest 통과, 기존 기능 회귀 0
+- 保留 `mcp_servers` table（parallel run）
+- **尚未使用** → 对现有系统影响 0
+- 新增测试：`tests/test_connections.py`
+- **完成标准**：全部 pytest 通过，现有功能回归 0
 
-### **M2: MCP → Connection 이관** (backend PR, TTH 권장)
-- Alembic `m9_migrate_mcp_to_connections` — 각 `mcp_servers` row → `connections` row (type='mcp', extra_config={url, auth_type})
-- `tools.connection_id` 컬럼 추가 (nullable FK)
-- `mcp_servers` 데이터 → `connections`로 복사 + `tools.mcp_server_id` 기준 `tools.connection_id` 매핑
-- `chat_service.build_tools_config` MCP 분기를 connection 경유로 재작성
-- `mcp_servers` 테이블을 deprecate (read-only, 아직 drop 안 함)
-- `test_mcp_connection`, `test_tools_router_extended` 회귀 검증
-- **완료 기준**: MCP 도구 실행 경로 전부 connection 경유, 기존 MCP 테스트 통과
+### **M2: MCP → Connection 迁移** (backend PR, 推荐 TTH)
+- Alembic `m9_migrate_mcp_to_connections` — 每个 `mcp_servers` row → `connections` row (type='mcp', extra_config={url, auth_type})
+- 添加 `tools.connection_id` 列 (nullable FK)
+- 将 `mcp_servers` 数据 → 复制到 `connections` + 以 `tools.mcp_server_id` 为基准映射 `tools.connection_id`
+- 将 `chat_service.build_tools_config` 的 MCP 分支重写为经由 connection
+- deprecate `mcp_servers` 表 (read-only, 尚未 drop)
+- `test_mcp_connection`, `test_tools_router_extended` 回归验证
+- **完成标准**：MCP 工具执行路径全部经由 connection，现有 MCP 测试通过
 
-### **M3: PREBUILT per-user Connection** (backend + 프론트 일부)
-- Backend: PREBUILT 해석 로직 변경
+### **M3: PREBUILT per-user Connection** (backend + 部分 frontend)
+- Backend: 修改 PREBUILT 解析逻辑
   ```python
   if tool.type == PREBUILT:
       conn = get_connection(user_id, provider_name=tool.provider_name, type='prebuilt')
       cred_auth = resolve_credential_data(conn.credential) if conn else {}
   ```
-- `tools.credential_id`는 PREBUILT에서 무시 (legacy fallback 유지는 M6까지)
-- env var fallback 경로 유지 (`settings.naver_*`)
-- Frontend: `/connections` 페이지에서 PREBUILT connection 생성 지원 (provider 드롭다운)
-- **완료 기준**: PREBUILT 도구를 여러 유저가 각자의 connection으로 실행 가능 (mock user 다중 ID 테스트)
+- `tools.credential_id` 在 PREBUILT 中忽略 (legacy fallback 保留至 M6)
+- 保留 env var fallback 路径 (`settings.naver_*`)
+- Frontend: 在 `/connections` 页面支持创建 PREBUILT connection (provider 下拉菜单)
+- **完成标准**：多个用户可以使用各自的 connection 执行 PREBUILT 工具 (mock user 多 ID 测试)
 
-### **M4: CUSTOM Connection 통합** (backend + 프론트 일부)
-- Backend: CUSTOM 도구도 `tool.connection_id` 경유
-- Alembic `m10_migrate_custom_credentials` — 기존 `tool.credential_id`가 있는 CUSTOM 도구 → connection 생성 후 FK 설정
-- `tools.credential_id`는 이 시점부터 deprecated (drop은 M6)
-- Frontend: `add-tool-dialog.tsx` Custom 탭이 connection 생성하도록 재배선
-- **완료 기준**: CUSTOM 도구 전체 실행 경로가 connection 경유
+### **M4: CUSTOM Connection 集成** (backend + 部分 frontend)
+- Backend: CUSTOM 工具也经由 `tool.connection_id`
+- Alembic `m10_migrate_custom_credentials` — 对现有带 `tool.credential_id` 的 CUSTOM 工具 → 创建 connection 后设置 FK
+- `tools.credential_id` 从此时起 deprecated (M6 时 drop)
+- Frontend: 重新接线 `add-tool-dialog.tsx` 的 Custom 标签页以创建 connection
+- **完成标准**：CUSTOM 工具的全部执行路径经由 connection
 
-### **M5: UI 통합 + F 흡수** (frontend PR)
-- 신규 `components/connection/ConnectionBindingDialog.tsx` — 공통 셸
-- `prebuilt-auth-dialog.tsx` / `custom-auth-dialog.tsx` / `mcp-server-auth-dialog.tsx` 교체
-- `add-tool-dialog.tsx` MCP/Custom 탭 재배선 (connection 생성)
-- `/connections` 페이지 재편: Credential 중심 → Connection 중심 (Credential은 하위 보조)
-- `agent_tools.connection_id` override UI (에이전트 설정 화면)
-- 3 다이얼로그 중복 제거 확인 (F 완료 처리)
+### **M5: UI 集成 + 吸收 F** (frontend PR)
+- 新增 `components/connection/ConnectionBindingDialog.tsx` — 通用 shell
+- 替换 `prebuilt-auth-dialog.tsx` / `custom-auth-dialog.tsx` / `mcp-server-auth-dialog.tsx`
+- 重新接线 `add-tool-dialog.tsx` MCP/Custom 标签页 (创建 connection)
+- 重构 `/connections` 页面：以 Credential 为中心 → 以 Connection 为中心 (Credential 作为下级辅助)
+- `agent_tools.connection_id` override UI (Agent 设置页面)
+- 确认移除 3 个 dialog 的重复实现 (F 视为完成)
 
-### **M6: Cleanup** (backend + 프론트)
+### **M6: Cleanup** (backend + frontend)
 - Alembic `m11_drop_legacy_columns`:
-  - `mcp_servers` 테이블 drop
+  - drop `mcp_servers` 表
   - `tools.credential_id` drop
-  - `tools.auth_config` drop (inline 필드)
+  - drop `tools.auth_config` (inline 字段)
   - `tools.mcp_server_id` drop
   - `agent_tools.config` drop (inline override)
-- legacy fallback 코드 제거 (credential_service의 `resolve_server_auth`, `tool.credential_id` 분기)
-- 타입/주석 정리 (`lib/types/index.ts`에서 deprecated 필드 제거)
-- HANDOFF.md 업데이트 — E 완료, 다음 작업 = 멀티 유저 인증
+- 移除 legacy fallback 代码 (credential_service 的 `resolve_server_auth`, `tool.credential_id` 分支)
+- 整理类型/注释 (从 `lib/types/index.ts` 移除 deprecated 字段)
+- 更新 HANDOFF.md — E 完成，下一项工作 = 多用户认证
 
 ---
 
-## 5. 수정 파일 요약
+## 5. 修改文件汇总
 
 ### Backend
-| 파일 | 영향 마일스톤 |
+| 文件 | 影响里程碑 |
 |------|--------------|
-| `app/models/connection.py` | M1 신규 |
-| `app/models/tool.py` | M2(connection_id 추가), M6(legacy drop) |
+| `app/models/connection.py` | M1 新增 |
+| `app/models/tool.py` | M2(添加 connection_id), M6(legacy drop) |
 | `app/models/mcp_server.py` | M2(deprecate), M6(drop) |
 | `app/models/agent.py` (agent_tools) | M5(connection_id), M6(config drop) |
-| `app/services/connection_service.py` | M1 신규 |
-| `app/services/chat_service.py:164-205` | M2/M3/M4 분기별 수정, M6 정리 |
-| `app/services/credential_service.py` | M6 (`resolve_server_auth` 제거) |
-| `app/routers/connections.py` | M1 신규 |
-| `app/routers/tools.py` | M6 auth_config 라우트 정리 |
-| `alembic/versions/*` | M1(m8) / M2(m9) / M3(m10 PREBUILT seed 정리) / M4(m10?) / M6(m11 drop) |
-| `app/seed/default_tools.py` | M3 provider_name 정리 |
-| `tests/test_connections.py` | M1 신규 |
-| 기존 tool/mcp 테스트 | M2~M4 회귀 갱신 |
+| `app/services/connection_service.py` | M1 新增 |
+| `app/services/chat_service.py:164-205` | 按 M2/M3/M4 分支修改，M6 整理 |
+| `app/services/credential_service.py` | M6 (移除 `resolve_server_auth`) |
+| `app/routers/connections.py` | M1 新增 |
+| `app/routers/tools.py` | M6 整理 auth_config 路由 |
+| `alembic/versions/*` | M1(m8) / M2(m9) / M3(m10 PREBUILT seed 整理) / M4(m10?) / M6(m11 drop) |
+| `app/seed/default_tools.py` | M3 整理 provider_name |
+| `tests/test_connections.py` | M1 新增 |
+| 现有 tool/mcp 测试 | M2~M4 回归更新 |
 
 ### Frontend
-| 파일 | 영향 마일스톤 |
+| 文件 | 影响里程碑 |
 |------|--------------|
-| `components/connection/ConnectionBindingDialog.tsx` | M5 신규 |
-| `components/tool/prebuilt-auth-dialog.tsx` | M5 교체 |
-| `components/tool/custom-auth-dialog.tsx` | M5 교체 |
-| `components/tool/mcp-server-auth-dialog.tsx` | M5 교체 |
-| `components/tool/add-tool-dialog.tsx` | M5 재배선 |
-| `app/connections/page.tsx` | M3 PREBUILT UI, M5 Connection 중심 재편 |
-| `lib/api/connections.ts` | M1 신규 |
-| `lib/hooks/use-connections.ts` | M1 신규 |
-| `lib/types/index.ts` | M1 Connection 타입, M2 Tool.connection_id, M6 legacy 제거 |
+| `components/connection/ConnectionBindingDialog.tsx` | M5 新增 |
+| `components/tool/prebuilt-auth-dialog.tsx` | M5 替换 |
+| `components/tool/custom-auth-dialog.tsx` | M5 替换 |
+| `components/tool/mcp-server-auth-dialog.tsx` | M5 替换 |
+| `components/tool/add-tool-dialog.tsx` | M5 重新接线 |
+| `app/connections/page.tsx` | M3 PREBUILT UI, M5 重构为以 Connection 为中心 |
+| `lib/api/connections.ts` | M1 新增 |
+| `lib/hooks/use-connections.ts` | M1 新增 |
+| `lib/types/index.ts` | M1 Connection 类型, M2 Tool.connection_id, M6 移除 legacy |
 
 ---
 
-## 6. 위험 요소
+## 6. 风险因素
 
-| 위험 | 완화책 |
+| 风险 | 缓解措施 |
 |------|--------|
-| **데이터 이관 중 이중 상태** (M1~M5 기간 `mcp_servers` + `connections` 공존) | M2에서 단방향 sync, `mcp_servers`는 read-only deprecate. M6에서 drop |
-| **PREBUILT env fallback 깨짐** (`settings.naver_*`) | M3에서 connection 없을 때 env fallback 경로 유지 + 테스트 필수 |
-| **agent_tools.config override 시맨틱 변경** | M5에서 `connection_id` override 도입 시 기존 `link.config` 데이터 일회성 마이그레이션. M6 전까지 inline도 수용 |
-| **PoC mock user 전제와 멀티 유저 전제 혼재** | 각 마일스톤 테스트에서 user_id 복수 케이스로 검증 (mock user 여러 개). 실제 멀티 유저는 후속 PR |
-| **M1 통과 후 M6까지 긴 기간 프로덕션 배포 중** | 각 마일스톤이 독립 배포 가능하도록 설계 — legacy fallback 유지 |
-| **MCP 서버 테이블 drop 시 영향 범위** | M6 전 전체 테스트 + prod DB 스냅샷 + 롤백 마이그레이션 검증 |
-| **프론트/백 타입 어긋남** | M1~M4 각 PR에서 `lib/types/index.ts` 동기 갱신 필수 (PR 체크리스트) |
-| **credential_registry와 connection.provider_name 불일치** | M0 ADR에서 enum 정합성 명시, M1부터 validator로 enforce |
+| **数据迁移期间的双重状态** (M1~M5 期间 `mcp_servers` + `connections` 共存) | M2 中单向 sync，`mcp_servers` 设为 read-only deprecate。M6 中 drop |
+| **PREBUILT env fallback 失效** (`settings.naver_*`) | M3 中无 connection 时保留 env fallback 路径 + 必须测试 |
+| **agent_tools.config override 语义变更** | M5 引入 `connection_id` override 时，对现有 `link.config` 数据做一次性 migration。M6 前也接受 inline |
+| **PoC mock user 前提与多用户前提混杂** | 各里程碑测试中用多个 user_id case 验证 (多个 mock user)。真正的多用户为后续 PR |
+| **M1 通过后到 M6 的较长期间持续生产部署** | 设计为每个里程碑都可独立部署 — 保留 legacy fallback |
+| **drop MCP server 表时的影响范围** | M6 前进行全量测试 + prod DB snapshot + rollback migration 验证 |
+| **frontend/backend 类型不一致** | M1~M4 每个 PR 必须同步更新 `lib/types/index.ts` (PR checklist) |
+| **credential_registry 与 connection.provider_name 不一致** | M0 ADR 中明确 enum 一致性，从 M1 起通过 validator enforce |
 
 ---
 
-## 7. 검증 전략
+## 7. 验证策略
 
-**마일스톤별 공통**:
+**各里程碑通用**：
 ```bash
 cd backend
 uv run ruff check .
@@ -253,32 +253,32 @@ cd ../frontend
 pnpm lint && pnpm build
 ```
 
-**마일스톤별 추가**:
-- M1: 신규 test_connections.py (CRUD, IDOR)
-- M2: MCP 도구 실행 스모크 + mcp_server_id→connection_id 매핑 검증
-- M3: 두 개의 mock user로 같은 PREBUILT 도구 실행 — 각자 다른 credential 사용 확인
-- M4: CUSTOM 도구 실행 회귀
-- M5: 3 다이얼로그 대체 후 각 워크플로 E2E (agent-browser)
-- M6: 전체 통합 회귀 + Alembic 양방향 왕복
+**各里程碑追加**：
+- M1: 新增 test_connections.py (CRUD, IDOR)
+- M2: MCP 工具执行 smoke + 验证 mcp_server_id→connection_id 映射
+- M3: 用两个 mock user 执行同一个 PREBUILT 工具 — 确认各自使用不同 credential
+- M4: CUSTOM 工具执行回归
+- M5: 替换 3 个 dialog 后，对各 workflow 做 E2E (agent-browser)
+- M6: 全量集成回归 + Alembic 双向往返
 
 ---
 
-## 8. 진행 전략 제안
+## 8. 推进策略建议
 
-- **M0**: 단일 세션에서 완료 가능 (문서만). ADR 합의 중요.
-- **M1~M4**: 각 마일스톤 = 1 PR = 1 worktree + 1 세션 권장. TTH 또는 단독 구현 둘 다 가능.
-- **M5**: 프론트 중심 — `frontend` 에이전트 또는 단독.
-- **M6**: Cleanup — 작지만 회귀 위험 크므로 QA에 집중.
+- **M0**：可在单个 session 中完成 (仅文档)。ADR 共识很重要。
+- **M1~M4**：每个里程碑 = 1 PR = 1 worktree + 推荐 1 session。TTH 或独立实现均可。
+- **M5**：以 frontend 为主 — `frontend` Agent 或独立完成。
+- **M6**：Cleanup — 虽小但回归风险高，因此专注 QA。
 
-각 마일스톤 완료 시 HANDOFF.md 갱신 + 다음 마일스톤 문서 링크.
+每个里程碑完成时更新 HANDOFF.md + 下一里程碑文档链接。
 
 ---
 
-## 9. 체크리스트 (모든 PR 공통)
+## 9. Checklist (所有 PR 通用)
 
-- [ ] Alembic 마이그레이션 상하 왕복 PASS
-- [ ] `backend/tests/` 신규 + 회귀 전체 PASS
+- [ ] Alembic migration 上下双向往返 PASS
+- [ ] `backend/tests/` 新增 + 全量回归 PASS
 - [ ] `frontend/` lint + build PASS
-- [ ] 프론트/백 타입 동기화
-- [ ] HANDOFF.md 진행 상태 반영
-- [ ] ADR-008 상태 업데이트 (필요 시)
+- [ ] frontend/backend 类型同步
+- [ ] 在 HANDOFF.md 中反映进度状态
+- [ ] 更新 ADR-008 状态 (如需要)

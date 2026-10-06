@@ -64,7 +64,7 @@ test.describe('Smoke Test - Static Pages', () => {
     const main = page.getByRole('main')
 
     // Verify personalized dashboard hero rendered
-    await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: /E2E User/ })).toBeVisible()
     // Verify quick action cards
     await expect(main.getByText('通过聊天构建')).toBeVisible()
     await expect(main.getByText('使用模板')).toBeVisible()
@@ -106,7 +106,7 @@ test.describe('Smoke Test - Static Pages', () => {
 
     await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
     await expect(page.getByRole('tablist', { name: '查看模式' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /전체/ })).toBeVisible()
+    await expect(page.getByRole('tab', { name: /全部/ })).toBeVisible()
     await expect(page.getByPlaceholder('搜索占位符')).toBeVisible()
 
     expect(errors.console).toEqual([])
@@ -119,7 +119,7 @@ test.describe('Smoke Test - Static Pages', () => {
 
     await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByTestId('show-hidden')).toBeVisible()
-    await expect(page.getByRole('button', { name: /새 모델|모델 추가/ }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /新模型|添加模型/ }).first()).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -302,8 +302,8 @@ test.describe('Smoke Test - Chat Navigator', () => {
     // row menu 在 hover 时显示，menu item 通过 portal 渲染
     await sessionRow.hover()
     await sessionRow.getByRole('button', { name: '对话菜单' }).click()
-    await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /重命名/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /分享/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
     expect(errors.console).toEqual([])
@@ -405,11 +405,11 @@ test.describe('Smoke Test - Dialogs', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await page
-      .getByRole('button', { name: /HTTP 요청|HTTP Request/ })
+      .getByRole('button', { name: /HTTP 请求|HTTP Request/ })
       .first()
       .click()
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('heading', { name: /새 (HTTP 요청|HTTP Request)/ })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: /新 (HTTP 请求|HTTP Request)/ })).toBeVisible()
     // Close
     await page.keyboard.press('Escape')
 
@@ -423,7 +423,7 @@ test.describe('Smoke Test - Dialogs', () => {
 
     // Find a prebuilt tool with a key config button. The seeded catalog may not
     // contain one; that is a valid no-credential state, not a skipped test.
-    const authButtons = page.getByRole('button', { name: /키 설정|개별 키 설정|키 변경/ })
+    const authButtons = page.getByRole('button', { name: /密钥设置|单独密钥设置|更改密钥/ })
 
     if ((await authButtons.count()) > 0) {
       const authButton = authButtons.first()

@@ -1,243 +1,243 @@
-# ADR-001: Builder v3 LangGraph StateGraph 8-Phase 아키텍처
+# ADR-001: Builder v3 LangGraph StateGraph 8-Phase 架构
 
-**상태**: 제안됨  
-**작성자**: Pichai (Architecture DRI)  
-**날짜**: 2026-04-26  
-**영향범위**: `backend/app/agent_runtime/builder_v3/`, `frontend/src/app/agents/new/conversational/`, 라우터/서비스
+**状态**：提议中<br>
+**作者**：Pichai (Architecture DRI)<br>
+**日期**：2026-04-26<br>
+**影响范围**：`backend/app/agent_runtime/builder_v3/`, `frontend/src/app/agents/new/conversational/`, 路由器/服务
 
 ---
 
 ## 背景
 
-### 현재 상황 (Builder v2)
+### 当前情况 (Builder v2)
 
-- **분리된 시스템**: Builder는 `executor.py`/`create_deep_agent()`를 사용하지 않고, 자체 `orchestrator.py` 파이프라인 + `invoke_with_json_retry()` 로직으로 동작
-- **HiTL 미구현**: 사용자가 "사용자에게 물어볼 것"을 선택해도 백엔드가 그냥 결과를 받아 다음 phase로 진행
-- **UI 분리**: 자체 `PhaseTimeline` + 카드들 사용, 메시지 히스토리 없음
-- **두 가지 사용자 보고 버그**:
-  1. 단계 진행이 보이지 않음 → 이벤트가 한 배열로 push되어 거의 동시 도착
-  2. 사용자에게 되물어보는데 통과해버림 → interrupt 호출 자체 없음
+- **独立系统**：Builder 不使用 `executor.py`/`create_deep_agent()`，而是通过自有 `orchestrator.py` 流水线 + `invoke_with_json_retry()` 逻辑运行
+- **HiTL 未实现**：即使用户选择“向用户提问”，后端仍直接接收结果并进入下一 phase
+- **UI 分离**：使用自有 `PhaseTimeline` + 卡片，无消息历史
+- **用户报告的两个 Bug**：
+  1. 看不到阶段推进 → 事件被 push 到同一数组中，几乎同时到达
+  2. 明明向用户反问却直接通过 → 根本没有调用 interrupt
 
-### 근본 원인
+### 根本原因
 
-두 문제는 모두 **채팅 인프라(HiTL, SSE, checkpointer) 미통합**에서 비롯.  
-기존 채팅은 `interrupt()`/`Command(resume=...)`/checkpointer로 완벽히 동작하고 있는데, Builder는 자체 구현으로 이를 모두 피해간 상태.
+两个问题都源于**未集成聊天基础设施（HiTL、SSE、checkpointer）**。<br>
+现有聊天已经通过 `interrupt()`/`Command(resume=...)`/checkpointer 完整运行，但 Builder 的自有实现绕开了这些机制。
 
-### 해결책의 필요성
+### 解决方案的必要性
 
-- **HiTL 구현**: 각 phase(특히 3/4/5/6/8)에서 승인/수정요청 루프 필요
-- **채팅 UI 통합**: 기존 `assistant-thread.tsx` 재사용 가능 → 일관된 UX, 유지보수 수월
-- **진행 상황 가시성**: 매 phase 전환 시 메시지 안에 카드 emit → mockup 이미지와 정렬
-- **순서 강제**: 그래프 토폴로지로 phase 순서를 코드 레벨에서 보장 (LLM이 어길 수 없음)
+- **实现 HiTL**：各 phase（尤其 3/4/5/6/8）需要审批/修改请求循环
+- **集成聊天 UI**：可复用现有 `assistant-thread.tsx` → 统一 UX，便于维护
+- **进度可见性**：每次 phase 切换时在消息中 emit 卡片 → 与 mockup 图片对齐
+- **强制顺序**：通过图拓扑在代码层保证 phase 顺序（LLM 无法违背）
 
 ---
 
 ## 决定
 
-### 1. 기술 선택: StateGraph (ReAct 대신)
+### 1. 技术选择：StateGraph（而非 ReAct）
 
-| 기준 | ReAct (create_deep_agent) | StateGraph |
+| 标准 | ReAct (create_deep_agent) | StateGraph |
 |------|--------------------------|-----------|
-| **순서 강제** | LLM이 도구 선택 → 이탈 가능 | 그래프 엣지로 위상 강제 |
-| **HiTL** | 지원함 | 지원함 |
-| **Checkpoint** | 지원함 | 지원함 |
-| **Interrupt 복원** | 지원함 | 지원함 |
-| **8-phase 보장** | X (LLM이 건너뛸 수 있음) | O (모든 노드를 거쳐야 함) |
+| **强制顺序** | LLM 选择工具 → 可能偏离 | 通过图边强制拓扑顺序 |
+| **HiTL** | 支持 | 支持 |
+| **Checkpoint** | 支持 | 支持 |
+| **Interrupt 恢复** | 支持 | 支持 |
+| **8-phase 保证** | X（LLM 可能跳过） | O（必须经过所有节点） |
 
-**선택**: **StateGraph** — mockup 이미지의 엄격한 진행 순서를 보장하기 위해
+**选择**：**StateGraph** — 为保证 mockup 图片中的严格推进顺序
 
-### 2. 8-Phase 구조
+### 2. 8-Phase 结构
 
 ```
 [START]
   ↓
-Phase 1: 프로젝트 초기화 (자동, LLM 불필요)
+Phase 1：项目初始化（自动，无需 LLM）
   ↓
-Phase 2: 사용자 의도 분석 (ask_user 루프 — 이름/설명 부족 시)
+Phase 2：用户意图分析（ask_user 循环 — 名称/描述不足时）
   ↓
-Phase 3: 도구 추천 (approval/revision 루프)
+Phase 3：工具推荐（approval/revision 循环）
   ↓
-Phase 4: 미들웨어 추천 (approval/revision 루프)
+Phase 4：中间件推荐（approval/revision 循环）
   ↓
-Phase 5: 시스템 프롬프트 작성 (approval/revision 루프)
+Phase 5：编写系统提示词（approval/revision 循环）
   ↓
-Phase 6: 에이전트 이미지 생성 (skip/generate, 재생성 루프)
+Phase 6：生成 Agent 图片（skip/generate，重新生成循环）
   ↓
-Phase 7: 설정 저장 (자동, PREVIEW 전환)
+Phase 7：保存设置（自动，切换至 PREVIEW）
   ↓
-Phase 8: 최종 승인 (approval → 수정 시 router → phase 2~6 점프)
+Phase 8：最终审批（approval → 修改时通过 router 跳转至 phase 2~6）
   ↓
 [END]
 ```
 
-**기존 7-phase vs 신규 8-phase**:
-- Phase 1~5: 기존과 동일 (단, HiTL 추가)
-- Phase 6: **신규** — 에이전트 이미지 생성 (nano-banana 또는 OpenAI Image API)
-- Phase 7~8: 기존의 Phase 6~7을 Phase 7~8로 리넘버링
+**现有 7-phase vs 新 8-phase**：
+- Phase 1~5：与现有相同（但新增 HiTL）
+- Phase 6：**新增** — 生成 Agent 图片（nano-banana 或 OpenAI Image API）
+- Phase 7~8：将现有 Phase 6~7 重新编号为 Phase 7~8
 
-### 3. BuilderState TypedDict 시그니처
+### 3. BuilderState TypedDict 签名
 
 ```python
 from langchain_core.messages import BaseMessage, add_messages
 from typing_extensions import Annotated, TypedDict
 
 class BuilderState(TypedDict):
-    """LangGraph StateGraph의 상태 컨테이너."""
-    
-    # 메시지 히스토리 (기존 채팅과 동일)
+    """LangGraph StateGraph 的状态容器。"""
+<br>
+    # 消息历史（与现有聊天相同）
     messages: Annotated[list[BaseMessage], add_messages]
-    
-    # Phase별 중간 결과
-    user_request: str                           # 초기 사용자 입력
+<br>
+    # 各 Phase 中间结果
+    user_request: str                           # 初始用户输入
     intent: dict | None                         # Phase 2: AgentCreationIntent
     tools: list[dict] | None                    # Phase 3: [{"name": "...", "description": "..."}, ...]
     middlewares: list[dict] | None              # Phase 4: [{"type": "...", "config": {...}}, ...]
-    system_prompt: str | None                   # Phase 5: 프롬프트 텍스트
+    system_prompt: str | None                   # Phase 5：提示词文本
     image_url: str | None                       # Phase 6: "https://... or /api/agents/.../image.png"
-    draft_config: dict | None                   # Phase 7: 최종 에이전트 설정 (name, description, tools, etc.)
-    
-    # 진행 상황
-    todos: list[PhaseTodo]                      # 8개 phase 진행 상황 (매 노드 emit)
-    current_phase: int                          # 현재 phase (1~8), 참고용
-    
-    # HiTL/재시도용
-    last_revision_message: str | None           # Phase 3/4/5/6 수정요청 시 LLM에 전달
-    last_approved_data: dict | None             # Phase 3/4/5 이전 승인 데이터 (재시도 컨텍스트)
+    draft_config: dict | None                   # Phase 7：最终 Agent 设置（name, description, tools, etc.）
+<br>
+    # 进度
+    todos: list[PhaseTodo]                      # 8个 phase 的进度（每个节点 emit）
+    current_phase: int                          # 当前 phase（1~8），仅供参考
+<br>
+    # 用于 HiTL/重试
+    last_revision_message: str | None           # Phase 3/4/5/6 修改请求时传给 LLM
+    last_approved_data: dict | None             # Phase 3/4/5 之前已批准的数据（重试上下文）
 
 class PhaseTodo(TypedDict):
-    """진행 상황 카드 항목."""
+    """进度卡片条目。"""
     phase_id: int                               # 1~8
-    phase_name: str                             # "의도 분석", "도구 추천", ...
+    phase_name: str                             # "意图分析", "工具推荐", ...
     status: Literal["pending", "in_progress", "completed"]
-    description: str                            # 옵션, 결과 요약
+    description: str                            # 选项、结果摘要
 ```
 
-### 4. 8개 노드 시그니처
+### 4. 8个节点签名
 
-각 phase는 별도 모듈(`nodes/phase{1..8}.py`)로 구현:
+每个 phase 作为独立模块（`nodes/phase{1..8}.py`）实现：
 
 ```python
-# 기본 시그니처 — 모든 노드가 이 패턴
+# 基础签名 — 所有节点均采用此模式
 async def phase_X(state: BuilderState) -> dict | Command:
     """
-    Phase X 로직을 수행한다.
-    
-    1. 진입 메시지 emit (AIMessage)
-    2. 진행 상황 카드 update
-    3. 작업 수행 (LLM call, interrupt, etc.)
-    4. 완료 메시지 emit
-    5. State 갱신 후 return
-    
-    주의: 노드 함수는 idempotent해야 함 (interrupt 후 resume 시 재진입)
+    执行 Phase X 逻辑。
+<br>
+    1. emit 进入消息（AIMessage）
+    2. update 进度卡片
+    3. 执行任务（LLM call, interrupt, etc.）
+    4. emit 完成消息
+    5. 更新 State 后 return
+<br>
+    注意：节点函数必须是 idempotent（interrupt 后 resume 时会重新进入）
     """
 ```
 
-#### Phase 1: 프로젝트 초기화
+#### Phase 1：项目初始化
 
 ```python
 async def phase1_init(state: BuilderState) -> dict:
     """
-    - 진입 메시지: "이제 프로젝트를 초기화하겠습니다"
-    - 진행 상황 업데이트: phase 1을 in_progress로
-    - 작업: 디렉토리/파일 생성, builder_session 업데이트
-    - 완료 메시지: "[Phase 1 완료] 프로젝트 초기화됨"
-    - Return: state를 일부 갱신 (project_path, etc.)
+    - 进入消息："现在开始初始化项目"
+    - 更新进度：将 phase 1 设为 in_progress
+    - 任务：创建目录/文件，更新 builder_session
+    - 完成消息："[Phase 1 完成] 项目已初始化"
+    - Return：部分更新 state（project_path, etc.）
     """
 ```
 
-#### Phase 2: 사용자 의도 분석 (ask_user 루프)
+#### Phase 2：用户意图分析（ask_user 循环）
 
 ```python
 async def phase2_intent(state: BuilderState) -> dict | Command:
     """
-    - 진입 메시지
-    - 의도 분석 LLM call (invoke_with_json_retry 사용)
-    - AgentCreationIntent 추출: {name, description, ...}
-    - 누락 항목 확인:
-      - 부족하면: interrupt({"type": "ask_user", "question": "이름?", "options": [...]})
-      - LLM이 선택지 3-4개 생성 + "직접 입력" fallback
-    - resume 응답으로 state.intent 갱신, 재확인 루프
-    - 모두 채워질 때까지 반복 (노드 내부 while 루프)
-    - 완료 메시지: "[Phase 2 완료] 의도 분석 완료: 이름={name}"
+    - 进入消息
+    - 意图分析 LLM call（使用 invoke_with_json_retry）
+    - 提取 AgentCreationIntent：{name, description, ...}
+    - 检查缺失项：
+      - 若不足：interrupt({"type": "ask_user", "question": "名称？", "options": [...]})
+      - LLM 生成 3-4 个选项 + "直接输入" fallback
+    - 用 resume 响应更新 state.intent，重新检查循环
+    - 重复直到全部补全（节点内部 while 循环）
+    - 完成消息："[Phase 2 完成] 意图分析完成：名称={name}"
     """
 ```
 
-#### Phase 3/4/5: 추천/생성 + 승인/수정 루프
+#### Phase 3/4/5：推荐/生成 + 审批/修改循环
 
 ```python
 async def phase3_tools(state: BuilderState) -> dict | Command:
     """
-    - 진입 메시지
-    - 도구 추천 LLM call (기존 sub_agent 이식)
-    - 결과 카드 emit (ToolMessage with tool_name="recommendation-approval")
-    - 승인 interrupt: interrupt({
+    - 进入消息
+    - 工具推荐 LLM call（迁移现有 sub_agent）
+    - emit 结果卡片（ToolMessage with tool_name="recommendation-approval"）
+    - 审批 interrupt：interrupt({
         "type": "approval",
         "data": {"tools": [...]},
-        "summary": "4개 도구 추천: ...",
+        "summary": "推荐4个工具：...",
         "allow_revision": True
       })
-    - resume 응답 분류:
-      - {"approved": True}: 다음 phase로
+    - 分类 resume 响应：
+      - {"approved": True}：进入下一 phase
       - {"approved": False, "revision_message": "..."}: 
-        * state.last_revision_message 업데이트
-        * 같은 phase 내부 재실행 (while 루프)
-        * LLM에 이전 결과 + revision_message 전달하여 재생성
-        * 새로운 결과 카드 emit 후 다시 interrupt
-    - 승인될 때까지 반복
-    - 완료 메시지: "[Phase 3 완료] 도구 추천 완료"
+        * 更新 state.last_revision_message
+        * 在同一 phase 内重新执行（while 循环）
+        * 向 LLM 传入之前结果 + revision_message 后重新生成
+        * emit 新结果卡片后再次 interrupt
+    - 重复直到批准
+    - 完成消息："[Phase 3 完成] 工具推荐完成"
     """
-    
-    # Phase 4, 5도 동일 패턴 (generate → card → interrupt → revise loop)
+<br>
+    # Phase 4、5 也采用相同模式（generate → card → interrupt → revise loop）
 ```
 
-#### Phase 6: 에이전트 이미지 생성 (신규)
+#### Phase 6：生成 Agent 图片（新增）
 
 ```python
 async def phase6_image(state: BuilderState) -> dict | Command:
     """
-    - 진입 메시지: "이제 에이전트의 이미지를 생성하겠습니다"
-    - auto_prompt 생성: LLM이 intent/name/description 기반으로 이미지 프롬프트 자동 생성
-    
-    - 1차 interrupt (skip/generate 선택):
+    - 进入消息："现在开始生成 Agent 图片"
+    - 生成 auto_prompt：LLM 基于 intent/name/description 自动生成图片提示词
+<br>
+    - 第1次 interrupt（选择 skip/generate）：
       interrupt({
         "type": "choice",
-        "title": "에이전트 이미지를 생성하시겠습니까?",
-        "options": ["넘어가기", "생성하기"],
+        "title": "是否生成 Agent 图片？",
+        "options": ["跳过", "生成"],
         "context": {"auto_prompt": "..."}
       })
-    
-    - resume 응답: {"choice": "skip"} or {"choice": "generate"}
-    
-    - "skip" → state.image_url=None → 다음 phase
+<br>
+    - resume 响应：{"choice": "skip"} or {"choice": "generate"}
+<br>
+    - "skip" → state.image_url=None → 下一 phase
     - "generate":
-      * image_gen.py 호출 → nano-banana로 이미지 생성 (60s timeout)
-      * 생성 실패 시: 사용자에게 폴백 제시 ("다시 시도" or "넘어가기")
-      * 이미지 저장: backend/uploads/agent_images/{builder_session_id}.png
-      * 미리보기 emit: ToolMessage with tool_name="image-generation-preview"
-      
-      * 2차 interrupt (확정/재생성/넘어가기):
+      * 调用 image_gen.py → 使用 nano-banana 生成图片（60s timeout）
+      * 生成失败时：向用户提供 fallback（"重试" or "跳过"）
+      * 保存图片：backend/uploads/agent_images/{builder_session_id}.png
+      * emit 预览：ToolMessage with tool_name="image-generation-preview"
+<br>
+      * 第2次 interrupt（确认/重新生成/跳过）：
         interrupt({
           "type": "approval",
           "data": {"image_url": "...", "prompt": "..."},
-          "options": ["확정", "재생성", "넘어가기"],
+          "options": ["确认", "重新生成", "跳过"],
           "allow_prompt_edit": True
         })
-      
-      * resume 응답:
-        - {"choice": "confirm"} → state.image_url 저장 → 다음 phase
-        - {"choice": "regenerate", "extra": {"prompt_edit": "..."}} → 다시 생성 (루프)
-        - {"choice": "skip"} → state.image_url=None → 다음 phase
-    
-    - 완료 메시지: "[Phase 6 완료] 이미지 생성 완료" (또는 "넘어감")
+<br>
+      * resume 响应：
+        - {"choice": "confirm"} → 保存 state.image_url → 下一 phase
+        - {"choice": "regenerate", "extra": {"prompt_edit": "..."}} → 再次生成（循环）
+        - {"choice": "skip"} → state.image_url=None → 下一 phase
+<br>
+    - 完成消息："[Phase 6 完成] 图片生成完成"（或 "已跳过"）
     """
 ```
 
-#### Phase 7: 설정 저장
+#### Phase 7：保存设置
 
 ```python
 async def phase7_save(state: BuilderState) -> dict:
     """
-    - draft_config 조립:
+    - 组装 draft_config：
       {
         "name": state.intent["agent_name"],
         "description": state.intent["agent_description"],
@@ -247,161 +247,161 @@ async def phase7_save(state: BuilderState) -> dict:
         "image_url": state.image_url,
         ...
       }
-    - builder_session 업데이트: status=PREVIEW, draft_config=...
-    - 완료 메시지: "[Phase 7 완료] 설정 저장됨"
+    - 更新 builder_session：status=PREVIEW, draft_config=...
+    - 完成消息："[Phase 7 完成] 设置已保存"
     """
 ```
 
-#### Phase 8: 최종 승인 + 빌드
+#### Phase 8：最终审批 + 构建
 
 ```python
 async def phase8_build(state: BuilderState) -> dict | Command:
     """
-    - DraftConfigCard ToolMessage emit (전체 설정 표시)
+    - emit DraftConfigCard ToolMessage（显示全部设置）
     - interrupt({
         "type": "approval",
         "data": state.draft_config,
-        "summary": "에이전트 생성 준비 완료",
+        "summary": "已准备好创建 Agent",
         "allow_revision": True
       })
-    
-    - resume 응답:
+<br>
+    - resume 响应：
       - {"approved": True}:
         * builder_session.status = COMPLETED
-        * Agent 실제 생성 (또는 confirm 엔드포인트 위임)
-        * 완료 메시지: "[Phase 8 완료] 에이전트 생성 완료"
+        * 实际创建 Agent（或委托给 confirm 端点）
+        * 完成消息："[Phase 8 完成] Agent 创建完成"
         * return {}  → END
-      
+<br>
       - {"approved": False, "revision_message": "..."}:
-        * router 노드로 분기
+        * 分支到 router 节点
     """
 ```
 
-#### Router: Phase 8 수정 요청 분류
+#### Router：分类 Phase 8 修改请求
 
 ```python
 async def router(state: BuilderState) -> str:
     """
-    Phase 8에서 사용자가 수정을 요청한 경우, 분류 LLM으로 어느 phase로
-    돌아갈지 결정한다.
-    
-    - revision_message를 LLM으로 분류 (구조화 출력, Pydantic enum)
-    - 분류 대상: "phase2" | "phase3" | "phase4" | "phase5" | "phase6"
-    - 모호하면: ask_user fallback ("어느 단계를 수정하시겠습니까?" + 선택지)
-    - return: 해당 phase 이름 ("phase3" 등)
-    
-    Phase 8 → router → (조건 분기) → phase 2/3/4/5/6 재진입 → ... → phase 8 재도착
+    当用户在 Phase 8 请求修改时，通过分类 LLM 决定返回哪个 phase
+    。
+<br>
+    - 使用 LLM 分类 revision_message（结构化输出，Pydantic enum）
+    - 分类目标："phase2" | "phase3" | "phase4" | "phase5" | "phase6"
+    - 若含糊：ask_user fallback（"您想修改哪个阶段？" + 选项）
+    - return：对应 phase 名称（如 "phase3"）
+<br>
+    Phase 8 → router →（条件分支）→ 重新进入 phase 2/3/4/5/6 → ... → 再次到达 phase 8
     """
 ```
 
-### 5. Interrupt Payload 계약 (3종류)
+### 5. Interrupt Payload 契约（3种）
 
 #### ask_user
 
 ```python
-# Node에서 emit:
+# 在 Node 中 emit：
 interrupt({
     "type": "ask_user",
-    "question": str,          # "에이전트 이름이 뭔가요?"
-    "options": list[str]      # ["웹 검색", "데이터 분석", "직접 입력"]
+    "question": str,          # "Agent 名称是什么？"
+    "options": list[str]      # ["网页搜索", "数据分析", "直接输入"]
 })
 
-# 프론트에서 UI: user-input-ui.tsx (기존 그대로)
-# 사용자 응답:
-"웹 검색"  # or 직접 입력한 텍스트
+# 前端 UI：user-input-ui.tsx（保持现有）
+# 用户响应：
+"网页搜索"  # or 直接输入的文本
 ```
 
 #### approval (Phase 3/4/5/6/8)
 
 ```python
-# Node에서 emit:
+# 在 Node 中 emit：
 interrupt({
     "type": "approval",
-    "data": dict,             # 승인 대상 데이터 (tools, prompt, image_url, draft_config, etc.)
-    "summary": str,           # 요약 텍스트
-    "allow_revision": bool    # True이면 "수정 의견" textarea 활성화
+    "data": dict,             # 审批对象数据（tools, prompt, image_url, draft_config, etc.）
+    "summary": str,           # 摘要文本
+    "allow_revision": bool    # True 时启用 "修改意见" textarea
 })
 
-# 프론트에서 UI: 
-#   - Phase 3/4: recommendation-approval-ui (추천 항목 + textarea + 수정/승인 버튼)
-#   - Phase 5: prompt-approval-ui (프롬프트 + textarea + 수정/승인 버튼)
-#   - Phase 6: image-generation-ui 2단계 (이미지 + (선택) prompt textarea + 확정/재생성/넘어가기)
-#   - Phase 8: draft-config-ui (전체 설정 + textarea + 수정/승인 버튼)
+# 前端 UI：
+#   - Phase 3/4: recommendation-approval-ui（推荐项 + textarea + 修改/批准按钮）
+#   - Phase 5: prompt-approval-ui（提示词 + textarea + 修改/批准按钮）
+#   - Phase 6: image-generation-ui 两阶段（图片 +（可选）prompt textarea + 确认/重新生成/跳过）
+#   - Phase 8: draft-config-ui（全部设置 + textarea + 修改/批准按钮）
 
-# 사용자 응답:
+# 用户响应：
 {"approved": True}
-# 또는
+# 或
 {"approved": False, "revision_message": "..."}
 ```
 
-#### choice (Phase 6 1단계)
+#### choice（Phase 6 第1阶段）
 
 ```python
-# Node에서 emit:
+# 在 Node 中 emit：
 interrupt({
     "type": "choice",
-    "title": str,             # "에이전트 이미지를 생성하시겠습니까?"
-    "options": list[str],     # ["넘어가기", "생성하기"]
-    "context": dict           # {"auto_prompt": "..."} 등
+    "title": str,             # "是否生成 Agent 图片？"
+    "options": list[str],     # ["跳过", "生成"]
+    "context": dict           # {"auto_prompt": "..."} 等
 })
 
-# 프론트에서 UI: image-generation-ui 1단계 (auto_prompt 미리보기 + 버튼 2개)
+# 前端 UI：image-generation-ui 第1阶段（auto_prompt 预览 + 2个按钮）
 
-# 사용자 응답:
+# 用户响应：
 {"choice": "skip"} or {"choice": "generate"}
-# 또는 (Phase 6 2단계):
+# 或（Phase 6 第2阶段）：
 {"choice": "confirm"} or {"choice": "regenerate", "extra": {"prompt_edit": "..."}} or {"choice": "skip"}
 ```
 
-### 6. Resume Payload 계약
+### 6. Resume Payload 契约
 
-Resume은 프론트의 `useHiTL().onResume(payload)` → `/api/builder/{id}/messages/resume` POST 엔드포인트로 전달:
+Resume 通过前端的 `useHiTL().onResume(payload)` → `/api/builder/{id}/messages/resume` POST 端点传递：
 
 ```python
-# ask_user 응답:
-str  # e.g., "웹 검색에이전트" (옵션 또는 직접 입력)
+# ask_user 响应：
+str  # e.g., "网页搜索Agent"（选项或直接输入）
 
-# approval 응답:
+# approval 响应：
 {"approved": bool, "revision_message": str | None}
 
-# choice 응답:
-{"choice": str, "extra": dict | None}  # extra는 regenerate 시 prompt_edit 포함 가능
+# choice 响应：
+{"choice": str, "extra": dict | None}  # extra 在 regenerate 时可包含 prompt_edit
 ```
 
-### 7. SSE 이벤트 형식 (기존 streaming.py 호환)
+### 7. SSE 事件格式（兼容现有 streaming.py）
 
-NoCodeGraph 노드 함수에서 `state["messages"]` 갱신 → 기존 `streaming.py`의 `stream_agent_response` 함수가 그대로 처리:
+在 NoCodeGraph 节点函数中更新 `state["messages"]` → 现有 `streaming.py` 的 `stream_agent_response` 函数原样处理：
 
-| 이벤트 | 페이로드 | 용도 |
+| 事件 | Payload | 用途 |
 |--------|----------|------|
-| `message_start` | `{"id": "...", "role": "assistant"}` | 메시지 시작 |
-| `content_delta` | `{"delta": "텍스트"}` | 스트리밍 텍스트 |
-| `tool_call_start` | `{"tool_name": "...", "parameters": {...}}` | 도구 호출 시작 |
-| `tool_call_result` | `{"tool_name": "...", "result": "..."}` | 도구 결과 |
-| `interrupt` | `{"interrupt_id": "...", "value": {...}}` | HiTL interrupt 감지 |
-| `message_end` | `{"usage": {...}, "content": "..."}` | 메시지 종료 |
-| `error` | `{"message": "..."}` | 에러 발생 |
+| `message_start` | `{"id": "...", "role": "assistant"}` | 消息开始 |
+| `content_delta` | `{"delta": "文本"}` | 流式文本 |
+| `tool_call_start` | `{"tool_name": "...", "parameters": {...}}` | 工具调用开始 |
+| `tool_call_result` | `{"tool_name": "...", "result": "..."}` | 工具结果 |
+| `interrupt` | `{"interrupt_id": "...", "value": {...}}` | 检测 HiTL interrupt |
+| `message_end` | `{"usage": {...}, "content": "..."}` | 消息结束 |
+| `error` | `{"message": "..."}` | 发生错误 |
 
-**기존 streaming.py와의 호환성**:
-- StateGraph 노드에서 메시지를 `state["messages"]` 리스트에 추가 → `add_messages` 자동 병합
-- `agent.astream(input, config, stream_mode="messages")` → 기존과 동일하게 SSE 이벤트로 변환
-- interrupt 감지도 `agent.aget_state()` → `state.tasks[].interrupts[]` 동일 로직
+**与现有 streaming.py 的兼容性**：
+- 在 StateGraph 节点中将消息添加到 `state["messages"]` 列表 → `add_messages` 自动合并
+- `agent.astream(input, config, stream_mode="messages")` → 与现有方式相同地转换为 SSE 事件
+- interrupt 检测也沿用 `agent.aget_state()` → `state.tasks[].interrupts[]` 相同逻辑
 
-### 8. 이미지 생성 인프라
+### 8. 图片生成基础设施
 
-#### Provider 선택
+#### Provider 选择
 
 ```python
 # backend/app/agent_runtime/builder_v3/image_gen.py
 
 class ImageProvider(str, Enum):
-    NANOBANAN = "nanobanan"         # Gemini Flash Image (권장, 빠름)
-    OPENAI = "openai"               # OpenAI DALL-E 3 (고품질, 느림)
+    NANOBANAN = "nanobanan"         # Gemini Flash Image（推荐，快速）
+    OPENAI = "openai"               # OpenAI DALL-E 3（高质量，较慢）
     GOOGLE = "google"               # Google Imagen 2
 
-# 환경 변수로 선택:
-# BUILDER_IMAGE_PROVIDER=nanobanan (기본값)
-# BUILDER_IMAGE_PROVIDER=openai (폴백)
+# 通过环境变量选择：
+# BUILDER_IMAGE_PROVIDER=nanobanan（默认值）
+# BUILDER_IMAGE_PROVIDER=openai（fallback）
 
 async def generate_image(
     prompt: str,
@@ -410,240 +410,240 @@ async def generate_image(
     timeout: int = 60
 ) -> str | None:
     """
-    이미지 생성 및 저장.
-    
-    Return: 저장된 이미지의 접근 가능 URL (또는 base64)
-    Timeout 초과/실패 시: None 반환 (호출자가 fallback UI 제시)
+    生成并保存图片。
+<br>
+    Return：已保存图片的可访问 URL（或 base64）
+    Timeout 超时/失败时：返回 None（由调用方展示 fallback UI）
     """
 ```
 
-#### 저장 전략
+#### 保存策略
 
-- **경로**: `backend/uploads/agent_images/{builder_session_id}.png`
-- **URL 형식**: `/api/builders/{builder_session_id}/image` (프록시 엔드포인트) 또는 직접 URL
-- **선택 이유**: 
-  - PoC 단계이므로 로컬 저장 (나중에 S3로 이전 용이)
-  - Agent 생성 시 `agents.image_url` 컬럼으로 저장 (이 컬럼 이미 존재 확인됨)
-  - Base64 URL보다 적은 메모리 사용
+- **路径**：`backend/uploads/agent_images/{builder_session_id}.png`
+- **URL 格式**：`/api/builders/{builder_session_id}/image`（代理端点）或直接 URL
+- **选择理由**：
+  - PoC 阶段使用本地保存（之后易于迁移到 S3）
+  - 创建 Agent 时保存到 `agents.image_url` 列（已确认该列存在）
+  - 比 Base64 URL 占用更少内存
 
-### 9. 라우터 엔드포인트 계약
+### 9. 路由端点契约
 
-#### 신규/변경 엔드포인트
+#### 新增/变更端点
 
-**기존**:
-- `GET /api/builder` — 세션 조회
-- `GET /api/builder/{id}/stream` — SSE 스트림 시작 (현재)
-- `POST /api/builder/{id}/confirm` — draft_config → Agent 생성
+**现有**：
+- `GET /api/builder` — 查询会话
+- `GET /api/builder/{id}/stream` — 启动 SSE 流（当前）
+- `POST /api/builder/{id}/confirm` — draft_config → 创建 Agent
 
-**변경**:
+**变更**：
 ```
 POST /api/builder
   Request: {"user_request": "..."}
   Response: {"session_id": "...", "user_id": "..."}
-  → 세션 생성, StateGraph 자동 시작 (첫 메시지 SSE 스트림)
+  → 创建会话，StateGraph 自动启动（首条消息 SSE 流）
 
-POST /api/builder/{id}/messages  (기존 /stream 대체)
-  Request: {"user_request": "..."} (첫 메시지, 선택)
-  Response: SSE (streaming.py 그대로)
-  → StateGraph.astream() 호출, checkpointer 사용
+POST /api/builder/{id}/messages  （替代现有 /stream）
+  Request: {"user_request": "..."}（首条消息，可选）
+  Response: SSE（streaming.py 保持原样）
+  → 调用 StateGraph.astream()，使用 checkpointer
 
 POST /api/builder/{id}/messages/resume
-  Request: {"response": ...}  (ask_user/approval/choice 응답)
-  Response: SSE (streaming.py 그대로)
-  → Command(resume=response) 전달, 중단 노드부터 재개
+  Request: {"response": ...}  （ask_user/approval/choice 响应）
+  Response: SSE（streaming.py 保持原样）
+  → 传入 Command(resume=response)，从中断节点继续
 
 POST /api/builder/{id}/confirm
-  Request: {} (draft_config 이미 Phase 7에 저장됨)
+  Request: {}（draft_config 已在 Phase 7 保存）
   Response: {"agent_id": "..."}
-  → Phase 8 완료 후 agent_id 반환 (이미 생성됨)
+  → Phase 8 完成后返回 agent_id（已创建）
 ```
 
-### 10. 데이터 모델 (DB 변경 최소)
+### 10. 数据模型（最小化 DB 变更）
 
-**기존 유지**:
-- `builder_sessions` 테이블: status, draft_config 등 메타데이터 (변경 최소)
-- `agents.image_url` 컬럼 이미 존재 (마이그레이션 불필요)
+**保持现有**：
+- `builder_sessions` 表：status、draft_config 等元数据（最小变更）
+- `agents.image_url` 列已存在（无需迁移）
 
-**신규 사용**:
-- LangGraph checkpoint 테이블 (`checkpoints`, `checkpoint_writes`, `checkpoint_blobs`)
-  - `thread_id = builder_session_id` 매핑
-  - `get_checkpointer()` 함수 사용 (기존 채팅과 동일)
+**新增使用**：
+- LangGraph checkpoint 表（`checkpoints`, `checkpoint_writes`, `checkpoint_blobs`）
+  - `thread_id = builder_session_id` 映射
+  - 使用 `get_checkpointer()` 函数（与现有聊天相同）
 
-**Status 머신**:
+**Status 状态机**：
 ```
-[BUILDING] (세션 생성)
+[BUILDING]（创建会话）
     ↓
-[STREAMING] (Phase 1~7 진행 중)
+[STREAMING]（Phase 1~7 进行中）
     ↓
-[PREVIEW] (Phase 7 도착, draft_config 저장)
+[PREVIEW]（到达 Phase 7，保存 draft_config）
     ↓
-[CONFIRMING] (Phase 8 도착, 최종 승인 대기)
+[CONFIRMING]（到达 Phase 8，等待最终审批）
     ↓
-[COMPLETED] (Agent 생성 완료)
+[COMPLETED]（Agent 创建完成）
     ↓
-(또는 [FAILED] if error)
+（或错误时为 [FAILED]）
 ```
 
 ---
 
 ## 替代方案
 
-### 대안 A: 기존 v2 유지 + HiTL만 추가
+### 备选方案 A：保留现有 v2 + 只添加 HiTL
 
-**장점**: 최소 변경  
-**단점**:
-- 순서 강제 불가능 (orchestrator.py의 7-phase 루프로는 LLM 제어 불가)
-- SSE 이벤트 형식 통합 어려움 (별도 커스텀 스트림 필요)
-- 이미지 생성 단계 추가 복잡 (orchist.py를 8-phase로 확장하고 또 다른 커스텀)
+**优点**：改动最小<br>
+**缺点**：
+- 无法强制顺序（orchestrator.py 的 7-phase 循环无法控制 LLM）
+- 难以统一 SSE 事件格式（需要单独的自定义流）
+- 添加图片生成阶段复杂（将 orchist.py 扩展为 8-phase，又需要另一套自定义）
 
-**판정**: 채택 안 함
+**结论**：不采用
 
-### 대안 B: ReAct (create_deep_agent 이용)
+### 备选方案 B：ReAct（使用 create_deep_agent）
 
-**장점**: 기존 executor.py 재사용, HiTL 즉시 가능  
-**단점**:
-- LLM이 도구 선택 → Phase 순서 건너뛸 가능성
-- mockup 이미지의 "엄격한 8-phase" 보장 불가
-- 각 phase 내부 ask_user 루프도 LLM 결정 → 예측 불가
+**优点**：复用现有 executor.py，可立即使用 HiTL<br>
+**缺点**：
+- LLM 选择工具 → 可能跳过 Phase 顺序
+- 无法保证 mockup 图片中的“严格 8-phase”
+- 各 phase 内 ask_user 循环也由 LLM 决定 → 不可预测
 
-**판정**: 채택 안 함
+**结论**：不采用
 
-### 대안 C: StateGraph (선택된 방안)
+### 备选方案 C：StateGraph（选定方案）
 
-**장점**:
-- 8-phase 순서를 그래프 토폴로지로 강제
-- HiTL, checkpointer 완벽 지원
-- SSE streaming.py 재사용 가능
-- 각 노드 내부 approve 루프를 명시적 while로 제어
+**优点**：
+- 通过图拓扑强制 8-phase 顺序
+- 完整支持 HiTL、checkpointer
+- 可复用 SSE streaming.py
+- 各节点内部 approve 循环可通过显式 while 控制
 
-**단점**: 신규 구현 필요 (약 1200줄 추정)
+**缺点**：需要新增实现（预计约 1200 行）
 
-**판정**: **채택됨** — 구조적 강건성과 UX가 우선
+**结论**：**采用** — 优先考虑结构健壮性和 UX
 
 ---
 
 ## 结果
 
-### 구현 영향
+### 实现影响
 
-| 범위 | 변경 | 이유 |
+| 范围 | 变更 | 原因 |
 |------|------|------|
-| **Backend** | `builder_v3/` 신규 모듈 1200줄 | StateGraph 8-phase 노드 + 라우터 통합 |
-| **Frontend** | Tool UI 5개 신규 + `assistant-thread` 재사용 | mockup 이미지 UI 매칭 + HiTL 통합 |
-| **Router** | `/messages`, `/messages/resume` 신규 | SSE + resume 엔드포인트 |
-| **Service** | `run_build_stream()` 제거 → `graph.astream()` 대체 | 구조 단순화 |
-| **DB** | 변경 없음 (또는 최소) | checkpoint 테이블만 신규 사용 |
+| **Backend** | 新增 `builder_v3/` 模块 1200 行 | StateGraph 8-phase 节点 + 路由集成 |
+| **Frontend** | 新增 5 个 Tool UI + 复用 `assistant-thread` | 匹配 mockup 图片 UI + 集成 HiTL |
+| **Router** | 新增 `/messages`, `/messages/resume` | SSE + resume 端点 |
+| **Service** | 移除 `run_build_stream()` → 改为 `graph.astream()` | 简化结构 |
+| **DB** | 无变更（或最小） | 仅新增使用 checkpoint 表 |
 
-### 폐기 대상
+### 废弃对象
 
-- `backend/app/agent_runtime/builder/orchestrator.py` (v2 파이프라인)
+- `backend/app/agent_runtime/builder/orchestrator.py`（v2 流水线）
 - `frontend/src/app/agents/new/conversational/_components/builder-thread.tsx`
 - `frontend/src/app/agents/new/conversational/_components/phase-timeline.tsx`
 - `frontend/src/lib/chat/use-builder-runtime.ts`
 - `frontend/src/lib/sse/stream-builder.ts`
 
-### 마이그레이션 경로
+### 迁移路径
 
-1. **Step 1**: `builder_v3/` 구현 완료 (테스트 포함)
-2. **Step 2**: 라우터 교체 + `streaming.py` 호환성 검증
-3. **Step 3**: 프론트엔드 Tool UI 구현
-4. **Step 4**: 페이지 교체 및 회귀 테스트
-5. **Step 5**: 기존 파일 폐기
+1. **Step 1**：完成 `builder_v3/` 实现（含测试）
+2. **Step 2**：替换路由 + 验证 `streaming.py` 兼容性
+3. **Step 3**：实现前端 Tool UI
+4. **Step 4**：替换页面并进行回归测试
+5. **Step 5**：废弃现有文件
 
 ---
 
 ## 接口契约
 
-### BuilderState ↔ 노드
+### BuilderState ↔ 节点
 
-각 노드는 `BuilderState`를 입력으로 받아, 갱신된 state dict 또는 `Command(resume=...)`을 반환:
+每个节点以 `BuilderState` 为输入，返回更新后的 state dict 或 `Command(resume=...)`：
 
 ```python
 async def phase_X(state: BuilderState) -> dict | Command:
-    # 입력: 이전 노드의 state (모든 이전 결과 포함)
-    # 출력: {"intent": {...}, "messages": [...]}
-    #      또는 Command(resume=payload) — interrupt 처리 시
+    # 输入：前一节点的 state（包含所有之前结果）
+    # 输出：{"intent": {...}, "messages": [...]}
+    #      或 Command(resume=payload) — 处理 interrupt 时
 ```
 
-### 노드 ↔ SSE
+### 节点 ↔ SSE
 
-노드가 `state["messages"].append(AIMessage(...))` 호출:
-- `streaming.py`의 `stream_agent_response()` 함수가 자동으로 SSE 이벤트로 변환
-- 기존 채팅 로직과 100% 동일
+节点调用 `state["messages"].append(AIMessage(...))`：
+- `streaming.py` 的 `stream_agent_response()` 函数自动转换为 SSE 事件
+- 与现有聊天逻辑 100% 相同
 
-### 노드 ↔ Interrupt
+### 节点 ↔ Interrupt
 
-노드가 `interrupt(payload)` 호출:
-- LangGraph가 execution 일시 중단
-- `streaming.py`가 `aget_state()` → `state.tasks[].interrupts[]` 추출 → SSE `interrupt` 이벤트 emit
-- 프론트가 `HiTLContext.onResume()` → `/messages/resume` POST
-- 백엔드가 `Command(resume=response)` 전달
-- 같은 노드부터 재개
+节点调用 `interrupt(payload)`：
+- LangGraph 暂停 execution
+- `streaming.py` 执行 `aget_state()` → 提取 `state.tasks[].interrupts[]` → emit SSE `interrupt` 事件
+- 前端执行 `HiTLContext.onResume()` → POST `/messages/resume`
+- 后端传入 `Command(resume=response)`
+- 从同一节点继续
 
 ---
 
-## 검증 전략
+## 验证策略
 
-### 단위 테스트
+### 单元测试
 
 ```bash
 # backend/tests/test_builder_v3_graph.py
-# 각 노드 독립 테스트, mock state 사용
-# 예: phase3_tools에 tools=None → tools 생성 확인
+# 各节点独立测试，使用 mock state
+# 例如：phase3_tools 中 tools=None → 确认生成 tools
 ```
 
-### 통합 테스트
+### 集成测试
 
 ```bash
-# 그래프 도달 가능성: Phase 8 도달 시 1~7을 거쳤는가
-# 각 interrupt 전후 state 일관성
-# Phase 8 router → phase 3 재진입 → phase 8 재도착 검증
+# 图可达性：到达 Phase 8 时是否经过 1~7
+# 各 interrupt 前后 state 一致性
+# 验证 Phase 8 router → 重新进入 phase 3 → 再次到达 phase 8
 ```
 
-### E2E 검증 (브라우저)
+### E2E 验证（浏览器）
 
-1. **기본 흐름** (mockup 이미지 재현)
-   - Phase 1~8 순차 진행
-   - 매 phase 카드가 메시지 안에 누적 표시
-2. **승인/수정 루프**
-   - Phase 3에서 "수정 의견" 입력 → 같은 phase 재실행 → 새 추천 표시
+1. **基本流程**（复现 mockup 图片）
+   - Phase 1~8 依次推进
+   - 每个 phase 卡片在消息中累积显示
+2. **审批/修改循环**
+   - 在 Phase 3 输入 "修改意见" → 同一 phase 重新执行 → 显示新推荐
 3. **Phase 6 skip/generate**
-   - "넘어가기" → image_url=None
-   - "생성하기" → 이미지 생성 → 미리보기 → 확정/재생성/넘어가기
+   - "跳过" → image_url=None
+   - "生成" → 生成图片 → 预览 → 确认/重新生成/跳过
 4. **Phase 8 router**
-   - Phase 8에서 "도구 빼줘" 입력 → phase3_tools로 점프 → 재흐름
-5. **기존 채팅 회귀**
-   - `/agents/[id]/conversations/[cid]` 정상 동작
+   - 在 Phase 8 输入 "移除工具" → 跳转到 phase3_tools → 重新走流程
+5. **现有聊天回归**
+   - `/agents/[id]/conversations/[cid]` 正常运行
 
 ---
 
-## 리스크 및 완화책
+## 风险及缓解措施
 
-| 리스크 | 영향 | 완화책 |
+| 风险 | 影响 | 缓解措施 |
 |--------|------|--------|
-| **Router 분류 오류** | Phase 8에서 잘못된 phase로 점프 | 구조화 출력(Pydantic enum) + ask_user fallback |
-| **Interrupt resume idempotency** | 재진입 시 중복 LLM call | 노드 함수 설계 시 state 기반 조건부 실행 |
-| **이미지 생성 timeout** | 60s 초과 → 사용자 경험 저하 | 폴백 UI ("다시" or "skip") + 비동기 후처리 고려 |
-| **use-chat-runtime 추상화** | 기존 conversations 페이지 깨짐 | Step 3에서 회귀 테스트 필수 |
-| **builder_session 상태 머신** | PREVIEW ↔ STREAMING 불일치 | Phase 7 진입 시 명시적 상태 전환 |
-| **Checkpoint 저장소 부하** | 많은 phase 재시도 → DB 증가 | 세션 확인/정리 배치 job 고려 |
+| **Router 分类错误** | Phase 8 跳转到错误 phase | 结构化输出（Pydantic enum）+ ask_user fallback |
+| **Interrupt resume idempotency** | 重新进入时重复 LLM call | 节点函数设计为基于 state 的条件执行 |
+| **图片生成 timeout** | 超过 60s → 用户体验下降 | fallback UI（"重试" or "skip"）+ 考虑异步后处理 |
+| **use-chat-runtime 抽象** | 现有 conversations 页面损坏 | Step 3 必须进行回归测试 |
+| **builder_session 状态机** | PREVIEW ↔ STREAMING 不一致 | 进入 Phase 7 时显式状态切换 |
+| **Checkpoint 存储负载** | 多次 phase 重试 → DB 增长 | 考虑会话检查/清理批处理 job |
 
 ---
 
-## 참고
+## 参考
 
-- **기존 자산**: executor.py, streaming.py, ask_user.py, sub_agents/*.py 모두 그대로 재사용
-- **인프라**: `get_checkpointer()`, `invoke_with_json_retry`, `stream_agent_response` 기존 함수 활용
-- **계획**: `/Users/chester/.claude/plans/kind-squishing-shore.md`
-- **Progress**: `/Users/chester/dev/natural-mold/progress.txt` (실시간 기술 결정 기록)
-- **Mockup 이미지**: 계획 문서 이미지 1~4 참조 (8-phase, 진행 상황 카드, 승인 UI, 이미지 생성)
+- **现有资产**：executor.py、streaming.py、ask_user.py、sub_agents/*.py 均原样复用
+- **基础设施**：使用现有函数 `get_checkpointer()`、`invoke_with_json_retry`、`stream_agent_response`
+- **计划**：`/Users/chester/.claude/plans/kind-squishing-shore.md`
+- **Progress**：`/Users/chester/dev/natural-mold/progress.txt`（实时记录技术决策）
+- **Mockup 图片**：参考计划文档图片 1~4（8-phase、进度卡片、审批 UI、图片生成）
 
 ---
 
-## ADR 승인 체크리스트
+## ADR 审批检查清单
 
-- [ ] 피차이: 기술 아키텍처 결정 검증 (자체)
-- [ ] 젠슨: API 계약 검증 (`BuilderState` → 엔드포인트 매핑)
-- [ ] 저커버그: 프론트엔드 Tool UI 계약 검증 (interrupt payload ↔ React 상태)
-- [ ] 베조스: 테스트 전략 / 폐기 대상 정리
+- [ ] Pichai：验证技术架构决策（本人）
+- [ ] Jensen：验证 API 契约（`BuilderState` → 端点映射）
+- [ ] Zuckerberg：验证前端 Tool UI 契约（interrupt payload ↔ React 状态）
+- [ ] Bezos：整理测试策略 / 废弃对象
 

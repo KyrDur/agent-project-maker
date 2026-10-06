@@ -88,7 +88,7 @@ test.describe('Chat commands and authoritative resource context', () => {
 
       const [chooser] = await Promise.all([
         page.waitForEvent('filechooser'),
-        page.getByRole('button', { name: /파일 첨부|Attach file/ }).click(),
+        page.getByRole('button', { name: /附加文件|Attach file/ }).click(),
       ])
       await chooser.setFiles({
         name: filename,
@@ -103,7 +103,7 @@ test.describe('Chat commands and authoritative resource context', () => {
 
       await composer.fill('/files')
       await composer.press('Enter')
-      await expect(page.getByRole('heading', { name: /^(파일|Files)$/, level: 2 })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /^(文件|Files)$/, level: 2 })).toBeVisible()
 
       await page.reload()
       const reloadedComposer = page.locator('textarea[data-moldy-composer-input="true"]').last()

@@ -106,14 +106,14 @@ describe('DashboardPage', () => {
     mockUseSession.mockReturnValue({
       data: {
         id: 'u1',
-        name: '가입이름',
-        display_name: '표시이름',
+        name: '注册名称',
+        display_name: '显示名称',
         email: 'a@b.c',
       },
     })
     render(<DashboardPage />)
-    expect(screen.getByText('你好，표시이름 👋')).toBeInTheDocument()
-    expect(screen.queryByText('你好，가입이름 👋')).not.toBeInTheDocument()
+    expect(screen.getByText('你好，显示名称 👋')).toBeInTheDocument()
+    expect(screen.queryByText('你好，注册名称 👋')).not.toBeInTheDocument()
   })
 
   it('falls back to "用户" when session is null', () => {
@@ -127,7 +127,7 @@ describe('DashboardPage', () => {
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
     expect(screen.queryByText('本月使用情况')).not.toBeInTheDocument()
-    expect(screen.queryByText(/💡 팁/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/💡 提示/)).not.toBeInTheDocument()
   })
 
   it('shows agent count in header section', () => {

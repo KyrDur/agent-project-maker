@@ -303,7 +303,7 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(mocks.useSubagentProgressSummary).toHaveBeenCalledWith(['tc-current'])
-    expect(screen.getByText('1/1 子 智能体 完成')).toBeInTheDocument()
+    expect(screen.getByText('子智能体 1/1 完成')).toBeInTheDocument()
     expect(screen.queryByText('2/2 子 智能体 完成')).not.toBeInTheDocument()
   })
 

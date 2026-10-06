@@ -9,7 +9,7 @@ import {
 const API_BASE = 'http://localhost:8001'
 
 /**
- * Helper: ReadableStream을 SSE 형식 텍스트로 생성한다.
+ * Helper: 生成 SSE 格式文本的 ReadableStream。
  */
 function createSSEStream(lines: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
@@ -23,7 +23,7 @@ function createSSEStream(lines: string[]): ReadableStream<Uint8Array> {
 }
 
 /**
- * Helper: 청크 단위로 분할된 ReadableStream을 생성한다.
+ * Helper: 生成按 chunk 分割的 ReadableStream。
  */
 function createChunkedStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
@@ -38,7 +38,7 @@ function createChunkedStream(chunks: string[]): ReadableStream<Uint8Array> {
 }
 
 /**
- * Helper: parseSSEStream 제너레이터의 이벤트를 모두 수집한다.
+ * Helper: 收集 parseSSEStream generator 的全部事件。
  */
 async function collectEvents<T extends string>(
   body: ReadableStream<Uint8Array>,
@@ -56,7 +56,7 @@ beforeEach(() => {
 })
 
 describe('parseSSEStream', () => {
-  it('단일 이벤트를 파싱한다', async () => {
+  it('解析单个事件', async () => {
     const body = createSSEStream(['event: content_delta', 'data: {"content":"hello"}', ''])
     const events = await collectEvents(body, 'content_delta')
 
@@ -65,7 +65,7 @@ describe('parseSSEStream', () => {
     expect(events[0].data).toEqual({ content: 'hello' })
   })
 
-  it('여러 이벤트 시퀀스를 파싱한다', async () => {
+  it('解析多个事件序列', async () => {
     const body = createSSEStream([
       'event: message_start',
       'data: {"id":"msg-1"}',
@@ -96,7 +96,7 @@ describe('parseSSEStream', () => {
     expect(events[3].data).toEqual({ done: true })
   })
 
-  it('청크 분할된 데이터를 버퍼 재결합하여 파싱한다', async () => {
+  it('将按 chunk 分割的数据重新拼接 buffer 后解析', async () => {
     const body = createChunkedStream([
       'event: content_delta\ndata: {"conte',
       'nt":"hello"}\n\nevent: message_end\ndata: {"done":true}\n\n',
@@ -111,7 +111,7 @@ describe('parseSSEStream', () => {
     expect(events[1].data).toEqual({ done: true })
   })
 
-  it('잘못된 JSON 라인을 건너뛴다', async () => {
+  it('跳过无效 JSON 行', async () => {
     const body = createSSEStream([
       'event: content_delta',
       'data: {invalid json}',
@@ -127,7 +127,7 @@ describe('parseSSEStream', () => {
     expect(events[0].data).toEqual({ content: 'valid' })
   })
 
-  it('event 라인이 없으면 기본 이벤트 타입을 사용한다', async () => {
+  it('没有 event 行时使用默认事件类型', async () => {
     const body = createSSEStream(['data: {"content":"no event field"}', ''])
 
     const events = await collectEvents(body, 'content_delta')
@@ -137,14 +137,14 @@ describe('parseSSEStream', () => {
     expect(events[0].data).toEqual({ content: 'no event field' })
   })
 
-  it('빈 스트림은 이벤트 없이 종료된다', async () => {
+  it('空 stream 在没有事件的情况下结束', async () => {
     const body = createSSEStream([])
     const events = await collectEvents(body, 'content_delta')
 
     expect(events).toEqual([])
   })
 
-  it('id 라인을 파싱하여 이벤트에 포함한다', async () => {
+  it('解析 id 行并包含到事件中', async () => {
     const body = createSSEStream([
       'event: content_delta',
       'id: msg-abc-1',
@@ -163,7 +163,7 @@ describe('parseSSEStream', () => {
     expect(events[1].id).toBe('msg-abc-2')
   })
 
-  it('id 라인이 없는 이벤트는 id가 undefined이다', async () => {
+  it('没有 id 行的事件其 id 为 undefined', async () => {
     const body = createSSEStream([
       'event: content_delta',
       'data: {"delta":"hi"}',
@@ -175,7 +175,7 @@ describe('parseSSEStream', () => {
     expect(events[0].id).toBeUndefined()
   })
 
-  it('이전 이벤트의 id가 다음 이벤트로 이월되지 않는다', async () => {
+  it('前一个事件的 id 不会继承到下一个事件', async () => {
     const body = createSSEStream([
       'event: content_delta',
       'id: msg-1',
@@ -194,14 +194,14 @@ describe('parseSSEStream', () => {
 })
 
 describe('createEventDeduper', () => {
-  it('같은 id가 두 번째로 들어오면 중복으로 판정한다', () => {
+  it('相同 id 第二次进入时判定为重复', () => {
     const dedup = createEventDeduper()
 
     expect(dedup.isDuplicate('msg-1')).toBe(false)
     expect(dedup.isDuplicate('msg-1')).toBe(true)
   })
 
-  it('서로 다른 id는 모두 통과한다', () => {
+  it('不同 id 全部通过', () => {
     const dedup = createEventDeduper()
 
     expect(dedup.isDuplicate('msg-1')).toBe(false)
@@ -210,7 +210,7 @@ describe('createEventDeduper', () => {
     expect(dedup.size()).toBe(3)
   })
 
-  it('id가 undefined이면 항상 통과한다 (구버전 백엔드 호환)', () => {
+  it('id 为 undefined 时始终通过（兼容旧版 backend）', () => {
     const dedup = createEventDeduper()
 
     expect(dedup.isDuplicate(undefined)).toBe(false)
@@ -218,7 +218,7 @@ describe('createEventDeduper', () => {
     expect(dedup.size()).toBe(0)
   })
 
-  it('reset()은 누적된 id를 비운다', () => {
+  it('reset() 清空累计的 id', () => {
     const dedup = createEventDeduper()
 
     dedup.isDuplicate('msg-1')
@@ -226,13 +226,13 @@ describe('createEventDeduper', () => {
     dedup.reset()
 
     expect(dedup.size()).toBe(0)
-    // reset 후 같은 id 다시 통과
+    // reset 后相同 id 再次通过
     expect(dedup.isDuplicate('msg-1')).toBe(false)
   })
 })
 
 describe('streamSSEPost', () => {
-  it('POST 요청으로 SSE 스트림을 수신한다', async () => {
+  it('通过 POST 请求接收 SSE stream', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         createSSEStream([
@@ -261,8 +261,8 @@ describe('streamSSEPost', () => {
     expect(events[0].event).toBe('content_delta')
     expect(events[1].event).toBe('message_end')
 
-    // fetchEventSource는 SSE 표준에 따라 ``Accept: text/event-stream``을 추가
-    // 발행하므로 헤더는 partial 매칭으로 검증한다.
+    // fetchEventSource 会按 SSE 标准添加 ``Accept: text/event-stream``，
+    // 因此 header 使用 partial 匹配验证。
     expect(globalThis.fetch).toHaveBeenCalledWith(
       `${API_BASE}/api/test/stream`,
       expect.objectContaining({
@@ -290,7 +290,7 @@ describe('streamSSEPost', () => {
     expect(queue.take()).toBeUndefined()
   })
 
-  it('HTTP 에러 응답 시 예외를 던진다', async () => {
+  it('HTTP 错误响应时抛出异常', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response('Internal Server Error', { status: 500 }),
     )

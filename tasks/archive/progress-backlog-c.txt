@@ -22,7 +22,7 @@
 
 ## 결정된 설계 (사용자 confirm)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |---|---|
 | 컬럼 이름 | `field_keys` (모델, 응답 스키마 동일명 — 자연스러움) |
 | 컬럼 타입 | `sa.JSON()` nullable=True (PostgreSQL JSONB 매핑, SQLite 호환) |

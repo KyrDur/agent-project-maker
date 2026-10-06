@@ -39,7 +39,7 @@ describe('SidebarBrandHeader', () => {
   it('renders a brand link with the configured home href', () => {
     render(
       <SidebarProvider>
-        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/settings" toggleLabel="전환" />
+        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/settings" toggleLabel="切换" />
       </SidebarProvider>,
     )
 
@@ -52,14 +52,14 @@ describe('SidebarBrandHeader', () => {
 
     render(
       <SidebarProvider>
-        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/" toggleLabel="전환" />
+        <SidebarBrandHeader brandLabel="Agent Project Maker" homeHref="/" toggleLabel="切换" />
         <SidebarStateProbe />
       </SidebarProvider>,
     )
 
     expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
 
-    await user.click(screen.getAllByRole('button', { name: '전환' })[0])
+    await user.click(screen.getAllByRole('button', { name: '切换' })[0])
 
     expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
   })

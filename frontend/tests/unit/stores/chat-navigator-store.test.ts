@@ -13,7 +13,7 @@ import {
 
 describe('chat navigator store', () => {
   beforeEach(() => {
-    // atomWithStorage가 다른 테스트의 localStorage 값을 읽지 않도록 격리한다
+    // 隔离 atomWithStorage，避免读取其他测试的 localStorage 值
     window.localStorage.clear()
   })
 

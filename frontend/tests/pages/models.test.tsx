@@ -120,20 +120,20 @@ const modelsWithNewFields = mockModelList.map((m) => ({
 }))
 
 /**
- * 페이지 구조 (M10 이후): PageHeader(영문 "Models" 제목 + New model 버튼) +
- * DataTable + EmptyState. 옛 테스트는 한국어 i18n + Tabs 구조를 가정했지만
- * 현재 페이지는 i18n 미적용 영문 + 탭 없음. provider/모델 detail은
- * model-detail-modal 컴포넌트 단위 테스트로 분리.
+ * 页面结构（M10 之后）：PageHeader（英文 "Models" 标题 + New model 按钮）+
+ * DataTable + EmptyState. 旧测试假定了韩语 i18n + Tabs 结构，但
+ * 当前页面是未应用 i18n 的英文 + 无标签。provider/model detail 已
+ * 拆分到 model-detail-modal 组件单元测试。
  */
 describe('ModelsPage', () => {
   beforeEach(() => {
     mockUseModels.mockReturnValue({ data: undefined, isLoading: false })
   })
 
-  it('renders page header with title + 새 모델 action', () => {
+  it('renders page header with title + 新模型 action', () => {
     render(<ModelsPage />)
     expect(screen.getByText('模型')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /새 모델/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /新模型/ })).toBeInTheDocument()
   })
 
   it('shows empty state when no models', () => {
@@ -153,10 +153,10 @@ describe('ModelsPage', () => {
     mockUseModels.mockReturnValue({ data: modelsWithNewFields, isLoading: false })
     render(<ModelsPage />)
 
-    expect(screen.getByRole('columnheader', { name: /단가/ })).toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: '입력 단가' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('columnheader', { name: '출력 단가' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /상태 확인/ })[0]).toHaveClass('px-2')
+    expect(screen.getByRole('columnheader', { name: /价格/ })).toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: '输入单价' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('columnheader', { name: '输出单价' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /检查 .* 状态/ })[0]).toHaveClass('px-2')
   })
 
   // 페이지 안의 DataTable / 모델 detail / provider 카드 / delete 흐름은

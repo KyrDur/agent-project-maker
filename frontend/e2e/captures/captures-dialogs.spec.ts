@@ -30,10 +30,10 @@ type DialogCase = {
 // per-agent, not on /settings/schedules), api-key (button disabled until a
 // deployment exists) — are dedicated tests below.
 const DIALOGS: ReadonlyArray<DialogCase> = [
-  { url: '/settings/credentials', file: '01-credential-create.png', open: [/자격증명 추가|추가|새 자격증명|등록/] },
-  { url: '/skills', file: '03-skill-create.png', open: [/새 스킬|스킬 추가|스킬 만들기|첫 스킬|추가|만들기|업로드/] },
-  { url: '/mcp-servers', file: '04-mcp-add.png', open: [/새 서버|서버 추가|MCP 추가|추가|가져오기|연결|등록/] },
-  { url: '/settings/models', file: '06-model-add.png', open: [/새 모델|모델 추가|추가|등록/] },
+  { url: '/settings/credentials', file: '01-credential-create.png', open: [/添加凭据|添加|新凭据|注册/] },
+  { url: '/skills', file: '03-skill-create.png', open: [/新技能|添加技能|创建技能|第一个技能|添加|创建|上传/] },
+  { url: '/mcp-servers', file: '04-mcp-add.png', open: [/新服务器|添加服务器|添加 MCP|添加|导入|连接|注册/] },
+  { url: '/settings/models', file: '06-model-add.png', open: [/新模型|添加模型|添加|注册/] },
 ]
 
 async function clickFirstVisible(page: Page, candidates: ReadonlyArray<string | RegExp>): Promise<boolean> {
@@ -115,7 +115,7 @@ test.describe('Wave 3 — dialog captures', () => {
         timeout: 120_000,
       })
       await settle(page)
-      await clickFirstVisible(page, [/삭제/])
+      await clickFirstVisible(page, [/删除/])
       await page
         .locator('[role="dialog"], [role="alertdialog"]')
         .first()
@@ -158,7 +158,7 @@ test.describe('Wave 3 — dialog captures', () => {
         timeout: 120_000,
       })
       await settle(page)
-      await clickTab(page, /스케줄/)
+      await clickTab(page, /日程/)
       await page.getByTestId('trigger-add-button').click()
       await waitDialog(page)
       await capture(page, WAVE, '05-schedule-create.png')

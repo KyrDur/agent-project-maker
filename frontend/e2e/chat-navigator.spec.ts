@@ -239,8 +239,8 @@ test.describe('Chat navigator consolidation', () => {
     )
     await kickoffRow.hover()
     await kickoffRow.getByRole('button', { name: '对话菜单' }).click()
-    await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /重命名/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /分享/ })).toBeVisible()
     await capturePage(page, 'chat-navigator-row-menu.png')
     await page.keyboard.press('Escape')
 

@@ -1,17 +1,17 @@
-"""M17: agent_subagents — 에이전트 자기참조 join 테이블 (서브에이전트 위임).
+"""M17: agent_subagents — 智能体自引用 join 表（子智能体委派）。
 
 Revision ID: m17_add_agent_subagents
 Revises: m16_add_opener_questions
 Create Date: 2026-04-29
 
-에이전트가 다른 에이전트를 "子代理"로 호출할 수 있게 하는 자기참조
-many-to-many 관계 테이블. parent_agent_id / sub_agent_id 모두 agents.id를 참조.
+允许智能体将其他智能体作为 "子代理" 调用的自引用
+many-to-many 关系表。parent_agent_id / sub_agent_id 均引用 agents.id。
 
-- PK: (parent_agent_id, sub_agent_id) 복합키 (중복 link 방지)
-- INDEX: parent_agent_id 단독 (parent로부터 sub 조회 빈번)
-- CHECK 제약: parent_agent_id != sub_agent_id (자기 자신 reject; service 레이어와 이중 가드)
-- ON DELETE CASCADE: agent 삭제 시 link 자동 정리
-- position: ordering (UI에서 정렬)
+- PK: (parent_agent_id, sub_agent_id) 复合键（防止重复 link）
+- INDEX: 仅 parent_agent_id（经常从 parent 查询 sub）
+- CHECK 约束：parent_agent_id != sub_agent_id（reject 自身；与 service 层双重防护）
+- ON DELETE CASCADE：删除 agent 时自动清理 link
+- position: ordering（用于 UI 排序）
 """
 
 from __future__ import annotations

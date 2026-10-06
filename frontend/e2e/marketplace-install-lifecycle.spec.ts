@@ -143,7 +143,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: '下一步', exact: true }).click()
     await expect(dialog.getByRole('listitem').filter({ hasText: 'SRT账户' })).toBeVisible()
-    await expect(dialog.getByText(/연결하지 않으면 설치 후/)).toBeVisible()
+    await expect(dialog.getByText(/如果不连接，安装后/)).toBeVisible()
     await dialog.getByRole('button', { name: '下一步', exact: true }).click()
     const needsSetupResponse = page.waitForResponse(
       (response) =>

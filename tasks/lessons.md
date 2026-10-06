@@ -297,7 +297,7 @@ assert build_kwargs["skills"] == ["/skills/"]
 # 좋음
 assert build_kwargs["skills"][0].startswith("/runtime/")
 assert build_kwargs["skills"][0].endswith("/skills/")
-# 또는
+# 或
 assert build_kwargs["skills"] == [f"/runtime/{cfg.thread_id}/skills/"]
 ```
 

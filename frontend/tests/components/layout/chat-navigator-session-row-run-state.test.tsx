@@ -69,8 +69,8 @@ function conversation(
   }
 }
 
-describe('ChatNavigatorSessionRow run 상태 표시', () => {
-  it('active run에만 스피너를, interrupted run에는 확인 필요 마커를 표시한다', () => {
+describe('ChatNavigatorSessionRow run 状态显示', () => {
+  it('仅 active run 显示 spinner，interrupted run 显示需要确认标记', () => {
     render(
       <>
         <ChatNavigatorSessionRow
@@ -108,7 +108,7 @@ describe('ChatNavigatorSessionRow run 상태 표시', () => {
     expect(screen.queryAllByLabelText('需要用户操作')).toHaveLength(1)
   })
 
-  it('active_run이 없어도 같은 탭 스트리밍 오버레이(atom)가 running이면 스피너를 표시한다', () => {
+  it('即使没有 active_run，只要同一标签页的流式覆盖层(atom)为 running，也显示 spinner', () => {
     const store = createStore()
     store.set(conversationRuntimeStatusAtom, { 'conversation-local': 'running' })
 

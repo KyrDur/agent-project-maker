@@ -10,18 +10,18 @@ describe('SearchFilterBar', () => {
       <SearchFilterBar
         value=""
         onValueChange={(value) => changes.push(value)}
-        searchLabel="리소스 검색"
+        searchLabel="资源搜索"
         placeholder="搜索"
         filters={<span>filter</span>}
-        actions={<button type="button">새로 만들기</button>}
+        actions={<button type="button">新建</button>}
       />,
     )
 
-    await user.type(screen.getByRole('textbox', { name: '리소스 검색' }), 'abc')
+    await user.type(screen.getByRole('textbox', { name: '资源搜索' }), 'abc')
 
     expect(changes).toEqual(['a', 'b', 'c'])
     expect(screen.getByText('filter')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '创建' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '新建' })).toBeInTheDocument()
   })
 
   it('renders reset action when reset props are provided', async () => {

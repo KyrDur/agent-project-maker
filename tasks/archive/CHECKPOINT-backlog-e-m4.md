@@ -11,7 +11,7 @@
 
 ## 스코프 합의 (2026-04-18)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
 | 스코프 | exec-plan §4 M4 그대로 (백엔드 + add-tool-dialog Custom 탭만) |
 | Legacy fallback | M6까지 유지 — `tool.connection_id IS NULL AND tool.credential_id` 있으면 기존 경로 |

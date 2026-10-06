@@ -219,13 +219,13 @@ test.describe('Chat transcript stability QA bundle', () => {
 
       const askUserCard = askUserCards.first()
       setFailurePhase(testInfo.annotations, 'select_option')
-      const selectedOption = askUserCard.getByRole('option', { name: /사과/ })
+      const selectedOption = askUserCard.getByRole('option', { name: /苹果/ })
       await expect(selectedOption).toBeEnabled()
       await selectedOption.click()
       await expect(selectedOption).toHaveAttribute('aria-selected', 'true')
       await expect(selectedOption).toBeEnabled()
       setFailurePhase(testInfo.annotations, 'submit_decision')
-      const confirmButton = askUserCard.getByRole('button', { name: /선택 확인|Confirm/ })
+      const confirmButton = askUserCard.getByRole('button', { name: /确认选择|Confirm/ })
       await expect(confirmButton).toBeVisible()
       await expect(confirmButton).toBeEnabled()
       await confirmButton.click()
@@ -306,7 +306,7 @@ test.describe('Chat transcript stability QA bundle', () => {
       await expect(
         page.locator('[data-moldy-message-role="user"]').filter({ hasText: askUserPrompt }),
       ).toBeVisible()
-      await expect(page.getByText(/Tool call ask_user|선택 창이 취소/)).toHaveCount(0)
+      await expect(page.getByText(/Tool call ask_user|选择窗口已取消/)).toHaveCount(0)
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])

@@ -16,7 +16,7 @@ PR #46 (credential 시스템) + PR #47 (MCP 그룹화) 머지 완료. prebuilt�
 
 ## 결정된 설계 (사용자 confirm)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |---|---|
 | Provider 필터 | **모든 credential 노출** (필터링 없음) |
 | Inline 필드 | **제거 + credential 단일화** (customAuthType/customApiKey 모두 삭제) |

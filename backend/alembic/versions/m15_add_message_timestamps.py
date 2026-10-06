@@ -1,15 +1,15 @@
-"""M15: conversations.message_timestamps (JSON) — 메시지 idx별 영구 timestamp.
+"""M15: conversations.message_timestamps (JSON) — 按消息 idx 持久化 timestamp。
 
 Revision ID: m15_add_message_timestamps
 Revises: m14_uniq_mcp_tool_per_conn
 Create Date: 2026-04-28
 
-LangChain BaseMessage에는 timestamp 메타가 없어서, list_messages 응답이 매 호출마다
-`base_ts + idx*1ms`로 메시지 시각을 새로 매겼다. 결과적으로 새 메시지를 보낼 때마다
-옛 메시지의 시각도 함께 변하는 비정상 동작이 발생.
+LangChain BaseMessage 没有 timestamp 元数据，因此 list_messages 响应每次调用都会
+用 `base_ts + idx*1ms` 重新赋予消息时间。结果是每发送一条新消息，
+旧消息的时间也会一起变化，产生异常行为。
 
-이 컬럼은 (idx → ISO timestamp) 매핑을 영구 저장해, 메시지가 처음 list에 노출될 때
-부여된 timestamp를 그 후로 변경되지 않게 만든다.
+该列永久保存 (idx → ISO timestamp) 映射，使消息第一次出现在 list 中时
+获得的 timestamp 此后不再变化。
 """
 
 from __future__ import annotations

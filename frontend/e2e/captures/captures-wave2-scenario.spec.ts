@@ -129,7 +129,7 @@ test.describe('Wave 2 scenario captures', () => {
     // search pill — Tavily answer 摘要 box + 3 张 result card（单独调用所以展开）。
     const answerBox = page.locator('[data-moldy-search-answer]')
     await expect(answerBox).toBeVisible({ timeout: 30_000 })
-    await expect(answerBox.getByText(/에이전틱 OS는/)).toBeVisible()
+    await expect(answerBox.getByText(/智能体 OS 是/)).toBeVisible()
     await expect(page.getByText('Agentic OS 架构概览')).toBeVisible()
     await settle(page)
     await capture(page, WAVE, '00-search-rich-answer-and-memory-chip.png')

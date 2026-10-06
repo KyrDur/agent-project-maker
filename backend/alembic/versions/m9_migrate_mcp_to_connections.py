@@ -4,34 +4,34 @@ Revision ID: m9_migrate_mcp_to_connections
 Revises: m8_add_connections
 Create Date: 2026-04-18
 
-ADR-008 §6 이행 — MCP 도구의 credential/서버 설정 해석 경로를 connection
-경유로 전환하기 위한 데이터 이관 마이그레이션.
+落实 ADR-008 §6 — 将 MCP 工具的 credential/服务器配置解析路径改为经由 connection
+的数据迁移。
 
 ## upgrade
-1. `tools.connection_id` UUID nullable FK(connections.id) ON DELETE SET NULL 추가
-2. 각 `mcp_servers` row를 `connections` row(type='mcp')로 복제
-   - provider_name: server.name 정규화(소문자/언더스코어). (user_id, type)
-     scope 내 충돌 시 `_2`, `_3` 등 suffix
+1. 添加 `tools.connection_id` UUID nullable FK(connections.id) ON DELETE SET NULL
+2. 将每个 `mcp_servers` row 复制为 `connections` row(type='mcp')
+   - provider_name：规范化 server.name（小写/下划线）。（user_id, type）
+     若 scope 内冲突，则添加 `_2`、`_3` 等 suffix
    - display_name = server.name
-   - credential_id = server.credential_id (SET NULL 시맨틱 동일)
+   - credential_id = server.credential_id（SET NULL 语义相同）
    - extra_config = {url, auth_type, headers: {}, env_vars: <server.auth_config>}
-   - is_default = True (provider_name 충돌을 suffix로 회피하므로 각 scope 1건)
+   - is_default = True（通过 suffix 避开 provider_name 冲突，因此每个 scope 1 条）
    - status = 'active' / timestamps = server.created_at
-3. tools.mcp_server_id IS NOT NULL 인 row → 매핑된 connection_id로 설정
-   (`tools.mcp_server_id`는 유지. M6 마이그레이션에서 drop 예정)
+3. 对 tools.mcp_server_id IS NOT NULL 的 row → 设置为映射后的 connection_id
+   （保留 `tools.mcp_server_id`。计划在 M6 迁移中 drop）
 
-## auth_config 평문 이관 정책 (M2 리스크 4)
-ADR-008 §2는 `extra_config.env_vars` 값을 `${credential.<field>}` 템플릿으로만
-허용한다. 그러나 기존 `mcp_servers.auth_config`에는 평문 값이 들어 있을 수
-있으므로, 데이터 신뢰성을 위해 **본 마이그레이션에서만** 평문을 그대로
-`extra_config.env_vars`에 복사한다. 런타임(S3, chat_service/mcp_client)은
-template 우선 + legacy 평문 fallback으로 해석한다. 신규 생성 connection은
-애플리케이션 계층(connection_service)에서 template-only 검증된다.
+## auth_config 明文迁移策略（M2 风险 4）
+ADR-008 §2 只允许 `extra_config.env_vars` 使用 `${credential.<field>}` 模板值，
+但现有 `mcp_servers.auth_config` 中可能包含明文值，
+因此为了数据可靠性，**仅在本迁移中**将明文原样
+复制到 `extra_config.env_vars`。运行时（S3, chat_service/mcp_client）
+按 template 优先 + legacy 明文 fallback 解析。新建 connection
+在应用层（connection_service）执行 template-only 验证。
 
 ## downgrade
-- `tools.connection_id` 컬럼 drop (tools.mcp_server_id는 그대로 보존되어
-  legacy 경로 복원 가능)
-- `connections.type = 'mcp'` row 삭제 (이관으로 생성된 connection만 존재)
+- drop `tools.connection_id` 列（tools.mcp_server_id 原样保留，
+  可恢复 legacy 路径）
+- 删除 `connections.type = 'mcp'` row（这里只存在迁移创建的 connection）
 """
 
 from __future__ import annotations
@@ -56,11 +56,11 @@ _COLLAPSE_RE = re.compile(r"_+")
 
 
 def _normalize_provider_name(name: str) -> str:
-    """server.name → connections.provider_name 슬러그 변환.
+    """server.name → connections.provider_name 标识转换。
 
-    - 소문자화, 영숫자/언더스코어 외 문자는 `_`로 치환, 연속 `_` 축약
-    - 빈 문자열이면 'mcp' 로 fallback
-    - String(50) 컬럼. suffix 공간(_NN)을 위해 base는 45자로 truncate
+    - 转为小写，将非字母数字/下划线字符替换为 `_`，连续 `_` 压缩
+    - 若为空字符串，则 fallback 为 'mcp'
+    - String(50) 列。为 suffix 空间（_NN），base truncate 为 45 字符
     """
     slug = _SLUG_RE.sub("_", (name or "").lower())
     slug = _COLLAPSE_RE.sub("_", slug).strip("_")
@@ -70,7 +70,7 @@ def _normalize_provider_name(name: str) -> str:
 
 
 def upgrade() -> None:
-    # 1) tools.connection_id 컬럼 + FK
+    # 1) tools.connection_id 列 + FK
     op.add_column(
         "tools",
         sa.Column("connection_id", sa.Uuid(), nullable=True),
@@ -84,10 +84,10 @@ def upgrade() -> None:
         ondelete="SET NULL",
     )
 
-    # 2) 이관 추적 테이블 — downgrade에서 "m9가 만든 connection"만 안전히
-    # 삭제할 수 있도록 출처 기록. user-facing `extra_config`에 sentinel을
-    # 박으면 `ConnectionExtraConfig(extra="forbid")` 재검증에 걸려
-    # GET/PATCH가 깨진다. 따라서 별도 테이블로 분리.
+    # 2) 迁移追踪表 — 使 downgrade 时可以只安全删除"m9 创建的 connection"
+    # 并记录来源。如果在 user-facing `extra_config` 中放入 sentinel，
+    # 会在 `ConnectionExtraConfig(extra="forbid")` 再验证时被拦截，
+    # 导致 GET/PATCH 失效。因此拆分到独立表。
     op.create_table(
         "_m9_migrated_connections",
         sa.Column(
@@ -98,7 +98,7 @@ def upgrade() -> None:
         ),
     )
 
-    # 3) mcp_servers → connections 이관
+    # 3) mcp_servers → connections 迁移
     bind = op.get_bind()
 
     servers = bind.execute(
@@ -112,8 +112,8 @@ def upgrade() -> None:
     if not servers:
         return
 
-    # credential 조회 batch — server별 N+1 SELECT 방지. auth_config가 비어있고
-    # credential_id가 달린 server가 존재하는 경우에만 수행.
+    # credential 查询 batch — 防止每个 server 产生 N+1 SELECT。仅在 auth_config 为空且
+    # 存在带 credential_id 的 server 时执行。
     credential_ids_needed = {s[6] for s in servers if (not s[5]) and s[6] is not None}
     credentials_by_id: dict[uuid.UUID, tuple] = {}
     if credential_ids_needed:
@@ -123,8 +123,8 @@ def upgrade() -> None:
         rows = bind.execute(stmt, {"ids": list(credential_ids_needed)}).fetchall()
         credentials_by_id = {r[0]: (r[1], r[2]) for r in rows}
 
-    # (user_id, provider_name) scope 내 충돌을 추적. 기존 connections에도
-    # 동일 scope의 row가 있을 수 있으므로 미리 로드.
+    # 追踪 (user_id, provider_name) scope 内冲突。现有 connections 中也可能
+    # 存在相同 scope 的 row，因此预先加载。
     existing = bind.execute(
         sa.text("SELECT user_id, provider_name FROM connections WHERE type = 'mcp'")
     ).fetchall()
@@ -143,8 +143,8 @@ def upgrade() -> None:
         status = server[7] or "active"
         created_at = server[8] or datetime.now(UTC).replace(tzinfo=None)
 
-        # auth_config 는 dict 가정. asyncpg + JSON 컬럼은 dict로 반환되지만,
-        # 문자열로 떨어지는 드라이버 경우를 방어.
+        # 假定 auth_config 为 dict。asyncpg + JSON 列会返回 dict，但
+        # 对返回字符串的驱动情况进行防御。
         if isinstance(auth_config, str):
             try:
                 auth_config = json.loads(auth_config) if auth_config else {}
@@ -161,17 +161,17 @@ def upgrade() -> None:
             provider_name = f"{base}_{suffix}"[:50]
         taken.add((str(user_id), provider_name))
 
-        # env_vars 결정 로직 (auth 누락 regression 방지):
-        # 1) mcp_servers.auth_config가 dict이면 legacy 평문으로 그대로 이관
-        #    (런타임은 env_var_resolver에서 관용 + 경고)
-        # 2) auth_config 비어있고 credential 연결된 server는 기존
-        #    resolve_server_auth 동작을 유지하기 위해 credentials.field_keys
-        #    (ADR-007) 또는 data_encrypted 복호화로 키를 유도 → 템플릿 자동 생성
-        # 3) credential도 auth_config도 없으면 빈 env_vars로 이관 (정상)
-        # 4) credential은 있으나 키를 복구 못 한 경우 → 이 server는 **migrate
-        #    스킵** (connections row + tools.connection_id 모두 미생성). 기존
-        #    mcp_servers row와 tools.mcp_server_id가 그대로 남아 런타임
-        #    legacy fallback 경로로 계속 동작 (Codex 8차 adversarial F1)
+        # env_vars 决策逻辑（防止 auth 缺失 regression）：
+        # 1) 若 mcp_servers.auth_config 为 dict，则按 legacy 明文原样迁移
+        #    （运行时在 env_var_resolver 中宽容处理 + 警告）
+        # 2) 对 auth_config 为空且连接 credential 的 server，为保持现有
+        #    resolve_server_auth 行为，使用 credentials.field_keys
+        #    （ADR-007）或通过解密 data_encrypted 推导键 → 自动生成模板
+        # 3) 若既无 credential 也无 auth_config，则迁移为空 env_vars（正常）
+        # 4) 若存在 credential 但无法恢复键 → 此 server **跳过 migrate
+        #    **（connections row + tools.connection_id 均不创建）。现有
+        #    mcp_servers row 与 tools.mcp_server_id 原样保留，运行时
+        #    继续通过 legacy fallback 路径工作（Codex 第 8 次 adversarial F1）
         credential_auth_recoverable = True
         if auth_config:
             env_vars_out = auth_config
@@ -194,16 +194,16 @@ def upgrade() -> None:
             if field_keys_list:
                 env_vars_out = {k: f"${{credential.{k}}}" for k in field_keys_list}
             else:
-                # 복구 실패 → 이관하지 않고 legacy path 유지. connection 생성
-                # 자체를 건너뛰어 tools.connection_id가 설정되지 않게 한다.
+                # 恢复失败 → 不迁移，保留 legacy path。跳过 connection 创建
+                # 本身，使 tools.connection_id 不被设置。
                 import logging
 
                 logging.getLogger("alembic.m9").warning(
                     "m9: leaving MCP server %s on legacy path — credential %s "
                     "auth could not be reconstructed (NULL field_keys and "
                     "decrypt/JSON fallback failed). tools.mcp_server_id + "
-                    "resolve_server_auth 경로 유지. M7 backfill을 실행하거나 "
-                    "credential을 재설정한 뒤 m9을 다시 적용하면 이관됨.",
+                    "保留 resolve_server_auth 路径。执行 M7 backfill，或者 "
+                    "重新设置 credential 后再次应用 m9 即可完成迁移。",
                     server_id,
                     credential_id,
                 )
@@ -213,7 +213,7 @@ def upgrade() -> None:
             env_vars_out = {}
 
         if not credential_auth_recoverable:
-            # scope taken에서 provider_name 반납 (이 server는 connection 미생성)
+            # 从 scope taken 中归还 provider_name（此 server 不创建 connection）
             taken.discard((str(user_id), provider_name))
             continue
 
@@ -251,13 +251,13 @@ def upgrade() -> None:
         )
         server_to_connection[server_id] = connection_id
 
-        # 이관 추적: downgrade에서 이 row만 정확히 지울 수 있도록 기록
+        # 迁移追踪：记录下来，以便 downgrade 时仅精确删除该 row
         bind.execute(
             sa.text("INSERT INTO _m9_migrated_connections (connection_id) VALUES (:id)"),
             {"id": connection_id},
         )
 
-    # 4) tools.mcp_server_id → tools.connection_id 매핑
+    # 4) tools.mcp_server_id → tools.connection_id 映射
     for server_id, connection_id in server_to_connection.items():
         bind.execute(
             sa.text("UPDATE tools SET connection_id = :cid WHERE mcp_server_id = :sid"),
@@ -268,16 +268,16 @@ def upgrade() -> None:
 def downgrade() -> None:
     bind = op.get_bind()
 
-    # tools.mcp_server_id 는 upgrade에서 그대로 유지했으므로 역매핑 불필요.
-    # connection_id FK/컬럼만 제거.
+    # tools.mcp_server_id 在 upgrade 中原样保留，因此无需反向映射。
+    # 仅删除 connection_id FK/列。
     op.drop_constraint("fk_tools_connection_id", "tools", type_="foreignkey")
     op.drop_column("tools", "connection_id")
 
-    # upgrade에서 만든 connections만 제거. `_m9_migrated_connections`
-    # 추적 테이블의 row 기반이라 사용자가 수동으로 만든 type='mcp'
-    # connection은 보존. 추적 테이블 자체도 그 뒤 drop.
-    # 이전 m9 버전이 적용된 DB(추적 테이블 없음)에서도 안전하게 downgrade
-    # 되도록 테이블 존재 여부를 먼저 확인한다.
+    # 仅删除 upgrade 创建的 connections。由于基于 `_m9_migrated_connections`
+    # 追踪表中的 row，因此用户手动创建的 type='mcp'
+    # connection 会保留。之后再 drop 追踪表本身。
+    # 为使已应用旧版 m9 的 DB（无追踪表）也能安全 downgrade，
+    # 先检查表是否存在。
     tracking_exists = bind.execute(
         sa.text(
             "SELECT 1 FROM information_schema.tables WHERE table_name = '_m9_migrated_connections'"

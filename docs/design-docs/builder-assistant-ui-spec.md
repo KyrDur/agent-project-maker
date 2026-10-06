@@ -1,30 +1,30 @@
-# Builder + Assistant UI 디자인 스펙
+# Builder + Assistant UI 设计规范
 
 | 项目 | 值 |
 |------|-----|
-| 작성자 | tim-cook |
+| 作者 | tim-cook |
 | 日期 | 2026-04-07 |
 | 状态 | 已提议 |
-| 관련 문서 | ADR-005, moldy-agent-builder-spec-v2.md |
+| 相关文档 | ADR-005, moldy-agent-builder-spec-v2.md |
 
 ---
 
-## 1. 개요
+## 1. 概述
 
-기존 4단계 대화형 에이전트 생성 UI(`conversational/page.tsx`)를 7단계 파이프라인 모니터링 Builder UI로,
-기존 `fix-agent-dialog.tsx`의 간단한 다이얼로그를 풀사이즈 Assistant 대화 패널로 교체한다.
+将现有 4 阶段对话式 agent 创建 UI（`conversational/page.tsx`）替换为 7 阶段 pipeline monitoring Builder UI，
+并将现有 `fix-agent-dialog.tsx` 的简单 dialog 替换为全尺寸 Assistant 对话 panel。
 
-**디자인 원칙:**
-- shadcn/ui 컴포넌트 우선 사용, 커스텀 UI 최소화
-- 기존 프로젝트 디자인 시스템(colors, spacing, typography) 준수
-- 다크/라이트 모드 모두 지원
-- 모바일 반응형 고려 (최소 360px 뷰포트)
+**设计原则：**
+- 优先使用 shadcn/ui 组件，尽量减少自定义 UI
+- 遵循现有项目设计系统（colors, spacing, typography）
+- 同时支持 dark/light mode
+- 考虑移动端响应式（最小 360px viewport）
 
 ---
 
-## 2. Builder UI (7단계 파이프라인)
+## 2. Builder UI（7 阶段 pipeline）
 
-### 2.1 전체 레이아웃
+### 2.1 整体布局
 
 ```
 +---------------------------------------------------------------+
@@ -33,65 +33,65 @@
 |                                                               |
 |  [Phase 1: Input]                                             |
 |  +-----------------------------------------------------------+|
-|  | "어떤 에이전트를 만들고 싶으신가요?"                           ||
+|  | “想创建什么样的 agent？”                           ||
 |  |                                                           ||
 |  | +-------------------------------------------------------+ ||
-|  | | textarea (자연어 입력)                                   | ||
+|  | | textarea（自然语言输入）                                   | ||
 |  | +-------------------------------------------------------+ ||
-|  |                                          [시작하기 ->]    ||
+|  |                                          [开始 ->]    ||
 |  +-----------------------------------------------------------+|
 |                                                               |
-|  [Phase Timeline — 7단계]                                     |
+|  [Phase Timeline — 7 阶段]                                     |
 |  +-----------------------------------------------------------+|
-|  | Phase 1: 프로젝트 초기화           [완료]                   ||
-|  | Phase 2: 의도 분석                [진행 중]                 ||
-|  | Phase 3: 도구 추천                [대기]                    ||
-|  | Phase 4: 미들웨어 추천            [대기]                    ||
-|  | Phase 5: 시스템 프롬프트 생성      [대기]                    ||
-|  | Phase 6: 에이전트 설정            [대기]                    ||
-|  | Phase 7: 최종 빌드                [대기]                    ||
+|  | Phase 1: 项目初始化           [完成]                   ||
+|  | Phase 2: 意图分析                [进行中]                 ||
+|  | Phase 3: 工具推荐                [等待]                    ||
+|  | Phase 4: 中间件推荐            [等待]                    ||
+|  | Phase 5: System prompt 生成      [等待]                    ||
+|  | Phase 6: Agent 设置            [等待]                    ||
+|  | Phase 7: 最终构建                [等待]                    ||
 |  +-----------------------------------------------------------+|
 |                                                               |
-|  [Phase Result Cards — 완료된 단계 결과]                       |
+|  [Phase Result Cards — 已完成阶段结果]                       |
 |  +-----------------------------------------------------------+|
-|  | Intent 요약 카드 / 도구 추천 카드 / ...                     ||
+|  | Intent 摘要 card / 工具推荐 card / ...                     ||
 |  +-----------------------------------------------------------+|
 |                                                               |
 |  [Phase 7: Final Confirmation]                                |
 |  +-----------------------------------------------------------+|
-|  | DraftAgentConfig 요약                                      ||
-|  |                                          [에이전트 생성]    ||
+|  | DraftAgentConfig 摘要                                      ||
+|  |                                          [创建 agent]    ||
 |  +-----------------------------------------------------------+|
 |                                                               |
 +---------------------------------------------------------------+
 ```
 
-### 2.2 입력 단계 (Phase 1 시작 전)
+### 2.2 输入阶段（Phase 1 开始前）
 
-기존 `conversational/page.tsx`의 Phase 1 입력 영역을 재사용한다.
+复用现有 `conversational/page.tsx` 的 Phase 1 输入区域。
 
-**컴포넌트:** `BuilderInputSection`
+**组件：** `BuilderInputSection`
 
-| 요소 | 스펙 |
+| 元素 | 规格 |
 |------|------|
-| 질문 카드 | `rounded-xl border bg-background p-5`, MessageCircleIcon + 텍스트 |
-| textarea | `min-h-[80px] max-h-[160px]`, placeholder: "뉴스를 요약하는 에이전트를 만들어줘" |
-| 제출 버튼 | `Button size="lg"`, SendIcon + "시작하기" |
-| 키보드 | Enter로 제출 (Shift+Enter 줄바꿈), IME composition 처리 |
+| 问题 card | `rounded-xl border bg-background p-5`, MessageCircleIcon + 文本 |
+| textarea | `min-h-[80px] max-h-[160px]`, placeholder: “创建一个汇总新闻的 agent” |
+| 提交按钮 | `Button size="lg"`, SendIcon + “开始” |
+| 键盘 | Enter 提交（Shift+Enter 换行），处理 IME composition |
 
-**searchParams 지원:**
-- `?initialMessage=...` query parameter로 대시보드에서 바로 입력값 전달 가능 (기존 패턴 유지)
+**支持 searchParams：**
+- 通过 `?initialMessage=...` query parameter 可从 dashboard 直接传入初始值（保持现有模式）
 
-### 2.3 Phase Timeline (7단계)
+### 2.3 Phase Timeline（7 阶段）
 
-기존 `PhaseTimeline` 컴포넌트를 4단계에서 7단계로 확장한다.
+将现有 `PhaseTimeline` 组件从 4 阶段扩展到 7 阶段。
 
-**컴포넌트:** `BuilderTimeline`
+**组件：** `BuilderTimeline`
 
 ```tsx
 interface BuilderTimelineProps {
-  currentPhase: number          // 0-7 (0=입력 전)
-  phaseStatuses: PhaseStatus[]  // SSE로 실시간 업데이트
+  currentPhase: number          // 0-7（0=输入前）
+  phaseStatuses: PhaseStatus[]  // 通过 SSE 实时更新
 }
 
 type PhaseStatus = {
@@ -101,217 +101,217 @@ type PhaseStatus = {
 }
 ```
 
-**7단계 정의:**
+**7 阶段定义：**
 
-| Phase | Label | Description | 아이콘 |
+| Phase | Label | Description | 图标 |
 |-------|-------|-------------|--------|
-| 1 | 프로젝트 초기화 | 작업 환경 준비 | FolderOpenIcon |
-| 2 | 의도 분석 | 요청 분석 중 | BrainIcon |
-| 3 | 도구 추천 | 적합한 도구 선정 | WrenchIcon |
-| 4 | 미들웨어 추천 | 안정성/성능 계층 선정 | ShieldIcon |
-| 5 | 시스템 프롬프트 | 에이전트 지침서 작성 | FileTextIcon |
-| 6 | 에이전트 설정 | 최종 설정 통합 | SettingsIcon |
-| 7 | 최종 빌드 | 에이전트 인스턴스 생성 | RocketIcon |
+| 1 | 项目初始化 | 准备工作环境 | FolderOpenIcon |
+| 2 | 意图分析 | 正在分析请求 | BrainIcon |
+| 3 | 工具推荐 | 选择合适工具 | WrenchIcon |
+| 4 | 中间件推荐 | 选择稳定性/性能 layer | ShieldIcon |
+| 5 | System prompt | 编写 agent 指令 | FileTextIcon |
+| 6 | Agent 设置 | 汇总最终设置 | SettingsIcon |
+| 7 | 最终构建 | 创建 agent 实例 | RocketIcon |
 
-**상태별 시각 표현 (기존 패턴 확장):**
+**按状态的视觉表现（扩展现有模式）：**
 
-| 상태 | 아이콘 | 색상 | 배지 |
+| 状态 | 图标 | 颜色 | Badge |
 |------|--------|------|------|
-| completed | CheckIcon (원형) | `bg-emerald-500 text-white` | `bg-emerald-100 text-emerald-700` |
-| started | CircleDotIcon (원형) | `bg-primary text-primary-foreground` | `bg-primary/10 text-primary` |
-| failed | XCircleIcon (원형) | `bg-destructive text-destructive-foreground` | `bg-destructive/10 text-destructive` |
-| pending | ClockIcon (원형) | `border-muted-foreground/30 text-muted-foreground/50` | `bg-muted text-muted-foreground` |
+| completed | CheckIcon（圆形） | `bg-emerald-500 text-white` | `bg-emerald-100 text-emerald-700` |
+| started | CircleDotIcon（圆形） | `bg-primary text-primary-foreground` | `bg-primary/10 text-primary` |
+| failed | XCircleIcon（圆形） | `bg-destructive text-destructive-foreground` | `bg-destructive/10 text-destructive` |
+| pending | ClockIcon（圆形） | `border-muted-foreground/30 text-muted-foreground/50` | `bg-muted text-muted-foreground` |
 
-**연결선:**
-- 완료: `bg-emerald-500`
-- 실패: `bg-destructive`
-- 대기: `bg-muted-foreground/20`
+**连接线：**
+- 完成：`bg-emerald-500`
+- 失败：`bg-destructive`
+- 等待：`bg-muted-foreground/20`
 
-**SSE 연결:**
-- `GET /api/builder/{session_id}/stream` → `phase_progress` 이벤트로 실시간 업데이트
-- `sub_agent_start` / `sub_agent_end` → Phase 2-5에서 서브에이전트 실행 상태 표시
+**SSE 连接：**
+- `GET /api/builder/{session_id}/stream` → 通过 `phase_progress` event 实时更新
+- `sub_agent_start` / `sub_agent_end` → 在 Phase 2-5 显示 subagent 运行状态
 
-**서브에이전트 실행 인디케이터:**
-- Phase 2-5에 started 상태일 때, Phase label 아래에 작은 텍스트로 서브에이전트 이름 표시
-- 예: "의도 분석 서브에이전트 실행 중..." (Loader2Icon animate-spin + text-xs text-muted-foreground)
+**subagent 运行指示器：**
+- Phase 2-5 处于 started 状态时，在 Phase label 下方用小文本显示 subagent 名称
+- 例如：“意图分析 subagent 运行中...” （Loader2Icon animate-spin + text-xs text-muted-foreground）
 
-### 2.4 Phase 결과 카드
+### 2.4 Phase 结果 card
 
-각 Phase가 완료되면 결과를 카드로 표시한다. Phase Timeline 아래에 순서대로 쌓인다.
+每个 Phase 完成后以 card 显示结果。按顺序堆叠在 Phase Timeline 下方。
 
-**컴포넌트:** `PhaseResultCard`
+**组件：** `PhaseResultCard`
 
 ```tsx
 interface PhaseResultCardProps {
   phase: number
   title: string
-  children: React.ReactNode  // Phase별 커스텀 내용
+  children: React.ReactNode  // 各 Phase 的自定义内容
   status: 'completed' | 'failed'
 }
 ```
 
-**공통 스타일:**
-- `rounded-xl border bg-background` (기존 Card 스타일)
-- 상단에 Phase 번호 배지 + 제목
-- 완료 시 `border-emerald-500/20`, 실패 시 `border-destructive/20`
-- 애니메이션: `animate-in fade-in slide-in-from-bottom-2 duration-300`
+**通用样式：**
+- `rounded-xl border bg-background`（现有 Card 样式）
+- 顶部显示 Phase 编号 badge + 标题
+- 完成时 `border-emerald-500/20`，失败时 `border-destructive/20`
+- 动画：`animate-in fade-in slide-in-from-bottom-2 duration-300`
 
-#### Phase 2 결과: Intent 요약 카드
+#### Phase 2 结果：Intent 摘要 card
 
-**컴포넌트:** `IntentSummaryCard`
+**组件：** `IntentSummaryCard`
 
-AgentCreationIntent의 핵심 필드를 요약 표시한다.
+摘要显示 AgentCreationIntent 的核心字段。
 
 ```
 +-----------------------------------------------------------+
-| [2] 의도 분석 완료                                [완료]    |
+| [2] 意图分析完成                                [完成]    |
 +-----------------------------------------------------------+
-| 에이전트: News Summarizer (뉴스 요약 에이전트)              |
-| 역할: 최신 뉴스를 검색하고 핵심 내용을 요약하여 전달        |
+| Agent: News Summarizer（新闻摘要 agent）              |
+| 角色：搜索最新新闻并提炼核心内容进行传达        |
 |                                                           |
-| 핵심 작업: 뉴스 검색 및 요약                               |
-| 응답 스타일: 간결한 요약 + 핵심 포인트                      |
+| 核心任务：新闻搜索与摘要                               |
+| 响应风格：简洁摘要 + 核心要点                      |
 |                                                           |
-| 사용 사례:                                                |
-|  - 일일 뉴스 브리핑                                       |
-|  - 특정 주제 뉴스 모니터링                                 |
-|  - 뉴스 비교 분석                                         |
+| 使用场景：                                                |
+|  - 每日新闻简报                                       |
+|  - 特定主题新闻监控                                 |
+|  - 新闻对比分析                                         |
 +-----------------------------------------------------------+
 ```
 
-**레이아웃:**
-- `space-y-2.5 rounded-lg bg-muted/50 p-4 text-sm` (기존 draft info 스타일 재사용)
-- 필드별 `flex justify-between` 또는 라벨 + 값 구조
-- use_cases는 `ul` 리스트
+**布局：**
+- `space-y-2.5 rounded-lg bg-muted/50 p-4 text-sm`（复用现有 draft info 样式）
+- 各字段采用 `flex justify-between` 或 label + value 结构
+- use_cases 使用 `ul` 列表
 
-#### Phase 3 결과: 도구 추천 카드
+#### Phase 3 结果：工具推荐 card
 
-**컴포넌트:** `ToolRecommendationCards`
+**组件：** `ToolRecommendationCards`
 
-기존 `ToolCard` 패턴을 재사용한다.
+复用现有 `ToolCard` 模式。
 
 ```
 +-----------------------------------------------------------+
-| [3] 도구 추천 완료                                [완료]    |
+| [3] 工具推荐完成                                [完成]    |
 +-----------------------------------------------------------+
 | +-------------------------------------------------------+ |
 | | [WrenchIcon] tavily_search                            | |
-| | 범용 웹 검색. 최신 뉴스와 정보 검색에 적합               | |
-| | 선정 이유: 뉴스 검색의 핵심 도구                        | |
+| | 通用 Web 搜索。适合搜索最新新闻与信息               | |
+| | 选择理由：新闻搜索的核心工具                        | |
 | +-------------------------------------------------------+ |
 | +-------------------------------------------------------+ |
 | | [WrenchIcon] naver_news                               | |
-| | 네이버 뉴스 검색. 한국어 뉴스 특화                       | |
-| | 선정 이유: 한국 뉴스 커버리지 확대                       | |
+| | Naver 新闻搜索。专注韩文新闻                       | |
+| | 选择理由：扩大韩国新闻覆盖                       | |
 | +-------------------------------------------------------+ |
 +-----------------------------------------------------------+
 ```
 
-**레이아웃:**
-- 기존 `ToolCard` 확장: `reason` 필드 추가 (text-xs text-muted-foreground)
+**布局：**
+- 扩展现有 `ToolCard`：新增 `reason` 字段（text-xs text-muted-foreground）
 - `flex gap-3 rounded-xl border bg-background p-4`
 
-#### Phase 4 결과: 미들웨어 추천 카드
+#### Phase 4 结果：中间件推荐 card
 
-**컴포넌트:** `MiddlewareRecommendationCards`
+**组件：** `MiddlewareRecommendationCards`
 
-도구 카드와 동일한 레이아웃. 아이콘만 `ShieldIcon`으로 변경.
+与工具 card 使用相同布局。仅将图标改为 `ShieldIcon`。
 
 ```
 +-------------------------------------------------------+
 | [ShieldIcon] ToolRetryMiddleware                      |
-| 외부 API 호출 실패 시 자동 재시도                        |
-| 선정 이유: 뉴스 API 호출 안정성 확보                     |
+| 外部 API 调用失败时自动重试                        |
+| 选择理由：确保新闻 API 调用稳定性                     |
 +-------------------------------------------------------+
 ```
 
-#### Phase 5 결과: 시스템 프롬프트 미리보기
+#### Phase 5 结果：System prompt 预览
 
-**컴포넌트:** `SystemPromptPreview`
+**组件：** `SystemPromptPreview`
 
-기존 Phase 4의 `<details>` 패턴을 재사용하되 더 명시적으로 표현한다.
+复用现有 Phase 4 的 `<details>` 模式，但表达更明确。
 
 ```
 +-----------------------------------------------------------+
-| [5] 시스템 프롬프트 생성 완료                     [완료]    |
+| [5] System prompt 生成完成                     [完成]    |
 +-----------------------------------------------------------+
-| [v] 시스템 프롬프트 보기                                    |
+| [v] 查看 System prompt                                    |
 | +-------------------------------------------------------+ |
 | | # News Summarizer                                     | |
 | | ## Role                                               | |
-| | 최신 뉴스를 검색하고 핵심 내용을 요약하여...             | |
+| | 搜索最新新闻并提炼核心内容...             | |
 | | ...                                                   | |
 | +-------------------------------------------------------+ |
-|                                  약 3,200자 / 5,000자 상한 |
+|                                  约 3,200 字 / 5,000 字上限 |
 +-----------------------------------------------------------+
 ```
 
-**레이아웃:**
-- `<Collapsible>` (shadcn/ui) 사용 — 기본 접힘 상태
-- 펼쳤을 때: `max-h-[300px] overflow-auto rounded-lg bg-muted p-4`
-- `<MarkdownContent>` 컴포넌트로 렌더링 (기존 chat 패턴 재사용)
-- 하단에 글자 수 표시 (text-xs text-muted-foreground)
+**布局：**
+- 使用 `<Collapsible>`（shadcn/ui）— 默认折叠
+- 展开时：`max-h-[300px] overflow-auto rounded-lg bg-muted p-4`
+- 使用 `<MarkdownContent>` 组件渲染（复用现有 chat 模式）
+- 底部显示字符数（text-xs text-muted-foreground）
 
-#### Phase 6-7 결과: 최종 설정 요약
+#### Phase 6-7 结果：最终设置摘要
 
-기존 Phase 4의 `DraftConfig` 표시 패턴을 재사용한다.
+复用现有 Phase 4 的 `DraftConfig` 显示模式。
 
-### 2.5 최종 확인 (Phase 7 완료 후)
+### 2.5 最终确认（Phase 7 完成后）
 
-**컴포넌트:** `BuilderConfirmation`
+**组件：** `BuilderConfirmation`
 
-SSE에서 `build_preview` 이벤트를 수신하면 DraftAgentConfig를 표시한다.
+从 SSE 收到 `build_preview` event 后显示 DraftAgentConfig。
 
 ```
 +-----------------------------------------------------------+
-| [SparklesIcon] 에이전트 설정 완료                           |
+| [SparklesIcon] Agent 设置完成                           |
 +-----------------------------------------------------------+
 |                                                           |
-| 에이전트 이름: News Summarizer                              |
-| 한글 이름: 뉴스 요약 에이전트                                |
-| 설명: 최신 뉴스를 검색하고...                               |
-| 모델: anthropic:claude-sonnet-4-5                         |
+| Agent 名称：News Summarizer                              |
+| 韩文名称：新闻摘要 agent                                |
+| 说明：搜索最新新闻并...                               |
+| 模型：anthropic:claude-sonnet-4-5                         |
 |                                                           |
-| 도구 (3개):                                               |
+| 工具（3 个）：                                               |
 |  [WrenchIcon] tavily_search                               |
 |  [WrenchIcon] naver_news                                  |
 |  [WrenchIcon] naver_blog                                  |
 |                                                           |
-| 미들웨어 (2개):                                           |
+| 中间件（2 个）：                                           |
 |  [ShieldIcon] ToolRetryMiddleware                         |
 |  [ShieldIcon] SummarizationMiddleware                     |
 |                                                           |
-| [v] 시스템 프롬프트 보기                                    |
+| [v] 查看 System prompt                                    |
 |                                                           |
 | +-------------------------------------------------------+ |
-| |              [에이전트 생성하기]                         | |
+| |              [创建 agent]                         | |
 | +-------------------------------------------------------+ |
 +-----------------------------------------------------------+
 ```
 
-**동작:**
-- "에이전트 생성하기" 클릭 → `POST /api/builder/{session_id}/confirm`
-- 성공 시 `/agents/{agent_id}` 로 리다이렉트
-- 로딩 중 Loader2Icon animate-spin + 버튼 disabled
+**行为：**
+- 点击“创建 agent” → `POST /api/builder/{session_id}/confirm`
+- 成功后 redirect 到 `/agents/{agent_id}`
+- 加载中显示 Loader2Icon animate-spin + 按钮 disabled
 
-### 2.6 에러 상태
+### 2.6 Error 状态
 
-SSE에서 `error` 이벤트 수신 시:
+从 SSE 收到 `error` event 时：
 
 **recoverable: true**
-- Phase Timeline에서 해당 Phase를 `failed`로 표시
-- 에러 메시지 카드 표시 (border-destructive/20)
-- "다시 시도" 버튼 제공
+- 在 Phase Timeline 中将对应 Phase 标为 `failed`
+- 显示错误信息 card（border-destructive/20）
+- 提供“重试”按钮
 
 **recoverable: false**
-- 전체 빌드 실패 표시
-- "처음부터 다시 시작" 버튼 (handleReset)
+- 显示整体构建失败
+- “从头重新开始”按钮（handleReset）
 
-### 2.7 SSE 스트리밍 클라이언트
+### 2.7 SSE streaming client
 
-기존 `stream-chat.ts` 패턴을 확장한다.
+扩展现有 `stream-chat.ts` 模式。
 
-**새 파일:** `frontend/src/lib/sse/stream-builder.ts`
+**新文件：** `frontend/src/lib/sse/stream-builder.ts`
 
 ```typescript
 export async function* streamBuilder(
@@ -319,12 +319,12 @@ export async function* streamBuilder(
   signal?: AbortSignal,
 ): AsyncGenerator<BuilderSSEEvent> {
   // GET /api/builder/{session_id}/stream
-  // 이벤트 타입: phase_progress, sub_agent_start, sub_agent_end,
+  // event type: phase_progress, sub_agent_start, sub_agent_end,
   //             build_preview, error
 }
 ```
 
-**이벤트 타입 (TypeScript):**
+**Event type（TypeScript）：**
 
 ```typescript
 type BuilderSSEEventType =
@@ -342,82 +342,82 @@ type BuilderSSEEvent =
   | { event: 'error'; data: { phase: number; message: string; recoverable: boolean } }
 ```
 
-### 2.8 상태 관리
+### 2.8 State 管理
 
 **Jotai atoms** (`frontend/src/lib/stores/builder-store.ts`):
 
 ```typescript
-// 빌드 세션 상태
+// 构建 session 状态
 export const builderSessionIdAtom = atom<string | null>(null)
 export const builderPhaseStatusesAtom = atom<PhaseStatus[]>(INITIAL_PHASES)
 export const builderCurrentPhaseAtom = atom<number>(0)
 
-// Phase 결과
+// Phase 结果
 export const builderIntentAtom = atom<AgentCreationIntent | null>(null)
 export const builderToolsAtom = atom<ToolRecommendation[]>([])
 export const builderMiddlewaresAtom = atom<MiddlewareRecommendation[]>([])
 export const builderSystemPromptAtom = atom<string>('')
 export const builderDraftConfigAtom = atom<DraftAgentConfig | null>(null)
 
-// 에러
+// 错误
 export const builderErrorAtom = atom<BuildErrorEvent | null>(null)
 
-// 서브에이전트 상태 (Phase 2-5)
+// subagent 状态（Phase 2-5）
 export const builderSubAgentAtom = atom<{ phase: number; name: string } | null>(null)
 ```
 
-### 2.9 라우팅
+### 2.9 Routing
 
-| 경로 | 역할 |
+| 路径 | 作用 |
 |------|------|
-| `/agents/new` | 생성 방법 선택 (기존 유지) |
-| `/agents/new/builder` | Builder UI (신규) |
-| `/agents/new/conversational` | 기존 대화형 (v2 완료 후 삭제) |
+| `/agents/new` | 选择创建方式（保持现有） |
+| `/agents/new/builder` | Builder UI（新增） |
+| `/agents/new/conversational` | 现有对话式界面（v2 完成后删除） |
 
-v2 마이그레이션 기간에는 두 경로가 공존한다.
+v2 迁移期间两条路径共存。
 
-### 2.10 반응형 레이아웃
+### 2.10 响应式布局
 
-| 뷰포트 | 동작 |
+| Viewport | 行为 |
 |--------|------|
-| Desktop (1024px+) | `max-w-2xl mx-auto`, 기존 레이아웃 |
-| Tablet (768-1023px) | `max-w-xl mx-auto`, 동일 레이아웃 |
-| Mobile (360-767px) | `px-4`, Phase Timeline 텍스트 크기 축소, 카드 스택 |
+| Desktop (1024px+) | `max-w-2xl mx-auto`，现有布局 |
+| Tablet (768-1023px) | `max-w-xl mx-auto`，相同布局 |
+| Mobile (360-767px) | `px-4`，缩小 Phase Timeline 文本，card stack |
 
 ---
 
-## 3. Assistant UI (에이전트 설정 대화 패널)
+## 3. Assistant UI（Agent 设置对话 panel）
 
-### 3.1 전체 레이아웃
+### 3.1 整体布局
 
-기존 `fix-agent-dialog.tsx`의 600px 다이얼로그를 에이전트 설정 페이지 내 전체 높이 패널로 교체한다.
+将现有 `fix-agent-dialog.tsx` 的 600px dialog 替换为 agent 设置页面内的全高 panel。
 
-**진입점:** 에이전트 설정 페이지(`/agents/{agentId}/settings`)에서 "AI Assistant" 탭 추가
+**入口：** 在 agent 设置页面（`/agents/{agentId}/settings`）新增“AI Assistant”tab
 
 ```
 +---------------------------------------------------------------+
-| [<] 에이전트 설정 — My Agent                                    |
+| [<] Agent 设置 — My Agent                                    |
 +---------------------------------------------------------------+
-| [기본 정보] [모델] [도구] [트리거] [AI Assistant]               | <- 탭 추가
+| [基本信息] [模型] [工具] [触发器] [AI Assistant]               | <- 新增 tab
 +---------------------------------------------------------------+
 |                                                               |
-|  Assistant 대화 영역                                           |
+|  Assistant 对话区域                                           |
 |  +-----------------------------------------------------------+|
 |  |                                                           ||
-|  | [빈 상태 / 대화 메시지]                                    ||
+|  | [空状态 / 对话消息]                                    ||
 |  |                                                           ||
 |  +-----------------------------------------------------------+|
 |                                                               |
 |  +-----------------------------------------------------------+|
-|  | [입력 영역]                                                ||
+|  | [输入区域]                                                ||
 |  +-----------------------------------------------------------+|
 |                                                               |
 +---------------------------------------------------------------+
 ```
 
-### 3.2 탭 통합
+### 3.2 Tab 集成
 
-기존 설정 페이지의 Tabs에 "AI Assistant" 탭을 추가한다.
+在现有设置页面 Tabs 中新增“AI Assistant”tab。
 
 ```tsx
 <TabsList>
@@ -432,210 +432,210 @@ v2 마이그레이션 기간에는 두 경로가 공존한다.
 </TabsList>
 ```
 
-**대안 (모바일):** 탭이 5개로 늘어나므로, 모바일에서는 스크롤 가능한 `TabsList`로 처리 (기존 `overflow-x-auto scrollbar-none` 스타일 활용).
+**替代方案（移动端）：** tab 增加到 5 个，因此移动端使用可滚动 `TabsList`（复用现有 `overflow-x-auto scrollbar-none` 样式）。
 
-### 3.3 빈 상태 (Empty State)
+### 3.3 空状态（Empty State）
 
-기존 `fix-agent-dialog.tsx`의 빈 상태 패턴을 확장한다.
+扩展现有 `fix-agent-dialog.tsx` 的空状态模式。
 
 ```
 +-----------------------------------------------------------+
 |                                                           |
 |            [SparklesIcon size-10 text-primary/30]          |
 |                                                           |
-|         AI Assistant로 에이전트를 수정하세요                 |
-|     자연어로 요청하면 도구, 프롬프트, 모델 등을              |
-|            자동으로 수정해 드립니다.                         |
+|         使用 AI Assistant 修改 agent                 |
+|     用自然语言提出需求后，工具、prompt、模型等              |
+|            将自动为你修改。                         |
 |                                                           |
-|    [좀 더 친근하게 말하도록 바꿔줘]                          |
-|    [검색 도구를 추가해줘]                                   |
-|    [비용을 줄이고 싶어]                                     |
-|    [시스템 프롬프트를 개선해줘]                              |
+|    [改得说话更亲切一些]                          |
+|    [添加搜索工具]                                   |
+|    [我想降低成本]                                     |
+|    [改进 System prompt]                              |
 |                                                           |
 +-----------------------------------------------------------+
 ```
 
 **Quick suggestion chips:**
 - `rounded-full border px-3 py-1.5 text-xs hover:bg-accent transition-colors cursor-pointer`
-- 클릭 시 입력 필드에 텍스트 삽입 (기존 패턴)
+- 点击后把文本插入输入字段（沿用现有模式）
 
-### 3.4 대화 영역
+### 3.4 对话区域
 
-기존 `fix-agent-dialog.tsx`의 메시지 렌더링을 확장한다.
+扩展现有 `fix-agent-dialog.tsx` 的消息渲染。
 
-**컴포넌트:** `AssistantChatArea`
+**组件：** `AssistantChatArea`
 
-#### 사용자 메시지
+#### 用户消息
 
 ```
                                               +------------------+
-                                              | 검색 도구 추가해줘 |
+                                              | 请添加搜索工具 |
                                               +------------------+
                                                            [UserIcon]
 ```
 
-- 기존 패턴: `bg-primary text-primary-foreground rounded-2xl px-3.5 py-2`
-- 우측 정렬
+- 现有样式：`bg-primary text-primary-foreground rounded-2xl px-3.5 py-2`
+- 右对齐
 
-#### 어시스턴트 메시지
-
-```
-[BotIcon]
-+-----------------------------------------------------------+
-| tavily_search 도구를 추가했습니다.                           |
-| 시스템 프롬프트에도 도구 사용 가이드를 추가했습니다.           |
-+-----------------------------------------------------------+
-```
-
-- 기존 패턴: `bg-muted rounded-2xl px-3.5 py-2.5`
-- `<MarkdownContent>` 사용 (마크다운 렌더링 지원)
-- 좌측 정렬, BotIcon 아바타
-
-#### 도구 실행 결과 인라인 표시
-
-Assistant가 도구를 실행하면 (add_tool, remove_tool, edit_system_prompt 등), SSE 스트리밍 중에 도구 실행 결과를 인라인으로 표시한다.
-
-**컴포넌트:** `AssistantToolAction`
+#### Assistant 消息
 
 ```
 [BotIcon]
 +-----------------------------------------------------------+
-| [도구 실행 결과]                                            |
+| 已添加 tavily_search 工具。                           |
+| 也已在系统提示词中添加工具使用指南。           |
++-----------------------------------------------------------+
+```
+
+- 现有样式：`bg-muted rounded-2xl px-3.5 py-2.5`
+- 使用 `<MarkdownContent>`（支持 Markdown 渲染）
+- 左对齐，BotIcon 头像
+
+#### 内联显示工具执行结果
+
+当 Assistant 执行工具（add_tool、remove_tool、edit_system_prompt 等）时，在 SSE 流式传输过程中内联显示工具执行结果。
+
+**组件：** `AssistantToolAction`
+
+```
+[BotIcon]
++-----------------------------------------------------------+
+| [工具执行结果]                                            |
 | +-------------------------------------------------------+ |
-| | [+] tavily_search 추가됨                    [성공 배지] | |
+| | [+] 已添加 tavily_search                    [成功徽章] | |
 | +-------------------------------------------------------+ |
 | +-------------------------------------------------------+ |
-| | [~] 시스템 프롬프트 수정됨                   [성공 배지] | |
+| | [~] 已修改系统提示词                   [成功徽章] | |
 | +-------------------------------------------------------+ |
 |                                                           |
-| tavily_search 도구를 추가하고, 시스템 프롬프트에            |
-| 도구 사용 가이드를 추가했습니다.                             |
+| 已添加 tavily_search 工具，并在系统提示词中            |
+| 添加了工具使用指南。                             |
 +-----------------------------------------------------------+
 ```
 
-**도구 액션 배지:**
+**工具操作徽章：**
 
-| 액션 | 아이콘 | 배지 색상 |
+| 操作 | 图标 | 徽章颜色 |
 |------|--------|----------|
-| 도구 추가 | PlusIcon | `bg-emerald-500/10 text-emerald-600` |
-| 도구 제거 | MinusIcon | `bg-orange-500/10 text-orange-600` |
-| 프롬프트 수정 | PencilIcon | `bg-blue-500/10 text-blue-600` |
-| 프롬프트 교체 | RefreshCwIcon | `bg-blue-500/10 text-blue-600` |
-| 미들웨어 추가 | PlusIcon + ShieldIcon | `bg-emerald-500/10 text-emerald-600` |
-| 미들웨어 제거 | MinusIcon + ShieldIcon | `bg-orange-500/10 text-orange-600` |
-| 모델 변경 | CpuIcon | `bg-purple-500/10 text-purple-600` |
-| 스케줄 생성/수정 | CalendarIcon | `bg-indigo-500/10 text-indigo-600` |
-| 조회 (읽기 전용) | EyeIcon | `bg-muted text-muted-foreground` |
+| 添加工具 | PlusIcon | `bg-emerald-500/10 text-emerald-600` |
+| 移除工具 | MinusIcon | `bg-orange-500/10 text-orange-600` |
+| 修改提示词 | PencilIcon | `bg-blue-500/10 text-blue-600` |
+| 替换提示词 | RefreshCwIcon | `bg-blue-500/10 text-blue-600` |
+| 添加中间件 | PlusIcon + ShieldIcon | `bg-emerald-500/10 text-emerald-600` |
+| 移除中间件 | MinusIcon + ShieldIcon | `bg-orange-500/10 text-orange-600` |
+| 更改模型 | CpuIcon | `bg-purple-500/10 text-purple-600` |
+| 创建/修改计划任务 | CalendarIcon | `bg-indigo-500/10 text-indigo-600` |
+| 查看（只读） | EyeIcon | `bg-muted text-muted-foreground` |
 
-**성공/실패 표시:**
-- 성공: `CheckCircle2Icon text-emerald-500` + "성공"
-- 실패: `XCircleIcon text-destructive` + 에러 메시지
+**成功/失败显示：**
+- 成功：`CheckCircle2Icon text-emerald-500` + "成功"
+- 失败：`XCircleIcon text-destructive` + 错误消息
 
-**SSE 매핑 (기존 chat SSE 이벤트 재사용):**
-- `tool_call_start` → 도구 이름 + args 표시 (로딩 상태)
-- `tool_call_result` → 결과 업데이트 (성공/실패)
-- `content_delta` → 텍스트 스트리밍
-- `message_end` → 최종 메시지 확정
+**SSE 映射（复用现有 chat SSE 事件）：**
+- `tool_call_start` → 显示工具名称 + args（加载状态）
+- `tool_call_result` → 更新结果（成功/失败）
+- `content_delta` → 文本流式传输
+- `message_end` → 确定最终消息
 
-#### 프롬프트 Diff 표시
+#### 提示词 Diff 显示
 
-`edit_system_prompt` 도구 실행 결과에 diff를 표시한다.
+在 `edit_system_prompt` 工具执行结果中显示 diff。
 
-**컴포넌트:** `PromptDiffDisplay`
+**组件：** `PromptDiffDisplay`
 
 ```
 +-------------------------------------------------------+
-| [~] 시스템 프롬프트 수정됨                              |
-| - "적절히 대응하세요"                                   |  <- 빨간 배경
-| + "다음 단계를 따라 처리하세요: 1. ..."                  |  <- 초록 배경
+| [~] 已修改系统提示词                              |
+| - "请适当地处理"                                   |  <- 红色背景
+| + "请按照以下步骤处理：1. ..."                  |  <- 绿色背景
 +-------------------------------------------------------+
 ```
 
-**스타일:**
-- 삭제 행: `bg-destructive/10 text-destructive line-through`
-- 추가 행: `bg-emerald-500/10 text-emerald-700`
-- 접을 수 있는 `<Collapsible>` — 기본 펼침, 긴 diff는 접힘
+**样式：**
+- 删除行：`bg-destructive/10 text-destructive line-through`
+- 新增行：`bg-emerald-500/10 text-emerald-700`
+- 可折叠 `<Collapsible>` — 默认展开，较长 diff 折叠
 
 ### 3.5 Clarifying Question (ask_clarifying_question)
 
-기존 `OptionCard` 패턴을 재사용한다.
+复用现有 `OptionCard` 模式。
 
-Assistant가 `ask_clarifying_question` 도구를 호출하면, 선택지 카드를 표시한다.
+当 Assistant 调用 `ask_clarifying_question` 工具时，显示选项卡片。
 
 ```
 [BotIcon]
 +-----------------------------------------------------------+
-| 어떤 범위의 수정을 원하시나요?                               |
+| 您希望修改哪个范围？                               |
 +-----------------------------------------------------------+
 
 +-----------------------------------------------------------+
-| ( ) 시스템 프롬프트만 개선                                   |
+| ( ) 仅改进系统提示词                                   |
 +-----------------------------------------------------------+
 +-----------------------------------------------------------+
-| ( ) 도구와 미들웨어도 함께 최적화                            |
+| ( ) 同时优化工具和中间件                            |
 +-----------------------------------------------------------+
 +-----------------------------------------------------------+
-| ( ) 전체 설정을 처음부터 재검토                              |
+| ( ) 从头重新审视全部设置                              |
 +-----------------------------------------------------------+
 +-----------------------------------------------------------+
-| ( ) 직접 입력                                               |
+| ( ) 直接输入                                               |
 +-----------------------------------------------------------+
 
-                                              [보내기 ->]
+                                              [发送 ->]
 ```
 
-**동작:**
-- 옵션 클릭 → 선택 하이라이트 (단일 선택)
-- "직접 입력" 선택 시 → textarea 표시
-- "보내기" 클릭 → 선택된 옵션 텍스트를 메시지로 전송
-- 기존 `OptionCard` 컴포넌트 그대로 재사용 (`multiSelect: false`)
+**行为：**
+- 点击选项 → 高亮所选项（单选）
+- 选择 "直接输入" 时 → 显示 textarea
+- 点击 "发送" → 将所选选项文本作为消息发送
+- 原样复用现有 `OptionCard` 组件（`multiSelect: false`）
 
-### 3.6 입력 영역
+### 3.6 输入区域
 
-기존 `ChatInput` 컴포넌트를 재사용한다.
+复用现有 `ChatInput` 组件。
 
-**차이점:**
-- 파일 첨부(PaperclipIcon) 비활성 (Assistant는 파일 미지원)
-- 모델 표시 불필요 (기존 ChatInput의 modelName prop 생략)
-- 토큰 사용량 표시 (SSE `message_end` 의 usage 데이터)
+**差异：**
+- 禁用文件附件（PaperclipIcon）（Assistant 不支持文件）
+- 无需显示模型（省略现有 ChatInput 的 modelName prop）
+- 显示 token 使用量（SSE `message_end` 的 usage 数据）
 
-### 3.7 SSE 스트리밍
+### 3.7 SSE 流式传输
 
-기존 `stream-chat.ts`를 그대로 재사용한다.
+原样复用现有 `stream-chat.ts`。
 
 **API:** `POST /api/agents/{agent_id}/assistant/message`
 
 ```typescript
-// stream-chat.ts의 streamChat() 패턴과 동일
+// 与 stream-chat.ts 的 streamChat() 模式相同
 // POST body: { content: string }
-// SSE 이벤트: message_start, content_delta, tool_call_start,
+// SSE 事件：message_start, content_delta, tool_call_start,
 //             tool_call_result, message_end, error
 ```
 
-기존 SSE 이벤트 타입과 완전히 동일하므로 별도 스트리밍 함수 불필요.
-`streamChat()` 함수에 엔드포인트 URL만 다르게 전달하면 된다.
+由于与现有 SSE 事件类型完全相同，无需单独的流式函数。
+只需向 `streamChat()` 函数传入不同的端点 URL。
 
 ```typescript
-// 또는 streamAssistant 래퍼
+// 或 streamAssistant 包装器
 export async function* streamAssistant(
   agentId: string,
   content: string,
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
   // POST /api/agents/{agentId}/assistant/message
-  // 나머지는 streamChat과 동일
+  // 其余与 streamChat 相同
 }
 ```
 
-### 3.8 상태 관리
+### 3.8 状态管理
 
 **Jotai atoms** (`frontend/src/lib/stores/assistant-store.ts`):
 
 ```typescript
-// 메시지 히스토리
+// 消息历史
 export const assistantMessagesAtom = atom<AssistantMessage[]>([])
 
-// 스트리밍 상태
+// 流式状态
 export const assistantStreamingAtom = atom<boolean>(false)
 export const assistantStreamingContentAtom = atom<string>('')
 export const assistantToolActionsAtom = atom<AssistantToolAction[]>([])
@@ -648,91 +648,91 @@ export const assistantClarifyingQuestionAtom = atom<ClarifyingQuestion | null>(n
 interface AssistantMessage {
   role: 'user' | 'assistant'
   content: string
-  toolActions?: AssistantToolAction[]  // 도구 실행 결과
+  toolActions?: AssistantToolAction[]  // 工具执行结果
 }
 
 interface AssistantToolAction {
   toolName: string
   summary: string
   success: boolean
-  diff?: { old: string; new: string }  // edit_system_prompt 용
+  diff?: { old: string; new: string }  // 用于 edit_system_prompt
 }
 
 interface ClarifyingQuestion {
   question: string
-  options: string[]  // 3개 + "직접 입력"
+  options: string[]  // 3个 + "直接输入"
 }
 ```
 
-### 3.9 반응형 레이아웃
+### 3.9 响应式布局
 
-| 뷰포트 | 동작 |
+| Viewport | 行为 |
 |--------|------|
-| Desktop (1024px+) | 탭 내 `max-w-2xl mx-auto`, 대화 영역 고정 높이 |
-| Tablet (768-1023px) | 동일 |
-| Mobile (360-767px) | 탭 내 전체 너비, 대화 영역 `flex-1` |
+| Desktop (1024px+) | 标签页内 `max-w-2xl mx-auto`，对话区域固定高度 |
+| Tablet (768-1023px) | 相同 |
+| Mobile (360-767px) | 标签页内全宽，对话区域 `flex-1` |
 
 ---
 
-## 4. 컴포넌트 목록
+## 4. 组件列表
 
-### 4.1 Builder 컴포넌트 (신규)
+### 4.1 Builder 组件（新增）
 
-| 컴포넌트 | 경로 | 설명 |
+| 组件 | 路径 | 说明 |
 |----------|------|------|
-| `BuilderPage` | `app/agents/new/builder/page.tsx` | Builder 전체 페이지 |
-| `BuilderInputSection` | `components/builder/builder-input.tsx` | 자연어 입력 |
-| `BuilderTimeline` | `components/builder/builder-timeline.tsx` | 7단계 타임라인 |
-| `PhaseResultCard` | `components/builder/phase-result-card.tsx` | Phase 결과 카드 래퍼 |
-| `IntentSummaryCard` | `components/builder/intent-summary-card.tsx` | Phase 2 결과 |
-| `ToolRecommendationCards` | `components/builder/tool-recommendation-cards.tsx` | Phase 3 결과 |
-| `MiddlewareRecommendationCards` | `components/builder/middleware-recommendation-cards.tsx` | Phase 4 결과 |
-| `SystemPromptPreview` | `components/builder/system-prompt-preview.tsx` | Phase 5 결과 |
-| `BuilderConfirmation` | `components/builder/builder-confirmation.tsx` | 최종 확인 |
+| `BuilderPage` | `app/agents/new/builder/page.tsx` | Builder 整体页面 |
+| `BuilderInputSection` | `components/builder/builder-input.tsx` | 自然语言输入 |
+| `BuilderTimeline` | `components/builder/builder-timeline.tsx` | 7阶段时间线 |
+| `PhaseResultCard` | `components/builder/phase-result-card.tsx` | Phase 结果卡片包装器 |
+| `IntentSummaryCard` | `components/builder/intent-summary-card.tsx` | Phase 2 结果 |
+| `ToolRecommendationCards` | `components/builder/tool-recommendation-cards.tsx` | Phase 3 结果 |
+| `MiddlewareRecommendationCards` | `components/builder/middleware-recommendation-cards.tsx` | Phase 4 结果 |
+| `SystemPromptPreview` | `components/builder/system-prompt-preview.tsx` | Phase 5 结果 |
+| `BuilderConfirmation` | `components/builder/builder-confirmation.tsx` | 最终确认 |
 
-### 4.2 Assistant 컴포넌트 (신규)
+### 4.2 Assistant 组件（新增）
 
-| 컴포넌트 | 경로 | 설명 |
+| 组件 | 路径 | 说明 |
 |----------|------|------|
-| `AssistantTab` | `app/agents/[agentId]/settings/_components/assistant-tab.tsx` | 설정 페이지 탭 |
-| `AssistantChatArea` | `components/assistant/assistant-chat-area.tsx` | 대화 영역 |
-| `AssistantToolAction` | `components/assistant/assistant-tool-action.tsx` | 도구 실행 결과 |
-| `PromptDiffDisplay` | `components/assistant/prompt-diff-display.tsx` | 프롬프트 diff |
-| `ClarifyingQuestionCard` | `components/assistant/clarifying-question-card.tsx` | 선택지 카드 |
+| `AssistantTab` | `app/agents/[agentId]/settings/_components/assistant-tab.tsx` | 设置页面标签页 |
+| `AssistantChatArea` | `components/assistant/assistant-chat-area.tsx` | 对话区域 |
+| `AssistantToolAction` | `components/assistant/assistant-tool-action.tsx` | 工具执行结果 |
+| `PromptDiffDisplay` | `components/assistant/prompt-diff-display.tsx` | 提示词 diff |
+| `ClarifyingQuestionCard` | `components/assistant/clarifying-question-card.tsx` | 选项卡片 |
 
-### 4.3 재사용 컴포넌트 (기존)
+### 4.3 复用组件（现有）
 
-| 컴포넌트 | 원본 | 재사용 위치 |
+| 组件 | 原始位置 | 复用位置 |
 |----------|------|------------|
 | `OptionCard` | `conversational/page.tsx` | Assistant ClarifyingQuestion |
 | `ToolCard` | `conversational/page.tsx` | Builder Phase 3 |
-| `ChatInput` | `components/chat/chat-input.tsx` | Assistant 입력 |
+| `ChatInput` | `components/chat/chat-input.tsx` | Assistant 输入 |
 | `MarkdownContent` | `components/chat/markdown-content.tsx` | Builder, Assistant |
-| `StreamingMessage` | `components/chat/streaming-message.tsx` | Assistant (패턴 참조) |
-| `PhaseTimeline` | `conversational/page.tsx` | Builder (확장) |
+| `StreamingMessage` | `components/chat/streaming-message.tsx` | Assistant（参考模式） |
+| `PhaseTimeline` | `conversational/page.tsx` | Builder（扩展） |
 
-**리팩토링 필요:** `OptionCard`, `ToolCard`를 `conversational/page.tsx`에서 추출하여 `components/shared/` 로 이동해야 한다. Builder와 Assistant 양쪽에서 재사용하기 위함.
+**需要重构：** 需要从 `conversational/page.tsx` 中提取 `OptionCard`、`ToolCard` 并移动到 `components/shared/`，以便 Builder 和 Assistant 两侧复用。
 
 ---
 
-## 5. 접근성 (a11y)
+## 5. 可访问性 (a11y)
 
-### WCAG 2.1 AA 준수 사항
+### WCAG 2.1 AA 合规事项
 
-| 항목 | 요구사항 | 구현 |
+| 项目 | 要求 | 实现 |
 |------|----------|------|
-| 키보드 네비게이션 | 모든 인터랙티브 요소 Tab 접근 가능 | `tabIndex`, `focus-visible` 스타일 |
-| 스크린 리더 | Phase 상태 변경 알림 | `aria-live="polite"` on Timeline |
-| 색상 대비 | 4.5:1 이상 | 기존 shadcn/ui 토큰 준수 |
-| 포커스 관리 | Phase 완료 시 결과 카드로 포커스 이동 | `useEffect` + `ref.focus()` |
-| IME 지원 | 한글 입력 시 Enter 오작동 방지 | `isComposingRef` (기존 패턴) |
-| 에러 알림 | 빌드 실패 시 알림 | `role="alert"` on error card |
-| 로딩 상태 | 스크린 리더에 로딩 전달 | `aria-busy="true"`, `aria-label` |
+| 键盘导航 | 所有交互元素均可通过 Tab 访问 | `tabIndex`, `focus-visible` 样式 |
+| 屏幕阅读器 | 通知 Phase 状态变化 | Timeline 上使用 `aria-live="polite"` |
+| 颜色对比度 | 4.5:1 以上 | 遵循现有 shadcn/ui token |
+| 焦点管理 | Phase 完成时将焦点移动到结果卡片 | `useEffect` + `ref.focus()` |
+| IME 支持 | 输入韩文时防止 Enter 误触 | `isComposingRef`（现有模式） |
+| 错误通知 | 构建失败时通知 | error card 上使用 `role="alert"` |
+| 加载状态 | 向屏幕阅读器传递加载状态 | `aria-busy="true"`, `aria-label` |
 
-### Phase Timeline aria 속성
+### Phase Timeline aria 属性
 
 ```tsx
-<div role="list" aria-label="빌드 진행 상황">
+<div role="list" aria-label="构建进度">
   <div role="listitem" aria-current={status === 'started' ? 'step' : undefined}>
     <span aria-label={`Phase ${phase.id}: ${phase.label}, ${statusLabel}`} />
   </div>
@@ -741,38 +741,38 @@ interface ClarifyingQuestion {
 
 ---
 
-## 6. 다크/라이트 모드
+## 6. 深色/浅色模式
 
-모든 색상은 CSS 변수 기반 (기존 shadcn/ui 시스템 그대로):
+所有颜色均基于 CSS 变量（沿用现有 shadcn/ui 系统）：
 
-| 용도 | 라이트 | 다크 |
+| 用途 | 浅色 | 深色 |
 |------|--------|------|
-| 완료 배지 | `bg-emerald-100 text-emerald-700` | `bg-emerald-500/20 text-emerald-400` |
-| 에러 배지 | `bg-destructive/10 text-destructive` | 동일 (CSS 변수) |
-| 도구 추가 | `bg-emerald-500/10 text-emerald-600` | 동일 (opacity 기반) |
-| 도구 제거 | `bg-orange-500/10 text-orange-600` | 동일 (opacity 기반) |
-| 프롬프트 diff+ | `bg-emerald-500/10 text-emerald-700` | `text-emerald-400` |
-| 프롬프트 diff- | `bg-destructive/10 text-destructive` | 동일 |
+| 完成徽章 | `bg-emerald-100 text-emerald-700` | `bg-emerald-500/20 text-emerald-400` |
+| 错误徽章 | `bg-destructive/10 text-destructive` | 相同（CSS 变量） |
+| 添加工具 | `bg-emerald-500/10 text-emerald-600` | 相同（基于 opacity） |
+| 移除工具 | `bg-orange-500/10 text-orange-600` | 相同（基于 opacity） |
+| 提示词 diff+ | `bg-emerald-500/10 text-emerald-700` | `text-emerald-400` |
+| 提示词 diff- | `bg-destructive/10 text-destructive` | 相同 |
 
-opacity 기반 색상(`/10`, `/20`)은 다크/라이트 모두에서 잘 작동한다.
+基于 opacity 的颜色（`/10`, `/20`）在深色/浅色模式下都能良好工作。
 
 ---
 
-## 7. 애니메이션
+## 7. 动画
 
-| 요소 | 애니메이션 | 구현 |
+| 元素 | 动画 | 实现 |
 |------|-----------|------|
-| Phase 완료 전환 | fade + scale | `animate-in fade-in duration-200` |
-| 결과 카드 등장 | slide up + fade | `animate-in fade-in slide-in-from-bottom-2 duration-300` |
-| 서브에이전트 스피너 | spin | `Loader2Icon animate-spin` |
-| 스트리밍 커서 | pulse | `animate-pulse bg-primary/60` (기존 패턴) |
-| 도구 실행 배지 | fade in | `animate-in fade-in duration-200` |
+| Phase 完成切换 | fade + scale | `animate-in fade-in duration-200` |
+| 结果卡片出现 | slide up + fade | `animate-in fade-in slide-in-from-bottom-2 duration-300` |
+| 子 Agent 加载动画 | spin | `Loader2Icon animate-spin` |
+| 流式光标 | pulse | `animate-pulse bg-primary/60`（现有模式） |
+| 工具执行徽章 | fade in | `animate-in fade-in duration-200` |
 
-모든 애니메이션은 `prefers-reduced-motion: reduce` 미디어 쿼리를 존중한다 (Tailwind 기본 지원).
+所有动画都遵循 `prefers-reduced-motion: reduce` 媒体查询（Tailwind 默认支持）。
 
 ---
 
-## 8. i18n 키 구조
+## 8. i18n Key 结构
 
 ### Builder
 
@@ -818,29 +818,29 @@ agent.assistant.toast.applied / failed
 
 ---
 
-## 9. 구현 우선순위
+## 9. 实现优先级
 
-| 순서 | 컴포넌트 | 이유 |
+| 顺序 | 组件 | 原因 |
 |------|----------|------|
-| 1 | `BuilderTimeline` | 핵심 UI, Phase 표시 |
-| 2 | `BuilderInputSection` | 기존 코드 재사용, 빠름 |
-| 3 | Phase 결과 카드들 | SSE 연동 전 정적 UI |
-| 4 | `stream-builder.ts` | SSE 클라이언트 |
-| 5 | `BuilderPage` (통합) | 전체 페이지 조립 |
-| 6 | `BuilderConfirmation` | 최종 확인 |
-| 7 | `AssistantTab` | 설정 페이지 탭 통합 |
-| 8 | `AssistantChatArea` | 대화 영역 |
-| 9 | `AssistantToolAction` | 도구 실행 결과 |
-| 10 | `ClarifyingQuestionCard` | OptionCard 재사용 |
+| 1 | `BuilderTimeline` | 核心 UI，显示 Phase |
+| 2 | `BuilderInputSection` | 复用现有代码，快速 |
+| 3 | Phase 结果卡片 | SSE 联动前的静态 UI |
+| 4 | `stream-builder.ts` | SSE 客户端 |
+| 5 | `BuilderPage`（集成） | 组装完整页面 |
+| 6 | `BuilderConfirmation` | 最终确认 |
+| 7 | `AssistantTab` | 集成设置页标签 |
+| 8 | `AssistantChatArea` | 对话区域 |
+| 9 | `AssistantToolAction` | 工具执行结果 |
+| 10 | `ClarifyingQuestionCard` | 复用 OptionCard |
 
 ---
 
-## 10. 기존 코드 마이그레이션 체크리스트
+## 10. 现有代码迁移检查清单
 
-- [ ] `OptionCard`를 `components/shared/option-card.tsx`로 추출
-- [ ] `ToolCard`를 `components/shared/tool-card.tsx`로 추출
-- [ ] `PhaseTimeline`을 `components/shared/phase-timeline.tsx`로 추출 후 7단계 확장
-- [ ] `/agents/new` 페이지에 "AI Builder" 옵션 추가 (기존 "대화형 생성" 옆)
-- [ ] 설정 페이지 Tabs에 "AI Assistant" 탭 추가
-- [ ] `fix-agent-dialog.tsx` → v2 Assistant 완료 후 삭제
-- [ ] `conversational/page.tsx` → v2 Builder 완료 후 삭제
+- [ ] 将 `OptionCard` 提取到 `components/shared/option-card.tsx`
+- [ ] 将 `ToolCard` 提取到 `components/shared/tool-card.tsx`
+- [ ] 将 `PhaseTimeline` 提取到 `components/shared/phase-timeline.tsx` 后扩展为 7 阶段
+- [ ] 在 `/agents/new` 页面添加 "AI Builder" 选项（位于现有 "对话式创建" 旁）
+- [ ] 在设置页 Tabs 中添加 "AI Assistant" 标签
+- [ ] `fix-agent-dialog.tsx` → v2 Assistant 完成后删除
+- [ ] `conversational/page.tsx` → v2 Builder 完成后删除

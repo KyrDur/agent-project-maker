@@ -85,7 +85,7 @@ async function captureAssistantThreadViewportMatrix(page: Page): Promise<void> {
     // pointer events, so only scroll the chat when the rail is inline.
     if (viewport.width >= 1280) {
       const scrollToBottomButton = page.getByRole('button', {
-        name: /맨 아래로 이동|Scroll to bottom/,
+        name: /滚动到底部|Scroll to bottom/,
       })
       if ((await scrollToBottomButton.isVisible()) && (await scrollToBottomButton.isEnabled())) {
         await scrollToBottomButton.click()
@@ -104,7 +104,7 @@ async function captureAssistantThreadViewportMatrix(page: Page): Promise<void> {
 }
 
 async function expectApprovalCardVisible(page: Page): Promise<void> {
-  const approvalCard = page.getByText(/승인이 필요합니다|Approval Required/).last()
+  const approvalCard = page.getByText(/需要批准|Approval Required/).last()
   if (!(await approvalCard.isVisible())) {
     await page.reload()
   }
@@ -291,19 +291,19 @@ test.describe('LangGraph v3 visual scenario matrix', () => {
       await capture(page, '04-mobile-thread.png')
       await page.setViewportSize(DESKTOP_VIEWPORT)
 
-      const tokenButton = page.getByRole('button', { name: /토큰 사용량 보기|Toggle Aria/ }).last()
+      const tokenButton = page.getByRole('button', { name: /查看令牌使用量|Toggle Aria/ }).last()
       await expect(tokenButton).toBeVisible({ timeout: 20_000 })
       await tokenButton.hover()
       const tokenUsageTooltip = page
         .getByRole('tooltip')
-        .filter({ hasText: /토큰 사용량|Token Usage/ })
+        .filter({ hasText: /令牌使用量|Token Usage/ })
       await expect(tokenUsageTooltip).toBeVisible()
       await expect(tokenUsageTooltip).toHaveCSS('opacity', '1')
       await waitForCapturePaint(page)
       await capture(page, '05-token-usage-tooltip.png')
       await page.mouse.move(1, 1)
 
-      await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+      await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
       const artifactRail = page.getByRole('complementary')
       const reportArtifactButton = artifactRail
         .getByRole('button', { name: new RegExp(REPORT_FILE) })

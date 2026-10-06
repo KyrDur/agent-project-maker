@@ -396,7 +396,7 @@ export const mockUsageSummary: UsageSummary = {
 // ── Builder v2 ────────────────────────────────────────────────────
 
 export const mockBuilderDraftConfig: BuilderDraftConfig = {
-  name: '뉴스 에이전트',
+  name: '新闻智能体',
   description: 'Summarizes daily news',
   system_prompt: 'You are a news summarizer.',
   tools: ['Web Search', 'Web Scraper'],
@@ -410,9 +410,9 @@ export const mockBuilderSession: BuilderSession = {
   id: 'builder-session-1',
   status: 'preview',
   current_phase: 7,
-  user_request: '뉴스 요약 에이전트',
+  user_request: '新闻摘要智能体',
   intent: {
-    agent_name: '뉴스 에이전트',
+    agent_name: '新闻智能体',
     agent_description: 'Summarizes daily news',
     primary_task_type: 'research',
     tool_preferences: 'web search',
@@ -439,9 +439,9 @@ export const mockBuilderSession: BuilderSession = {
 export const mockMarketplaceItem: MarketplaceItem = {
   id: 'item-1',
   resource_type: 'skill',
-  name: '이미지 생성',
+  name: '图像生成',
   slug: 'image-generation',
-  description: '이미지를 생성합니다.',
+  description: '生成图像。',
   visibility: 'public',
   status: 'published',
   is_system: false,
@@ -484,7 +484,7 @@ export const mockMarketplaceItemsPage: MarketplaceItemsPage = {
     {
       ...mockMarketplaceItem,
       id: 'item-2',
-      name: '문서 요약',
+      name: '文档摘要',
       slug: 'document-summary',
     },
   ],

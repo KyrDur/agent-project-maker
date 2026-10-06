@@ -290,7 +290,7 @@ CI 파이프라인:
 # 브랜딩
 python scripts/check_branding.py
 
-# 백엔드
+# 后端
 cd backend
 uv run pytest tests/test_cipher.py tests/test_branding.py -v          # M1
 uv run pytest tests/test_credentials.py tests/test_oauth2.py tests/test_tester.py tests/test_external_secrets.py -v  # M2

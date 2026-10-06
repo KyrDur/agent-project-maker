@@ -147,7 +147,7 @@ test.describe('Skill studio IA', () => {
     // 也不应变成 "新技能草稿"（review R 回归守卫）。
     await expect(page.getByTestId('studio-context-bar')).toContainText('Alpha Notes')
     await expect(page.getByTestId('studio-tab-source')).toBeEnabled()
-    await expect(page.getByRole('button', { name: /Alpha Notes 개선 시작/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /开始改进 Alpha Notes/ })).toBeVisible()
     const sessionList = page.getByTestId('builder-session-list')
     await expect(sessionList).toContainText('帮我改进 Alpha Notes')
     await expect(sessionList.getByRole('link').first()).toHaveAttribute(

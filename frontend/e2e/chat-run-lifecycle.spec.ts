@@ -333,7 +333,7 @@ test.describe('Chat run lifecycle API contract', () => {
 
       await waitForRunStatus(request, conversationId, activeRun.id, 'canceled')
       await expect(spinner).toBeHidden({ timeout: 10_000 })
-      await expect(page.getByText(/중단됨|Canceled/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/已取消|Canceled/)).toBeVisible({ timeout: 10_000 })
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])
@@ -386,7 +386,7 @@ test.describe('Chat run lifecycle API contract', () => {
       expect(heartbeatRes.ok()).toBeTruthy()
 
       await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
-      await expect(page.locator('p').filter({ hasText: /응답이 끊어져 일부가 누락/ })).toBeVisible({
+      await expect(page.locator('p').filter({ hasText: /响应中断，部分内容缺失/ })).toBeVisible({
         timeout: 15_000,
       })
       await waitForRunStatus(request, conversationId, seededRun.id, 'stale')

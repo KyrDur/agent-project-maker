@@ -64,11 +64,11 @@ vi.mock('@assistant-ui/react', () => {
         running ? null : <>{children}</>,
     },
     MessagePrimitive: {
-      Content: () => <span>메시지</span>,
+      Content: () => <span>消息</span>,
       // AssistantMessageParts now renders parts via GroupedParts. These action
       // tests don't assert on tool grouping, so a minimal stub that mirrors the
       // old Content text output keeps the message body present.
-      GroupedParts: () => <span>메시지</span>,
+      GroupedParts: () => <span>消息</span>,
     },
     ComposerPrimitive: {
       Root: passthrough,
@@ -113,7 +113,7 @@ vi.mock('@assistant-ui/react', () => {
         composer: { dictation: null, isEditing: true, runConfig: {}, text: '' },
         message: {
           id: 'assistant-message-1',
-          content: [{ type: 'text', text: '메시지' }],
+          content: [{ type: 'text', text: '消息' }],
         },
         thread: { isDisabled: false, messages: [{ id: 'assistant-message-1' }] },
       }),
@@ -189,7 +189,7 @@ describe('AssistantThread message actions', () => {
     const actionButtons = [
       ...screen.getAllByRole('button', { name: '复制' }),
       screen.getByRole('button', { name: '编辑' }),
-      screen.getByRole('button', { name: '再生' }),
+      screen.getByRole('button', { name: '重新生成' }),
       screen.getByRole('button', { name: '反馈向上' }),
       screen.getByRole('button', { name: '反馈向下' }),
     ]

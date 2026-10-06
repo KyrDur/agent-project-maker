@@ -161,7 +161,7 @@ test.describe('Models page', () => {
     await expect(page.getByText('空')).toBeVisible()
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
     await expect(page.getByRole('heading', { name: '添加对话框' })).toBeVisible()
@@ -210,7 +210,7 @@ test.describe('Models page', () => {
     await expect(page.getByText('空')).toBeVisible()
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
 

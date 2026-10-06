@@ -95,7 +95,7 @@ function makeChatDriver(
     const conversationId = await freshConversation(request, csrfHeaders, agentId, title)
     await gotoChat(conversationId)
     await sendMessage(page, prompt)
-    await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+    await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
       timeout: 40_000,
     })
     await page.waitForTimeout(600)
@@ -273,7 +273,7 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
               timeout: 30_000,
             })
             await expect(page.getByText('所有行动已完成', { exact: true })).toBeVisible()
-            await expect(page.getByText(/승인 대기 2건/)).toBeHidden()
+            await expect(page.getByText(/待批准 2 项/)).toBeHidden()
             await waitForCompletedDocxCapture(page)
             await page.waitForTimeout(400)
             await capture(page, WAVE, '08-multi-approved.png')

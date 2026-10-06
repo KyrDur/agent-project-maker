@@ -42,7 +42,7 @@ describe('PublishWizard ACL validation', () => {
     mockPublishSkill.mockResolvedValue({ id: 'item-1' })
   })
 
-  it('restricted에서 입력한 stale ACL은 public 전환 후 제출을 막지 않는다', async () => {
+  it('在 restricted 中输入的 stale ACL 在切换到 public 后不会阻止提交', async () => {
     const user = userEvent.setup()
     render(<PublishWizard resource={skillResource()} open onOpenChange={vi.fn()} />)
 
@@ -64,12 +64,12 @@ describe('PublishWizard ACL validation', () => {
       body: expect.objectContaining({ visibility: 'public', acl_user_ids: [] }),
     })
     expect(
-      screen.queryByText(/유효하지 않은 사용자 ID/),
+      screen.queryByText(/用户 ID 无效/),
     ).not.toBeInTheDocument()
     expect(mockPush).toHaveBeenCalledWith('/marketplace/item-1')
   })
 
-  it('restricted 제출 시 잘못된 UUID는 전용 에러로 차단된다', async () => {
+  it('restricted 提交时，无效 UUID 会被专用错误拦截', async () => {
     const user = userEvent.setup()
     render(<PublishWizard resource={skillResource()} open onOpenChange={vi.fn()} />)
 
@@ -82,7 +82,7 @@ describe('PublishWizard ACL validation', () => {
     await user.click(screen.getByRole('button', { name: '下一步' })) // visibility → confirm
     await user.click(screen.getByRole('button', { name: '发布' }))
 
-    expect(await screen.findByText(/유효하지 않은 사용자 ID/)).toBeInTheDocument()
+    expect(await screen.findByText(/用户 ID 无效/)).toBeInTheDocument()
     expect(mockPublishSkill).not.toHaveBeenCalled()
   })
 })

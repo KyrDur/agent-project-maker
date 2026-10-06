@@ -62,7 +62,7 @@ const user: User = {
   name: 'Test User',
   display_name: '用户',
   avatar_mode: 'initials',
-  avatar_initials: '체',
+  avatar_initials: '切',
   avatar_color: 'violet',
   email: 'test@example.com',
   is_super_user: false,
@@ -80,9 +80,9 @@ describe('UserMenu', () => {
     render(<UserMenu user={user} onLogout={logout} />)
 
     expect(screen.getByText('用户')).toBeInTheDocument()
-    expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
-    expect(screen.getByRole('button', { name: /설정/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /로그아웃/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('用户 个人资料图标')).toHaveTextContent('切')
+    expect(screen.getByRole('button', { name: /设置/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /退出登录/ })).toBeInTheDocument()
     expect(screen.queryByText('管理 API 密钥')).not.toBeInTheDocument()
     expect(screen.queryByText('个人资料设置')).not.toBeInTheDocument()
   })
@@ -90,7 +90,7 @@ describe('UserMenu', () => {
   it('opens settings from the user menu', async () => {
     render(<UserMenu user={user} onLogout={logout} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /설정/ }))
+    await userEvent.click(screen.getByRole('button', { name: /设置/ }))
 
     expect(push).toHaveBeenCalledWith('/settings')
   })
@@ -98,7 +98,7 @@ describe('UserMenu', () => {
   it('keeps logout behavior', async () => {
     render(<UserMenu user={user} onLogout={logout} />)
 
-    await userEvent.click(screen.getByRole('button', { name: /로그아웃/ }))
+    await userEvent.click(screen.getByRole('button', { name: /退出登录/ }))
 
     expect(logout).toHaveBeenCalledTimes(1)
   })

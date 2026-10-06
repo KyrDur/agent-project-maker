@@ -79,7 +79,7 @@ test.describe('MCP server wizard', () => {
     // hydration can lose the dialog state update.
     await expect(page.getByText('空')).toBeVisible()
     await page
-      .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
+      .getByRole('button', { name: /新 MCP 服务器|添加服务器/ })
       .first()
       .click()
 

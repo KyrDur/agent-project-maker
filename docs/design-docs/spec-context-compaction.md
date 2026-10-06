@@ -1,103 +1,103 @@
-# SPEC — 컨텍스트 압축(Compaction) 단일화 + 수동 compact + UI 표현
+# SPEC — Context Compaction 单一化 + 手动 compact + UI 表达
 
-상태: Draft (구현 전 합의용)
-관련: ADR-001(Deep Agent Engine), ADR-012(HiTL Middleware), ADR-019(System LLM), 컨텍스트 게이지(commit 82f8ab32)
-구현 문서: `dev-plan-context-compaction.md`
+状态：Draft（实现前共识用）
+相关：ADR-001(Deep Agent Engine), ADR-012(HiTL Middleware), ADR-019(System LLM), context gauge(commit 82f8ab32)
+实现文档：`dev-plan-context-compaction.md`
 
-> **갱신 (범위·사실 정정)** — 구현 문서에서 다음을 확정/정정했다. 본 SPEC의 일부 서술보다 구현 문서가 우선한다.
-> 1. **자동 압축은 정식 모델(LangChain이 아는 Claude/GPT/Gemini)에선 이미 정상 동작**한다(`model.profile` 보유). **커스텀/`openai_compatible`만 고정 170k fallback으로 임계값이 틀린다** → Phase 0가 교정.
-> 2. **수동 compact는 이번 범위에서 제외(후속 옵션)**. 자동만으로 기능 충분. 권장 범위 = **Phase 0(context_window 단일화) + 자동압축 인라인 마커**(Tier 2).
-> 3. **수동을 붙일 때도 자동 미들웨어 "제거"는 불필요**하다. `create_summarization_tool_middleware`는 도구 레이어만 추가하고 자동은 deepagents 기본이 유지된다(중복 없음, state 공유). 제거는 `model.profile`가 read-only라 임계값 교정을 명시 미들웨어로 해야 할 때의 폴백뿐.
-> 4. context_window 주입은 **옵션 A(프로필 주입)가 기본**, 옵션 B(제외+교체)는 폴백.
-> 5. **엔진은 deepagents `0.7.11`로 갱신됐다.** 압축 원본 경로는 더 이상 thread ID로 파생하지 않고, parent/subagent 기록 충돌을 막는 opaque `/conversation_history/session_<uuid>.md` 형식을 사용한다. UI와 프로토콜은 이 경로를 문자열로 전달하며 파일명 구조에 의존하지 않는다.
+> **更新（范围·事实纠正）** — 实现文档中确认/纠正如下。若与本 SPEC 部分描述冲突，以实现文档优先。
+> 1. **自动 compaction 在正式模型（LangChain 已知 Claude/GPT/Gemini）中已正常工作**（有 `model.profile`）。**仅 custom/`openai_compatible` 使用固定 170k fallback，阈值错误** → Phase 0 修正。
+> 2. **手动 compact 不在本次范围内（后续选项）**。只靠自动已足够。推荐范围 = **Phase 0（context_window 单一化）+ 自动压缩 inline marker**（Tier 2）。
+> 3. **即使加入手动，也无需“移除”自动 middleware**。`create_summarization_tool_middleware` 只新增工具层，自动仍由 deepagents 默认保留（无重复，共享 state）。只有在 `model.profile` read-only、必须通过显式 middleware 修正阈值时，才考虑移除。
+> 4. context_window 注入默认使用**选项 A（profile 注入）**，选项 B（排除+替换）作为 fallback。
+> 5. **Engine 已更新到 deepagents `0.7.11`。** Compaction 原始内容路径不再由 thread ID 派生，而使用避免 parent/subagent 记录冲突的 opaque `/conversation_history/session_<uuid>.md` 格式。UI 与 protocol 将该路径作为字符串传递，不依赖文件名结构。
 
-## 1. 배경 / 문제
+## 1. 背景 / 问题
 
-deepagents `0.7.11`은 `create_deep_agent` 기본 스택에 **`SummarizationMiddleware`를 자동 주입**한다(graph.py). 토큰 사용량이 모델 프로필 기반 임계값을 넘으면 오래된 메시지를 LLM 요약으로 대체하고 원본을 invocation-scoped `/conversation_history/session_<uuid>.md`로 오프로드한다. 우리는 이걸 끄지 않으므로 **자동 압축은 이미 활성**이다.
+deepagents `0.7.11` 会在 `create_deep_agent` 默认栈中**自动注入 `SummarizationMiddleware`**（graph.py）。当 token usage 超过基于 model profile 的阈值时，会用 LLM summary 替换旧消息，并把原文 offload 到 invocation-scoped `/conversation_history/session_<uuid>.md`。我们没有关闭它，因此**自动 compaction 已启用**。
 
-그러나 세 가지 공백이 있다:
+但仍有三个空缺：
 
-1. **컨텍스트 크기 소스가 둘로 갈라져 있고, 우리 쪽은 비어 있다.**
-   - 우리 DB `models.context_window`(컨텍스트 게이지가 읽는 값)는 **seed/UI 어디서도 채워지지 않는다** (`default_models.py`에 `context_window` 0건, 모델 생성/수정 UI에 필드 없음). → 실서비스 전 모델 NULL → **게이지가 전부 "한도 미설정"으로 비활성**.
-   - deepagents 자동 압축은 **LangChain 모델 `.profile["max_input_tokens"]`** 를 쓴다(summarization.py L234). `model_factory`에서 우리가 주입하지 않으므로, 정식 모델(LangChain 프로필 보유)만 85%가 먹고 **`openai_compatible`/커스텀은 프로필 없음 → 보수적 고정 fallback**.
-   - 결과: 게이지 %와 압축 임계값이 **서로 다른(또는 빈) 숫자**라 어긋난다.
+1. **context size source 分裂成两套，而我们这一侧为空。**
+   - 我们 DB 的 `models.context_window`（context gauge 读取的值）在 **seed/UI 中都没有填充**（`default_models.py` 中 `context_window` 为 0 条，模型创建/编辑 UI 无字段）。→ 真实服务前模型为 NULL → **gauge 全部因“未设置上限”而停用**。
+   - deepagents 自动 compaction 使用 **LangChain model `.profile["max_input_tokens"]`**（summarization.py L234）。`model_factory` 未注入我们自己的值，因此正式模型（有 LangChain profile）只有 85% 阈值生效，而 **`openai_compatible`/custom 无 profile → 使用保守固定 fallback**。
+   - 结果：gauge % 与 compaction threshold 使用**不同（或为空）的数字**，彼此错位。
 
-2. **수동 compact가 꺼져 있다.** `compact_conversation` 도구(`SummarizationToolMiddleware`)는 opt-in인데 우리 스택에 없다. 사용자가 "압축해줘"라고 해도 도구가 없어 실행 불가.
+2. **手动 compact 被关闭。** `compact_conversation` 工具（`SummarizationToolMiddleware`）是 opt-in，但我们的 stack 中没有。用户说“帮我压缩”也无法执行。
 
-3. **압축을 알리는 UI가 없다.** streaming/프론트에 압축 표시가 전무 → 자동 압축이 일어나도 사용자는 모른다.
+3. **没有表示 compaction 的 UI。** streaming/前端完全没有压缩标识 → 自动 compaction 发生时用户不知道。
 
-### 공식 권장안(LangChain Deep Agents 문서, Context7 확인)
-- 수동 압축: `create_summarization_tool_middleware(model, backend)` 추가 → `compact_conversation` 도구. **기본적으로 사용자 승인 필요(approval-by-default)**. 자동 압축과 같은 엔진/state 공유.
-- 압축은 `messages` 스트림에 **툴 콜**로 드러난다 → 일반 도구처럼 렌더하는 것이 권장 표현.
-- 임계값은 **model-aware**(컨텍스트 크기 필요) → 공백 #1을 풀어야 정확해진다.
+### 官方推荐方案（LangChain Deep Agents 文档，已用 Context7 确认）
+- 手动 compaction：添加 `create_summarization_tool_middleware(model, backend)` → `compact_conversation` 工具。**默认需要用户批准（approval-by-default）**。与自动 compaction 共享相同 engine/state。
+- Compaction 在 `messages` stream 中以**tool call**出现 → 推荐像普通工具一样渲染。
+- 阈值应 **model-aware**（需要 context size）→ 必须先解决空缺 #1。
 
-## 2. 목표 / 성공 기준
+## 2. 目标 / 成功标准
 
-- [ ] `models.context_window`가 단일 source of truth가 되고, **게이지·자동압축·수동압축이 모두 같은 숫자**를 쓴다.
-- [ ] 사용자가 (a) 대화로 "압축해줘", (b) 컴포저 게이지 옆 **compact 버튼** 두 경로로 수동 압축을 실행할 수 있다.
-- [ ] 압축이 일어나면 UI로 인지 가능하다: 수동=툴 pill+승인 카드, 자동=인라인 "요약됨" 마커 + 원본 보기.
-- [ ] `openai_compatible`/커스텀 모델에서도 압축 임계값이 의도대로 동작(검증 포함).
+- [ ] `models.context_window` 成为单一 source of truth，**gauge·自动 compaction·手动 compaction 全部使用同一数字**。
+- [ ] 用户可通过两条路径执行手动 compaction：(a) 在对话中说“帮我压缩”，(b) composer gauge 旁的 **compact 按钮**。
+- [ ] Compaction 发生时 UI 可感知：手动=tool pill+审批卡，自动=inline“已总结”marker + 查看原文。
+- [ ] 在 `openai_compatible`/custom 模型中 compaction threshold 也按预期工作（含验证）。
 
-### 비목표 (Out of scope)
-- **clear(대화 초기화)**: 기존 **"새 대화"(new conversation)**가 그 의도를 이미 충족 → 별도 in-thread clear는 만들지 않는다. (원하면 게이지 옆에 "새 대화" 단축만 재노출 — 선택)
-- deepagents 버전 업그레이드.
+### 非目标（Out of scope）
+- **clear（重置对话）**：现有**“新对话”（new conversation）**已满足该意图 → 不新增 in-thread clear。（如需要，只重新暴露 gauge 旁“新对话”快捷入口 — 可选）
+- 升级 deepagents 版本。
 
-## 3. 설계 — Phase 0/1/2
+## 3. 设计 — Phase 0/1/2
 
-### Phase 0 — context_window 단일 소스화 (토대, 먼저)
+### Phase 0 — context_window 单一来源化（基础，优先）
 
-가장 중요. 이걸 안 하면 게이지 비활성 + 임계값 들쭉날쭉이라 1·2의 효과가 반감.
+最重要。如果不做，gauge 停用 + threshold 不一致，Phase 1·2 效果会大打折扣。
 
-1. **채우기**
-   - `backend/app/seed/default_models.py`: 정식 모델별 `context_window` seed (예: Claude 200000, GPT-4o 128000, Gemini 1.5/2.x 등). 출처 명시 주석.
-   - 모델 생성/수정 UI(`frontend/.../settings/models`, 백엔드 `schemas/model.py`는 이미 `context_window` 필드 보유)에 **입력 필드 추가** — 운영자가 커스텀/게이트웨이 모델에 직접 지정.
-   - (선택) LangChain 프로필에서 **자동 derive**: 모델 생성 시 `init_chat_model(...).profile["max_input_tokens"]`가 있으면 기본값으로 채우기.
+1. **填充**
+   - `backend/app/seed/default_models.py`：为正式模型 seed `context_window`（例如 Claude 200000、GPT-4o 128000、Gemini 1.5/2.x 等）。注释注明来源。
+   - 模型创建/编辑 UI（`frontend/.../settings/models`，后端 `schemas/model.py` 已有 `context_window` 字段）新增**输入字段** — 运营人员可直接给 custom/gateway 模型设置。
+   - （可选）从 LangChain profile **自动 derive**：创建模型时若 `init_chat_model(...).profile["max_input_tokens"]` 存在，则作为默认值填入。
 
-2. **주입(핵심) — 압축이 우리 숫자를 쓰게 한다.** 다음 중 택1 (구현 시 검증 필요):
-   - **(A) 모델 프로필에 주입**: `model_factory`에서 생성한 LangChain 모델의 `.profile["max_input_tokens"]`를 우리 `context_window`로 설정 → deepagents 자동 압축이 그대로 우리 숫자 사용. *최소 침습이나 `.profile` 설정 가능 여부 확인 필요.*
-   - **(B) 명시 미들웨어로 교체**: 자동 주입된 summarization을 deepagents alias로 제외하고, `create_summarization_middleware(model, backend, SummarizationMiddlewareOptions(trigger=("tokens", int(context_window*0.85)), ...))`를 우리가 직접 추가. *명시적·제어 쉬움. ADR-012의 "auto-injected 회피 + 명시 인스턴스" 패턴과 일관.*
-   - → **권장: (B)** (제어/일관성). `context_window` 없으면 deepagents 기본(프로필/고정 fallback) 유지.
+2. **注入（核心）— 让 compaction 使用我们的数字。** 二选一（实现时需验证）：
+   - **(A) 注入 model profile**：在 `model_factory` 创建的 LangChain model 的 `.profile["max_input_tokens"]` 设置为我们的 `context_window` → deepagents 自动 compaction 直接使用我们的值。*侵入最小，但需确认 `.profile` 是否可设置。*
+   - **(B) 用显式 middleware 替换**：通过 deepagents alias 排除自动注入的 summarization，再由我们显式加入 `create_summarization_middleware(model, backend, SummarizationMiddlewareOptions(trigger=("tokens", int(context_window*0.85)), ...))`。*显式、易控制。与 ADR-012 “规避 auto-injected + 显式实例”模式一致。*
+   - → **推荐：(B)**（控制/一致性）。若无 `context_window`，保持 deepagents 默认（profile/固定 fallback）。
 
-3. **검증**: 주력 모델(Anthropic/OpenAI/openai_compatible)에서 자동 압축이 의도한 토큰에서 트리거되는지 + 게이지 %와 일치하는지 E2E/통합 테스트.
+3. **验证**：在主力模型（Anthropic/OpenAI/openai_compatible）中验证自动 compaction 是否在预期 token 触发 + gauge % 是否一致，使用 E2E/集成测试。
 
-**done-when**: 게이지가 실모델에서 활성 표시 / 압축 트리거 토큰 = `context_window*0.85` / openai_compatible도 정상.
+**done-when**：gauge 在真实模型中启用显示 / compaction trigger token = `context_window*0.85` / openai_compatible 也正常。
 
-### Phase 1 — 수동 compact 도구 기본 켜기 (작은 백엔드)
+### Phase 1 — 默认开启手动 compact 工具（小型后端改动）
 
-- `runtime_component_builder`에 `create_summarization_tool_middleware`(또는 `SummarizationToolMiddleware`) 추가 → `compact_conversation` 도구 노출.
-- approval-by-default라 호출 시 **기존 HiTL 승인 카드가 자동으로 뜬다** → 별도 UI 없이 "압축할까요?" 표현 확보.
-- 게이트: deepagents가 사용량 **~50% 미만이면 도구 사용 차단**(너무 일찍 압축 방지) — 동작 확인.
-- 트리거 모드(스케줄)에선 HiTL 비활성이므로 compact 도구도 자동 승인/생략 정책 결정 필요.
+- 在 `runtime_component_builder` 增加 `create_summarization_tool_middleware`（或 `SummarizationToolMiddleware`）→ 暴露 `compact_conversation` 工具。
+- 因为 approval-by-default，调用时**自动显示现有 HiTL 审批卡** → 无需额外 UI 即可表达“要压缩吗？”。
+- gate：deepagents 在 usage **低于约 50% 时阻止使用工具**（防止过早压缩）— 验证该行为。
+- 在 trigger 模式（schedule）中 HiTL 不启用，因此需要决定 compact 工具自动批准/跳过策略。
 
-**done-when**: 대화로 "압축해줘" → 에이전트가 `compact_conversation` 호출 → 승인 카드 → 승인 시 요약+오프로드 동작.
+**done-when**：对话中说“帮我压缩”→ Agent 调用 `compact_conversation` → 审批卡 → 批准后执行 summary+offload。
 
-### Phase 2 — UI: compact 버튼 + 자동압축 마커
+### Phase 2 — UI：compact 按钮 + 自动 compaction marker
 
-1. **수동 compact UI (대부분 기존 인프라 재사용)**
-   - `compact_conversation` 툴 콜 → **기존 툴 pill**로 렌더. `tool-icons.ts`에 `compact_conversation → 🗜️`(예: `ArchiveIcon`/`Minimize2Icon`) 추가.
-   - 게이지 옆 **compact 버튼**(`context-window-gauge.tsx` 인근): 클릭 → compact 트리거.
-     - 트리거 방식 v1: **방식 A** — 숨은 압축 요청을 에이전트에 전송 → 도구 호출(LLM 턴 1회). v2: 전용 엔드포인트로 턴 없이 직접 실행(후속).
-     - **≥50% 게이트 미만이면 버튼 비활성** + 툴팁("아직 압축할 만큼 차지 않았어요").
-   - 승인 카드 = "압축 진행" 표현. 별도 스피너 불필요(게이지 하락으로 결과 가시화).
+1. **手动 compact UI（主要复用现有基础设施）**
+   - `compact_conversation` tool call → 通过**现有 tool pill**渲染。在 `tool-icons.ts` 增加 `compact_conversation → 🗜️`（例如 `ArchiveIcon`/`Minimize2Icon`）。
+   - gauge 旁增加 **compact 按钮**（`context-window-gauge.tsx` 附近）：点击 → 触发 compact。
+     - v1 触发方式：**方式 A** — 向 Agent 发送隐藏的压缩请求 → 工具调用（消耗 1 次 LLM turn）。v2：专用 endpoint，无需 turn 直接执行（后续）。
+     - **低于 ≥50% gate 时按钮禁用** + tooltip（“还没占用到需要压缩的程度”）。
+   - 审批卡 = “进行压缩”表达。无需额外 spinner（gauge 下降即可看见结果）。
 
-2. **자동 압축(85%) 마커 (신규 감지 필요)**
-   - 자동 압축은 툴 콜이 아니라 **요약 HumanMessage 삽입**으로 드러남(`_is_summary_message`: 내용이 `Here is a summary of the conversation to date` / `<summary>` + `/conversation_history/...` 경로).
-   - 프론트에서 그 메시지를 감지 → **인라인 마커** 렌더: "🗜️ 이전 대화를 요약해 컨텍스트를 정리했어요 · 원본 보기" (원본 = 오프로드 파일을 `read_file`/아티팩트로 열기).
-   - 또는 백엔드 streaming에서 압축 step을 전용 SSE 이벤트로 emit(더 견고하지만 작업 큼) — v2.
+2. **自动 compaction（85%）marker（需要新增检测）**
+   - 自动 compaction 不是 tool call，而是通过**插入 summary HumanMessage**体现（`_is_summary_message`：内容包含 `Here is a summary of the conversation to date` / `<summary>` + `/conversation_history/...` 路径）。
+   - 前端检测该消息 → 渲染**inline marker**：“🗜️ 已总结之前的对话并整理上下文 · 查看原文”（原文 = 通过 `read_file`/artifact 打开 offload 文件）。
+   - 或在后端 streaming 中把 compaction step emit 为专用 SSE event（更稳健但工作量更大）— v2。
 
-**done-when**: 수동 compact가 툴 pill+승인으로 보이고, 자동 압축 후 인라인 마커가 뜨며 원본 열람 가능.
+**done-when**：手动 compact 显示 tool pill+审批，自动 compaction 后显示 inline marker 且可查看原文。
 
-## 4. 영향 파일 (예상)
-- 백엔드: `seed/default_models.py`, `schemas/model.py`(필드 이미 있음), `routers/models` (생성/수정), `agent_runtime/model_factory.py` 또는 `runtime_component_builder.py`(주입/미들웨어), `agent_runtime/middleware_registry.py`(summarization 제외/명시), streaming(자동압축 이벤트, v2).
-- 프론트: `settings/models` 폼(필드), `lib/chat/tool-icons.ts`(compact 아이콘), `context-window-gauge.tsx`/`assistant-thread.tsx`(버튼), 요약 메시지 감지 + 인라인 마커 컴포넌트, i18n.
+## 4. 影响文件（预计）
+- 后端：`seed/default_models.py`、`schemas/model.py`（已有字段）、`routers/models`（创建/编辑）、`agent_runtime/model_factory.py` 或 `runtime_component_builder.py`（注入/middleware）、`agent_runtime/middleware_registry.py`（summarization 排除/显式）、streaming（自动 compaction event，v2）。
+- 前端：`settings/models` form（字段）、`lib/chat/tool-icons.ts`（compact icon）、`context-window-gauge.tsx`/`assistant-thread.tsx`（按钮）、summary 消息检测 + inline marker component、i18n。
 
-## 5. 열린 결정 (구현 전 확인)
-- Phase 0 주입: (A) 프로필 주입 vs (B) 명시 미들웨어 — 권장 (B), 단 `.profile` 가능 여부로 (A) 재검토.
-- compact 버튼 트리거: v1 방식 A(턴 소모) 수용 가능한가, 바로 전용 엔드포인트(B)로 갈까.
-- 트리거(스케줄) 모드에서 compact 도구/자동압축 정책.
-- 자동압축 마커: 메시지 감지(가벼움) vs 전용 SSE 이벤트(견고) — v1은 감지.
+## 5. 待定决策（实现前确认）
+- Phase 0 注入：(A) profile 注入 vs (B) 显式 middleware — 推荐 (B)，但需根据 `.profile` 可设置性重新评估 (A)。
+- compact 按钮触发：是否可接受 v1 方式 A（消耗 turn），还是直接做专用 endpoint(B)。
+- trigger（schedule）模式下 compact 工具/自动 compaction 策略。
+- 自动 compaction marker：消息检测（轻量）vs 专用 SSE event（稳健）— v1 使用检测。
 
-## 6. 검증 계획
-- 단위: context_window 주입/임계값 계산, 요약 메시지 감지 로직, tool-icon 매핑.
-- 통합/E2E: 실모델에서 자동 압축 트리거 토큰 = 기대값, 게이지 일치; "압축해줘" → 승인 카드 → 오프로드 파일 생성; compact 버튼 ≥50% 게이트; 자동압축 후 인라인 마커 + 원본 열람.
-- 캡쳐: 수동 compact(툴 pill+승인), 자동압축 마커, 게이지 하락 before/after.
+## 6. 验证计划
+- 单元：context_window 注入/threshold 计算、summary 消息检测逻辑、tool-icon mapping。
+- 集成/E2E：真实模型自动 compaction trigger token = 预期值、与 gauge 一致；“帮我压缩”→审批卡→生成 offload 文件；compact 按钮 ≥50% gate；自动 compaction 后 inline marker + 原文查看。
+- Capture：手动 compact（tool pill+审批）、自动 compaction marker、gauge 下降 before/after。

@@ -31,7 +31,7 @@ cd frontend && pnpm dev &
 - CUSTOM tool 생성은 **현재 경로에서 connection_id required** (schemas/tool.py L31) — 이 시나리오는 기존 fail-closed tool 혹은 drive-by로 생성된 tool을 Binding dialog로 수리하는 케이스 대상.
 - 테스트 목적으로 직접 tool row를 생성: `psql -c "INSERT INTO tools (id, user_id, type, name, created_at) VALUES (gen_random_uuid(), (SELECT id FROM users LIMIT 1), 'custom', 'Test First-Bind', now());"`
 
-**단계**:
+**步骤**：
 1. `/tools` 페이지 → "Test First-Bind" tool 카드가 "연결 없음" 상태로 표시
 2. Binding 버튼 클릭 → Credential Select dialog 오픈 (`<CustomBody>`)
 3. 기존 credential 선택 OR "새 credential 만들기" → 저장
@@ -70,7 +70,7 @@ INSERT INTO tools (id, user_id, type, name, connection_id, created_at)
 VALUES (gen_random_uuid(), (SELECT id FROM users LIMIT 1), 'mcp', 'test_mcp_tool', '<conn-id>', now());
 ```
 
-**단계**:
+**步骤**：
 1. `/tools` → MCP 그룹 섹션의 "Test MCP" 카드 펼침
 2. Binding 버튼 → `<McpBody>` dialog 오픈
 3. credential select에서 다른 credential로 변경 → 저장
@@ -128,7 +128,7 @@ curl -sS -X PATCH "http://localhost:8001/api/tools/$PREBUILT_ID" \
 
 **목표**: 유저 A의 tool에 유저 B의 connection_id를 PATCH → 404 (info leak 방지).
 
-**단계**:
+**步骤**：
 ```bash
 # 유저 A의 tool
 USER_A_TOOL=$(docker exec natural-mold-postgres-1 psql -U moldy -d moldy -tAc \
@@ -162,7 +162,7 @@ curl -sS -X PATCH "http://localhost:8001/api/tools/$USER_A_TOOL" \
 
 **목표**: m13 적용 후 스키마에서 `tools.mcp_server_id` + `mcp_servers` 완전 제거 확인 + FK 이름/존재 확정.
 
-**단계**:
+**步骤**：
 ```bash
 # (1) tools.mcp_server_id 컬럼 없음
 docker exec natural-mold-postgres-1 psql -U moldy -d moldy -c "\d tools" | grep mcp_server_id
@@ -212,7 +212,7 @@ uv run alembic downgrade -1 && uv run alembic upgrade head
 - 등록 시 backend `extra_config.env_vars = {<header>: ${credential.<field>}}`
   템플릿으로 저장 → discovery probe와 chat runtime이 동일 헤더로 호출
 
-**단계**:
+**步骤**：
 1. `/tools` 페이지 → 헤더의 "도구 추가" 버튼 → AddToolDialog 오픈
 2. 상단 Tabs에서 **"MCP 서버"** 탭 선택 (기본값)
 3. 표시 이름 + 서버 URL 입력

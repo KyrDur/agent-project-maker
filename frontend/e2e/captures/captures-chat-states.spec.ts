@@ -152,7 +152,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(conversationId, 'E2E_ASK_USER_FRUIT')
           await page
-            .getByText(/어떤 과일이 좋아요|🍎 사과|입력이 필요합니다/)
+            .getByText(/喜欢什么水果|🍎 苹果|需要输入/)
             .last()
             .waitFor({ state: 'visible', timeout: 30_000 })
             .catch(() => {})
@@ -200,7 +200,7 @@ test.describe('Wave 4 — chat state captures', () => {
         title: 'HITL approval card',
         run: async (conversationId) => {
           await goAndSend(conversationId, '使用工具创建文档。批准后执行。')
-          await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+          await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
             timeout: 40_000,
           })
           await page.waitForTimeout(600)
@@ -212,7 +212,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(conversationId, 'E2E_HITL_MULTI')
           await expect(
-            page.getByText(/승인 대기 \d+건|pending approvals/).last(),
+            page.getByText(/待批准 \d+项|pending approvals/).last(),
           ).toBeVisible({ timeout: 40_000 })
           await page.waitForTimeout(600)
         },

@@ -3,15 +3,15 @@ import { builderApi } from '@/lib/api/builder'
 import { mockBuilderSession, mockAgent } from '../../mocks/fixtures'
 
 describe('builderApi', () => {
-  it('start()는 POST /api/builder를 호출하고 세션을 반환한다', async () => {
-    const session = await builderApi.start('뉴스 요약 에이전트')
+  it('start() 调用 POST /api/builder 并返回 session', async () => {
+    const session = await builderApi.start('新闻摘要智能体')
 
     expect(session.id).toBe(mockBuilderSession.id)
-    expect(session.user_request).toBe('뉴스 요약 에이전트')
+    expect(session.user_request).toBe('新闻摘要智能体')
     expect(session.status).toBe('building')
   })
 
-  it('getSession()은 GET /api/builder/{id}로 세션을 조회한다', async () => {
+  it('getSession() 通过 GET /api/builder/{id} 查询 session', async () => {
     const session = await builderApi.getSession('builder-session-1')
 
     expect(session.id).toBe('builder-session-1')
@@ -20,7 +20,7 @@ describe('builderApi', () => {
     expect(session.draft_config).not.toBeNull()
   })
 
-  it('confirm()은 POST /api/builder/{id}/confirm으로 에이전트를 생성한다', async () => {
+  it('confirm() 通过 POST /api/builder/{id}/confirm 创建智能体', async () => {
     const agent = await builderApi.confirm('builder-session-1')
 
     expect(agent.id).toBe('agent-from-builder')

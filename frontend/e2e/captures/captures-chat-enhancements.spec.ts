@@ -80,7 +80,7 @@ test.describe('Wave 6 — chat enhancement captures', () => {
         title: 'ask_user single',
         run: async (cid) => {
           await send(cid, 'E2E_ASK_USER_FRUIT')
-          await page.getByText(/어떤 과일이 좋아요|🍎 사과/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+          await page.getByText(/喜欢什么水果|🍎 苹果/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
           await page.waitForTimeout(500)
         },
       },
@@ -89,7 +89,7 @@ test.describe('Wave 6 — chat enhancement captures', () => {
         title: 'ask_user multi-select',
         run: async (cid) => {
           await send(cid, 'E2E_ASK_USER_MULTI')
-          await page.getByText(/복수 선택|러닝|클라이밍/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+          await page.getByText(/多选|跑步|攀岩/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
           await page.waitForTimeout(500)
         },
       },
@@ -98,7 +98,7 @@ test.describe('Wave 6 — chat enhancement captures', () => {
         title: 'ask_user free text',
         run: async (cid) => {
           await send(cid, 'E2E_ASK_USER_TEXT')
-          await page.getByText(/톤을 자유롭게|어떤 톤으로/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+          await page.getByText(/自由选择语气|用什么语气/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
           await page.waitForTimeout(500)
         },
       },
@@ -107,7 +107,7 @@ test.describe('Wave 6 — chat enhancement captures', () => {
         title: 'ask_user question flow',
         run: async (cid) => {
           await send(cid, 'E2E_ASK_USER_FLOW')
-          await page.getByText(/여행 선호 조사|어디로 떠나/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+          await page.getByText(/旅行偏好调查|去哪里旅行/).last().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
           await page.waitForTimeout(500)
         },
       },
@@ -118,7 +118,7 @@ test.describe('Wave 6 — chat enhancement captures', () => {
           await send(cid, 'E2E_SEARCH_GROUP')
           await settleStream(page)
           // Expand the collapsed search group to reveal the source list.
-          const groupHeader = page.getByText(/웹 검색|검색|tavily/).first()
+          const groupHeader = page.getByText(/网页搜索|搜索|tavily/).first()
           await groupHeader.click().catch(() => {})
           await page.waitForTimeout(800)
         },

@@ -13,7 +13,7 @@
 
 **축소 사유**: 베조스 S1 분석에서 `connection-binding-dialog.tsx:479`가 `useUpdateMCPServer`를 라이브 호출 중임을 확인. M5가 의도적으로 옵션 D를 M6로 넘겼으나 사용자가 옵션 D는 M6.1로 분리하기로 함 → `mcp_servers` 관련 drop 불가능 → M6는 **auth_config/credential_id/agent_tools.config 만** drop.
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
 | M6 스코프 | **축소 cleanup** — `tools.auth_config` + `tools.credential_id` + `agent_tools.config` drop. MCP 관련은 보류 |
 | `mcp_servers` 테이블 drop | **보류 → M6.1** (옵션 D 선행 필요) |

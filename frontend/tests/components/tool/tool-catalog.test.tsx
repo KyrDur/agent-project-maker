@@ -5,8 +5,8 @@ import type { ToolDefinition } from '@/lib/types/tool'
 const definitions: ToolDefinition[] = [
   {
     key: 'naver_news',
-    display_name: '네이버 뉴스 검색',
-    description: '뉴스를 검색합니다.',
+    display_name: 'Naver 新闻搜索',
+    description: '搜索新闻。',
     icon_id: 'search',
     category: 'search',
     parameters: [],
@@ -16,7 +16,7 @@ const definitions: ToolDefinition[] = [
 ]
 
 describe('ToolCatalog', () => {
-  it('uses Korean catalog labels and credential badge', () => {
+  it('uses Chinese catalog labels and credential badge', () => {
     render(
       <ToolCatalog
         category="all"
@@ -28,7 +28,7 @@ describe('ToolCatalog', () => {
     )
 
     expect(screen.queryByText('类别标签')).not.toBeInTheDocument()
-    expect(screen.getByText('所需凭据')).toBeInTheDocument()
+    expect(screen.getByText('需要凭据')).toBeInTheDocument()
   })
 
   it('uses template-style card treatment for catalog tools', () => {
@@ -42,7 +42,7 @@ describe('ToolCatalog', () => {
       />,
     )
 
-    const card = screen.getByRole('button', { name: /네이버 뉴스 검색/ })
+    const card = screen.getByRole('button', { name: /Naver 新闻搜索/ })
 
     expect(card).toHaveClass('moldy-resource-card')
     expect(card.className).toMatch(/\bmoldy-tone-card-sky\b/)
@@ -55,7 +55,7 @@ describe('ToolCatalog', () => {
         category="all"
         definitions={definitions}
         isLoading={false}
-        search="없는 도구"
+        search="不存在的工具"
         onPick={vi.fn()}
       />,
     )

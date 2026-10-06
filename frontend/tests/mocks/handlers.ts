@@ -96,7 +96,7 @@ export const handlers = [
     return HttpResponse.json(mockToolList)
   }),
 
-  // ``POST /api/tools`` (이전 ``/api/tools/custom``)로 통합. definition_key 기반.
+  // 统一到 ``POST /api/tools``（此前为 ``/api/tools/custom``）。基于 definition_key。
   http.post(`${API_BASE}/api/tools`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     return HttpResponse.json({
@@ -192,8 +192,8 @@ export const handlers = [
   }),
 
   http.get(`${API_BASE}/api/conversations/:id/messages`, () => {
-    // ``conversationsApi.messages``는 MessagesEnvelope를 받아 ``messages``만
-    // 반환하므로 mock도 envelope 형태로 맞춰 transform 경로까지 검증되게 한다.
+    // ``conversationsApi.messages`` 接收 MessagesEnvelope 并只返回 ``messages``，
+    // 因此 mock 也应匹配 envelope 形态，以便连 transform 路径一起验证。
     return HttpResponse.json({
       messages: mockMessageList,
       active_tip_message_id: null,

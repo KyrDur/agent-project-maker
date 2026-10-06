@@ -5,7 +5,7 @@ Moldy에서 Pre-built 도구를 사용하려면 각 서비스의 API 키를 발�
 
 ---
 
-## 목차
+## 目录
 
 1. [Naver Search 도구](#1-naver-search-도구)
 2. [Google Search 도구](#2-google-search-도구)

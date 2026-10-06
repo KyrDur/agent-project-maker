@@ -23,9 +23,9 @@ function item(overrides: Partial<MarketplaceItem> = {}): MarketplaceItem {
   return {
     id: 'item-1',
     resource_type: 'skill',
-    name: '이미지 생성',
+    name: '图像生成',
     slug: 'image-generation',
-    description: '이미지를 생성합니다.',
+    description: '生成图像。',
     visibility: 'public',
     status: 'published',
     is_system: false,
@@ -125,7 +125,7 @@ describe('marketplace Korean copy', () => {
   it('uses the template-inspired pastel marketplace card treatment', () => {
     render(<MarketplaceCard item={item()} />)
 
-    const card = screen.getByText('이미지 생성').closest('article')
+    const card = screen.getByText('图像生成').closest('article')
     const iconShell = card?.querySelector('svg')?.parentElement
 
     expect(card).toHaveClass('moldy-resource-card')

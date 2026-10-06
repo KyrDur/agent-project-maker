@@ -134,7 +134,7 @@
 - **OpenRouter pricing 우선** + **LiteLLM 카탈로그 fallback** + **수동 override**
 - **multi-provider Gateway 정의**: OpenAI Compatible / OpenRouter (선택: Vercel AI Gateway)
 
-### 백엔드
+### 后端
 - [ ] `app/services/model_metadata.py` 복원 (LiteLLM enrich, 옛 코드 차용)
 - [ ] `app/services/model_filtering.py` 신규 — `should_include_model(provider, model_id, is_custom_api)`
 - [ ] `app/services/model_discovery.py` 재작성 — Credential 기반 dispatch + isCustomAPI 분기
@@ -176,7 +176,7 @@ python scripts/check_branding.py
 - **`model_connection_test.tsx`**: 자동 실행 + raw req/resp + Curl 명령어 + Clean error
 - **`mcp_registry.json`**: 미리 등록된 MCP 서버 카탈로그 (GitHub/Jira/Linear/Slack/Notion)
 
-### 백엔드
+### 后端
 - [x] `services/model_test.py` 신규 — `run_model_test()`, clean-error 정규식, classify, masked curl
 - [x] `services/mcp_registry.py` 신규 — JSON lazy 로더
 - [x] `data/mcp_server_registry.json` 신규 — 5종 (github, linear, jira, slack, notion)

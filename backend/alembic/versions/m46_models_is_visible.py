@@ -4,15 +4,15 @@ Revision ID: m46_models_is_visible
 Revises: m45_system_llm_settings
 Create Date: 2026-05-28
 
-사내 환경에서는 당분간 ``openai_compatible`` provider 한 종류로만 운영하지만
-시드로 들어온 ``anthropic`` / ``openai`` / ``google`` 모델이 모델 페이지와
-에이전트 생성 셀렉터에서 그대로 노출되어 혼선을 일으킨다. 모델 row 자체는
-나중에 다시 켤 가능성이 있으므로 삭제하지 않고 visibility 플래그로 가린다.
+内部环境暂时只使用 ``openai_compatible`` 这一种 provider，
+初始化导入的 ``anthropic`` / ``openai`` / ``google`` 模型会在模型页面和
+智能体创建选择器中直接显示，造成混淆。模型 row 本身
+以后可能重新启用，因此不删除，而是通过 visibility 标志隐藏。
 
-마이그레이션은 ``is_visible BOOL NOT NULL DEFAULT true`` 컬럼을 추가하고, 기존
-row 중 ``provider <> 'openai_compatible'`` 인 것을 일괄 ``false`` 로 내린다.
-숨겨지는 row 가 우연히 ``is_default=true`` 였다면 default 도 함께 해제해
-"기본 모델이 숨겨져 있다"는 모순 상태를 막는다.
+迁移添加 ``is_visible BOOL NOT NULL DEFAULT true`` 列，并将现有
+row 中 ``provider <> 'openai_compatible'`` 的记录统一设为 ``false``。
+若被隐藏的 row 恰好 ``is_default=true``，则同时取消 default，
+"默认模型被隐藏"这一矛盾状态被避免。
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ def upgrade() -> None:
     bind.execute(
         sa.text("UPDATE models SET is_visible = false WHERE provider <> 'openai_compatible'")
     )
-    # 기본 모델이 숨김 처리되면 모델 셀렉터가 비어버린다. 두 플래그가
-    # 함께 true 인 상태만 유효하도록 default 를 함께 해제.
+    # 若默认模型被隐藏，模型选择器会变空。为保证两个标志
+    # 同时为 true 的状态才有效，因此一并取消 default。
     bind.execute(
         sa.text(
             "UPDATE models SET is_default = false WHERE is_default = true AND is_visible = false"

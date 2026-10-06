@@ -11,7 +11,7 @@
 
 ## 스코프 합의 (2026-04-19, 사용자 승인)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
 | 스코프 | M5 = **프론트엔드 전용** (5개 항목). `agent_tools.connection_id` override는 M5.5로 분리 |
 | /connections 재편 깊이 | **Connection 중심 전면 재편** — Credential 카드 제거, Connection이 1급. Credential은 Connection 상세 안에서만 노출 |

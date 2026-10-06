@@ -4,26 +4,26 @@ Revision ID: m34_message_events_streaming_status
 Revises: m33_add_linked_message_ids
 Create Date: 2026-05-03
 
-W3-out M2 — partial flush 도입에 따른 turn 상태 추적.
+W3-out M2 — 跟踪引入 partial flush 后的 turn 状态。
 
-Schema 변경
-- ``status VARCHAR(20) NOT NULL DEFAULT 'completed'`` + CHECK 제약
+Schema 变更
+- ``status VARCHAR(20) NOT NULL DEFAULT 'completed'`` + CHECK 约束
   (``status IN ('streaming','completed','failed')``).
-  CHECK는 alembic-friendly + SQLite/Postgres 양쪽에서 동일하게 동작 (PG ENUM은
-  in-flight ALTER 비용이 비싸고 SQLite에는 없어서 회피).
-- ``updated_at TIMESTAMP NOT NULL DEFAULT now()`` — partial flush 마다 갱신.
+  CHECK 保持 alembic-friendly，并在 SQLite/Postgres 两端行为一致（PG ENUM 的
+  in-flight ALTER 成本高且 SQLite 不支持，因此避开）。
+- ``updated_at TIMESTAMP NOT NULL DEFAULT now()`` — 每次 partial flush 更新。
 - ``idx_message_events_status (conversation_id, status)`` — in-flight turn
-  조회(M3 GET resume) 최적화.
+  优化查询（M3 GET resume）。
 
-기존 row 안전성
-- ``DEFAULT 'completed' NOT NULL`` 추가는 PG 11+ 메타데이터 변경만으로 끝남
-  (테이블 rewrite 없음). 기존 m33 이전 row는 ``status='completed'``,
-  ``updated_at=now()`` 로 채워져 W6 / 기존 trace 조회 코드와 호환.
+现有 row 安全性
+- 添加 ``DEFAULT 'completed' NOT NULL`` 在 PG 11+ 中仅涉及元数据变更
+  （无需表 rewrite）。现有 m33 之前的 row 会填充为 ``status='completed'``，
+  ``updated_at=now()``，与 W6 / 现有 trace 查询代码兼容。
 
 Production note
-- 큰 운영 테이블에 적용 시 인덱스는 ``CREATE INDEX CONCURRENTLY`` 로 바꿔서
-  락을 피해야 한다. alembic transactional context는 CONCURRENTLY를 지원하지
-  않으므로 여기서는 일반 CREATE INDEX. 운영 절차에서 별도 처리 권장.
+- 应用于大型生产表时，应将索引改为 ``CREATE INDEX CONCURRENTLY``
+  以避免锁。alembic transactional context 不支持 CONCURRENTLY，
+  因此这里使用普通 CREATE INDEX。建议在生产流程中单独处理。
 """
 
 from __future__ import annotations
@@ -53,9 +53,9 @@ def _now_default() -> sa.TextClause:
 def upgrade() -> None:
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
-        # PG: native ALTER TABLE — fast default(메타데이터만) + CHECK 제약 +
-        # CONCURRENTLY index. autocommit_block으로 트랜잭션을 일시 종료해야
-        # CREATE INDEX CONCURRENTLY 가 허용된다.
+        # PG: native ALTER TABLE — fast default（仅元数据）+ CHECK 约束 +
+        # CONCURRENTLY index。必须通过 autocommit_block 暂时结束事务，
+        # 才允许 CREATE INDEX CONCURRENTLY。
         op.add_column(
             "message_events",
             sa.Column(
@@ -87,9 +87,9 @@ def upgrade() -> None:
                 )
             )
     else:
-        # SQLite: ALTER TABLE 은 ADD COLUMN 만 native 지원. CHECK 제약과
-        # nullable 컬럼 추가 일부는 ``batch_alter_table`` 의 copy-and-move
-        # 로 우회. 인덱스는 일반 create_index (CONCURRENTLY 미지원).
+        # SQLite：ALTER TABLE 仅 native 支持 ADD COLUMN。CHECK 约束和
+        # 部分 nullable 列添加通过 ``batch_alter_table`` 的 copy-and-move
+        # 绕过。索引使用普通 create_index（不支持 CONCURRENTLY）。
         with op.batch_alter_table("message_events") as batch_op:
             batch_op.add_column(
                 sa.Column(
@@ -121,14 +121,14 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade — drops status, updated_at, CHECK, and index.
 
-    ⚠️ NON-RECOVERABLE DATA LOSS: 'streaming'/'failed' 상태로 남은 row의
-    상태 정보가 영구 소실된다. partial flush 진행 중 머지된 운영 환경에서
-    이 downgrade를 호출하면 해당 row들의 status가 사라져 W3-out resume
-    경로의 stale 마커 분기가 무효화된다. forward-only 운영을 권장.
+    ⚠️ NON-RECOVERABLE DATA LOSS：仍处于 'streaming'/'failed' 状态的 row，
+    其状态信息会永久丢失。在已合入 partial flush 的生产环境中
+    调用此 downgrade，会使这些 row 的 status 消失，导致 W3-out resume
+    路径中的 stale 标记分支失效。建议采用 forward-only 运维。
 
-    SQLite 호환: ``op.drop_constraint`` 와 ``op.drop_column`` 은 SQLite의
-    ALTER TABLE 한계를 ``batch_alter_table`` 로 우회한다. PG는 native
-    ALTER 사용.
+    SQLite 兼容：``op.drop_constraint`` 与 ``op.drop_column`` 通过
+    ``batch_alter_table`` 绕过 SQLite 的 ALTER TABLE 限制。PG 使用 native
+    ALTER。
     """
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
@@ -138,9 +138,9 @@ def downgrade() -> None:
         op.drop_column("message_events", "updated_at")
         op.drop_column("message_events", "status")
     else:
-        # SQLite는 ALTER TABLE DROP CONSTRAINT / DROP COLUMN을 지원하지
-        # 않으므로 batch_alter_table로 테이블 재생성. 인덱스는 CONCURRENTLY
-        # 미지원이라 일반 drop.
+        # SQLite 不支持 ALTER TABLE DROP CONSTRAINT / DROP COLUMN，
+        # 因此用 batch_alter_table 重建表。索引不支持 CONCURRENTLY，
+        # 所以使用普通 drop。
         op.drop_index(_INDEX_NAME, table_name="message_events")
         with op.batch_alter_table("message_events") as batch_op:
             batch_op.drop_constraint(_CHECK_NAME, type_="check")

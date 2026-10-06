@@ -211,7 +211,7 @@ function countMessages(
 
 function tokenUsageButtons(page: Page) {
   return page.locator('main').getByRole('button', {
-    name: /토큰 사용량 보기|Token Usage|Toggle Aria/,
+    name: /查看令牌使用量|Token Usage|Toggle Aria/,
   })
 }
 
@@ -261,13 +261,13 @@ test.describe('LangGraph v3 regression coverage', () => {
 
       const runId = await waitForActiveRun(request, setup.conversationId)
       await waitForRunStatus(request, setup.conversationId, runId, 'interrupted')
-      await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+      await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
         timeout: 30_000,
       })
       await expect(page.locator('body')).not.toContainText(SECRET_TOOL_ARG_VALUE)
 
       await page.reload()
-      await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+      await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
         timeout: 30_000,
       })
       await expect(page.locator('body')).not.toContainText(SECRET_TOOL_ARG_VALUE)
@@ -363,7 +363,7 @@ test.describe('LangGraph v3 regression coverage', () => {
         'Render delegated subagent progress',
       )
       await page.reload()
-      await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+      await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
         timeout: 30_000,
       })
       await approveExecuteInSkill(page)

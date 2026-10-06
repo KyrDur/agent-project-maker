@@ -141,7 +141,7 @@ test.describe('Model connection test', () => {
     await expect(page.getByRole('heading', { name: 'GPT-4o mini 测试' })).toBeVisible()
 
     // Success card
-    await expect(page.getByText(/연결 성공/)).toBeVisible()
+    await expect(page.getByText(/连接成功/)).toBeVisible()
     await expect(page.getByText(/Hello! Connection works/)).toBeVisible()
     await expect(page.getByText(/423 ms/)).toBeVisible()
 
@@ -161,7 +161,7 @@ test.describe('Model connection test', () => {
     await page.goto('/models')
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
     await page.getByRole('tab', { name: '定制' }).click()
@@ -172,7 +172,7 @@ test.describe('Model connection test', () => {
     await page.getByTestId('custom-test-button').click()
 
     // Error card with 认证失败 label
-    await expect(page.getByText(/인증 실패/)).toBeVisible()
+    await expect(page.getByText(/认证失败/)).toBeVisible()
     await expect(page.getByText(/Invalid API key supplied/)).toBeVisible()
   })
 })

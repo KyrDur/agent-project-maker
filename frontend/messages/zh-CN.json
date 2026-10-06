@@ -793,9 +793,9 @@
       "selectAll": "选择所有行",
       "selectRow": "选择行",
       "allFilter": "全部 {label}",
-      "pagination": "{totalPages} 的页面 {page} · {count} 项目",
+      "pagination": "第 {page} 页 / 共 {totalPages} 页 · {count} 个项目",
       "previous": "上一页",
-      "next": "下一步"
+      "next": "下一页"
     },
     "relativeTime": {
       "justNow": "刚才",
@@ -1317,7 +1317,7 @@
         "tools": "工具与技能",
         "triggers": "触发器",
         "assistant": "人工智能助手",
-        "form": "形式",
+        "form": "表单",
         "visual": "视觉",
         "fix": "修复智能体",
         "test": "测试",
@@ -1509,7 +1509,7 @@
         "description": "选择对话开始时 智能体 的工作方式。",
         "modeLabel": "运行时行为模式",
         "recommended": "使用推荐设置",
-        "custom": "定制",
+        "custom": "自定义设置",
         "sourceRecommended": "推荐设置",
         "sourceCustom": "自定义设置",
         "todo": {
@@ -2253,7 +2253,7 @@
       "toolResult": "工具结果",
       "copy": "复制",
       "copied": "已复制",
-      "copyLabel": "复制标签",
+      "copyLabel": "复制",
       "tokens": "Token 数",
       "edit": "编辑",
       "editSave": "保存",
@@ -2924,7 +2924,7 @@
       "title": "MCP 服务器",
       "description": "连接MCP服务器并将其工具导入Agent Project Maker。",
       "count": "{count}",
-      "toolCount": "{count}工具",
+      "toolCount": "{count} 个工具",
       "tabs": {
         "label": "MCP服务器状态",
         "all": "全部",
@@ -3043,7 +3043,7 @@
       "title": "向导",
       "description": "添加服务器，验证连接，然后选择要启用的工具。",
       "tabs": {
-        "basics": "基础知识",
+        "basics": "基本设置",
         "auth": "授权",
         "tools": "工具"
       },
@@ -3067,17 +3067,17 @@
       },
       "manual": {
         "override": "覆盖",
-        "manual": "手册",
+        "manual": "手动配置",
         "name": "名称",
         "description": "描述",
-        "transport": "交通",
+        "transport": "传输方式",
         "transportOptions": {
           "stdio": "标准输入输出",
-          "sse": "上证所",
+          "sse": "SSE",
           "streamable_http": "流式 HTTP"
         },
         "command": "命令",
-        "commandPlaceholder": "恩克斯",
+        "commandPlaceholder": "npx",
         "args": "参数",
         "argsPlaceholder": "-y @modelcontextprotocol/server-github",
         "add": "添加",
@@ -3428,8 +3428,8 @@
       "noIssues": "没有记录兼容性问题。",
       "target": {
         "openaiCodex": "OpenAI/Codex",
-        "claudeCode": "Claude·科德",
-        "vercelAgentSkills": "Vercel 智能体 技能"
+        "claudeCode": "Claude Code",
+        "vercelAgentSkills": "Vercel Agent Skills"
       },
       "status": {
         "pass": "通过",
@@ -4211,7 +4211,7 @@
     },
     "providerType": "提供商类型",
     "types": {
-      "openai": "开放人工智能",
+      "openai": "OpenAI",
       "anthropic": "人择",
       "google": "谷歌（Gemini）",
       "openrouter": "开放路由器",
@@ -4264,7 +4264,7 @@
       }
     },
     "providers": {
-      "openai": "开放人工智能",
+      "openai": "OpenAI",
       "anthropic": "人择",
       "google": "谷歌",
       "openrouter": "开放路由器",
@@ -4325,7 +4325,7 @@
     "catalog": {
       "title": "模型",
       "description": "从连接的提供商那里发现模型并注册它们。",
-      "new": "新",
+      "new": "新模型",
       "hiddenBadge": "隐藏徽章",
       "searchPlaceholder": "搜索占位符",
       "columns": {
@@ -4338,8 +4338,8 @@
         "agents": "智能体"
       },
       "actions": {
-        "checkNow": "立即查看",
-        "checkNowFor": "立即查看 {name}",
+        "checkNow": "检查状态",
+        "checkNowFor": "检查 {name} 状态",
         "test": "测试",
         "testFor": "测试{name}",
         "testSelected": "测试已选择"
@@ -4432,7 +4432,7 @@
         "testCredential": "测试凭据"
       },
       "providers": {
-        "openai": "开放人工智能",
+        "openai": "OpenAI",
         "anthropic": "人择",
         "google": "谷歌",
         "openrouter": "开放路由器",
@@ -4673,12 +4673,12 @@
       "avatarDescription": "显示在聊天和左下用户菜单中。",
       "avatarInitials": "图标字母",
       "avatarInitialsPlaceholder": "例如C",
-      "avatarAuto": "汽车",
+      "avatarAuto": "自动",
       "avatarInitialsMode": "使用字母",
       "avatarColor": "图标颜色",
       "avatarModeLabel": "图标模式",
       "avatarImageMode": "图片",
-      "avatarLetterMode": "信件",
+      "avatarLetterMode": "字母",
       "uploadImage": "上传图片",
       "deleteImage": "删除图像",
       "save": "保存",
@@ -5125,7 +5125,7 @@
       "description": "管理工具和 MCP 服务器使用的 API 密钥和 OAuth 授权。",
       "new": "新",
       "count": "{count}",
-      "fieldCount": "{count} 字段",
+      "fieldCount": "{count} 个字段",
       "shared": "共享",
       "tabs": {
         "label": "凭据状态",
@@ -5153,7 +5153,7 @@
         "mcp_oauth2": "MCP OAuth2 客户端",
         "naver_search": "Naver 搜索",
         "odsay_api": "ODsay API",
-        "openai": "开放人工智能",
+        "openai": "OpenAI",
         "openai_compatible": "OpenAI 兼容端点",
         "openrouter": "开放路由器",
         "srt_account": "SRT账户"

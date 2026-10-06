@@ -104,7 +104,7 @@ test.describe('Wave 1 — hero flow captures', () => {
       // Turn 2 — an interactive ask_user card (natural-language trigger).
       await sendMessage(page, '请用 ask_user 让我从苹果、葡萄、梨中选择运动后的点心')
       await page
-        .getByText(/어떤 과일이 좋아요|🍎 苹果|입력이 필요합니다/)
+        .getByText(/喜欢什么水果|🍎 苹果|需要输入/)
         .last()
         .waitFor({ state: 'visible', timeout: 30_000 })
         .catch(() => {})
@@ -137,7 +137,7 @@ test.describe('Wave 1 — hero flow captures', () => {
         await page.waitForTimeout(2_000)
       }
     }
-    await page.getByText(/세션 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
+    await page.getByText(/会话 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
     await capture(page, WAVE, '05-builder-welcome.png')
 
     // Let the builder stream its response (or surface a System LLM error state).
