@@ -89,7 +89,12 @@ export function useProjectProposals(agentId: string, runId: string) {
       agentProjectApi.proposalRegression(agentId, runId, data.id, data.requestId),
     onSuccess: refresh,
   })
-  return { generate, decide, regression }
+  return {
+    generate,
+    decide,
+    regression,
+    errorCode: mutationErrorCode(generate.error ?? decide.error ?? regression.error),
+  }
 }
 
 export function useProjectComparison(agentId: string, left: string, right: string) {
@@ -135,5 +140,11 @@ export function useProjectOptimization(agentId: string, runId: string) {
     mutationFn: () => agentProjectApi.analyze(agentId, runId),
     onSuccess: refresh,
   })
-  return { analyze }
+  return { analyze, errorCode: mutationErrorCode(analyze.error) }
+}
+
+function mutationErrorCode(error: unknown): string {
+  return error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+    ? error.code
+    : ''
 }

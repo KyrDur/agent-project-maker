@@ -51,7 +51,7 @@ export function ProjectEvaluationReport({
   const options = (items: EvaluationReport[]) =>
     items.map((r) => ({
       value: r.evaluation_run_id,
-      label: `${version(r)} · ${formatDisplayDateTime(r.created_at, { locale })} · ${percent(r.score)} · ${r.evaluation_run_id.slice(0, 8)}`,
+      label: `${version(r)} · ${projectT(`runStatuses.${r.status}`)} · ${formatDisplayDateTime(r.created_at, { locale })} · ${percent(r.score)}`,
     }))
   const metricName = useMetricName()
 
@@ -137,7 +137,13 @@ export function ProjectEvaluationReport({
               {selected.proposals?.map((proposal) => (
                 <p key={proposal.id}>
                   {projectT(`lifecycle.statuses.${proposal.status}`)} ·{' '}
-                  {proposal.affected_capabilities.join(', ')}
+                  {proposal.affected_capabilities
+                    .map((name) =>
+                      projectT.has(`capabilityNames.${name}`)
+                        ? projectT(`capabilityNames.${name}`)
+                        : projectT('lifecycle.otherCapability'),
+                    )
+                    .join('、')}
                 </p>
               ))}
               {selected.optimization_suggestions.length ? (

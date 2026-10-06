@@ -50,7 +50,11 @@
       },
       "bestReason": "原因：同一评测集和评分规则下的最高有效评分。",
       "createdFrom": "来源：{source} · 优化建议 {proposal}",
-      "automaticRegression": "方案确认后自动运行回归。"
+      "automaticRegression": "方案确认后自动运行回归。",
+      "failureEvidence": "展开相关失败分析",
+      "unnamedCase": "未命名用例",
+      "otherCapability": "其他能力（详见方案说明）",
+      "otherChange": "其他配置"
     },
     "evaluationReport": {
       "title": "评测报告",
@@ -263,7 +267,9 @@
         "title": "优化",
         "description": "从评测失败证据出发，审核 AI 优化建议，并用同一个冻结评测集做回归验证。",
         "loading": "正在加载优化证据...",
-        "empty": "暂无可优化的评测证据。请先在 Evaluation 中运行评测，产生失败案例后再生成优化建议。"
+        "empty": "暂无可优化的评测证据。请先在 Evaluation 中运行评测，产生失败案例后再生成优化建议。",
+        "runLabel": "V{version} · {status} · {date}",
+        "unknownVersion": "?"
       }
     },
     "createVersion": "创建版本",
@@ -819,7 +825,38 @@
       "sourceReview": "新评分条件需通过需求原文校验和模型 C 的规则审查；这不等于已通过行业基准校准。",
       "caseScore": "本例得分：{value}/100",
       "failedOrWeakCases": "失败或存在薄弱指标的用例：{count}"
-    }
+    },
+    "optimizationProgress": "本次回归评测正在运行，已完成 {finished}/{total} 条用例。结果完整后才能分析失败或生成下一轮优化建议；页面会自动更新。",
+    "optimizationErrors": {
+      "optimization_requires_semantic_run": "当前评测尚未结束，或缺少内容评分。请等待评测完成后再优化。",
+      "optimization_run_incomplete": "这次评测结果不完整，暂时不能优化。请先完成或重跑正式评测。",
+      "optimization_analysis_failed": "模型 C 的失败分析未能通过校验。已保留调用证据，可以重试分析。",
+      "optimization_proposal_invalid": "模型 A 返回的修改方案未能通过校验。已保留证据，可以重新生成方案。",
+      "optimization_no_fixable_cases": "当前没有证据支持进一步修改，可以如实结束本轮实验。",
+      "optimization_source_not_latest": "该方案来自旧版本。请切换到最新版本已完成的评测后继续。",
+      "optimization_proposal_already_decided": "这一轮已经选择过方案。请查看新版本的回归结果后再继续。",
+      "project_decision_reason_required": "请填写选择这条方案的理由。",
+      "snapshot_credential_unavailable": "来源版本的个人模型配置当前不可用，请检查个人 AI 配置。",
+      "evaluation_role_configuration_changed": "模型配置与本轮冻结配置不一致，需要开启新的实验范围。"
+    },
+    "capabilityNames": {
+      "tool_calling": "模拟工具调用",
+      "knowledge_retrieval": "知识查询与依据",
+      "structured_output": "结构化输出",
+      "workflow": "任务处理流程",
+      "handoff": "转人工处理",
+      "writing": "写作",
+      "conversation": "对话",
+      "reasoning": "分析与推理"
+    },
+    "changeTargets": {
+      "instructions": "智能体指令",
+      "output_instructions": "回复规范",
+      "skill_content": "技能指南内容",
+      "tool_description": "模拟工具说明",
+      "runtime_config": "调用次数与重试设置"
+    },
+    "analyzingFailures": "模型 C 正在根据本次运行证据分析失败与薄弱指标…"
   },
   "metadata": {
     "title": "Agent Project Maker",

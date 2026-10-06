@@ -154,7 +154,7 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
       await page.getByRole('button', { name: '优化 优化闭环' }).click()
       const proposal = page.locator('article').filter({ hasText: '固定响应方案 1' })
       await expect(proposal).toBeVisible({ timeout: 15000 })
-      await proposal.getByText('查看 instructions 变更', { exact: true }).click()
+      await proposal.getByText('查看 智能体指令 变更', { exact: true }).click()
       await expect(
         proposal.locator('pre').filter({ hasText: 'Check business expectations before answering' }),
       ).toBeVisible()

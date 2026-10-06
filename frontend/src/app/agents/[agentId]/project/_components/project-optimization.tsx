@@ -20,7 +20,7 @@ export function ProjectOptimization({
   runs?: EvaluationRun[]
 }) {
   const t = useTranslations('agentProject')
-  const { analyze } = useProjectOptimization(agentId, run.id)
+  const { analyze, errorCode } = useProjectOptimization(agentId, run.id)
   const [selected, setSelected] = useState('')
   const { detail } = useProjectVersions(agentId, selected)
   const analysis = run.comparison_json?.analysis
@@ -38,6 +38,8 @@ export function ProjectOptimization({
   }, {})
   const versionName = (id: string) =>
     t('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
+  const evaluating = run.status === 'pending' || run.status === 'running'
+  const ready = !evaluating && run.metrics_json?.complete !== false
   const busy = analyze.isPending || ['pending', 'running'].includes(state?.state ?? '')
   const meta = detail.data?.snapshot_json.optimization
   const patches =
@@ -47,9 +49,25 @@ export function ProjectOptimization({
   return (
     <div className="space-y-3 border-t border-border pt-4">
       <h4 className="font-medium">{t('badCases')}</h4>
-      <p>{t('scoring.failedOrWeakCases', { count: failedCount })}</p>
+      {evaluating ? (
+        <p role="status">
+          {t('optimizationProgress', {
+            finished: run.results_json?.length ?? 0,
+            total: run.metrics_json?.total ?? 0,
+          })}
+        </p>
+      ) : (
+        <p>{t('scoring.failedOrWeakCases', { count: failedCount })}</p>
+      )}
+      {!ready && !evaluating && (
+        <p role="status">{t('optimizationErrors.optimization_run_incomplete')}</p>
+      )}
       {!analysis && (
-        <Button variant="outline" disabled={busy || !failedCount} onClick={() => analyze.mutate()}>
+        <Button
+          variant="outline"
+          disabled={busy || !ready || !failedCount}
+          onClick={() => analyze.mutate()}
+        >
           {t('analyzeBadCases')}
         </Button>
       )}
@@ -95,8 +113,24 @@ export function ProjectOptimization({
       {!!run.comparison_json?.deferred_changes?.length && <p>{t('deferredSkillChange')}</p>}
       <p className="text-sm text-muted-foreground">{t('bestNotLive')}</p>
       <ProjectProposals agentId={agentId} run={run} versions={versions} runs={runs} />
-      {busy && <p role="status">{t('optimizing')}</p>}
-      {analyze.isError && <ErrorState title={t('optimizationFailed')} />}
+      {busy && <p role="status">{t(analyze.isPending ? 'analyzingFailures' : 'optimizing')}</p>}
+      {analyze.isError && !evaluating && (
+        <ErrorState
+          title={
+            t.has(`optimizationErrors.${errorCode}`)
+              ? t(`optimizationErrors.${errorCode}`)
+              : t('optimizationFailed')
+          }
+          onRetry={
+            ready &&
+            !['optimization_run_incomplete', 'optimization_requires_semantic_run'].includes(
+              errorCode,
+            )
+              ? () => analyze.mutate()
+              : undefined
+          }
+        />
+      )}
       {state?.stop_reason && (
         <p role="status">
           {t.has(`optimizationStops.${state.stop_reason}`)

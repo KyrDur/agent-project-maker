@@ -50,7 +50,11 @@
       },
       "bestReason": "Reason: highest valid score on the same eval set and scoring rule.",
       "createdFrom": "Created from {source} · proposal {proposal}",
-      "automaticRegression": "Regression runs automatically after accepting a proposal."
+      "automaticRegression": "Regression runs automatically after accepting a proposal.",
+      "failureEvidence": "Show related failure analysis",
+      "unnamedCase": "Unnamed case",
+      "otherCapability": "Other capability (see proposal)",
+      "otherChange": "Other configuration"
     },
     "evaluationReport": {
       "title": "Evaluation Report",
@@ -263,7 +267,9 @@
         "title": "Optimization",
         "description": "Review AI optimization proposals from evaluation failures, then verify them with the same frozen eval set.",
         "loading": "Loading optimization evidence...",
-        "empty": "No optimizable evaluation evidence yet. Run Evaluation first, then generate proposals from failed cases."
+        "empty": "No optimizable evaluation evidence yet. Run Evaluation first, then generate proposals from failed cases.",
+        "runLabel": "V{version} · {status} · {date}",
+        "unknownVersion": "?"
       }
     },
     "createVersion": "Create version",
@@ -819,7 +825,38 @@
       "sourceReview": "New criteria require source validation and a model C rule review. This is not industry benchmark calibration.",
       "caseScore": "Case score: {value}/100",
       "failedOrWeakCases": "Failed cases or cases with weak metrics: {count}"
-    }
+    },
+    "optimizationProgress": "Regression is running: {finished}/{total} cases completed. Wait for complete results before analysis or another optimization round. This page updates automatically.",
+    "optimizationErrors": {
+      "optimization_requires_semantic_run": "This evaluation has not finished or has no content scores. Wait for completion before optimizing.",
+      "optimization_run_incomplete": "Evaluation results are incomplete. Complete or rerun the formal evaluation before optimizing.",
+      "optimization_analysis_failed": "Model C analysis failed validation. Call evidence was retained; retry analysis.",
+      "optimization_proposal_invalid": "Model A changes failed validation. Evidence was retained; generate proposals again.",
+      "optimization_no_fixable_cases": "No evidence supports another change. You can finish this experiment honestly.",
+      "optimization_source_not_latest": "This proposal uses an older version. Select a completed evaluation of the latest version.",
+      "optimization_proposal_already_decided": "A proposal was already selected for this round. Check its regression results before continuing.",
+      "project_decision_reason_required": "Enter your reason for selecting this proposal.",
+      "snapshot_credential_unavailable": "The source version personal model configuration is unavailable. Check your personal AI settings.",
+      "evaluation_role_configuration_changed": "Model settings differ from the frozen configuration. Start a new experiment scope."
+    },
+    "capabilityNames": {
+      "tool_calling": "Simulated tool use",
+      "knowledge_retrieval": "Knowledge and evidence",
+      "structured_output": "Structured output",
+      "workflow": "Task workflow",
+      "handoff": "Human handoff",
+      "writing": "Writing",
+      "conversation": "Conversation",
+      "reasoning": "Analysis and reasoning"
+    },
+    "changeTargets": {
+      "instructions": "Agent instructions",
+      "output_instructions": "Response guidelines",
+      "skill_content": "Skill guide content",
+      "tool_description": "Simulation tool description",
+      "runtime_config": "Call limits and retries"
+    },
+    "analyzingFailures": "Model C is analyzing failures and weak metrics using this run evidence…"
   },
   "metadata": {
     "title": "Agent Project Maker",
