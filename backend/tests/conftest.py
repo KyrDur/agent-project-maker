@@ -4,6 +4,7 @@ import os
 import secrets
 import uuid
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -79,6 +80,19 @@ async def _clear_database() -> None:
     async with engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
+
+
+@pytest.fixture(autouse=True)
+def private_runtime_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.agent_runtime import executor, runtime_component_builder, runtime_config
+
+    data = tmp_path / "runtime-data"
+    data.mkdir(mode=0o700)
+    monkeypatch.setattr(runtime_config, "_DATA_DIR", data)
+    monkeypatch.setattr(executor, "_DATA_DIR", data)
+    monkeypatch.setattr(runtime_component_builder, "_DATA_DIR", data)
+    monkeypatch.setattr(settings, "data_root", str(data))
+    monkeypatch.setattr(settings, "conversation_output_dir", str(data / "conversations"))
 
 
 @pytest.fixture(autouse=True)

@@ -20,9 +20,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from app.agent_runtime.builder_i18n import localize, localized_prompt
+from app.agent_runtime.llm_user_context import llm_user_id
 from app.agent_runtime.model_factory import create_chat_model
 from app.database import async_session
-from app.services.llm_user_context import llm_user_id
 from app.services.system_credential_resolver import (
     ResolvedSystemModel,
     SystemModelNotConfiguredError,

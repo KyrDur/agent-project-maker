@@ -3,10 +3,7 @@
 No owner means no model access. Background jobs should pass an explicit owner.
 """
 
-from contextvars import ContextVar
-from uuid import UUID
-
-llm_user_id: ContextVar[UUID | None] = ContextVar("llm_user_id", default=None)
+from app.agent_runtime.llm_user_context import llm_user_id
 
 
 class LlmUserContextMiddleware:

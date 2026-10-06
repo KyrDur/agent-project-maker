@@ -393,6 +393,44 @@ def test_coverage_runner_accepts_older_ancestor_and_fresh_external_report(
         assert not (repo / "frontend/coverage").exists()
 
 
+@pytest.mark.parametrize("kind", ["backend", "frontend"])
+def test_imported_baseline_preserves_measurement_and_verifies_repository_ancestor(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, kind: str
+) -> None:
+    repo, ancestor = _coverage_repo(tmp_path, kind, source="e" * 40)
+    path = repo / kind / "quality/coverage-baseline.json"
+    baseline = json.loads(path.read_text())
+    baseline["repository_source_commit"] = ancestor
+    _write(path, baseline)
+    _git(repo, "add", str(path.relative_to(repo)))
+    _git(repo, "commit", "-qm", "bind imported measurement to repository history")
+    monkeypatch.delenv(run_coverage_gate.GATE_UV_ENVIRONMENT_NAME, raising=False)
+    monkeypatch.setattr(run_coverage_gate.shutil, "which", lambda command: f"/fixture/{command}")
+    monkeypatch.setattr(
+        run_coverage_gate,
+        "_run_measurement",
+        lambda argv, *, cwd, env=None: _write_measurement_report(kind, argv, env),
+    )
+    run_coverage_gate.run_gate(kind, repo)
+    assert json.loads(path.read_text()) == baseline
+    assert baseline["source_commit"] == "e" * 40
+
+
+@pytest.mark.parametrize("source", ["invalid", "f" * 40])
+def test_imported_baseline_rejects_invalid_or_missing_repository_commit(
+    tmp_path: Path, source: str
+) -> None:
+    repo, _ = _coverage_repo(tmp_path, "backend", source="e" * 40)
+    path = repo / "backend/quality/coverage-baseline.json"
+    baseline = json.loads(path.read_text())
+    baseline["repository_source_commit"] = source
+    _write(path, baseline)
+    _git(repo, "add", str(path.relative_to(repo)))
+    _git(repo, "commit", "-qm", "invalid import provenance")
+    with pytest.raises((CoverageContractError, ProjectGateError)):
+        run_coverage_gate.run_gate("backend", repo)
+
+
 def test_coverage_runner_rejects_nonexistent_source_commit(tmp_path: Path) -> None:
     repo, _ = _coverage_repo(tmp_path, "backend", source="f" * 40)
 

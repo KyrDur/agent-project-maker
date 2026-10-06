@@ -49,6 +49,22 @@ def isolated_project_gate_repository(tmp_path: Path, monkeypatch: pytest.MonkeyP
     """
     repo_root = tmp_path / "repo"
     shutil.copytree(SOURCE_REPO_ROOT / "scripts", repo_root / "scripts")
+    # The subprocess fake provisions no sockets or Docker containers. Isolate
+    # those probes while retaining the real checker and artifact validation.
+    checker = repo_root / "scripts/check-isolation-cleanup.py"
+    content = checker.read_text()
+    marker = "from e2e_cleanup_checker import validate_payload as validate_e2e_payload"
+    content = content.replace(
+        marker,
+        marker
+        + "\n"
+        + "from unittest.mock import patch\n"
+        + "_socket_probe = patch('socket.socket.connect_ex', return_value=111)\n"
+        + "_docker_probe = patch('e2e_cleanup_lifecycle.probe_docker', "
+        + "return_value=subprocess.CompletedProcess(args=(), returncode=1))\n"
+        + "_socket_probe.start()\n_docker_probe.start()",
+    )
+    checker.write_text(content)
     python_path = repo_root / "backend" / ".venv" / "bin" / "python"
     python_path.parent.mkdir(parents=True)
     python_path.symlink_to(SOURCE_REPO_ROOT / "backend" / ".venv" / "bin" / "python")

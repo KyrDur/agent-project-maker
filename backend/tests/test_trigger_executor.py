@@ -438,7 +438,7 @@ async def test_execute_trigger_creates_conversation():
         convs = result.scalars().all()
         assert len(convs) == 1
         assert convs[0].title is not None
-        assert "计划:" in convs[0].title
+        assert "日程：" in convs[0].title
         assert convs[0].unread_count == 1
         assert convs[0].last_activity_source == "schedule"
 

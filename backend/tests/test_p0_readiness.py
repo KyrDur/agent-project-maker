@@ -266,20 +266,12 @@ async def test_confirm_build_uses_runtime_model_id_from_draft(db, encrypted, mon
 
 
 @pytest.mark.asyncio
-async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monkeypatch):
-    from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import async_sessionmaker
-    from sqlalchemy.orm import selectinload
-
-    from app.agent_runtime.credential_resolution import resolve_llm_api_key_for_agent
-    from app.models.agent import Agent
-    from app.services import builder_project_lifecycle
-
+async def test_phase8_and_confirm_reject_operator_runtime(db, encrypted, monkeypatch):
     blob, key, fields = encrypted
     db.add(User(id=TEST_USER_ID, name="P0", email="p0@example.test"))
-    system_credential = Credential(
+    credential = Credential(
         user_id=None,
-        name="Builder DeepSeek",
+        name="Operator",
         definition_key="deepseek",
         data_encrypted=blob,
         key_id=key,
@@ -287,22 +279,16 @@ async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monk
         status="active",
         is_system=True,
     )
-    db.add(system_credential)
+    db.add(credential)
     await db.flush()
     db.add(
-        SystemLlmSetting(
-            role="builder",
-            credential_id=system_credential.id,
-            model_name="deepseek-chat",
-        )
+        SystemLlmSetting(role="builder", credential_id=credential.id, model_name="deepseek-chat")
     )
     await db.commit()
     session = await builder_service.create_session(db, TEST_USER_ID, "Build")
-    session.status = builder_service.BuilderStatus.PREVIEW
     session.draft_config = {
         "name": "日报助手",
-        "description": "整理每天的日程和提醒。",
-        "system_prompt": "请根据用户日程生成简洁日报。",
+        "system_prompt": "生成日报",
         "tools": [],
         "middlewares": [],
     }
@@ -310,33 +296,14 @@ async def test_phase8_and_confirm_use_builder_system_runtime(db, encrypted, monk
     monkeypatch.setattr(
         phase8_build, "async_session_factory", async_sessionmaker(db.bind, expire_on_commit=False)
     )
-
     result = await phase8_build.phase8_propose(
         {"session_id": str(session.id), "draft_config": session.draft_config}
     )
-
-    assert result["runtime_setup_payload"] is None
-    assert result["draft_config"]["model_name"] == "deepseek:deepseek-chat"
-    assert result["draft_config"]["runtime_model_source"] == "system_builder"
-
-    session.status = builder_service.BuilderStatus.CONFIRMING
-    await db.commit()
-    monkeypatch.setattr(builder_project_lifecycle, "schedule", lambda *args: None)
-    agent = await builder_service.confirm_build(db, session)
-
-    assert agent is not None
-    assert agent.model is not None
-    assert agent.model.provider == "deepseek"
-    assert agent.model.model_name == "deepseek-chat"
-    assert agent.llm_credential_id == system_credential.id
-    reloaded = (
-        await db.execute(
-            select(Agent)
-            .where(Agent.id == agent.id)
-            .options(selectinload(Agent.model), selectinload(Agent.llm_credential))
-        )
-    ).scalar_one()
-    assert await resolve_llm_api_key_for_agent(db, reloaded) == "p0-dummy"
+    assert result["runtime_setup_payload"] is not None
+    assert not result["runtime_model_id"]
+    with pytest.raises(AppError) as caught:
+        await builder_service.confirm_build(db, session)
+    assert caught.value.code == "builder_runtime_setup"
 
 
 @pytest.mark.parametrize("locale", ["zh-CN", "en"])

@@ -12,7 +12,7 @@ from app.agent_runtime.skill_builder.trigger_eval import (
     select_best_candidate,
 )
 from app.credentials import service as credential_service
-from app.models.system_llm_setting import SystemLlmSetting
+from app.models.user_llm_setting import UserLlmSetting
 from app.schemas.skill_builder import JsonValue
 from app.services import skill_builder_service
 from tests.conftest import TEST_USER_ID
@@ -21,15 +21,16 @@ from tests.conftest import TEST_USER_ID
 async def _configure_system_llm(db: AsyncSession) -> None:
     credential = await credential_service.create(
         db,
-        user_id=None,
+        user_id=TEST_USER_ID,
         definition_key="openai",
         name="trigger-eval-key",
         data={"api_key": "sk-test"},
-        is_system=True,
+        is_system=False,
     )
     db.add(
-        SystemLlmSetting(
-            role="text_primary",
+        UserLlmSetting(
+            user_id=TEST_USER_ID,
+            role="builder",
             credential_id=credential.id,
             model_name="gpt-5.4",
         )

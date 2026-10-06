@@ -95,7 +95,7 @@ def _baseline_metric(raw: object, name: str) -> Metric:
 def _assert_common(
     baseline: dict[str, object], *, keys: set[str], measurement_command: str
 ) -> None:
-    if set(baseline) != keys:
+    if set(baseline) not in (keys, keys | {"repository_source_commit"}):
         raise CoverageContractError("coverage baseline keys are invalid")
     if baseline.get("schema_version") != SCHEMA_VERSION:
         raise CoverageContractError("unsupported coverage baseline schema")
@@ -106,12 +106,19 @@ def _assert_common(
     source_commit = baseline.get("source_commit")
     if not isinstance(source_commit, str) or SHA40.fullmatch(source_commit) is None:
         raise CoverageContractError("coverage baseline source commit is invalid")
+    repository_commit = baseline.get("repository_source_commit", source_commit)
+    if not isinstance(repository_commit, str) or SHA40.fullmatch(repository_commit) is None:
+        raise CoverageContractError("coverage baseline repository source commit is invalid")
     if baseline.get("measurement_command") != measurement_command:
         raise CoverageContractError("coverage baseline command is invalid")
 
 
 def baseline_source_commit(path: Path, kind: str) -> str:
-    """Return a source commit only after the tracked baseline envelope validates."""
+    """Return repository provenance after validating the measurement envelope.
+
+    Imported baselines retain their upstream measurement source separately.
+    The repository commit identifies where those reviewed metrics were adopted.
+    """
     baseline = _load(path)
     if kind == "backend":
         _assert_common(
@@ -127,7 +134,7 @@ def baseline_source_commit(path: Path, kind: str) -> str:
         )
     else:
         raise CoverageContractError("unsupported coverage baseline kind")
-    source_commit = baseline["source_commit"]
+    source_commit = baseline.get("repository_source_commit", baseline["source_commit"])
     if not isinstance(source_commit, str):
         raise CoverageContractError("coverage baseline source commit is invalid")
     return source_commit

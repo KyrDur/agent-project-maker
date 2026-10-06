@@ -38,7 +38,7 @@ from app.models.agent_project import AgentProject, AgentProjectEvalRun, AgentPro
 from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
-from app.schemas.agent_project import EvalRunCreate
+from app.models.user_llm_setting import UserLlmSetting
 from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
@@ -177,6 +177,15 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
         default_credential_id=credential.id,
     )
     db.add(model)
+    for role in ("builder", "evaluation_generator", "judge_optimizer"):
+        db.add(
+            UserLlmSetting(
+                user_id=TEST_USER_ID,
+                role=role,
+                credential_id=credential.id,
+                model_name=model.model_name,
+            )
+        )
     await db.commit()
     factory = async_sessionmaker(db.bind, expire_on_commit=False)
     for module in (evaluation, optimization, lifecycle):
@@ -195,6 +204,13 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
         primary_task_type="report",
         use_cases=["周报"],
         required_capabilities=[],
+        project_requirements={
+            "goal": "整理周报",
+            "inputs": "给定的资料",
+            "deliverables": "周报总结",
+            "business_rules": "只使用给定资料",
+            "success_conditions": "输出清晰且有依据",
+        },
     )
     monkeypatch.setattr(phase2_intent, "analyze_intent", AsyncMock(return_value=intent))
     monkeypatch.setattr(
@@ -230,14 +246,16 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
             break
         response = (
             {
+                "mode": "question_flow",
                 "answers": {
                     "agent_name": ["周报整理助手"],
                     "response_tone": ["concise"],
                     "output_style": ["summary"],
-                }
+                    "requirements_reason": ["基于给定资料验证周报"],
+                },
             }
             if state.next[0] == "phase2_intent_wait"
-            else {"approved": True}
+            else {"approved": True, "reason": "确认该能力方案符合周报需求"}
         )
         await graph.ainvoke(Command(resume=response), config)
     state = await graph.aget_state(config)
@@ -255,38 +273,14 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     )
     assert await db.scalar(select(func.count()).select_from(AgentProject)) == 1
 
-    # Builder bootstrap intentionally pauses at the human evaluation-focus checkpoint.
-    # Resume the same golden path by selecting two generated focus options, then
-    # generate, quality-check, freeze and execute the formal 20-case benchmark.
+    # Confirmed requirements and capabilities launch the fixed benchmark automatically.
     project = await projects.require_project(db, agent.id, TEST_USER_ID)
     await db.refresh(project)
     assert project.eval_spec_json is not None
-    assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 0
-    focus_ids = [item["id"] for item in project.eval_spec_json["focus_options"][:2]]
-    dataset = await semantic.generate(
-        db,
-        agent.id,
-        TEST_USER_ID,
-        versions[0].id,
-        cases=True,
-        evaluation_focus=focus_ids,
-        evaluation_focus_reason="P0 golden-path checkpoint selection",
-    )
-    dataset = await evaluation.judge_set(db, agent.id, TEST_USER_ID, dataset.id)
-    assert dataset.quality_report_json is not None
-    assert dataset.quality_report_json["status"] == "approved"
-    baseline = await evaluation.create_run(
-        db,
-        agent.id,
-        TEST_USER_ID,
-        EvalRunCreate(
-            version_id=versions[0].id,
-            eval_set_id=dataset.id,
-            request_id=uuid.uuid4(),
-        ),
-    )
-    await evaluation.execute_run(baseline.id, agent.id, TEST_USER_ID)
-
+    assert project.requirements_json is not None
+    assert project.requirements_json["bootstrap"]["stage"] == "results"
+    dataset = await db.scalar(select(AgentProjectEvalSet))
+    assert dataset is not None and dataset.frozen
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 1
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalRun)) == 1
     await db.refresh(dataset)

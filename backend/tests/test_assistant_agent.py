@@ -161,44 +161,45 @@ async def test_build_assistant_agent_requires_approval_for_write_tools_only():
 
 
 # ---------------------------------------------------------------------------
-# resolve_system_api_key — ENV → system credential → None
-# (Lives in app.services.system_credential_resolver; patch that module.)
+# Personal credentials must never fall back to operator keys.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_resolve_system_api_key_prefers_env():
-    """ENV-supplied key wins; no DB call needed."""
+async def test_resolve_api_key_without_owner_ignores_environment(monkeypatch):
     from unittest.mock import AsyncMock
 
-    import app.services.system_credential_resolver as resolver
+    from app.services import system_credential_resolver as resolver
+    from app.services.llm_user_context import llm_user_id
 
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-operator-test")
     db = AsyncMock()
-    with patch.object(resolver, "PROVIDER_API_KEY_MAP", {"anthropic": "sk-env"}):
-        key = await resolver.resolve_system_api_key(db, "anthropic")
-    assert key == "sk-env"
+    token = llm_user_id.set(None)
+    try:
+        assert await resolver.resolve_system_api_key(db, "anthropic") is None
+        db.execute.assert_not_awaited()
+    finally:
+        llm_user_id.reset(token)
 
 
 @pytest.mark.asyncio
-async def test_resolve_system_api_key_falls_back_to_system_credential():
-    """ENV missing → DB system credential is decrypted and returned."""
+async def test_resolve_api_key_queries_personal_owner():
+    import uuid
     from unittest.mock import AsyncMock
 
-    import app.services.system_credential_resolver as resolver
+    from app.services import system_credential_resolver as resolver
 
-    fake_cred = MagicMock(id="cred-1", data_encrypted="blob")
-    with (
-        patch.object(resolver, "PROVIDER_API_KEY_MAP", {}),
-        patch.object(
-            resolver.credential_service,
-            "find_system_by_definition",
-            AsyncMock(return_value=fake_cred),
-        ),
-        patch.object(
-            resolver.credential_service,
-            "decrypt_with_external",
-            AsyncMock(return_value={"api_key": "sk-system"}),
-        ),
+    owner = uuid.uuid4()
+    credential = MagicMock(data_encrypted="personal-blob")
+    db = AsyncMock()
+    db.execute.return_value = MagicMock()
+    db.execute.return_value.scalar_one_or_none.return_value = credential
+    with patch.object(
+        resolver.credential_service,
+        "decrypt_with_external",
+        AsyncMock(return_value={"api_key": "sk-personal-test"}),
     ):
-        key = await resolver.resolve_system_api_key(AsyncMock(), "anthropic")
-    assert key == "sk-system"
+        assert await resolver.resolve_system_api_key(db, "anthropic", owner) == "sk-personal-test"
+    query = db.execute.call_args.args[0].compile()
+    assert owner in query.params.values()
+    assert "is_system IS false" in str(query)
