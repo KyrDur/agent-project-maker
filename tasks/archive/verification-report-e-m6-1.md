@@ -202,7 +202,7 @@ m12_drop_legacy_columns → m13_drop_mcp_legacy → m12 → m13
 
 ---
 
-## 결론
+## 结论
 
 M6.1은 계획 스코프 100% 달성 + breaking change 11건 모두 회귀 방어 테스트로 고정 + DB 라운드트립으로 migration 가역성 검증.
 

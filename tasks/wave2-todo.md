@@ -29,7 +29,7 @@
   - [x] 팀 스트립 ↳ 마커: SDK depth는 root=0/직접 위임=1 → 중첩 판정 depth>1로 수정
   - [x] 캡처 PNG 7장 사용자 전달
 
-## 검증 커맨드
+## 验证命令
 - backend: `uv run --with pytest-xdist pytest -q -n 8` (skill-eval 5건은 SKILL_EVALUATION_ENABLED=true 필요)
 - frontend: `pnpm vitest run && pnpm exec tsc --noEmit && pnpm lint:i18n`
 - 캡처: `E2E_CAPTURE_TOUR=1 E2E_FRONTEND_PORT=3310 E2E_BACKEND_PORT=8310 DATABASE_URL=...5436... DATABASE_URL_SYNC=... RATE_LIMIT_ENABLED=false E2E_TEST_HELPERS_ENABLED=true pnpm exec playwright test e2e/captures/captures-wave2-scenario.spec.ts`

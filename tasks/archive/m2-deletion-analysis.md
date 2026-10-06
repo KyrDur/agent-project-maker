@@ -6,7 +6,7 @@
 
 ---
 
-## 즉시 삭제 가능
+## 可立即删除
 
 ### 1. `chat_service.py:list_messages()` (L61-70)
 - **이유**: checkpointer에서 state["messages"]를 추출하는 방식으로 대체

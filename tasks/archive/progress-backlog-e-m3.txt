@@ -58,7 +58,7 @@ M1에서 `connections` 테이블 + CRUD API, M2에서 MCP 도구를 connection �
 
 **주의**: `app/services/connection_service.py`는 M1 산출물. M3에서 `get_default_connection` 헬퍼 추가 외 다른 수정 금지.
 
-## 검증 커맨드
+## 验证命令
 
 ```bash
 cd backend
@@ -67,7 +67,7 @@ uv run pytest tests/test_connection_prebuilt_resolve.py -v
 uv run pytest                           # 전체 회귀 (585+ 유지)
 uv run alembic upgrade head
 uv run alembic downgrade -1
-uv run alembic upgrade head             # 왕복 PASS
+uv run alembic upgrade head             # round-trip PASS
 
 cd ../frontend
 pnpm lint

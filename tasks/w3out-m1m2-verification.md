@@ -103,7 +103,7 @@ Run 4 (신규 smoke 추가 후): 773 passed, 2 deselected in 34.31s
 
 ---
 
-## 결론
+## 结论
 
 **M1+M2 backend foundation은 머지 가능 상태.** 
 

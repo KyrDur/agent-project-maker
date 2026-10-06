@@ -1,45 +1,45 @@
-# 삭제 분석 보고서 — 백로그 E M2 (MCP → Connection 이관)
+# 删除分析报告 — Backlog E M2（MCP → Connection 迁移）
 
-**브랜치**: `feature/connection-mcp-migration`
-**작성자**: 베조스 (QA)
-**작성일**: 2026-04-18
+**分支**：`feature/connection-mcp-migration`
+**作者**：贝索斯（QA）
+**编写日期**：2026-04-18
 **ADR**: `docs/design-docs/adr-008-connection-entity.md`
-**실행계획**: `docs/exec-plans/active/backlog-e-connection-refactor.md` (M2 섹션)
-**이전 보고서**: `tasks/deletion-analysis-e-m1.md`
-**스코프 정의**: M2는 MCP 도구의 credential/서버 설정 해석 경로를 **connection 경유로 전환**하는 마일스톤. `tool.connection_id` 추가 + chat_service MCP 분기 재작성 + env_vars 템플릿 런타임 해석. `mcp_servers` / `tool.mcp_server_id` / `tool.auth_*` 컬럼 drop은 **M6 책임**. M2는 이관 + legacy fallback 공존 단계이므로 즉시 삭제는 거의 없어야 정상.
+**执行计划**：`docs/exec-plans/active/backlog-e-connection-refactor.md`（M2 section）
+**上一份报告**：`tasks/deletion-analysis-e-m1.md`
+**Scope 定义**：M2 是将 MCP 工具的 credential/server 设置解析路径**切换为经由 connection**的 milestone。新增 `tool.connection_id` + 重写 chat_service MCP 分支 + runtime 解析 env_vars 模板。drop `mcp_servers` / `tool.mcp_server_id` / `tool.auth_*` 列由 **M6 负责**。M2 是迁移 + legacy fallback 共存阶段，因此几乎没有可立即删除项才是正常的。
 
 ---
 
-## 분석 원칙
+## 分析原则
 
-ADR-008 §이행 전략 + `progress.txt` 파일 경계를 기준으로, M2 PR이 닫힐 때 안전하게 제거/단순화 가능한 항목만 분류한다. M2는 hot path(`chat_service.build_tools_config`)를 건드리는 **고위험 마일스톤**이므로 drive-by 삭제 절대 금지. legacy fallback (`connection_id IS NULL AND mcp_server_id IS NOT NULL`) 보장이 최우선.
-
----
-
-## 사전 사실 확인
-
-탐색 중 다음을 확인했다 (피차이 S2 시작 전 기준선):
-
-- **`backend/app/models/tool.py:70-72, 90-92`** — `Tool.connection_id` 컬럼과 `connection` relationship이 **이미 모델에 선반영**되어 있다. 즉 S2(피차이)의 모델 변경분이 부분 머지된 상태. 피차이는 Alembic `m9` 작성 + `mcp_server_id` deprecate 주석 정리만 남음 (실제 컬럼 추가 마이그레이션 + 이관 SQL).
-- **`tool.py:68`** — `mcp_server_id` 컬럼에 이미 `# deprecated: M6에서 제거 예정. 이관 기간 동안 legacy fallback 용도로 유지.` 주석 존재. 별도 표기 추가 불필요.
-
-이 사실은 S2 담당자(피차이)에게 사티아가 전달해야 한다 — 작업 누락 방지.
+以 ADR-008 §迁移策略 + `progress.txt` 文件边界为依据，只分类 M2 PR 关闭时可安全删除/简化的项目。M2 会触碰 hot path（`chat_service.build_tools_config`），是**高风险 milestone**，因此绝对禁止 drive-by 删除。优先保证 legacy fallback（`connection_id IS NULL AND mcp_server_id IS NOT NULL`）。
 
 ---
 
-## 즉시 삭제 가능
+## 事前事实确认
 
-**0건.**
+探索中确认了以下内容（Pichai S2 开始前基线）：
 
-M2 종료 시점에도 `mcp_servers` 테이블, `Tool.mcp_server_id`, `MCPServer.auth_type/auth_config`, 프론트엔드 `mcp-server-auth-dialog`는 모두 그대로 살아있어야 한다 (legacy fallback / 후속 마일스톤 의존). 이번 PR에서 안전하게 지울 수 있는 코드는 존재하지 않는다.
+- **`backend/app/models/tool.py:70-72, 90-92`** — `Tool.connection_id` 列和 `connection` relationship **已经提前反映到 model 中**。也就是说 S2（Pichai）的 model 变更部分已 merge。Pichai 只剩编写 Alembic `m9` + 整理 `mcp_server_id` deprecate 注释（实际新增列 migration + 迁移 SQL）。
+- **`tool.py:68`** — `mcp_server_id` 列已有 `# deprecated: M6 中计划删除。在迁移期间保留用于 legacy fallback。` 注释。无需再添加标记。
+
+这一事实应由 Satya 告知 S2 负责人（Pichai）— 防止遗漏工作。
 
 ---
 
-## 단순화 제안 (M2 PR 안에서 처리)
+## 可立即删除
 
-### 1. **`backend/app/services/chat_service.py:174-187` — MCP/non-MCP 분기 통합** (젠슨 S3 가이드)
+**0 项。**
 
-현재 구조:
+M2 结束时 `mcp_servers` 表、`Tool.mcp_server_id`、`MCPServer.auth_type/auth_config`、Frontend `mcp-server-auth-dialog` 都必须继续存在（legacy fallback / 后续 milestone 依赖）。本 PR 中不存在可安全删除的代码。
+
+---
+
+## 简化建议（在 M2 PR 中处理）
+
+### 1. **`backend/app/services/chat_service.py:174-187` — MCP/non-MCP 分支整合**（Jensen S3 指南）
+
+当前结构：
 ```python
 if tool.type == ToolType.MCP and tool.mcp_server:
     if tool.mcp_server.credential_id and tool.mcp_server.credential:
@@ -57,92 +57,92 @@ else:
         cred_auth = {}
 ```
 
-- 제안: 신규 우선순위 `connection → mcp_server(legacy fallback) → tool.credential → tool.auth_config → {}` 단일 함수로 추출. MCP 도구만 connection 우선, 그 외는 기존 그대로. 같은 4-way 폴백 트리가 두 분기에 중복되어 있는 게 본질적인 복잡도가 아니라 우연한 중복.
-- 근거: M2 후 MCP 분기 안에 또 한 단계(connection)가 들어가면 4중 if 깊이가 됨. 헬퍼로 추출 → legacy fallback 제거(M6) 시 해당 함수 한 곳만 수정.
-- 조치: 젠슨이 S3에서 `_resolve_tool_auth(tool)` 또는 `_resolve_mcp_auth(tool)` 헬퍼로 분리. **새 추상화 도입은 금지** — 기존 chat_service 모듈 안의 모듈-private 함수 1개만.
+- 建议：提取为单一函数，采用新优先级 `connection → mcp_server(legacy fallback) → tool.credential → tool.auth_config → {}`。只有 MCP 工具优先 connection，其他保持现状。同一 4-way fallback tree 在两个分支中重复，本质上不是复杂性，而是偶然重复。
+- 依据：M2 后 MCP 分支中再加入一层（connection）就会变成 4 层 if。提取 helper → M6 删除 legacy fallback 时只需修改一个函数。
+- 措施：Jensen 在 S3 中拆出 `_resolve_tool_auth(tool)` 或 `_resolve_mcp_auth(tool)` helper。**禁止引入新抽象** — 只在现有 chat_service module 内新增 1 个 module-private function。
 
-### 2. **`backend/app/services/chat_service.py:200-202` — `mcp_server_url` 출력 경로** (젠슨 S3 가이드)
+### 2. **`backend/app/services/chat_service.py:200-202` — `mcp_server_url` 输出路径**（Jensen S3 指南）
 
-현재:
+当前：
 ```python
 if tool.type == ToolType.MCP and tool.mcp_server:
     config_entry["mcp_server_url"] = tool.mcp_server.url
     config_entry["mcp_tool_name"] = tool.name
 ```
 
-- 제안: M2 후 `tool.connection` 경유 시 `connection.extra_config["url"]`에서 읽고, fallback 시에만 `tool.mcp_server.url`. 키 이름은 그대로 `mcp_server_url` 유지 (다운스트림 호환).
-- 근거: ADR-008 §2 — MCP url은 `extra_config.url`이 SOT. 이관 후 `mcp_server.url`은 legacy.
-- 조치: 젠슨 S3에서 우선순위 분기.
+- 建议：M2 后经由 `tool.connection` 时从 `connection.extra_config["url"]` 读取，只有 fallback 时才用 `tool.mcp_server.url`。key 名保持 `mcp_server_url` 不变（兼容 downstream）。
+- 依据：ADR-008 §2 — MCP url 的 SOT 是 `extra_config.url`。迁移后 `mcp_server.url` 属于 legacy。
+- 措施：Jensen S3 中按优先级分支。
 
-### 3. **`backend/app/services/credential_service.py:110-119` — `resolve_server_auth` 시그니처 확장** (젠슨 S3 가이드, 단 credential_service 파일 자체는 베조스/젠슨 모두 수정 금지 영역)
+### 3. **`backend/app/services/credential_service.py:110-119` — 扩展 `resolve_server_auth` 签名**（Jensen S3 指南，但 credential_service 文件本身是贝索斯/Jensen 都禁止修改的区域）
 
-- 현재: `resolve_server_auth(server: MCPServer) -> dict | None` — MCPServer만 받음.
-- M2 후 필요: connection 경유 해석. MCPServer fallback 그대로 유지.
-- 제안: **이 함수는 변경 금지**. 대신 chat_service나 mcp_client 측에 `_resolve_connection_auth(connection: Connection)` 신규 헬퍼를 분리해 두 함수를 호출자가 적절히 선택하게. 이유는 (a) credential_service.py는 progress.txt 파일 경계상 M2 범위 밖, (b) 시그니처 변경 시 백로그 C에서 안정화한 회귀 테스트 흔들림.
-- 근거: 베조스 M1 보고서 #5와 동일한 결론 — `resolve_server_auth`는 M6 cleanup 항목.
-- 조치: 젠슨이 S3에서 `_resolve_connection_auth`를 새 위치(`agent_runtime/mcp_client.py` 또는 `chat_service.py` 모듈-private)에 만들고 import. credential_service.py 시그니처 손대지 말 것.
+- 当前：`resolve_server_auth(server: MCPServer) -> dict | None` — 只接收 MCPServer。
+- M2 后需要：经由 connection 解析。MCPServer fallback 原样保留。
+- 建议：**此函数禁止修改**。改为在 chat_service 或 mcp_client 侧拆分新的 `_resolve_connection_auth(connection: Connection)` helper，由调用者适当选择两个函数。理由是（a）credential_service.py 按 progress.txt 文件边界不在 M2 范围，（b）修改签名会动摇 Backlog C 已稳定的 regression test。
+- 依据：与贝索斯 M1 报告 #5 结论相同 — `resolve_server_auth` 是 M6 cleanup 项。
+- 措施：Jensen 在 S3 中创建 `_resolve_connection_auth`，放在新位置（`agent_runtime/mcp_client.py` 或 `chat_service.py` module-private）并 import。不要动 credential_service.py 签名。
 
-### 4. **`backend/app/agent_runtime/mcp_client.py:12-19` — `auth_config` 입력 형식 확장** (젠슨 S3 가이드)
+### 4. **`backend/app/agent_runtime/mcp_client.py:12-19` — 扩展 `auth_config` 输入格式**（Jensen S3 指南）
 
-현재 `test_mcp_connection(url, auth_config)`은 `auth_config = {api_key, header_name}` 형식 전제. ADR-008 §2의 `extra_config = {url, auth_type, headers?, env_vars?, transport?, timeout?}`와 시맨틱 차이.
+当前 `test_mcp_connection(url, auth_config)` 假设 `auth_config = {api_key, header_name}` 格式。与 ADR-008 §2 的 `extra_config = {url, auth_type, headers?, env_vars?, transport?, timeout?}` semantic 不同。
 
-- 제안: 시그니처는 **그대로 유지**(외부 호출자 회귀 0). 함수 내부에서 `auth_config`가 새 `extra_config` 모양인지 legacy 모양인지 판별하는 분기 추가는 금지. 대신 호출 측(tools_router, 신규 connection 등록 경로)에서 사전 변환 → mcp_client는 dumb httpx 호출자 역할 유지.
-- 근거: dual-shape 입력 함수는 테스트 케이스가 곱연산으로 늘어난다(보안/회귀 양쪽). single-shape + 변환 책임 호출자 위임이 단순.
-- 조치: 젠슨 S3에서 connection→legacy auth_config 변환 1줄을 호출 직전에 인라인 처리. 별도 어댑터 클래스 만들지 말 것.
+- 建议：签名**保持不变**（外部调用者 regression 0）。禁止在函数内部新增判断 `auth_config` 是新 `extra_config` 形态还是 legacy 形态的分支。改为在调用侧（tools_router, 新 connection 注册路径）事先转换 → mcp_client 保持 dumb httpx caller 角色。
+- 依据：dual-shape 输入函数会使测试 case 成倍增加（安全/回归两边）。single-shape + 将转换责任委托给调用者更简单。
+- 措施：Jensen 在 S3 中于调用前 inline 处理 1 行 connection→legacy auth_config 转换。不要创建单独 adapter class。
 
-### 5. **테스트 격리 정책 — 신규 파일 1개 추가, 기존 회귀는 동작 보존만** (베조스 본인 가이드, S4)
+### 5. **测试隔离 policy — 新增 1 个文件，现有回归只保持行为**（贝索斯本人指南，S4）
 
-- 제안: `tests/test_connection_mcp_resolve.py` 신규 1개에 5 시나리오 모두 격납. `tests/test_mcp_connection.py`와 `tests/test_tools_router_extended.py`는 **기대값(시맨틱) 변경 없는 갱신만** — connection 컬럼 신설로 인한 fixture 추가/마이그레이션 헤드 변경 등 mechanical change에 한정.
-- 근거: chat_service hot path 변경 PR에서 기존 테스트 시맨틱이 바뀌면 그 자체가 regression 시그널이다 (M1 보고서 #4 동일 원칙). Legacy fallback 경로가 끊기지 않았는지 검증하려면 기존 회귀 시맨틱 보존이 필수.
-- 조치: 베조스 S4에서 `test_mcp_connection.py` diff는 가능한 0줄을 목표로. 변경 필요 시 사티아에게 사유 보고.
+- 建议：新建 1 个 `tests/test_connection_mcp_resolve.py`，容纳全部 5 个 scenario。`tests/test_mcp_connection.py` 与 `tests/test_tools_router_extended.py` **只做不改变期望值（semantic）的更新** — 仅限 connection 列新设导致的 fixture 添加/migration head 变更等 mechanical change。
+- 依据：在修改 chat_service hot path 的 PR 中，如果现有测试 semantic 发生变化，本身就是 regression 信号（与 M1 报告 #4 同一原则）。要验证 Legacy fallback 路径未断，必须保留现有 regression semantic。
+- 措施：贝索斯在 S4 中以 `test_mcp_connection.py` diff 尽可能 0 行为目标。如必须修改，向 Satya 报告原因。
 
 ---
 
-## 보류 (후속 마일스톤으로 이월)
+## 暂缓（移交后续 milestone）
 
-이전 M1 보고서의 8건 + M2 분석에서 추가 식별. **M2 PR에서 절대 건드리지 않음.**
+上一份 M1 报告的 8 项 + M2 分析中新识别的项目。**M2 PR 中绝对不要触碰。**
 
-| # | 위치 | 현재 역할 | 권고 시점 | 사유 |
+| # | 位置 | 当前角色 | 建议时点 | 原因 |
 |---|------|-----------|-----------|------|
-| 1 | `backend/app/models/tool.py:35-58` `MCPServer` 테이블 전체 | MCP 서버 메타데이터 | **M6** (`m12_drop_legacy_columns`) | M3-M5 기간 legacy fallback 진실 기준. 사용자 데이터 이관 미완료 row 안전망. |
-| 2 | `backend/app/models/tool.py:69` `Tool.mcp_server_id` FK | MCP tool → MCPServer 링크 | **M6** | M2 m9가 `connection_id`만 채우고 `mcp_server_id`는 그대로. M3-M5 동안 둘 공존. |
-| 3 | `backend/app/models/tool.py:78-82` `Tool.auth_type`, `Tool.auth_config`, `Tool.credential_id` | PREBUILT/CUSTOM 도구 inline auth | **M4-M6** | M4(`m11_migrate_custom_credentials`)에서 connection으로 이관, M6 drop. M2 스코프 외. |
-| 4 | `backend/app/models/tool.py:30` `AgentToolLink.config` JSON | per-agent 도구 override | **M6** | ADR-008 §3 — `agent_tools.connection_id`(M3+)로 대체, M6 drop. |
-| 5 | `backend/app/services/credential_service.py:110-119` `resolve_server_auth` | MCPServer auth 해석 헬퍼 | **M6** | M2-M5 기간 legacy fallback 경로에서 호출됨. 단순화 #3 참조. |
-| 6 | `backend/app/services/credential_service.py:135-140` `get_usage_count`의 `mcp_count` | credential 사용량 집계 | **M5/M6** | M5에서 `connection_count` 추가 후 M6 drop. M2에서는 의미 유지. |
-| 7 | `frontend/src/components/tool/mcp-server-auth-dialog.tsx` | MCP 서버 인증 편집 UI | **M5** (백로그 F) | `ConnectionBindingDialog` 통합 흡수. M2 스코프 외. |
-| 8 | `frontend/src/components/tool/add-tool-dialog.tsx` MCP 탭 분기 | MCP 도구 추가 흐름 | **M5** (백로그 F) | connection 선택 UX로 재작성. M2 스코프 외. |
-| 9 | `backend/app/agent_runtime/mcp_client.py:80-98` `list_mcp_tools` | MCP tool discovery | **M6** | url 인자만 받음. M2에서 변경 불필요. |
-| 10 | `backend/tests/test_mcp_client.py` 전체 | mcp_client 단위 테스트 | **M5/M6** | 단순화 #4에 따라 mcp_client 시그니처 보존 → 회귀 테스트 그대로. |
+| 1 | `backend/app/models/tool.py:35-58` 整个 `MCPServer` 表 | MCP server metadata | **M6**（`m12_drop_legacy_columns`） | M3-M5 期间 legacy fallback 的真实标准。用户数据未完全迁移 row 的安全网。 |
+| 2 | `backend/app/models/tool.py:69` `Tool.mcp_server_id` FK | MCP tool → MCPServer link | **M6** | M2 m9 只填充 `connection_id`，`mcp_server_id` 保持原样。M3-M5 期间二者共存。 |
+| 3 | `backend/app/models/tool.py:78-82` `Tool.auth_type`, `Tool.auth_config`, `Tool.credential_id` | PREBUILT/CUSTOM 工具 inline auth | **M4-M6** | M4（`m11_migrate_custom_credentials`）中迁移到 connection，M6 drop。超出 M2 scope。 |
+| 4 | `backend/app/models/tool.py:30` `AgentToolLink.config` JSON | per-agent 工具 override | **M6** | ADR-008 §3 — 由 `agent_tools.connection_id`（M3+）替代，M6 drop。 |
+| 5 | `backend/app/services/credential_service.py:110-119` `resolve_server_auth` | MCPServer auth 解析 helper | **M6** | M2-M5 期间 legacy fallback 路径会调用。参见简化 #3。 |
+| 6 | `backend/app/services/credential_service.py:135-140` `get_usage_count` 的 `mcp_count` | credential usage 汇总 | **M5/M6** | M5 中新增 `connection_count` 后 M6 drop。M2 中仍有意义。 |
+| 7 | `frontend/src/components/tool/mcp-server-auth-dialog.tsx` | MCP server 认证编辑 UI | **M5**（Backlog F） | 整合吸收到 `ConnectionBindingDialog`。超出 M2 scope。 |
+| 8 | `frontend/src/components/tool/add-tool-dialog.tsx` MCP tab 分支 | MCP tool 添加流程 | **M5**（Backlog F） | 重写为 connection 选择 UX。超出 M2 scope。 |
+| 9 | `backend/app/agent_runtime/mcp_client.py:80-98` `list_mcp_tools` | MCP tool discovery | **M6** | 只接收 url 参数。M2 无需更改。 |
+| 10 | 整个 `backend/tests/test_mcp_client.py` | mcp_client 单元测试 | **M5/M6** | 根据简化 #4 保留 mcp_client 签名 → regression test 原样不动。 |
 
 ---
 
-## 보안/회귀 점검 (M2 PR에서 반드시 검증)
+## 安全/回归检查（M2 PR 中必须验证）
 
-탐색 중 발견한 잠재 리스크. 베조스 S4 신규 테스트에 반영:
+探索中发现的潜在风险。反映到贝索斯 S4 新测试中：
 
-1. **env_vars 템플릿 평문 노출 위험**
-   - `${credential.<field_name>}`이 미해석 상태로 외부(LLM 입력, 로그, API 응답)에 새어나가면 안 됨. 반대로 해석 후 평문이 connection.extra_config로 다시 영속화되면 ADR §보안 위반.
-   - 검증: `test_connection_mcp_resolve.py`에 (a) ConnectionResponse에 env_vars 평문 미포함, (b) 런타임 해석 후 DB 재기록 없음 시나리오.
-2. **legacy fallback 시 credential 노출 일관성**
-   - `connection_id IS NULL` 분기에서도 `MCPServer.auth_config` 평문이 응답으로 흘러나가지 않아야 함 (기존 동작과 동일).
-   - 검증: 기존 `test_mcp_connection.py` 회귀가 잡고 있는지 확인. 비어 있으면 신규 1 케이스 추가.
-3. **마이그레이션 데이터 무결성**
-   - `mcp_servers` row 수 = M2 후 `connections WHERE type='mcp'` row 수. tool.mcp_server_id 비어있지 않은 row 수 = M2 후 tool.connection_id 채워진 MCP tool row 수.
-   - 검증: 신규 `test_connection_mcp_resolve.py`에 row count assertion (피차이 m9 마이그레이션 검증).
+1. **env_vars 模板明文泄露风险**
+   - `${credential.<field_name>}` 在未解析状态下不得泄露到外部（LLM 输入、log、API response）。反过来，解析后的明文如果再次持久化到 connection.extra_config，则违反 ADR §安全。
+   - 验证：在 `test_connection_mcp_resolve.py` 中加入（a）ConnectionResponse 不包含 env_vars 明文，（b）runtime 解析后不重新写回 DB 的 scenario。
+2. **legacy fallback 时 credential 暴露一致性**
+   - 即使在 `connection_id IS NULL` 分支中，`MCPServer.auth_config` 明文也不得流到 response（与现有行为相同）。
+   - 验证：确认现有 `test_mcp_connection.py` 回归是否覆盖。若没有，则新增 1 个 case。
+3. **Migration 数据完整性**
+   - `mcp_servers` row 数 = M2 后 `connections WHERE type='mcp'` row 数。tool.mcp_server_id 非空 row 数 = M2 后 tool.connection_id 已填充的 MCP tool row 数。
+   - 验证：在新的 `test_connection_mcp_resolve.py` 中加入 row count assertion（Pichai m9 migration 验证）。
 
 ---
 
-## 결론
+## 结论
 
-| 분류 | 건수 | 비고 |
+| 分类 | 数量 | 备注 |
 |------|------|------|
-| **즉시 삭제** | **0건** | M2는 이관 + legacy fallback 공존 단계. drop은 M6. |
-| **단순화 제안** | **5건** | 모두 S3(젠슨)/S4(베조스) 신규 작업 가이드. 기존 모듈 시그니처 변경 0. |
-| **보류 (후속 마일스톤)** | **10건** | M4 1건, M5 4건, M5/M6 1건, M6 4건. M1 보고서 8건과 정합 + MCP-구체 2건 추가(`mcp_client.list_mcp_tools`, `test_mcp_client.py`). |
+| **立即删除** | **0 项** | M2 是迁移 + legacy fallback 共存阶段。drop 在 M6。 |
+| **简化建议** | **5 项** | 全部为 S3（Jensen）/S4（贝索斯）新工作指南。现有 module signature 变更 0。 |
+| **暂缓（后续 milestone）** | **10 项** | M4 1 项，M5 4 项，M5/M6 1 项，M6 4 项。与 M1 报告 8 项一致 + 新增 2 个 MCP-specific 项（`mcp_client.list_mcp_tools`, `test_mcp_client.py`）。 |
 
-**베조스 판단**: M2는 hot path(`chat_service.build_tools_config`) 재작성 + 신규 데이터 마이그레이션 + 신규 런타임 템플릿 해석이 동시에 들어오는 **고위험 마일스톤**이다. 코드 삭제·시그니처 변경을 끼워넣으면 회귀 영역이 곱연산으로 폭발한다. legacy fallback은 M2의 **안전망**이며 M6까지 보존이 ADR §이행 전략의 핵심 약속.
+**贝索斯判断**：M2 同时包含 hot path（`chat_service.build_tools_config`）重写 + 新数据 migration + 新 runtime 模板解析，是**高风险 milestone**。如果夹带代码删除·signature 变更，回归区域会成倍扩大。legacy fallback 是 M2 的**安全网**，保留到 M6 是 ADR §迁移策略的核心约定。
 
-단순화 5건은 신규 헬퍼 분리 + 호출자 책임 유지 원칙으로, 이미 hot path를 건드리는 PR 안에서 추가 표면적을 만들지 않는 방향이다. 단순화 #3은 특히 `credential_service.py`를 **건드리지 말 것**을 명시 — progress.txt 파일 경계 위반 방지.
+简化 5 项遵循拆分新 helper + 保持调用者责任原则，方向是在已经触碰 hot path 的 PR 中不增加额外表面积。尤其简化 #3 明确**不要触碰 `credential_service.py`** — 防止违反 progress.txt 文件边界。
 
-**사티아 보고**: 사전 확인 사실 (Tool.connection_id 모델 선반영) + 단순화 #3-#4(파일 경계 충돌 회피)는 S2/S3 담당자에게 명시적으로 전달 권고.
+**向 Satya 报告**：建议将事前确认事实（Tool.connection_id 已提前反映到 model）+ 简化 #3-#4（规避文件边界冲突）明确传达给 S2/S3 负责人。

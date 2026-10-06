@@ -5,7 +5,7 @@
 
 ---
 
-## 즉시 삭제 가능
+## 可立即删除
 
 | 항목 | 파일 | 라인 | 이유 |
 |------|------|------|------|
@@ -45,7 +45,7 @@
 
 **결론: 삭제 가능 (불필요)**
 
-### 근거
+### 依据
 
 1. **LLMToolSelectorMiddleware는 deepagents에 의해 자동 적용되지 않음.** 사용자가 agent middleware_configs에 명시적으로 `"llm_tool_selector"`를 설정한 경우에만 활성화.
 
@@ -66,7 +66,7 @@
 
 **결론: 유지 필요**
 
-### 근거
+### 依据
 
 1. **deepagents가 const 정규화를 내부적으로 처리하지 않음.** PatchToolCallsMiddleware는 dangling tool call만 처리. GPT-4o의 `{"const": "tool_name"}` → `"tool_name"` 정규화 로직 없음.
 

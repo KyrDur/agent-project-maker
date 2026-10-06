@@ -81,16 +81,16 @@ WHERE type = 'custom'
 | 저커버그 | `frontend/src/components/tool/add-tool-dialog.tsx` (Custom 탭 재배선), `frontend/src/lib/types/index.ts` (ToolCreateRequest.connection_id), `frontend/src/lib/api/tools.ts` (body 필드 전달), `messages/ko.json` (tool.addDialog.custom.*) | backend 전체, **custom-auth-dialog.tsx / mcp-server-auth-dialog.tsx / /connections 페이지 (M5 이월)** |
 | 베조스 | `backend/tests/test_connection_custom_resolve.py` (신규), `backend/tests/test_tools_router_extended.py` (회귀 갱신), `tasks/deletion-analysis-e-m4.md` (신규) | 모든 services/models/migrations/frontend 소스 |
 
-## 검증 커맨드
+## 验证命令
 
 ```bash
 cd backend
 uv run ruff check .
 uv run pytest tests/test_connection_custom_resolve.py -v
-uv run pytest                           # 614+ 유지
+uv run pytest                           # 保持 614+
 uv run alembic upgrade head
 uv run alembic downgrade -1
-uv run alembic upgrade head             # 왕복 PASS
+uv run alembic upgrade head             # round-trip PASS
 
 cd ../frontend
 pnpm lint

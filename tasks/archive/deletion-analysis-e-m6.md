@@ -1,74 +1,74 @@
-# M6 삭제 분석 (베조스) — 2026-04-21
+# M6 删除分析（贝索斯）— 2026-04-21
 
-**담당**: 베조스 (QA / Musk Step 2)
-**base**: main @ `ad8c0fd` (PR #58 M5 머지)
+**负责人**：贝索斯（QA / Musk Step 2）
+**base**：main @ `ad8c0fd`（PR #58 M5 merge）
 **worktree**: `/Users/chester/dev/natural-mold/.claude/worktrees/backlog-e-m6`
-**참고**: `CHECKPOINT.md` (스코프 locked), `progress.txt` (gotchas), `HANDOFF.md`
-**판정**: **주의 (CAUTION)** — agent_tools.config drop은 **세 부분을 동시에** 정리해야 회귀 없음
+**参考**：`CHECKPOINT.md`（scope locked）, `progress.txt`（gotchas）, `HANDOFF.md`
+**判定**：**注意（CAUTION）** — agent_tools.config drop 必须**同时**清理三部分才能无回归
 
-범례: `[D]`=삭제 / `[S]`=단순화(부분 편집) / `[K]`=유지
+Legend：`[D]`=删除 / `[S]`=简化（部分编辑）/ `[K]`=保留
 
 ---
 
-## 제거 타깃 확정 (파일:라인 단위)
+## 确定删除 target（file:line 单位）
 
-### 1. 모델 레이어
+### 1. Model layer
 
-- `[D] backend/app/models/tool.py:35-58` — `MCPServer` 클래스 전체
+- `[D] backend/app/models/tool.py:35-58` — 删除整个 `MCPServer` class
 - `[D] backend/app/models/tool.py:72` — `Tool.mcp_server_id` FK
-- `[D] backend/app/models/tool.py:82` — `Tool.auth_config` 컬럼
+- `[D] backend/app/models/tool.py:82` — `Tool.auth_config` 列
 - `[D] backend/app/models/tool.py:83-85` — `Tool.credential_id` FK
 - `[D] backend/app/models/tool.py:92` — `Tool.mcp_server` relationship
 - `[D] backend/app/models/tool.py:96-98` — `Tool.credential` relationship
-- `[D] backend/app/models/tool.py:17-32` — `AgentToolLink.config` 필드 (line 30) — **agent_tools.config drop 확정**
-- `[S] backend/app/models/__init__.py:12, 22` — `MCPServer` export 제거
-- `[K] backend/app/models/tool.py:61-98` — `Tool` 클래스 자체와 `connection_id`/`connection` relationship은 유지
+- `[D] backend/app/models/tool.py:17-32` — `AgentToolLink.config` 字段（line 30）— **确认 drop agent_tools.config**
+- `[S] backend/app/models/__init__.py:12, 22` — 删除 `MCPServer` export
+- `[K] backend/app/models/tool.py:61-98` — `Tool` class 本身和 `connection_id`/`connection` relationship 保留
 
-### 2. 서비스 레이어
+### 2. Service layer
 
 #### 2-1. chat_service.py
 
-- `[D] backend/app/services/chat_service.py:18` — import `MCPServer` 제거
-- `[D] backend/app/services/chat_service.py:26-27` — `resolve_server_auth` import 제거
-- `[D] backend/app/services/chat_service.py:195-199` — `selectinload(Tool.credential)` + `Tool.mcp_server ... MCPServer.credential` 블록 제거 (legacy eager-load)
-- `[S] backend/app/services/chat_service.py:195-199` — `selectinload(Tool.credential)` 만은 **유지 혹은 같이 삭제**? → M6 이후 `tool.credential_id` 컬럼이 없으므로 반드시 **같이 삭제**. 유지 시 AttributeError.
-- `[D] backend/app/services/chat_service.py:313-340` — `_resolve_custom_auth` 내 bridge override 전체 삭제. connection_id 없을 시 error raise로 전환 (legacy 경로 제거).
-- `[S] backend/app/services/chat_service.py:301-340` — `_resolve_custom_auth`를 M6 후 단순화: `connection_id IS NULL` → `ToolConfigError`, 있으면 Gate A → Gate B 직결.
-- `[D] backend/app/services/chat_service.py:343-356` — `_resolve_legacy_tool_auth` 함수 전체 삭제. PREBUILT의 `provider_name IS NULL` 케이스, BUILTIN의 legacy 케이스 같이 제거.
-- `[S] backend/app/services/chat_service.py:427-443` — PREBUILT/CUSTOM 분기 단순화: `provider_name IS NULL` 분기 제거(PREBUILT는 provider_name 강제), CUSTOM은 connection 경로만.
-- `[D] backend/app/services/chat_service.py:417-424` — MCP `elif tool.mcp_server is not None` legacy fallback 블록 제거. `tool.connection_id IS NOT NULL` 필수화.
-- `[S] backend/app/services/chat_service.py:376-426` — MCP 분기: connection 경로만 남기고 else에서 `ToolConfigError` raise. `cred_auth = {}` 복원 경로 제거.
-- `[D] backend/app/services/chat_service.py:441-443` — `else` (BUILTIN fallback 경로의 `_resolve_legacy_tool_auth` 호출) 제거. BUILTIN은 auth 없이 동작이므로 `cred_auth = {}` 로 변경.
-- `[D] backend/app/services/chat_service.py:445` — **★ `merged_auth = {**cred_auth, **(link.config or {})}` → `merged_auth = cred_auth` 로 단순화 ★** (agent_tools.config drop 확정 시)
-- `[S] backend/app/services/chat_service.py:40-49` — `__all__`에서 `_resolve_legacy_tool_auth` 제거
+- `[D] backend/app/services/chat_service.py:18` — 删除 import `MCPServer`
+- `[D] backend/app/services/chat_service.py:26-27` — 删除 `resolve_server_auth` import
+- `[D] backend/app/services/chat_service.py:195-199` — 删除 `selectinload(Tool.credential)` + `Tool.mcp_server ... MCPServer.credential` block（legacy eager-load）
+- `[S] backend/app/services/chat_service.py:195-199` — `selectinload(Tool.credential)` 是否**保留或一并删除**？→ M6 后不存在 `tool.credential_id` 列，因此必须**一起删除**。保留会导致 AttributeError。
+- `[D] backend/app/services/chat_service.py:313-340` — 删除 `_resolve_custom_auth` 内整个 bridge override。改为 connection_id 为空时 raise error（删除 legacy 路径）。
+- `[S] backend/app/services/chat_service.py:301-340` — M6 后简化 `_resolve_custom_auth`：`connection_id IS NULL` → `ToolConfigError`，有则 Gate A → Gate B 直连。
+- `[D] backend/app/services/chat_service.py:343-356` — 删除整个 `_resolve_legacy_tool_auth` 函数。PREBUILT 的 `provider_name IS NULL` case、BUILTIN legacy case 一并删除。
+- `[S] backend/app/services/chat_service.py:427-443` — 简化 PREBUILT/CUSTOM 分支：删除 `provider_name IS NULL` 分支（PREBUILT 强制 provider_name），CUSTOM 只保留 connection 路径。
+- `[D] backend/app/services/chat_service.py:417-424` — 删除 MCP `elif tool.mcp_server is not None` legacy fallback block。强制 `tool.connection_id IS NOT NULL`。
+- `[S] backend/app/services/chat_service.py:376-426` — MCP 分支：只保留 connection 路径，在 else 中 raise `ToolConfigError`。删除 `cred_auth = {}` 恢复路径。
+- `[D] backend/app/services/chat_service.py:441-443` — 删除 `else`（BUILTIN fallback 路径中的 `_resolve_legacy_tool_auth` 调用）。BUILTIN 无 auth 工作，因此改为 `cred_auth = {}`。
+- `[D] backend/app/services/chat_service.py:445` — **★ `merged_auth = {**cred_auth, **(link.config or {})}` → 简化为 `merged_auth = cred_auth` ★**（确认 drop agent_tools.config 时）
+- `[S] backend/app/services/chat_service.py:40-49` — 从 `__all__` 删除 `_resolve_legacy_tool_auth`
 
 #### 2-2. credential_service.py
 
-- `[D] backend/app/services/credential_service.py:11` — import `MCPServer` 제거
-- `[D] backend/app/services/credential_service.py:110-119` — `resolve_server_auth()` 함수 전체 삭제
-- `[D] backend/app/services/credential_service.py:135-140` — `get_usage_count`의 `mcp_count_result` 블록 삭제
-- `[S] backend/app/services/credential_service.py:122-142` — `get_usage_count` 반환에서 `mcp_server_count` 키 제거 또는 0 고정. **caller 확인 필요** (`routers/credentials.py` grep).
+- `[D] backend/app/services/credential_service.py:11` — 删除 import `MCPServer`
+- `[D] backend/app/services/credential_service.py:110-119` — 删除整个 `resolve_server_auth()` 函数
+- `[D] backend/app/services/credential_service.py:135-140` — 删除 `get_usage_count` 的 `mcp_count_result` block
+- `[S] backend/app/services/credential_service.py:122-142` — 从 `get_usage_count` 返回中删除 `mcp_server_count` key 或固定为 0。**需要确认 caller**（grep `routers/credentials.py`）。
 
 #### 2-3. tool_service.py
 
-- `[D] backend/app/services/tool_service.py:10` — import `MCPServer` 제거
-- `[D] backend/app/services/tool_service.py:11` — `MCPServerCreate` import 제거
-- `[D] backend/app/services/tool_service.py:89-130` — `register_mcp_server()` 함수 전체 삭제
-- `[D] backend/app/services/tool_service.py:133-140` — `get_mcp_servers()` 삭제
-- `[D] backend/app/services/tool_service.py:143-189` — `list_mcp_server_items()` 삭제
-- `[D] backend/app/services/tool_service.py:207-238` — `update_mcp_server()` 삭제
-- `[D] backend/app/services/tool_service.py:241-260` — `delete_mcp_server()` 삭제
-- `[S] backend/app/services/tool_service.py:192-204` — `_apply_credential_update` 시그니처에서 `Tool | MCPServer` → `Tool`만. **함수 자체가 M6 후 `tool.credential_id`도 없으므로 제거** 가능 검토.
-- `[S] backend/app/services/tool_service.py:263-294` — `update_tool_auth_config`에서 `auth_config` / `credential_id` 필드 처리 제거. → M6 이후 이 엔드포인트 자체가 의미 없음 → **라우터 단에서 제거 결정 권고 (피차이/젠슨 확정)**.
+- `[D] backend/app/services/tool_service.py:10` — 删除 import `MCPServer`
+- `[D] backend/app/services/tool_service.py:11` — 删除 `MCPServerCreate` import
+- `[D] backend/app/services/tool_service.py:89-130` — 删除整个 `register_mcp_server()` 函数
+- `[D] backend/app/services/tool_service.py:133-140` — 删除 `get_mcp_servers()`
+- `[D] backend/app/services/tool_service.py:143-189` — 删除 `list_mcp_server_items()`
+- `[D] backend/app/services/tool_service.py:207-238` — 删除 `update_mcp_server()`
+- `[D] backend/app/services/tool_service.py:241-260` — 删除 `delete_mcp_server()`
+- `[S] backend/app/services/tool_service.py:192-204` — `_apply_credential_update` signature 从 `Tool | MCPServer` → 仅 `Tool`。**M6 后连 `tool.credential_id` 也不存在，因此可评估删除函数本身**。
+- `[S] backend/app/services/tool_service.py:263-294` — 从 `update_tool_auth_config` 删除 `auth_config` / `credential_id` 字段处理。→ M6 后该 endpoint 本身无意义 → **建议在 router 层决定删除（Pichai/Jensen 最终确定）**。
 
-#### 2-4. agent_service.py — **agent_tools.config drop 연쇄**
+#### 2-4. agent_service.py — **agent_tools.config drop cascade**
 
-- `[D] backend/app/services/agent_service.py:45-50` — `_build_tool_links`에서 `config_map` 파라미터 제거, `AgentToolLink(tool_id=tid, config=...)` → `AgentToolLink(tool_id=tid)`
-- `[D] backend/app/services/agent_service.py:74-77` — `config_map` 구성 블록 삭제
+- `[D] backend/app/services/agent_service.py:45-50` — 从 `_build_tool_links` 删除 `config_map` 参数，`AgentToolLink(tool_id=tid, config=...)` → `AgentToolLink(tool_id=tid)`
+- `[D] backend/app/services/agent_service.py:74-77` — 删除 `config_map` 构建 block
 - `[S] backend/app/services/agent_service.py:97-98` — `_build_tool_links(tool_ids_to_link, config_map)` → `_build_tool_links(tool_ids_to_link)`
-- `[D] backend/app/services/agent_service.py:124-137` — `tool_configs` 처리 `if/elif` 블록 전체 삭제. `if data.tool_ids is not None:` 만 남기고 단순화.
+- `[D] backend/app/services/agent_service.py:124-137` — 删除整个 `tool_configs` 处理 `if/elif` block。只保留并简化 `if data.tool_ids is not None:`。
 
-### 3. 라우터/스키마
+### 3. Router/Schema
 
 #### 3-1. routers/tools.py
 
@@ -76,18 +76,18 @@
 - `[D] backend/app/routers/tools.py:58-63` — `GET /api/tools/mcp-servers`
 - `[D] backend/app/routers/tools.py:66-77` — `PATCH /api/tools/mcp-servers/{server_id}`
 - `[D] backend/app/routers/tools.py:80-88` — `DELETE /api/tools/mcp-servers/{server_id}`
-- `[D] backend/app/routers/tools.py:91-112` — `POST /api/tools/mcp-server/{server_id}/test` (`resolve_server_auth` 호출 포함)
-- `[S] backend/app/routers/tools.py:10-18` — imports에서 `MCPServerCreate, MCPServerListItem, MCPServerResponse, MCPServerUpdate` 제거
-- `[S] backend/app/routers/tools.py:9` — `mcp_server_not_found` import 제거
-- `[D/S] backend/app/routers/tools.py:115-128` — `PATCH /api/tools/{tool_id}/auth-config` — **호출처 없으면 삭제**. 프론트에서 `updateAuthConfig`는 M6 dead API로 확인됨(아래 §4). 라우터도 함께 삭제 권장 — 젠슨 최종 확정.
+- `[D] backend/app/routers/tools.py:91-112` — `POST /api/tools/mcp-server/{server_id}/test`（包含 `resolve_server_auth` 调用）
+- `[S] backend/app/routers/tools.py:10-18` — 从 imports 删除 `MCPServerCreate, MCPServerListItem, MCPServerResponse, MCPServerUpdate`
+- `[S] backend/app/routers/tools.py:9` — 删除 `mcp_server_not_found` import
+- `[D/S] backend/app/routers/tools.py:115-128` — `PATCH /api/tools/{tool_id}/auth-config` — **若无调用处则删除**。Frontend 中 `updateAuthConfig` 已确认为 M6 dead API（参见下方 §4）。建议 router 也一起删除 — Jensen 最终确定。
 
-#### 3-2. routers/agents.py — agent_tools.config drop 연쇄
+#### 3-2. routers/agents.py — agent_tools.config drop cascade
 
 - `[S] backend/app/routers/agents.py:40` — `ToolBrief(id=..., name=..., agent_config=link.config)` → `ToolBrief(id=..., name=...)`
-- `[S] backend/app/schemas/agent.py:12-16` — `ToolConfigEntry` class 전체 삭제
-- `[S] backend/app/schemas/agent.py:41` — `AgentCreate.tool_configs` 필드 제거
-- `[S] backend/app/schemas/agent.py:54` — `AgentUpdate.tool_configs` 필드 제거
-- `[S] backend/app/schemas/agent.py:68-73` — `ToolBrief.agent_config` 필드 제거
+- `[S] backend/app/schemas/agent.py:12-16` — 删除整个 `ToolConfigEntry` class
+- `[S] backend/app/schemas/agent.py:41` — 删除 `AgentCreate.tool_configs` 字段
+- `[S] backend/app/schemas/agent.py:54` — 删除 `AgentUpdate.tool_configs` 字段
+- `[S] backend/app/schemas/agent.py:68-73` — 删除 `ToolBrief.agent_config` 字段
 
 #### 3-3. schemas/tool.py
 
@@ -95,32 +95,32 @@
 - `[D] backend/app/schemas/tool.py:102-112` — `MCPServerResponse`
 - `[D] backend/app/schemas/tool.py:123-134` — `MCPServerListItem`
 - `[D] backend/app/schemas/tool.py:137-142` — `MCPServerUpdate`
-- `[D] backend/app/schemas/tool.py:115-120` — `CredentialBrief` — `MCPServerListItem`에서만 사용. 다른 사용처 있으면 유지. **확인 필요**.
-- `[D] backend/app/schemas/tool.py:50-54` — `ToolAuthConfigUpdate` (PATCH auth-config 라우터 삭제 시)
-- `[D] backend/app/schemas/tool.py:11-26` — `AUTH_CONFIG_MASK` 상수 + `_reject_mask_sentinel`
+- `[D] backend/app/schemas/tool.py:115-120` — `CredentialBrief` — 只被 `MCPServerListItem` 使用。若还有其他使用处则保留。**需要确认**。
+- `[D] backend/app/schemas/tool.py:50-54` — `ToolAuthConfigUpdate`（若删除 PATCH auth-config router）
+- `[D] backend/app/schemas/tool.py:11-26` — `AUTH_CONFIG_MASK` 常量 + `_reject_mask_sentinel`
 - `[D] backend/app/schemas/tool.py:70` — `ToolResponse.mcp_server_id`
 - `[D] backend/app/schemas/tool.py:71` — `ToolResponse.credential_id`
 - `[D] backend/app/schemas/tool.py:79` — `ToolResponse.auth_config`
 - `[D] backend/app/schemas/tool.py:86-99` — `ToolResponse._mask_auth_config` field_serializer
-- `[D] backend/app/schemas/tool.py:45` — `ToolCustomCreate.auth_config` (옵션)
-- `[S] backend/app/schemas/tool.py:46` — `ToolCustomCreate.credential_id` 유지? → M6 후 tool.credential_id 컬럼도 drop. POST /api/tools/custom이 credential_id를 받고 `connection_id`에만 쓰도록 정리해야 함. **여기 scope creep 주의** — 이 값은 connection_id derivation이라 M4에서 이미 connection으로 이관됨(tool_service.py:57-66). `credential_id` 필드는 receive 후 무시되어 이관 친화적으로 작성됨. M6에서 완전 제거 안전.
-- `[D] backend/app/schemas/tool.py:46` — `ToolCustomCreate.credential_id` 도 scope에 포함 권장 (선택).
+- `[D] backend/app/schemas/tool.py:45` — `ToolCustomCreate.auth_config`（可选）
+- `[S] backend/app/schemas/tool.py:46` — 是否保留 `ToolCustomCreate.credential_id`？→ M6 后 tool.credential_id 列也 drop。应整理 POST /api/tools/custom，让其接收 credential_id 后只用于 `connection_id` derivation。**这里注意 scope creep** — 此值作为 connection_id derivation，在 M4 已迁移为 connection（tool_service.py:57-66）。`credential_id` 字段接收后被忽略，写法有利于迁移。M6 可安全完全删除。
+- `[D] backend/app/schemas/tool.py:46` — 建议 `ToolCustomCreate.credential_id` 也纳入 scope（可选）。
 
-### 4. 프론트엔드
+### 4. Frontend
 
 #### 4-1. lib/api/tools.ts
 
-- `[D] frontend/src/lib/api/tools.ts:15-24` — `registerMCPServer`, `testMCPConnection` 메서드 삭제
-- `[D] frontend/src/lib/api/tools.ts:25-36` — `updateAuthConfig` 메서드 삭제 (PATCH 라우터 삭제 시)
-- `[D] frontend/src/lib/api/tools.ts:38-45` — `listMCPServers`, `updateMCPServer`, `deleteMCPServer` 삭제
-- `[S] frontend/src/lib/api/tools.ts:1-9` — imports 축소
+- `[D] frontend/src/lib/api/tools.ts:15-24` — 删除 `registerMCPServer`, `testMCPConnection` 方法
+- `[D] frontend/src/lib/api/tools.ts:25-36` — 删除 `updateAuthConfig` 方法（若删除 PATCH router）
+- `[D] frontend/src/lib/api/tools.ts:38-45` — 删除 `listMCPServers`, `updateMCPServer`, `deleteMCPServer`
+- `[S] frontend/src/lib/api/tools.ts:1-9` — 缩减 imports
 
 #### 4-2. lib/hooks/use-tools.ts
 
 - `[D] frontend/src/lib/hooks/use-tools.ts:39-43` — `useRegisterMCPServer`
-- `[D] frontend/src/lib/hooks/use-tools.ts:52-60` — `useUpdateToolAuthConfig` (라우터 삭제 시)
+- `[D] frontend/src/lib/hooks/use-tools.ts:52-60` — `useUpdateToolAuthConfig`（若删除 router）
 - `[D] frontend/src/lib/hooks/use-tools.ts:71-80` — `useMCPServers`
-- `[D] frontend/src/lib/hooks/use-tools.ts:82-105` — `useToolsByConnection`의 MCP 경로 — `t.mcp_server_id` 의존 (line 99)
+- `[D] frontend/src/lib/hooks/use-tools.ts:82-105` — `useToolsByConnection` 的 MCP 路径 — 依赖 `t.mcp_server_id`（line 99）
 - `[D] frontend/src/lib/hooks/use-tools.ts:113-128` — `useUpdateMCPServer`, `useDeleteMCPServer`
 
 #### 4-3. lib/types/index.ts
@@ -128,27 +128,27 @@
 - `[D] frontend/src/lib/types/index.ts:220` — `Tool.mcp_server_id`
 - `[D] frontend/src/lib/types/index.ts:229` — `Tool.auth_config`
 - `[D] frontend/src/lib/types/index.ts:231` — `Tool.credential_id`
-- `[D] frontend/src/lib/types/index.ts:318-326` — `MCPServer` 타입
+- `[D] frontend/src/lib/types/index.ts:318-326` — `MCPServer` 类型
 - `[D] frontend/src/lib/types/index.ts:334-344` — `MCPServerListItem`
 - `[D] frontend/src/lib/types/index.ts:346-350` — `MCPServerUpdateRequest`
 - `[D] frontend/src/lib/types/index.ts:364-370` — `MCPServerCreateRequest`
-- `[S] frontend/src/lib/types/index.ts:352-362` — `ToolCustomCreateRequest.auth_config` 제거 (선택)
+- `[S] frontend/src/lib/types/index.ts:352-362` — 删除 `ToolCustomCreateRequest.auth_config`（可选）
 
-#### 4-4. 참조처 cascade (타입 drop으로 빌드 에러 나는 곳만 **삭제**, 신규 로직 금지)
+#### 4-4. 引用处 cascade（只**删除**因 type drop 导致 build error 的地方，禁止新逻辑）
 
-- `[S] frontend/src/app/tools/page.tsx:20, 40, 98-111, 401, 477-500, 529, 634-644` — MCP section / `mcp_server_id` 사용처 / `auth_config` configured-state 추론 / `useMCPServers` 모두 제거. **이 파일은 저커버그 S4 범위 초과 위험 — 별도 cleanup 필요**.
-- `[S] frontend/src/components/tool/add-tool-dialog.tsx:21, 47` — `useRegisterMCPServer` 호출 제거. MCP 등록 UI 자체가 M5 이후 dead이므로 삭제 권장.
-- `[D] frontend/src/components/tool/mcp-server-rename-dialog.tsx` — 파일 전체 삭제
-- `[D] frontend/src/components/tool/mcp-server-group-card.tsx` — 파일 전체 삭제
-- `[S] frontend/src/components/connection/connection-binding-dialog.tsx:35, 80, 467-506-521` — `useUpdateMCPServer` 사용 제거. MCP binding은 credential_id 만 업데이트하는 것이 아니라 connection 자체를 통해 가야 함. **M5.5/M6.1 옵션 D 영역 — M6 범위에서 단순 제거 불가. 저커버그 S4와 피차이/사티아 합의 필요.**
+- `[S] frontend/src/app/tools/page.tsx:20, 40, 98-111, 401, 477-500, 529, 634-644` — 删除 MCP section / `mcp_server_id` 使用处 / `auth_config` configured-state 推断 / `useMCPServers`。**此文件有超出 Zuckerberg S4 范围的风险 — 需要单独 cleanup。**
+- `[S] frontend/src/components/tool/add-tool-dialog.tsx:21, 47` — 删除 `useRegisterMCPServer` 调用。MCP 注册 UI 本身在 M5 后 dead，因此建议删除。
+- `[D] frontend/src/components/tool/mcp-server-rename-dialog.tsx` — 删除整个文件
+- `[D] frontend/src/components/tool/mcp-server-group-card.tsx` — 删除整个文件
+- `[S] frontend/src/components/connection/connection-binding-dialog.tsx:35, 80, 467-506-521` — 删除 `useUpdateMCPServer` 使用。MCP binding 不应只更新 credential_id，而应经由 connection 本身。**M5.5/M6.1 Option D 区域 — M6 scope 中不能简单删除。需要 Zuckerberg S4 与 Pichai/Satya 达成一致。**
 
-> **⚠ 저커버그 S4 scope creep 경고**: `app/tools/page.tsx`, `add-tool-dialog.tsx`, `connection-binding-dialog.tsx`, `mcp-server-*-dialog` 은 CHECKPOINT.md S4 "thin cleanup" 범위를 초과할 수 있다. 사티아에게 M6.1 로 분리하는 승인 요청 권고.
+> **⚠ Zuckerberg S4 scope creep 警告**：`app/tools/page.tsx`, `add-tool-dialog.tsx`, `connection-binding-dialog.tsx`, `mcp-server-*-dialog` 可能超出 CHECKPOINT.md S4 "thin cleanup" 范围。建议向 Satya 申请批准拆分到 M6.1。
 
-### 5. 테스트 (유지/삭제 결정)
+### 5. 测试（保留/删除决定）
 
-#### 5-1. 전체 삭제 (legacy 전용)
+#### 5-1. 整体删除（legacy 专用）
 
-- `[D] backend/tests/test_agent_tool_config.py` — **파일 전체 (142 lines, 4 tests)**. `tool_configs` / `agent_config` 필드가 drop되면 모든 테스트 broken. **단, agent_tools.config drop 확정 선결.**
+- `[D] backend/tests/test_agent_tool_config.py` — **整个文件（142 lines, 4 tests）**。一旦 drop `tool_configs` / `agent_config` 字段，所有 test 都会 broken。**但前提是确认 drop agent_tools.config。**
 - `[D] backend/tests/test_tools.py:509-577` — `test_build_tools_config_mcp_uses_server_credential` (legacy server_credential 경로).
 - `[D] backend/tests/test_tools.py:267-404` — `_seed_mcp_server_with_tools` 및 `test_list_mcp_servers_returns_tool_count` / `test_update_mcp_server_*` / `test_delete_mcp_server_cascades_tools` (MCP server CRUD 섹션 전체)
 - `[D] backend/tests/test_tools.py:60-74` — `test_register_mcp_server`

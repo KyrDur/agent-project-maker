@@ -32,8 +32,8 @@
 - `messages/ko.json` 등 i18n 사전 — `agent.assistant.*` 등 패턴
 
 ### 폐기
-- `_components/basic-info-tab.tsx` (헤더 + section-instructions로 분해)
-- `_components/model-tab.tsx` (model-dialog로 흡수)
+- `_components/basic-info-tab.tsx`（拆为 header + section-instructions）
+- `_components/model-tab.tsx`（吸收到 model-dialog）
 - `_components/tools-skills-tab.tsx` (모달들로 분해)
 
 ### DB 패턴

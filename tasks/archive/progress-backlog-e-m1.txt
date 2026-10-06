@@ -65,7 +65,7 @@ DELETE /api/connections/{id}                # 삭제
 
 모든 엔드포인트: `get_current_user` 필수 + user_id 필터.
 
-## 검증 커맨드
+## 验证命令
 
 ```bash
 cd backend

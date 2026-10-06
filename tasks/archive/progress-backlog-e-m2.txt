@@ -41,7 +41,7 @@ M1에서 `connections` 테이블을 parallel run으로 만들었고, 이제 M2�
 
 **주의**: `app/services/connection_service.py` 는 M1 산출물 — M2에서 건드리지 않음 (버그 수정 제외).
 
-## 검증 커맨드
+## 验证命令
 
 ```bash
 cd backend
