@@ -46,7 +46,10 @@
       "qualityIssues": {
         "missing_capabilities": "Capabilities are missing. Add case tags or regenerate cases.",
         "low_diversity": "Too many duplicate cases. Edit or regenerate cases.",
-        "invalid_scoring_contract": "Missing scoring requirement sources or criterion applicability."
+        "invalid_scoring_contract": "Missing scoring requirement sources or criterion applicability.",
+        "invalid_simulation_environment": "The simulation cannot execute the reference path",
+        "missing_reference_review": "Reference path has no requirement review",
+        "invalid_reference_review": "Reference path conflicts with frozen requirements"
       },
       "bestReason": "Reason: highest valid score on the same eval set and scoring rule.",
       "createdFrom": "Created from {source} · proposal {proposal}",
@@ -83,7 +86,8 @@
       "needBaseline": "Evaluate another version to compare scores.",
       "notComparable": "Valid evaluations with the same frozen data and scoring criteria are required to calculate a difference.",
       "running": "Evaluation or optimization is running. Reports refresh automatically when it finishes.",
-      "empty": "No evaluation reports yet. Select a version and eval set, then run evaluation."
+      "empty": "No evaluation reports yet. Select a version and eval set, then run evaluation.",
+      "bestCohort": "All {runs} valid runs in this scope: {passed}/{total} trials passed."
     },
     "workspace": {
       "navAria": "Agent lifecycle workspace",
@@ -151,7 +155,12 @@
           "optimizationDecision": "Optimization Decision",
           "v2Generation": "Generate V2",
           "regressionEvaluation": "Regression Evaluation",
-          "comparisonBestVersion": "Comparison and Best Version"
+          "comparisonBestVersion": "Comparison and Best Version",
+          "requirements": "Confirm requirements and capabilities",
+          "simulation": "Try in chat (optional)",
+          "evaluation": "Review automatic evaluation",
+          "optimization": "Confirm changes and regression",
+          "materials": "Review cases and materials"
         },
         "stepStates": {
           "completed": "completed",
@@ -219,6 +228,10 @@
           "compareVersions": {
             "label": "Compare Versions",
             "detail": "Review the best version, score changes, and version evolution."
+          },
+          "waitEvaluation": {
+            "label": "View run progress",
+            "detail": "The current experiment is running. Wait for completion before analysis or comparison."
           }
         }
       },
@@ -358,7 +371,10 @@
       "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted.",
       "evaluation_role_configuration_changed": "Personal model configuration changed. Start a new experiment scope; the old and new scopes cannot be compared directly.",
       "evaluation_rubric_invalid": "Invalid scoring contract or case applicability. Review requirement sources and generate a new plan; historical experiments are unchanged.",
-      "evaluation_rubric_unsupported": "Model C found unsupported or ambiguous scoring rules. Review requirements and generation evidence, then retry; these rules will not grade the Agent."
+      "evaluation_rubric_unsupported": "Model C found unsupported or ambiguous scoring rules. Review requirements and generation evidence, then retry; these rules will not grade the Agent.",
+      "evaluation_environment_invalid": "Reference path failed environment preflight; repair simulation data and retry.",
+      "evaluation_reference_invalid": "Reference answer or path conflicts with requirements; regenerate scenarios.",
+      "evaluation_mock_response_missing": "No simulation response matches the actual arguments; this is an environment error."
     },
     "compareVersions": "Compare versions",
     "needTwoVersions": "Create a second version to compare configurations.",
@@ -573,7 +589,22 @@
         "regressed": "Regressed"
       },
       "latestVersion": "Latest version: V{version}",
-      "currentResult": "Current result (V{version}): {passed}/{total}; all-case pass rate {rate}"
+      "currentResult": "Current result (V{version}): {passed}/{total}; all-case pass rate {rate}",
+      "missingCases": "Fewer than two recorded scenarios; materials need more evidence.",
+      "staleMaterials": "New evidence makes the saved resume stale; regenerate it.",
+      "chooseCases": "Select two recorded cases",
+      "caseOne": "First case",
+      "caseTwo": "Second case",
+      "saveCases": "Save case selection",
+      "caseOutcome": "Trial {trial} · Status: {status} · Termination: {termination}",
+      "caseEnvironment": "Initial and final simulated state",
+      "caseJudgment": "Program checks, judgments and model call records",
+      "caseChanges": "Accepted changes and sources",
+      "changeAuthor": "Decision author: {author}",
+      "authorDemo": "Codex developer demonstration",
+      "authorUser": "The user",
+      "authorSystem": "System record",
+      "caseNoChanges": "No accepted change was saved for this case."
     },
     "bootstrap": {
       "title": "Build and baseline evaluation",
@@ -660,7 +691,10 @@
       "retryMessage": "Retry the same message",
       "error": "The simulation request failed. You can retry the same request.",
       "restoreError": "Unable to restore this session. Retry reading it.",
-      "running": "Running simulation…"
+      "running": "Running simulation…",
+      "scenarioExample": "Example for this scenario: {input}",
+      "scenarioScope": "Available simulations: {tools}. Uncovered capabilities report environment errors.",
+      "noTools": "No tools; conversation only"
     },
     "analysisEvidence": "Model C analysis source and evidence",
     "qualityScore": "Evaluation set review score: {value}% (does not represent agent quality)",
@@ -815,16 +849,27 @@
         "passed": "Tasks passed",
         "failed": "Tasks failed",
         "execution_errors": "Execution errors",
-        "judge_errors": "Judge errors"
+        "judge_errors": "Judge errors",
+        "environment_errors": "Simulation environment errors"
       },
       "caseCount": "{count}/{total} cases",
       "allPassRate": "All-case task pass rate: {passed}/{total} ({value}%)",
       "weightNotice": "All applicable metrics and necessary checks must pass. There is no weighted total; weights are retained only for historical compatibility.",
-      "thresholdRule": "The threshold applies to each metric of each case, not to the run-wide average.",
+      "thresholdRule": "Success follows this project’s frozen task criteria; new rules score expression preferences separately.",
       "metricComparison": "Average {before}/100 → {after}/100 · {delta} points",
       "sourceReview": "New criteria require source validation and a model C rule review. This is not industry benchmark calibration.",
       "caseScore": "Case score: {value}/100",
-      "failedOrWeakCases": "Failed cases or cases with weak metrics: {count}"
+      "failedOrWeakCases": "Failed cases or cases with weak metrics: {count}",
+      "taskQualitySeparation": "Task outcomes and critical constraints determine success; expression quality is separate.",
+      "qualityOnly": "Expression quality; does not gate task success",
+      "factCounts": "Supported facts {supported}/{total}; unsupported {unsupported}, unknown {unknown}.",
+      "calibrationLimit": "Fact coverage relies on model extraction and has no domain expert calibration; existing citations do not ensure correct judgments.",
+      "factVerdicts": {
+        "supported": "Supported",
+        "unsupported": "Unsupported",
+        "unknown": "Unknown",
+        "not_applicable": "Not a factual claim"
+      }
     },
     "optimizationProgress": "Regression is running: {finished}/{total} cases completed. Wait for complete results before analysis or another optimization round. This page updates automatically.",
     "optimizationErrors": {
@@ -856,7 +901,28 @@
       "tool_description": "Simulation tool description",
       "runtime_config": "Call limits and retries"
     },
-    "analyzingFailures": "Model C is analyzing failures and weak metrics using this run evidence…"
+    "analyzingFailures": "Model C is analyzing failures and weak metrics using this run evidence…",
+    "qualityRevision": {
+      "setPurpose": "Dataset purpose",
+      "purposes": {
+        "regression": "Frozen regression set",
+        "validation": "Separate validation set"
+      },
+      "validationBoundary": "Validation content and results are withheld from optimization model A; further optimization using them must declare the set as used.",
+      "repetitions": "Trials per case",
+      "trialOption": "{count} trials",
+      "stability": "{count} trials per case; one trial cannot establish stability.",
+      "trialRates": "Trial pass rates (%): {rates}; all trials are retained.",
+      "callBudget": "{count} case trials, at least approximately {calls} execution and judge requests; tools and retries add calls. Pricing is unavailable; personal keys are used.",
+      "operationRate": "Final operation state reached: {successful}/{total} applicable trials.",
+      "recoveryRate": "Recovery after declared faults: {successful}/{total} applicable trials.",
+      "confirmedDetails": "View confirmed requirements and decisions",
+      "validationUseBoundary": "Using this validation set for optimization marks all related runs as used. They can no longer be claimed as unseen validation.",
+      "validationUseReason": "Reason for using validation evidence",
+      "useValidation": "Mark as used and allow optimization",
+      "criticalRate": "Critical violations: {violating}/{total} applicable scored trials.",
+      "modelAccounting": "{calls} model invocations; token records cover {coverage}, recorded total {count}. Cost is unavailable without prices."
+    }
   },
   "metadata": {
     "title": "Agent Project Maker",

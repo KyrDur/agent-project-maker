@@ -167,6 +167,8 @@ async def execute_snapshot(
                 if call["name"] == "task"
             ],
         }
+        if missing:
+            raise SnapshotExecutionUnavailable("evaluation_mock_missing", evidence)
         # Scrub actual resolved values before any database/API boundary. No raw
         # tool arguments, tool results, headers, or provider errors are retained.
         return snapshot_value(

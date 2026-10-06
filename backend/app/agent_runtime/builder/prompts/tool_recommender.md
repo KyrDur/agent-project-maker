@@ -11,4 +11,10 @@
 - 用户要求修改时，重新生成完整方案，并严格遵守其取舍。
 - 不得推荐真实 tool/mcp 连接。每项 reason 说明与确认需求的关系。
 
+generated_skill 的 content 是 JSON 字符串，解码后必须以独立一行 `---` 开始，包含非空的 `name` 与 `description`，再以独立一行 `---` 结束 frontmatter。不要把正文标题当作 name，不要省略 frontmatter。示例：
+
+```json
+{"tool_name":"writing-guide","kind":"generated_skill","description":"文本写作指南","reason":"依据确认需求组织文本","content":"---\nname: writing-guide\ndescription: 文本写作指南\n---\n\n依据提供的事实组织回答，不补造信息。"}
+```
+
 Follow the active UI locale for all user-visible text. Preserve identifiers and JSON field names.

@@ -34,12 +34,25 @@ export function ProjectEvaluationReport({
     candidates[0]
   const bestId = selected?.comparison_key && query.data?.best_run_ids[selected.comparison_key]
   const best = reports.find((r) => r.evaluation_run_id === bestId)
+  const bestCohort =
+    best && (best.eval_spec?.rubric_version ?? 1) >= 3
+      ? reports.filter(
+          (r) =>
+            r.version_id === best.version_id &&
+            r.comparison_key === best.comparison_key &&
+            r.score !== null,
+        )
+      : []
+  const bestTotal = bestCohort.reduce((sum, run) => sum + run.total, 0)
+  const bestPassed = bestCohort.reduce((sum, run) => sum + run.passed, 0)
+  const bestScore = bestTotal ? bestPassed / bestTotal : best?.score
   const comparable =
     !!selected?.comparison_key &&
     selected.comparison_key === baseline?.comparison_key &&
     selected.score !== null &&
     baseline?.score != null
-  const number = (value: number) => formatDisplayNumber(value, { locale, maximumFractionDigits: 1 })
+  const number = (value: number) =>
+    formatDisplayNumber(value, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const percent = (value: number | null | undefined) =>
     value == null ? t('unavailable') : t('percent', { value: number(value * 100) })
   const delta = (a: number, b: number) =>
@@ -87,10 +100,19 @@ export function ProjectEvaluationReport({
               </div>
               <div>
                 <h3 className="font-medium">{t('best')}</h3>
-                <p>{best ? `${version(best)} · ${percent(best.score)}` : t('unavailable')}</p>
+                <p>{best ? `${version(best)} · ${percent(bestScore)}` : t('unavailable')}</p>
                 {best && (
                   <>
                     <p>{projectT('lifecycle.bestReason')}</p>
+                    {!!bestTotal && (
+                      <p>
+                        {t('bestCohort', {
+                          passed: bestPassed,
+                          total: bestTotal,
+                          runs: bestCohort.length,
+                        })}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       {formatDisplayDateTime(best.created_at, { locale })}
                     </p>
@@ -122,7 +144,7 @@ export function ProjectEvaluationReport({
               <h3 className="font-medium">{t('badCases', { count: selected.bad_case_count })}</h3>
               {!selected.bad_cases.length && <p>{t('noFailures')}</p>}
               {selected.bad_cases.map((item) => (
-                <details key={item.case_id}>
+                <details key={`${item.case_id}-${item.trial ?? 1}`}>
                   <summary>{item.name}</summary>
                   <ul className="list-disc pl-5">
                     {(item.reasons.length ? item.reasons : [t('noReason')]).map((reason, i) => (

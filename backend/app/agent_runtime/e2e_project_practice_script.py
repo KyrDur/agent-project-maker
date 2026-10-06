@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage
 
@@ -11,6 +12,7 @@ SECOND_PATCH = "Explain observed evidence before final answer."
 
 
 def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
+    value: dict[str, Any]
     text = "\n".join(str(m.content) for m in messages)
     if MARKER not in text and '"rubric_review_rules"' not in text:
         return None
@@ -71,6 +73,13 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
                 for key in payload["rubric_review_rules"]
             ]
         }
+    elif "reference_results" in payload:
+        value = {
+            "rule_reviews": [
+                {"reference": cid, "supported": True, "reason": "固定响应参考答案一致性检查。"}
+                for cid in payload["reference_results"]
+            ]
+        }
     elif "actual_output" in payload:
         good = payload["actual_output"].startswith("Complete task using supplied facts.")
         improved = "Verified evidence." in payload["actual_output"]
@@ -91,6 +100,8 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
                     for m in payload["metrics"]
                 }
             }
+            if payload.get("rubric_version") == 3:
+                value["fact_results"] = []
         else:
             value = {
                 "metric_scores": {
@@ -161,6 +172,9 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
                     "context": [],
                     "judgment_basis": "依据给定事实和明确业务条件完成任务，不虚构结果。",
                     "expected": {"answer": "Complete task using supplied facts."},
+                    "reference_answer": "Complete task using supplied facts.",
+                    "reference_trace": [],
+                    "mock_tool_data": {},
                     "tags": [
                         payload["categories"][i % len(payload["categories"])],
                         *payload["capability_profile"]["capabilities"],
@@ -178,7 +192,8 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
         }
     elif "metric_pool" in payload:
         value = {
-            "rubric_version": 2,
+            "rubric_version": 3,
+            "pass_threshold_reason": "完整满足两项判据为1；只满足一项为0.5，不能通过0.7的门槛。",
             "metrics": [
                 {
                     "name": name,

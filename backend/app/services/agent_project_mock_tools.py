@@ -105,10 +105,12 @@ def mock_tools(
                         output = (
                             deepcopy(response.get("result"))
                             if response
-                            else {"error": "no_matching_response"}
+                            else {"error": "evaluation_mock_response_missing"}
                         )
                         if response and response.get("error"):
                             output = {"error": response["error"]}
+                        if response is None:
+                            missing.append(tool_name)
                     else:
                         output = deepcopy(frozen.get("result"))
                     if isinstance(output, dict) and output.get("error"):

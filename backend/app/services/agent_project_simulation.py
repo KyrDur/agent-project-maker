@@ -7,7 +7,7 @@ import uuid
 from copy import deepcopy
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_project import AgentProjectEvalRun, AgentProjectEvalSet
@@ -73,6 +73,10 @@ async def create(
         .where(
             AgentProjectEvalSet.project_id == project.id,
             AgentProjectEvalSet.frozen.is_(True),
+            or_(
+                AgentProjectEvalSet.rubric_json["purpose"].as_string().is_(None),
+                AgentProjectEvalSet.rubric_json["purpose"].as_string() != "validation",
+            ),
         )
         .order_by(AgentProjectEvalSet.created_at.desc())
     )

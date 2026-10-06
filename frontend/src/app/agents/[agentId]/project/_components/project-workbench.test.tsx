@@ -146,7 +146,7 @@ it('uses real lifecycle data for best version, latest evaluation and optimizatio
   render(<ProjectWorkbench agentId="agent-id" />)
   expect((await screen.findAllByText('最佳版本')).length).toBeGreaterThan(0)
   expect(screen.getAllByText('V2').length).toBeGreaterThan(0)
-  expect((await screen.findAllByText('90%')).length).toBeGreaterThan(0)
+  expect((await screen.findAllByText('90.0%')).length).toBeGreaterThan(0)
   expect(screen.getByText('需要先检索资料。')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: /优化\s*优化闭环/ }))
   expect(await screen.findByRole('heading', { name: '优化' })).toBeInTheDocument()

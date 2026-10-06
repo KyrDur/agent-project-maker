@@ -267,7 +267,11 @@ async def test_rule_review_rejection_preserves_previous_plan_and_retry(
                     for key in payload["rubric_review_rules"]
                 ]
             }
-        return structured_plan()
+        return {
+            **structured_plan(),
+            "rubric_version": 3,
+            "pass_threshold_reason": "完整满足核心判据，部分满足不通过。",
+        }
 
     monkeypatch.setattr(semantic, "json_call", model)
     with pytest.raises(AppError, match="evaluation_rubric_unsupported"):
@@ -278,7 +282,7 @@ async def test_rule_review_rejection_preserves_previous_plan_and_retry(
     assert project.report_json["generation_failure"]["code"] == "evaluation_rubric_unsupported"
     approved = True
     result = await semantic.generate(db, agent_id, phase3.TEST_USER_ID, version_id)
-    assert result["rubric_version"] == 2
+    assert result["rubric_version"] == 3
     assert result["rule_validation"]["source"] == "model_C_requirement_review"
 
 

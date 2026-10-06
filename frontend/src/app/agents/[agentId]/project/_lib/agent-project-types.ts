@@ -127,6 +127,7 @@ export interface EvaluationCase {
 }
 
 export interface EvaluationSet {
+  rubric_json?: { purpose?: 'regression' | 'validation'; validation_exposure?: string } | null
   id: string
   project_id: string
   name: string
@@ -139,6 +140,19 @@ export interface EvaluationSet {
 }
 
 export interface EvaluationResult {
+  trial?: number
+  fact_check?: {
+    items: {
+      claim: string
+      kind: string
+      verdict: string
+      evidence: { reference: string; quote: string }[]
+    }[]
+    supported: number
+    unsupported: number
+    unknown: number
+    total: number
+  }
   case_id: string
   name: string
   input: string
@@ -168,6 +182,25 @@ export interface EvaluationResult {
 }
 
 export interface EvaluationMetrics {
+  model_accounting?: {
+    model_invocations: number
+    usage_covered_invocations: number
+    total_count: number | null
+  }
+
+  environment_errors?: number
+  repetitions?: number
+  trial_pass_rates?: number[]
+  fact_support?: {
+    supported: number
+    unsupported: number
+    unknown: number
+    total: number
+    covered_cases: number
+  } | null
+  operation_success?: { successful: number; total: number }
+  recovery_success?: { successful: number; total: number }
+  critical_violations?: { violating: number; total: number }
   total: number
   passed?: number
   failed?: number
@@ -196,6 +229,8 @@ export interface EvaluationRun {
   results_json: EvaluationResult[] | null
   bad_cases_json?: BadCase[] | null
   comparison_json?: {
+    purpose?: 'regression' | 'validation'
+    validation_exposure?: 'used' | 'unseen' | null
     proposals?: OptimizationProposal[]
     regression?: { source_run_id: string; proposal_id: string }
     eval_spec?: EvaluationSpec
@@ -222,12 +257,13 @@ export interface VersionComparison {
 export interface EvaluationSpec {
   capability_profile?: Record<string, unknown>
   version_id: string
-  rubric_version?: 1 | 2
+  rubric_version?: 1 | 2 | 3
   metrics: ScoringMetric[]
   categories: string[]
   focus_options?: EvaluationFocusOption[]
   case_count: number
   pass_threshold: number
+  pass_threshold_reason?: string | null
 }
 
 export interface EvaluationFocusOption {
@@ -278,6 +314,7 @@ export interface OptimizationState {
 }
 export interface PortfolioReport {
   evidence_hash: string
+  artifact_status?: Record<string, 'missing' | 'current' | 'stale'>
   markdown: string
   sections: { title: string; body: string }[]
   evidence: {
@@ -324,6 +361,8 @@ export interface PortfolioReport {
       evaluation: PortfolioEvaluation | null
     }[]
     limitations: string[]
+    case_cards?: ProjectCaseCard[]
+    material_readiness?: string
   }
 }
 
@@ -354,7 +393,7 @@ export interface EvaluationReport {
   total: number
   passed: number
   bad_case_count: number
-  bad_cases: { case_id: string; name: string; reasons: string[] }[]
+  bad_cases: { case_id: string; trial?: number; name: string; reasons: string[] }[]
   optimization_suggestions: string[]
   comparison_key: string | null
   created_at: string
@@ -412,6 +451,7 @@ export interface RequirementReference {
   quote: string
 }
 export interface ScoringMetric {
+  verdict_role?: 'task' | 'quality'
   name: string
   type: string
   weight: number
@@ -449,4 +489,44 @@ export interface MetricVerdict {
     evidence: { reference: string; quote: string }[]
   }[]
   checks?: { kind: string; target?: string; passed: boolean }[]
+}
+
+export interface ProjectCaseCard {
+  reference: string
+  case_id: string
+  title: string
+  personal_task: string
+  system_task: string
+  history: {
+    reference: string
+    version: number
+    trial: number
+    user_request: string
+    success_conditions: string | null
+    actual_answer: string
+    initial_state: unknown
+    judgment_basis: string | null
+    checks: unknown
+    judgments: unknown
+    model_calls: unknown
+    final_state: unknown
+    termination: string | null
+    status: string
+    timeline: {
+      event: string
+      tool: string
+      arguments: unknown
+      returned_facts: unknown
+      error: string | null
+    }[]
+  }[]
+  reviews: { finding: string; source: string }[]
+  changes?: {
+    title: string
+    reason: string | null
+    author: string
+    source: string
+    diffs: unknown
+  }[]
+  limitations: string[]
 }

@@ -77,6 +77,7 @@ it('generates a plan then cases and edits mocks using the existing editor', asyn
     http.post(`${path}/eval-sets/generate`, async ({ request }) => {
       expect(await request.json()).toEqual({
         version_id: 'v1',
+        purpose: 'regression',
         evaluation_focus_reason: null,
       })
       server.use(http.get(`${path}/eval-sets`, () => HttpResponse.json([dataset])))
@@ -154,7 +155,7 @@ it('shows pass rate, individual scores and failed-case evidence', async () => {
   )
   render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
-  expect(await screen.findByText(/全部用例通过率：17\/20（85%）/)).toBeInTheDocument()
+  expect(await screen.findByText(/全部用例通过率：17\/20（85.0%）/)).toBeInTheDocument()
   expect(
     await screen.findByText(/Revenue is absent from the sources/, { selector: 'p' }),
   ).toBeInTheDocument()

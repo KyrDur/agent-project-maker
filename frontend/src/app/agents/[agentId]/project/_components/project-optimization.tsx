@@ -1,7 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { formatDisplayNumber } from '@/lib/utils/display-format'
+import { useMutation } from '@tanstack/react-query'
+import { Textarea } from '@/components/ui/textarea'
+import { agentProjectApi } from '../_lib/agent-project-api'
+import { useProjectEvaluation } from '../_hooks/use-project-evaluation'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
 import { useProjectOptimization, useProjectVersions } from '../_hooks/use-project-evaluation'
@@ -20,8 +25,20 @@ export function ProjectOptimization({
   runs?: EvaluationRun[]
 }) {
   const t = useTranslations('agentProject')
+  const locale = useLocale()
+  const percent = (value: number) =>
+    formatDisplayNumber(value * 100, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const { analyze, errorCode } = useProjectOptimization(agentId, run.id)
   const [selected, setSelected] = useState('')
+  const [useReason, setUseReason] = useState('')
+  const evaluation = useProjectEvaluation(agentId)
+  const heldOut =
+    run.comparison_json?.purpose === 'validation' &&
+    run.comparison_json?.validation_exposure !== 'used'
+  const useValidation = useMutation({
+    mutationFn: () => agentProjectApi.useValidation(agentId, run.id, useReason),
+    onSuccess: () => evaluation.runs.refetch(),
+  })
   const { detail } = useProjectVersions(agentId, selected)
   const analysis = run.comparison_json?.analysis
   const state = run.comparison_json?.optimization
@@ -62,7 +79,27 @@ export function ProjectOptimization({
       {!ready && !evaluating && (
         <p role="status">{t('optimizationErrors.optimization_run_incomplete')}</p>
       )}
-      {!analysis && (
+      {heldOut && (
+        <div className="space-y-2">
+          <p>{t('qualityRevision.validationUseBoundary')}</p>
+          <label htmlFor={`validation-use-${run.id}`}>
+            {t('qualityRevision.validationUseReason')}
+          </label>
+          <Textarea
+            id={`validation-use-${run.id}`}
+            value={useReason}
+            onChange={(event) => setUseReason(event.target.value)}
+          />
+          <Button
+            disabled={!ready || !useReason.trim() || useValidation.isPending}
+            onClick={() => useValidation.mutate()}
+          >
+            {t('qualityRevision.useValidation')}
+          </Button>
+          {useValidation.isError && <ErrorState />}
+        </div>
+      )}
+      {!analysis && !heldOut && (
         <Button
           variant="outline"
           disabled={busy || !ready || !failedCount}
@@ -157,8 +194,8 @@ export function ProjectOptimization({
               <summary>{t('compareVersions')}</summary>
               <p>
                 {t('regressionRates', {
-                  before: Math.round(round.comparison.pass_rate.before * 100),
-                  after: Math.round(round.comparison.pass_rate.after * 100),
+                  before: percent(round.comparison.pass_rate.before),
+                  after: percent(round.comparison.pass_rate.after),
                 })}
               </p>
               <ul>
@@ -182,8 +219,8 @@ export function ProjectOptimization({
                     {scores.before == null || scores.after == null
                       ? t('notRun')
                       : t('regressionRates', {
-                          before: Math.round(scores.before * 100),
-                          after: Math.round(scores.after * 100),
+                          before: percent(scores.before),
+                          after: percent(scores.after),
                         })}
                   </li>
                 ))}

@@ -59,12 +59,15 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                 {activeTab === 'overview' ? (
                   <div className="space-y-5">
                     <ProjectSimulation agentId={agentId} versions={versions.data ?? []} />
-                    <ProjectPractice
-                      key={project.data.id}
-                      agentId={agentId}
-                      project={project.data}
-                      versions={versions.data ?? []}
-                    />
+                    <details>
+                      <summary>{t('qualityRevision.confirmedDetails')}</summary>
+                      <ProjectPractice
+                        key={project.data.id}
+                        agentId={agentId}
+                        project={project.data}
+                        versions={versions.data ?? []}
+                      />
+                    </details>
                     <LifecycleOverview
                       agentId={agentId}
                       project={project.data}

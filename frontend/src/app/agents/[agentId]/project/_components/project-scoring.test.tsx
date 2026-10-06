@@ -52,7 +52,7 @@ it('distinguishes 19-case metric averages from all-case task pass rates and erro
       }}
     />,
   )
-  expect(screen.getByText('全部用例通过率：10/20（50%）')).toBeInTheDocument()
+  expect(screen.getByText('全部用例通过率：10/20（50.0%）')).toBeInTheDocument()
   expect(screen.getByText('平均得分：91.3/100')).toBeInTheDocument()
   expect(screen.getByText('评分覆盖：19/20 条用例')).toBeInTheDocument()
   expect(screen.getByText('执行错误')).toBeInTheDocument()
@@ -115,5 +115,5 @@ it('renders criterion reasons and cited execution evidence', () => {
 it('withholds pending scores instead of inventing zeros', () => {
   render(<ProjectMetrics metrics={{ total: 20 }} />)
   expect(screen.getByRole('status')).toHaveTextContent('评测尚未完成')
-  expect(screen.queryByText('平均得分：0/100')).not.toBeInTheDocument()
+  expect(screen.queryByText('平均得分：0.0/100')).not.toBeInTheDocument()
 })

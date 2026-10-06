@@ -24,6 +24,7 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
     expect(response.ok()).toBeTruthy()
     const agent = await response.json()
     const path = `${api}/api/agents/${agent.id}/project`
+    const repetitions = category === '写作' ? 3 : 1
     try {
       expect((await request.post(`${path}/create`, { headers })).ok()).toBeTruthy()
       const versions = await (await request.get(`${path}/versions`)).json()
@@ -57,6 +58,7 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
         { onboarding: ONBOARDING_DISMISSED_FLAG, welcome: SUPER_USER_WELCOMED_FLAG },
       )
       await page.goto(`/agents/${agent.id}/project`)
+      await page.getByText('查看已确认需求与决策记录', { exact: true }).click()
       await expect(page.getByLabel('任务目标')).toBeVisible({ timeout: 20000 })
       for (const [label, value] of [
         ['任务目标', `${category}任务`],
@@ -111,6 +113,7 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
           request_id: crypto.randomUUID(),
           version_id: versions[0].id,
           eval_set_id: dataset.id,
+          repetitions,
         },
       })
       expect(runResponse.status()).toBe(202)
@@ -126,9 +129,15 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
       expect(completed.results_json[0].termination_reason).toBe('completed')
       expect(completed.comparison_json.decisions.length).toBeGreaterThanOrEqual(2)
       expect(completed.pass_rate).toBe(0)
-      expect(completed.comparison_json.eval_spec.rubric_version).toBe(2)
+      expect(completed.comparison_json.eval_spec.rubric_version).toBe(3)
       expect(completed.comparison_json.rule_validation.source).toBe('model_C_requirement_review')
-      expect(completed.metrics_json.metric_scores.task_completion.evaluated_cases).toBe(20)
+      expect(completed.metrics_json.metric_scores.task_completion.evaluated_cases).toBe(
+        20 * repetitions,
+      )
+      expect(completed.results_json).toHaveLength(20 * repetitions)
+      expect(new Set(completed.results_json.map((c: { trial: number }) => c.trial)).size).toBe(
+        repetitions,
+      )
       expect(completed.results_json[0].metric_scores.task_completion.criteria_results).toHaveLength(
         2,
       )
@@ -254,9 +263,9 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
         await request.post(`${path}/resume/generate`, { headers, data: { style: 'ai_product' } })
       ).json()
       const interview = await (await request.get(`${path}/interview`)).json()
-      expect(report.markdown).toContain('评分口径与覆盖')
+      expect(report.markdown).toContain('版本数据与回归')
       expect(report.markdown).toContain('/100')
-      expect(report.markdown).toContain('评分覆盖 20/20')
+      expect(report.markdown).toContain(`评分覆盖 ${20 * repetitions}/${20 * repetitions}`)
       expect(report.evidence_hash).toBe(resume.evidence_hash)
       expect(report.evidence_hash).toBe(interview.evidence_hash)
       expect(report.evidence.results.baseline.pass_rate).toBe(1)
@@ -298,6 +307,63 @@ for (const category of ['写作', '客服', '知识问答', '纯对话']) {
         body: archive,
         contentType: 'application/zip',
       })
+      if (category === '写作') {
+        const validationPlan = await request.post(`${path}/eval-spec/generate`, {
+          headers,
+          data: { version_id: v3.version_id },
+        })
+        expect(validationPlan.ok(), await validationPlan.text()).toBeTruthy()
+        const heldOutResponse = await request.post(`${path}/eval-sets/generate`, {
+          headers,
+          data: { version_id: v3.version_id, purpose: 'validation' },
+        })
+        expect(heldOutResponse.status(), await heldOutResponse.text()).toBe(201)
+        const heldOut = await heldOutResponse.json()
+        expect(
+          (await request.post(`${path}/eval-sets/${heldOut.id}/quality`, { headers })).ok(),
+        ).toBeTruthy()
+        const validationResponse = await request.post(`${path}/eval-runs`, {
+          headers,
+          data: {
+            request_id: crypto.randomUUID(),
+            version_id: v3.version_id,
+            eval_set_id: heldOut.id,
+            repetitions: 1,
+          },
+        })
+        expect(validationResponse.status(), await validationResponse.text()).toBe(202)
+        const validation = await validationResponse.json()
+        await expect
+          .poll(
+            async () =>
+              (await (await request.get(`${path}/eval-runs/${validation.id}`)).json()).status,
+            { timeout: 30000 },
+          )
+          .toBe('completed')
+        expect(
+          (await request.post(`${path}/eval-runs/${validation.id}/analyze`, { headers })).status(),
+        ).toBe(409)
+        const reason = '已查看验证证据，明确将此冻结集标为已使用，不再称为未见验证。'
+        const used = await request.post(`${path}/eval-runs/${validation.id}/use-validation`, {
+          headers,
+          data: { reason },
+        })
+        expect(used.ok(), await used.text()).toBeTruthy()
+        expect(
+          (await request.post(`${path}/eval-runs/${validation.id}/analyze`, { headers })).ok(),
+        ).toBeTruthy()
+        const usedRun = await (await request.get(`${path}/eval-runs/${validation.id}`)).json()
+        expect(usedRun.comparison_json.validation_exposure).toBe('used')
+        expect(usedRun.results_json).toHaveLength(20)
+        await test.info().attach('validation-boundary-evidence.json', {
+          body: JSON.stringify(
+            { validation_type: 'fixed_response', run: usedRun, reason },
+            null,
+            2,
+          ),
+          contentType: 'application/json',
+        })
+      }
     } finally {
       await request.delete(`${api}/api/agents/${agent.id}`, { headers })
     }

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
 import { ErrorState } from '@/components/shared/error-state'
-import { formatDisplayDateTime } from '@/lib/utils/display-format'
+import { formatDisplayDateTime, formatDisplayNumber } from '@/lib/utils/display-format'
 import { useProjectEvaluation } from '../_hooks/use-project-evaluation'
 import type {
   AgentProjectVersionSummary,
@@ -30,6 +30,9 @@ export function ProjectMetrics({
   showScores?: boolean
 }) {
   const t = useTranslations('agentProject')
+  const locale = useLocale()
+  const number = (value: number) =>
+    formatDisplayNumber(value, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
   if (!metrics) return <p>{t('notRun')}</p>
   if (metrics.passed == null)
     return <p role="status">{t('scoring.pending', { total: metrics.total })}</p>
@@ -37,7 +40,9 @@ export function ProjectMetrics({
     <div className="space-y-3">
       {metrics.complete === false && <p role="status">{t('scoring.partial')}</p>}
       <dl className="grid gap-3 sm:grid-cols-4">
-        {(['passed', 'failed', 'execution_errors', 'judge_errors'] as const).map((key) => (
+        {(
+          ['passed', 'failed', 'execution_errors', 'environment_errors', 'judge_errors'] as const
+        ).map((key) => (
           <div key={key}>
             <dt>{t(`scoring.counts.${key}`)}</dt>
             <dd>
@@ -53,7 +58,7 @@ export function ProjectMetrics({
           {t('scoring.allPassRate', {
             passed: metrics.passed,
             total: metrics.total,
-            value: Math.round(metrics.pass_rate * 100),
+            value: number(metrics.pass_rate * 100),
           })}
         </p>
       )}
@@ -62,7 +67,39 @@ export function ProjectMetrics({
           {t('practice.executedRate', {
             passed: metrics.passed,
             total: metrics.executed_cases ?? 0,
-            value: Math.round(metrics.executed_pass_rate * 100),
+            value: number(metrics.executed_pass_rate * 100),
+          })}
+        </p>
+      )}
+      {metrics.repetitions && (
+        <p>{t('qualityRevision.stability', { count: metrics.repetitions })}</p>
+      )}
+      {metrics.trial_pass_rates && (
+        <p>
+          {t('qualityRevision.trialRates', {
+            rates: metrics.trial_pass_rates.map((v) => number(v * 100)).join(' / '),
+          })}
+        </p>
+      )}
+      {metrics.fact_support && <p>{t('scoring.factCounts', metrics.fact_support)}</p>}
+      {metrics.operation_success && metrics.operation_success.total > 0 && (
+        <p>{t('qualityRevision.operationRate', metrics.operation_success)}</p>
+      )}
+      {metrics.recovery_success && metrics.recovery_success.total > 0 && (
+        <p>{t('qualityRevision.recoveryRate', metrics.recovery_success)}</p>
+      )}
+      {metrics.critical_violations && metrics.critical_violations.total > 0 && (
+        <p>{t('qualityRevision.criticalRate', metrics.critical_violations)}</p>
+      )}
+      {metrics.model_accounting && (
+        <p>
+          {t('qualityRevision.modelAccounting', {
+            calls: metrics.model_accounting.model_invocations,
+            coverage: metrics.model_accounting.usage_covered_invocations,
+            count:
+              metrics.model_accounting.total_count == null
+                ? t('scoring.unavailable')
+                : formatDisplayNumber(metrics.model_accounting.total_count, { locale }),
           })}
         </p>
       )}
@@ -92,6 +129,7 @@ export function ProjectEvaluation({
   const { sets, runs, save, start, quality } = useProjectEvaluation(agentId)
   const lifecycleT = useTranslations('agentProject.lifecycle')
   const workspaceT = useTranslations('agentProject.workspace.evaluation')
+  const [repetitions, setRepetitions] = useState<1 | 3>(1)
   const [datasetId, setDatasetId] = useState('')
   const [versionId, setVersionId] = useState('')
   const [editing, setEditing] = useState<EvaluationCase | null>(null)
@@ -111,11 +149,16 @@ export function ProjectEvaluation({
     )
   const submit = () => {
     if (!dataset) return
-    const selection = `${selectedVersion}:${dataset.id}`
+    const selection = `${selectedVersion}:${dataset.id}:${repetitions}`
     if (request.current?.selection !== selection)
       request.current = { selection, id: crypto.randomUUID() }
     start.mutate(
-      { request_id: request.current.id, version_id: selectedVersion, eval_set_id: dataset.id },
+      {
+        request_id: request.current.id,
+        version_id: selectedVersion,
+        eval_set_id: dataset.id,
+        repetitions,
+      },
       {
         onSuccess: () => {
           request.current = null
@@ -351,6 +394,21 @@ export function ProjectEvaluation({
         </>
       )}
       <div className="my-5 space-y-3">
+        <ProjectSelect
+          label={t('qualityRevision.repetitions')}
+          value={String(repetitions)}
+          options={[1, 3].map((v) => ({
+            value: String(v),
+            label: t('qualityRevision.trialOption', { count: v }),
+          }))}
+          onChange={(v) => setRepetitions(Number(v) as 1 | 3)}
+        />
+        <p>
+          {t('qualityRevision.callBudget', {
+            count: cases.filter((c) => c.enabled).length * repetitions,
+            calls: cases.filter((c) => c.enabled).length * repetitions * 2,
+          })}
+        </p>
         <Button
           onClick={submit}
           disabled={
@@ -422,9 +480,11 @@ export function ProjectEvaluation({
                           (a, b) => Number(a.status === 'passed') - Number(b.status === 'passed'),
                         )
                         .map((result) => (
-                          <li key={result.case_id} className="space-y-2">
+                          <li key={`${result.case_id}:${result.trial ?? 1}`} className="space-y-2">
                             <h4 className="font-medium">
-                              {result.name} · {t(`caseStatuses.${result.status}`)}
+                              {result.name} ·{' '}
+                              {t('qualityRevision.trialOption', { count: result.trial ?? 1 })} ·{' '}
+                              {t(`caseStatuses.${result.status}`)}
                             </h4>
                             <p className="whitespace-pre-wrap">
                               {t('caseInput')}: {result.input}

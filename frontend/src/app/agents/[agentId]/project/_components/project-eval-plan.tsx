@@ -1,6 +1,10 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { formatDisplayNumber } from '@/lib/utils/display-format'
+
+import { useState } from 'react'
+import { ProjectSelect } from './project-select'
+import { useLocale, useTranslations } from 'next-intl'
 import { ProjectScoringRule, useMetricName } from './project-scoring'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
@@ -16,6 +20,8 @@ export function ProjectEvalPlan({
   onGenerated: (id: string) => void
 }) {
   const t = useTranslations('agentProject')
+  const locale = useLocale()
+  const [purpose, setPurpose] = useState<'regression' | 'validation'>('regression')
   const metricName = useMetricName()
   const { project, plan, cases, errorCode } = useProjectGeneration(agentId)
   const spec = project.data?.eval_spec_json
@@ -34,15 +40,24 @@ export function ProjectEvalPlan({
         <>
           <h3 className="font-medium">{t('evalPlan')}</h3>
           <p>{t('scoring.weightNotice')}</p>
-          {spec.rubric_version === 2 && <p>{t('scoring.sourceReview')}</p>}
+          {(spec.rubric_version ?? 1) >= 2 && <p>{t('scoring.sourceReview')}</p>}
           <p>{t('scoring.thresholdRule')}</p>
           <p>{t('planCount', { count: spec.case_count })}</p>
-          <p>{t('passThreshold', { value: Math.round(spec.pass_threshold * 100) })}</p>
+          <p>
+            {t('passThreshold', {
+              value: formatDisplayNumber(spec.pass_threshold * 100, {
+                locale,
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              }),
+            })}
+          </p>
+          {spec.pass_threshold_reason && <p>{spec.pass_threshold_reason}</p>}
           <ul className="space-y-2">
             {spec.metrics.map((metric) => (
               <li key={metric.name}>
                 <strong>{metricName(metric.name, metric)}</strong>
-                <ProjectScoringRule metric={metric} legacy={spec.rubric_version !== 2} />
+                <ProjectScoringRule metric={metric} legacy={(spec.rubric_version ?? 1) < 2} />
               </li>
             ))}
           </ul>
@@ -52,12 +67,23 @@ export function ProjectEvalPlan({
           </p>
           {spec.version_id !== versionId && <p role="status">{t('planVersionMismatch')}</p>}
           <p>{t('automaticEvaluation')}</p>
+          <ProjectSelect
+            label={t('qualityRevision.setPurpose')}
+            value={purpose}
+            onChange={(v) => setPurpose(v as 'regression' | 'validation')}
+            options={['regression', 'validation'].map((v) => ({
+              value: v,
+              label: t(`qualityRevision.purposes.${v}`),
+            }))}
+          />
+          <p>{t('qualityRevision.validationBoundary')}</p>
           <Button
             disabled={busy || spec.version_id !== versionId}
             onClick={() =>
               cases.mutate(
                 {
                   versionId,
+                  purpose,
                   evaluation_focus: undefined,
                 },
                 { onSuccess: (row) => onGenerated(row.id) },
@@ -78,7 +104,7 @@ export function ProjectEvalPlan({
           onRetry={() =>
             plan.isError
               ? plan.mutate(versionId)
-              : cases.mutate({ versionId }, { onSuccess: (row) => onGenerated(row.id) })
+              : cases.mutate({ versionId, purpose }, { onSuccess: (row) => onGenerated(row.id) })
           }
         />
       )}

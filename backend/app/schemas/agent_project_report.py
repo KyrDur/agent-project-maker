@@ -9,11 +9,13 @@ from pydantic import BaseModel, Field
 
 class ReportFailure(BaseModel):
     case_id: str
+    trial: int = 1
     name: str
     reasons: list[str]
 
 
 class EvaluationReport(BaseModel):
+    version_number: int | None = None
     version_id: uuid.UUID
     eval_set_id: uuid.UUID
     evaluation_run_id: uuid.UUID

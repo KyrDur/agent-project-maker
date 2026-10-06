@@ -159,7 +159,7 @@ def test_capability_profile_includes_mcp_and_planned_tools():
         }
     )
 
-    assert profile["capabilities"] == ["knowledge_retrieval", "tool_calling"]
+    assert profile["capabilities"] == ["tool_calling"]
     assert profile["tools"] == ["web_search", "search_notion", "search_feishu"]
 
 
@@ -176,6 +176,8 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
         from tests.test_agent_project_scoring import case_for, structured_plan
 
         spec = structured_plan()
+        spec["rubric_version"] = 3
+        spec["pass_threshold_reason"] = "完整满足核心判据，部分满足不通过。"
         if "rubric_review_rules" in payload:
             return {
                 "rule_reviews": [
@@ -183,10 +185,25 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
                     for key in payload["rubric_review_rules"]
                 ]
             }
+        if "reference_results" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Reference checked"}
+                    for key in payload["reference_results"]
+                ]
+            }
         if role == "planner":
             return spec
         data = generated_cases()
-        for case in data["cases"]:
+        for i, case in enumerate(data["cases"]):
+            case.update(
+                input=f"Summarize project {i}",
+                expected={"answer": "Report login review only."},
+                mock_tool_data={},
+                tags=[payload["categories"][i % len(payload["categories"])], "conversation"],
+                reference_answer="Login reviewed",
+                reference_trace=[],
+            )
             case.update(
                 metric_applicability=case_for(spec)["metric_applicability"],
                 metric_applicability_reasons={},
@@ -215,7 +232,9 @@ async def test_generation_editing_freeze_and_ownership(client, db, setup_project
         "groundedness",
     ]
     assert dataset["evaluation_focus_reason"] == "工具调用和事实依据是上线前最大的风险。"
-    assert {c["tags"][0] for c in dataset["cases_json"]} == set(SCENARIOS)
+    assert {c["tags"][0] for c in dataset["cases_json"]} == {
+        tag for tag in SCENARIOS if tag != "tool_failure"
+    }
     authored = EvalSetWrite.model_validate(
         {
             "name": dataset["name"],
@@ -385,7 +404,9 @@ async def test_snapshot_adapter_tools_mcp_skills_are_isolated(db, setup_project,
     assert "historical_skill_content_unavailable" in result["limitations"]
     assert not db.new
     del case["mock_tool_data"]["mcp_read"]
-    missing = await execute_snapshot(db, snapshot, case, TEST_USER_ID)
+    with pytest.raises(SnapshotExecutionUnavailable, match="evaluation_mock_missing") as failure:
+        await execute_snapshot(db, snapshot, case, TEST_USER_ID)
+    missing = failure.value.evidence
     assert missing["tool_calls"] == [{"name": "search"}, {"name": "mcp_read"}]
     assert missing["mock_missing_tools"] == ["mcp_read"]
     assert missing["tool_trace"][-1]["error"] == "evaluation_mock_missing"

@@ -1,5 +1,6 @@
 'use client'
 
+import ReactMarkdown from 'react-markdown'
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -26,13 +27,37 @@ export function ProjectSimulation({
   versions: AgentProjectVersionSummary[]
 }) {
   const t = useTranslations('agentProject.simulation')
-  const [versionId, setVersionId] = useState(versions[0]?.id ?? '')
-  const [scenarioId, setScenarioId] = useState('default')
+  const [versionId, setVersion] = useState(
+    () => readSimulationSession(`project-simulation-version:${agentId}`) || versions[0]?.id || '',
+  )
+  const [scenarioId, setScenario] = useState(
+    () => readSimulationSession(`project-simulation-scenario:${agentId}`) || 'default',
+  )
+  const setVersionId = (id: string) => {
+    saveSimulationSession(`project-simulation-version:${agentId}`, id)
+    setVersion(id)
+  }
+  const setScenarioId = (id: string) => {
+    saveSimulationSession(`project-simulation-scenario:${agentId}`, id)
+    setScenario(id)
+  }
   const sets = useQuery({
     queryKey: agentProjectKeys.sets(agentId),
     queryFn: () => agentProjectApi.sets(agentId),
   })
-  const scenarios = sets.data?.find((set) => set.frozen)?.cases_json.filter((c) => c.enabled) ?? []
+  const scenarios =
+    sets.data
+      ?.find((set) => set.frozen && set.rubric_json?.purpose !== 'validation')
+      ?.cases_json.filter((c) => c.enabled) ?? []
+  const scenario =
+    scenarios.find((c) => c.id === scenarioId) ??
+    scenarios.find((c) => c.tags?.includes('normal')) ??
+    scenarios[0]
+  const activeVersionId = versions.some((v) => v.id === versionId)
+    ? versionId
+    : versions[0]?.id || ''
+  const activeScenarioId =
+    scenarioId === 'default' || scenarios.some((c) => c.id === scenarioId) ? scenarioId : 'default'
   const retry = useMutation({
     mutationFn: () => agentProjectApi.bootstrap(agentId),
     onSuccess: () => sets.refetch(),
@@ -43,13 +68,13 @@ export function ProjectSimulation({
       <div className="grid gap-3 sm:grid-cols-2">
         <ProjectSelect
           label={t('version')}
-          value={versionId}
+          value={activeVersionId}
           onChange={setVersionId}
           options={versions.map((v) => ({ value: v.id, label: `V${v.version_number}` }))}
         />
         <ProjectSelect
           label={t('scenario')}
-          value={scenarioId}
+          value={activeScenarioId}
           onChange={setScenarioId}
           options={[
             { value: 'default', label: t('normal') },
@@ -57,6 +82,16 @@ export function ProjectSimulation({
           ]}
         />
       </div>
+      {scenario && (
+        <div className="space-y-2 text-sm">
+          <p>{t('scenarioExample', { input: scenario.input })}</p>
+          <p>
+            {t('scenarioScope', {
+              tools: Object.keys(scenario.mock_tool_data ?? {}).join('、') || t('noTools'),
+            })}
+          </p>
+        </div>
+      )}
       {!scenarios.length ? (
         <div className="space-y-2">
           <p role="status">{t('notReady')}</p>
@@ -67,10 +102,10 @@ export function ProjectSimulation({
         </div>
       ) : (
         <SimulationConversation
-          key={`${versionId}:${scenarioId}`}
+          key={`${activeVersionId}:${activeScenarioId}`}
           agentId={agentId}
-          versionId={versionId}
-          scenarioId={scenarioId === 'default' ? '' : scenarioId}
+          versionId={activeVersionId}
+          scenarioId={activeScenarioId === 'default' ? '' : activeScenarioId}
         />
       )}
     </SettingsSectionCard>
@@ -148,10 +183,10 @@ function SimulationConversation({
             <strong>{t('you')}: </strong>
             {turn.input}
           </p>
-          <p className="whitespace-pre-wrap">
+          <div className="prose prose-sm max-w-none dark:prose-invert">
             <strong>{t('agent')}: </strong>
-            {turn.output || t('noOutput')}
-          </p>
+            <ReactMarkdown>{turn.output || t('noOutput')}</ReactMarkdown>
+          </div>
           <details>
             <summary>{t('evidence')}</summary>
             <ProjectExecutionLog evidence={turn.evidence} />

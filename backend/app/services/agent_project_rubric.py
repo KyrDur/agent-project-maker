@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from app.schemas.agent_project import CriterionVerdict, EvalSpec
+from app.schemas.agent_project import CriterionVerdict, EvalSpec, FactVerdict
 
 TOOL_RULE = (
     "程序检查本用例明确声明的必要业务调用（区分尝试与成功）、禁止操作、参数、必要顺序和最终模拟状态。"
@@ -18,7 +18,7 @@ FORMAT_RULE = (
 
 
 def validate_sources(spec: EvalSpec, requirements: dict[str, Any]) -> None:
-    if spec.rubric_version != 2:
+    if spec.rubric_version < 2:
         return
     for metric in spec.metrics:
         references = [*metric.requirement_refs]
@@ -35,7 +35,7 @@ def validate_sources(spec: EvalSpec, requirements: dict[str, Any]) -> None:
 
 
 def validate_applicability(spec: EvalSpec, case: dict[str, Any]) -> None:
-    if spec.rubric_version != 2:
+    if spec.rubric_version < 2:
         return
     semantic = {m.name: m for m in spec.metrics if m.type == "llm_judge"}
     selected = case.get("metric_applicability")
@@ -47,8 +47,19 @@ def validate_applicability(spec: EvalSpec, case: dict[str, Any]) -> None:
             raise ValueError("Duplicate criterion applicability")
         if not set(ids) <= {c.id for c in metric.scoring_criteria}:
             raise ValueError("Unknown scoring criterion")
-        if name == "task_completion" and set(ids) != {c.id for c in metric.scoring_criteria}:
+        if name == "task_completion" and (
+            not ids
+            or (spec.rubric_version == 2 and set(ids) != {c.id for c in metric.scoring_criteria})
+        ):
             raise ValueError("Task completion cannot be excluded")
+        if spec.rubric_version >= 3 and ids:
+            for cid in {c.id for c in metric.scoring_criteria} - set(ids):
+                if (
+                    not (case.get("metric_applicability_reasons") or {})
+                    .get(f"{name}/{cid}", "")
+                    .strip()
+                ):
+                    raise ValueError("Missing non-applicability reason for excluded criterion")
         if not ids and not (case.get("metric_applicability_reasons") or {}).get(name, "").strip():
             raise ValueError("Missing non-applicability reason")
     if not any(selected.values()):
@@ -102,7 +113,11 @@ def aggregate_verdicts(
                 if not ref.quote.strip() or ref.quote not in sources.get(ref.reference, ""):
                     raise ValueError("Judge evidence does not exist in observed records")
         criteria = {c.id: c for c in metric.scoring_criteria}
-        critical_failure = any(criteria[v.criterion_id].critical and v.level == 0 for v in verdicts)
+        critical_failure = any(
+            criteria[v.criterion_id].critical
+            and (v.level == 0 or (spec.rubric_version == 3 and v.level < 1))
+            for v in verdicts
+        )
         score = 0.0 if critical_failure else sum(v.level for v in verdicts) / len(verdicts)
         scores[name] = {
             "score": score,
@@ -111,6 +126,38 @@ def aggregate_verdicts(
             "method": "llm_judge",
             "criteria_results": [v.model_dump(mode="json") for v in verdicts],
             "critical_failure": critical_failure,
+            "critical_applicable": any(criteria[v.criterion_id].critical for v in verdicts),
             "scoring_mode": "criterion_mean",
+            "verdict_role": metric.verdict_role,
         }
     return scores
+
+
+def validate_facts(sources: dict[str, str], raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, list):
+        raise ValueError("Missing fact-level verdicts")
+    facts = [FactVerdict.model_validate(item) for item in raw]
+    claims = [f.claim for f in facts]
+    if len(set(claims)) != len(claims):
+        raise ValueError("Duplicate fact")
+    for fact in facts:
+        if fact.claim not in sources.get("output", ""):
+            raise ValueError("Fact is not an exact excerpt of the actual answer")
+        for ref in fact.evidence:
+            if ref.quote not in sources.get(ref.reference, ""):
+                raise ValueError("Fact evidence does not exist")
+        if fact.verdict == "supported" and not any(
+            ref.reference != "output" and ref.quote.strip() for ref in fact.evidence
+        ):
+            raise ValueError("The answer cannot support its own factual claims")
+        if fact.kind == "fact" and fact.verdict == "not_applicable":
+            raise ValueError("Factual assertions must be evaluated")
+    checked = [f for f in facts if f.kind == "fact"]
+    return {
+        "items": [f.model_dump(mode="json") for f in facts],
+        "supported": sum(f.verdict == "supported" for f in checked),
+        "unsupported": sum(f.verdict == "unsupported" for f in checked),
+        "unknown": sum(f.verdict == "unknown" for f in checked),
+        "total": len(checked),
+        "coverage": "model_C_extracted_claims_not_expert_validated",
+    }

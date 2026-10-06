@@ -46,7 +46,10 @@
       "qualityIssues": {
         "missing_capabilities": "缺少能力覆盖，请补充用例标签或重新生成。",
         "low_diversity": "用例重复较多，请修改或重新生成。",
-        "invalid_scoring_contract": "评分规则缺少有效需求出处或用例适用范围。"
+        "invalid_scoring_contract": "评分规则缺少有效需求出处或用例适用范围。",
+        "invalid_simulation_environment": "模拟环境不能完成参考路径",
+        "missing_reference_review": "参考路径尚未经过需求一致性审查",
+        "invalid_reference_review": "参考路径与冻结要求不一致"
       },
       "bestReason": "原因：同一评测集和评分规则下的最高有效评分。",
       "createdFrom": "来源：{source} · 优化建议 {proposal}",
@@ -83,7 +86,8 @@
       "needBaseline": "评估另一个版本后，即可比较分数。",
       "notComparable": "需要相同冻结数据、评分口径且有效的评估，才能计算提升幅度。",
       "running": "评估或优化正在运行，完成后自动更新报告。",
-      "empty": "暂无评估报告，请选择版本和评测集并运行评估。"
+      "empty": "暂无评估报告，请选择版本和评测集并运行评估。",
+      "bestCohort": "同口径内全部 {runs} 次有效运行：{passed}/{total} 个试验通过。"
     },
     "workspace": {
       "navAria": "智能体生命周期工作区",
@@ -151,7 +155,12 @@
           "optimizationDecision": "优化决策",
           "v2Generation": "生成 V2",
           "regressionEvaluation": "回归评测",
-          "comparisonBestVersion": "比较与最佳版本"
+          "comparisonBestVersion": "比较与最佳版本",
+          "requirements": "确认需求与能力",
+          "simulation": "聊天试用（可选）",
+          "evaluation": "查看自动评测",
+          "optimization": "确认优化与自动回归",
+          "materials": "查看案例与成果"
         },
         "stepStates": {
           "completed": "已完成",
@@ -219,6 +228,10 @@
           "compareVersions": {
             "label": "比较版本",
             "detail": "查看最佳版本、评分变化和版本演进关系。"
+          },
+          "waitEvaluation": {
+            "label": "查看运行进度",
+            "detail": "当前实验正在执行，等待完成后再分析或比较。"
           }
         }
       },
@@ -358,7 +371,10 @@
       "historical_skill_content_unavailable": "该版本未保存冻结的技能文本，不会使用最新技能替代。",
       "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。",
       "evaluation_rubric_invalid": "评分规则或用例适用范围校验失败。请检查需求出处并重新生成评测计划；历史实验保持不变。",
-      "evaluation_rubric_unsupported": "模型 C 发现评分条件超出已确认需求，或评分档位不明确。请检查需求和生成记录，再重试；不会用这些规则给 Agent 扣分。"
+      "evaluation_rubric_unsupported": "模型 C 发现评分条件超出已确认需求，或评分档位不明确。请检查需求和生成记录，再重试；不会用这些规则给 Agent 扣分。",
+      "evaluation_environment_invalid": "场景参考路径未通过预检，请修补模拟数据后重试。",
+      "evaluation_reference_invalid": "参考答案或路径与需求不一致，请重新生成场景。",
+      "evaluation_mock_response_missing": "实际参数没有匹配模拟响应，属于环境缺项；不是业务成功。"
     },
     "compareVersions": "比较版本",
     "needTwoVersions": "创建第二个版本来比较配置。",
@@ -573,7 +589,22 @@
         "regressed": "退步"
       },
       "latestVersion": "最新版本：V{version}",
-      "currentResult": "本次结果（V{version}）：{passed}/{total}；全部用例通过率 {rate}"
+      "currentResult": "本次结果（V{version}）：{passed}/{total}；全部用例通过率 {rate}",
+      "missingCases": "不足两个实际场景，材料待补充；不会自动编造案例。",
+      "staleMaterials": "有新证据，已生成的简历已过期，请重新生成。",
+      "chooseCases": "改选两个实际案例",
+      "caseOne": "案例一",
+      "caseTwo": "案例二",
+      "saveCases": "保存案例选择",
+      "caseOutcome": "第 {trial} 次试验 · 状态：{status} · 终止：{termination}",
+      "caseEnvironment": "初始与最终模拟状态",
+      "caseJudgment": "程序检查、判定与模型调用记录",
+      "caseChanges": "已确认的实际改动与来源",
+      "changeAuthor": "决策作者：{author}",
+      "authorDemo": "Codex 开发演示",
+      "authorUser": "用户本人",
+      "authorSystem": "系统记录",
+      "caseNoChanges": "本场景没有保存对应的确认改动。"
     },
     "bootstrap": {
       "title": "构建与基线评估",
@@ -661,7 +692,10 @@
       "retryMessage": "重试同一条消息",
       "error": "模拟执行请求失败；可以重试同一请求。",
       "restoreError": "无法恢复会话，请重试读取。",
-      "running": "正在模拟执行…"
+      "running": "正在模拟执行…",
+      "scenarioExample": "本场景示例：{input}",
+      "scenarioScope": "当前场景可模拟：{tools}。未覆盖的能力会明确报告环境缺项。",
+      "noTools": "无工具，仅对话"
     },
     "analysisEvidence": "查看模型 C 分析来源与证据",
     "executionLog": {
@@ -815,16 +849,27 @@
         "passed": "任务通过",
         "failed": "任务失败",
         "execution_errors": "执行错误",
-        "judge_errors": "裁判错误"
+        "judge_errors": "裁判错误",
+        "environment_errors": "模拟环境错误"
       },
       "caseCount": "{count}/{total} 条",
       "allPassRate": "全部用例通过率：{passed}/{total}（{value}%）",
       "weightNotice": "通过要求所有适用指标和必要检查达标，不采用加权总分；权重字段仅保留历史兼容。",
-      "thresholdRule": "阈值用于单条用例的每个指标，不用于把整轮平均分判定为通过。",
+      "thresholdRule": "通过条件以本项目冻结的任务判据为准；表达偏好在新版规则中单独评分。",
       "metricComparison": "平均得分 {before}/100 → {after}/100 · {delta} 分",
       "sourceReview": "新评分条件需通过需求原文校验和模型 C 的规则审查；这不等于已通过行业基准校准。",
       "caseScore": "本例得分：{value}/100",
-      "failedOrWeakCases": "失败或存在薄弱指标的用例：{count}"
+      "failedOrWeakCases": "失败或存在薄弱指标的用例：{count}",
+      "taskQualitySeparation": "核心任务与关键业务约束决定任务通过；表达质量单独显示。",
+      "qualityOnly": "表达质量，不决定任务通过",
+      "factCounts": "事实支持 {supported}/{total} 条；不支持 {unsupported} 条，无法判断 {unknown} 条。",
+      "calibrationLimit": "事实覆盖依赖模型抽取，尚未经过本领域专家校准；引用存在不保证语义判断正确。",
+      "factVerdicts": {
+        "supported": "有来源支持",
+        "unsupported": "无来源支持",
+        "unknown": "无法判断",
+        "not_applicable": "非事实项"
+      }
     },
     "optimizationProgress": "本次回归评测正在运行，已完成 {finished}/{total} 条用例。结果完整后才能分析失败或生成下一轮优化建议；页面会自动更新。",
     "optimizationErrors": {
@@ -856,7 +901,28 @@
       "tool_description": "模拟工具说明",
       "runtime_config": "调用次数与重试设置"
     },
-    "analyzingFailures": "模型 C 正在根据本次运行证据分析失败与薄弱指标…"
+    "analyzingFailures": "模型 C 正在根据本次运行证据分析失败与薄弱指标…",
+    "qualityRevision": {
+      "setPurpose": "测试集用途",
+      "purposes": {
+        "regression": "固定回归集",
+        "validation": "独立验证集"
+      },
+      "validationBoundary": "独立验证集的内容与结果不提供给优化模型 A；若用于继续优化，需重新声明已使用范围。",
+      "repetitions": "每例试验次数",
+      "trialOption": "{count} 次试验",
+      "stability": "每例 {count} 次试验；单次结果不能证明稳定性。",
+      "trialRates": "逐次通过率（%）：{rates}；保留全部试验，不挑最好一次。",
+      "callBudget": "本次共 {count} 次用例试验，至少约 {calls} 次执行与裁判请求，工具及重试会追加调用。费用信息不可用；使用个人 Key。",
+      "operationRate": "达到最终操作状态：{successful}/{total} 个适用试验。",
+      "recoveryRate": "明确注入故障后的恢复成功：{successful}/{total} 个适用试验。",
+      "confirmedDetails": "查看已确认需求与决策记录",
+      "validationUseBoundary": "将此验证集用于优化后，全部相关运行都会标记为已使用；此后不能再声称是未见验证。",
+      "validationUseReason": "使用验证证据的理由",
+      "useValidation": "标记为已使用并允许优化",
+      "criticalRate": "关键违规：{violating}/{total} 个适用且已评分试验。",
+      "modelAccounting": "模型调用 {calls} 次；Token 记录覆盖 {coverage} 次，已记录合计 {count}。缺少价格，费用不可用。"
+    }
   },
   "metadata": {
     "title": "Agent Project Maker",

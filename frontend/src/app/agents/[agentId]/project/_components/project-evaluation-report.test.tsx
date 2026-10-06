@@ -46,9 +46,9 @@ function respond(reports: EvaluationReport[], active = false) {
 it('shows scores, best version and percentage point differences', async () => {
   respond([second, first])
   render(<ProjectEvaluationReport agentId="agent-id" versions={versions} />)
-  expect(await screen.findByText('+50 个百分点')).toBeInTheDocument()
-  expect(screen.getByText('V2 · 100%')).toBeInTheDocument()
-  expect(screen.getByText('平均得分 60/100 → 90/100 · +30 分')).toBeInTheDocument()
+  expect(await screen.findByText('+50.0 个百分点')).toBeInTheDocument()
+  expect(screen.getByText('V2 · 100.0%')).toBeInTheDocument()
+  expect(screen.getByText('平均得分 60.0/100 → 90.0/100 · +30.0 分')).toBeInTheDocument()
   expect(screen.getByText('共 2 条用例，通过 2 条')).toBeInTheDocument()
 })
 
@@ -61,7 +61,7 @@ it('selects historical runs and keeps failures and suggestions tied to that run'
   expect(screen.getByText('失败案例（1）')).toBeInTheDocument()
   await userEvent.click(screen.getByText('Missing answer'))
   expect(screen.getByText('Required answer absent')).toBeVisible()
-  expect(screen.getByText('-50 个百分点')).toBeInTheDocument()
+  expect(screen.getByText('-50.0 个百分点')).toBeInTheDocument()
 })
 
 it('withholds improvement for different datasets or failed runs', async () => {
@@ -70,7 +70,7 @@ it('withholds improvement for different datasets or failed runs', async () => {
   expect(
     await screen.findByText('需要相同冻结数据、评分口径且有效的评估，才能计算提升幅度。'),
   ).toBeInTheDocument()
-  expect(screen.queryByText('+50 个百分点')).not.toBeInTheDocument()
+  expect(screen.queryByText('+50.0 个百分点')).not.toBeInTheDocument()
 })
 
 it('explains empty state and exposes retry on API errors', async () => {
@@ -97,5 +97,27 @@ it('automatically refreshes after an active evaluation finishes', async () => {
   )
   render(<ProjectEvaluationReport agentId="agent-id" versions={versions} />)
   expect(await screen.findByText(/评估或优化正在运行/)).toBeInTheDocument()
-  expect(await screen.findByText('+50 个百分点', {}, { timeout: 4000 })).toBeInTheDocument()
+  expect(await screen.findByText('+50.0 个百分点', {}, { timeout: 4000 })).toBeInTheDocument()
+})
+
+it('shows the best version over all valid v3 runs rather than its representative run score', async () => {
+  const spec: EvaluationReport['eval_spec'] = {
+    rubric_version: 3,
+    version_id: 'v1',
+    categories: [],
+    case_count: 20,
+    pass_threshold: 0.75,
+    metrics: [],
+  }
+  const additional = {
+    ...second,
+    evaluation_run_id: 'run3',
+    passed: 1,
+    score: 0.5,
+    eval_spec: spec,
+  }
+  respond([additional, { ...second, eval_spec: spec }, { ...first, eval_spec: spec }])
+  render(<ProjectEvaluationReport agentId="agent-id" versions={versions} />)
+  expect(await screen.findByText('V2 · 75.0%')).toBeInTheDocument()
+  expect(screen.getByText('同口径内全部 2 次有效运行：3/4 个试验通过。')).toBeInTheDocument()
 })

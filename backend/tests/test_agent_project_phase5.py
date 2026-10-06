@@ -46,7 +46,7 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert response.status_code == 200
     report = response.json()
     data = report["evidence"]
-    assert any(s["title"] == "评分口径与覆盖" for s in report["sections"])
+    assert any(s["title"] == "版本数据与回归" for s in report["sections"])
     assert data["results"]["best_version"] == 2
     assert data["results"]["baseline"]["pass_rate"] == 0.75
     assert data["results"]["best"]["pass_rate"] == 0.9
@@ -103,7 +103,7 @@ async def test_unavailable_never_fabricated(db, experiment):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("style", "start"),
-    [("ai_product", "围绕")],
+    [("ai_product", "确认需求")],
 )
 async def test_resume_styles_only_real_numbers(client, db, completed, style, start):
     path = f"/api/agents/{completed.agent.id}/project/resume/generate"
@@ -115,7 +115,7 @@ async def test_resume_styles_only_real_numbers(client, db, completed, style, sta
     text = " ".join(data["bullets"])
     assert "20" in text and "模拟" in text
     assert "85.0%" not in text and "revenue" not in text
-    assert "未验证" in text
+    assert "未记录" in " ".join(data["limitations"])
     assert (await client.post(path, json={"style": style})).json() == data
     assert (await client.post(path, json={"style": style, "metrics": 100})).status_code == 422
 
@@ -189,7 +189,7 @@ async def test_export_structure_frozen_skills_results_and_no_live_mutation(db, c
         } <= names
         readme = archive.read("agent-project/README.md").decode()
         assert "75.0%" in readme and "90.0%" in readme and "85.0%" in readme
-        assert "## 结果与限制" in readme and "## 能力与设计决策" in readme
+        assert "## 局限与待补证据" in readme and "## 方法与个人贡献" in readme
         instructions = archive.read("agent-project/instructions.md").decode()
         assert "Retrieve sources before answering." in instructions
         assert "Verify every requested section" not in instructions  # V3 rejected
@@ -255,7 +255,7 @@ async def test_secrets_paths_hidden_data_and_missing_skills(db, experiment, monk
 
     monkeypatch.setattr(portfolio, "architecture", missing_architecture)
     report = await portfolio.report(db, ex.agent.id, USER)
-    assert "Historical Skill content is unavailable" in report["markdown"]
+    assert "历史文本指南正文缺失" in report["markdown"]
     assert "x" * 40 not in json.dumps(report) and "secret-id" not in json.dumps(report)
     shared = await portfolio.share(db, ex.agent.id, USER)
     public = await portfolio.public_share(db, ex.project.id, shared["path"].split("/")[-1])
@@ -290,3 +290,27 @@ async def test_missing_metric_not_backfilled_from_other_runs(db, completed):
     await db.commit()
     data = await portfolio.evidence(db, ex.agent.id, USER)
     assert "task_completion" not in data["results"]["metric_deltas"]
+
+
+@pytest.mark.asyncio
+async def test_materials_stale_after_case_selection_and_export_matches_preview(db, experiment):
+    ex = experiment
+    aid = ex.agent.id
+    from app.services.agent_project_materials import interview_material
+
+    report = await portfolio.report(db, aid, USER, save=True)
+    await portfolio.resume(db, aid, USER, "ai_product")
+    await portfolio.save_content(
+        db, ex.project, "portfolio_interview", interview_material(report["evidence"])
+    )
+    assert set((await portfolio.report(db, aid, USER))["artifact_status"].values()) == {"current"}
+    identities = [uuid.UUID(c["id"]) for c in ex.run.cases_snapshot_json[1:3]]
+    await portfolio.select_cases(db, aid, USER, identities)
+    db.expire_all()
+    preview = await portfolio.report(db, aid, USER)
+    assert set(preview["artifact_status"].values()) == {"stale"}
+    assert len(preview["evidence"]["case_cards"]) == 2
+    archive = await export_zip(db, aid, USER)
+    with zipfile.ZipFile(io.BytesIO(archive)) as files:
+        assert files.read("agent-project/report/project_report.md").decode() == preview["markdown"]
+        assert json.loads(files.read("agent-project/evidence.json")) == preview["evidence"]

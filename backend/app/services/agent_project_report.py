@@ -40,6 +40,7 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
         failures.append(
             ReportFailure(
                 case_id=result["case_id"],
+                trial=result.get("trial", 1),
                 name=result.get("name", ""),
                 reasons=list(dict.fromkeys(reasons)),
             )
@@ -54,12 +55,17 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
                 "resolved_roles": plan.get("resolved_roles"),
                 "role_configurations": plan.get("role_configurations"),
                 "resolved_examinee": plan.get("resolved_examinee"),
+                "resolved_role_models": plan.get("resolved_role_models"),
                 "eval_set_id": str(run.eval_set_id),
                 "eval_spec": plan.get("eval_spec"),
                 "scoring": summary["scoring"],
                 "judge": roles.get("judge"),
                 "judge_prompt_version": roles.get("judge_prompt_version"),
                 "execution_mode": plan.get("execution_mode"),
+                "execution_protocol": plan.get("execution_protocol"),
+                "validation_exposure": plan.get("validation_exposure"),
+                "repetitions": plan.get("repetitions", 1),
+                "purpose": plan.get("purpose", "regression"),
             }
         )
         if run.dataset_hash
@@ -79,7 +85,7 @@ def report_for_run(run: AgentProjectEvalRun) -> EvaluationReport:
         metrics={name: value["score"] for name, value in summary["metrics"].items()},
         statistics=run.metrics_json or {},
         eval_spec=plan.get("eval_spec"),
-        total=len(run.cases_snapshot_json or []),
+        total=len(run.cases_snapshot_json or []) * plan.get("repetitions", 1),
         passed=sum(item.get("status") == "passed" for item in results),
         bad_case_count=len(failures),
         bad_cases=failures,
@@ -107,14 +113,13 @@ async def list_reports(
             )
         ).all()
     )
-    reports = [report_for_run(run) for run in runs if run.status in {"completed", "failed"}]
-    best: dict[str, EvaluationReport] = {}
-    for report in reports:
-        key = report.comparison_key
-        if key and report.score is not None:
-            previous = best.get(key)
-            if previous is None or previous.score is None or report.score > previous.score:
-                best[key] = report
+    versions = {v.id: v.version_number for v in await projects.list_versions(db, agent_id, user_id)}
+    reports = [
+        report_for_run(run).model_copy(update={"version_number": versions.get(run.version_id)})
+        for run in runs
+        if run.status in {"completed", "failed"}
+    ]
+    best = select_best_reports(reports)
     return EvaluationReports(
         reports=list(reversed(reports)),
         best_run_ids={key: report.evaluation_run_id for key, report in best.items()},
@@ -125,3 +130,28 @@ async def list_reports(
             for run in runs
         ),
     )
+
+
+def select_best_reports(reports: list[EvaluationReport]) -> dict[str, EvaluationReport]:
+    """V3 ranks versions over all valid runs in scope, never the best repeated run."""
+    scopes: dict[str, list[EvaluationReport]] = {}
+    for report in reports:
+        if report.comparison_key and report.score is not None:
+            scopes.setdefault(report.comparison_key, []).append(report)
+    best = {}
+    for key, cohort in scopes.items():
+        if (cohort[0].eval_spec or {}).get("rubric_version", 1) < 3:
+            best[key] = max(cohort, key=lambda r: r.score or 0)
+            continue
+        grouped: dict[uuid.UUID, list[EvaluationReport]] = {}
+        for report in cohort:
+            grouped.setdefault(report.version_id, []).append(report)
+        winner = max(
+            grouped.values(),
+            key=lambda rs: (
+                sum(r.passed for r in rs) / sum(r.total for r in rs),
+                -(rs[0].version_number or 1000000),
+            ),
+        )
+        best[key] = winner[-1]
+    return best

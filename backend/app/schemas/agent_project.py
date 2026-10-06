@@ -102,6 +102,13 @@ class CaseExpected(BaseModel):
     forbidden_tools: list[str] = Field(default_factory=list, max_length=30)
     handoff: str | None = Field(default=None, max_length=100)
     format_rule: Literal["json_object", "json_array"] | None = None
+    max_tool_calls: int | None = Field(default=None, ge=0, le=100)
+
+
+class ReferenceCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=64)
+    arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class MockResponse(BaseModel):
@@ -152,6 +159,9 @@ class EvaluationCase(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=20)
     enabled: bool = True
     mock_tool_data: dict[str, MockToolBehavior] = Field(default_factory=dict, max_length=30)
+    reference_answer: str | None = Field(default=None, max_length=10000)
+    reference_trace: list[ReferenceCall] = Field(default_factory=list, max_length=100)
+    recovery_goal: bool = False
 
     @model_validator(mode="after")
     def bounded_mocks(self) -> Self:
@@ -188,6 +198,7 @@ class EvalRunCreate(BaseModel):
     request_id: uuid.UUID
     version_id: uuid.UUID
     eval_set_id: uuid.UUID
+    repetitions: Literal[1, 3] = 1
 
 
 class EvalRunResponse(BaseModel):
@@ -214,8 +225,9 @@ class EvalGenerationRequest(BaseModel):
 
 
 class EvalCaseGenerationRequest(EvalGenerationRequest):
-    evaluation_focus: list[str] | None = Field(default=None, min_length=2, max_length=8)
+    evaluation_focus: list[str] | None = Field(default=None, min_length=1, max_length=8)
     evaluation_focus_reason: str | None = Field(default=None, max_length=1000)
+    purpose: Literal["regression", "validation"] = "regression"
 
 
 class RequirementReference(BaseModel):
@@ -246,6 +258,7 @@ class EvalMetric(BaseModel):
     requirement_refs: list[RequirementReference] = Field(default_factory=list, max_length=5)
     scoring_mode: Literal["legacy", "all_checks", "criterion_mean"] = "legacy"
     scoring_criteria: list[ScoringCriterion] = Field(default_factory=list, max_length=8)
+    verdict_role: Literal["task", "quality"] = "task"
 
 
 SCENARIOS = (
@@ -268,17 +281,19 @@ METRICS = {
 class EvalSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
     capability_profile: dict[str, Any] = Field(default_factory=dict)
-    rubric_version: Literal[1, 2] = 1
-    metrics: list[EvalMetric] = Field(min_length=3, max_length=5)
+    rubric_version: Literal[1, 2, 3] = 1
+    metrics: list[EvalMetric] = Field(min_length=1, max_length=8)
     pass_threshold: float = Field(default=0.7, ge=0, le=1, allow_inf_nan=False)
+    pass_threshold_reason: str | None = Field(default=None, min_length=1, max_length=2000)
 
     @model_validator(mode="after")
     def valid_metrics(self) -> Self:
+        if self.rubric_version == 3 and not self.pass_threshold_reason:
+            raise ValueError("New contracts require a frozen threshold explanation")
         names = [metric.name for metric in self.metrics]
-        if (
-            len(set(names)) != len(names)
-            or len(set(names) - METRICS) > 1
-            or len(set(names) & METRICS) < 3
+        if len(set(names)) != len(names) or (
+            self.rubric_version < 3
+            and (len(set(names) - METRICS) > 1 or len(set(names) & METRICS) < 3 or len(names) > 5)
         ):
             raise ValueError("Duplicate or excess custom metrics")
         if abs(sum(metric.weight for metric in self.metrics) - 1) > 0.001:
@@ -287,7 +302,7 @@ class EvalSpec(BaseModel):
             expected = "deterministic" if metric.name == "tool_correctness" else "llm_judge"
             if metric.name != "format_compliance" and metric.type != expected:
                 raise ValueError("Invalid metric type")
-            if self.rubric_version == 2:
+            if self.rubric_version >= 2:
                 if not metric.display_name or not metric.description or not metric.requirement_refs:
                     raise ValueError("Missing metric explanation or requirement source")
                 mode = "all_checks" if metric.type == "deterministic" else "criterion_mean"
@@ -298,7 +313,27 @@ class EvalSpec(BaseModel):
                     raise ValueError("Missing or duplicate scoring criteria")
                 if metric.type == "deterministic" and ids:
                     raise ValueError("Deterministic rules come from program assertions")
+            if self.rubric_version == 3:
+                if (
+                    metric.name in {"task_completion", "groundedness", "tool_correctness"}
+                    and metric.verdict_role != "task"
+                ):
+                    raise ValueError("Core outcomes and facts must determine task success")
+                if metric.verdict_role == "quality" and any(
+                    c.critical for c in metric.scoring_criteria
+                ):
+                    raise ValueError("Critical constraints cannot be quality preferences")
+        if self.rubric_version == 3 and not any(m.verdict_role == "task" for m in self.metrics):
+            raise ValueError("At least one task metric is required")
         return self
+
+
+class FactVerdict(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    claim: str = Field(min_length=1, max_length=2000)
+    kind: Literal["fact", "suggestion", "conditional"]
+    verdict: Literal["supported", "unsupported", "unknown", "not_applicable"]
+    evidence: list[CriterionEvidence] = Field(default_factory=list, max_length=10)
 
 
 class CriterionEvidence(BaseModel):
@@ -341,3 +376,7 @@ class JudgeScore(BaseModel):
 class ProjectCompletionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     analysis: str = Field(default="", max_length=10000)
+
+
+class ValidationUseRequest(BaseModel):
+    reason: str = Field(min_length=1, max_length=2000)

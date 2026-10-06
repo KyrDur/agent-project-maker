@@ -65,8 +65,12 @@ export function useProjectEvaluation(agentId: string) {
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
   })
   const start = useMutation({
-    mutationFn: (data: { request_id: string; version_id: string; eval_set_id: string }) =>
-      agentProjectApi.createRun(agentId, data),
+    mutationFn: (data: {
+      request_id: string
+      version_id: string
+      eval_set_id: string
+      repetitions?: 1 | 3
+    }) => agentProjectApi.createRun(agentId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
   })
   return { sets, runs, save, start, quality }
@@ -119,6 +123,7 @@ export function useProjectGeneration(agentId: string) {
   const cases = useMutation({
     mutationFn: (data: {
       versionId: string
+      purpose?: 'regression' | 'validation'
       evaluation_focus?: string[]
       evaluation_focus_reason?: string | null
     }) => agentProjectApi.generateCases(agentId, data.versionId, data),

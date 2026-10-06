@@ -64,6 +64,13 @@ async def export_zip(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) 
     files["evidence.json"] = json_text(data)
     files["resume.json"] = json_text(resume_material(data))
     files["interview.json"] = json_text(interview_material(data))
+    files["cases.json"] = json_text(data.get("case_cards", []))
+    files["resume.md"] = (
+        "# "
+        + resume_material(data)["title"]
+        + "\n\n"
+        + "\n".join("- " + b for b in resume_material(data)["bullets"])
+    )
     for version in versions:
         prefix = f"versions/v{version.version_number}"
         files[f"{prefix}/agent.json"] = json_text(config_of(version.snapshot_json))
@@ -94,9 +101,7 @@ async def export_zip(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) 
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, value in files.items():
             # Scan every final artifact, including generated Markdown, before ZIP creation.
-            safe = portfolio.sanitize(
-                projects.snapshot_value(portfolio.remove_sources(value, sources))
-            )
+            safe = portfolio.sanitize(projects.snapshot_value(value))
             if scan_payload({"content": safe}):
                 safe = "<redacted>"
             archive.writestr(f"agent-project/{name}", safe)

@@ -178,7 +178,7 @@ it('submits evaluation against the chosen version and shows persisted results', 
   await userEvent.click(screen.getByRole('button', { name: '运行评测' }))
   await userEvent.click(await screen.findByText(/V1 · 已完成/))
   expect(screen.getByText('输出: Hello back')).toBeInTheDocument()
-  expect(screen.getByText('全部用例通过率：1/1（100%）')).toBeInTheDocument()
+  expect(screen.getByText('全部用例通过率：1/1（100.0%）')).toBeInTheDocument()
 })
 
 it.each(['pending', 'running', 'completed', 'failed'] as const)(

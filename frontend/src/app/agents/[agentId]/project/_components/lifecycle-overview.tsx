@@ -32,7 +32,7 @@ type StepState = 'completed' | 'current' | 'pending'
 
 function percent(value: number | null | undefined, locale: string, fallback: string): string {
   if (value == null) return fallback
-  return `${formatDisplayNumber(value * 100, { locale, maximumFractionDigits: 1 })}%`
+  return `${formatDisplayNumber(value * 100, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 }
 
 function versionLabel(version: AgentProjectVersionSummary | undefined, fallback: string): string {
@@ -61,8 +61,9 @@ function bestReportForScope(reports: readonly EvaluationReport[]): EvaluationRep
   const comparable = reports.filter((report) => report.comparison_key === scored.comparison_key)
   return comparable
     .filter((report) => report.score != null)
-    .toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.created_at.localeCompare(b.created_at))
-    [0]
+    .toSorted(
+      (a, b) => (b.score ?? 0) - (a.score ?? 0) || a.created_at.localeCompare(b.created_at),
+    )[0]
 }
 
 function improvementForBest(
@@ -104,8 +105,7 @@ function lifecycleSteps({
   const hasFrozenSet = sets.some((set) => set.frozen)
   const hasRunningEvaluation = runs.some(
     (run) =>
-      (run.status === 'pending' || run.status === 'running') &&
-      !run.comparison_json?.regression,
+      (run.status === 'pending' || run.status === 'running') && !run.comparison_json?.regression,
   )
   const hasEvaluation =
     reports.some((report) => report.score != null) ||
@@ -158,7 +158,11 @@ function lifecycleSteps({
     },
     {
       key: 'optimizationDecision',
-      state: hasAcceptedProposal(proposals) ? 'completed' : hasPendingProposal ? 'current' : 'pending',
+      state: hasAcceptedProposal(proposals)
+        ? 'completed'
+        : hasPendingProposal
+          ? 'current'
+          : 'pending',
     },
     {
       key: 'v2Generation',
@@ -166,11 +170,23 @@ function lifecycleSteps({
     },
     {
       key: 'regressionEvaluation',
-      state: hasRegression ? 'completed' : hasRunningRegression || hasV2 ? 'current' : 'pending',
+      state: hasRunningRegression
+        ? 'current'
+        : hasRegression
+          ? 'completed'
+          : hasV2
+            ? 'current'
+            : 'pending',
     },
     {
       key: 'comparisonBestVersion',
-      state: hasRegression && hasComparableReports ? 'completed' : hasRegression ? 'current' : 'pending',
+      state: hasRunningRegression
+        ? 'pending'
+        : hasRegression && hasComparableReports
+          ? 'completed'
+          : hasRegression
+            ? 'current'
+            : 'pending',
     },
   ]
 }
@@ -193,9 +209,12 @@ function nextAction({
   const uncheckedSet = sets.find((set) => set.cases_json.length && !set.quality_report_json)
   const hasCompletedEvaluation = reports.some((report) => report.score != null)
   const hasBadCases = reports.some((report) => report.bad_case_count > 0)
-  const acceptedWithoutRegression = proposals.some((proposal) => proposal.status === 'accepted') &&
+  const acceptedWithoutRegression =
+    proposals.some((proposal) => proposal.status === 'accepted') &&
     !runs.some((run) => run.comparison_json?.regression)
 
+  if (runs.some((r) => ['pending', 'running'].includes(r.status)))
+    return { key: 'waitEvaluation', tab: 'evaluation' }
   if (!hasSet) {
     if (project.eval_spec_json) {
       return {
@@ -252,21 +271,46 @@ export function LifecycleOverview({
   const runtimeReadiness = useAgentRuntimeReadiness(agentId)
   const systemModels = useSystemLlmReadiness()
   const sets = evaluation.sets.data ?? []
-  const runs = useMemo(() => sortRunsNewestFirst(evaluation.runs.data ?? []), [evaluation.runs.data])
+  const runs = useMemo(
+    () => sortRunsNewestFirst(evaluation.runs.data ?? []),
+    [evaluation.runs.data],
+  )
   const reports = useMemo(
     () => sortReportsNewestFirst(reportsQuery.data?.reports ?? []),
     [reportsQuery.data?.reports],
   )
   const latestRun = runs[0]
-  const latestReport = reports.find((report) => report.evaluation_run_id === latestRun?.id) ?? reports[0]
+  const latestReport = reports.find((report) => report.evaluation_run_id === latestRun?.id)
   const latestSet = sets.find((set) => set.id === latestRun?.eval_set_id)
   const proposals = useMemo(() => proposalsFromRuns(runs), [runs])
-  const latestProposal = proposals.toSorted((a, b) => b.created_at.localeCompare(a.created_at))[0]
+  const latestProposal = proposals.toSorted(
+    (a, b) =>
+      b.created_at.localeCompare(a.created_at) ||
+      Number(b.status === 'accepted') - Number(a.status === 'accepted'),
+  )[0]
   const best = bestReportForScope(reports)
   const bestVersion = versions.find((version) => version.id === best?.version_id)
   const currentVersion = versions[0]
   const improvement = improvementForBest(best, reports)
-  const steps = lifecycleSteps({ project, versions, sets, runs, reports, proposals })
+  const detailedSteps = lifecycleSteps({ project, versions, sets, runs, reports, proposals })
+  const steps = [
+    {
+      key: 'requirements',
+      state: project.decisions_json?.some((d) => d.stage === 'capabilities')
+        ? 'completed'
+        : 'current',
+    },
+    { key: 'simulation', state: versions.length ? 'current' : 'pending' },
+    {
+      key: 'evaluation',
+      state: detailedSteps.find((s) => s.key === 'evaluationRunning')?.state ?? 'pending',
+    },
+    {
+      key: 'optimization',
+      state: detailedSteps.find((s) => s.key === 'regressionEvaluation')?.state ?? 'pending',
+    },
+    { key: 'materials', state: project.report_json?.portfolio_report ? 'completed' : 'pending' },
+  ]
   const action = nextAction({ project, sets, runs, reports, proposals })
   const failedCases =
     latestRun?.results_json?.filter((result) => result.status !== 'passed').length ??
@@ -274,10 +318,7 @@ export function LifecycleOverview({
     null
   const noData = workspaceT('noData')
   const noVersion = workspaceT('noVersion')
-  const platformRoles = useMemo(
-    () => systemModels.data ?? [],
-    [systemModels.data],
-  )
+  const platformRoles = useMemo(() => systemModels.data ?? [], [systemModels.data])
   const platformReady =
     platformRoles.length > 0 && platformRoles.every((setting) => setting.configured)
   const runtimeModel = runtimeReadiness.data?.model
@@ -292,9 +333,7 @@ export function LifecycleOverview({
               {workspaceT('eyebrow')}
             </p>
             <h2 className="mt-1 text-2xl font-semibold">{project.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {workspaceT('narrative')}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{workspaceT('narrative')}</p>
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-3">
             <div>
@@ -307,7 +346,9 @@ export function LifecycleOverview({
             </div>
             <div>
               <p className="text-muted-foreground">{workspaceT('latestEvaluation')}</p>
-              <p className="text-lg font-semibold">{percent(latestReport?.score, locale, noData)}</p>
+              <p className="text-lg font-semibold">
+                {percent(latestReport?.score, locale, noData)}
+              </p>
             </div>
           </div>
         </div>
@@ -432,13 +473,16 @@ export function LifecycleOverview({
                 </div>
               </div>
               <p className="text-sm">{t('lifecycle.bestReason')}</p>
-              <p className="text-sm text-muted-foreground">{t('evaluationReport.dataset', { id: best.eval_set_id })}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('evaluationReport.dataset', { id: best.eval_set_id })}
+              </p>
               <p className="text-sm">
                 {improvement == null
                   ? workspaceT('bestCard.noPreviousComparable')
                   : workspaceT('bestCard.improvement', {
                       value: `${improvement >= 0 ? '+' : ''}${formatDisplayNumber(improvement, {
                         locale,
+                        minimumFractionDigits: 1,
                         maximumFractionDigits: 1,
                       })}`,
                     })}
@@ -449,9 +493,7 @@ export function LifecycleOverview({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {workspaceT('bestCard.empty')}
-              </p>
+              <p className="text-sm text-muted-foreground">{workspaceT('bestCard.empty')}</p>
               <Button variant="outline" onClick={() => onNavigate('evaluation')}>
                 {workspaceT('bestCard.runEvaluation')}
               </Button>
@@ -464,11 +506,25 @@ export function LifecycleOverview({
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted-foreground">{workspaceT('latestCard.version')}</dt>
-                <dd>{versionLabel(versions.find((version) => version.id === (latestRun?.version_id ?? latestReport?.version_id)), noVersion)}</dd>
+                <dd>
+                  {versionLabel(
+                    versions.find(
+                      (version) =>
+                        version.id === (latestRun?.version_id ?? latestReport?.version_id),
+                    ),
+                    noVersion,
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">{workspaceT('latestCard.score')}</dt>
-                <dd>{percent(latestReport?.score ?? latestRun?.metrics_json?.pass_rate, locale, noData)}</dd>
+                <dd>
+                  {percent(
+                    latestReport?.score ?? latestRun?.metrics_json?.pass_rate,
+                    locale,
+                    noData,
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">{workspaceT('latestCard.cases')}</dt>
@@ -480,14 +536,19 @@ export function LifecycleOverview({
               </div>
               <div className="sm:col-span-2">
                 <dt className="text-muted-foreground">{workspaceT('latestCard.evaluatedWith')}</dt>
-                <dd>{latestSet?.name ?? latestRun?.eval_set_id ?? latestReport?.eval_set_id ?? noData}</dd>
+                <dd>
+                  {latestSet?.name ?? latestRun?.eval_set_id ?? latestReport?.eval_set_id ?? noData}
+                </dd>
               </div>
               <div className="sm:col-span-2">
                 <dt className="text-muted-foreground">{workspaceT('latestCard.evaluationTime')}</dt>
                 <dd>
                   {latestRun?.completed_at || latestRun?.created_at || latestReport?.created_at
                     ? formatDisplayDateTime(
-                        latestRun?.completed_at ?? latestRun?.created_at ?? latestReport?.created_at ?? '',
+                        latestRun?.completed_at ??
+                          latestRun?.created_at ??
+                          latestReport?.created_at ??
+                          '',
                         { locale },
                       )
                     : noData}
@@ -508,16 +569,24 @@ export function LifecycleOverview({
           {latestProposal ? (
             <div className="space-y-3 text-sm">
               <p>
-                <span className="text-muted-foreground">{workspaceT('optimizationCard.status')}</span>
+                <span className="text-muted-foreground">
+                  {workspaceT('optimizationCard.status')}
+                </span>
                 {t(`lifecycle.statuses.${latestProposal.status}`)}
               </p>
               <p>
-                <span className="text-muted-foreground">{workspaceT('optimizationCard.detectedIssue')}</span>
-                {latestProposal.failure_patterns[0]?.category ?? workspaceT('optimizationCard.uncategorized')}
+                <span className="text-muted-foreground">
+                  {workspaceT('optimizationCard.detectedIssue')}
+                </span>
+                {latestProposal.failure_patterns[0]?.category ??
+                  workspaceT('optimizationCard.uncategorized')}
               </p>
               <p>
-                <span className="text-muted-foreground">{workspaceT('optimizationCard.rootCause')}</span>
-                {latestProposal.failure_patterns[0]?.root_cause ?? workspaceT('optimizationCard.noRootCause')}
+                <span className="text-muted-foreground">
+                  {workspaceT('optimizationCard.rootCause')}
+                </span>
+                {latestProposal.failure_patterns[0]?.root_cause ??
+                  workspaceT('optimizationCard.noRootCause')}
               </p>
               <Button variant="outline" onClick={() => onNavigate('optimization')}>
                 {workspaceT('optimizationCard.review')}
@@ -525,7 +594,9 @@ export function LifecycleOverview({
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{workspaceT('optimizationCard.empty')}</p>
+              <p className="text-sm text-muted-foreground">
+                {workspaceT('optimizationCard.empty')}
+              </p>
               <Button variant="outline" onClick={() => onNavigate('optimization')}>
                 {workspaceT('optimizationCard.view')}
               </Button>
@@ -547,7 +618,9 @@ export function LifecycleOverview({
         </SettingsSectionCard>
       </div>
 
-      {(evaluation.sets.isError || evaluation.runs.isError || reportsQuery.isError) && <ErrorState />}
+      {(evaluation.sets.isError || evaluation.runs.isError || reportsQuery.isError) && (
+        <ErrorState />
+      )}
       <ProjectResults agentId={agentId} />
     </div>
   )

@@ -81,6 +81,7 @@ export function ProjectMetricScores({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">{t('averageExplanation')}</p>
+      {(spec?.rubric_version ?? 1) >= 3 && <p>{t('taskQualitySeparation')}</p>}
       {!names.length && <p>{t('noScores')}</p>}
       <dl className="grid gap-4 sm:grid-cols-2">
         {names.map((name) => {
@@ -88,13 +89,17 @@ export function ProjectMetricScores({
           const value = summaries?.[name]
           return (
             <div key={name} className="space-y-2">
-              <dt className="font-medium">{metricName(name, metric)}</dt>
+              <dt className="font-medium">
+                {metricName(name, metric)}
+                {metric?.verdict_role === 'quality' && ` · ${t('qualityOnly')}`}
+              </dt>
               <dd className="space-y-1">
                 <p>
                   {value
                     ? t('average', {
                         value: formatDisplayNumber(value.score * 100, {
                           locale,
+                          minimumFractionDigits: 1,
                           maximumFractionDigits: 1,
                         }),
                       })
@@ -103,7 +108,7 @@ export function ProjectMetricScores({
                 <p className="text-sm text-muted-foreground">
                   {value?.evaluated_cases != null
                     ? t('coverage', { count: value.evaluated_cases, total })
-                    : spec?.rubric_version === 2
+                    : (spec?.rubric_version ?? 1) >= 2
                       ? t('coverage', { count: 0, total })
                       : t('coverageUnavailable')}
                 </p>
@@ -122,7 +127,7 @@ export function ProjectMetricScores({
                   <p>{t('unscoredCount', { count: value.unscored_cases })}</p>
                 )}
                 {metric ? (
-                  <ProjectScoringRule metric={metric} legacy={spec?.rubric_version !== 2} />
+                  <ProjectScoringRule metric={metric} legacy={(spec?.rubric_version ?? 1) < 2} />
                 ) : (
                   <p className="text-sm">{t('missingRule')}</p>
                 )}
@@ -149,6 +154,34 @@ export function ProjectCaseScores({
   const locale = useLocale()
   return (
     <div className="space-y-3">
+      {result.fact_check && (
+        <div className="space-y-2">
+          <p>
+            {t('factCounts', {
+              supported: result.fact_check.supported,
+              total: result.fact_check.total,
+              unsupported: result.fact_check.unsupported,
+              unknown: result.fact_check.unknown,
+            })}
+          </p>
+          {result.fact_check.items.map((fact, i) => (
+            <div key={i} className="border-l-2 pl-3">
+              <p>
+                {fact.claim} ·{' '}
+                {t.has(`factVerdicts.${fact.verdict}`)
+                  ? t(`factVerdicts.${fact.verdict}`)
+                  : fact.verdict}
+              </p>
+              {fact.evidence.map((ref, j) => (
+                <blockquote key={j}>
+                  {ref.reference}：{ref.quote}
+                </blockquote>
+              ))}
+            </div>
+          ))}
+          <p className="text-sm text-muted-foreground">{t('calibrationLimit')}</p>
+        </div>
+      )}
       {Object.entries(result.metric_scores ?? {}).map(([name, score]) => (
         <div key={name} className="space-y-2">
           <p className="font-medium">
@@ -158,7 +191,11 @@ export function ProjectCaseScores({
             )}{' '}
             ·{' '}
             {t('caseScore', {
-              value: formatDisplayNumber(score.score * 100, { locale, maximumFractionDigits: 1 }),
+              value: formatDisplayNumber(score.score * 100, {
+                locale,
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              }),
             })}{' '}
             · {p(score.passed ? 'checkPassed' : 'checkFailed')}
           </p>

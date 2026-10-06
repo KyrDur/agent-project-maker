@@ -492,3 +492,50 @@ def test_schema_does_not_allow_eval_spec_or_case_updates():
     for key in ("eval_spec", "eval_set", "model_params"):
         with pytest.raises(ValueError, match="Extra inputs"):
             PatchProposal.model_validate({"changes": [], key: {}})
+
+
+@pytest.mark.asyncio
+async def test_three_trials_keep_all_sixty_results(db, experiment):
+    ex = experiment
+    request = EvalRunCreate(
+        request_id=uuid.uuid4(), version_id=ex.version.id, eval_set_id=ex.dataset.id, repetitions=3
+    )
+    run = await evaluation.create_run(db, ex.agent.id, TEST_USER_ID, request)
+    await evaluation.execute_run(run.id, ex.agent.id, TEST_USER_ID)
+    await db.refresh(run)
+    assert run.results_json is not None
+    assert len(run.results_json) == 60
+    assert {r["trial"] for r in run.results_json} == {1, 2, 3}
+    assert run.metrics_json["total"] == 60
+    assert run.metrics_json["passed"] == 45
+    assert run.metrics_json["trial_pass_rates"] == [0.75, 0.75, 0.75]
+    assert run.pass_rate == 0.75
+    assert (await evaluation.create_run(db, ex.agent.id, TEST_USER_ID, request)).id == run.id
+
+
+@pytest.mark.asyncio
+async def test_validation_requires_explicit_use_and_marks_entire_set(db, experiment, monkeypatch):
+    ex = experiment
+    from app.exceptions import AppError
+
+    ex.run.comparison_json = {
+        **ex.run.comparison_json,
+        "purpose": "validation",
+        "validation_exposure": "unseen",
+    }
+    await db.commit()
+    with pytest.raises(AppError, match="validation_evidence_not_for_optimization"):
+        await optimization.analyze(db, ex.agent.id, TEST_USER_ID, ex.run.id)
+    first = await evaluation.use_validation_for_optimization(
+        db, ex.agent.id, TEST_USER_ID, ex.run.id, "根据验证证据修复，不再声称未见验证。"
+    )
+    assert first.comparison_json["validation_exposure"] == "used"
+    await db.refresh(ex.project)
+    first_record = deepcopy(ex.project.report_json["validation_usage"])
+    await evaluation.use_validation_for_optimization(
+        db, ex.agent.id, TEST_USER_ID, ex.run.id, "重复提交"
+    )
+    await db.refresh(ex.project)
+    assert ex.project.report_json["validation_usage"] == first_record
+    monkeypatch.setattr(optimization, "json_call", controlled_optimizer)
+    assert (await optimization.analyze(db, ex.agent.id, TEST_USER_ID, ex.run.id))["groups"]
