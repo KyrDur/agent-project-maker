@@ -1,29 +1,29 @@
-# Stage 3 — 갓 모듈 분해 (한 PR, 항목별 커밋 + 항목별 리뷰)
+# Stage 3 — God 模块拆分（一个 PR，逐项 commit + 逐项 review）
 
-브랜치: `refactor/stage3-god-modules` (origin/main = 5c7a6c01 기준)
-원칙: 기능 변화 0, 순수 이동 + facade re-export, 항목당 작은 커밋, 항목 완료마다 code-review → 수정 커밋 → 다음 항목.
-검증(항목별): `ruff check` + 타깃 pytest → 커밋 전 `SKILL_EVALUATION_ENABLED=true pytest -q -n 4 --ignore=tests/integration`
-최종: integration 직렬(`-m integration` 필수) + 푸시 시 `SKILL_EVALUATION_ENABLED=true`
+branch: `refactor/stage3-god-modules`（基于 origin/main = 5c7a6c01）
+原则: 功能变化 0，纯移动 + facade re-export，每项小 commit，每项完成后 code-review → 修复 commit → 下一项。
+验证（逐项）: `ruff check` + 目标 pytest → commit 前 `SKILL_EVALUATION_ENABLED=true pytest -q -n 4 --ignore=tests/integration`
+最终: integration 串行（必须 `-m integration`）+ push 时 `SKILL_EVALUATION_ENABLED=true`
 
-- [x] 0. 기준선: 2702 passed / 5 failed = 전부 SKILL_EVALUATION_ENABLED=false 기인(플래그 켜면 통과) → 실질 그린
-- [x] 1. BE-S1 — chat_service.py(1810줄→104줄 facade) → `app/services/chat/` 7모듈 분해 (a901b319)
-  - [x] 구현 커밋 → [x] 리뷰: 승인, 발견 0 (AST 전수 대조로 순수 이동 확증, 함수-로컬 import 4곳 유지 사유 실증) → 수정 불필요
-- [x] 2. BE-S3 — install_service.py(1365줄→400줄 facade+디스패처) → `app/marketplace/install/` 분해 (커밋 2번째)
-  - common / snapshot / bindings / skill / mcp / agent_blueprint. 추출 seam 2곳(skill create/overwrite)은 문장 단위 AST 동일 검증
-  - [x] 구현 커밋 → [x] 리뷰: 승인, 발견 0 → 수정 불필요
-- [x] 3. BE-S5 — write_tools.py(1091줄) → `write_tools/` 패키지 + WriteToolContext (9eee9bea)
-  - 23개 도구 schema 바이트 동일, patch 표면(async_session_factory) call-time 주입으로 보존
-  - [x] 구현 커밋 → [x] 리뷰: 승인, 발견 0 → 수정 불필요
-- [x] 4. BE-S8 — artifact_service.py(1035줄→137줄 facade) → `app/services/artifacts/` recorder/library/content/summary/errors (1e7d519f)
-  - [x] 구현 커밋 → [x] 리뷰: 승인, Low 1건(hot path call-time facade import — patch 계약 보존 위한 의도적 설계, 수정 불필요 판정)
-- [x] 5. BE-S9 — scheduler.py(805→706줄) 인라인 잡 4건 → credentials/rotation·mcp_service·conversation_run_service·skill_runtime (ccf4d25b)
-  - 동명 wrapper 잔존(영속 jobstore module:qualname + 테스트 patch 표면 call-time 주입 보존)
-  - [x] 구현 커밋 → [x] 리뷰: 승인, 차단 0 (정보성 1: _DATA_DIR import-time 바인딩 — 기능 무영향 판정)
-- [x] 6. BE-S10 — runtime_component_builder.py(930→600줄) → `agent_runtime/runtime/` models/reliability/interrupts/prompts/memory_context (9fa1facc)
-  - monkeypatch 12종 투명성 보존(create_chat_model만 call-time builder import 패턴), executor facade 무수정
-  - [x] 구현 커밋 → [x] 리뷰: 승인, 발견 0
-- [x] 7. 최종 전체 검증: ruff 0 / full 2707 passed / integration 29 passed·1 skipped / frontend vitest 1294 passed + 플랜 문서 ✅ 갱신
-- [x] 8. 푸시 + **PR #296** 생성 (pre-push 게이트: 워크트리 node_modules에 diff@9 미설치가 원인이던 vitest 실패는 클린 pnpm install로 해결 — 코드 무관)
-- [x] 9. 최종 /review (교차 리뷰) 승인 + CLAUDE.md facade-분해 규칙 수확 (0e3da3f2)
-- [x] 10. 적대적 리뷰 4렌즈 병렬(동적참조·직렬화 / mutation 실증 / 보안 / 동시성·트랜잭션): **커밋 브랜치 결함 0**. mutation 7/8 CAUGHT, MISSED 1은 기존 갭 → seam 보강 테스트 6건(각 mutation FAIL 실증) 커밋 292dedb4, 전체 2713 passed. PR 코멘트 기록.
-  - 후속 후보(범위 밖): xdist 저빈도 flake(test_state_snapshot fallback, 격리 충돌·main과 동일), write_tools docstring "18개" 표기(pre-existing)
+- [x] 0. baseline: 2702 passed / 5 failed = 全部由 SKILL_EVALUATION_ENABLED=false 导致（开启 flag 即通过）→ 实质 green
+- [x] 1. BE-S1 — chat_service.py(1810行→104行 facade) → 拆分为 `app/services/chat/` 7个模块 (a901b319)
+  - [x] 实现 commit → [x] review: 批准，发现 0（通过 AST 全量对比确认纯移动，实证保留 4 处函数局部 import 的原因）→ 无需修复
+- [x] 2. BE-S3 — install_service.py(1365行→400行 facade+dispatcher) → 拆分为 `app/marketplace/install/`（第 2 个 commit）
+  - common / snapshot / bindings / skill / mcp / agent_blueprint。2 处提取 seam（skill create/overwrite）做语句级 AST 一致性验证
+  - [x] 实现 commit → [x] review: 批准，发现 0 → 无需修复
+- [x] 3. BE-S5 — write_tools.py(1091行) → `write_tools/` package + WriteToolContext (9eee9bea)
+  - 23 个 tool schema 字节级相同，通过 call-time 注入保留 patch surface(async_session_factory)
+  - [x] 实现 commit → [x] review: 批准，发现 0 → 无需修复
+- [x] 4. BE-S8 — artifact_service.py(1035行→137行 facade) → `app/services/artifacts/` recorder/library/content/summary/errors (1e7d519f)
+  - [x] 实现 commit → [x] review: 批准，Low 1项（hot path call-time facade import — 为保留 patch 契约的有意设计，判定无需修改）
+- [x] 5. BE-S9 — scheduler.py(805→706行) 内联 job 4项 → credentials/rotation·mcp_service·conversation_run_service·skill_runtime (ccf4d25b)
+  - 保留同名 wrapper（保留持久化 jobstore module:qualname + 测试 patch surface call-time 注入）
+  - [x] 实现 commit → [x] review: 批准，阻断 0（信息性 1: _DATA_DIR import-time 绑定 — 判定不影响功能）
+- [x] 6. BE-S10 — runtime_component_builder.py(930→600行) → `agent_runtime/runtime/` models/reliability/interrupts/prompts/memory_context (9fa1facc)
+  - 保留 12 种 monkeypatch 透明性（仅 create_chat_model 使用 call-time builder import 模式），executor facade 不修改
+  - [x] 实现 commit → [x] review: 批准，发现 0
+- [x] 7. 最终全量验证: ruff 0 / full 2707 passed / integration 29 passed·1 skipped / frontend vitest 1294 passed + plan 文档 ✅ 更新
+- [x] 8. push + 创建 **PR #296**（pre-push gate: worktree node_modules 缺少 diff@9 导致的 vitest 失败通过 clean pnpm install 解决 — 与代码无关）
+- [x] 9. 最终 /review（交叉 review）批准 + 提炼 CLAUDE.md facade-拆分规则 (0e3da3f2)
+- [x] 10. 对抗性 review 4 个 lens 并行（动态引用·序列化 / mutation 实证 / 安全 / 并发·事务）: **commit branch 缺陷 0**。mutation 7/8 CAUGHT，MISSED 1 为现有缺口 → seam 加固测试 6项（每个 mutation FAIL 实证）commit 292dedb4，全部 2713 passed。记录 PR comment。
+  - 后续候选（范围外）: xdist 低频 flake(test_state_snapshot fallback，隔离冲突·与 main 相同), write_tools docstring "18个" 标记（pre-existing）

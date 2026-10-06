@@ -1,9 +1,9 @@
-# progress.txt — System LLM Settings (ADR-019) 팀 공유 메모리
+# progress.txt — System LLM Settings (ADR-019) 团队共享记忆
 
-모든 팀원: 스토리 시작 전 필독, 완료/실패 후 기록.
+所有团队成员: 开始 story 前必读，完成/失败后记录。
 worktree: /Users/chester/dev/ref/natural-mold/.claude/worktrees/system-llm-settings
 
-## API 계약 (사티아 확정 — 젠슨/저커버그 합의 기준)
+## API 契约（萨提亚确认 — 詹森/扎克伯格共识基准）
 
 role enum: `text_primary` | `text_fallback` | `image`
 
@@ -12,91 +12,91 @@ GET  /api/system-llm-settings        (super_user)
 PUT  /api/system-llm-settings/{role} (super_user)
   body: { "credential_id": uuid|null, "model_name": str|null }
   → 200: SystemLlmSettingOut
-  - credential_id 지정 시: is_system=True && definition_key ∈ {openai,anthropic,openrouter,openai_compatible} 검증.
-    위반 시 404(없음)/422(타입불가) — enumeration oracle 방지 위해 메시지 통일.
+  - 指定 credential_id 时: 验证 is_system=True && definition_key ∈ {openai,anthropic,openrouter,openai_compatible}。
+    违反时 404（不存在）/422（类型不允许）— 为防止 enumeration oracle，统一消息。
 
 SystemLlmSettingOut:
   { role: str, credential_id: uuid|null, credential_name: str|null,
     provider: str|null (=credential.definition_key), base_url: str|null,
     model_name: str|null, configured: bool, updated_at: datetime }
 
-discover (기존 재사용, 변경 금지):
-  POST /api/credentials/{credential_id}/discover-models → 모델 목록
+discover（复用现有实现，禁止修改）:
+  POST /api/credentials/{credential_id}/discover-models → 模型列表
 
-## Codebase Patterns (확인된 사실)
+## Codebase Patterns（已确认事实）
 - Router→Service→Model, async SQLAlchemy 2.0 select(). DI: Depends(get_db, require_super_user, verify_csrf).
-- 권한: super_user 전용은 require_super_user. is_system 리소스는 user_id NULL.
-- credential 복호화: app.credentials.service.decrypt_with_external(data_encrypted) → payload dict.
-  - LLM credential payload key: "api_key" 또는 "token". openai_compatible/openrouter는 "base_url" 보유.
-- find_system_by_definition(db, definition_key) 존재. get_system 류 헬퍼 확인 후 사용/추가.
+- 权限: super_user 专用使用 require_super_user。is_system resource 的 user_id 为 NULL。
+- credential 解密: app.credentials.service.decrypt_with_external(data_encrypted) → payload dict。
+  - LLM credential payload key: "api_key" 或 "token"。openai_compatible/openrouter 含有 "base_url"。
+- 存在 find_system_by_definition(db, definition_key)。确认后使用/添加 get_system 类 helper。
 - model_factory.create_chat_model(provider, model_name, api_key=None, base_url=None, **extra).
-  - _OPENAI_FAMILY_BASE_URLS: openai/openrouter canonical pin. openai_compatible은 base_url 필수.
+  - _OPENAI_FAMILY_BASE_URLS: openai/openrouter canonical pin。openai_compatible 必须提供 base_url。
 - LLM credential definition_key: anthropic, openai, openrouter, openai_compatible (definitions/__init__.py).
-- 마이그레이션 head: m44 (ADR-018). 신규는 m45, down_revision='m44_relative_storage_path' 확인.
-- 테스트: pytest + aiosqlite in-memory. 새 테이블은 conftest 모델 import 경로 확인.
+- migration head: m44 (ADR-018)。新增为 m45，确认 down_revision='m44_relative_storage_path'。
+- 测试: pytest + aiosqlite in-memory。新表确认 conftest model import 路径。
 
 ## Gotchas
-- ADR-018: storage_path는 상대경로. 이 작업과 무관하나 data/ 건드리지 말 것.
-- .env / backend/data 는 main으로의 symlink (worktree-setup.sh). 절대 일반 파일로 덮지 말 것.
-- @functools.cache 제거(M3): 런타임 설정 변경 반영 위해. 필요시 updated_at 기반 캐시.
-- DB 단일 source(ADR-019 결정2): .env builder_model_*/assistant_model_* 런타임 미사용. config 상수는 잔존 가능하나 read 경로 끊기.
+- ADR-018: storage_path 为相对路径。与本任务无关，但不要改动 data/。
+- .env / backend/data 是指向 main 的 symlink (worktree-setup.sh)。绝不能用普通文件覆盖。
+- 移除 @functools.cache(M3): 为反映 runtime 设置变更。必要时使用基于 updated_at 的 cache。
+- DB 单一 source（ADR-019 决策2）: .env builder_model_*/assistant_model_* 不用于 runtime。config 常量可继续保留，但断开 read 路径。
 
-## S1 삭제분석 결과 (베조스, 2026-05-26 → tasks/system-llm/deletion-analysis.md)
-- 단절 대상 런타임 read 18곳/4파일: helpers.py(L71-90,138-139 builder/fallback), assistant_agent.py(L74,77-78), image_gen.py:112+image_service.py:125 (image_gen_model). config 상수 정의(config.py:105-119)는 시드 참조용 잔존 OK.
-- base_url 별도: image_gen_base_url read 2곳(image_gen.py:133, image_service.py:119) → image role의 credential payload base_url로 대체.
-- @functools.cache(helpers.py): _get_builder_model(L68)/_get_fallback_model(L78) 싱글턴캐시 = 설정변경 미반영 버그. 제거 필수. 단 제거 시 두 함수 async+db 시그니처化 + 호출부 L176/226 await. ⚠️ updated_at 캐시 미도입 시 builder 요청마다 LLM 인스턴스 재생성(~5-10ms) 성능회귀. load_prompt(L37)캐시는 영향無(import시 static).
-- resolve_system_api_key 호출부 4곳: assistant_agent.py:73 + image_service.py:102 + image_gen.py:49,96. ⚠️중요판단: image_gen도 ADR결정2/5상 resolve_system_model("image")로 가야함(Explore는 "api_key만 필요 유지" 결론냈으나 ADR 위반). image_gen.py:49 가용성체크는 SystemModelNotConfiguredError try/except 또는 configured플래그로 전환. resolve_system_api_key 함수 자체는 ADR-013호환 유지하되 system모델 흐름 직접호출은 0으로 단절.
-- 깨질 테스트: test_builder_v3.py(image, CRITICAL settings.image_gen_model fallback제거), test_builder_sub_agents.py(~338-389 model getter async+db), test_assistant_agent.py(~77/119/144 resolve_system_api_key patch→model, ~14-49 cache_clear AttributeError), conftest.py(~60-82 _stub_llm_credential_resolution에 system model resolver stub 추가 필요). 라인번호는 Explore 추정 — 구현자 재확인.
-- 신규테스트: tests/test_system_llm_settings.py(role UNIQUE/CHECK/SET NULL/CRUD) + test_system_credential_resolver.py 확장(resolve_system_model).
+## S1 删除分析结果（贝索斯, 2026-05-26 → tasks/system-llm/deletion-analysis.md）
+- 断开对象 runtime read 18处/4文件: helpers.py(L71-90,138-139 builder/fallback), assistant_agent.py(L74,77-78), image_gen.py:112+image_service.py:125 (image_gen_model)。config 常量定义(config.py:105-119) 可保留供 seed 参考 OK。
+- base_url 单独处理: image_gen_base_url read 2处(image_gen.py:133, image_service.py:119) → 替换为 image role 的 credential payload base_url。
+- @functools.cache(helpers.py): _get_builder_model(L68)/_get_fallback_model(L78) singleton cache = 设置变更不生效的 bug。必须移除。但移除后两个函数改为 async+db 签名 + 调用方 L176/226 await。⚠️ 若未引入 updated_at cache，每次 builder 请求都重新创建 LLM 实例(~5-10ms)，会出现性能回归。load_prompt(L37)cache 无影响（import 时 static）。
+- resolve_system_api_key 调用方 4处: assistant_agent.py:73 + image_service.py:102 + image_gen.py:49,96。⚠️重要判断: image_gen 按 ADR 决策2/5 也必须走 resolve_system_model("image")（Explore 结论是 "只需 api_key 因此保留"，但违反 ADR）。image_gen.py:49 可用性检查改为 SystemModelNotConfiguredError try/except 或 configured flag。resolve_system_api_key 函数本身为兼容 ADR-013 保留，但 system 模型流程直接调用需断开为 0。
+- 会失败的测试: test_builder_v3.py(image, CRITICAL 移除 settings.image_gen_model fallback), test_builder_sub_agents.py(~338-389 model getter async+db), test_assistant_agent.py(~77/119/144 resolve_system_api_key patch→model, ~14-49 cache_clear AttributeError), conftest.py(~60-82 _stub_llm_credential_resolution 中需添加 system model resolver stub)。行号为 Explore 估算 — 实现者需重新确认。
+- 新增测试: tests/test_system_llm_settings.py(role UNIQUE/CHECK/SET NULL/CRUD) + 扩展 test_system_credential_resolver.py(resolve_system_model)。
 
-## S2 완료 패턴 (젠슨, M1/M2/M4 — 2026-05-26)
-- 모델: app/models/system_llm_setting.py — SystemLlmSetting + 상수 SYSTEM_LLM_ROLES=("text_primary","text_fallback","image"). role str40 unique, credential_id FK credentials SET NULL nullable, model_name str200 nullable, updated_at. CheckConstraint(role IN ...) + extend_existing=True(테스트 create_all 멱등). models/__init__ export 완료.
-- Alembic m45_system_llm_settings (down_revision=m44_relative_storage_path). _has_table 가드 + op.create_table + op.bulk_insert로 3 role seed(NULL cred/model). downgrade drop_table. PG 왕복(up/down/up) 검증 완료, 시드 3행 확인.
-- resolver(system_credential_resolver.py 확장): ResolvedSystemModel(provider,model_name,api_key,base_url) dataclass + SystemModelNotConfiguredError(role, .role 속성). resolve_system_model(db,role): get_setting→None/credential_id None/model_name 빈값이면 raise. get_system(db,credential_id)으로 cred 로드(없으면 raise). decrypt_with_external→ api_key=payload.get("api_key")or("token"), base_url=payload.get("base_url"). provider=cred.definition_key. **resolve_system_api_key/PROVIDER_API_KEY_MAP는 그대로 유지(ADR-013 호환)**. get_setting 헬퍼도 export(S3 배선/캐시에 사용 가능).
-- 라우터: app/routers/system_llm_settings.py prefix=/api/system-llm-settings. GET(require_super_user) 3 role 전체, 시드 누락 시 self-heal(add+flush). PUT/{role}(require_super_user+verify_csrf). 검증: credential_id 지정 시 get_system None→404, definition_key not in {openai,anthropic,openrouter,openai_compatible}→422. **404/422 detail 메시지 동일**("credential_id must reference an existing system LLM credential"), 실제 사유는 logger.info만(enumeration oracle 방지, security.md). main.py include_router 등록(standalone router, skills 다음 줄).
-- 스키마(schemas/system_llm_setting.py): SystemLlmSettingOut(role,credential_id,credential_name,provider,base_url,model_name,configured:bool,updated_at) + SystemLlmSettingUpdate(credential_id,model_name).
-- 테스트: tests/test_system_llm_settings.py 11 PASS (router GET/PUT happy+validation + resolver 3케이스). system credential은 credential_service.create(db,user_id=None,...,is_system=True)+db.commit()로 생성하면 client 세션(다른 세션)에서도 보임(동일 engine). client fixture=super_user=True+csrf bypass.
-- GET base_url은 configured role만 decrypt(최대 3회, N+1 아님). decrypt 실패는 base_url=None graceful degrade.
-- 검증 결과: `ruff check app/ tests/` clean, `pytest -k "system_llm or credentials"` 51 passed.
+## S2 完成模式（詹森, M1/M2/M4 — 2026-05-26）
+- 模型: app/models/system_llm_setting.py — SystemLlmSetting + 常量 SYSTEM_LLM_ROLES=("text_primary","text_fallback","image")。role str40 unique, credential_id FK credentials SET NULL nullable, model_name str200 nullable, updated_at。CheckConstraint(role IN ...) + extend_existing=True（测试 create_all 幂等）。models/__init__ export 完成。
+- Alembic m45_system_llm_settings (down_revision=m44_relative_storage_path)。_has_table guard + op.create_table + op.bulk_insert 创建 3 role seed(NULL cred/model)。downgrade drop_table。PG 往返(up/down/up) 验证完成，确认 seed 3行。
+- resolver（扩展 system_credential_resolver.py）: ResolvedSystemModel(provider,model_name,api_key,base_url) dataclass + SystemModelNotConfiguredError(role, .role 属性)。resolve_system_model(db,role): get_setting→None/credential_id None/model_name 空值时 raise。通过 get_system(db,credential_id) 加载 cred（不存在则 raise）。decrypt_with_external→ api_key=payload.get("api_key")or("token"), base_url=payload.get("base_url")。provider=cred.definition_key。**resolve_system_api_key/PROVIDER_API_KEY_MAP 原样保留（兼容 ADR-013）**。get_setting helper 也 export（S3 接线/cache 可用）。
+- router: app/routers/system_llm_settings.py prefix=/api/system-llm-settings。GET(require_super_user) 返回全部 3 role，seed 缺失时 self-heal(add+flush)。PUT/{role}(require_super_user+verify_csrf)。验证: 指定 credential_id 时 get_system None→404，definition_key not in {openai,anthropic,openrouter,openai_compatible}→422。**404/422 detail 消息相同**（"credential_id must reference an existing system LLM credential"），真实原因仅 logger.info（防止 enumeration oracle, security.md）。main.py include_router 注册（standalone router，skills 下一行）。
+- schema(schemas/system_llm_setting.py): SystemLlmSettingOut(role,credential_id,credential_name,provider,base_url,model_name,configured:bool,updated_at) + SystemLlmSettingUpdate(credential_id,model_name)。
+- 测试: tests/test_system_llm_settings.py 11 PASS（router GET/PUT happy+validation + resolver 3个 case）。system credential 通过 credential_service.create(db,user_id=None,...,is_system=True)+db.commit() 创建后，在 client session（其他 session）也可见（相同 engine）。client fixture=super_user=True+csrf bypass。
+- GET base_url 仅对 configured role decrypt（最多 3次，不是 N+1）。decrypt 失败则 base_url=None graceful degrade。
+- 验证结果: `ruff check app/ tests/` clean, `pytest -k "system_llm or credentials"` 51 passed。
 
-## 프론트(저커버그) 참고 — 최종 API 형태
+## 前端（扎克伯格）参考 — 最终 API 形态
 GET  /api/system-llm-settings → 200 [3 x SystemLlmSettingOut]
 PUT  /api/system-llm-settings/{role} body{credential_id:uuid|null, model_name:str|null} → 200 SystemLlmSettingOut
-  - role path: text_primary|text_fallback|image (그 외 404)
-  - 둘 다 super_user 전용. PUT은 CSRF 필요(verify_csrf).
-  - credential_id 부적합(없음/비-LLM): 404 또는 422, detail 동일 문구.
+  - role path: text_primary|text_fallback|image（其他为 404）
+  - 两者都仅限 super_user。PUT 需要 CSRF（verify_csrf）。
+  - credential_id 不适用（不存在/非 LLM）: 404 或 422，detail 文案相同。
 SystemLlmSettingOut = {role, credential_id:uuid|null, credential_name:str|null, provider:str|null(=definition_key), base_url:str|null, model_name:str|null, configured:bool, updated_at}
-모델 목록은 기존 POST /api/credentials/{credential_id}/discover-models 재사용.
+模型列表复用现有 POST /api/credentials/{credential_id}/discover-models。
 
-## S2 테스트 사전리뷰 (베조스, 2026-05-26 — test_system_llm_settings.py 11 PASS 기준)
-커버 양호: GET 3-role, PUT happy(openai/openai_compatible base_url passthrough/anthropic), PUT clear, 비존재 cred 404, 비-LLM 422, user-cred 404 거부, resolver configured/unconfigured/model_name누락.
-갭(→젠슨 '?' 전달):
-- HIGH require_super_user negative 테스트 부재: conftest client fixture가 항상 is_super_user=True+CSRF bypass(L108,132). 일반유저 GET/PUT 거부(403/404) 검증 불가 → non-super client fixture 추가 또는 raw_client+실제 JWT 필요. ADR결정4 핵심 가드인데 무검증.
-- HIGH credential ON DELETE SET NULL 동작 테스트 부재 + aiosqlite는 PRAGMA foreign_keys=ON 미설정(conftest engine L44, connect listener 없음) → 테스트 추가해도 SET NULL 발화 안 함. event.listens_for(engine.sync_engine,"connect")로 PRAGMA 켜야 의미있는 회귀가드.
-- MEDIUM role UNIQUE 제약 직접 테스트 부재(중복 role insert→IntegrityError 기대). SQLite UNIQUE는 FK pragma 없이도 enforce되니 추가 가능.
-- MEDIUM CHECK(role IN) DB레벨 테스트 부재 — 현재 test_put_unknown_role_404는 router검증만. role="bogus" 직접 insert→IntegrityError로 defense-in-depth 확인 권장.
-- MEDIUM 404/422 detail 동일성 assert 약함: 양쪽 substring("system LLM credential")만 체크, byte-identical 미검증 → 422 메시지 변경돼도 통과. 두 응답 detail 캡처 후 == assert로 enumeration oracle 회귀가드 강화.
-- LOW updated_at PUT 갱신 테스트 부재.
+## S2 测试预审（贝索斯, 2026-05-26 — 基于 test_system_llm_settings.py 11 PASS）
+覆盖良好: GET 3-role, PUT happy(openai/openai_compatible base_url passthrough/anthropic), PUT clear, 不存在 cred 404, 非 LLM 422, 拒绝 user-cred 404, resolver configured/unconfigured/model_name缺失。
+缺口（→传给詹森 '?'）:
+- HIGH 缺少 require_super_user negative 测试: conftest client fixture 始终 is_super_user=True+CSRF bypass(L108,132)。无法验证普通用户 GET/PUT 被拒绝(403/404) → 需要添加 non-super client fixture 或 raw_client+真实 JWT。虽然是 ADR决策4 的核心 guard，却未验证。
+- HIGH 缺少 credential ON DELETE SET NULL 行为测试 + aiosqlite 未设置 PRAGMA foreign_keys=ON（conftest engine L44，无 connect listener）→ 即使添加测试也不会触发 SET NULL。必须用 event.listens_for(engine.sync_engine,"connect") 开启 PRAGMA，才能形成有意义的回归 guard。
+- MEDIUM 缺少 role UNIQUE 约束的直接测试（重复 role insert→预期 IntegrityError）。SQLite UNIQUE 即使没有 FK pragma 也会 enforce，因此可以添加。
+- MEDIUM 缺少 CHECK(role IN) DB 级测试 — 当前 test_put_unknown_role_404 只验证 router。建议直接 insert role="bogus"→IntegrityError，以确认 defense-in-depth。
+- MEDIUM 404/422 detail 一致性 assert 较弱: 两边只检查 substring("system LLM credential")，未验证 byte-identical → 即使 422 消息变化也会通过。建议捕获两个响应的 detail 后做 == assert，加强 enumeration oracle 回归 guard。
+- LOW 缺少 updated_at PUT 更新测试。
 
-## S3 완료 패턴 (젠슨, M3 배선 — 2026-05-26)
-- assistant_agent.py: resolve_system_api_key+settings.assistant_model_* → resolve_system_model("text_primary") + create_chat_model(provider,model_name,api_key,base_url). 죽은 `_resolve_system_api_key` re-export 제거.
-- assistant_service.stream_assistant_message: build_assistant_agent를 try/except SystemModelNotConfiguredError로 감싸 SSE error 이벤트(format_sse(event_names.ERROR,{message,code:"system_model_not_configured"})) yield 후 return. 스트림 크래시 대신 운영자 안내.
-- helpers.py(builder sub_agents): @functools.cache 제거. _get_builder_model/_get_fallback_model → async, 내부 `async_session()`로 resolve_system_model(text_primary/text_fallback). **호출부(invoke_with_json_retry/invoke_for_text) 시그니처 불변 → 6개 caller 무수정**(image_gen 패턴). fallback 미설정 시 None. 경량 캐시 `_MODEL_CACHE[role]=(ResolvedSystemModel,model)` — frozen dataclass 동등성으로 무효화(설정 변경 시 값이 달라져 자동 재생성). create_chat_model만 캐시.
-- image_service.py: resolve_system_model("image") + **resolve_image_base_url(resolved)** 헬퍼 신설(payload base_url 우선, 없으면 provider canonical openrouter/openai 맵, 그 외 ValueError). raw httpx라 model_factory base_url pin 미적용. image_gen.py가 이 헬퍼 재사용.
-- image_gen.py: is_image_generation_available→resolve_system_model("image") try/except로 configured 판정(api_key 체크 폐기). generate_agent_image도 동일, 미설정 시 ImageGenerationError.
-- ⚠️ async_session()는 PROD Postgres 연결 — 테스트 sqlite 아님. builder/image 단위테스트는 resolver mock 또는 순수헬퍼만(test_builder_v3 영향無).
-- 검증: `ruff check .` clean, 전체 `pytest -q` 1214 passed(0 회귀). 깨진 건 test_assistant_agent.py 1개(patch resolve_system_api_key→resolve_system_model + ResolvedSystemModel 반환 수정).
+## S3 完成模式（詹森, M3 接线 — 2026-05-26）
+- assistant_agent.py: resolve_system_api_key+settings.assistant_model_* → resolve_system_model("text_primary") + create_chat_model(provider,model_name,api_key,base_url)。移除已死的 `_resolve_system_api_key` re-export。
+- assistant_service.stream_assistant_message: 用 try/except SystemModelNotConfiguredError 包裹 build_assistant_agent，yield SSE error event(format_sse(event_names.ERROR,{message,code:"system_model_not_configured"})) 后 return。以管理员提示替代 stream crash。
+- helpers.py(builder sub_agents): 移除 @functools.cache。_get_builder_model/_get_fallback_model → async，内部通过 `async_session()` resolve_system_model(text_primary/text_fallback)。**调用方(invoke_with_json_retry/invoke_for_text)签名不变 → 6 个 caller 无需修改**（image_gen 模式）。fallback 未配置时为 None。轻量 cache `_MODEL_CACHE[role]=(ResolvedSystemModel,model)` — 通过 frozen dataclass 等值性失效（设置变化时值变化，自动重新创建）。只 cache create_chat_model。
+- image_service.py: resolve_system_model("image") + **新增 resolve_image_base_url(resolved)** helper（优先 payload base_url，没有则使用 provider canonical openrouter/openai map，其他 ValueError）。因为是 raw httpx，不适用 model_factory base_url pin。image_gen.py 复用该 helper。
+- image_gen.py: is_image_generation_available→通过 resolve_system_model("image") try/except 判断 configured（废弃 api_key 检查）。generate_agent_image 同样处理，未配置时 ImageGenerationError。
+- ⚠️ async_session() 连接 PROD Postgres — 不是测试 sqlite。builder/image 单元测试只 mock resolver 或测试纯 helper（test_builder_v3 无影响）。
+- 验证: `ruff check .` clean，全部 `pytest -q` 1214 passed（0 回归）。仅 test_assistant_agent.py 1 个失败（patch resolve_system_api_key→resolve_system_model + 修改 ResolvedSystemModel 返回值）。
 
-## S2 테스트 하드닝 (젠슨, 베조스 리뷰 반영 — test_system_llm_settings.py 19 PASS)
-- 추가: super_user negative(GET/PUT 403, non_super_client 로컬 fixture) / 404·422 detail byte-identical assert(oracle 회귀가드) / role UNIQUE IntegrityError / image base_url 3케이스 / assistant SSE error surface.
-- ✅ (fast-follow, 베조스 요청) FK SET NULL 국소 테스트 추가: test_credential_delete_sets_slot_null — **전용 engine**(create_async_engine sqlite+aiosqlite + StaticPool + event.listens_for(connect)로 PRAGMA foreign_keys=ON) 안에서 cred insert→setting bind→cred delete→credential_id IS NULL assert→eng.dispose(). conftest 전역 engine 무수정 → 전역 영향 0(1219 passed). PRAGMA 없으면 SQLite가 SET NULL 무시 → false-pass라 PRAGMA 필수. 전역 PRAGMA 채택은 ADR019-OPEN-2로 이연.
+## S2 测试加固（詹森，采纳贝索斯 review — test_system_llm_settings.py 19 PASS）
+- 新增: super_user negative(GET/PUT 403, non_super_client 本地 fixture) / 404·422 detail byte-identical assert（oracle 回归 guard）/ role UNIQUE IntegrityError / image base_url 3 个 case / assistant SSE error surface。
+- ✅（fast-follow，应贝索斯要求）新增 FK SET NULL 局部测试: test_credential_delete_sets_slot_null — 在**专用 engine**（create_async_engine sqlite+aiosqlite + StaticPool + event.listens_for(connect) 以启用 PRAGMA foreign_keys=ON）中执行 cred insert→setting bind→cred delete→credential_id IS NULL assert→eng.dispose()。不修改 conftest 全局 engine → 全局影响 0（1219 passed）。没有 PRAGMA 时 SQLite 会忽略 SET NULL → 会 false-pass，因此 PRAGMA 必须。全局采用 PRAGMA 延后到 ADR019-OPEN-2。
 
 ## 失败教训
 （暂无）
 
-## S4 완료 패턴 (저커버그, M5 — 2026-05-26)
-- 신규 파일: lib/types/system-llm-setting.ts(SystemLlmSettingOut/Update + SYSTEM_LLM_ROLES + SYSTEM_LLM_CREDENTIAL_KEYS), lib/api/system-llm-settings.ts(list GET, update PUT — apiFetch가 mutation에 X-CSRF-Token 자동주입), lib/hooks/use-system-llm-settings.ts(useSystemLlmSettings query + useUpdateSystemLlmSetting mutation, queryKey ['system-llm-settings'] invalidate).
-- 화면: app/settings/system-llm/page.tsx. super_user 가드는 system-credentials와 동일 패턴(useSession→denied→router.replace('/')+isPending Loading). 슬롯 3개를 SlotCard로 .map(key=role 고정→remount 없음, 로컬 편집상태 유지). credential 드롭다운=useSystemCredentials()를 SYSTEM_LLM_CREDENTIAL_KEYS로 필터. credential 선택 시 useDiscoverModels().mutate로 모델 로드(이벤트 핸들러에서 호출 — useEffect setState 안티패턴 회피). 저장된 model_name은 재로드 전에도 select에 보이도록 modelOptions에 prepend. dirty/canSave 가드로 불필요 PUT 방지.
-- ⚠️ Select(base-ui): onValueChange 시그니처 (value: string|null, eventDetails)=>void. 핸들러 파라미터를 string|null로 받아야 build 통과(string만 받으면 type error).
-- 사이드바: app-sidebar.tsx super_user 스프레드 블록에 systemLlm 추가(SlidersHorizontalIcon, /settings/system-llm). i18n: messages/ko.json sidebar.nav.systemLlm 추가, 호출 t('nav.systemLlm') (t=useTranslations('sidebar')).
-- worktree node_modules 없으면 pnpm install 선행. 검증: pnpm lint clean, pnpm build 성공(/settings/system-llm 라우트 확인).
+## S4 完成模式（扎克伯格, M5 — 2026-05-26）
+- 新增文件: lib/types/system-llm-setting.ts(SystemLlmSettingOut/Update + SYSTEM_LLM_ROLES + SYSTEM_LLM_CREDENTIAL_KEYS), lib/api/system-llm-settings.ts(list GET, update PUT — apiFetch 自动为 mutation 注入 X-CSRF-Token), lib/hooks/use-system-llm-settings.ts(useSystemLlmSettings query + useUpdateSystemLlmSetting mutation, queryKey ['system-llm-settings'] invalidate)。
+- 页面: app/settings/system-llm/page.tsx。super_user guard 与 system-credentials 使用相同模式（useSession→denied→router.replace('/')+isPending Loading）。3 个 slot 用 SlotCard .map（key=role 固定→不会 remount，保留本地编辑状态）。credential 下拉=用 SYSTEM_LLM_CREDENTIAL_KEYS 过滤 useSystemCredentials()。选择 credential 时用 useDiscoverModels().mutate 加载模型（在 event handler 中调用 — 避免 useEffect setState 反模式）。为使已保存 model_name 在重新加载前也能显示在 select 中，prepend 到 modelOptions。通过 dirty/canSave guard 避免不必要的 PUT。
+- ⚠️ Select(base-ui): onValueChange 签名 (value: string|null, eventDetails)=>void。handler 参数必须接收 string|null 才能 build 通过（只接收 string 会 type error）。
+- sidebar: 在 app-sidebar.tsx super_user spread block 中添加 systemLlm(SlidersHorizontalIcon, /settings/system-llm)。i18n: messages/ko.json 添加 sidebar.nav.systemLlm，调用 t('nav.systemLlm')（t=useTranslations('sidebar')）。
+- worktree 没有 node_modules 时先执行 pnpm install。验证: pnpm lint clean，pnpm build 成功（确认 /settings/system-llm route）。

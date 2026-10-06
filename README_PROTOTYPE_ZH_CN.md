@@ -20,7 +20,7 @@
 
 简体中文 · [当前项目说明](README.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
-[Overview](#-overview) · [快速回答](#-快速回答) · [Quick Start](#-quick-start) · [可信依据](#-可信依据) · [功能](#-功能) · [架构](#-架构)
+[Overview](#-overview) · [快速回答](#-快速回答) · [Quick Start](#-quick-start) · [可信依据](#-质量安全文档化信号) · [功能](#-主要功能) · [架构](#-架构)
 
 <!-- project-prototype-source: migration=m76_pinned_conv_summaries; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-08 -->
 

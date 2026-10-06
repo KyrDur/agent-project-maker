@@ -1,34 +1,34 @@
-# Sheet 사용처 + 삭제 분석 — UI Refactor M-UI1 (S1, bezos)
+# Sheet 使用处 + 删除分析 — UI Refactor M-UI1 (S1, bezos)
 
-> **NOTE**: Plan 모드 활성으로 인해 본 보고서는 plan 파일로 작성됨.
-> 사티아가 실행 단계에서 본 내용을 `tasks/sheet-deletion-analysis.md`로 옮기고,
-> AUDIT.log + progress.txt 갱신을 함께 수행하면 됨.
-> (베조스의 분석 자체는 100% 완료)
+> **NOTE**：由于 Plan 模式 已启用，本报告写入 plan 文件。
+> 萨提亚可在执行阶段将本内容移至 `tasks/sheet-deletion-analysis.md`，并
+> 同时更新 AUDIT.log + progress.txt。
+> （贝索斯的分析本身已 100% 完成）
 
 ---
 
-## 1. Sheet 사용처 전수 (grep 결과)
+## 1. Sheet 使用处全量清单（grep 结果）
 
-| # | 파일경로:라인 | 종류 | 변환/유지 |
+| # | 文件路径:行 | 类型 | 转换/保留 |
 |---|---|---|---|
-| 1 | `src/components/ui/sheet.tsx` | UI primitive (정의) | 유지 (sidebar에서 필요) |
-| 2 | `src/components/ui/sidebar.tsx:177-196` | 모바일 사이드바 | **유지** (모바일 슬라이드 UX 적절) |
-| 3 | `src/app/agents/[agentId]/conversations/[conversationId]/page.tsx:105-126` | 모바일 대화 목록 (`md:hidden`) | **유지** (모바일 좌측 슬라이드 UX 적절) |
-| 4 | `src/components/credential/credential-detail-sheet.tsx:73-205` | Credential 상세 | **Dialog 변환** |
-| 5 | `src/components/skill/skill-detail-sheet.tsx:36-46, 108-210` | Skill 상세 (이중 SheetContent) | **Dialog 변환** ⚠ |
-| 6 | `src/components/tool/tool-detail-sheet.tsx:57-127` | Tool 상세 | **Dialog 변환** |
-| 7 | `src/components/mcp/mcp-server-detail-sheet.tsx:95-182` | MCP 상세 | **Dialog 변환** |
+| 1 | `src/components/ui/sheet.tsx` | UI primitive（定义） | 保留（sidebar 需要） |
+| 2 | `src/components/ui/sidebar.tsx:177-196` | 移动端侧边栏 | **保留**（移动端滑动 UX 合适） |
+| 3 | `src/app/agents/[agentId]/conversations/[conversationId]/page.tsx:105-126` | 移动端 对话 列表（`md:hidden`） | **保留**（移动端 左侧 滑动 UX 合适） |
+| 4 | `src/components/credential/credential-detail-sheet.tsx:73-205` | Credential 详情 | **转换为 Dialog** |
+| 5 | `src/components/skill/skill-detail-sheet.tsx:36-46, 108-210` | Skill 详情（双 SheetContent） | **转换为 Dialog** ⚠ |
+| 6 | `src/components/tool/tool-detail-sheet.tsx:57-127` | Tool 详情 | **转换为 Dialog** |
+| 7 | `src/components/mcp/mcp-server-detail-sheet.tsx:95-182` | MCP 详情 | **转换为 Dialog** |
 
-**검증**: 위 7곳 외 Sheet 사용처 없음. PRD 가정과 일치.
+**验证**：除以上 7 处外没有 Sheet 使用处。与 PRD 假设一致。
 
 ---
 
-## 2. Dialog 변환 대상 (4개) — 호출부 맵
+## 2. Dialog 转换对象（4 个）— 调用映射
 
 ### 2-1. credential-detail-sheet.tsx (219 lines)
-- **호출부**: `src/app/credentials/page.tsx:14, 156`
-- **prop 시그니처**: `{ credentialId: string | null, open: boolean, onOpenChange: (open: boolean) => void }`
-- **호출부 패턴**:
+- **调用处**：`src/app/credentials/page.tsx:14, 156`
+- **prop 签名**：`{ credentialId: string | null, open: boolean, onOpenChange: (open: boolean) => void }`
+- **调用模式**：
   ```tsx
   <CredentialDetailSheet
     credentialId={detailId}
@@ -36,58 +36,58 @@
     onOpenChange={(open) => !open && setDetailId(null)}
   />
   ```
-- **삭제 확인 인라인 UI**: line 179 — `border-destructive/40 bg-destructive/5 p-3`
-- **위험**: Audit logs 섹션 포함 — Dialog 내 스크롤 영역 필요
+- **删除确认 内联 UI**：line 179 — `border-destructive/40 bg-destructive/5 p-3`
+- **风险**：包含 Audit logs 部分 — Dialog 内需要滚动区域
 
-### 2-2. skill-detail-sheet.tsx (212 lines) ⚠ 특이 케이스
-- **호출부**: `src/app/skills/page.tsx:15, 185`
-- **prop 시그니처**: `{ skillId, open, onOpenChange }` (위와 동일 패턴)
-- **구조 특이**: 외부 `SkillDetailSheet` + 내부 `SkillDetailBody`(별도 컴포넌트, key reset 패턴) 두 개의 SheetContent.
-  - 외부 (line 42): Loading placeholder
-  - 내부 (line 108): 실제 본문 — `SkillDetailBody`는 별도 함수
-- **삭제 확인 인라인 UI**: line 191
-- **변환 시 주의**: Dialog로 감쌀 때 `key={skillId}` 패턴 보존 필요. `DialogContent`에 `sm:max-w-xl` 폭 유지.
+### 2-2. skill-detail-sheet.tsx（212 lines）⚠ 特殊用例
+- **调用处**：`src/app/skills/page.tsx:15, 185`
+- **prop 签名**：`{ skillId, open, onOpenChange }`（与上面相同模式）
+- **结构特殊**：外层 `SkillDetailSheet` + 内层 `SkillDetailBody`（独立组件，key reset 模式），有两个 SheetContent。
+  - 外层（line 42）：Loading placeholder
+  - 内层（line 108）：实际正文 — `SkillDetailBody` 是独立函数
+- **删除确认 内联 UI**：line 191
+- **转换时注意**：改为 Dialog 包裹时必须保留 `key={skillId}` 模式。`DialogContent` 保留 `sm:max-w-xl` 宽度。
 
 ### 2-3. tool-detail-sheet.tsx (130 lines)
-- **호출부**: `src/app/tools/page.tsx:16, 155`
-- **prop 시그니처**: `{ toolId, open, onOpenChange }`
-- **삭제 확인 인라인 UI**: line 108
-- **위험**: 가장 단순. 변환 가장 쉬움.
+- **调用处**：`src/app/tools/page.tsx:16, 155`
+- **prop 签名**：`{ toolId, open, onOpenChange }`
+- **删除确认 内联 UI**：line 108
+- **风险**：最简单。转换最容易。
 
-### 2-4. mcp-server-detail-sheet.tsx (242 lines) ⚠ prop 이름 다름
-- **호출부**: `src/app/mcp-servers/page.tsx:16, 166`
-- **prop 시그니처**: `{ serverId: string | null, open, onOpenChange }` — `serverId` (다른 3개는 `xxxId` 패턴이지만 의미 동일)
-- **삭제 확인 인라인 UI**: line 163
-- **추가 기능**: `useTestMcpServer`, `useDiscoverMcpTools` 호출 — Dialog 내에서 액션 영역 보존 필요
+### 2-4. mcp-server-detail-sheet.tsx（242 lines）⚠ prop 名不同
+- **调用处**：`src/app/mcp-servers/page.tsx:16, 166`
+- **prop 签名**：`{ serverId: string | null, open, onOpenChange }` — `serverId`（其他 3 个是 `xxxId` 模式，但语义相同）
+- **删除确认 内联 UI**：line 163
+- **附加功能**：调用 `useTestMcpServer`、`useDiscoverMcpTools` — 需要在 Dialog 中保留 操作 区域
 
 ---
 
-## 3. Sheet 유지 (2곳)
+## 3. 保留 Sheet（2 处）
 
-| 위치 | 이유 |
+| 位置 | 原因 |
 |------|------|
-| `components/ui/sidebar.tsx:177` | 모바일 사이드바 — 좌측 슬라이드 인 패턴은 Sheet가 표준. Dialog 부적절. |
-| `app/agents/[agentId]/conversations/[conversationId]/page.tsx:105` | `md:hidden` 모바일 전용 대화 목록 — 좌측 슬라이드 UX 유지 필요. |
+| `components/ui/sidebar.tsx:177` | 移动端侧边栏 — 左侧滑入模式是 Sheet 的标准用法。Dialog 不合适。 |
+| `app/agents/[agentId]/conversations/[conversationId]/page.tsx:105` | `md:hidden` 移动端 专用 对话 列表 — 需要保留左侧 滑动 UX。 |
 
-→ `components/ui/sheet.tsx` primitive는 위 2곳 때문에 **반드시 유지**.
-
----
-
-## 4. 즉시 삭제 가능 (Musk Step 2)
-
-Dialog 변환 완료 후:
-- 4개 detail-sheet 파일의 import에서 `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `SheetDescription` 제거
-- 파일명은 변환 PR에서 `*-detail-dialog.tsx`로 rename 권장 (사티아 결정)
-- 호출부 4곳의 import 경로 + 컴포넌트명 동시 수정
-
-**확인됨: 추가 dead code 없음.**
+→ 因为以上 2 处，`components/ui/sheet.tsx` primitive **必须保留**。
 
 ---
 
-## 5. 삭제 검토 필요 (사티아 확인 필요)
+## 4. 可立即删除（Musk Step 2）
 
-### `components/shared/page-header.tsx` — **삭제 금지** ⚠
-PRD에서 "사용처 0건"이라 했으나, **재검증 결과 7개 페이지에서 사용 중**:
+Dialog 转换完成后：
+- 从 4 个 detail-sheet 文件的 import 中移除 `Sheet`, `SheetContent`, `SheetHeader`, `SheetTitle`, `SheetDescription`
+- 建议在转换 PR 中将文件名 rename 为 `*-detail-dialog.tsx`（萨提亚决定）
+- 同时修改 4 个调用处的 import 路径 + 组件名
+
+**已确认：没有额外 dead code。**
+
+---
+
+## 5. 需要审查删除（需萨提亚确认）
+
+### `components/shared/page-header.tsx` — **禁止删除** ⚠
+PRD 写的是"使用处 0 个"，但**重新验证发现有 7 个页面正在使用**：
 - `src/app/settings/page.tsx:8,16`
 - `src/app/settings/system-credentials/page.tsx:8,52`
 - `src/app/tools/page.tsx:8,105`
@@ -98,66 +98,66 @@ PRD에서 "사용처 0건"이라 했으나, **재검증 결과 7개 페이지에
 - `src/app/mcp-servers/page.tsx:11,130`
 - `src/app/credentials/page.tsx:8,119`
 
-→ **PageHeader는 활발히 사용 중. 삭제하면 9개 페이지가 깨진다.**
-→ "?": PRD의 "PageHeader 사용처 0건" 분석은 어디서 나온 것인가? 다른 컴포넌트와 혼동된 것으로 추정.
+→ **PageHeader 正在被频繁使用。删除会破坏 9 个页面。**
+→ "?": PRD 的 "PageHeader 使用处 0 处" 分析是从哪里得出的？推测是与其他组件混淆了。
 
 ---
 
-## 6. 위험/주의사항
+## 6. 风险/注意事项
 
-### 🔴 위험-A: skill-detail-sheet의 이중 SheetContent
-- 외부 wrapper + 내부 `SkillDetailBody`로 분리된 구조 (line 36-46 + 108-210)
-- 단순히 `Sheet→Dialog`로 sed 치환하면 **타입 에러 + key reset 동작 깨짐**
-- 변환 시 `Dialog open={open} onOpenChange={...}` + 내부에 `<DialogContent>` 1개로 통합 필요
-- `SkillDetailBody`의 `onClose={() => onOpenChange(false)}` 시그니처는 보존
+### 🔴 风险-A: skill-detail-sheet 的双重 SheetContent
+- 外部 wrapper + 内部 `SkillDetailBody` 分离的结构 (line 36-46 + 108-210)
+- 如果简单用 sed 将 `Sheet→Dialog` 替换，**会出现类型错误 + key reset 行为失效**
+- 转换时需整合为 `Dialog open={open} onOpenChange={...}` + 内部 1 个 `<DialogContent>`
+- 保留 `SkillDetailBody` 的 `onClose={() => onOpenChange(false)}` 签名
 
-### 🟡 위험-B: 컨텐츠 길이
-- `mcp-server-detail-sheet.tsx` (242줄), `credential-detail-sheet.tsx` (219줄)는 폼 + 테스트 + 감사 로그 등 콘텐츠가 길다
-- Dialog는 기본 max-h가 작으므로 **`max-h-[85vh] overflow-y-auto`** 명시 필요
-- Sheet의 `sm:max-w-md` / `sm:max-w-xl` 폭은 그대로 Dialog에 옮기면 됨
+### 🟡 风险-B: 内容长度
+- `mcp-server-detail-sheet.tsx` (242行)、`credential-detail-sheet.tsx` (219行) 的表单 + 测试 + 审计日志等内容较长
+- Dialog 默认 max-h 较小，因此需明确指定 **`max-h-[85vh] overflow-y-auto`**
+- Sheet 的 `sm:max-w-md` / `sm:max-w-xl` 宽度可原样迁移到 Dialog
 
-### 🟡 위험-C: prop 시그니처 일관성
-- 4개 모두 `{ <name>Id: string | null, open, onOpenChange }` 동일 패턴
-- 다만 mcp는 `serverId`로 이름이 도메인 종속 — 변환 시 그대로 유지 권장 (호출부 변경 최소화)
+### 🟡 风险-C: prop 签名一致性
+- 4个全部采用 `{ <name>Id: string | null, open, onOpenChange }` 相同模式
+- 但 mcp 使用 `serverId`，名称依赖领域 — 转换时建议原样保留（尽量减少调用方变更）
 
-### 🟢 안전: 삭제 확인 인라인 UI
-- 4개 모두 `rounded border border-destructive/40 bg-destructive/5 p-3 text-xs` 패턴 동일
-- Dialog 변환 시 동일 클래스 유지 — 회귀 위험 낮음
-- (주의: text-xs는 OK이나 PRD 언급된 `text-[10px/11px]` 임의값은 본 4개 파일에서는 안 보임 — Sprint 2에서 별도 식별)
+### 🟢 安全: 删除确认内联 UI
+- 4个全部使用 `rounded border border-destructive/40 bg-destructive/5 p-3 text-xs` 相同模式
+- 转换为 Dialog 时保持相同 class — 回归风险低
+- （注意: text-xs 是 OK，但 PRD 提到的 `text-[10px/11px]` 任意值在这 4 个文件中未发现 — Sprint 2 中另行识别）
 
 ---
 
-## 7. 변환 후 검증 커맨드
+## 7. 转换后验证命令
 
 ```bash
-# 1. SheetContent가 mobile sidebar + conversation list 외 0건인지
+# 1. 确认 SheetContent 除 mobile sidebar + conversation list 外是否为 0 处
 cd frontend && grep -rn "SheetContent" src/components/ src/app/
-#   → 기대 결과: ui/sheet.tsx (정의), ui/sidebar.tsx, app/agents/.../conversations/[id]/page.tsx 만 매치
+#   → 预期结果: 仅匹配 ui/sheet.tsx（定义）、ui/sidebar.tsx、app/agents/.../conversations/[id]/page.tsx
 
-# 2. 4개 detail-sheet 파일이 detail-dialog로 rename 되었는지
+# 2. 确认 4 个 detail-sheet 文件是否已 rename 为 detail-dialog
 ls frontend/src/components/{credential,skill,tool,mcp}/*detail*
 
-# 3. 호출부 4곳이 Dialog로 import되는지
+# 3. 确认 4 处调用方是否从 Dialog import
 grep -rn "DetailDialog" frontend/src/app/
 
-# 4. 빌드 통과
+# 4. 构建通过
 cd frontend && pnpm build
 
-# 5. 타입체크
+# 5. 类型检查
 cd frontend && pnpm exec tsc --noEmit
 ```
 
 ---
 
-## 사티아에게 보고
+## 向萨提亚汇报
 
-**보고서 위치**: 본 plan 파일. 실행 단계에서 `tasks/sheet-deletion-analysis.md`로 옮길 것.
+**报告位置**: 本 plan 文件。执行阶段移至 `tasks/sheet-deletion-analysis.md`。
 
-**핵심 위험 2가지**:
-1. **PRD 오인 — `PageHeader` 삭제 절대 금지**: 9개 페이지에서 사용 중. PRD의 "사용처 0건" 분석은 잘못됐다. ("?" 필요)
-2. **`skill-detail-sheet.tsx` 이중 SheetContent**: 단순 치환 불가. `SkillDetailBody` 분리 구조와 `key={skillId}` 리셋 패턴을 Dialog 변환 시 보존해야 회귀 없음.
+**2 个核心风险**:
+1. **PRD 误判 — 严禁删除 `PageHeader`**: 9 个页面正在使用。PRD 的 "使用处 0 处" 分析有误。("?" 需要)
+2. **`skill-detail-sheet.tsx` 双重 SheetContent**: 无法简单替换。转换为 Dialog 时必须保留 `SkillDetailBody` 分离结构和 `key={skillId}` reset 模式，才能避免回归。
 
-**부가 정보**:
-- 변환 대상 4개 파일 prop 시그니처 동일 패턴(`{xxxId, open, onOpenChange}`) — 호출부 변경 최소.
-- mcp만 `serverId` (다른 3개는 `credentialId/skillId/toolId`) — 의도된 도메인 명명, 유지 권장.
-- 삭제 확인 인라인 UI 4개 동일(`border-destructive/40 bg-destructive/5 p-3`) — 향후 `<DeleteConfirmInline>` 공용 컴포넌트로 추출 가능 (Sprint 2~3 후보).
+**附加信息**:
+- 4 个转换目标文件的 prop 签名采用相同模式（`{xxxId, open, onOpenChange}`）— 调用方改动最小。
+- 仅 mcp 使用 `serverId`（其他 3 个为 `credentialId/skillId/toolId`）— 属于有意的领域命名，建议保留。
+- 4 个删除确认内联 UI 相同（`border-destructive/40 bg-destructive/5 p-3`）— 后续可提取为 `<DeleteConfirmInline>` 公共组件（Sprint 2~3 候选）。

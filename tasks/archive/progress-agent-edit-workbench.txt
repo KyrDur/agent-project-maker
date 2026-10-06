@@ -1,59 +1,59 @@
-# progress.txt — Agent Edit Workbench (통합 워크벤치 리뉴얼)
+# progress.txt — Agent Edit Workbench（集成工作台改版）
 
 ## 项目 context
 
-- **목표**: `/agents/[agentId]/settings`를 단일 통합 화면(좌측 폼/비주얼 토글 + 우측 Fix·테스트·오프너·스케줄·설정 5탭)으로 재설계
-- **Base**: main @ 0609210 (PR #77 머지)
-- **브랜치**: `feature/agent-edit-workbench`
-- **계획**: `/Users/chester/.claude/plans/image-41-ticklish-sky.md`
+- **目标**: 将 `/agents/[agentId]/settings` 重新设计为单一集成界面（左侧表单/视觉切换 + 右侧 Fix·测试·开场白·日程·设置 5 个标签页）
+- **Base**: main @ 0609210（PR #77 合并）
+- **分支**: `feature/agent-edit-workbench`
+- **计划**: `/Users/chester/.claude/plans/image-41-ticklish-sky.md`
 - **CHECKPOINT**: `/Users/chester/dev/natural-mold/CHECKPOINT.md`
 
-## 핵심 설계 결정
+## 核心设计决定
 
-1. **좌/우 분할 + 인라인 헤더**: sticky save bar 폐기. 헤더에 이름/설명 ghost-input 인라인 편집 + 작은 AgentAvatar + [🗑]/[저장]
-2. **모델·서브에이전트는 다이얼로그**: 행에 `[⚙]` 클릭 시 `<ModelDialog>`/`<SubAgentsDialog>` 오픈
-3. **도구·미들웨어는 2칸 그리드 + 모달**: 상단 `[+도구]`/`[+미들웨어]` 버튼이 모달 오픈, 모달 안에서 기존 Checkbox 리스트 재사용
-4. **우측 [Fix 에이전트]는 기존 `AssistantPanel` 재사용**: 이미 "어떻게 수정할까요?" empty state + suggestion 칩이 구현됨. `showHeader` prop만 추가
-5. **우측 [테스트]는 신규 컴포넌트**: 일반 conversation API 재사용, 일회성 세션
-6. **우측 [오프너]는 신규**: 행 추가/삭제, 카운터 `n/12`, 항목 1~200자
-7. **우측 [스케줄]은 기존 `triggers-tab.tsx`을 그대로 import** (라벨만 "스케줄"로)
-8. **우측 [설정]은 이미지 전용**: 생성/재생성/제거 버튼만
-9. **비주얼 모드는 inline 렌더**: 별도 `/visual-settings` 라우트는 deprecate(이번 PR에서는 유지)
-10. **백엔드는 컬럼 1개 추가**: `agents.opener_questions` JSON, validator로 ≤12개·1~200자
+1. **左右分栏 + inline header**: 废弃 sticky save bar。header 中名称/描述 ghost-input inline 编辑 + 小型 AgentAvatar + [🗑]/[保存]
+2. **模型·sub-agent 使用 dialog**: 点击行内 `[⚙]` 打开 `<ModelDialog>`/`<SubAgentsDialog>`
+3. **工具·middleware 为 2 列 grid + modal**: 顶部 `[+工具]`/`[+middleware]` 按钮打开 modal，在 modal 内复用现有 Checkbox 列表
+4. **右侧 [Fix agent] 复用现有 `AssistantPanel`**: 已实现"要如何修改？" empty state + suggestion chip。只添加 `showHeader` prop
+5. **右侧 [测试] 为新组件**: 复用普通 conversation API，一次性 session
+6. **右侧 [开场白] 新增**: 行添加/删除，计数器 `n/12`，每项 1~200 字符
+7. **右侧 [日程] 直接 import 现有 `triggers-tab.tsx`**（仅 label 改为"日程"）
+8. **右侧 [设置] 仅图片**: 仅生成/重新生成/移除按钮
+9. **视觉模式 inline 渲染**: 单独 `/visual-settings` 路由 deprecate（本 PR 中保留）
+10. **Backend 仅新增 1 列**: `agents.opener_questions` JSON，通过 validator 限制 ≤12 项·1~200 字符
 
-## 코드베이스 발견
+## Codebase 发现
 
-### 기존 자산 (재사용)
-- `components/agent/visual-settings/visual-settings-flow.tsx` — `VisualSettingsFlowProps`로 inline 렌더 가능
-- `components/agent/assistant-panel.tsx` — Fix 탭으로 직결 (showHeader prop만 추가)
-- `_components/triggers-tab.tsx` — 스케줄 탭으로 직결
-- `lib/hooks/use-agents.ts` `useGenerateAgentImage` — 설정 탭에서 재사용
-- `lib/chat/use-chat-runtime.ts` + `streamAssistant` — Fix 탭은 기존 그대로
-- `messages/ko.json` 등 i18n 사전 — `agent.assistant.*` 등 패턴
+### 现有资产（复用）
+- `components/agent/visual-settings/visual-settings-flow.tsx` — 可通过 `VisualSettingsFlowProps` inline 渲染
+- `components/agent/assistant-panel.tsx` — 直接用于 Fix 标签页（仅新增 showHeader prop）
+- `_components/triggers-tab.tsx` — 直接用于日程标签页
+- `lib/hooks/use-agents.ts` `useGenerateAgentImage` — 在设置标签页复用
+- `lib/chat/use-chat-runtime.ts` + `streamAssistant` — Fix 标签页保持现有实现
+- `messages/ko.json` 等 i18n 字典 — `agent.assistant.*` 等模式
 
-### 폐기
+### 废弃
 - `_components/basic-info-tab.tsx`（拆为 header + section-instructions）
 - `_components/model-tab.tsx`（吸收到 model-dialog）
-- `_components/tools-skills-tab.tsx` (모달들로 분해)
+- `_components/tools-skills-tab.tsx`（拆分为 modal）
 
-### DB 패턴
-- `agents.model_params: JSON | null` 패턴 그대로 사용
-- 마이그레이션 m15까지 진행됨 → 신규는 m16
+### DB 模式
+- 直接沿用 `agents.model_params: JSON | null` 模式
+- migration 已进行到 m15 → 新增为 m16
 
 ## 接口契约
 
-### Agent 타입 (FE/BE 공유)
+### Agent 类型（FE/BE 共享）
 ```ts
 interface Agent {
-  // ... 기존 필드
-  opener_questions: string[] | null  // 신규, ≤12, 각 1~200자
+  // ... 现有字段
+  opener_questions: string[] | null  // 新增，≤12，每项 1~200 字符
 }
 ```
 
 ### AgentUpdate payload
 ```ts
 interface AgentUpdate {
-  // ... 기존 필드
+  // ... 现有字段
   opener_questions?: string[]
 }
 ```
@@ -62,158 +62,158 @@ interface AgentUpdate {
 
 - Backend: Router → Service → Model, async SQLAlchemy 2.0
 - Frontend: lib/api/<domain>.ts + lib/hooks/use-<domain>.ts + lib/types/index.ts
-- Tool UI는 components/chat/tool-ui/*.tsx
-- 새 마이그레이션은 backend/alembic/versions/m{N}_<name>.py
-- shadcn Tabs는 `Tabs/TabsList/TabsTrigger/TabsContent` 사용
-- `params: Promise<{ agentId: string }>` + `use(params)` 패턴 (Next.js 16)
+- Tool UI 位于 components/chat/tool-ui/*.tsx
+- 新 migration 为 backend/alembic/versions/m{N}_<name>.py
+- shadcn Tabs 使用 `Tabs/TabsList/TabsTrigger/TabsContent`
+- `params: Promise<{ agentId: string }>` + `use(params)` 模式（Next.js 16）
 
 ## 团队成员间契约
 
-- **사티아 M2 → 전원**: design spec + deletion analysis 완성되면 M3~M6 착수 가능
-- **젠슨 M1 → 저커버그 M6**: opener_questions 스키마 확정 후 FE 타입 동기화
-- **저커버그 M3 → M4 → M5 → M6**: 순차 진행, 각 단계 build PASS 확인 후 다음 단계
-- **베조스 M7**: M1+M6 완료 후 통합 회귀
+- **Satya M2 → 全员**: design spec + deletion analysis 完成后可开始 M3~M6
+- **Jensen M1 → Zuckerberg M6**: opener_questions schema 确定后同步 FE 类型
+- **Zuckerberg M3 → M4 → M5 → M6**: 顺序推进，每阶段确认 build PASS 后再进入下一阶段
+- **贝索斯 M7**: M1+M6 完成后做集成回归
 
 ## Gotchas
 
-- **Next.js 16**: `frontend/AGENTS.md` 확인 필수. `params: Promise<...>` 처리, `use(params)` 패턴 유지
-- **assistant-ui 패턴**: composer 텍스트 주입은 `useComposer().setText` (TODO가 이미 AssistantPanel에 남아 있음 — 같이 처리)
-- **i18n**: 사용 중인 사전 위치는 `frontend/src/messages/ko.json` (또는 동등) — grep으로 확인 후 키 추가
-- **DropdownMenu/Dialog**: shadcn 패턴 — `import from '@/components/ui/dialog'`
-- **isDirty**: 모든 변경(이름/설명/지침/모델/도구/미들웨어/오프너/모델 파라미터)이 같은 페이지 state로 흘러야 함
+- **Next.js 16**: 必须确认 `frontend/AGENTS.md`。保持 `params: Promise<...>` 处理与 `use(params)` 模式
+- **assistant-ui 模式**: composer 文本注入使用 `useComposer().setText`（TODO 已留在 AssistantPanel — 一并处理）
+- **i18n**: 使用中的字典位置为 `frontend/src/messages/ko.json`（或等价）— grep 确认后添加 key
+- **DropdownMenu/Dialog**: shadcn 模式 — `import from '@/components/ui/dialog'`
+- **isDirty**: 所有修改（名称/描述/指令/模型/工具/middleware/开场白/模型参数）必须流入同一页面 state
 
 ## 失败教训
 
-(아직 없음 — Ralph Loop 진행 중 누적)
+（尚无 — Ralph Loop 进行中累积）
 
-## M1 (jensen) — 백엔드 opener_questions
+## M1（jensen）— Backend opener_questions
 
-### 구현 결과
-- 마이그레이션: `m16_add_opener_questions` (m15 → m16). `agents.opener_questions JSON nullable`. 라운드트립 OK.
-- 모델: `Agent.opener_questions: Mapped[list[str] | None]` (`JSON, nullable=True, default=list`) — `middleware_configs` 패턴 그대로.
-- 스키마: `AgentCreate`/`AgentUpdate`/`AgentResponse` 3곳 모두 `opener_questions: list[str] | None`. 공유 validator `_validate_opener_questions`로 ≤12개 + strip 후 1~200자 검증. validator는 빈 문자열/공백 strip 후 reject(빈 항목 차단). 정상 항목은 strip된 값으로 정규화.
-- 서비스: `create_agent`/`update_agent`에 한 줄씩 반영.
-- 라우터: `_agent_to_response`에 `opener_questions` 필드 추가.
-- 테스트: 4개 추가 (create+update+roundtrip / 13개 reject / 빈 문자열 reject / 201자 reject). 전체 pytest 628 PASS, ruff clean.
+### 实现结果
+- migration：`m16_add_opener_questions`（m15 → m16）。`agents.opener_questions JSON nullable`。round-trip OK。
+- model：`Agent.opener_questions: Mapped[list[str] | None]`（`JSON, nullable=True, default=list`）— 完全沿用 `middleware_configs` 模式。
+- schema：`AgentCreate`/`AgentUpdate`/`AgentResponse` 3 处均为 `opener_questions: list[str] | None`。共享 validator `_validate_opener_questions` 校验 ≤12 项 + strip 后 1~200 字符。validator 对空字符串/空白 strip 后 reject（阻止空项）。正常项规范化为 strip 后的值。
+- service：在 `create_agent`/`update_agent` 中各反映一行。
+- router：在 `_agent_to_response` 中新增 `opener_questions` 字段。
+- test：新增 4 个（create+update+roundtrip / 13 项 reject / 空字符串 reject / 201 字符 reject）。全部 pytest 628 PASS，ruff clean。
 
-### 패턴/주의점
-- **AgentCreate/Update는 `extra='forbid'`**: 새 필드 추가 시 두 클래스 모두에 등록 안 하면 422가 난다. 둘 다 등록 필수.
-- **Pydantic v2 `field_validator` + `@classmethod`** 데코레이터 순서: `@field_validator(...)` 위, `@classmethod` 아래.
-- **공유 validator**: 동일 검증 로직을 `Create`/`Update`에서 모두 쓸 때, 모듈 레벨 helper로 분리하고 두 클래스에서 호출하면 DRY.
-- **라우터**: `_agent_to_response()`가 ORM → Response 변환의 단일 통로. 새 응답 필드 추가 시 여기 빠뜨리면 응답에 안 실린다.
-- **PUT API**: 라우터는 `PUT /api/agents/{id}` (PATCH 아님). 테스트도 PUT 사용.
-- **ruff I001**: 모듈 레벨 상수를 import 블록 직후에 추가하면 빈 줄 2개가 1개로 정리됨(`--fix`로 해결).
-- **빈 리스트 `[]`로 PUT** 시 `is not None`이라 정상적으로 빈 리스트로 클리어됨. JSON 컬럼 default=list라 신규 row는 `[]`이 아닌 `None`(DB column nullable)이 될 수 있음 — 응답에서 `null` 그대로 노출.
+### 模式/注意事项
+- **AgentCreate/Update 使用 `extra='forbid'`**：新增字段时如果未同时注册到两个类，会产生 422。两者都必须注册。
+- **Pydantic v2 `field_validator` + `@classmethod`** decorator 顺序：`@field_validator(...)` 在上，`@classmethod` 在下。
+- **共享 validator**：在 `Create`/`Update` 中都使用相同校验逻辑时，拆成 module-level helper 并从两个类中调用即可 DRY。
+- **router**：`_agent_to_response()` 是 ORM → Response 转换的单一路径。新增响应字段时若此处遗漏，响应中不会携带。
+- **PUT API**：router 使用 `PUT /api/agents/{id}`（不是 PATCH）。测试也使用 PUT。
+- **ruff I001**：在 import block 后立即新增 module-level 常量时，空行 2 个会整理为 1 个（用 `--fix` 解决）。
+- **用空列表 `[]` PUT** 时因 `is not None` 会正常清空为空列表。JSON 列 default=list，所以新 row 可能不是 `[]` 而是 `None`（DB column nullable）— 响应中原样暴露为 `null`。
 
-### FE 계약
-- `Agent.opener_questions: string[] | null` (저커버그 M6에서 동기화)
-- `AgentUpdate { opener_questions?: string[] }` — undefined 보내면 변경 없음, `[]` 보내면 클리어, `null`은 PATCH로 클리어 가능(현재는 server-side validator가 `None`을 통과시키므로 무변경)
+### FE 契约
+- `Agent.opener_questions: string[] | null`（在 Zuckerberg M6 中同步）
+- `AgentUpdate { opener_questions?: string[] }` — 发送 undefined 则不变，发送 `[]` 则清空，`null` 可通过 PATCH 清空（当前 server-side validator 允许 `None` 通过，因此无变更）
 
 ## M3 (zuckerberg)
 
-- 페이지 골격 완료: header(인라인) + main grid lg:grid-cols-2, 좌(Tabs form/visual) / 우(Tabs fix/test/opener/schedule/settings) — 콘텐츠는 placeholder
-- `lib/utils.ts`에 `arraysEqual<T>` 추가. opener_questions 비교용
-- `lib/types/index.ts` Agent에 `opener_questions?: string[] | null`, AgentUpdateRequest에 `opener_questions?: string[]` 추가 (M6 종속 제거)
-- 헤더 인라인 편집: ghost variant Input 직접 사용 (border-0 bg-transparent + focus-visible:bg-muted/40), 별도 컴포넌트로 추출하지 않음 — 두 줄짜리 패턴이라 인라인이 가장 단순
-- AlertDialogTrigger render={...} 패턴 그대로 유지 (기존 코드베이스 컨벤션)
-- 기존 sticky save bar 제거. delete + save 모두 헤더 우측으로 이동
-- TriggersTab의 onRequestDelete 콜백/`DeleteConfirmDialog`은 M5에서 우측 [스케줄] 탭과 함께 재도입 예정 (M3은 placeholder만)
-- i18n: `agent.settings.tabs.{form,visual,fix,test,opener,schedule,settings}` + `agent.settings.namePlaceholder` 추가
-- `pnpm build` PASS — 타입 에러 0
+- 页面骨架完成：header（inline）+ main grid lg:grid-cols-2，左侧（Tabs form/visual）/ 右侧（Tabs fix/test/opener/schedule/settings）— 内容为 placeholder
+- 在 `lib/utils.ts` 中新增 `arraysEqual<T>`。用于比较 opener_questions
+- 在 `lib/types/index.ts` 的 Agent 中新增 `opener_questions?: string[] | null`，在 AgentUpdateRequest 中新增 `opener_questions?: string[]`（移除 M6 依赖）
+- header inline 编辑：直接使用 ghost variant Input（border-0 bg-transparent + focus-visible:bg-muted/40），不抽取为独立组件 — 只有两行的模式，inline 最简单
+- 原样保持 AlertDialogTrigger render={...} 模式（现有 codebase convention）
+- 移除现有 sticky save bar。delete + save 都移到 header 右侧
+- TriggersTab 的 onRequestDelete callback/`DeleteConfirmDialog` 计划在 M5 与右侧 [日程] 标签页一起重新引入（M3 仅 placeholder）
+- i18n：新增 `agent.settings.tabs.{form,visual,fix,test,opener,schedule,settings}` + `agent.settings.namePlaceholder`
+- `pnpm build` PASS — 类型错误 0
 
 ## M4 (zuckerberg)
 
-- 폐기 3건 삭제 완료: basic-info-tab.tsx, model-tab.tsx, tools-skills-tab.tsx — grep으로 잔존 import 0 확인
-- 신규 9개 컴포넌트:
+- 已删除 3 个废弃项：basic-info-tab.tsx、model-tab.tsx、tools-skills-tab.tsx — 通过 grep 确认残留 import 0
+- 新增 9 个组件：
   - `_components/dialogs/{model-dialog,sub-agents-dialog,add-tool-modal,add-middleware-modal}.tsx`
   - `_components/form-mode/{form-mode,section-instructions,section-sub-agents,section-model,tools-middlewares-grid}.tsx`
-- Collapsible은 기존 ui 컴포넌트가 없어서 useState + ChevronDown/Right 토글로 inline 구현 (의존성 추가 회피)
-- Dialog는 base-ui 기반 — DialogClose에 `render={<Button>...</Button>}` 패턴 사용
-- 다이얼로그 모두 controlled — 페이지 state(`selectedToolIds` 등)를 직접 토글
-- ToolsMiddlewaresGrid는 grid-cols-1 md:grid-cols-2 — 좌측 패널이 좁아질 때 stack
-- 행 [⚙] (도구별 config)는 디자인 스펙 §10대로 placeholder (Row.onConfig 옵셔널 prop)
-- i18n 키 추가: `agent.settings.{instruction,instructionPlaceholder,instructionFullscreen,characterCount,subAgents,subAgentsEmpty,subAgentsConfig,subAgentsDialogTitle,modelConfig,modelDialogTitle,addTool,addMiddleware,toolsEmpty,middlewaresEmpty,addToolDialogTitle,addMiddlewareDialogTitle,selectedCount}` + `common.done`
+- 由于现有 ui 组件中没有 Collapsible，使用 useState + ChevronDown/Right toggle inline 实现（避免增加依赖）
+- Dialog 基于 base-ui — 在 DialogClose 中使用 `render={<Button>...</Button>}` 模式
+- 所有 dialog 均为 controlled — 直接切换页面 state（`selectedToolIds` 等）
+- ToolsMiddlewaresGrid 使用 grid-cols-1 md:grid-cols-2 — 左侧面板变窄时 stack
+- 行 [⚙]（工具级 config）按设计 spec §10 作为 placeholder（Row.onConfig optional prop）
+- 新增 i18n key：`agent.settings.{instruction,instructionPlaceholder,instructionFullscreen,characterCount,subAgents,subAgentsEmpty,subAgentsConfig,subAgentsDialogTitle,modelConfig,modelDialogTitle,addTool,addMiddleware,toolsEmpty,middlewaresEmpty,addToolDialogTitle,addMiddlewareDialogTitle,selectedCount}` + `common.done`
 - `pnpm build && pnpm lint` PASS
 
 ## M5 (zuckerberg)
 
-- 우측 패널 5탭 + 좌측 비주얼 inline 완료
-- 신규 컴포넌트:
+- 完成右侧面板 5 个标签页 + 左侧 visual inline
+- 新增组件：
   - `_components/right-panel/{right-panel,test-chat-panel,opener-editor,settings-panel}.tsx`
-- AssistantPanel: `showHeader?: boolean = true` prop 추가, SUGGESTIONS empty state는 `EmptyContent` 분리 함수로 추출 → `useComposerRuntime({ optional: true }).setText(suggestion)` 직접 호출
-- `useComposerRuntime`은 `AssistantRuntimeProvider` 컨텍스트 내부에서만 동작하므로 EmptyContent를 별도 컴포넌트로 분리해 provider 자식으로 렌더 (assistant-ui v0.12 deprecated 경고는 있지만 내부 API는 동작)
-- VisualSettingsFlow는 inline 렌더 — `<ReactFlowProvider>` 래핑 + props는 useModels/useTools/useSkills/useMiddlewares/useTriggers로 가져옴. 자체 Toolbar/state는 그대로 (이중 save 가능성 — 다음 PR에서 단일화 검토)
-- TestChatPanel은 MVP: streamAssistant(Fix endpoint) 재사용 + 별도 sessionId. ephemeral conversation 엔드포인트 생기면 streamFn만 교체
-- OpenerEditor: 행 추가/삭제, 1~200자 maxLength, n/12 카운터, 가득 차면 `+추가` disabled
-- SettingsPanel: 이미지 생성/재생성 `useGenerateAgentImage`, "이미지 제거"는 backend API 부재 → toast(comingSoon)으로 placeholder
-- TriggersTab은 그대로 import (라벨만 "스케줄"). DeleteConfirmDialog는 page.tsx 최하단으로 복귀
-- i18n 키 추가: `agent.settings.{openerTitle,openerDescription,openerCounter,openerAdd,openerPlaceholder,openerEmpty,openerMaxReached,imageRemove}`
+- AssistantPanel：新增 `showHeader?: boolean = true` prop，SUGGESTIONS empty state 抽取为 `EmptyContent` 独立函数 → 直接调用 `useComposerRuntime({ optional: true }).setText(suggestion)`
+- `useComposerRuntime` 仅在 `AssistantRuntimeProvider` context 内工作，因此将 EmptyContent 拆成独立组件并作为 provider 子组件渲染（虽有 assistant-ui v0.12 deprecated 警告，但内部 API 可用）
+- VisualSettingsFlow inline 渲染 — 用 `<ReactFlowProvider>` 包裹 + props 通过 useModels/useTools/useSkills/useMiddlewares/useTriggers 获取。保留自身 Toolbar/state（可能双 save — 下个 PR 评估统一）
+- TestChatPanel 为 MVP：复用 streamAssistant（Fix endpoint）+ 独立 sessionId。若新增 ephemeral conversation endpoint，只需替换 streamFn
+- OpenerEditor：行添加/删除，1~200 字符 maxLength，n/12 计数器，满额时 `+添加` disabled
+- SettingsPanel：图片生成/重新生成 `useGenerateAgentImage`，"移除图片"因缺少 backend API → 以 toast(comingSoon) 作为 placeholder
+- TriggersTab 原样 import（仅 label 改为"日程"）。DeleteConfirmDialog 回到 page.tsx 最底部
+- 新增 i18n key：`agent.settings.{openerTitle,openerDescription,openerCounter,openerAdd,openerPlaceholder,openerEmpty,openerMaxReached,imageRemove}`
 - `pnpm build && pnpm lint` PASS
 
 ## M6 (zuckerberg)
 
-- 새 채팅 빈 화면 오프너 버튼 완료 (`app/agents/[agentId]/conversations/[conversationId]/page.tsx`)
-- 기존 inline `useMemo` emptyContent를 `ChatEmptyState` 컴포넌트로 추출 (`useComposerRuntime` 훅 사용을 위해 AssistantRuntimeProvider 자식 컴포넌트로 이동)
-- `agent.opener_questions?.length > 0`일 때 rounded-full pill 버튼 그룹 렌더 → 클릭 시 `composer.setText(q)` (전송 X)
-- 타입(`opener_questions?: string[] | null`) 및 update payload(`opener_questions?: string[]`)는 M3에서 미리 추가됨 — M6에서 별도 작업 없음
-- i18n: opener 관련 키는 M5에서 이미 ko.json에 추가됨 (`agent.settings.opener*`). 별도 `agent.opener.*` 네임스페이스는 spec 권고였으나 i18n 분류 단순화를 위해 settings 하위로 통합. 다른 로케일 사전 없음(ko 전용 프로젝트)
+- 完成新聊天空屏 opener 按钮（`app/agents/[agentId]/conversations/[conversationId]/page.tsx`）
+- 将现有 inline `useMemo` emptyContent 抽取为 `ChatEmptyState` 组件（为使用 `useComposerRuntime` hook，移动为 AssistantRuntimeProvider 子组件）
+- 当 `agent.opener_questions?.length > 0` 时渲染 rounded-full pill 按钮组 → 点击时 `composer.setText(q)`（不发送）
+- 类型（`opener_questions?: string[] | null`）及 update payload（`opener_questions?: string[]`）已在 M3 提前新增 — M6 无额外工作
+- i18n：opener 相关 key 已在 M5 加入 ko.json（`agent.settings.opener*`）。虽然 spec 建议独立 `agent.opener.*` namespace，但为简化 i18n 分类统一到 settings 下。没有其他 locale 字典（ko 专用项目）
 - `pnpm build && pnpm lint` PASS
 
-## 전체 회귀 체크 (zuckerberg M3~M6 종료 시)
+## 全量回归检查（Zuckerberg M3~M6 结束时）
 
-- 폐기 파일 잔존 import 0 — `grep -r "basic-info-tab\|model-tab\|tools-skills-tab" frontend/src` 결과 없음
-- `/agents/[id]/visual-settings` 라우트 빌드 PASS (deprecate 미적용 — 다음 PR)
-- `/agents/[id]/conversations/[cid]` 빌드 PASS — opener 버튼 추가만, 회귀 X
-- AssistantPanel `showHeader` 옵셔널 default true → 호출처 영향 X
+- 废弃文件残留 import 0 — `grep -r "basic-info-tab\|model-tab\|tools-skills-tab" frontend/src` 无结果
+- `/agents/[id]/visual-settings` 路由 build PASS（尚未应用 deprecate — 下个 PR）
+- `/agents/[id]/conversations/[cid]` build PASS — 仅新增 opener 按钮，无回归
+- AssistantPanel `showHeader` optional default true → 对调用处无影响
 
 ---
-## M7 (2026-04-28, bezos) — 통합 검증 결과
+## M7（2026-04-28, bezos）— 集成验证结果
 
-### 자동 게이트 (전부 PASS)
-- backend: pytest 628 passed, ruff clean, alembic head 멱등 OK
+### 自动 gate（全部 PASS）
+- backend：pytest 628 passed，ruff clean，alembic head 幂等 OK
 - frontend: pnpm build PASS (4.0s compile, 14/14 pages), pnpm lint clean
 
-### 발견 회귀 (사용자 노출, 데이터 손실 X)
-1. **MAJOR — VisualSettingsFlow inline dual-save**: page.tsx의 비주얼 탭이 VisualSettingsFlow를 그대로 inline 렌더하면서 내부 Toolbar(자체 Save)도 같이 렌더됨. 헤더 Save 와 중복 노출. isDirty 신호 분리로 비주얼 모드 변경이 페이지 dirty 상태에 반영 안 됨.
-   - 수정 방향: VisualSettingsFlow에 `embedded` prop 추가 → Toolbar 숨기고 controlled state로 전환
-2. **MAJOR — TestChatPanel이 Fix endpoint 재사용**: streamAssistant(Fix) 사용. [테스트] 탭이 메타 응답을 보여주므로 실제 에이전트 동작 검증 불가. 컴포넌트 주석에 "MVP" 명시.
-   - 수정 방향: ephemeral conversation endpoint 신설 후 streamFn 교체
-3. MINOR — SettingsPanel 이미지 제거 버튼이 toast만 뜨는 placeholder. 사용자 confusion 가능.
+### 发现的回归（用户可见，数据损失 X）
+1. **MAJOR — VisualSettingsFlow inline dual-save**：page.tsx 的 visual 标签页直接 inline 渲染 VisualSettingsFlow，同时内部 Toolbar（自身 Save）也一起渲染。与 header Save 重复显示。由于 isDirty 信号分离，visual 模式修改未反映到页面 dirty 状态。
+   - 修改方向：给 VisualSettingsFlow 添加 `embedded` prop → 隐藏 Toolbar 并切换为 controlled state
+2. **MAJOR — TestChatPanel 复用 Fix endpoint**：使用 streamAssistant(Fix)。[测试] 标签页显示元响应，无法验证实际 agent 行为。组件注释中明确"MVP"。
+   - 修改方向：新建 ephemeral conversation endpoint 后替换 streamFn
+3. MINOR — SettingsPanel 移除图片按钮仅显示 toast 的 placeholder。可能造成用户 confusion。
 
-### 폐기 검증
+### 废弃验证
 - `grep -rn "basic-info-tab|model-tab|tools-skills-tab"` → 0 hits
-- 3개 파일 git status에서 D 표시 — 깨끗하게 제거됨
+- 3 个文件在 git status 中标为 D — 已干净移除
 
-### 패턴
-- 페이지 state를 단일 source로 두고 자식 컴포넌트는 controlled로 만드는 것이 워크벤치형 UI의 핵심. inline 사용을 위해서는 reusable component에 embedded/standalone 모드 분기가 필요하다.
+### 模式
+- 将页面 state 作为单一 source，并让子组件 controlled，是工作台型 UI 的核心。为了 inline 使用，需要 reusable component 区分 embedded/standalone 模式。
 
 ## M7 HOTFIX (zuckerberg)
 
-### MAJOR 1 — VisualSettingsFlow dual-save 차단
-- `embedded?: boolean` prop 추가. `embedded=true`일 때 내부 `<Toolbar>` 자체를 렌더하지 않음 (Toolbar 내 Save 버튼 + 뒤로가기/Undo/Redo 모두 숨김 — workbench 헤더가 단일 Save 보유)
-- `controlledState`/`controlledHandlers` props 신설. 둘 다 제공되면 `isControlled = true` → 내부 useState fallback 대신 props 사용
-- 패턴: `const name = isControlled ? controlledState!.name : internalName` + `const setName = isControlled ? controlledHandlers!.onNameChange : setInternalName`. hooks 규칙상 useState는 항상 호출(unused 변수가 되어도 OK)
-- agent prop sync useEffect는 `isControlled`일 때 early return — 페이지 owns이므로 무시
-- 비주얼 모드에서 도구/스킬/미들웨어 토글, 모델/이름/설명/지침/파라미터 변경이 모두 워크벤치 page state로 흐름 → 단일 Save가 모든 변경을 PUT
-- 별도 라우트 `/agents/[id]/visual-settings/page.tsx`는 `embedded` 미전달 → 기존 internal state + Toolbar 동작 그대로 (회귀 X)
+### MAJOR 1 — 阻止 VisualSettingsFlow dual-save
+- 新增 `embedded?: boolean` prop。`embedded=true` 时不渲染内部 `<Toolbar>` 本身（Toolbar 内 Save 按钮 + 返回/Undo/Redo 全部隐藏 — workbench header 持有唯一 Save）
+- 新建 `controlledState`/`controlledHandlers` props。两者都提供时 `isControlled = true` → 使用 props 替代内部 useState fallback
+- 模式：`const name = isControlled ? controlledState!.name : internalName` + `const setName = isControlled ? controlledHandlers!.onNameChange : setInternalName`。按 hooks 规则 useState 始终调用（即使变量 unused 也 OK）
+- agent prop sync useEffect 在 `isControlled` 时 early return — 页面 owns，因此忽略
+- visual 模式中工具/技能/middleware 切换、模型/名称/描述/指令/参数修改全部流入 workbench page state → 单一 Save PUT 所有修改
+- 独立路由 `/agents/[id]/visual-settings/page.tsx` 不传 `embedded` → 保持现有 internal state + Toolbar 行为（无回归）
 
-### MAJOR 2 — TestChatPanel 안내 배너
-- 컴포넌트 상단에 amber 톤 info 배너 추가 (border-amber-200 + bg-amber-50, dark mode 대응)
-- 한국어 하드코딩 (스코프 한정). 동작은 streamAssistant 그대로
+### MAJOR 2 — TestChatPanel 提示 banner
+- 在组件顶部新增 amber 色调 info banner（border-amber-200 + bg-amber-50，支持 dark mode）
+- 韩语硬编码（scope 限定）。行为仍为 streamAssistant
 
 ### Gotcha
-- `useState`는 hooks 규칙상 isControlled 분기 전에 항상 호출돼야 함 → 내부 state는 controlled mode에서도 메모리에 존재(ignored). 미세한 메모리 비용 vs early-return 분기 복잡도 트레이드오프 → 단순함 선택
-- `handleAgentNodeUpdate`의 deps에 `setX` 함수들을 넣음. controlled 변경 시 이 함수가 재계산되며 AgentNode가 리렌더되지만, 함수 참조 변경은 isControlled 토글 시에만 발생하므로 빈도 낮음
+- 按 hooks 规则，`useState` 必须始终在 isControlled 分支前调用 → internal state 在 controlled mode 中也存在于内存（ignored）。微小内存成本 vs early-return 分支复杂度 trade-off → 选择简单性
+- 在 `handleAgentNodeUpdate` 的 deps 中加入 `setX` 函数。controlled 修改时该函数会重新计算并让 AgentNode re-render，但函数引用仅在 isControlled 切换时变化，因此频率低
 
 - `pnpm build && pnpm lint` PASS (warnings 0)
 
-## M7 재검증 (2026-04-28, bezos) — GREEN
+## M7 再验证（2026-04-28, bezos）— GREEN
 
-### Hotfix 검증 결과
+### Hotfix 验证结果
 - pnpm build PASS (14/14 pages), pnpm lint 0 error/0 warn
-- VisualSettingsFlow `embedded + controlledState + controlledHandlers` 패턴이 hooks 규칙을 위반하지 않으면서 controlled/uncontrolled 모두 지원하는 깨끗한 해결책. 모든 read/write/useEffect/callback 경로에 `isControlled` 분기 적용. `embedded && !!controlledState && !!controlledHandlers` 명시적 가드로 불완전 prop 사고 차단.
-- 워크벤치(`/agents/[id]/settings`)는 embedded=true 전달 → Toolbar 숨김 + page state owns. 기존 단독 라우트(`/agents/[id]/visual-settings`)는 embedded 미전달 → 기존 동작 100% 유지.
-- TestChatPanel amber 배너로 MVP limitation 명시 — light/dark 모두 대응.
+- VisualSettingsFlow `embedded + controlledState + controlledHandlers` 模式在不违反 hooks 规则的同时干净支持 controlled/uncontrolled。所有 read/write/useEffect/callback 路径应用 `isControlled` 分支。通过 `embedded && !!controlledState && !!controlledHandlers` 显式 guard 阻止不完整 prop 事故。
+- workbench（`/agents/[id]/settings`）传 embedded=true → 隐藏 Toolbar + page state owns。现有独立路由（`/agents/[id]/visual-settings`）不传 embedded → 100% 保持现有行为。
+- 通过 TestChatPanel amber banner 明确 MVP limitation — light/dark 均支持。
 
-### 패턴 (재사용 가능)
-- 같은 컴포넌트를 standalone vs embedded로 양쪽에서 쓸 때 `embedded?: boolean + controlledState? + controlledHandlers?` 트리오 + `isControlled = embedded && !!controlledState && !!controlledHandlers` 가드 + 모든 setter/effect 분기. internal state는 항상 useState로 호출(hooks 규칙) 하되 useEffect 안에서 `if (isControlled) return`으로 비활성화.
+### 模式（可复用）
+- 同一组件同时用于 standalone vs embedded 时，使用 `embedded?: boolean + controlledState? + controlledHandlers?` 三件套 + `isControlled = embedded && !!controlledState && !!controlledHandlers` guard + 所有 setter/effect 分支。internal state 始终通过 useState 调用（hooks 规则），但在 useEffect 中用 `if (isControlled) return` 禁用。

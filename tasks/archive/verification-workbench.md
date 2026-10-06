@@ -1,225 +1,225 @@
 # Verification — Agent Edit Workbench
 
 **Date**: 2026-04-28
-**Verifier**: 베조스 (Jeff Bezos / QA DRI)
+**Verifier**：Bezos（Jeff Bezos / QA DRI）
 **Branch**: `feature/agent-edit-workbench`
 **Plan**: `~/.claude/plans/image-41-ticklish-sky.md`
-**판정 (재검증)**: **GREEN** — 자동 게이트 전 항목 PASS. YELLOW 사유였던 MAJOR 2건이 hotfix로 해소됨. 잔여 MINOR 1건(이미지 제거 placeholder)은 다음 PR로 이연 가능한 수준.
+**判定（复验）**：**GREEN** — 自动 gate 全部 PASS。造成 YELLOW 的 2 个 MAJOR 已通过 hotfix 解决。剩余 1 个 MINOR（图片移除 placeholder）可顺延到下一个 PR。
 
-> **재검증 일시**: 2026-04-28 (hotfix after initial YELLOW)
-> **재검증자**: 베조스
-> **이전 판정**: YELLOW (MAJOR 2 / MINOR 1)
-> **현재 판정**: GREEN (MAJOR 0 / MINOR 1)
+> **复验时间**：2026-04-28（hotfix after initial YELLOW）
+> **复验者**：Bezos
+> **之前判定**：YELLOW（MAJOR 2 / MINOR 1）
+> **当前判定**：GREEN（MAJOR 0 / MINOR 1）
 
 ---
 
-## 자동 게이트 (모두 PASS)
+## 自动 gate（全部 PASS）
 
-| 게이트 | 명령 | 결과 |
+| gate | 命令 | 结果 |
 |---|---|---|
-| Backend migration | `cd backend && uv run alembic upgrade head` | OK (이미 head, 멱등 OK) |
-| Backend tests | `cd backend && uv run pytest` | **628 passed**, 1 deselected, 17.82s — 젠슨 baseline 유지 |
+| Backend migration | `cd backend && uv run alembic upgrade head` | OK（已是 head，幂等 OK） |
+| Backend tests | `cd backend && uv run pytest` | **628 passed**，1 deselected，17.82s — 保持 Jensen baseline |
 | Backend lint | `cd backend && uv run ruff check .` | **All checks passed!** |
 | Frontend build | `cd frontend && pnpm build` | **Compiled successfully in 4.0s**, TypeScript 4.4s, 14/14 static pages |
 | Frontend lint | `cd frontend && pnpm lint` | **0 error / 0 warn** |
 
-전 게이트 PASS — CHECKPOINT.md done-when 충족.
+所有 gate PASS — 满足 CHECKPOINT.md done-when。
 
 ---
 
-## 회귀 영역 점검 (저커버그 잔여 5건)
+## regression 区域检查（Zuckerberg 剩余 5 项）
 
-### 1. VisualSettingsFlow 내장 Save vs 워크벤치 단일 Save → ⚠️ **MAJOR (회귀 확인됨)**
+### 1. VisualSettingsFlow 内嵌 Save vs workbench 单一 Save → ⚠️ **MAJOR（已确认 regression）**
 
 `frontend/src/components/agent/visual-settings/visual-settings-flow.tsx`
-- L48~63: 내부 state 11종을 자체 보유 (name/description/systemPrompt/modelId/temperature/topP/maxTokens/selectedToolIds/selectedSkillIds/selectedMiddlewareTypes)
-- L126~153: 내부 `handleSave()` — `useUpdateAgent(agentId)` 직접 호출
-- L368~374: `<Toolbar onSave={handleSave} ... />` 그대로 렌더
+- L48~63：自身持有 11 种 internal state（name/description/systemPrompt/modelId/temperature/topP/maxTokens/selectedToolIds/selectedSkillIds/selectedMiddlewareTypes）
+- L126~153：内部 `handleSave()` — 直接调用 `useUpdateAgent(agentId)`
+- L368~374：仍然 render `<Toolbar onSave={handleSave} ... />`
 
 `frontend/src/app/agents/[agentId]/settings/page.tsx`
-- L298~312: `tab === 'visual'`일 때 `<VisualSettingsFlow ... />` inline 렌더, 어떠한 prop으로도 내장 Toolbar/Save 를 끄지 않음
-- L247~252: 헤더에도 별도의 `<Button onClick={handleSave}>` 존재
+- L298~312：`tab === 'visual'` 时 inline render `<VisualSettingsFlow ... />`，没有任何 prop 关闭内置 Toolbar/Save
+- L247~252：header 中也存在单独的 `<Button onClick={handleSave}>`
 
-**결과**: 비주얼 모드 전환 시 화면에 Save 버튼이 2개 보인다.
-- 데이터 손실 위험: 낮음 (각자 자기 state에서 동일한 update API를 호출하므로 race가 있어도 마지막 호출이 이김)
-- isDirty 신호 분리 위험: **있음** — 사용자가 비주얼 모드에서 ToolboxNode를 토글하면 VisualSettingsFlow 내부 state만 변하고, 페이지 헤더의 isDirty 는 false 로 유지되어 "저장" 버튼이 비활성. 사용자는 Toolbar의 내장 Save 를 눌러야만 저장됨 → 폼/비주얼 양쪽 변경이 동시 존재하면 한쪽이 다른 쪽을 덮어씀.
+**结果**：切换到 visual mode 时，画面出现 2 个 Save 按钮。
+- 数据丢失风险：低（各自从自己的 state 调用相同 update API，即使 race 也是最后一次调用获胜）
+- isDirty signal 分离风险：**存在** — 用户在 visual mode 切换 ToolboxNode 时，仅 VisualSettingsFlow internal state 改变，而页面 header 的 isDirty 保持 false，导致 "保存" 按钮禁用。用户必须按 Toolbar 内置 Save 才能保存 → 如果 form/visual 两边同时存在变更，一边会覆盖另一边。
 
-**권고**: 다음 중 하나
-- (a) `VisualSettingsFlow` 에 `embedded?: boolean` prop 신설 → true일 때 Toolbar 숨김 + 내부 state 대신 props로부터 controlled 모드로 전환
-- (b) M8 HANDOFF에 "비주얼 모드는 단독 라우트(`/agents/[id]/visual-settings`)에서만 사용" 명시하고 워크벤치 [비주얼] 탭은 read-only 미리보기로 격하
+**建议**：以下二选一
+- (a) 为 `VisualSettingsFlow` 新增 `embedded?: boolean` prop → true 时隐藏 Toolbar + 从 internal state 切换为由 props 驱动的 controlled mode
+- (b) 在 M8 HANDOFF 明确 "visual mode 仅在独立 route（`/agents/[id]/visual-settings`）使用"，并将 workbench [visual] tab 降级为 read-only preview
 
-### 2. SettingsPanel "이미지 제거" toast placeholder → MINOR
+### 2. SettingsPanel "图片移除" toast placeholder → MINOR
 
 `_components/right-panel/settings-panel.tsx:28~31, 67~71`
-- `handleRemove()` 가 `toast.info(tc('comingSoon.default'))` 만 표시
-- 버튼은 항상 노출됨 (`{imageUrl && ... 이미지 제거 ...}`)
-- 사용자 confusion 위험: 중간 — 클릭해도 이미지가 사라지지 않고 토스트만 떠서 "버그인가?" 의심 가능
-- **권고**: 다음 PR 전까지 버튼을 disabled + 툴팁 "곧 지원" 으로 변경하거나, 메뉴 자체에서 숨김
+- `handleRemove()` 仅显示 `toast.info(tc('comingSoon.default'))`
+- 按钮始终显示（`{imageUrl && ... 图片移除 ...}`）
+- 用户 confusion 风险：中等 — 点击后图片不会消失，只弹 toast，可能怀疑 "是 bug 吗？"
+- **建议**：在下一个 PR 前将按钮改为 disabled + tooltip "即将支持"，或直接从 menu 隐藏
 
-### 3. TestChatPanel이 streamAssistant(Fix endpoint) 재사용 → MAJOR (UX 미스매치)
+### 3. TestChatPanel 复用 streamAssistant(Fix endpoint) → MAJOR（UX mismatch）
 
 `_components/right-panel/test-chat-panel.tsx:34~38`
-- `streamFn = streamAssistant(agentId, content, signal, sessionId)` — Fix(meta-agent) 엔드포인트 사용
-- 컴포넌트 주석에 "MVP: streamAssistant(Fix endpoint)를 재사용. 별도 ephemeral conversation 엔드포인트가 생기면 streamFn만 교체하면 된다."로 명시
+- `streamFn = streamAssistant(agentId, content, signal, sessionId)` — 使用 Fix(meta-agent) endpoint
+- 组件注释明确写着 "MVP: 复用 streamAssistant(Fix endpoint)。如果新增独立 ephemeral conversation endpoint，只需替换 streamFn。"
 
-**문제**: [테스트] 탭이 사용자가 만든 에이전트의 실제 행동을 미리보기하는 것이 아니라, "에이전트를 어떻게 수정할까" 메타 응답을 받음. PRD/스펙의 "신규 — 일반 에이전트 자유 대화 채팅" 정의와 불일치.
+**问题**：[测试] tab 并不是 preview 用户创建 agent 的实际行为，而是获得 "该如何修改 agent" 的 meta response。与 PRD/spec 的 "新增 — 一般 agent 自由对话聊天" 定义不一致。
 
-**위험도**: 높음 — 사용자가 [테스트]를 신뢰하면 실제 에이전트 동작을 잘못 평가.
+**风险度**：高 — 用户如果信任 [测试]，可能错误评估实际 agent 行为。
 
-**권고**: M8 직전 / 다음 스프린트로 ephemeral conversation 엔드포인트 신설 태스크 분리. 단기적으로는 [테스트] 탭에 "Fix 패널 미리보기" 라벨/배너 추가.
+**建议**：在 M8 前 / 下个 sprint 拆出新增 ephemeral conversation endpoint 任务。短期在 [测试] tab 增加 "Fix panel preview" label/banner。
 
-### 4. `/agents/[id]/visual-settings` 별도 라우트 보존 → OK
+### 4. 保留 `/agents/[id]/visual-settings` 独立 route → OK
 
-`pnpm build` 결과 `ƒ /agents/[agentId]/visual-settings` 라우트 정상 생성. 페이지 컴포넌트(`visual-settings/page.tsx`)도 그대로 동작 — 회귀 없음. 다음 PR에서 `redirect()` 처리 예정 (스펙 명시).
+`pnpm build` 结果正常生成 `ƒ /agents/[agentId]/visual-settings` route。页面组件（`visual-settings/page.tsx`）也原样工作 — 无 regression。下一个 PR 计划处理 `redirect()`（spec 已明确）。
 
-### 5. 행별 [⚙] config edit placeholder → 무관 (실제 노출되지 않음)
+### 5. 每行 [⚙] config edit placeholder → 无关（实际未暴露）
 
-`tools-middlewares-grid.tsx:163~181` 의 `Row` 컴포넌트는 `onConfig` prop이 있을 때만 [⚙] 버튼을 렌더. 현재 `ToolsBox` / `MiddlewaresBox` 어디에서도 `onConfig`를 전달하지 않음 (L60~67, L101~107). → 사용자에게 [⚙] 자체가 보이지 않음. 스펙의 "곧 지원 toast" 시나리오는 아직 실행 경로 없음. 회귀 없음.
+`tools-middlewares-grid.tsx:163~181` 的 `Row` 组件仅在有 `onConfig` prop 时 render [⚙] 按钮。目前 `ToolsBox` / `MiddlewaresBox` 均未传递 `onConfig`（L60~67, L101~107）。→ 用户看不到 [⚙] 本身。spec 的 "即将支持 toast" 场景尚无执行路径。无 regression。
 
-`section-model.tsx`, `section-sub-agents.tsx` 의 [⚙]은 각각 ModelDialog / SubAgentsDialog를 여는 정상 동작.
+`section-model.tsx`, `section-sub-agents.tsx` 的 [⚙] 分别正常打开 ModelDialog / SubAgentsDialog。
 
 ---
 
-## 폐기 잔존 검증
+## 废弃残留验证
 
 ```bash
 grep -rn "basic-info-tab\|model-tab\|tools-skills-tab" frontend/src/ | grep -v node_modules
 ```
 
-**결과**: 0 hits. 폐기 3건의 import / 참조 전부 제거됨.
+**结果**：0 hits。3 项废弃内容的 import / reference 已全部移除。
 
 `ls _components/`:
 ```
 dialogs/  form-mode/  right-panel/  triggers-tab.tsx
 ```
-폐기된 3개 파일은 git 상태에서 `D` 로 표시됨 (status snapshot 확인).
+被废弃的 3 个文件在 git status 中显示为 `D`（已确认 status snapshot）。
 
 ---
 
-## 시나리오 검증 (정적 코드 리뷰)
+## 场景验证（静态代码 review）
 
-| 시나리오 | 파일:라인 | 결과 |
+| 场景 | 文件:行 | 结果 |
 |---|---|---|
-| `/agents` 대시보드 정상 | `app/page.tsx` (변경 없음) | OK — Agent 타입에 `opener_questions` optional 추가만 (lib/types/index.ts:18) |
-| `/agents/new` 정상 | `app/agents/new/*` (변경 없음) | OK — creation flow 미수정 |
-| `/agents/[id]/conversations/[cid]` empty state 오프너 | `conversations/[cid]/page.tsx:185~224` | OK — `agent.opener_questions ?? []` fallback, 길이 0이면 버튼 안 보임. `composer?.setText(q)` 안전 호출 (optional). |
-| 헤더 인라인 편집 → 저장 | `settings/page.tsx:206~217, 247~252, 141~161` | OK — name/description Input → page state → handleSave payload 포함 |
-| 폼 ↔ 비주얼 토글 | `settings/page.tsx:258~313` | OK 단, 위 #1 dual-save 회귀 |
-| 행 [⚙] → 다이얼로그 | `section-model.tsx:44`, `section-sub-agents.tsx:43` | OK |
-| +도구/+미들웨어 → 모달 | `tools-middlewares-grid.tsx:55, 96` | OK |
-| [Fix] AssistantPanel 동작 | `right-panel.tsx:72~79`, `assistant-panel.tsx:21~88` | OK — `showHeader={false}` prop 정상 적용 |
-| [테스트] 채팅 동작 | `test-chat-panel.tsx` | 동작 OK, 의미는 위 #3 회귀 |
-| [오프너] 추가/삭제/저장 | `opener-editor.tsx` (구조 OK), `page.tsx:323~324` | OK — onChange → page state → save payload `opener_questions` (page.tsx:155) |
-| [스케줄] 트리거 추가/삭제 | `right-panel.tsx:93~95`, `triggers-tab.tsx` 재사용 | OK — `onRequestDelete` callback 정상 wired (page.tsx:325, 343~348) |
-| [설정] 이미지 생성/재생성/제거 | `settings-panel.tsx` | 생성/재생성 OK (`useGenerateAgentImage`), 제거는 placeholder (위 #2) |
-| 미저장 [←] confirm | `page.tsx:172~183` | OK — `window.confirm(t('unsavedWarning'))`. beforeunload 도 132~139 라인에서 처리 |
-| Backend opener_questions wiring | `models/agent.py:30`, `schemas/agent.py:15~36, 72~77, 93~98, 127`, `services/agent_service.py:67, 116~117`, `alembic/versions/m16_add_opener_questions.py` | OK — 마이그레이션 + 모델 + 스키마 (validator 12개 / 200자 / non-empty) + service create/update 경로 |
+| `/agents` dashboard 正常 | `app/page.tsx`（无修改） | OK — Agent 类型仅新增 `opener_questions` optional（lib/types/index.ts:18） |
+| `/agents/new` 正常 | `app/agents/new/*`（无修改） | OK — creation flow 未修改 |
+| `/agents/[id]/conversations/[cid]` empty state opener | `conversations/[cid]/page.tsx:185~224` | OK — `agent.opener_questions ?? []` fallback，长度 0 时不显示按钮。安全调用 `composer?.setText(q)`（optional）。 |
+| header inline 编辑 → 保存 | `settings/page.tsx:206~217, 247~252, 141~161` | OK — name/description Input → page state → 包含在 handleSave payload |
+| form ↔ visual toggle | `settings/page.tsx:258~313` | OK，但存在上面 #1 dual-save regression |
+| 每行 [⚙] → dialog | `section-model.tsx:44`, `section-sub-agents.tsx:43` | OK |
+| +工具/+middleware → modal | `tools-middlewares-grid.tsx:55, 96` | OK |
+| [Fix] AssistantPanel 行为 | `right-panel.tsx:72~79`, `assistant-panel.tsx:21~88` | OK — `showHeader={false}` prop 正常应用 |
+| [测试] 聊天行为 | `test-chat-panel.tsx` | 行为 OK，含义存在上面 #3 regression |
+| [opener] 添加/删除/保存 | `opener-editor.tsx`（结构 OK），`page.tsx:323~324` | OK — onChange → page state → save payload `opener_questions`（page.tsx:155） |
+| [schedule] trigger 添加/删除 | `right-panel.tsx:93~95`，复用 `triggers-tab.tsx` | OK — `onRequestDelete` callback 正常 wired（page.tsx:325, 343~348） |
+| [设置] 图片生成/重新生成/移除 | `settings-panel.tsx` | 生成/重新生成 OK（`useGenerateAgentImage`），移除是 placeholder（见上面 #2） |
+| 未保存 [←] confirm | `page.tsx:172~183` | OK — `window.confirm(t('unsavedWarning'))`。beforeunload 也在 132~139 行处理 |
+| Backend opener_questions wiring | `models/agent.py:30`, `schemas/agent.py:15~36, 72~77, 93~98, 127`, `services/agent_service.py:67, 116~117`, `alembic/versions/m16_add_opener_questions.py` | OK — migration + model + schema（validator 12 个 / 200 字 / non-empty）+ service create/update 路径 |
 
 ---
 
-## 발견 이슈 요약
+## 已发现问题摘要
 
-| # | 분류 | 영역 | 요지 |
+| # | 分类 | 区域 | 要点 |
 |---|---|---|---|
-| 1 | **MAJOR** | VisualSettingsFlow inline 사용 | 워크벤치 헤더 Save와 비주얼 내장 Toolbar Save 동시 노출 → isDirty 분리, 한쪽이 다른 쪽 덮어쓰기 가능 |
-| 2 | MINOR | SettingsPanel "이미지 제거" | 클릭 시 toast만 뜨는 placeholder가 노출돼 사용자 confusion 가능 |
-| 3 | MAJOR | TestChatPanel | Fix endpoint 재사용 → [테스트]가 메타 에이전트 응답을 보여줌. 실제 에이전트 동작 검증 불가 |
-| 4 | — | visual-settings 단독 라우트 | 회귀 없음 (다음 PR redirect 예정) |
-| 5 | — | 도구/미들웨어 행 [⚙] | 미노출 — 회귀 없음 |
+| 1 | **MAJOR** | VisualSettingsFlow inline 使用 | workbench header Save 与 visual 内置 Toolbar Save 同时暴露 → isDirty 分离，一边可能覆盖另一边 |
+| 2 | MINOR | SettingsPanel "图片移除" | 暴露了点击时仅弹 toast 的 placeholder，可能造成用户 confusion |
+| 3 | MAJOR | TestChatPanel | 复用 Fix endpoint → [测试] 显示 meta agent 响应。无法验证真实 agent 行为 |
+| 4 | — | visual-settings 独立 route | 无 regression（下一个 PR 计划 redirect） |
+| 5 | — | 工具/middleware 行 [⚙] | 未暴露 — 无 regression |
 
-**BLOCKER**: 0건
-**MAJOR**: 2건 (#1, #3)
-**MINOR**: 1건 (#2)
-
----
-
-## 사용자 수동 검증 권장 항목 (5)
-
-1. **[⚠️] 비주얼 모드 dual-save 체감**: 워크벤치에서 [비주얼] 탭 클릭 → 우측 상단 ToolBar Save 버튼이 헤더 Save 와 중복으로 보이는지 확인. 보이면 둘 중 하나로 저장 시도 → 폼 모드로 돌아가서 변경 반영 여부.
-2. **[⚠️] [테스트] 탭 응답 성격**: "안녕" 입력 → 응답이 일반 어시스턴트 톤인지, "어떻게 수정할까요" 톤인지 확인. 후자면 issue #3 의 UX 미스매치 실증.
-3. **오프너 end-to-end**: 워크벤치 [오프너]에서 질문 1~3개 추가 → 저장 → `/agents/[id]/conversations/new` 진입 → 빈 화면 버튼 클릭 → composer 텍스트 주입(전송 X) 확인.
-4. **헤더 인라인 편집 + 새로고침**: 이름/설명 변경 → 저장 → F5 → 유지 확인.
-5. **[설정] 이미지 제거 클릭**: 토스트만 뜨고 이미지 그대로 유지 → issue #2 실증.
+**BLOCKER**：0 项
+**MAJOR**：2 项（#1, #3）
+**MINOR**：1 项（#2）
 
 ---
 
-## 판정 근거
+## 建议用户手动验证的项目（5）
 
-- **자동 게이트**: 전 항목 PASS — done-when 충족
-- **회귀 시나리오**: 데이터 손실 가능성 0, 폐기 잔존 0
-- **치명적 결함**: 없음 (BLOCKER 0)
-- **다만**: MAJOR 2건이 사용자에게 직접 노출되는 UX 회귀 — "Good enough"로 보지 말 것
-
-→ **YELLOW**. 사티아 판단:
-- (A) MAJOR 2건을 M7 안에서 즉시 수정 후 GREEN 재판정 → 권장
-- (B) M8에 follow-up 태스크로 분리 + HANDOFF에 명시적 risk 등재 후 머지 → 차선
-
-기술적으로 현 상태에서 main 머지 가능하나, 베조스 기준 "Day 1 mentality"로는 (A) 선택 권고.
+1. **[⚠️] visual mode dual-save 体验**：在 workbench 点击 [visual] tab → 确认右上角 ToolBar Save 按钮是否与 header Save 重复出现。若出现，尝试用其中一个保存 → 回到 form mode 检查变更是否反映。
+2. **[⚠️] [测试] tab 响应性质**：输入 "你好" → 确认响应是一般 assistant 语气，还是 "要怎么修改呢" 语气。若是后者，实证 issue #3 的 UX mismatch。
+3. **opener end-to-end**：在 workbench [opener] 添加 1~3 个问题 → 保存 → 进入 `/agents/[id]/conversations/new` → 点击空页面按钮 → 确认 composer 文本被注入（不发送）。
+4. **header inline 编辑 + 刷新**：修改名称/描述 → 保存 → F5 → 确认保持。
+5. **点击 [设置] 图片移除**：仅弹 toast，图片保持不变 → 实证 issue #2。
 
 ---
 
-## 재검증 (Hotfix Verification, 2026-04-28)
+## 判定依据
 
-저커버그가 (A) 경로로 hotfix 진행. 베조스 재검증 결과 → **GREEN**.
+- **自动 gate**：全部 PASS — 满足 done-when
+- **regression 场景**：数据丢失可能性 0，废弃残留 0
+- **致命缺陷**：无（BLOCKER 0）
+- **但是**：2 个 MAJOR 是直接暴露给用户的 UX regression — 不应视为 "Good enough"
 
-### 자동 게이트 (재실행)
+→ **YELLOW**。Satya 判断：
+- (A) 2 个 MAJOR 在 M7 内立即修复后重新判定 GREEN → 推荐
+- (B) 拆分为 M8 follow-up 任务 + 在 HANDOFF 中显式登记 risk 后 merge → 次选
+
+技术上当前状态可 merge 到 main，但按 Bezos 标准 "Day 1 mentality" 推荐选择 (A)。
+
+---
+
+## 复验（Hotfix Verification, 2026-04-28）
+
+Zuckerberg 按 (A) 路径进行 hotfix。Bezos 复验结果 → **GREEN**。
+
+### 自动 gate（重新执行）
 - `pnpm build`: PASS — 14/14 static pages, no TypeScript error
 - `pnpm lint`: PASS — 0 error / 0 warn
-- backend: 변경 없음 (재실행 생략)
+- backend：无变更（省略重新执行）
 
-### MAJOR #1 — VisualSettingsFlow dual-save → 해소 ✅
+### MAJOR #1 — VisualSettingsFlow dual-save → 已解决 ✅
 
 `components/agent/visual-settings/visual-settings-flow.tsx`
-- L22~46: `ControlledVisualState` / `ControlledVisualHandlers` 인터페이스 신설 (state 11종 + handler 10종)
-- L62~65: props에 `embedded?: boolean` + `controlledState?` + `controlledHandlers?` 추가
-- L108: `isControlled = embedded && !!controlledState && !!controlledHandlers` 명시적 가드 — 셋 다 만족해야만 controlled (불완전 prop으로 사고 방지)
-- L109~138: 모든 read/write 경로가 `isControlled ? controlled... : internal...` 분기로 통일
-- L141~164: useEffect의 agent prop 동기화 / default model 셋업도 `if (isControlled) return` 가드 — controlled 모드에서 internal state setter가 우회됨 ✅
-- L166~197: `toggleTool` / `toggleSkill` / `toggleMiddleware` callback도 `if (isControlled) controlledHandlers!.onToggleX(...) else setInternalSelectedX(...)` 분기 ✅
-- L469~477: `{!embedded && <Toolbar ... />}` — embedded일 때 내장 Toolbar 자체를 렌더하지 않음 ✅
+- L22~46：新增 `ControlledVisualState` / `ControlledVisualHandlers` interface（state 11 种 + handler 10 种）
+- L62~65：props 新增 `embedded?: boolean` + `controlledState?` + `controlledHandlers?`
+- L108：明确 guard `isControlled = embedded && !!controlledState && !!controlledHandlers` — 三者都满足才 controlled（防止不完整 prop 导致事故）
+- L109~138：所有 read/write 路径统一为 `isControlled ? controlled... : internal...` 分支
+- L141~164：同步 agent prop 的 useEffect / default model 设置也加入 `if (isControlled) return` guard — controlled mode 下绕过 internal state setter ✅
+- L166~197：`toggleTool` / `toggleSkill` / `toggleMiddleware` callback 也按 `if (isControlled) controlledHandlers!.onToggleX(...) else setInternalSelectedX(...)` 分支 ✅
+- L469~477：`{!embedded && <Toolbar ... />}` — embedded 时不 render 内置 Toolbar ✅
 
 `app/agents/[agentId]/settings/page.tsx`
-- L301~337: `<VisualSettingsFlow ... embedded controlledState={...} controlledHandlers={...} />` — 페이지 useState 값/setter를 그대로 위임. Set 토글은 `(prev) => toggleSetItem(prev, id)` 패턴으로 immutable 처리
+- L301~337：`<VisualSettingsFlow ... embedded controlledState={...} controlledHandlers={...} />` — 直接委托页面 useState 值/setter。Set toggle 采用 `(prev) => toggleSetItem(prev, id)` 模式 immutable 处理
 
-**Backward compat 확인**:
-- `app/agents/[agentId]/visual-settings/page.tsx`: `embedded` 미전달 → false → Toolbar 노출 + internal state 사용. 기존 동작 100% 유지 ✅
-- `app/agents/new/manual/*`: grep 결과 0 hit. embedded 없음 ✅
-- `pnpm build` Route 목록에 `/agents/[agentId]/visual-settings` 그대로 ƒ로 표시 ✅
+**Backward compat 确认**：
+- `app/agents/[agentId]/visual-settings/page.tsx`：未传 `embedded` → false → 显示 Toolbar + 使用 internal state。现有行为 100% 保留 ✅
+- `app/agents/new/manual/*`：grep 结果 0 hit。无 embedded ✅
+- `pnpm build` Route 列表中 `/agents/[agentId]/visual-settings` 仍显示为 ƒ ✅
 
-**잔여 노트 (참고)**: embedded 모드에서도 내부 `useUpdateAgent`/`useCreateAgent` 훅은 인스턴스화되지만 호출 경로(handleSave)는 Toolbar 제거로 도달 불가. 메모리/네트워크 영향 없음. 향후 정리 시 useMutation도 조건부 분리 가능하지만 React Hooks 규칙(분기적 호출 금지) 때문에 현재 구조가 안전.
+**剩余 note（参考）**：embedded mode 下内部 `useUpdateAgent`/`useCreateAgent` hook 仍会实例化，但调用路径（handleSave）因 Toolbar 移除而不可达。无 memory/network 影响。未来整理时可条件拆分 useMutation，但受 React Hooks 规则（禁止条件调用）限制，当前结构更安全。
 
-### MAJOR #2 — TestChatPanel banner → 해소 ✅
+### MAJOR #2 — TestChatPanel banner → 已解决 ✅
 
 `_components/right-panel/test-chat-panel.tsx:53~57`
-- 패널 최상단(thread 위)에 amber 톤 배너:
+- panel 最上方（thread 上方）添加 amber tone banner：
   ```
-  ⚠ MVP: 현재 Fix 에이전트와 동일한 endpoint를 사용합니다. 일반 채팅 분리는 후속 PR에서 진행됩니다.
+  ⚠ MVP: 当前使用与 Fix agent 相同的 endpoint。一般聊天拆分将在后续 PR 进行。
   ```
-- 다크모드 대응: `border-amber-200 bg-amber-50 text-amber-900` (light) → `dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200` (dark) ✅
-- 컨테이너 `border-b`로 본문 thread와 시각 분리 ✅
-- 사용자 confusion 위험: 해소 — 첫 인터랙션 전에 limitation 명시
-- streamFn(Fix endpoint) 동작 자체는 변경 없음 (스펙대로 ephemeral endpoint는 후속 PR 분리)
+- dark mode 对应：`border-amber-200 bg-amber-50 text-amber-900`（light）→ `dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200`（dark）✅
+- container 使用 `border-b` 与正文 thread 视觉分隔 ✅
+- 用户 confusion 风险：已解决 — 首次 interaction 前明确 limitation
+- streamFn(Fix endpoint) 行为本身无变更（按 spec，ephemeral endpoint 在后续 PR 拆分）
 
-**잔여 노트 (참고)**: 배너 문자열이 i18n 키가 아닌 하드코딩 한국어. 영문 사용자 노출 시 미번역. M8/HANDOFF에서 i18n 정리 권장하지만 이번 PR을 막을 수준은 아님 → 패스.
+**剩余 note（参考）**：banner 字符串是非 i18n key 的硬编码韩文。向英文用户暴露时未翻译。建议在 M8/HANDOFF 整理 i18n，但不至于阻塞本次 PR → PASS。
 
-### MINOR #1 — 이미지 제거 placeholder
+### MINOR #1 — 图片移除 placeholder
 
-이번 hotfix 범위 밖. 상태 그대로 — 다음 PR로 이연. HANDOFF에 follow-up 항목으로 등재 권고.
+不在本次 hotfix 范围。状态不变 — 顺延到下一个 PR。建议在 HANDOFF 登记 follow-up 项。
 
-### 신규 회귀 점검 (hotfix 자체에서 발생할 수 있는)
-- VisualSettingsFlow 내부 `handleAgentNodeUpdate` 가 `setName`/`setDescription` 등 polymorphic setter를 사용 — controlled 모드에서 페이지 useState 호출 → 정상. uncontrolled 모드에서 internal setter 호출 → 정상.
-- ReactFlow 노드 데이터(`nodes` state)가 `useNodesState(initialNodes)`로 한 번만 init되고 useEffect로 갱신됨(L296~). controlled 모드에서 page state가 변경되면 read 값(name/description/...)이 바뀌고 useEffect 의존성에 포함되어 노드도 재계산됨 → 정상 ✅
-- `useEdgesState(computedEdges)` + useEffect 동기화도 동일 패턴 → 정상
+### 新增 regression 检查（hotfix 本身可能引发）
+- VisualSettingsFlow 内部 `handleAgentNodeUpdate` 使用 `setName`/`setDescription` 等 polymorphic setter — controlled mode 调用页面 useState → 正常。uncontrolled mode 调用 internal setter → 正常。
+- ReactFlow node data（`nodes` state）由 `useNodesState(initialNodes)` 仅初始化一次，并通过 useEffect 更新（L296~）。controlled mode 下 page state 变化会改变 read 值（name/description/...），且这些值包含在 useEffect dependency 中，因此 node 也重新计算 → 正常 ✅
+- `useEdgesState(computedEdges)` + useEffect 同步也采用相同模式 → 正常
 
 ### 最终判定
 
-| 항목 | 이전 | 현재 |
+| 项目 | 之前 | 当前 |
 |---|---|---|
-| 자동 게이트 | PASS | PASS |
+| 自动 gate | PASS | PASS |
 | BLOCKER | 0 | 0 |
 | MAJOR | 2 | **0** |
-| MINOR | 1 | 1 (이연) |
-| 폐기 잔존 | 0 | 0 |
-| 판정 | YELLOW | **GREEN** |
+| MINOR | 1 | 1（顺延） |
+| 废弃残留 | 0 | 0 |
+| 判定 | YELLOW | **GREEN** |
 
-→ **GREEN**. M7 done-when 충족. M8(HANDOFF) 진행 가능.
+→ **GREEN**。满足 M7 done-when。可继续 M8(HANDOFF)。
