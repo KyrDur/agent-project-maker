@@ -16,6 +16,7 @@ import { agentProjectApi } from '../_lib/agent-project-api'
 import { agentProjectKeys } from '../_hooks/use-agent-project'
 import type { AgentProjectVersionSummary, SimulationSession } from '../_lib/agent-project-types'
 import { ProjectSelect } from './project-select'
+import { ProjectExecutionLog, ProjectEvidenceValue } from './project-execution-log'
 
 export function ProjectSimulation({
   agentId,
@@ -153,18 +154,14 @@ function SimulationConversation({
           </p>
           <details>
             <summary>{t('evidence')}</summary>
-            <pre className="whitespace-pre-wrap break-words text-sm">
-              {JSON.stringify(turn.evidence, null, 2)}
-            </pre>
+            <ProjectExecutionLog evidence={turn.evidence} />
           </details>
         </article>
       ))}
       {session.data && (
         <details>
           <summary>{t('state')}</summary>
-          <pre className="whitespace-pre-wrap break-words text-sm">
-            {JSON.stringify(session.data.state_json, null, 2)}
-          </pre>
+          <ProjectEvidenceValue value={session.data.state_json} />
         </details>
       )}
       <form

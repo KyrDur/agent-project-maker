@@ -16,6 +16,7 @@ import { ProjectSelect } from './project-select'
 import { ProjectEvalPlan } from './project-eval-plan'
 import { ProjectOptimization } from './project-optimization'
 import { ProjectCaseEditor } from './project-case-editor'
+import { ProjectExecutionLog } from './project-execution-log'
 
 export function ProjectMetrics({ metrics }: { metrics: EvaluationMetrics | null }) {
   const t = useTranslations('agentProject')
@@ -421,53 +422,8 @@ export function ProjectEvaluation({
                             </p>
                             <details>
                               <summary>{t('practice.executionEvidence')}</summary>
-                              <pre className="whitespace-pre-wrap break-words text-sm">
-                                {JSON.stringify(
-                                  {
-                                    model_calls: result.model_calls ?? null,
-                                    judge_calls: result.judge_calls ?? null,
-                                    termination_reason: result.termination_reason ?? null,
-                                    final_state: result.final_state ?? null,
-                                  },
-                                  null,
-                                  2,
-                                )}
-                              </pre>
+                              <ProjectExecutionLog evidence={result} graded />
                             </details>
-                            {!!result.tool_trace?.length && (
-                              <details>
-                                <summary>{t('toolTrace')}</summary>
-                                <ul className="space-y-2 pt-2 text-sm">
-                                  {result.tool_trace.map((event, index) => (
-                                    <li
-                                      key={`${event.name}-${event.order ?? index}`}
-                                      className="rounded border border-border/70 p-2"
-                                    >
-                                      <p className="font-medium">
-                                        {t('toolOrder', { value: event.order ?? index + 1 })} ·{' '}
-                                        {event.name}
-                                        {event.latency_ms != null
-                                          ? ` · ${event.latency_ms} ms`
-                                          : ''}
-                                      </p>
-                                      <p className="whitespace-pre-wrap break-words">
-                                        {t('toolArguments')}:{' '}
-                                        {JSON.stringify(event.arguments ?? {})}
-                                      </p>
-                                      {event.error ? (
-                                        <p className="text-destructive">
-                                          {t('toolError')}: {event.error}
-                                        </p>
-                                      ) : (
-                                        <p className="whitespace-pre-wrap break-words">
-                                          {t('toolResult')}: {JSON.stringify(event.output)}
-                                        </p>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </details>
-                            )}
                             {result.expected?.answer && (
                               <p>
                                 {t('expectedBehavior')}: {result.expected.answer}

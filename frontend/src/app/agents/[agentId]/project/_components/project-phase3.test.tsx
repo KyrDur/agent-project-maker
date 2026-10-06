@@ -155,8 +155,10 @@ it('shows pass rate, individual scores and failed-case evidence', async () => {
   render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
   expect(await screen.findByText(/全部用例通过率：85%/)).toBeInTheDocument()
-  expect(await screen.findByText(/Revenue is absent from the sources/)).toBeInTheDocument()
-  expect(await screen.findByText(/Revenue doubled/)).toBeInTheDocument()
+  expect(
+    await screen.findByText(/Revenue is absent from the sources/, { selector: 'li' }),
+  ).toBeInTheDocument()
+  expect(await screen.findByText(/Revenue doubled/, { selector: 'p' })).toBeInTheDocument()
 })
 
 it('reports generation failure without inserting sample scores or cases', async () => {
