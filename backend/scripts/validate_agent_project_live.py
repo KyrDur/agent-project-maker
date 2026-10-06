@@ -129,6 +129,8 @@ async def iterate(aid, owner, folder, receipt, budget, rounds):
                 receipt["iterations"].append(entry)
             try:
                 entry["analysis"] = await optimization.analyze(db, aid, owner, rid)
+                if entry.get("error"):
+                    entry.setdefault("previous_errors", []).append(entry.pop("error"))
                 if not entry["analysis"].get("groups"):
                     receipt["termination"] = "no_supported_improvement"
                     break

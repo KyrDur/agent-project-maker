@@ -59,9 +59,12 @@ def validate_applicability(spec: EvalSpec, case: dict[str, Any]) -> None:
                     .get(f"{name}/{cid}", "")
                     .strip()
                 ):
-                    raise ValueError("Missing non-applicability reason for excluded criterion")
+                    raise ValueError(
+                        f"Missing non-applicability reason for excluded criterion; "
+                        f"use key {name}/{cid}"
+                    )
         if not ids and not (case.get("metric_applicability_reasons") or {}).get(name, "").strip():
-            raise ValueError("Missing non-applicability reason")
+            raise ValueError(f"Missing non-applicability reason for metric; use key {name}")
     if not any(selected.values()):
         raise ValueError("No applicable content criteria")
 

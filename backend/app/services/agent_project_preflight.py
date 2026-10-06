@@ -216,7 +216,13 @@ async def validate_generated_cases(
                 "attempts": attempts,
             }
         if attempt == 2:
-            raise SnapshotExecutionUnavailable("evaluation_reference_invalid")
+            raise SnapshotExecutionUnavailable(
+                "evaluation_reference_invalid",
+                {
+                    "reference_validation": {"attempts": attempts, "program": references},
+                    "rejected_cases": [c.model_dump(mode="json") for c in body.cases],
+                },
+            )
         response = await call(
             "case_generator",
             "Repair ONLY the supplied rejected cases from program/C feedback. Keep their "
@@ -224,7 +230,9 @@ async def validate_generated_cases(
             "or any other case. Return {name,cases} matching the schema, with exactly the "
             "supplied case IDs. Fix reference answers, applicability/reasons and synthetic "
             "data as needed to make the declared task executable and consistent. Every "
-            "enabled tool needs a response. No new obligations, tools or live operations.",
+            "enabled tool needs a response. For an empty metric applicability list, the "
+            "reason key is the metric name; for partial criterion exclusions, the key is "
+            "metric_name/criterion_id. No new obligations, tools or live operations.",
             {
                 "requirements": requirements,
                 "eval_spec": spec.model_dump(mode="json"),

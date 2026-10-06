@@ -124,6 +124,43 @@ def analysis_evidence(cases: dict[str, Any], results: list[dict[str, Any]]) -> d
     return evidence
 
 
+def validate_analysis(raw: dict[str, Any], eligible: dict[str, Any]) -> AnalysisProposal:
+    proposal = AnalysisProposal.model_validate(raw)
+    records = {str(item.case_id): item for item in proposal.analyses}
+    if len(records) != len(proposal.analyses) or set(records) != set(eligible):
+        raise ValueError(
+            f"Invalid analyzed case IDs; missing {sorted(set(eligible) - set(records))}; "
+            f"unexpected {sorted(set(records) - set(eligible))}"
+        )
+    for case_id, item in records.items():
+        for reference in item.evidence:
+            try:
+                observation(eligible[case_id], reference)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid evidence pointer {reference} for case {case_id}"
+                ) from exc
+        if (item.category in {"external_unfixable", "no_supported_change"}) != (
+            item.recommended_target == "none"
+        ):
+            raise ValueError("Invalid external target")
+    grouped = []
+    for group in proposal.groups:
+        if group.category == "external_unfixable" or group.target == "none":
+            raise ValueError("External group cannot be optimized")
+        for case_id in group.case_ids:
+            item = records[str(case_id)]
+            if item.category != group.category or item.recommended_target != group.target:
+                raise ValueError("Group contradicts case analysis")
+            grouped.append(str(case_id))
+    fixable = {k for k, v in records.items() if v.recommended_target != "none"}
+    if len(set(grouped)) != len(grouped) or set(grouped) != fixable:
+        raise ValueError(
+            f"Invalid grouping coverage; exactly these cases are fixable: {sorted(fixable)}"
+        )
+    return proposal
+
+
 async def analyze(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, run_id: uuid.UUID
 ) -> dict[str, Any]:
@@ -162,72 +199,83 @@ async def analyze(
         try:
             from app.services.agent_project_llm import capture_calls
 
+            feedback = None
+            previous = None
             with capture_calls(role_calls):
-                raw = await json_call(
-                    db,
-                    {
-                        **version.snapshot_json,
-                        "resolved_role_models": (run.comparison_json or {}).get(
-                            "resolved_role_models"
-                        ),
-                        "evaluation_roles": (run.comparison_json or {}).get("resolved_roles", {}),
-                        "role_configurations": (run.comparison_json or {}).get(
-                            "role_configurations"
-                        ),
-                    },
-                    user_id,
-                    "bad_case_analyzer",
-                    "Analyze failed cases or imperfect metrics from the frozen experiment. "
-                    "Do not label passing cases as failures; identify bounded improvements. "
-                    "Infer likely causes conservatively, citing observable evidence. "
-                    "evidence must be JSON pointer strings into each case evidence object, "
-                    "for example /actual_output or /metric_scores/groundedness/score. "
-                    "All repeat trials are in /trials; inspect every trial and describe "
-                    "variation, never infer stability from a selected successful answer. "
-                    "Do not claim inaccessible internal reasoning. Group similar failures into "
-                    "at most five shared causes; prefer general fixes over case wording hacks. "
-                    "Each fixable case belongs to exactly one group with the "
-                    "same category and target "
-                    "as its analysis. External outages: external_unfixable, target none, "
-                    "and must not appear in fixable groups. Frozen Skill text "
-                    "may be absent: propose "
-                    "Skill changes as deferred advice rather than claiming access to a live Skill. "
-                    "When evidence does not justify a verifiable change, use "
-                    "category no_supported_change, "
-                    "target none, cite the actual weak metric or output, and "
-                    "explain testing boundaries. "
-                    "Do not create a group or invent a failure for that case. "
-                    "Return the supplied schema only.",
-                    {
-                        "snapshot": version.snapshot_json,
-                        "eval_spec": (run.comparison_json or {})["eval_spec"],
-                        "cases": list(eligible.values()),
-                        "schema": AnalysisProposal.model_json_schema(),
-                    },
-                )
-            proposal = AnalysisProposal.model_validate(raw)
-            records = {str(item.case_id): item for item in proposal.analyses}
-            if len(records) != len(proposal.analyses) or set(records) != set(eligible):
-                raise ValueError("Invalid analyzed case IDs")
-            for case_id, item in records.items():
-                for reference in item.evidence:
-                    observation(eligible[case_id], reference)
-                if (item.category in {"external_unfixable", "no_supported_change"}) != (
-                    item.recommended_target == "none"
-                ):
-                    raise ValueError("Invalid external target")
-            grouped = []
-            for group in proposal.groups:
-                if group.category == "external_unfixable" or group.target == "none":
-                    raise ValueError("External group cannot be optimized")
-                for case_id in group.case_ids:
-                    item = records[str(case_id)]
-                    if item.category != group.category or item.recommended_target != group.target:
-                        raise ValueError("Group contradicts case analysis")
-                    grouped.append(str(case_id))
-            fixable = {k for k, v in records.items() if v.recommended_target != "none"}
-            if len(set(grouped)) != len(grouped) or set(grouped) != fixable:
-                raise ValueError("Invalid grouping coverage")
+                for attempt in range(2):
+                    raw = await json_call(
+                        db,
+                        {
+                            **version.snapshot_json,
+                            "resolved_role_models": (run.comparison_json or {}).get(
+                                "resolved_role_models"
+                            ),
+                            "evaluation_roles": (run.comparison_json or {}).get(
+                                "resolved_roles", {}
+                            ),
+                            "role_configurations": (run.comparison_json or {}).get(
+                                "role_configurations"
+                            ),
+                        },
+                        user_id,
+                        "bad_case_analyzer",
+                        "Analyze failed cases or imperfect metrics from the frozen experiment. "
+                        "Do not label passing cases as failures; identify bounded improvements. "
+                        "Infer likely causes conservatively, citing observable evidence. "
+                        "evidence must be JSON pointer strings into each case evidence object, "
+                        "for example /actual_output or /metric_scores/groundedness/score. "
+                        "All repeat trials are in /trials; inspect every trial and describe "
+                        "variation, never infer stability from a selected successful answer. "
+                        "Do not claim inaccessible internal reasoning. Group similar failures into "
+                        "at most five shared causes; prefer general fixes over case wording hacks. "
+                        "Each fixable case belongs to exactly one group with the "
+                        "same category and target "
+                        "as its analysis. External outages: external_unfixable, target none, "
+                        "and must not appear in fixable groups. Frozen Skill text "
+                        "may be absent: propose "
+                        "Skill changes as deferred advice rather than claiming access "
+                        "to a live Skill. "
+                        "When evidence does not justify a verifiable change, use "
+                        "category no_supported_change, "
+                        "target none, cite the actual weak metric or output, and "
+                        "explain testing boundaries. "
+                        "Do not create a group or invent a failure for that case. "
+                        "Analyze exactly every supplied case ID, including "
+                        "no_supported_change cases. "
+                        "Keep each cause and suggestion concise. Return the supplied schema only.",
+                        {
+                            "snapshot": version.snapshot_json,
+                            "eval_spec": (run.comparison_json or {})["eval_spec"],
+                            "cases": list(eligible.values()),
+                            "schema": AnalysisProposal.model_json_schema(),
+                            "required_case_ids": list(eligible),
+                            "evidence_pointer_examples": [
+                                "/actual_output",
+                                "/case/input",
+                                "/metric_scores",
+                                "/trials",
+                            ],
+                            "validation_error": feedback,
+                            "previous_response": previous,
+                        },
+                    )
+                    try:
+                        proposal = validate_analysis(raw, eligible)
+                        break
+                    except (ValueError, KeyError, TypeError) as exc:
+                        if role_calls:
+                            role_calls[-1]["validation_status"] = "rejected"
+                            role_calls[-1]["validation_error"] = type(exc).__name__
+                        if attempt:
+                            raise
+                        from pydantic import ValidationError
+
+                        feedback = (
+                            exc.errors()[0]["msg"]
+                            if isinstance(exc, ValidationError)
+                            else str(exc).splitlines()[0]
+                        )
+                        previous = raw
         except Exception as exc:
             await save_failed_stage_calls(
                 db,
@@ -258,7 +306,7 @@ async def analyze(
         "analysis": projects.snapshot_value(
             {
                 "groups": groups,
-                "version": "analysis_v1",
+                "version": "analysis_v2",
                 "model_role": "judge_optimizer",
                 "calls": role_calls,
             }

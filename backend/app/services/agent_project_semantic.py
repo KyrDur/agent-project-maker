@@ -371,8 +371,10 @@ async def generate(
             "Task completion needs at least one applicable criterion; do not exclude an "
             "applicable task obligation. For excluded conditional criteria give a concrete "
             "metric_applicability_reasons entry with key metric_name/criterion_id. "
-            "Use an empty list only when genuinely inapplicable; supply a concrete reason in "
-            "metric_applicability_reasons. Never add grading requirements absent from the "
+            "Use an empty list only when the entire metric is genuinely inapplicable; its "
+            "metric_applicability_reasons key must be the METRIC NAME itself, such as "
+            "business_quality, not metric_name/criterion_id. Partial exclusions instead use "
+            "metric_name/criterion_id. Never add grading requirements absent from the "
             "confirmed requirements and rubric. Do not claim fixture responses measure "
             "retrieval ranking quality.",
             {
@@ -466,6 +468,17 @@ async def generate(
         project = await projects.require_project(db, agent_id, user_id)
         await projects.lock_project(db, project)
         await db.refresh(project, ["report_json"])
+        failure = {
+            "stage": "cases" if cases else "plan",
+            "code": code,
+            "calls": calls,
+            "detail": str(exc) if type(exc) is ValueError else None,
+            **(
+                projects.snapshot_value(exc.evidence)
+                if isinstance(exc, SnapshotExecutionUnavailable)
+                else {}
+            ),
+        }
         project.report_json = {
             **(project.report_json or {}),
             "generation_failures": [
@@ -477,19 +490,9 @@ async def generate(
                         else []
                     )
                 ),
-                {
-                    "stage": "cases" if cases else "plan",
-                    "code": code,
-                    "calls": calls,
-                    "detail": str(exc) if type(exc) is ValueError else None,
-                },
+                failure,
             ],
-            "generation_failure": {
-                "stage": "cases" if cases else "plan",
-                "detail": str(exc) if type(exc) is ValueError else None,
-                "code": code,
-                "calls": calls,
-            },
+            "generation_failure": failure,
         }
         await db.commit()
         raise AppError(code=code, message=code, status=422) from exc

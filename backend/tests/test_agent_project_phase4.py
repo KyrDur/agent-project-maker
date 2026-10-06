@@ -319,6 +319,31 @@ def test_minimal_patch_and_missing_skill_deferral():
 
 
 @pytest.mark.asyncio
+async def test_analyzer_repairs_protocol_without_changing_case_evidence(
+    db, experiment, monkeypatch
+):
+    payloads = []
+
+    async def repair(_db, _snapshot, _user, _role, _instruction, payload):
+        payloads.append(deepcopy(payload))
+        response = analyzer_response(payload)
+        if len(payloads) == 1:
+            response["analyses"][0]["evidence"] = ["/hidden_chain_of_thought"]
+        return response
+
+    monkeypatch.setattr(optimization, "json_call", repair)
+    result = await optimization.analyze(db, experiment.agent.id, TEST_USER_ID, experiment.run.id)
+    assert result["groups"]
+    assert len(payloads) == 2
+    assert payloads[0]["cases"] == payloads[1]["cases"]
+    assert payloads[0]["required_case_ids"] == payloads[1]["required_case_ids"]
+    assert "/hidden_chain_of_thought" in payloads[1]["validation_error"]
+    assert payloads[1]["previous_response"]["analyses"][0]["evidence"] == [
+        "/hidden_chain_of_thought"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_analyzer_rejects_fabricated_evidence_and_foreign_scope(
     client, db, experiment, monkeypatch
 ):

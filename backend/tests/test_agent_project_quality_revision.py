@@ -409,7 +409,8 @@ def test_conditional_task_criteria_need_frozen_non_applicability_reason():
 
 
 @pytest.mark.asyncio
-async def test_reference_repairs_only_rejected_cases_and_rechecks_every_case():
+@pytest.mark.parametrize("always_reject", [False, True])
+async def test_reference_repairs_only_rejected_cases_and_rechecks_every_case(always_reject):
     import uuid
 
     from app.schemas.agent_project import EvalSetWrite
@@ -439,7 +440,7 @@ async def test_reference_repairs_only_rejected_cases_and_rechecks_every_case():
                 "rule_reviews": [
                     {
                         "reference": cid,
-                        "supported": cid != first or len(calls) > 1,
+                        "supported": cid != first or (not always_reject and len(calls) > 1),
                         "reason": "核对参考事实",
                     }
                     for cid in [first, second]
@@ -450,6 +451,20 @@ async def test_reference_repairs_only_rejected_cases_and_rechecks_every_case():
         repaired["reference_answer"] = "订单待发货"
         return {"name": "repair", "cases": [repaired]}
 
+    if always_reject:
+        with pytest.raises(semantic.SnapshotExecutionUnavailable) as error:
+            await validate_generated_cases(
+                {}, REQUIREMENTS, EvalSpec.model_validate(raw), body, ["normal"], call
+            )
+        assert error.value.code == "evaluation_reference_invalid"
+        proof = error.value.evidence
+        assert len(proof["reference_validation"]["attempts"]) == 3
+        assert proof["reference_validation"]["attempts"][-1]["rejections"] == {
+            first: "核对参考事实"
+        }
+        assert {c["id"] for c in proof["rejected_cases"]} == {first, second}
+        assert len(calls) == 5  # Three reviews, exactly two repair calls, no freeze.
+        return
     updated, validation = await validate_generated_cases(
         {}, REQUIREMENTS, EvalSpec.model_validate(raw), body, ["normal"], call
     )
