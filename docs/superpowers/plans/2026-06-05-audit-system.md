@@ -2,24 +2,24 @@
 
 ## Goal
 
-Moldy에 사용자별/관리자용 audit 기능을 추가한다.
+为 Moldy 添加面向用户/管理员的 audit 功能。
 
-- 일반 사용자는 `Settings > 활동 기록`에서 본인 관련 audit event만 조회한다.
-- `super_user`는 같은 개인 화면을 유지하면서, 관리자 항목의 `전체 활동 기록`에서 모든 사용자의 event를 조회한다.
-- event는 누가, 언제, 어떤 기능을, 어떤 대상에 대해 실행했고, 성공/실패/차단 여부와 실패 사유를 추적할 수 있어야 한다.
-- secret, prompt 본문, message 본문, API key cleartext, share token 전체값은 audit metadata에 저장하지 않는다.
+- 普通用户在 `Settings > 活动记录` 中只能查看与自己相关的 audit event。
+- `super_user` 保留同一个个人页面，并可在管理员项的 `全部活动记录` 中查看所有用户的 event。
+- event 必须能够追踪谁、何时、使用了什么功能、针对什么对象执行，以及成功/失败/阻止状态和失败原因。
+- secret、prompt 正文、message 正文、API key cleartext、share token 完整值不保存到 audit metadata。
 
-## OpenTelemetry와의 관계
+## 与 OpenTelemetry 的关系
 
-OpenTelemetry는 trace/metric/log 상관관계와 성능 관측에 적합하다. 이 기능은 사용자에게 노출되는 제품 데이터이며 권한/소유권/검색/보존 정책이 필요하므로 애플리케이션 DB에 직접 구현한다. `request_id`, `trace_id`, `run_id`를 event에 저장해 추후 OTel/Langfuse trace와 연결할 수 있게 한다.
+OpenTelemetry 适合 trace/metric/log 关联和性能观测。该功能属于面向用户暴露的产品数据，需要权限/所有权/搜索/保留策略，因此直接在应用 DB 中实现。把 `request_id`, `trace_id`, `run_id` 保存到 event，以便后续与 OTel/Langfuse trace 连接。
 
 ## Backend Design
 
 ### Table
 
-새 테이블 `audit_events`를 추가한다.
+新增表 `audit_events`。
 
-주요 컬럼:
+主要列：
 
 - actor: `actor_type`, `actor_user_id`, `actor_api_key_id`, email/label snapshot
 - owner: `owner_user_id`, email snapshot
@@ -30,17 +30,17 @@ OpenTelemetry는 trace/metric/log 상관관계와 성능 관측에 적합하다.
 - sanitized metadata: JSON `metadata`
 - `created_at`
 
-조회 정책:
+查询策略：
 
-- `scope=mine`: `owner_user_id`, `actor_user_id`, `target_owner_user_id` 중 현재 사용자와 연결된 event만 조회
-- `scope=all`: `super_user`만 허용
-- cursor pagination: `(created_at, id)` 내림차순
+- `scope=mine`：只查询 `owner_user_id`, `actor_user_id`, `target_owner_user_id` 中与当前用户关联的 event
+- `scope=all`：仅允许 `super_user`
+- cursor pagination：按 `(created_at, id)` 降序
 
 ### API
 
 `GET /api/audit-events`
 
-필터:
+过滤条件：
 
 - `scope=mine|all`
 - `limit`, `cursor`
@@ -85,8 +85,8 @@ Routes:
 
 Navigation:
 
-- Account section: `활동 기록`
-- Admin section, only for `super_user`: `전체 활동 기록`
+- Account section：`活动记录`
+- Admin section, only for `super_user`：`全部活动记录`
 
 UI pattern:
 

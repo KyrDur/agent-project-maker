@@ -38,11 +38,11 @@
 - Codex in-app browser E2E completed against the real logged-in local app:
   - `/agents/new` → Builder conversational flow: one `question_flow` card,
     3-step progression, receipt
-    `에이전트 이름: 웹탐색 요약봇 | 답변 톤: 전문적으로 | 결과 스타일: 자세한 설명`,
+    `Agent 名称：网页浏览摘要机器人 | 回答语气：专业 | 结果风格：详细说明`,
     then Phase 3.
-  - `잡담 에이전트` chat: legacy `ask_user(question, options)` rendered options
-    `영화/음악`, selecting `음악` resumed the agent and left a label receipt.
-  - `잡담 에이전트` chat: `mode="option_list"` rendered min/max copy and option
+  - `闲聊 Agent` chat: legacy `ask_user(question, options)` rendered options
+    `电影/音乐`, selecting `音乐` resumed the agent and left a label receipt.
+  - `闲聊 Agent` chat: `mode="option_list"` rendered min/max copy and option
     descriptions, selecting `Web Search` + `Gmail` resumed the agent and left
     `Web Search, Gmail` as the completed receipt after reload.
 - Full backend pytest was also run. Result: `1309 passed`, `2 deselected`, and one

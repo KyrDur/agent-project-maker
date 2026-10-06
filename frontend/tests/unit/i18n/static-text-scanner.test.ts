@@ -12,10 +12,10 @@ describe('static i18n text scanner', () => {
 
       export function Example() {
         const fallbackTitle = '标题后备'
-        toast.error('저장에 실패했어요')
+        toast.error('保存失败了')
         return (
           <section>
-            <h1>모델</h1>
+            <h1>模型</h1>
             <input placeholder="搜索" aria-label="搜索" />
           </section>
         )
@@ -24,7 +24,7 @@ describe('static i18n text scanner', () => {
 
     expect(findStaticTextIssuesInSource(source, 'src/app/example/page.tsx')).toMatchObject([
       { kind: 'string-literal', text: '标题后备' },
-      { kind: 'toast', text: '저장에 실패했어요' },
+      { kind: 'toast', text: '保存失败了' },
       { kind: 'jsx-text', text: '模型' },
       { kind: 'jsx-attribute', text: '搜索' },
       { kind: 'jsx-attribute', text: '搜索' },
@@ -68,9 +68,9 @@ describe('static i18n text scanner', () => {
 
   it('does not flag comments as static UI text', () => {
     const source = `
-      // 검색어 입력은 i18n에서 관리한다.
+      // 搜索词输入由 i18n 管理。
       /*
-       * 제목 없는 대화도 마찬가지.
+       * 没有标题的会话也一样。
        */
       export const label = t('search.placeholder')
     `

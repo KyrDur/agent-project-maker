@@ -17,9 +17,9 @@ type JsonScalar = str | int | float | bool | None
 type JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 
 SKILL_BUILDER_MODES = ("create", "improve")
-# v2 상태 기계(스킬 스튜디오 phase 1): active → confirming → completed, 이탈은
-# abandoned(GC 대상). collecting/drafting/review/failed/cancelled는 구 one-pass
-# 플로우의 레거시 값 — 기존 row 호환을 위해 유지한다.
+# v2 状态机（Skill Studio phase 1）：active → confirming → completed；离开则
+# abandoned（GC 对象）。collecting/drafting/review/failed/cancelled 是旧 one-pass
+# flow 的 legacy 值 — 为兼容现有 row 而保留。
 SKILL_BUILDER_STATUSES = (
     "active",
     "collecting",
@@ -92,15 +92,15 @@ class SkillBuilderSession(Base):
         ForeignKey("skills.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # v2 (스킬 빌더 챗): 빌더 대화 = 히든 에이전트의 진짜 conversation.
-    # 대화가 지워져도 세션은 살아남도록 SET NULL.
+    # v2（技能构建器聊天）：构建器对话 = 隐藏智能体的真实 conversation.
+    # 即使对话被删除，也通过 SET NULL. 让会话保留。
     conversation_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("conversations.id", ondelete="SET NULL"),
         nullable=True,
     )
-    # ADR-018 상대경로 — data_root 기준 (예: ``skill-drafts/<session_id>``).
+    # ADR-018 相对路径 — 以 data_root 为基准（例如 ``skill-drafts/<session_id>``）。
     draft_workspace_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # AD-4 스코프드 동의: 도구명 → 동의 메타데이터 (M4에서 기록).
+    # AD-4 scoped consent：tool name → consent metadata（在 M4 中记录）。
     tool_consents: Mapped[dict[str, JsonValue] | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

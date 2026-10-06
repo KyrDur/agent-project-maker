@@ -32,7 +32,7 @@ test.describe('Chat streaming performance', () => {
     try {
       await page.goto(`/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       const t0 = performance.now()
-      await sendMessage(page, 'E2E_SLOW_STREAM 성능 측정')
+      await sendMessage(page, 'E2E_SLOW_STREAM 性能测量')
 
       await expect(firstChunk).toBeVisible({ timeout: 20_000 })
       const ttftMs = performance.now() - t0

@@ -122,7 +122,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(
             conversationId,
-            '체크리스트, 표, TypeScript 코드, 수식, 이미지, 링크, 인용문, Mermaid 다이어그램을 모두 포함해서 채팅 출력 예시를 보여줘',
+            '请展示包含清单、表格、TypeScript 代码、公式、图片、链接、引用和 Mermaid 图表的聊天输出示例',
           )
           await settleStream(page)
           // Mermaid renders to SVG asynchronously after the text settles.
@@ -152,7 +152,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(conversationId, 'E2E_ASK_USER_FRUIT')
           await page
-            .getByText(/어떤 과일이 좋아요|🍎 사과|입력이 필요합니다/)
+            .getByText(/喜欢什么水果|🍎 苹果|需要输入/)
             .last()
             .waitFor({ state: 'visible', timeout: 30_000 })
             .catch(() => {})
@@ -199,8 +199,8 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '10-hitl-approval.png',
         title: 'HITL approval card',
         run: async (conversationId) => {
-          await goAndSend(conversationId, '도구를 사용해서 문서를 만들어줘. 승인 후 실행해.')
-          await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+          await goAndSend(conversationId, '使用工具创建文档。批准后执行。')
+          await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
             timeout: 40_000,
           })
           await page.waitForTimeout(600)
@@ -212,7 +212,7 @@ test.describe('Wave 4 — chat state captures', () => {
         run: async (conversationId) => {
           await goAndSend(conversationId, 'E2E_HITL_MULTI')
           await expect(
-            page.getByText(/승인 대기 \d+건|pending approvals/).last(),
+            page.getByText(/待批准 \d+项|pending approvals/).last(),
           ).toBeVisible({ timeout: 40_000 })
           await page.waitForTimeout(600)
         },
@@ -221,7 +221,7 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '12-artifact-inline.png',
         title: 'Generated artifact (inline)',
         run: async (conversationId) => {
-          await goAndSend(conversationId, 'E2E_DOCX 문서를 생성해줘')
+          await goAndSend(conversationId, '生成 E2E_DOCX 文档')
           await approveExecuteInSkill(page).catch(() => {})
           await settleStream(page, 120_000)
         },
@@ -247,7 +247,7 @@ test.describe('Wave 4 — chat state captures', () => {
         file: '14-branch-picker.png',
         title: 'Regenerate branch picker',
         run: async (conversationId) => {
-          await goAndSend(conversationId, '오늘 날씨 어때?')
+          await goAndSend(conversationId, '今天天气怎么样？')
           await settleStream(page)
           await page.getByRole('button', { name: '再生' }).first().click().catch(() => {})
           await expect(page.getByText('2/2').first()).toBeVisible({ timeout: 40_000 }).catch(() => {})

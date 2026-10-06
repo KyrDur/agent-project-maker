@@ -193,8 +193,8 @@
   "view_the_agent_s_cron_d4e26d": "查看智能体的 cron 计划列表",
   "opener_v_setup_completed_a623d2": "开启器 {v0} 设置完成。",
   "up_to_openers_can_be_b22846": "最多可设置 12 个开启器。",
-  "the_assistant_cannot_be_used_c11b21": "操作员完成 System LLM 设置（文本模型）后才能使用助手。",
-  "the_operator_must_select_the_2bd719": "操作员必须在 System LLM 设置中选择图像模型。",
+  "the_assistant_cannot_be_used_c11b21": "请先在“我的 AI 配置”中添加自己的 API Key 并选择文本模型，再使用助手。",
+  "the_operator_must_select_the_2bd719": "请在“我的 AI 配置”中选择图像模型。",
   "invalid_cron_expression_v_five_d4ae76": "无效的 cron 表达式：“{v0}”。需要五个字段（分钟小时日星期一工作日）。",
   "invalid_schedule_id_22d6bb": "计划 ID 无效。",
   "response_format_error_v_33515d": "响应格式错误：{v0}",
@@ -268,5 +268,14 @@
   "builder_runtime_retry": "重新检查",
   "builder_runtime_links": "[配置个人凭据](/credentials) · [配置模型](/models)，完成后回到这里继续。",
   "builder_tool_unavailable": "所需工具不可用。请在工具设置中修复或移除该工具，再重新构建。",
-  "builder_tool_credential": "所需工具缺少可用且兼容的个人凭据。请在工具设置中绑定个人凭据，再重新构建。"
+  "builder_tool_credential": "所需工具缺少可用且兼容的个人凭据。请在工具设置中绑定个人凭据，再重新构建。",
+  "generation_failed_retry": "生成未完成，已保留确认内容。请检查个人模型配置后重试。",
+  "generation_retry": "重试当前阶段",
+  "requirements_reason": "请说明确认这些需求和模拟假设的理由",
+  "requirement_goal": "目标",
+  "requirement_inputs": "输入",
+  "requirement_deliverables": "预期产物",
+  "requirement_business_rules": "业务规则与模拟假设",
+  "requirement_success_conditions": "成功条件",
+  "capabilities_reason": "确认能力方案的理由（必填）"
 }

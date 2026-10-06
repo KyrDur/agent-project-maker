@@ -113,10 +113,10 @@ class TestCreateChatModel:
         assert kwargs["base_url"] == "http://localhost:11434"
 
     def test_no_base_url_pins_canonical_endpoint(self):
-        """openai provider + base_url 미지정 → canonical OpenAI endpoint 강제.
+        """openai provider + 未指定 base_url → 强制 canonical OpenAI endpoint。
 
-        OS env ``OPENAI_BASE_URL`` 우회 차단 가드 (RunPod proxy / 사내 헬퍼
-        등으로 export 해도 OpenAI 본 endpoint 로 라우팅).
+        OS env ``OPENAI_BASE_URL`` 绕过阻断守卫（即使通过 RunPod proxy / 公司内部 辅助工具
+        等 export，也路由到 OpenAI 官方 endpoint）。
         """
         mock_cls = MagicMock()
         with patch.dict(
@@ -131,10 +131,10 @@ class TestCreateChatModel:
         assert kwargs["base_url"] == "https://api.openai.com/v1"
 
     def test_api_key_none_falls_back_to_settings(self):
-        """api_key=None일 때 PROVIDER_API_KEY_MAP의 settings 키로 fallback.
+        """api_key=None 时从 PROVIDER_API_KEY_MAP 的 settings 项 fallback。
 
-        새 langchain-anthropic / langchain-openai은 pydantic strict로 None을 거부하므로
-        명시 fallback 후 None이면 kwargs에서 제외 (라이브러리 환경변수 fallback).
+        新版 langchain-anthropic / langchain-openai 的 pydantic strict 会拒绝 None，因此
+        显式 fallback 后若仍为 None，则从 kwargs 中排除（库环境变量 fallback）。
         """
         mock_cls = MagicMock()
         with (
@@ -155,8 +155,8 @@ class TestCreateChatModel:
         assert kwargs["api_key"] == "settings-fallback"
 
     def test_api_key_none_with_no_settings_excluded_from_kwargs(self):
-        """api_key 인자도 None, settings도 None이면 kwargs에서 아예 제외 (라이브러리가
-        환경변수로 직접 잡게)."""
+        """api_key 参数为 None、settings 也为 None 时，从 kwargs 中完全排除（让库
+        直接从环境变量获取）。"""
         mock_cls = MagicMock()
         with (
             patch.dict(
@@ -281,7 +281,7 @@ class TestCreateChatModelGpt5Family:
     def test_gpt5_drops_max_tokens_and_forwards_max_completion_tokens(self):
         kwargs = self._patched_create("gpt-5.5-2026-04-23", max_tokens=512)
         assert "max_tokens" not in kwargs
-        # langchain-openai 0.3+ 는 top-level kwarg 로만 forward
+        # langchain-openai 0.3+ 仅通过 top-level kwarg forward
         assert kwargs["max_completion_tokens"] == 512
 
     def test_gpt5_drops_non_default_temperature(self):
@@ -305,20 +305,20 @@ class TestCreateChatModelGpt5Family:
         assert "max_completion_tokens" not in kwargs
 
     def test_gpt5_no_userwarning_from_model_kwargs(self):
-        """``max_completion_tokens`` 는 top-level — model_kwargs 안에 들어가면
-        LangChain 이 UserWarning 후 제거하므로 OpenAI 에 forward 되지 않는다."""
+        """``max_completion_tokens`` 位于 top-level — 若放进 model_kwargs，
+        LangChain 会在 UserWarning 后移除，因此不会向 OpenAI forward。"""
         kwargs = self._patched_create("gpt-5.5", max_tokens=200)
         model_kw = kwargs.get("model_kwargs", {})
         assert "max_completion_tokens" not in model_kw
 
 
 class TestCreateChatModelBaseUrlGuard:
-    """``OPENAI_BASE_URL`` env 우회 차단 가드.
+    """``OPENAI_BASE_URL`` env 绕过阻断守卫。
 
-    ChatOpenAI 가 base_url 미지정 시 OpenAI Python SDK 가 ``OPENAI_BASE_URL``
-    env 로 fallback. 사용자 셸이 RunPod proxy / Claude Code helper / 사내
-    프록시로 export 해놓으면 OpenAI 본 endpoint 가 아닌 엉뚱한 호스트로
-    라우팅되어 404 회귀. provider 별 canonical endpoint 명시 set 으로 차단.
+    ChatOpenAI 未指定 base_url 时，OpenAI Python SDK 会从 ``OPENAI_BASE_URL``
+    env fallback。用户终端若把 RunPod proxy / Claude Code helper / 公司内部
+    代理 export 出去，就会路由到并非 OpenAI 官方 endpoint 的错误主机，
+    导致 404 回归。provider 通过 canonical endpoint 显式 set 来阻断。
     """
 
     @staticmethod
@@ -336,36 +336,36 @@ class TestCreateChatModelBaseUrlGuard:
         return mock_cls.call_args[1]
 
     def test_openai_base_url_pinned_when_caller_omits(self):
-        """openai provider + base_url 미지정 → canonical endpoint 강제 (RunPod env 차단)."""
+        """openai provider + 未指定 base_url → 强制 canonical endpoint（阻断 RunPod env）。"""
         kwargs = self._patched_create("openai", "gpt-5.5")
         assert kwargs["base_url"] == "https://api.openai.com/v1"
 
     def test_openrouter_base_url_pinned_when_caller_omits(self):
-        """openrouter provider 도 같은 가드 — qwen/llama/* 같은 OpenRouter 모델."""
+        """openrouter provider 也使用相同守卫 — qwen/llama/* 等 OpenRouter 模型。"""
         kwargs = self._patched_create("openrouter", "qwen/qwen3.6-27b")
         assert kwargs["base_url"] == "https://openrouter.ai/api/v1"
 
     def test_explicit_base_url_takes_precedence(self):
-        """caller 가 base_url 명시 → 가드 우회 (사용자 의도 보존)."""
+        """caller 显式指定 base_url → 绕过守卫（保留用户意图）。"""
         custom = "https://custom.proxy.example/v1"
         kwargs = self._patched_create("openai", "gpt-4o", base_url=custom)
         assert kwargs["base_url"] == custom
 
     def test_anthropic_no_base_url_pin(self):
-        """anthropic 은 ChatOpenAI 가 아니므로 base_url 가드 영향 없음."""
+        """anthropic 不是 ChatOpenAI，因此不受 base_url 守卫影响。"""
         kwargs = self._patched_create("anthropic", "claude-sonnet-4-6")
         assert "base_url" not in kwargs
 
 
 class TestContextWindowProfileInjection:
-    """Phase 0 — context_window → model.profile['max_input_tokens'] 주입.
+    """Phase 0 — context_window → 注入 model.profile['max_input_tokens']。
 
-    deepagents 자동 SummarizationMiddleware 의 compute_summarization_defaults
-    가 우리 단일 source(context_window)를 임계값으로 쓰게 한다.
+    让 deepagents 自动 SummarizationMiddleware 的 compute_summarization_defaults
+    使用我们的单一 source(context_window) 作为阈值。
     """
 
     def test_context_window_not_forwarded_to_model_constructor(self):
-        """context_window 는 profile 주입용이지 모델 생성 kwarg 가 아니다 — 누수 금지."""
+        """context_window 用于 profile 注入，不是模型创建 kwarg — 禁止泄漏。"""
         mock_cls = MagicMock()
         with patch.dict(
             "app.agent_runtime.model_factory.PROVIDER_MAP",
@@ -384,7 +384,7 @@ class TestContextWindowProfileInjection:
         assert "context_window" not in kwargs
 
     def test_profileless_model_flips_to_fraction_trigger(self):
-        """openai_compatible(프로필 없음): cw 주입 → 고정 170k → ('fraction', 0.85)."""
+        """openai_compatible（无配置）：注入 cw → 固定 170k → ('fraction', 0.85)。"""
         from deepagents.middleware.summarization import compute_summarization_defaults
 
         from app.agent_runtime.model_factory import create_chat_model
@@ -400,7 +400,7 @@ class TestContextWindowProfileInjection:
         assert compute_summarization_defaults(model)["trigger"] == ("fraction", 0.85)
 
     def test_no_context_window_keeps_default_threshold(self):
-        """cw 미지정: 프로필 그대로 → 기존 동작 보존(profile-less = 고정 170k)."""
+        """未指定 cw：保持配置原样 → 保留现有行为(profile-less = 固定 170k)。"""
         from deepagents.middleware.summarization import compute_summarization_defaults
 
         from app.agent_runtime.model_factory import create_chat_model
@@ -415,7 +415,7 @@ class TestContextWindowProfileInjection:
         assert compute_summarization_defaults(model)["trigger"] == ("tokens", 170000)
 
     def test_our_window_overrides_builtin_profile(self):
-        """정식 모델(내장 프로필 보유)도 우리 cw 가 단일 source 로 override."""
+        """正式模型（具有内置配置）也由我们的 cw 作为单一 source 进行 override。"""
         from app.agent_runtime.model_factory import create_chat_model
 
         model = create_chat_model(
@@ -424,7 +424,7 @@ class TestContextWindowProfileInjection:
         assert (model.profile or {}).get("max_input_tokens") == 200000
 
     def test_distinct_windows_are_not_cache_shared(self):
-        """cw 가 다르면 캐시 슬롯 분리 — tiny-window 빌드가 운영 인스턴스를 오염시키지 않는다."""
+        """cw 不同时拆分缓存槽位 — tiny-window 构建 不会污染运行实例。"""
         from app.agent_runtime.model_factory import create_chat_model
 
         small = create_chat_model(
@@ -446,7 +446,7 @@ class TestContextWindowProfileInjection:
         assert (big.profile or {}).get("max_input_tokens") == 200000
 
     def test_invalid_window_is_ignored(self):
-        """0/음수/비정수 cw 는 무시 — profile 주입 안 함."""
+        """忽略 0/负数/非整数 cw — 不注入 profile。"""
         from app.agent_runtime.model_factory import create_chat_model
 
         model = create_chat_model(

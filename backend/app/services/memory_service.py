@@ -65,7 +65,7 @@ def _validate_memory_text(value: str | None) -> None:
         if pattern.search(value):
             raise ValidationError(
                 "MEMORY_SECRET_DETECTED",
-                "민감정보처럼 보이는 값은 메모리에 저장할 수 없습니다",
+                "疑似敏感信息的值不能保存到内存中",
             )
 
 
@@ -100,7 +100,7 @@ async def _ensure_agent_owned(
         if required:
             raise ValidationError(
                 "MEMORY_AGENT_REQUIRED",
-                "agent scope 메모리는 agent_id가 필요합니다",
+                "agent scope 内存需要 agent_id",
             )
         return None
     agent = await _get_owned_agent(db, agent_id, user_id)
@@ -134,7 +134,7 @@ async def _validate_source_conversation(
     if not await _is_owned_conversation(db, conversation_id, user_id):
         raise ValidationError(
             "MEMORY_SOURCE_CONVERSATION_INVALID",
-            "source_conversation_id가 올바르지 않습니다",
+            "source_conversation_id 无效",
         )
 
 
@@ -235,9 +235,7 @@ def _scope_allows(allowed: str, scope: str) -> bool:
     return allowed == "both" or allowed == scope
 
 
-def _scope_intersection(
-    user_allowed: AllowedScopes, agent_override: str
-) -> AllowedScopes | None:
+def _scope_intersection(user_allowed: AllowedScopes, agent_override: str) -> AllowedScopes | None:
     if agent_override == "inherit":
         return user_allowed
     if agent_override == "agent_only":

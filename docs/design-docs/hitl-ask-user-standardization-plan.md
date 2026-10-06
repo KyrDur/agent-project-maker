@@ -1,151 +1,151 @@
 # HITL Hardening Implementation Plan — robust `edit` + `allowed_decisions` gating
 
-> **For agentic workers:** 이 문서 하나만 보고 처음부터 끝까지 구현할 수 있도록 작성했다. 모든 변경은 파일 경로 + 함수명 + 코드 스니펫 + 테스트 + 검증 커맨드를 포함한다. 단계는 체크박스(`- [ ]`)로 추적한다. 먼저 §2(현재 상태 — 이미 구현된 것)를 읽고, 절대 다시 만들지 말 것.
+> **For agentic workers:** 本文按“只看这一份文档即可从头到尾实现”的标准编写。所有修改都包含文件路径 + 函数名 + 代码 snippet + 测试 + 验证 command。步骤用 checkbox（`- [ ]`）追踪。先阅读 §2（当前状态 — 已实现的内容），绝对不要重复实现。
 
-**작성 기준:** 현재 소스코드(`/Users/chester/dev/ref/natural-mold-captures`, langchain 1.3.9, deepagents 0.6.9) 직접 대조. 이전 버전 문서(executor.py 빌드 사이트, 수동 `HumanInTheLoopMiddleware` append)는 **전면 폐기**한다.
+**编写依据：** 直接对照当前源码（`/Users/chester/dev/ref/natural-mold-captures`，langchain 1.3.9，deepagents 0.6.9）。旧版文档（executor.py build site、手动 append `HumanInTheLoopMiddleware`）**全部废弃**。
 
-**Goal:** 메인 채팅 HITL(human-in-the-loop)에서 **`edit`(수정 후 승인) 결정을 견고화**하고, **도구별 `allowed_decisions` 화이트리스트를 실제로 존중**하도록 만든다. 부차적으로 이미 구현된 multi-action wire / subagent 상속의 *남은 갭*과 ask_user 통합 결정을 정리한다.
+**Goal：** 强化 main chat HITL（human-in-the-loop）中的 **`edit`（修改后批准）decision**，并让**按工具配置的 `allowed_decisions` whitelist 真正被尊重**。同时整理已经实现的 multi-action wire / subagent 继承中的*剩余 gap*与 ask_user 集成决策。
 
 **Tech Stack:** FastAPI, LangChain 1.3.x (`HumanInTheLoopMiddleware`), LangGraph 1.x, DeepAgents 0.6.9 (`create_deep_agent(interrupt_on=...)`), React 19, assistant-ui, TanStack Query, Vitest, pytest.
 
 ---
 
-## 1. 배경 — HITL 결정 4종
+## 1. 背景 — HITL 4 种 decision
 
-도구 실행 전 사용자 개입은 LangChain `HumanInTheLoopMiddleware`의 표준 interrupt 체계를 쓴다. 결정 타입은 4종:
+工具执行前的用户介入使用 LangChain `HumanInTheLoopMiddleware` 标准 interrupt 体系。decision type 共 4 种：
 
-| type | 의미 | 추가 필드 |
+| type | 含义 | 附加字段 |
 |---|---|---|
-| `approve` | 그대로 실행 | 없음 |
-| `edit` | **인자를 수정해서 실행** | `edited_action: {name, args}` |
-| `reject` | 실행 거부 | `message?` (사유) |
-| `respond` | 도구 실행 없이 사용자 답변을 모델에 반환 (ask_user 전용) | `message` |
+| `approve` | 原样执行 | 无 |
+| `edit` | **修改参数后执行** | `edited_action: {name, args}` |
+| `reject` | 拒绝执行 | `message?`（原因） |
+| `respond` | 不执行工具，直接把用户回答返回给模型（仅 ask_user） | `message` |
 
-도구별로 어떤 결정을 허용할지는 interrupt payload의 `review_configs[i].allowed_decisions`로 내려온다. 본 작업의 핵심은 **edit가 안정적으로 동작**하고 **카드가 allowed_decisions를 존중**하게 만드는 것이다.
+各工具允许哪些 decision，会通过 interrupt payload 的 `review_configs[i].allowed_decisions` 下发。本工作核心是让 **edit 稳定工作**并让**card 尊重 allowed_decisions**。
 
 ---
 
-## 2. 현재 상태 — 이미 구현된 것 (다시 만들지 말 것)
+## 2. 当前状态 — 已经实现的部分（禁止重复实现）
 
-이전 문서가 "구현해야 한다"고 적었던 항목 중 대부분은 **이미 구현·테스트 완료**다. 재작업 금지.
+此前文档写成“需要实现”的大多数项目其实**已经实现并测试完成**。禁止返工。
 
-### 2.1 ✅ Backend: top-level `interrupt_on` 경로 (subagent 상속 포함) — DONE
+### 2.1 ✅ Backend：top-level `interrupt_on` 路径（含 subagent 继承）— DONE
 
-- **빌드 사이트가 이동했다.** `backend/app/agent_runtime/executor.py`는 이제 **re-export 파사드일 뿐**(파일 전체가 import 재노출). 실제 빌드는 `backend/app/agent_runtime/runtime_component_builder.py`.
-- `build_agent()` (`runtime_component_builder.py:83-97`)는 `create_deep_agent(..., interrupt_on=interrupt_on, ...)`로 **top-level 파라미터**를 넘긴다. **app 코드에 수동 `HumanInTheLoopMiddleware(` 인스턴스는 0개**(grep 확인).
-- 정책 계산: `_build_interrupt_on_policy()` (`runtime_component_builder.py:363-392`) = `_default_interrupt_on_from_tools()` (`:354-360`) + `middleware_configs`의 명시 `human_in_the_loop.params.interrupt_on` 병합 + `ask_user` 정책 `setdefault`.
-- **도구별 정책은 `backend/app/tools/risk.py`가 결정한다** (이 작업의 allowed_decisions 출처):
+- **build site 已移动。** `backend/app/agent_runtime/executor.py` 现在只是**re-export facade**（整个文件仅重新暴露 import）。实际 build 位于 `backend/app/agent_runtime/runtime_component_builder.py`。
+- `build_agent()`（`runtime_component_builder.py:83-97`）通过 `create_deep_agent(..., interrupt_on=interrupt_on, ...)` 传入 **top-level parameter**。**app 代码中手动 `HumanInTheLoopMiddleware(` 实例为 0 个**（grep 确认）。
+- 策略计算：`_build_interrupt_on_policy()`（`runtime_component_builder.py:363-392`）= `_default_interrupt_on_from_tools()`（`:354-360`）+ 合并 `middleware_configs` 中显式的 `human_in_the_loop.params.interrupt_on` + `ask_user` policy `setdefault`。
+- **按工具的 policy 由 `backend/app/tools/risk.py` 决定**（本工作的 allowed_decisions 来源）：
   - `default_deepagents_interrupt_policy()` (`risk.py:271-276`): `write_file→[approve,reject]`, `edit_file→[approve,edit,reject]`, `execute→[approve,reject]`.
-  - `interrupt_policy_for_tool()` (`risk.py:279-283`): 도구 risk 메타데이터로 **명시 allowed_decisions** 방출(`{tool: True}` 아님).
+  - `interrupt_policy_for_tool()`（`risk.py:279-283`）：根据 tool risk metadata 发出**显式 allowed_decisions**（不是 `{tool: True}`）。
   - `_DEFAULT_APPROVAL_DECISIONS` (`risk.py:24-30`): WRITE_INTERNAL / EXTERNAL_MUTATION → `(approve, edit, reject)`; CODE_EXECUTION / UNKNOWN → `(approve, reject)`.
-  - `execute_in_skill_risk()` (`risk.py:260-268`): CODE_EXECUTION → **`(approve, reject)` — edit 없음**.
+  - `execute_in_skill_risk()`（`risk.py:260-268`）：CODE_EXECUTION → **`(approve, reject)` — 不含 edit**。
   - MCP mutation (`risk.py:250-257`): `(approve, reject)`.
   - `ask_user`: `{"allowed_decisions": ["respond"]}` (`runtime_component_builder.py:390-391`).
-- ask_user 순서 버그 FIXED: `ask_user_tool` / `execute_in_skill`은 정책 계산(`:690`) **전에** append(`:646`, `:688`).
-- **Subagent 상속**(`subagents.py:74-168`): 각 child가 자기 도구로 자기 `interrupt_on`을 계산해 `spec["interrupt_on"]`에 기록(`:162-163`). deepagents 0.6.9 `graph.py:663`이 spec 값 우선, 없으면 top-level 상속; auto `general-purpose` subagent는 top-level 상속(`graph.py:741-746`).
-- **Trigger 모드 차단**: `_build_interrupt_on_policy`가 None 반환(`:377-378`), ask_user 미주입(`:687-688`, `:737`), `trigger_executor.py:202-218`가 risky tool 자체를 사전 차단.
-- `middleware_registry.py`: `human_in_the_loop` ∈ `EXPLICITLY_INSTANTIATED_TYPES`(`:459-464`) → `build_middleware_instances` 우회(`runtime_component_builder.py:609-611`), 카탈로그엔 노출 유지.
-- 테스트: `tests/test_hitl_middleware.py`(top-level interrupt_on + `_hitl_instances == []` 가드), `tests/agent_runtime/test_subagents_runtime.py:184`, `tests/agent_runtime/test_langgraph_hitl_interrupts.py`.
+- ask_user 顺序 bug 已修复：`ask_user_tool` / `execute_in_skill` 会在 policy 计算（`:690`）**之前** append（`:646`、`:688`）。
+- **Subagent 继承**（`subagents.py:74-168`）：每个 child 都根据自己的工具计算自己的 `interrupt_on`，写入 `spec["interrupt_on"]`（`:162-163`）。deepagents 0.6.9 `graph.py:663` 优先使用 spec 值，缺失时继承 top-level；auto `general-purpose` subagent 继承 top-level（`graph.py:741-746`）。
+- **Trigger mode 阻断**：`_build_interrupt_on_policy` 返回 None（`:377-378`），不注入 ask_user（`:687-688`、`:737`），`trigger_executor.py:202-218` 会预先阻断 risky tool 本身。
+- `middleware_registry.py`：`human_in_the_loop` ∈ `EXPLICITLY_INSTANTIATED_TYPES`（`:459-464`）→ 跳过 `build_middleware_instances`（`runtime_component_builder.py:609-611`），但仍保留在 catalog 中。
+- 测试：`tests/test_hitl_middleware.py`（top-level interrupt_on + `_hitl_instances == []` guard）、`tests/agent_runtime/test_subagents_runtime.py:184`、`tests/agent_runtime/test_langgraph_hitl_interrupts.py`。
 
 ### 2.2 ✅ Frontend: multi-action wire coordination — DONE
 
-- `frontend/src/lib/chat/standard-interrupt.ts`: `standardInterruptToToolCalls()` (`:126-153`, action_request → 합성 tool call, 메타 `metadataForAction` `:45-58`로 `hitl_action_index/total/interrupt_id/approval_id/allowed_decisions` 부착), `createHiTLDecisionCoordinator()` (`:213-244`, **N개 결정을 모아 인덱스 순서대로 한 번만 resume**, idempotent).
-- `reviewForAction()` (`:31-43`): review_config 없으면 fallback `allowed_decisions: ['approve','reject']`.
-- v3 경로 어댑터 `frontend/src/lib/chat/langgraph-runtime/hitl-interrupts.ts`(`standardInterruptToToolCalls` 재사용 `:10`, 정규화/projection), 스트림 훅 wiring `use-moldy-langgraph-stream.ts:2328-2358`(projection), coordinator map `:2562`, `registerDecision` `:2871-2897`(단일 액션 bypass `:2880-2883`, 멀티 coordinator `:2884-2894`), 동시-인터럽트 배칭 `respondAll` `:2756-2811`.
-- 카드 dispatch: `approval-card.tsx`의 `resumeDecision`이 `hitl_action_index` 있으면 `registerDecision` 우선, 없으면 `onResumeDecisions` fallback. `user-input-ui.tsx` 동일.
+- `frontend/src/lib/chat/standard-interrupt.ts`：`standardInterruptToToolCalls()`（`:126-153`，action_request → synthetic tool call，通过 `metadataForAction` `:45-58` 附加 `hitl_action_index/total/interrupt_id/approval_id/allowed_decisions` metadata）、`createHiTLDecisionCoordinator()`（`:213-244`，**汇总 N 个 decision，按 index 顺序仅 resume 一次**，idempotent）。
+- `reviewForAction()`（`:31-43`）：无 review_config 时 fallback `allowed_decisions: ['approve','reject']`。
+- v3 路径 adapter `frontend/src/lib/chat/langgraph-runtime/hitl-interrupts.ts`（复用 `standardInterruptToToolCalls` `:10`，normalize/projection），stream hook wiring `use-moldy-langgraph-stream.ts:2328-2358`（projection），coordinator map `:2562`，`registerDecision` `:2871-2897`（single action bypass `:2880-2883`，multi coordinator `:2884-2894`），并发 interrupt batch `respondAll` `:2756-2811`。
+- card dispatch：`approval-card.tsx` 的 `resumeDecision` 若有 `hitl_action_index` 则优先 `registerDecision`，否则 fallback 到 `onResumeDecisions`。`user-input-ui.tsx` 同样。
 - `hitl-context.ts:12-17`: `registerDecision` API.
-- 테스트: `standard-interrupt.test.ts`(coordinator 포함), `use-moldy-langgraph-stream.test.tsx`(멀티/동시 배칭), `langgraph-runtime/__tests__/hitl-interrupts.test.ts`.
+- 测试：`standard-interrupt.test.ts`（含 coordinator）、`use-moldy-langgraph-stream.test.tsx`（multi/concurrent batching）、`langgraph-runtime/__tests__/hitl-interrupts.test.ts`。
 
-### 2.3 ✅ ask_user wire 정규화 — DONE (단, native interrupt 기반)
+### 2.3 ✅ ask_user wire normalization — DONE（但基于 native interrupt）
 
-- ask_user는 LLM-visible tool이며 정책에 `[respond]`로 등록되지만, 실제 대기는 **tool body 내부 native `interrupt()`** (`backend/app/agent_runtime/tools/ask_user.py:152`)로 발생. `streaming._interrupt_to_standard_chunk`(`streaming.py:198-221`)가 native 페이로드를 표준 `respond` action으로 어댑트. resume 파싱 `_extract_respond_message`(`ask_user.py:62-77`)가 `{"decisions":[{"type":"respond","message":...}]}`와 bare string 모두 처리.
+- ask_user 是 LLM-visible tool，虽然 policy 注册为 `[respond]`，但实际等待发生在 **tool body 内部 native `interrupt()`**（`backend/app/agent_runtime/tools/ask_user.py:152`）。`streaming._interrupt_to_standard_chunk`（`streaming.py:198-221`）将 native payload 适配为标准 `respond` action。resume 解析 `_extract_respond_message`（`ask_user.py:62-77`）同时处理 `{"decisions":[{"type":"respond","message":...}]}` 和 bare string。
 
-### 2.4 ❌ 아직 없는 것 (= 본 작업 범위)
+### 2.4 ❌ 尚未实现的部分（= 本工作范围）
 
-1. **`edit` 견고화** — 프론트가 `tool_name` 모르면 하드 중단, raw JSON 텍스트박스, 시크릿 위치 의존 복원(아래 §3).
-2. **`allowed_decisions` 게이팅** — 카드가 값을 받지만 **버튼 표시에 안 씀**(잠재 버그). edit 불가 도구(`execute_in_skill` 등)에도 수정 버튼이 떠서, 누르면 미들웨어가 늦게 ValueError.
-3. (선택) **통합 "N건 대기" UX** — wire는 됐지만 시각적 묶음/「모두 승인」 없음.
-4. (선택/결정) **ask_user를 미들웨어 respond로 진짜 통합**할지 vs 현재 native+wire 정규화 유지·문서화할지.
-5. (선택) **부모 커스텀 HITL 정책의 linked subagent 전파** — 현재 child는 자기 `middleware_configs`만 읽어(`subagents.py:118`) 부모 override가 전파 안 됨.
+1. **强化 `edit`** — frontend 不知道 `tool_name` 时 hard stop、raw JSON textbox、secret 恢复依赖位置（见 §3）。
+2. **`allowed_decisions` gating** — card 收到了值，但**没有用于按钮显示**（潜在 bug）。即使工具不允许 edit（如 `execute_in_skill`），也会显示“修改”按钮，点击后 middleware 才晚到 ValueError。
+3. （可选）**统一“N 项等待中” UX** — wire 已完成，但没有视觉 grouping/“全部批准”。
+4. （可选/待决定）是否将 **ask_user 真正整合为 middleware respond**，还是保留当前 native+wire normalization 并文档化。
+5. （可选）**父级 custom HITL policy 向 linked subagent 传播** — 当前 child 只读取自己的 `middleware_configs`（`subagents.py:118`），父级 override 不会传播。
 
 ---
 
-## 3. 문제 상세 — `edit`가 깨지는 지점 (현재 코드)
+## 3. 问题详情 — `edit` 出错的位置（当前代码）
 
-`frontend/src/components/chat/tool-ui/approval-card.tsx` 기준.
+以 `frontend/src/components/chat/tool-ui/approval-card.tsx` 为准。
 
-### 3.1 하드 중단 — `tool_name` 미상 시 edit 불가
-`toDecision('modified', resumeResponse, args?.tool_name)`(`:~118-133`, 호출 `:~360`):
+### 3.1 hard stop — `tool_name` 未知时无法 edit
+`toDecision('modified', resumeResponse, args?.tool_name)`（`:~118-133`，调用 `:~360`）：
 ```ts
 case 'modified':
-  if (!toolName) return null            // ← 하드 중단
+  if (!toolName) return null            // ← hard stop
   return toEdit({ name: toolName, args: response.modified_args ?? {} })
 ```
-`null`이면 핸들러가 submit 전체를 중단하고 **잘못된 메시지** `invalidJson`을 띄운다(`:~361-367`). `tool_name`은 `standard-interrupt.ts:146`에서 `action.name`으로 채워지지만, 병합 경로에서 raw 모델 tool-call로부터 온 슬롯은 `tool_name`이 비어 edit만 실패한다(approve/reject는 정상).
+如果为 `null`，handler 会中断整个 submit，并显示**错误消息** `invalidJson`（`:~361-367`）。`tool_name` 会在 `standard-interrupt.ts:146` 中由 `action.name` 填充，但在 merge 路径里，来自 raw model tool-call 的 slot 中 `tool_name` 为空，因此只有 edit 会失败（approve/reject 正常）。
 
-**근본 원인:** 프론트가 `edited_action.name`(도구 이름)을 **재구성해 보내야 한다**. langchain `human_in_the_loop.py:310-320`이 `edited_action["name"]`/`["args"]`를 hard subscript로 읽기 때문.
+**根本原因：** frontend 必须**重建并发送** `edited_action.name`（tool name）。因为 langchain `human_in_the_loop.py:310-320` 会用 hard subscript 读取 `edited_action["name"]`/`["args"]`。
 
-### 3.2 raw JSON 텍스트박스 — 문법 에러로 깨짐
-edit 진입 시 `editedArgs`에 `JSON.stringify(toolArgs, null, 2)`를 채우고 textarea로 편집(`:~480-495`, `:~515-527`). submit 시 `JSON.parse(editedArgs)`(`:~342-358`) — 중괄호/따옴표 하나만 틀려도 `invalidJson`.
+### 3.2 raw JSON textbox — 会因语法错误而崩
+进入 edit 时，将 `JSON.stringify(toolArgs, null, 2)` 填入 `editedArgs`，通过 textarea 编辑（`:~480-495`、`:~515-527`）。submit 时执行 `JSON.parse(editedArgs)`（`:~342-358`）— 只要一个括号/引号出错就会触发 `invalidJson`。
 
-### 3.3 시크릿(`<redacted>`) 위치 의존 복원 — 누출/유실
-`tool_args`는 **소스에서 이미 redact**됨(`standard-interrupt.ts:130` `redactSensitiveRecord`). 따라서 프론트 `restoreRedactedRecordPlaceholders(parsed, args?.tool_args)`(`:~56-80`, `:~347-350`)는 **프로덕션에서 no-op**(원본도 `<redacted>`라 되돌릴 값이 없음). 실제 복원은 백엔드가 checkpoint에서 한다. 더 나쁜 건: 프론트/백엔드 복원이 **key 이름·배열 index 위치 매칭**이라, 사용자가 `<redacted>` 키를 rename / 배열 reorder / 라인 삭제하면 시크릿이 **그대로 전송되거나 유실**된다(에러 없이).
-> ⚠️ 기존 테스트 `approval-card.test.tsx`의 "restores redacted placeholders…"는 `tool_args`에 **un-redacted** 값을 직접 주입해 통과 — 프로덕션에서 동작하지 않는 경로에 잘못된 안도감을 준다. 본 작업에서 이 테스트를 교체한다.
+### 3.3 secret（`<redacted>`）恢复依赖位置 — 泄漏/丢失
+`tool_args` **在 source 中已经 redacted**（`standard-interrupt.ts:130` 的 `redactSensitiveRecord`）。因此 frontend 的 `restoreRedactedRecordPlaceholders(parsed, args?.tool_args)`（`:~56-80`、`:~347-350`）在**生产中是 no-op**（原始值也已经是 `<redacted>`，没有可恢复的值）。实际恢复由 backend 从 checkpoint 完成。更糟的是：frontend/backend 的恢复都依赖**key 名称·array index 位置匹配**，因此如果用户 rename `<redacted>` key / reorder array / 删除一行，secret 会**原样发送或丢失**（且无 error）。
+> ⚠️ 现有测试 `approval-card.test.tsx` 中的“restores redacted placeholders…”通过直接向 `tool_args` 注入 **un-redacted** 值来通过 — 对生产中实际不工作的路径产生了错误安全感。本工作中替换该测试。
 
-### 3.4 `allowed_decisions` 잠재 버그
-`ApprovalArgs.allowed_decisions`(`:40`)는 채워지지만(`standard-interrupt.ts:150`) **렌더에서 안 읽힌다**. 버튼 블록(`:~500-562`)은 무조건 승인/수정/거부 3개를 그린다. `execute_in_skill`(allowed=`[approve,reject]`)에도 수정 버튼이 떠서, 누르면 v3 resume 경로가 검증 없이 raw 전달(`InputRespondEntry.response: Any`) → 미들웨어 `_process_decision`에서 ValueError(`human_in_the_loop.py:343-349`).
-
----
-
-## 4. 권장 설계
-
-### 4.1 Edit-by-index (프론트가 도구 이름을 안 보낸다)
-- **백엔드가 인덱스로 도구 이름을 채운다.** langchain은 decision↔action을 **positional index**로 매칭하고(`human_in_the_loop.py:438,450-455`) tool-call `id`는 미들웨어가 매칭된 pending call에서 가져온다. 따라서 `edited_action.name`은 백엔드가 **이미 알고 있는** `action_requests[index].name`으로 채울 수 있다.
-- `conversation_agent_protocol_resume_redaction.py`가 **이미** 인터럽트별 원본 `{name,args}`를 인덱스로 재구성한다(`_raw_pending_actions_by_interrupt` `:69`, 매칭 `_restore_redacted_response` `:157`). 현재는 args만 복원하고 name은 프론트 값을 통과(`:184`). → name을 **권위적으로 덮어쓰기**.
-- **결과:** 프론트는 `edited_action.name`을 신뢰성 있게 만들 필요가 없어진다 → §3.1 하드 중단 제거.
-
-### 4.2 Field-based editor (raw JSON 대신 칸별 편집)
-- `ArgsPreview`의 key/value 목록(이미 존재)을 **편집 가능한 폼**으로 확장: 각 값은 입력 컨트롤, **시크릿 키(`isSensitiveDisplayKey`)는 read-only 잠금**(`<redacted>` 표시, 편집 불가).
-- submit 시 `JSON.parse` 없음 → §3.2 제거. 시크릿은 잠겨 rename/reorder 불가 → §3.3 누출/유실 제거. 프론트는 `restoreRedactedRecordPlaceholders` 불필요(백엔드가 복원 소유).
-
-### 4.3 allowed_decisions 게이팅 (프론트 only)
-- 카드가 받은 `allowed_decisions`대로 버튼 조건부 렌더. **빈/누락 시 기본 `[approve, reject]`**(edit 미포함 — `reviewForAction`의 fallback과 일치). 백엔드는 이미 올바른 값을 보내므로 **백엔드 변경 불필요**.
+### 3.4 `allowed_decisions` 潜在 bug
+`ApprovalArgs.allowed_decisions`（`:40`）虽然会被填充（`standard-interrupt.ts:150`），但**render 时没有读取**。button block（`:~500-562`）无条件画出 approve/edit/reject 3 个按钮。即使 `execute_in_skill`（allowed=`[approve,reject]`）也会显示 edit 按钮，点击后 v3 resume 路径不做验证，直接 raw 传递（`InputRespondEntry.response: Any`）→ 到 middleware `_process_decision` 才触发 ValueError（`human_in_the_loop.py:343-349`）。
 
 ---
 
-## 5. 파일 구조 (변경 대상)
+## 4. 推荐设计
+
+### 4.1 Edit-by-index（frontend 不发送 tool name）
+- **backend 按 index 填充 tool name。** langchain 按**位置 index**匹配 decision↔action（`human_in_the_loop.py:438,450-455`），tool-call `id` 由 middleware 从匹配到的 pending call 中取得。因此 `edited_action.name` 可以由 backend 用**已经知道的** `action_requests[index].name` 填充。
+- `conversation_agent_protocol_resume_redaction.py` **已经**按 interrupt index 重建原始 `{name,args}`（`_raw_pending_actions_by_interrupt` `:69`，匹配 `_restore_redacted_response` `:157`）。当前只恢复 args，name 沿用 frontend 值（`:184`）。→ 应**权威覆盖 name**。
+- **结果：** frontend 不再需要可靠地构造 `edited_action.name` → 移除 §3.1 hard stop。
+
+### 4.2 Field-based editor（替代 raw JSON）
+- 将 `ArgsPreview` 已有 key/value list 扩展为**可编辑 form**：每个值使用 input control，**secret key（`isSensitiveDisplayKey`）设为 read-only lock**（显示 `<redacted>`，不可编辑）。
+- submit 时不再使用 `JSON.parse` → 消除 §3.2。secret 被锁定，无法 rename/reorder → 消除 §3.3 泄漏/丢失。frontend 无需 `restoreRedactedRecordPlaceholders`（恢复归 backend 所有）。
+
+### 4.3 allowed_decisions gating（仅 frontend）
+- 按 card 收到的 `allowed_decisions` 条件渲染按钮。**为空/缺失时默认 `[approve, reject]`**（不包含 edit — 与 `reviewForAction` fallback 一致）。backend 已经发送正确值，因此**无需 backend 修改**。
+
+---
+
+## 5. 文件结构（修改对象）
 
 ### Backend
 - **Modify** `backend/app/routers/conversation_agent_protocol_resume_redaction.py`
-  - 모든 edit decision에 대해 action-by-index 해석 실행(현재 `<redacted>` 있을 때만 도는 early-return 완화)
-  - `edited_action["name"]`을 `raw_actions[index]["name"]`으로 권위적 설정
-- **Modify** `backend/app/routers/conversation_agent_protocol_commands.py`(선택)
-  - `_handle_input_respond_command`에서 각 decision.type을 pending `review_configs[index].allowed_decisions`와 교차검증(조기 거절). 또는 `conversation_agent_protocol_resume.py:validate_resume_payload`.
+  - 对所有 edit decision 执行 action-by-index 解析（放宽当前仅存在 `<redacted>` 时才运行的 early-return）
+  - 将 `edited_action["name"]` 权威设置为 `raw_actions[index]["name"]`
+- **Modify** `backend/app/routers/conversation_agent_protocol_commands.py`（可选）
+  - 在 `_handle_input_respond_command` 中将每个 decision.type 与 pending `review_configs[index].allowed_decisions` 交叉验证（提前拒绝）。或在 `conversation_agent_protocol_resume.py:validate_resume_payload` 中处理。
 - **Modify** `backend/tests/test_hitl_wire.py`
-  - v3 `responses`-keyed resume + name-fill + 멀티액션 edit index 정렬 테스트 추가
+  - 新增 v3 `responses`-keyed resume + name-fill + multi-action edit index 排序测试
 
 ### Frontend
 - **Modify** `frontend/src/components/chat/tool-ui/approval-card.tsx`
-  - 버튼을 `allowed_decisions`로 게이팅
-  - edit: 하드 중단 제거 + field-based editor
-  - `restoreRedactedRecordPlaceholders` 제거(백엔드 복원 소유)
+  - 按 `allowed_decisions` gating 按钮
+  - edit：移除 hard stop + field-based editor
+  - 移除 `restoreRedactedRecordPlaceholders`（恢复归 backend 所有）
 - **Modify** `frontend/src/lib/types/index.ts` + `frontend/src/lib/chat/decision-mappers.ts`
-  - `Decision.edited_action.name`을 optional로(또는 name-less edit 허용)
+  - 将 `Decision.edited_action.name` 改为 optional（或允许 name-less edit）
 - **Modify** `frontend/src/components/chat/tool-ui/__tests__/approval-card.test.tsx`
-  - allowed_decisions 게이팅 / name 없는 edit / 시크릿 잠금 / field editor 테스트
+  - allowed_decisions gating / name-less edit / secret lock / field editor 测试
 
 ---
 
-## 6. 구현 작업 (Task by Task)
+## 6. 实现任务（Task by Task）
 
-> 권장 순서: **Task 1(테스트 먼저) → 2(백엔드 edit-by-index) → 3(프론트 게이팅) → 4(프론트 edit UI) → 5(통합검증)**. 각 Task는 독립적으로 그린이 되도록 구성.
+> 推荐顺序：**Task 1（先写测试）→ 2（backend edit-by-index）→ 3（frontend gating）→ 4（frontend edit UI）→ 5（集成验证）**。每个 Task 都应做到独立 green。
 
-### Task 1 — 백엔드 회귀 테스트를 먼저 추가한다 (TDD)
+### Task 1 — 先新增 backend 回归测试（TDD）
 
 **Files:** `backend/tests/test_hitl_wire.py`
 
-- [ ] **Step 1: v3 edit가 name 없이도 백엔드에서 채워지는 테스트(실패 예상).**
-  `conversation_agent_protocol_resume_redaction.py`의 복원 함수를 직접 호출해, pending action(`action_requests=[{name:"execute_in_skill", args:{command:"old"}}]`)이 있을 때 decision `{type:"edit", edited_action:{args:{command:"new"}}}`(name 없음, redacted 없음)를 넣으면 결과가 `edited_action.name == "execute_in_skill"`, `args.command == "new"`가 되도록 단언.
+- [ ] **Step 1：测试 v3 edit 即使没有 name，也会由 backend 填充（预期失败）。**
+  直接调用 `conversation_agent_protocol_resume_redaction.py` 的 restore function，当存在 pending action（`action_requests=[{name:"execute_in_skill", args:{command:"old"}}]`）时，输入 decision `{type:"edit", edited_action:{args:{command:"new"}}}`（无 name、无 redacted），断言结果为 `edited_action.name == "execute_in_skill"`、`args.command == "new"`。
   ```python
   def test_edit_decision_name_filled_from_pending_action_by_index():
       restored = restore_redacted_resume_payload(
@@ -160,169 +160,169 @@ edit 진입 시 `editedArgs`에 `JSON.stringify(toolArgs, null, 2)`를 채우고
       assert d["edited_action"]["name"] == "execute_in_skill"
       assert d["edited_action"]["args"]["command"] == "new"
   ```
-  (실제 함수 시그니처/헬퍼 이름은 `conversation_agent_protocol_resume_redaction.py`를 열어 맞춘다 — `restore_redacted_resume_payload`(`:18`), `_raw_pending_actions_by_interrupt`(`:69`).)
+  （实际 function signature/helper 名称需打开 `conversation_agent_protocol_resume_redaction.py` 对齐 — `restore_redacted_resume_payload`（`:18`）、`_raw_pending_actions_by_interrupt`（`:69`）。）
 
-- [ ] **Step 2: 멀티액션 edit가 index로 정렬되는 테스트(실패 예상).** action 2개일 때 decision 2개의 edit name이 각각 `action_requests[0].name`, `[1].name`으로 채워지는지.
+- [ ] **Step 2：测试 multi-action edit 按 index 对齐（预期失败）。** 有 2 个 action 时，2 个 decision 的 edit name 应分别填入 `action_requests[0].name`、`[1].name`。
 
-- [ ] **Step 3: 실행해 실패 확인.**
+- [ ] **Step 3：执行并确认失败。**
   ```bash
   cd backend && uv run pytest tests/test_hitl_wire.py -q
   ```
 
-### Task 2 — 백엔드: edit-by-index (name 채우기, 모든 edit에 적용)
+### Task 2 — backend：edit-by-index（填 name，应用于所有 edit）
 
 **Files:** `backend/app/routers/conversation_agent_protocol_resume_redaction.py`
 
-- [ ] **Step 1: early-return 게이트 완화.** 현재 `restore_redacted_resume_payload`는 `_resume_contains_redacted_edit(...)`가 False면 raw를 그대로 반환(`:24` 부근). edit decision이 하나라도 있으면(redacted 유무 무관) 인덱스 해석 경로를 타도록 조건을 확장한다. (redacted 없는 일반 edit도 name 채우기가 필요.)
+- [ ] **Step 1：放宽 early-return gate。** 当前 `restore_redacted_resume_payload` 在 `_resume_contains_redacted_edit(...)` 为 False 时直接返回 raw（`:24` 附近）。应扩展条件：只要存在任一 edit decision（无论是否 redacted）就走 index 解析路径。（普通无 redacted 的 edit 也需要填 name。）
 
-- [ ] **Step 2: name 권위적 설정.** `_restore_redacted_response`(`:157-190` 부근)의 edit 분기에서, `raw_actions[index]`가 있으면:
+- [ ] **Step 2：权威设置 name。** 在 `_restore_redacted_response`（`:157-190` 附近）的 edit 分支中，如果存在 `raw_actions[index]`：
   ```python
   edited = dict(decision.get("edited_action") or {})
   if index < len(raw_actions):
-      edited["name"] = raw_actions[index]["name"]          # 권위적: 프론트 name 무시
-      edited["args"] = restored_args                        # 기존 placeholder 복원 유지
+      edited["name"] = raw_actions[index]["name"]          # 权威：忽略 frontend name
+      edited["args"] = restored_args                        # 保持现有 placeholder 恢复
   restored_decisions.append({**dict(decision), "edited_action": edited})
   ```
-  - `raw_actions[index]`가 없을 때(방어)는 기존 동작(프론트 값 유지) fallback.
-  - 기존 `<redacted>` placeholder 복원(`_restore_placeholders`)은 **그대로 유지**.
+  - 如果没有 `raw_actions[index]`（防御性情况），fallback 到现有行为（保留 frontend 值）。
+  - 现有 `<redacted>` placeholder 恢复（`_restore_placeholders`）**保持不变**。
 
-- [ ] **Step 3: Task 1 테스트 통과 확인.**
+- [ ] **Step 3：确认 Task 1 测试通过。**
   ```bash
   cd backend && uv run pytest tests/test_hitl_wire.py -q && uv run ruff check app tests
   ```
 
-- [ ] **Step 4 (선택, 조기 거절): allowed_decisions 검증.** `conversation_agent_protocol_commands.py:_handle_input_respond_command`(또는 `conversation_agent_protocol_resume.py:validate_resume_payload` `:64`)에서, 각 decision.type이 해당 인터럽트의 `review_configs[index].allowed_decisions`에 없으면 422/구조화 에러로 조기 거절. (지금은 미검증이라 미들웨어 깊은 곳에서 ValueError.) 프론트 게이팅(Task 3)이 1차 방어이므로 이건 방어층.
+- [ ] **Step 4（可选，提前拒绝）：验证 allowed_decisions。** 在 `conversation_agent_protocol_commands.py:_handle_input_respond_command`（或 `conversation_agent_protocol_resume.py:validate_resume_payload` `:64`）中，如果某 decision.type 不在该 interrupt 的 `review_configs[index].allowed_decisions` 中，则提前以 422/结构化 error 拒绝。（当前不验证，导致直到 middleware 深处才 ValueError。）frontend gating（Task 3）为第 1 层防御，因此这里属于 defense-in-depth。
 
-### Task 3 — 프론트: `allowed_decisions` 버튼 게이팅
+### Task 3 — frontend：`allowed_decisions` button gating
 
-**Files:** `frontend/src/components/chat/tool-ui/approval-card.tsx`, 테스트
+**Files：** `frontend/src/components/chat/tool-ui/approval-card.tsx`，测试
 
-- [ ] **Step 1: allow-set 유도.** `!submitting` 분기 상단(`:~501`)에서 1회 계산:
+- [ ] **Step 1：派生 allow-set。** 在 `!submitting` 分支顶部（`:~501`）计算 1 次：
   ```ts
   const allowed = new Set(args?.allowed_decisions ?? [])
   const canApprove = allowed.size === 0 ? true : allowed.has('approve')
-  const canEdit = allowed.has('edit')                      // 기본(빈) 시 edit 숨김
+  const canEdit = allowed.has('edit')                      // 默认（空）时隐藏 edit
   const canReject = allowed.size === 0 ? true : allowed.has('reject')
   ```
-  (빈/누락 → approve+reject만, edit 제외 — `reviewForAction` fallback과 동일 정책.)
+  （空/缺失 → 仅 approve+reject，排除 edit — 与 `reviewForAction` fallback 相同策略。）
 
-- [ ] **Step 2: 각 버튼 그룹 가드.** 승인(`:~503-512`)은 `canApprove &&`, 수정(`:~515-538`)은 `canEdit &&`, 거부(`:~541-561`)는 `canReject &&`로 감싼다. reject-only(승인·수정 모두 불가)일 때 거부 confirm 2-step 유지.
+- [ ] **Step 2：给每组按钮加 guard。** approve（`:~503-512`）用 `canApprove &&` 包裹，edit（`:~515-538`）用 `canEdit &&`，reject（`:~541-561`）用 `canReject &&`。reject-only（approve/edit 都不可用）时保持 reject confirm 2-step。
 
-- [ ] **Step 3: 테스트 추가.** `approval-card.test.tsx`:
-  - `allowed_decisions: ['approve','reject']` → 수정 버튼 없음(`queryByText('edit')` null).
-  - `['approve','edit','reject']` → 3개 모두.
-  - 누락/`[]` → approve+reject만(edit 숨김).
-  - reject-only → 거부만 + confirm 동작.
-  - 실행: `cd frontend && pnpm exec vitest run src/components/chat/tool-ui/__tests__/approval-card.test.tsx`
+- [ ] **Step 3：新增测试。** `approval-card.test.tsx`：
+  - `allowed_decisions: ['approve','reject']` → 无 edit button（`queryByText('edit')` 为 null）。
+  - `['approve','edit','reject']` → 3 个都有。
+  - 缺失/`[]` → 仅 approve+reject（隐藏 edit）。
+  - reject-only → 只有 reject + confirm 行为。
+  - 执行：`cd frontend && pnpm exec vitest run src/components/chat/tool-ui/__tests__/approval-card.test.tsx`
 
-### Task 4 — 프론트: 견고한 edit (하드 중단 제거 + field editor)
+### Task 4 — frontend：稳健 edit（移除 hard stop + field editor）
 
-**Files:** `approval-card.tsx`, `decision-mappers.ts`, `types/index.ts`, 테스트
+**Files：** `approval-card.tsx`、`decision-mappers.ts`、`types/index.ts`、测试
 
-- [ ] **Step 1: 타입 완화.** `frontend/src/lib/types/index.ts`의 `Decision.edited_action`을 `{ name?: string; args: Record<string, unknown> }`로(name optional). `decision-mappers.ts`의 `toEdit`도 name 없이 호출 가능하게(또는 `toEditByIndex(args)` 추가).
+- [ ] **Step 1：放宽类型。** 将 `frontend/src/lib/types/index.ts` 中 `Decision.edited_action` 改为 `{ name?: string; args: Record<string, unknown> }`（name optional）。`decision-mappers.ts` 的 `toEdit` 也允许无 name 调用（或新增 `toEditByIndex(args)`）。
 
-- [ ] **Step 2: 하드 중단 제거.** `toDecision('modified', ...)`(`approval-card.tsx:~126-129`)에서 `if (!toolName) return null` 삭제. name은 있으면 advisory로 첨부, 없으면 생략(백엔드가 index로 채움). 호출부(`:~360-367`)의 `if (!standardDecision)` abort도 edit에선 불필요.
+- [ ] **Step 2：移除 hard stop。** 删除 `toDecision('modified', ...)`（`approval-card.tsx:~126-129`）中的 `if (!toolName) return null`。如果有 name 则作为 advisory 附带，没有则省略（backend 按 index 填充）。调用处（`:~360-367`）的 `if (!standardDecision)` abort 对 edit 也不再需要。
 
-- [ ] **Step 3: field-based editor.** `ArgsPreview`(현재 key/value 목록)를 편집 모드 지원으로 확장하거나, 별도 `ArgsEditor` 컴포넌트 추가:
-  - state를 `editedArgs: string`(JSON) → `draft: Record<string, unknown>`(키별 값)로 교체. 초기값 = `args.tool_args`(redacted).
-  - 각 entry를 `<dt>{key}</dt><dd><input/></dd>`로. **`isSensitiveDisplayKey(key)`면 read-only 잠금**(`<redacted>` 표시, onChange 없음).
-  - scalar는 텍스트 input, 비-scalar(object/array)는 compact JSON 텍스트 input(파싱 실패 시 해당 칸만 에러 표시 — 전체 abort 금지).
-  - submit(`handleDecision('modified')`)은 `JSON.parse` 없이 `draft`를 직접 사용. `restoreRedactedRecordPlaceholders` 호출 제거(시크릿은 잠겨 변형 불가 → 백엔드가 복원).
+- [ ] **Step 3：field-based editor。** 扩展 `ArgsPreview`（当前 key/value list）以支持 edit mode，或新增 `ArgsEditor` component：
+  - 将 state 从 `editedArgs: string`（JSON）改为 `draft: Record<string, unknown>`（按 key 的值）。初始值 = `args.tool_args`（redacted）。
+  - 每个 entry 使用 `<dt>{key}</dt><dd><input/></dd>`。**若 `isSensitiveDisplayKey(key)`，则 read-only lock**（显示 `<redacted>`，无 onChange）。
+  - scalar 使用文本 input，非 scalar（object/array）使用 compact JSON 文本 input（解析失败时只在该 field 显示 error — 禁止整体 abort）。
+  - submit（`handleDecision('modified')`）不再 `JSON.parse`，直接使用 `draft`。移除 `restoreRedactedRecordPlaceholders` 调用（secret 被锁定无法变形 → backend 恢复）。
 
-- [ ] **Step 4: 죽은 코드 정리.** `restoreRedactedPlaceholders`/`restoreRedactedRecordPlaceholders`(`approval-card.tsx:56-80`)가 더 이상 안 쓰이면 제거. `editedArgs`/`jsonError` state 제거.
+- [ ] **Step 4：清理 dead code。** 如果不再使用 `restoreRedactedPlaceholders`/`restoreRedactedRecordPlaceholders`（`approval-card.tsx:56-80`），则删除。移除 `editedArgs`/`jsonError` state。
 
-- [ ] **Step 5: 테스트 교체.**
-  - 기존 "restores redacted placeholders…" 테스트(`:~294-350`)를 **삭제/교체**: un-redacted 주입을 멈추고, "시크릿 키는 read-only이며 편집 불가, 비-시크릿 칸만 수정해 제출하면 `<redacted>`가 리터럴로 안 나가고 name 없이 edit decision이 간다"를 단언.
-  - **신규: name 없이 edit 동작**(§3.1 회귀). `tool_name` undefined로 렌더 → 한 칸 수정 → 제출 → `invalidJson` abort 없이 `{type:'edit', edited_action:{args:{...}}}`(name 없음/advisory) 전송 단언.
-  - "renders tool args as a readable key/value list"(`:~208-237`)는 편집 컨트롤 추가에 맞춰 갱신.
-  - 실행: `cd frontend && pnpm exec vitest run src/components/chat/tool-ui/__tests__/approval-card.test.tsx`
+- [ ] **Step 5：替换测试。**
+  - 删除/替换现有“restores redacted placeholders…”测试（`:~294-350`）：停止注入 un-redacted 值，改为断言“secret key 为 read-only 且不可编辑，只修改非 secret field 并提交时，不会把 `<redacted>` literal 发出去，并发送不带 name 的 edit decision”。
+  - **新增：无 name 也能 edit**（§3.1 回归）。以 `tool_name` undefined 渲染 → 修改一个 field → submit → 不触发 `invalidJson` abort，断言发送 `{type:'edit', edited_action:{args:{...}}}`（无 name/advisory）。
+  - “renders tool args as a readable key/value list”（`:~208-237`）按新增 edit control 更新。
+  - 执行：`cd frontend && pnpm exec vitest run src/components/chat/tool-ui/__tests__/approval-card.test.tsx`
 
-### Task 5 — 통합 검증
+### Task 5 — 集成验证
 
-- [ ] **Step 1: 백엔드.**
+- [ ] **Step 1：backend。**
   ```bash
   cd backend && uv run pytest tests/test_hitl_wire.py tests/test_hitl_middleware.py -q && uv run ruff check app tests
   ```
-- [ ] **Step 2: 프론트.**
+- [ ] **Step 2：frontend。**
   ```bash
   cd frontend && pnpm exec tsc --noEmit && pnpm exec vitest run && pnpm lint
   ```
-- [ ] **Step 3: 수동 시나리오.**
-  - `execute_in_skill` 승인 카드 → **수정 버튼 없음**(allowed=approve,reject), 승인/거부만 동작.
-  - `edit_file`/write 도구 승인 카드 → 수정 버튼 보임, 한 칸 수정 후 승인 → 모델이 수정된 인자로 실행.
-  - 시크릿(api_key 등) 있는 도구 → 시크릿 칸 잠김, 비-시크릿 칸만 수정 가능, 제출 시 시크릿 정상 유지(백엔드 복원).
-  - `tool_name`이 비는 슬롯에서도 edit이 `invalidJson` 없이 정상 제출.
+- [ ] **Step 3：手动场景。**
+  - `execute_in_skill` approval card → **无 edit button**（allowed=approve,reject），只有 approve/reject 可用。
+  - `edit_file`/write tool approval card → 显示 edit button，修改一个 field 后 approve → 模型以修改后的 args 执行。
+  - 含 secret（api_key 等）的 tool → secret field 锁定，只能修改非 secret field，submit 后 secret 正确保留（backend 恢复）。
+  - 即使 `tool_name` 为空的 slot，edit 也能正常 submit，不出现 `invalidJson`。
 
 ---
 
-## 7. (선택) 추가 워크스트림
+## 7. （可选）额外 workstream
 
-본 작업의 핵심(§6)과 독립. 필요 시 별도 PR.
+与本工作核心（§6）独立。必要时单独 PR。
 
-### 7.1 통합 "N건 대기" multi-action UX (프론트 only, 추가형)
-현재: N개 카드 각각 렌더 + resume만 내부 배칭(코디네이터 이미 존재). 남은 건 **시각적 묶음**.
-- `hitl_interrupt_id`로 같은 인터럽트의 카드를 그룹화하는 컨테이너(키: `args.hitl_interrupt_id`, 총수: `args.hitl_total_actions`). 현재 카드는 독립 tool-call 메시지로 방출되므로(`hitl-interrupts.ts:447-462`), 그룹 헤더("N건 대기")를 합성하거나 카드 묶음 래퍼가 필요.
-- "모두 승인/모두 제출" 버튼 → 각 미결 action에 대해 `hitl.registerDecision(i, 기본결정)` 호출(기본은 카드별 allowed_decisions). 기존 coordinator가 배칭하므로 **백엔드/coordinator 변경 불필요, 순수 추가 UI**.
-- i18n 키 신규(`chat.approval.pendingCount`, `chat.approval.approveAll`) — 현재 없음.
-- 신규 컴포넌트 테스트(`hitl-coordinator.test.tsx` 슬롯 비어 있음).
+### 7.1 统一“N 项等待中” multi-action UX（仅 frontend，增量型）
+当前：N 个 card 分别渲染 + resume 仅在内部 batching（coordinator 已存在）。剩余只需**视觉 grouping**。
+- 用 `hitl_interrupt_id` grouping 同一 interrupt 的 card（key：`args.hitl_interrupt_id`，总数：`args.hitl_total_actions`）。当前 card 作为独立 tool-call message 发出（`hitl-interrupts.ts:447-462`），因此需要 synthetic group header（“N 项等待中”）或 card group wrapper。
+- “全部批准/全部提交”button → 对每个 pending action 调用 `hitl.registerDecision(i, 默认决策)`（默认基于每张 card 的 allowed_decisions）。现有 coordinator 会 batching，因此**backend/coordinator 无需修改，纯新增 UI**。
+- 新增 i18n key（`chat.approval.pendingCount`、`chat.approval.approveAll`）— 当前不存在。
+- 新增 component test（`hitl-coordinator.test.tsx` slot 目前为空）。
 
-### 7.2 부모 커스텀 HITL 정책의 linked subagent 전파 (백엔드)
-현재: auto general-purpose subagent는 top-level 상속하지만, **linked(선언형) subagent는 자기 `middleware_configs`만** 읽어(`subagents.py:118`) 부모의 커스텀 `human_in_the_loop` override가 전파 안 됨. (자기 도구 기반 정책은 정상 적용 — 안전 측면 갭은 아니고, "부모 커스텀 정책 일관성" 이슈.)
-- Fix point: `subagents.py:142-163` — 부모 정책/override를 child `components.interrupt_on`에 병합 후 `spec["interrupt_on"]` 설정.
-- 테스트: `tests/agent_runtime/test_subagents_runtime.py`에 부모 override 전파 케이스.
+### 7.2 父级 custom HITL policy 向 linked subagent 传播（backend）
+当前：auto general-purpose subagent 会继承 top-level，但**linked（声明式）subagent 只读取自己的 `middleware_configs`**（`subagents.py:118`），父级 custom `human_in_the_loop` override 不会传播。（基于自身 tool 的 policy 会正常应用 — 不是安全 gap，而是“父级 custom policy 一致性”问题。）
+- Fix point：`subagents.py:142-163` — 将父级 policy/override merge 到 child `components.interrupt_on` 后设置 `spec["interrupt_on"]`。
+- 测试：在 `tests/agent_runtime/test_subagents_runtime.py` 新增父级 override 传播用例。
 
-### 7.3 (결정 필요) ask_user를 미들웨어 respond로 진짜 통합 vs 현행 유지
-현재: write/skill/MCP = `HumanInTheLoopMiddleware`, ask_user = native `interrupt()` — wire에서만 통합. 두 메커니즘 공존.
-- 옵션 A(권장, 저비용): **현행 유지 + 문서화.** ask_user는 native interrupt + `_interrupt_to_standard_chunk` 정규화로 충분히 동작. `runtime_component_builder.py:390-391`의 `interrupt_on["ask_user"]` 항목이 vestigial인지 확인 후, 유지(방어)할지 주석 명확화.
-- 옵션 B(고비용): ask_user를 미들웨어 respond 경로로 이전(`tools/ask_user.py:121-163` + 정책 + `streaming` 어댑터). 단일 메커니즘이지만 UX/회귀 위험. **착수 전 별도 결정.**
+### 7.3 （需要决定）ask_user 真正整合到 middleware respond，还是保持现状
+当前：write/skill/MCP = `HumanInTheLoopMiddleware`，ask_user = native `interrupt()` — 只在 wire 层统一。两套机制并存。
+- 选项 A（推荐，低成本）：**保持现状 + 文档化。** ask_user 通过 native interrupt + `_interrupt_to_standard_chunk` normalization 已可正常工作。确认 `runtime_component_builder.py:390-391` 的 `interrupt_on["ask_user"]` 是否属于 vestigial，再决定保留（防御）还是明确注释。
+- 选项 B（高成本）：将 ask_user 迁移到 middleware respond 路径（`tools/ask_user.py:121-163` + policy + `streaming` adapter）。机制更统一，但有 UX/回归风险。**开始前需单独决策。**
 
 ---
 
-## 8. 결정 스키마 / wire 계약 (구현 참조)
+## 8. Decision schema / wire 契约（实现参考）
 
-### Decision (프론트→백엔드, `HumanInTheLoopMiddleware` `HITLResponse.decisions[i]`와 1:1)
+### Decision（frontend→backend，与 `HumanInTheLoopMiddleware` `HITLResponse.decisions[i]` 1:1）
 ```ts
 interface Decision {
   type: 'approve' | 'edit' | 'reject' | 'respond'
-  edited_action?: { name?: string; args: Record<string, unknown> }  // ← 본 작업: name optional
-  message?: string  // respond 필수, reject 선택
+  edited_action?: { name?: string; args: Record<string, unknown> }  // ← 本工作：name optional
+  message?: string  // respond 必填, reject 可选
 }
 ```
-- **edit 계약(langchain 1.3.9, `human_in_the_loop.py:310-320`):** 미들웨어는 `edited_action["name"]`/`["args"]`를 hard subscript로 읽고 tool-call `id`는 매칭된 pending call에서 가져온다. decision↔action 매칭은 **positional index**. → 백엔드가 name을 index로 채우면 프론트는 name 불필요.
+- **edit 契约(langchain 1.3.9, `human_in_the_loop.py:310-320`):** middleware 通过 hard subscript 读取 `edited_action["name"]`/`["args"]`，tool-call `id` 从匹配的 pending call 中获取。decision↔action 匹配采用 **positional index**。→ backend 按 index 填充 name 后，frontend 无需 name。
 
-### 표준 interrupt payload (백엔드→프론트, SSE `interrupt` event)
+### 标准 interrupt payload (backend→frontend, SSE `interrupt` event)
 ```ts
 type StandardInterruptPayload = {
   interrupt_id: string          // = str(intr.ns) (namespace)
-  action_requests: Array<{ name: string; args: Record<string, unknown>; description?: string }>  // per-action id 없음 → index 참조
+  action_requests: Array<{ name: string; args: Record<string, unknown>; description?: string }>  // 无 per-action id → 参照 index
   review_configs: Array<{ action_name: string; allowed_decisions: Array<'approve'|'edit'|'reject'|'respond'> }>
 }
 ```
-- **allowed_decisions 출처:** Moldy `risk.py` → `interrupt_on` 정책 → langchain이 `review_configs`로 echo. 도구별 값은 §2.1 참조(`execute_in_skill`=approve,reject / `edit_file`=approve,edit,reject 등).
+- **allowed_decisions 来源:** Moldy `risk.py` → `interrupt_on` 策略 → langchain 以 `review_configs` echo。各工具取值参见 §2.1(`execute_in_skill`=approve,reject / `edit_file`=approve,edit,reject 等)。
 - **resume(v3):** `Command(resume={interrupt_id: {"decisions": [...]}})` — `conversation_agent_protocol_commands.py:_handle_input_respond_command`.
 
 ---
 
-## 9. 권장 커밋 순서
+## 9. 推荐 commit 顺序
 1. `test(hitl): pin edit-by-index name-fill + multi-action edit ordering`
 2. `fix(hitl): backend fills edited_action.name from pending action by index`
 3. `fix(chat): gate approval-card buttons on allowed_decisions`
 4. `fix(chat): robust approval edit — field editor + name-less edit, drop client redaction restore`
 5. `test(chat): allowed_decisions gating + name-less edit + locked-secret`
-6. (선택) `feat(chat): unified N-pending multi-action approval UX`
+6. (可选) `feat(chat): unified N-pending multi-action approval UX`
 
-## 10. 완료 기준
-- `execute_in_skill`(allowed=approve,reject) 카드에 **수정 버튼이 뜨지 않는다.**
-- `edit_file`/write 도구에서 수정 후 승인이 동작하고, **`tool_name`이 비어도 `invalidJson` 없이** 정상 제출된다.
-- 시크릿 키는 편집 카드에서 read-only, 제출 시 시크릿이 리터럴 `<redacted>`로 새지 않고 정상 유지된다(백엔드 복원).
-- 프론트는 `edited_action.name`을 재구성하지 않아도 백엔드가 index로 채운다.
-- `restoreRedactedRecordPlaceholders` 등 죽은 프론트 복원 코드가 제거된다.
-- 백엔드 `test_hitl_wire.py`/`test_hitl_middleware.py` 그린, 프론트 vitest/tsc/lint 그린.
-- 멀티액션 wire(§2.2)·subagent 상속(§2.1) 회귀 없음.
+## 10. 完成标准
+- `execute_in_skill`(allowed=approve,reject) 卡片上**不显示修改按钮。**
+- 在 `edit_file`/write 工具中修改后批准可正常工作，并且**即使 `tool_name` 为空也能在没有 `invalidJson` 的情况下**正常提交。
+- secret key 在编辑卡片中为 read-only，提交时 secret 不会以字面量 `<redacted>` 泄露，并能正常保留(backend 恢复)。
+- frontend 即使不重构 `edited_action.name`，backend 也会按 index 填充。
+- 删除 `restoreRedactedRecordPlaceholders` 等失效的 frontend 恢复代码。
+- backend `test_hitl_wire.py`/`test_hitl_middleware.py` green，frontend vitest/tsc/lint green。
+- multi-action wire(§2.2)·subagent 继承(§2.1)无回归。
 
-## 11. 리스크 / 주의
-- **edit-by-index의 백엔드 early-return 완화**(Task 2 Step 1): redacted 없는 일반 edit도 인덱스 해석 경로를 타게 되므로, 기존 비-edit/respond resume 경로에 영향 없는지 회귀 테스트로 가드(`test_hitl_wire.py` 기존 케이스 유지).
-- **field editor의 비-scalar 값**(중첩 object/array): 칸별 JSON 파싱 실패는 **해당 칸만** 에러 표시하고 전체 submit을 막지 않는다(§3.2 회귀 방지 의도 유지).
-- **allowed_decisions fallback**은 반드시 `[approve, reject]`(edit 제외). edit를 fallback에 넣으면 edit-불가 도구에 다시 노출된다.
-- approve/reject 경로(현재 정상)는 본 작업에서 동작 변경 없음 — 회귀 테스트로 확인.
+## 11. 风险 / 注意事项
+- **放宽 edit-by-index 的 backend early-return**(Task 2 Step 1): 无 redacted 的普通 edit 也会走 index 解析路径，因此需用回归测试守护，确认不影响现有非 edit/respond resume 路径(`test_hitl_wire.py` 保持现有 case)。
+- **field editor 的非 scalar 值**(嵌套 object/array): 单字段 JSON 解析失败时**仅该字段**显示错误，不阻止整体 submit(保持 §3.2 的防回归意图)。
+- **allowed_decisions fallback** 必须为 `[approve, reject]`(不含 edit)。若把 edit 加入 fallback，会再次暴露给不支持 edit 的工具。
+- approve/reject 路径(当前正常)在本工作中不改变行为 — 通过回归测试确认。
 </content>

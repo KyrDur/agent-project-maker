@@ -56,6 +56,7 @@ def _params() -> list[FieldDef]:
             display_name="Search Query",
             kind=FieldKind.STRING,
             required=True,
+            runtime_only=True,
         ),
         FieldDef(
             name="num",
@@ -69,7 +70,7 @@ def _params() -> list[FieldDef]:
 
 web_definition = ToolDefinition(
     key="google_search_web",
-    display_name="Google 웹 검색",
+    display_name="Google 网页搜索",
     description="Search the web via Google Custom Search.",
     icon_id="google",
     category="search",
@@ -80,7 +81,7 @@ web_definition = ToolDefinition(
 
 image_definition = ToolDefinition(
     key="google_search_image",
-    display_name="Google 이미지 검색",
+    display_name="Google 图片搜索",
     description="Search images via Google Custom Search.",
     icon_id="google",
     category="search",
@@ -91,7 +92,7 @@ image_definition = ToolDefinition(
 
 news_definition = ToolDefinition(
     key="google_search_news",
-    display_name="Google 뉴스 검색",
+    display_name="Google 新闻搜索",
     description="Search news via Google Custom Search.",
     icon_id="google",
     category="search",

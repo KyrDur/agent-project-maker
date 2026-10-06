@@ -17,8 +17,8 @@ import { formatDisplayDateTime } from '@/lib/utils/display-format'
 import type { SkillBuilderSessionBrief } from '@/lib/types/skill-builder'
 
 /**
- * 빌더 인덱스 (스펙 AD-1) — 세션 없이 빌더 탭에 진입했을 때의 착지점.
- * `?skillId=`로 스코프되면 해당 스킬의 세션 이력 + 개선 시작 CTA를 보여준다.
+ * builder index（规范 AD-1）— 无 session 进入 builder tab 时的 landing point。
+ * 使用 `?skillId=` scope 时，显示该 skill 的 session history + improve 启动 CTA。
  */
 export function SkillBuilderIndexClient() {
   const t = useTranslations('skill.studio.builderIndex')
@@ -32,8 +32,8 @@ export function SkillBuilderIndexClient() {
   const launcher = useBuilderSessionLauncher()
   const [createOpen, setCreateOpen] = useState(false)
 
-  // 세션 시작/라우팅/실패 토스트는 공유 launcher가 소유한다 (리뷰 R).
-  // 다이얼로그는 onStartChat 직후 스스로 닫힌다.
+  // session 启动/routing/失败 toast 由共享 launcher 管理（review R）。
+  // dialog 会在 onStartChat 后立即自行关闭。
 
   const items = sessions ?? []
 

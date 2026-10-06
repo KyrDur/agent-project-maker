@@ -99,7 +99,7 @@ export function isWriteFileUnavailable(result: unknown): boolean {
 }
 
 // ──────────────────────────────────────────────
-// CodeBlock — 코드 미리보기 (Shiki 없이 기본 스타일)
+// CodeBlock — 代码预览（不使用 Shiki，采用基础样式）
 // ──────────────────────────────────────────────
 
 function CodeBlock({
@@ -169,7 +169,7 @@ function CodeBlock({
 }
 
 // ──────────────────────────────────────────────
-// DiffBlock — edit_file 전용 diff 표시
+// DiffBlock — edit_file 专用 diff 显示
 // ──────────────────────────────────────────────
 
 function DiffBlock({
@@ -205,8 +205,8 @@ function DiffBlock({
 }
 
 // ──────────────────────────────────────────────
-// FileToolPill — Read/Write/Edit 공통 래퍼. leadingIcon으로 file 종류
-// (Read/Write/Edit)을 시각적으로도 구분 (textual label과 함께 빠른 스캔성 확보).
+// FileToolPill — Read/Write/Edit 通用包装器。通过 leadingIcon 区分 file 类型
+// (Read/Write/Edit) 在视觉上也做区分（配合 textual label，提升快速扫描性）。
 // ──────────────────────────────────────────────
 
 function FileToolPill({
@@ -249,9 +249,7 @@ export function ReadFileToolUI({
   result,
   status,
 }: ToolCallMessagePartProps<ReadFileArgs, unknown>) {
-  return (
-    <ReadFileToolView args={args} result={result} statusType={status.type} />
-  )
+  return <ReadFileToolView args={args} result={result} statusType={status.type} />
 }
 
 function ReadFileToolView({
@@ -299,9 +297,7 @@ export function WriteFileToolUI({
   result,
   status,
 }: ToolCallMessagePartProps<WriteFileArgs, unknown>) {
-  return (
-    <WriteFileToolView args={args} result={result} statusType={status.type} />
-  )
+  return <WriteFileToolView args={args} result={result} statusType={status.type} />
 }
 
 function WriteFileToolView({
@@ -348,9 +344,7 @@ export function EditFileToolUI({
   result,
   status,
 }: ToolCallMessagePartProps<EditFileArgs, unknown>) {
-  return (
-    <EditFileToolView args={args} result={result} statusType={status.type} />
-  )
+  return <EditFileToolView args={args} result={result} statusType={status.type} />
 }
 
 function EditFileToolView({

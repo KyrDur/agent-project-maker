@@ -73,7 +73,7 @@ async def register(db: AsyncSession, payload: RegisterRequest, request: Request)
     if await user_service.email_exists(db, payload.email):
         raise AppError(
             code="email_already_exists",
-            message="이미 가입된 이메일입니다",
+            message="该邮箱已注册",
             status=409,
         )
     promote = settings.allow_first_user_as_admin and await user_service.is_first_user(db)
@@ -118,13 +118,13 @@ async def authenticate(db: AsyncSession, *, email: str, password: str) -> User:
     if not user.is_active:
         raise AppError(
             code="account_inactive",
-            message="비활성화된 계정입니다",
+            message="账号已停用",
             status=403,
         )
     if user_service.is_locked(user):
         raise AppError(
             code="account_locked",
-            message="로그인 시도가 많아 계정이 잠겼습니다. 잠시 후 다시 시도하세요",
+            message="登录尝试次数过多，账号已被锁定。请稍后重试",
             status=423,
         )
     if not await asyncio.to_thread(verify_password, password, user.hashed_password):

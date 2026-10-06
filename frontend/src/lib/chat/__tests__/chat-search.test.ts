@@ -2,46 +2,46 @@ import { describe, expect, it } from 'vitest'
 import { collectMatchRanges } from '../chat-search'
 
 describe('collectMatchRanges', () => {
-  it('매치 메시지별로 검색어 등장 Range를 수집한다(대소문자 무시)', () => {
+  it('按匹配消息收集搜索词出现位置的 Range（忽略大小写）', () => {
     document.body.innerHTML = `
-      <div data-moldy-message-id="m1">회의 준비와 회의록</div>
+      <div data-moldy-message-id="m1">会议准备和会议记录</div>
       <div data-moldy-message-id="m2">Hello WORLD</div>
-      <div>앵커 없는 노드</div>
+      <div>没有锚点的节点</div>
     `
-    const map = collectMatchRanges('회의')
+    const map = collectMatchRanges('会议')
     expect(Array.from(map.keys())).toEqual(['m1'])
-    // "회의"가 한 텍스트 노드에 2번 등장 → Range 2개.
+    // "会议"在一个文本节点中出现 2 次 → 2 个 Range。
     expect(map.get('m1')?.length).toBe(2)
-    // 대소문자 무시.
+    // 忽略大小写。
     expect(Array.from(collectMatchRanges('world').keys())).toEqual(['m2'])
   })
 
-  it('메타행/sr-only 텍스트는 검색에서 제외한다', () => {
+  it('搜索时排除元数据行/sr-only 文本', () => {
     document.body.innerHTML = `
       <div data-moldy-message-id="m1">
-        <div>본문 회의 내용</div>
-        <div data-moldy-message-meta-row="true">복사 편집 회의</div>
-        <span class="sr-only">회의 라벨</span>
+        <div>正文会议内容</div>
+        <div data-moldy-message-meta-row="true">复制 编辑 会议</div>
+        <span class="sr-only">会议标签</span>
       </div>
     `
-    const map = collectMatchRanges('회의')
-    // 본문의 "회의" 1개만 — 메타행/sr-only의 "회의"는 제외.
+    const map = collectMatchRanges('会议')
+    // 只计正文中的 1 个"会议"——排除元数据行/sr-only 中的"会议"。
     expect(map.get('m1')?.length).toBe(1)
   })
 
-  it('root로 스코프하면 root 밖 메시지는 제외한다(설정 페이지 이중 마운트 대비)', () => {
+  it('按 root 限定 scope 时，排除 root 外的消息（应对设置页面双重挂载）', () => {
     document.body.innerHTML = `
-      <div id="scope"><div data-moldy-message-id="m1">회의 A</div></div>
-      <div data-moldy-message-id="m2">회의 B</div>
+      <div id="scope"><div data-moldy-message-id="m1">会议 A</div></div>
+      <div data-moldy-message-id="m2">会议 B</div>
     `
     const scope = document.getElementById('scope')
     expect(scope).not.toBeNull()
-    const map = collectMatchRanges('회의', scope as HTMLElement)
+    const map = collectMatchRanges('会议', scope as HTMLElement)
     expect(Array.from(map.keys())).toEqual(['m1'])
   })
 
-  it('빈/공백 query는 빈 map', () => {
-    document.body.innerHTML = `<div data-moldy-message-id="m1">회의</div>`
+  it('空/纯空白 query 返回空 map', () => {
+    document.body.innerHTML = `<div data-moldy-message-id="m1">会议</div>`
     expect(collectMatchRanges('').size).toBe(0)
     expect(collectMatchRanges('   ').size).toBe(0)
   })

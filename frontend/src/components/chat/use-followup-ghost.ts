@@ -11,13 +11,13 @@ import {
 import { focusTextareaAtEnd } from './composer-focus'
 
 /**
- * Follow-up 고스트(연한 제안 텍스트) 상호작용 — fish autosuggestion 계약.
+ * Follow-up 幽灵（浅色建议文本）交互 — fish autosuggestion 契约。
  *
- * - 표시 조건: 토글 ON + 제안 존재 + 컴포저 비어 있음 + 런 미진행.
- *   (타이핑이 시작되면 컴포저가 비어 있지 않으므로 자동으로 사라진다.)
- * - → 또는 End: 제안을 실제 입력으로 채운다(전송은 Enter로 별도).
- * - Esc: 이번 제안 해제.
- * - IME 조합 중에는 개입하지 않는다.
+ * - 显示条件：开关 ON + 有建议 + 输入器为空 + 运行未进行。
+ *   （开始输入后输入器不再为空，因此自动消失。）
+ * - → 或 End：将建议填入实际输入（发送仍需另按 Enter）。
+ * - Esc：取消本次建议。
+ * - IME 组合中不介入。
  */
 export function useFollowupGhost(
   conversationId: string | null,
@@ -42,7 +42,7 @@ export function useFollowupGhost(
   const acceptGhost = useCallback(() => {
     if (!ghostText || !conversationId) return
     aui.composer.setText(ghostText)
-    // 수락된 제안은 소진 — 같은 제안이 비운 뒤 다시 뜨지 않게.
+    // 已接受的建议视为已消耗 — 清空后不要再次出现同一建议。
     setFollowup({ conversationId, suggestion: null })
     requestAnimationFrame(() => focusTextareaAtEnd(textareaRef.current))
   }, [aui, conversationId, ghostText, setFollowup, textareaRef])

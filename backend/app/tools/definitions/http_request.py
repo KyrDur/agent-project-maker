@@ -99,7 +99,8 @@ def _coerce_dict(value: Any, field: str) -> dict[str, Any]:
 
 definition = ToolDefinition(
     key="http_request",
-    display_name="HTTP 요청",
+    credential_optional=True,
+    display_name="HTTP 请求",
     description=(
         "Issue an HTTP request to any URL. Optional credentials (Bearer / API "
         "Key / Basic) are applied to the outgoing request automatically."

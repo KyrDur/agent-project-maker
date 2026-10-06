@@ -13,7 +13,7 @@ from app.agent_runtime.protocol_redaction import redact_protocol_data
 
 
 def _as_wire(event: StoredProtocolEvent) -> StoredProtocolEvent:
-    """emit()이 만드는 wire 뷰 재현 — value/key redaction 완료, memory 는 유지."""
+    """复现 emit() 生成的 wire 视图 — value/key redaction 已完成，memory 保留。"""
     return {
         **event,
         "data": redact_protocol_data(event["method"], event["data"], redact_memory=False),
@@ -178,21 +178,21 @@ def test_persistable_protocol_event_redacts_memory_custom_payload() -> None:
 
 
 # --------------------------------------------------------------------------
-# BE-P5(b) — persistable_wire_protocol_event (wire redaction 재사용 hot path)
+# BE-P5(b) — persistable_wire_protocol_event（复用 wire redaction 的 hot path）
 # --------------------------------------------------------------------------
 
 
 def test_persistable_wire_protocol_event_masks_memory_from_wire_view() -> None:
-    """wire 뷰는 기억 내용을 유지하지만 persist 는 마스킹한다 (W2-3 계약)."""
+    """wire 视图保留记忆内容，但 persist 会进行遮蔽（W2-3 合约）。"""
     event = stored_custom_protocol_event(
         run_id="run-wire-memory",
         thread_id="thread-wire-memory",
         seq=1,
         name="moldy.memory_recalled",
-        payload={"memories": [{"id": "m1", "scope": "user", "content": "한국어 선호"}]},
+        payload={"memories": [{"id": "m1", "scope": "user", "content": "偏好韩语"}]},
     )
     wire = _as_wire(event)
-    assert wire["data"]["payload"]["memories"][0]["content"] == "한국어 선호"
+    assert wire["data"]["payload"]["memories"][0]["content"] == "偏好韩语"
 
     persisted = persistable_wire_protocol_event(wire)
 
@@ -249,12 +249,12 @@ def test_persistable_wire_protocol_event_compacts_values_snapshot() -> None:
 
 
 def test_persistable_variants_agree_on_explicit_expected_shapes() -> None:
-    """full(raw 입력)·wire(wire 입력) 변형 둘 다 **명시적 기대값**과 일치한다.
+    """full(raw 输入)·wire(wire 输入) 两种变体都与**显式期望值**一致。
 
-    두 함수 출력을 서로 비교하면 full 이 wire 에 위임하는 현 구조에서
-    tautology(X == X)가 되어 mutation 에도 green 을 유지한다(2차 리뷰에서
-    실증). 독립 오라클(수기 기대값)로 양쪽을 각각 고정해, 위임이 풀리거나
-    한쪽이 재구현되어도 계약 이탈을 잡는다."""
+    如果只相互比较两个函数的输出，在当前 full 委托给 wire 的结构中，
+    会变成 tautology(X == X)，即使 mutation 也会保持 green（第2次 review 已实证）。
+    通过独立 oracle（手工期望值）分别固定两侧，因此即使委托关系解除或
+    任一侧重新实现，也能捕捉合约偏离。"""
     tools_event = stored_protocol_event(
         run_id="run-eq",
         thread_id="thread-eq",

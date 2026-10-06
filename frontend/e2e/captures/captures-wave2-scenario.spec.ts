@@ -16,14 +16,14 @@ import {
 import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-helpers'
 
 /**
- * Wave 2 시나리오 캡처 — "기억하고, 찾고, 팀으로 일하는 에이전트" 스토리:
+ * Wave 2 场景截图 — “会记忆、会搜索、会团队协作的 Agent”故事：
  *
- *  1막 기억   : 장기 기억 2개 심기 → 런 시작 시 기억 회상 칩(moldy.memory_recalled)
- *  2막 검색   : E2E_SEARCH_RICH — answer 요약 박스 + 리치 결과 카드,
- *               E2E_SEARCH_SHOP — Naver items shape 썸네일 + 최저가 카드
- *  3막 팀     : E2E_LANGGRAPH_V3 미션 런 — 서브에이전트 팀 스트립(라이브/완료),
- *               execute_in_skill 승인 → 터미널 ui_data 카드(genui 첫 실도구 producer)
- *  4막 리로드 : 스킬 실행 pill(커맨드+파일 칩) + 팀 스트립 복원
+ *  第 1 幕 memory：植入 2 条 long-term memory → run 开始时 memory recall chip(moldy.memory_recalled)
+ *  第 2 幕 search：E2E_SEARCH_RICH — answer 摘要 box + rich result card，
+ *               E2E_SEARCH_SHOP — Simulated shopping data thumbnail + 最低价 card
+ *  第 3 幕 team：E2E_LANGGRAPH_V3 mission run — subagent team strip（live/完成），
+ *               execute_in_skill approval → terminal ui_data card（genui 首个真实工具 producer）
+ *  第 4 幕 reload：skill 执行 pill（command+file chip）+ team strip 恢复
  *
  * Gated by E2E_CAPTURE_TOUR=1 (+ E2E_TEST_HELPERS_ENABLED, scripted model).
  */
@@ -49,8 +49,8 @@ async function createConversation(
   return convo.id
 }
 
-/** 기존 기억을 전부 지우고 정확히 원하는 세트만 남긴다 — retry/재실행에서
- * 기억이 누적되어 "기억 참고 2개" 단언이 깨지는 것을 막는 rerun-safe 헬퍼. */
+/** 删除所有现有 memory，只保留准确需要的 set — 防止 retry/rerun 时
+ * memory 累积导致“参考 2 条 memory”断言失效的 rerun-safe helper。 */
 async function resetMemories(
   request: APIRequestContext,
   csrfHeaders: CsrfHeaders,
@@ -97,117 +97,117 @@ test.describe('Wave 2 scenario captures', () => {
     const setup = await setupLangGraphV3Agent(request)
     const { csrfHeaders } = setup
 
-    // ── 1막: 장기 기억 심기 — 다음 런부터 회상 칩이 뜬다 ────────────────
+    // ── 第 1 幕：植入 long-term memory — 从下一次 run 起显示 recall chip ──
     await resetMemories(request, csrfHeaders, [
       {
         scope: 'user',
-        content: '답변은 한국어로, 결론부터 정리하는 것을 선호한다.',
+        content: '偏好用韩语回答，并先给结论。',
       },
       {
         scope: 'agent',
         agent_id: setup.parentAgentId,
-        content: '리포트는 표와 3줄 요약 중심으로 작성한다.',
+        content: '报告以表格和 3 行摘要为主。',
       },
     ])
 
-    // ── 2막: 검색 리치카드 — answer 요약 박스 + 회상 칩 동시 확인 ────────
+    // ── 第 2 幕：search rich card — 同时确认 answer 摘要 box + recall chip ──
     const searchConversationId = await createConversation(
       request,
       csrfHeaders,
       setup.parentAgentId,
-      'Wave2 검색 리서치',
+      'Wave2 搜索调研',
     )
     await gotoChat(page, setup.parentAgentId, searchConversationId)
-    await sendMessage(page, 'agentic os 조사해줘 E2E_SEARCH_RICH')
+    await sendMessage(page, '调研 agentic os E2E_SEARCH_RICH')
     await expect(page.getByText(RICH_FINAL).first()).toBeVisible({ timeout: 120_000 })
 
-    // 기억 회상 칩 — stream head 이벤트로 도착, 런 종료 후에도 상시 표시.
+    // memory recall chip — 作为 stream head event 到达，run 结束后也始终显示。
     const memoryChip = page.locator('[data-moldy-memory-recall]')
     await expect(memoryChip).toBeVisible({ timeout: 30_000 })
-    await expect(memoryChip.getByText('2개')).toBeVisible({ timeout: 10_000 })
+    await expect(memoryChip.getByText('2 个')).toBeVisible({ timeout: 10_000 })
 
-    // 검색 pill — Tavily answer 요약 박스 + 결과 카드 3장 (단독 호출이라 펼침).
+    // search pill — Tavily answer 摘要 box + 3 张 result card（单独调用所以展开）。
     const answerBox = page.locator('[data-moldy-search-answer]')
     await expect(answerBox).toBeVisible({ timeout: 30_000 })
-    await expect(answerBox.getByText(/에이전틱 OS는/)).toBeVisible()
-    await expect(page.getByText('Agentic OS 아키텍처 개요')).toBeVisible()
+    await expect(answerBox.getByText(/智能体 OS 是/)).toBeVisible()
+    await expect(page.getByText('Agentic OS 架构概览')).toBeVisible()
     await settle(page)
     await capture(page, WAVE, '00-search-rich-answer-and-memory-chip.png')
 
-    // 회상 칩 펼침 — scope 배지 + 기억 미리보기.
+    // 展开 recall chip — scope badge + memory preview。
     await memoryChip.getByText('记忆回忆').click()
-    await expect(memoryChip.getByText('답변은 한국어로, 결론부터 정리하는 것을 선호한다.')).toBeVisible(
+    await expect(memoryChip.getByText('偏好用韩语回答，并先给结论。')).toBeVisible(
       { timeout: 10_000 },
     )
     await settle(page)
     await capture(page, WAVE, '01-memory-recall-expanded.png')
     await memoryChip.getByText('记忆回忆').click()
 
-    // 쇼핑 검색 — Naver items shape: 썸네일 + 최저가 + 판매처.
-    await sendMessage(page, '무선 키보드 최저가 알려줘 E2E_SEARCH_SHOP')
+    // shopping search — Simulated shopping data: thumbnail + 最低价 + seller。
+    await sendMessage(page, '告诉我无线键盘最低价 E2E_SEARCH_SHOP')
     await expect(page.getByText(SHOP_FINAL).first()).toBeVisible({ timeout: 120_000 })
     const priceRow = page.locator('[data-moldy-search-price]').first()
     await expect(priceRow).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('[data-moldy-search-thumbnail]').first()).toBeVisible()
-    await expect(page.getByText('최저 42,900원')).toBeVisible()
+    await expect(page.getByText('最低 42,900 韩元')).toBeVisible()
     await settle(page)
     await capture(page, WAVE, '02-search-shop-thumbnail-price.png')
 
-    // ── 3막: 팀 미션 런 — 팀 스트립 + 스킬 승인 + 터미널 카드 ───────────
+    // ── 第 3 幕：team mission run — team strip + skill approval + terminal card ──
     const missionConversationId = await createConversation(
       request,
       csrfHeaders,
       setup.parentAgentId,
-      'Wave2 팀 미션',
+      'Wave2 team mission',
     )
     await gotoChat(page, setup.parentAgentId, missionConversationId)
     await sendMessage(
       page,
-      `위키 리포트 준비해줘 E2E_LANGGRAPH_V3 subagent=${setup.childRuntimeName}`,
+      `准备 wiki report E2E_LANGGRAPH_V3 subagent=${setup.childRuntimeName}`,
     )
 
-    // 팀 스트립 — 위임 즉시 서브에이전트 칩이 뜨고 표시명으로 치환된다.
+    // team strip — 委派后立即显示 subagent chip，并替换为 display name。
     const teamStrip = page.locator('[data-moldy-team-strip]')
     await expect(teamStrip).toBeVisible({ timeout: 90_000 })
     await expect(teamStrip.getByText(setup.childName)).toBeVisible({ timeout: 30_000 })
     await settle(page)
     await capture(page, WAVE, '03-team-strip-live.png')
 
-    // execute_in_skill 승인 → docx 스킬이 실제 실행된다.
+    // execute_in_skill approval → docx skill 实际执行。
     await approveExecuteInSkill(page)
     await expect(page.getByText(FINAL_TEXT).first()).toBeVisible({ timeout: 180_000 })
 
-    // 팀 스트립 완료 상태 — done/total 메타.
-    await expect(teamStrip.getByText('1/1 완료')).toBeVisible({ timeout: 30_000 })
+    // team strip 完成状态 — done/total meta。
+    await expect(teamStrip.getByText('1/1 完成')).toBeVisible({ timeout: 30_000 })
 
-    // 터미널 ui_data 카드 — 첫 실도구 genui producer (execute_in_skill stdout).
+    // terminal ui_data card — 第一个真实工具 genui producer（execute_in_skill stdout）。
     const terminalCard = page.getByTestId('data-ui-terminal').last()
     await expect(terminalCard).toBeVisible({ timeout: 60_000 })
     await terminalCard.scrollIntoViewIfNeeded()
     await settle(page)
     await capture(page, WAVE, '04-team-strip-done-terminal-card.png')
 
-    // 팀 스트립 칩 클릭 → 우측 레일 서브에이전트 상세.
+    // 点击 team strip chip → 右侧 rail 显示 subagent 详情。
     await teamStrip.getByText(setup.childName).click()
     const rail = page.getByRole('complementary')
     await expect(rail.getByText(setup.childName).first()).toBeVisible({ timeout: 30_000 })
     await settle(page)
     await capture(page, WAVE, '05-team-chip-opens-rail.png')
 
-    // ── 4막: 리로드 — 스킬 실행 pill(커맨드+파일 칩) + 팀 스트립 복원 ─────
+    // ── 第 4 幕：reload — skill 执行 pill（command+file chip）+ team strip 恢复 ──
     await gotoChat(page, setup.parentAgentId, missionConversationId)
     await expect(teamStrip).toBeVisible({ timeout: 90_000 })
     const skillPill = page.locator('[data-moldy-skill-execution="docx-document"]').last()
     await expect(skillPill).toBeVisible({ timeout: 60_000 })
-    // 파일이 있으면 기본 펼침 — OUTPUT_FILES 칩이 파일 API로 링크된다.
+    // 有文件时默认展开 — OUTPUT_FILES chip 链接到 file API。
     const fileChip = skillPill.locator('[data-moldy-skill-file]').first()
     await expect(fileChip).toBeVisible({ timeout: 30_000 })
     await skillPill.scrollIntoViewIfNeeded()
     await settle(page)
     await capture(page, WAVE, '06-skill-pill-files-after-reload.png')
 
-    // ── 정리: user-scope 기억은 계정 전역이라 다른 spec 화면에 "记忆回忆"
-    // 칩이 새어 들어간다 — 투어가 만든 기억을 지워 spec 간 결합을 끊는다.
+    // ── 清理：user-scope memory 是账号全局的，会泄漏到其他 spec 界面的 "记忆回忆"
+    // chip — 删除本次 tour 创建的 memory，切断 spec 间耦合。
     await resetMemories(request, csrfHeaders, [])
   })
 })

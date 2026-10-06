@@ -1,7 +1,7 @@
-"""M5 Slice E Stage 3 — Credential env injection (Phase 1 출시 게이트).
+"""M5 Slice E Stage 3 — Credential env injection (Phase 1 发布 gate)。
 
 Spec §8.2~§8.4 + deletion-analysis §1.(b). Targets the resolution surface
-젠슨 shipped in Stage 3:
+Jensen shipped in Stage 3:
 
 * ``app.marketplace.credential_requirements.resolve_credential_bindings``
 * ``app.marketplace.credential_requirements.build_runtime_env``
@@ -65,9 +65,7 @@ async def seeded_user(db_session: AsyncSession) -> uuid.UUID:
         await db_session.execute(select(User).where(User.id == TEST_USER_ID))
     ).scalar_one_or_none()
     if existing is None:
-        db_session.add(
-            User(id=TEST_USER_ID, email="test@test.com", name="Test User")
-        )
+        db_session.add(User(id=TEST_USER_ID, email="test@test.com", name="Test User"))
         await db_session.commit()
     return TEST_USER_ID
 
@@ -92,36 +90,36 @@ def _make_skill(
     )
 
 
-def _srt_requirement_dict(*, required: bool = True) -> dict:
-    """SRT user-credential requirement matching Spec §6."""
+def _basic_requirement_dict(*, required: bool = True) -> dict:
+    """BASIC user-credential requirement matching Spec §6."""
 
     return {
-        "key": "srt_account",
-        "definition_key": "srt_account",
+        "key": "http_basic",
+        "definition_key": "http_basic",
         "required": required,
-        "label": "SRT login",
+        "label": "BASIC login",
         "fields": ["username", "password"],
         "injection": "env",
         "scope": "user",
         "env_map": {
-            "username": "KSKILL_SRT_ID",
-            "password": "KSKILL_SRT_PASSWORD",
+            "username": "HTTP_BASIC_USERNAME",
+            "password": "HTTP_BASIC_PASSWORD",
         },
     }
 
 
-def _coupang_optional_requirement_dict() -> dict:
+def _api_key_optional_requirement_dict() -> dict:
     return {
-        "key": "coupang_partners",
-        "definition_key": "coupang_partners",
+        "key": "http_api_key",
+        "definition_key": "http_api_key",
         "required": False,
-        "label": "Coupang Partners",
-        "fields": ["access_key", "secret_key"],
+        "label": "API key",
+        "fields": ["api_key", "header_name"],
         "injection": "env",
         "scope": "user",
         "env_map": {
-            "access_key": "COUPANG_ACCESS_KEY",
-            "secret_key": "COUPANG_SECRET_KEY",
+            "api_key": "HTTP_API_KEY",
+            "header_name": "HTTP_API_HEADER",
         },
     }
 
@@ -166,7 +164,7 @@ class TestMissingRequiredCredential:
 
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_srt_requirement_dict(required=True)],
+            requirements=[_basic_requirement_dict(required=True)],
         )
         db_session.add(skill)
         await db_session.commit()
@@ -175,7 +173,7 @@ class TestMissingRequiredCredential:
             db_session, skill=skill, user_id=seeded_user
         )
         assert resolved == {}
-        assert missing == ["srt_account"]
+        assert missing == ["http_basic"]
 
         # build_runtime_env converts the same input into the documented
         # 409 — chat_service uses this before any LLM tokens are spent.
@@ -190,18 +188,18 @@ class TestMissingRequiredCredential:
             )
         assert exc_info.value.code == "MARKETPLACE_CREDENTIAL_REQUIRED"
         assert exc_info.value.status == 409
-        assert "srt_account" in exc_info.value.message
+        assert "http_basic" in exc_info.value.message
 
     @pytest.mark.asyncio
     async def test_optional_credential_can_be_absent(
         self, db_session: AsyncSession, seeded_user: uuid.UUID
     ) -> None:
         """``required=False`` requirements with no binding pass through —
-        progress.txt L48 (coupang_partners is optional)."""
+        progress.txt L48 (http_api_key is optional)."""
 
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_coupang_optional_requirement_dict()],
+            requirements=[_api_key_optional_requirement_dict()],
         )
         db_session.add(skill)
         await db_session.commit()
@@ -239,42 +237,42 @@ class TestEnvInjectionScope:
         ``build_runtime_env`` must emit ONLY the srt env vars. The user's
         ktx credential — although owned + active — does not appear."""
 
-        srt_cred = _persist_credential(
+        basic_cred = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "srt-id-A", "password": "srt-pw-A"},
         )
-        ktx_cred = _persist_credential(
+        other_cred = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="ktx_account",
+            definition_key="http_basic",
             data={"username": "ktx-id-A", "password": "ktx-pw-A"},
         )
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_srt_requirement_dict(required=True)],
+            requirements=[_basic_requirement_dict(required=True)],
         )
         db_session.add(skill)
         await db_session.flush()
         # Bind both — only srt should be consulted (the requirement list
-        # has no ktx_account entry).
+        # has no other_basic entry).
         db_session.add_all(
             [
                 SkillCredentialBinding(
                     id=uuid.uuid4(),
                     skill_id=skill.id,
                     user_id=seeded_user,
-                    requirement_key="srt_account",
-                    credential_id=srt_cred.id,
+                    requirement_key="http_basic",
+                    credential_id=basic_cred.id,
                     scope="skill",
                 ),
                 SkillCredentialBinding(
                     id=uuid.uuid4(),
                     skill_id=skill.id,
                     user_id=seeded_user,
-                    requirement_key="ktx_account",
-                    credential_id=ktx_cred.id,
+                    requirement_key="other_basic",
+                    credential_id=other_cred.id,
                     scope="skill",
                 ),
             ]
@@ -289,11 +287,11 @@ class TestEnvInjectionScope:
             user=_LightUser(seeded_user),  # type: ignore[arg-type]
         )
         assert env == {
-            "KSKILL_SRT_ID": "srt-id-A",
-            "KSKILL_SRT_PASSWORD": "srt-pw-A",
+            "HTTP_BASIC_USERNAME": "srt-id-A",
+            "HTTP_BASIC_PASSWORD": "srt-pw-A",
         }, f"unexpected env: {env}"
         # Defense in depth — KTX values are absent.
-        assert all(not k.startswith("KSKILL_KTX") for k in env)
+        assert all(not k.startswith("OTHER_BASIC") for k in env)
 
     @pytest.mark.asyncio
     async def test_subprocess_env_does_not_include_unrelated_env(
@@ -321,9 +319,7 @@ class TestEnvInjectionScope:
             skill=skill,
             user=_LightUser(seeded_user),  # type: ignore[arg-type]
         )
-        assert "SECRET_PASTE" not in env, (
-            "host env var leaked through build_runtime_env"
-        )
+        assert "SECRET_PASTE" not in env, "host env var leaked through build_runtime_env"
         assert env == {}
 
 
@@ -338,26 +334,26 @@ class TestOverridePrecedence:
         self, db_session: AsyncSession, seeded_user: uuid.UUID
     ) -> None:
         """Two srt credentials A and B exist. SkillCredentialBinding
-        points at A; ``agent_skills.config.credential_bindings.srt_account``
+        points at A; ``agent_skills.config.credential_bindings.http_basic``
         points at B. Override (B) must win — Spec §8.4 priority."""
 
         cred_a = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "default-A", "password": "default-A-pw"},
             name="A",
         )
         cred_b = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "override-B", "password": "override-B-pw"},
             name="B",
         )
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_srt_requirement_dict(required=True)],
+            requirements=[_basic_requirement_dict(required=True)],
         )
         db_session.add(skill)
         await db_session.flush()
@@ -366,7 +362,7 @@ class TestOverridePrecedence:
                 id=uuid.uuid4(),
                 skill_id=skill.id,
                 user_id=seeded_user,
-                requirement_key="srt_account",
+                requirement_key="http_basic",
                 credential_id=cred_a.id,
                 scope="skill",
             )
@@ -377,12 +373,10 @@ class TestOverridePrecedence:
             db_session,
             skill=skill,
             user_id=seeded_user,
-            agent_skill_config={
-                "credential_bindings": {"srt_account": str(cred_b.id)}
-            },
+            agent_skill_config={"credential_bindings": {"http_basic": str(cred_b.id)}},
         )
         assert missing == []
-        entry = resolved["srt_account"]
+        entry = resolved["http_basic"]
         assert entry.credential_id == cred_b.id, "override binding lost"
         assert entry.decrypted == {
             "username": "override-B",
@@ -399,12 +393,12 @@ class TestOverridePrecedence:
         cred_default = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "default-only", "password": "pw"},
         )
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_srt_requirement_dict(required=True)],
+            requirements=[_basic_requirement_dict(required=True)],
         )
         db_session.add(skill)
         await db_session.flush()
@@ -413,7 +407,7 @@ class TestOverridePrecedence:
                 id=uuid.uuid4(),
                 skill_id=skill.id,
                 user_id=seeded_user,
-                requirement_key="srt_account",
+                requirement_key="http_basic",
                 credential_id=cred_default.id,
                 scope="skill",
             )
@@ -427,7 +421,7 @@ class TestOverridePrecedence:
             agent_skill_config=None,
         )
         assert missing == []
-        assert resolved["srt_account"].credential_id == cred_default.id
+        assert resolved["http_basic"].credential_id == cred_default.id
 
         # Empty override dict ≠ "no override" — make sure an empty dict
         # also falls through to the SkillCredentialBinding.
@@ -438,7 +432,7 @@ class TestOverridePrecedence:
             agent_skill_config={"credential_bindings": {}},
         )
         assert missing2 == []
-        assert resolved2["srt_account"].credential_id == cred_default.id
+        assert resolved2["http_basic"].credential_id == cred_default.id
 
 
 # ===========================================================================
@@ -460,7 +454,7 @@ class TestValueConfinement:
         cred = _persist_credential(
             db_session,
             user_id=seeded_user,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "id", "password": plaintext_marker},
         )
         await db_session.commit()
@@ -493,13 +487,11 @@ class TestOwnershipMismatchSilentMissing:
 
         # Seed a second user + their credential.
         other_user_id = uuid.uuid4()
-        db_session.add(
-            User(id=other_user_id, email="other@test.com", name="Other")
-        )
+        db_session.add(User(id=other_user_id, email="other@test.com", name="Other"))
         other_cred = _persist_credential(
             db_session,
             user_id=other_user_id,
-            definition_key="srt_account",
+            definition_key="http_basic",
             data={"username": "leak-me", "password": "leak-me-pw"},
         )
         # Skill belongs to seeded_user, but binding row (which we forge
@@ -507,7 +499,7 @@ class TestOwnershipMismatchSilentMissing:
         # at the other user's credential.
         skill = _make_skill(
             user_id=seeded_user,
-            requirements=[_srt_requirement_dict(required=True)],
+            requirements=[_basic_requirement_dict(required=True)],
         )
         db_session.add(skill)
         await db_session.flush()
@@ -516,7 +508,7 @@ class TestOwnershipMismatchSilentMissing:
                 id=uuid.uuid4(),
                 skill_id=skill.id,
                 user_id=seeded_user,
-                requirement_key="srt_account",
+                requirement_key="http_basic",
                 credential_id=other_cred.id,
                 scope="skill",
             )
@@ -526,10 +518,8 @@ class TestOwnershipMismatchSilentMissing:
         resolved, missing = await resolve_credential_bindings(
             db_session, skill=skill, user_id=seeded_user
         )
-        assert resolved == {}, (
-            "ownership mismatch leaked decrypted credential into resolution"
-        )
-        assert missing == ["srt_account"]
+        assert resolved == {}, "ownership mismatch leaked decrypted credential into resolution"
+        assert missing == ["http_basic"]
 
 
 # ===========================================================================
@@ -538,24 +528,11 @@ class TestOwnershipMismatchSilentMissing:
 
 
 class TestCredentialPipelineSurface:
-    def test_all_k_skill_definitions_registered(self) -> None:
+    def test_generic_credential_definitions_registered(self) -> None:
         from app.credentials.registry import registry
 
         keys = {d.key for d in registry.all()}
-        for required in (
-            "srt_account",
-            "ktx_account",
-            "foresttrip_account",
-            "kipris_plus_api",
-            "dart_api",
-            "odsay_api",
-            "coupang_partners",
-            "k_skill_proxy",
-        ):
-            assert required in keys, (
-                f"k-skill credential definition {required!r} not registered "
-                f"— Slice D (Spec §6) regression"
-            )
+        assert {"http_basic", "http_api_key", "http_bearer"} <= keys
 
     def test_skill_runtime_resolve_credentials_symbol_exists(self) -> None:
         """Stage 3 added ``resolve_runtime_credentials`` — pin the symbol

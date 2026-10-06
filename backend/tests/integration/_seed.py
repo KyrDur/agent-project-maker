@@ -1,11 +1,11 @@
-"""Integration test 공용 시드 헬퍼.
+"""Integration test 共用 seed helper。
 
-W3-out 이전엔 ``test_stream_resume.py`` 의 ``_seed_conv`` 와
-``test_broker_dual_write.py`` 의 ``_seed`` 가 거의 동일한 User+Model+Agent+
-Conversation 시퀀스를 hand-roll. 한 곳으로 통합하면 향후 모델/스키마 변경
-시 한 파일만 수정하면 된다 (W3-out retrospective MEDIUM follow-up 정리).
+W3-out 之前，``test_stream_resume.py`` 的 ``_seed_conv`` 与
+``test_broker_dual_write.py`` 的 ``_seed`` 几乎都在 hand-roll 同样的 User+Model+Agent+
+Conversation 序列。统一到一处后，未来 model/schema 变更时只需改一个文件
+（整理 W3-out retrospective MEDIUM follow-up）。
 
-신규 통합 테스트가 같은 패턴을 필요로 하면 본 헬퍼를 그대로 재사용.
+若新 integration test 需要相同模式，直接复用本 helper。
 """
 
 from __future__ import annotations
@@ -28,12 +28,12 @@ async def seed_conversation_with_agent(
     model_name: str = "gpt-4o",
     model_display_name: str = "GPT-4o",
 ) -> uuid.UUID:
-    """User + Model + Agent + Conversation 시드 한 줄. 새 ``conversation.id`` 반환.
+    """一行 seed User + Model + Agent + Conversation。返回新的 ``conversation.id``。
 
-    User row 는 idempotent — autouse fixture 가 schema 만 만들고 row 는 안
-    채우므로, 같은 ``TEST_USER_ID`` 로 중복 호출 시 second insert 가 unique
-    제약 위반이 안 나도록 미리 존재 검사. Model/Agent/Conversation 은 매번
-    fresh row.
+    User row 是 idempotent — autouse fixture 只创建 schema，不
+    填 row，因此用同一 ``TEST_USER_ID`` 重复调用时，先检查是否已存在，以避免 second insert
+    触发 unique 约束。Model/Agent/Conversation 每次
+    都是 fresh row。
     """
     async with TestSession() as db:
         existing = await db.get(User, TEST_USER_ID)

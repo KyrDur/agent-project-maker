@@ -14,15 +14,15 @@ import { chatSubagentNamesAtom, resolveSubagentDisplayName } from '@/lib/stores/
 import { cn } from '@/lib/utils'
 
 /**
- * SubagentTeamStrip — 이번 대화에서 위임된 서브에이전트 팀을 한 줄로 보여주는
- * 상시 스트립. MissionControlBar(계획)와 같은 sticky 헤더 영역에 살며,
- * 스트리밍 중·종료 후·리로드 후 모두 유지된다(SDK discovery가 thread state로
- * re-seed). 칩 클릭은 우측 레일의 per-subagent 상세 패널을 연다 — 인라인
- * SubagentCard의 openRail 계약을 그대로 재사용한다.
+ * SubagentTeamStrip —— 用一行显示本次对话中被委派的子 Agent 团队的
+ * 常驻 strip。位于与 MissionControlBar（计划）相同的 sticky header 区域，
+ * 流式中、结束后、reload 后都保持显示（SDK discovery 通过 thread state
+ * re-seed）。点击 chip 会打开右侧 rail 的 per-subagent 详情面板 —— 直接复用 inline
+ * SubagentCard 的 openRail 约定。
  *
- * 데이터는 `useSubagentSnapshots()`(SubagentRuntimeProvider) 하나만 쓰고,
- * 표시명은 `moldy.subagent_names` 맵으로 렌더 시점에만 치환한다(G10-A 계약 —
- * SDK 스냅샷/checkpoint는 불변).
+ * 数据只使用 `useSubagentSnapshots()`(SubagentRuntimeProvider)，
+ * 显示名仅在 render 时通过 `moldy.subagent_names` map 替换（G10-A 约定 ——
+ * SDK snapshot/checkpoint 保持不变）。
  */
 
 const STATUS_DOT_CLASS: Record<SubagentDiscoverySnapshot['status'], string> = {
@@ -54,7 +54,7 @@ function TeamChip({
         'hover:bg-accent hover:text-foreground',
       )}
     >
-      {/* SDK depth는 root=0, 직접 위임=1 — 서브의 서브(≥2)만 중첩 마커. */}
+      {/* SDK depth 中 root=0，直接委派=1 — 仅 sub 的 sub(≥2)显示嵌套标记。 */}
       {snapshot.depth > 1 ? (
         <span aria-hidden className="shrink-0 text-muted-foreground">
           ↳

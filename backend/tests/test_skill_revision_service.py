@@ -276,8 +276,8 @@ async def test_rollback_package_missing_skill_md_fails_before_mutation(
     db: AsyncSession,
     tmp_path,
 ) -> None:
-    """validate-then-mutate (R5) — SKILL.md 없는 스냅샷 rollback은 디스크
-    무변경 SnapshotMissing으로 끝난다. rmtree 후에 터지면 부분 변이가 남는다."""
+    """validate-then-mutate (R5) — 缺少 SKILL.md 的快照 rollback 以
+    磁盘无修改的 SnapshotMissing 结束。若在 rmtree 后失败，会留下部分变更。"""
 
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         skill = await skill_service.create_package_skill(
@@ -296,7 +296,7 @@ async def test_rollback_package_missing_skill_md_fails_before_mutation(
             user_id=TEST_USER_ID,
             operation="create",
         )
-        # 스냅샷 zip을 SKILL.md 없는 손상본으로 교체.
+        # 将快照 zip 替换为不含 SKILL.md 的损坏版本。
         snapshot_path = tmp_path / first.object_key
         with zipfile.ZipFile(snapshot_path, "w") as archive:
             archive.writestr("scripts/run.py", "print('v0')\n")
@@ -308,7 +308,7 @@ async def test_rollback_package_missing_skill_md_fails_before_mutation(
                 user_id=TEST_USER_ID,
                 revision=first,
             )
-        # 디스크 무변경 — 현재 패키지 파일이 그대로 살아 있어야 한다.
+        # 磁盘无修改 — 当前包文件必须原样保留。
         assert skill_service.get_file_bytes(skill, "SKILL.md")
         assert skill_service.get_file_bytes(skill, "scripts/run.py") == b"print('v1')\n"
 
@@ -318,8 +318,8 @@ async def test_rollback_package_zip_slip_snapshot_fails_before_mutation(
     db: AsyncSession,
     tmp_path,
 ) -> None:
-    """extract_package가 거부하는 엔트리(traversal 등)도 무변이 SnapshotMissing —
-    tempdir 추출은 rmtree 이전이므로 409 계약으로 수렴한다 (R6)."""
+    """被 extract_package 拒绝的条目（traversal 等）也以无变更 SnapshotMissing 结束 —
+    tempdir 提取发生在 rmtree 之前，因此统一为 409 契约 (R6)。"""
 
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         skill = await skill_service.create_package_skill(
@@ -350,7 +350,7 @@ async def test_rollback_package_zip_slip_snapshot_fails_before_mutation(
                 user_id=TEST_USER_ID,
                 revision=first,
             )
-        # 디스크 무변경.
+        # 磁盘无修改。
         assert skill_service.get_file_bytes(skill, "scripts/run.py") == b"print('v1')\n"
 
 
@@ -359,9 +359,9 @@ async def test_rollback_package_malformed_yaml_fails_before_mutation(
     db: AsyncSession,
     tmp_path,
 ) -> None:
-    """패키지 스냅샷의 깨진 YAML frontmatter — extract_package 내부 파싱은
-    SkillMetadataError만 PackageError로 래핑하므로 validate 선검증 없이는
-    500으로 샜다. 무변이 SnapshotMissing으로 수렴 (R7)."""
+    """包快照的损坏 YAML frontmatter — extract_package 内部解析只会
+    将 SkillMetadataError 包装为 PackageError，因此若无 validate 前置检查，
+    会泄漏为 500。统一为无变更 SnapshotMissing (R7)。"""
 
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         skill = await skill_service.create_package_skill(
@@ -392,7 +392,7 @@ async def test_rollback_package_malformed_yaml_fails_before_mutation(
                 user_id=TEST_USER_ID,
                 revision=first,
             )
-        # 디스크 무변경.
+        # 磁盘无修改。
         assert skill_service.get_file_bytes(skill, "scripts/run.py") == b"print('v1')\n"
 
 
@@ -401,7 +401,7 @@ async def test_rollback_package_bumps_last_modified_at(
     db: AsyncSession,
     tmp_path,
 ) -> None:
-    """패키지 rollback도 형제 변이처럼 last_modified_at을 갱신한다 (R5)."""
+    """包 rollback 也像兄弟变更一样更新 last_modified_at (R5)。"""
 
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         skill = await skill_service.create_package_skill(
@@ -432,8 +432,8 @@ async def test_list_revisions_limit_none_is_unbounded(
     db: AsyncSession,
     tmp_path,
 ) -> None:
-    """limit=None 전수 열거 — retention prune이 기본 100 창 밖 리비전을
-    영구히 놓치지 않기 위한 계약 (R5)."""
+    """limit=None 全量枚举 — 确保 retention prune 不会永久漏掉默认 100 窗口之外的
+    版本的契约 (R5)。"""
 
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         skill = await skill_service.create_text_skill(

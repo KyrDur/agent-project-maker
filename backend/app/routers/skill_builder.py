@@ -62,7 +62,7 @@ def _session_response(
 ) -> SkillBuilderSessionResponse:
     response = SkillBuilderSessionResponse.model_validate(session)
     if agent_id is not None:
-        # ``agent_id``는 ORM 속성이 아니라 대화 역참조 파생값 — 검증 후 주입.
+        # ``agent_id`` 不是 ORM 属性，而是从对话反向引用派生的值 — 校验后注入。
         response = response.model_copy(update={"agent_id": agent_id})
     return response
 
@@ -75,11 +75,11 @@ async def start_skill_builder(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ) -> SkillBuilderSessionResponse:
-    """빌더 챗 세션 시작 (v2, 스펙 AD-6).
+    """启动 Builder 聊天会话（v2，规范 AD-6）。
 
-    히든 빌더 에이전트 lazy-seed → 세션 row → 드래프트 워크스페이스 →
-    draft conversation을 만들고 ``{session, agent_id, conversation_id}``를
-    반환한다. 프론트는 이 값으로 ``/skills/builder/[sessionId]``에 진입한다.
+    hidden Builder Agent lazy-seed → session row → 草稿工作区 →
+    创建 draft conversation，并返回 ``{session, agent_id, conversation_id}``。
+    前端使用该值进入 ``/skills/builder/[sessionId]``。
     """
 
     await require_system_llm(db, user=user, request=request)
@@ -96,15 +96,15 @@ async def start_skill_builder(
     try:
         agent = await get_or_create_skill_builder_agent(db, user.id)
     except SystemModelNotConfiguredError as exc:
-        # 모델 카탈로그가 비어 seed용 FK를 채울 수 없는 경우 — 게이트와 동일 계약.
+        # 当模型 catalog 为空、无法填充 seed 所需 FK 时 — 与 gate 使用相同 contract。
         raise system_llm_not_configured() from exc
-    # source="draft" — 첫 메시지 전송 시 promote되는 기존 draft 계약 재사용.
-    # 네비게이터 노출은 runtime_profile 필터가 promote 이후에도 차단한다.
+    # source="draft" — 复用现有 draft contract，发送第一条消息时 promote。
+    # navigator 暴露仍由 runtime_profile filter 在 promote 后继续阻止。
     conversation = await chat_service.create_conversation(db, agent.id, source="draft")
     workspace_path = skill_draft_workspace.create_workspace(session.id)
     if session.source_skill_id is not None:
-        # improve 모드 — 원본 스킬 파일을 워크스페이스로 복사(시드).
-        # 소유권은 create_session이 이미 검증했다.
+        # improve 模式 — 将原始 Skill 文件复制（seed）到工作区。
+        # 所有权已由 create_session 校验。
         source_skill = await skill_service.get_skill(db, session.source_skill_id, user.id)
         if source_skill is not None:
             workspace_path = skill_draft_workspace.seed_workspace_from_skill(
@@ -140,10 +140,10 @@ async def list_skill_builder_sessions(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> list[SkillBuilderSessionBrief]:
-    """사용자의 빌더 세션 목록 (스튜디오 빌더 탭/인덱스, Phase 2).
+    """用户的 Builder 会话列表（Studio Builder tab/index，Phase 2）。
 
-    ``skill_id``는 improve 원본과 create 산출물(finalized) 양쪽에 매칭 —
-    "이 스킬의 빌더 이력"을 한 번에 조회한다. updated_at 내림차순.
+    ``skill_id`` 同时匹配 improve 原始项和 create 产物（finalized）—
+    可一次性查询“该 Skill 的 Builder 历史”。按 updated_at 降序。
     """
 
     sessions = await skill_builder_service.list_sessions(
@@ -173,11 +173,11 @@ async def list_skill_builder_files(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> SkillBuilderFilesResponse:
-    """드래프트 워크스페이스 파일 목록 (레일 소스 뷰, M7).
+    """草稿工作区文件列表（rail source view，M7）。
 
-    어댑터와 동일 필터(``inputs/`` 제외·바이너리 skip)의 stat 기반 열거라
-    워크스페이스 전체 바이트를 읽지 않고(R2 perf), 디스크 경로를 직접
-    다루지 않아 traversal 표면이 없다.
+    基于 stat 枚举，使用与 adapter 相同的 filter（排除 ``inputs/``、binary skip），
+    因此不会读取整个工作区的字节内容（R2 perf），也不会直接处理磁盘路径，
+    不存在 traversal 暴露面。
     """
 
     session = await get_session_or_404(db, session_id=session_id, user=user)
@@ -198,10 +198,10 @@ async def get_skill_builder_file_content(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> SkillBuilderFileContentResponse:
-    """드래프트 파일 내용 조회 (소유자 전용, 레일 소스 뷰어).
+    """查询草稿文件内容（仅 owner，rail source viewer）。
 
-    요청 path는 어댑터가 열거한 정규화 경로와 **정확 일치**해야 한다 —
-    디스크 resolve가 없으므로 ``../`` 류 traversal은 매칭 실패(404)로 끝난다.
+    请求 path 必须与 adapter 枚举出的规范化路径**完全一致** —
+    因为没有磁盘 resolve，所以 ``../`` 一类 traversal 会因匹配失败（404）结束。
     """
 
     session = await get_session_or_404(db, session_id=session_id, user=user)
@@ -267,8 +267,8 @@ async def confirm_skill_builder_session(
     session = await get_session_or_404(db, session_id=session_id, user=user)
     existing = await completed_skill(db, session=session, user=user)
     if existing is not None:
-        # bare model_validate는 used_by_count(항상 0 컬럼)·health 등 enrichment를
-        # 건너뛴다 — 다른 SkillResponse 경로와 동일하게 serializer를 경유한다.
+        # bare model_validate 会跳过 used_by_count（始终为 0 的列）、health 等 enrichment —
+        # 与其他 SkillResponse 路径一致，应经过 serializer。
         return await serialize_skill(db, existing, user)
     if session.status == SkillBuilderStatus.CONFIRMING.value:
         raise session_confirming()

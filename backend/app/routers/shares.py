@@ -308,8 +308,8 @@ async def get_public_share(
 
     messages = await chat_service.list_messages_from_checkpointer(db, conversation, user_id=None)
     secrets = tuple(await chat_secrets.collect_conversation_secret_values(db, conversation))
-    # W6: turn별 SSE event trace를 함께 노출 → 공개 페이지에서 도구/Skill
-    # 칩 렌더용. trace가 없는(W5 이전에 만든) 대화는 빈 list로 응답.
+    # W6: 同时暴露每个 turn 的 SSE event trace → 用于公开页面渲染工具/Skill
+    # chip。没有 trace（W5 之前创建）的对话返回空 list。
     traces = _filter_public_share_traces(
         await trace_storage.get_traces_for_conversation(db, conversation.id),
         conversation_id=conversation.id,
@@ -354,8 +354,8 @@ async def get_public_share_messages(
     _, conversation, _ = bundle
 
     checkpoint_id = conversation.active_branch_checkpoint_id
-    # ``SharedConversationView``와 같은 token이지만 envelope은 shape이 다르므로
-    # share_cache가 별도 namespace key로 캡슐화한다.
+    # 虽然 token 与 ``SharedConversationView`` 相同，但 envelope 的 shape 不同，因此
+    # share_cache 使用独立 namespace key 封装。
     cached = share_cache.get_envelope(share_token, checkpoint_id)
     if cached is not None:
         return cached

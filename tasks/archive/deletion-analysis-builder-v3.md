@@ -1,187 +1,187 @@
-# Builder v2 → v3 마이그레이션: 삭제 분석 (Musk Step 2)
+# Builder v2 → v3 迁移: 删除分析 (Musk Step 2)
 
-**분석 수행자**: 베조스 (Bezos — QA/Quality DRI)  
-**분석일**: 2026-04-26  
-**상태**: GREEN ✓ (분석 완료, 분류 명확)
-
----
-
-## 요약
-
-Builder v2 (7-phase 자동 파이프라인)에서 v3 (LangGraph StateGraph 8-phase + 채팅 UI 통합)로 마이그레이션할 때:
-
-- **보존 (K)**: 11개 항목 — LLM 프롬프트, JSON 스키마, 공통 헬퍼, 카탈로그 로직
-- **이식 (M)**: 8개 항목 — 서브에이전트 로직, UI 패턴, 라우터/서비스 구조
-- **삭제 (D)**: 5개 항목 — orchestrator.py, phase-timeline, stream-builder 등 v2 전용 인프라
-
-**즉시 삭제 불가 항목**: 0개 (모두 v3 구현 완료 후)  
-**추가 조사 필요**: 0개 (의존성 명확)
+**分析执行者**: 贝索斯 (Bezos — QA/Quality DRI)<br>
+**分析日期**: 2026-04-26<br>
+**状态**: GREEN ✓（分析完成，分类明确）
 
 ---
 
-## 상세 분석
+## 摘要
+
+从 Builder v2（7-phase 自动 pipeline）迁移到 v3（LangGraph StateGraph 8-phase + 聊天 UI 整合）时:
+
+- **保留 (K)**: 11项 — LLM prompt, JSON schema, 通用 helper, catalog 逻辑
+- **迁移 (M)**: 8项 — sub-agent 逻辑, UI pattern, router/service 结构
+- **删除 (D)**: 5项 — orchestrator.py, phase-timeline, stream-builder 等 v2 专用基础设施
+
+**不可立即删除项目**: 0项（全部在 v3 实现完成后）<br>
+**需要额外调查**: 0项（依赖关系明确）
+
+---
+
+## 详细分析
 
 ### BACKEND
 
 #### 1. `backend/app/agent_runtime/builder/orchestrator.py`
-**상태**: **D (삭제 예정)**
+**状态**: **D（计划删除）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | D | 7-phase StateGraph 파이프라인. v3에서 8-phase로 완전 재설계됨. |
-| 라인 43-70: `BuilderState` TypedDict | D | v3는 `BuilderState` (state.py)로 이동하며 필드 확대 (image_url, todos, last_revision_message 추가). |
-| 라인 77-97: `phase1_init()` | M(부분) | 로직은 유사하지만, v3에서 진입/완료 메시지 + 진행 상황 카드 emit 추가. |
-| 라인 100-140: `phase2_intent()` | M(부분) | intent_analyzer 호출 로직 재사용, 하지만 v3에서는 ask_user 루프 추가. |
-| 라인 143-197: `phase3_tools()` | M(부분) | tool_recommender 호출 재사용, 하지만 v3에서는 승인/수정 interrupt 루프 추가. |
-| 라인 200-257: `phase4_middlewares()` | M(부분) | middleware_recommender 호출 재사용, v3에서 승인/수정 루프 추가. |
-| 라인 260-305: `phase5_prompt()` | M(부분) | prompt_generator 호출 재사용, v3에서 승인/수정 루프 추가. |
-| 라인 308-338: `phase6_config()` + `phase7_preview()` | M(부분) | draft_config 조립 로직 재사용, v3의 phase7 + phase8 분리. |
-| 라인 373-408: `build_builder_graph()` | D | StateGraph 토폴로지는 v3에서 새로 정의 (phase1→...→8 + router 분기). |
-| 라인 419-462: `run_builder_pipeline()` | M(부분) | SSE 이벤트 yield 패턴은 v3에서도 유사하지만, 노드 구조 변경됨. |
+| **整个文件** | D | 7-phase StateGraph pipeline。v3 中完全重新设计为8-phase。 |
+| 第43-70行: `BuilderState` TypedDict | D | v3 移至 `BuilderState` (state.py) 并扩展字段（增加 image_url, todos, last_revision_message）。 |
+| 第77-97行: `phase1_init()` | M(部分) | 逻辑类似，但 v3 增加进入/完成消息 + 进度卡片 emit。 |
+| 第100-140行: `phase2_intent()` | M(部分) | 复用 intent_analyzer 调用逻辑，但 v3 增加 ask_user loop。 |
+| 第143-197行: `phase3_tools()` | M(部分) | 复用 tool_recommender 调用，但 v3 增加 approval/revision interrupt loop。 |
+| 第200-257行: `phase4_middlewares()` | M(部分) | 复用 middleware_recommender 调用，v3 增加 approval/revision loop。 |
+| 第260-305行: `phase5_prompt()` | M(部分) | 复用 prompt_generator 调用，v3 增加 approval/revision loop。 |
+| 第308-338行: `phase6_config()` + `phase7_preview()` | M(部分) | 复用 draft_config 组装逻辑，v3 拆为 phase7 + phase8。 |
+| 第373-408行: `build_builder_graph()` | D | StateGraph topology 在 v3 中重新定义 (phase1→...→8 + router 分支)。 |
+| 第419-462行: `run_builder_pipeline()` | M(部分) | SSE event yield pattern 在 v3 中也类似，但 node 结构变化。 |
 
-**의존성 정리**:
-- `builder_service.py` L14에서 `run_builder_pipeline` import → v3 graph.astream으로 대체
-- `tests/test_builder_sub_agents.py`는 서브에이전트만 테스트하므로 영향 최소
+**依赖整理**:
+- `builder_service.py` L14 import `run_builder_pipeline` → 替换为 v3 graph.astream
+- `tests/test_builder_sub_agents.py` 只测试 sub-agent，因此影响最小
 
-**폐기 시점**: v3 graph.py 구현 + 라우터 통합 완료 후
+**废弃时点**: v3 graph.py 实现 + router 集成完成后
 
 ---
 
 #### 2. `backend/app/agent_runtime/builder/sub_agents/intent_analyzer.py`
-**상태**: **K (보존) + 프롬프트 재사용**
+**状态**: **K（保留）+ 复用 prompt**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | K | 의도 분석 로직 그대로 보존. |
-| 라인 21: `SYSTEM_PROMPT` 로드 | K | `builder/prompts/intent_analyzer.md` 프롬프트 텍스트 완전 보존. v3 phase2 노드에서 동일하게 호출. |
-| 라인 37-58: `analyze_intent()` 함수 | K | 함수 시그니처, JSON 스키마 (AgentCreationIntent), fallback 로직 모두 보존. v3 phase2_intent.py에서 직접 import 재사용. |
-| 라인 24-34: `_build_task_description()` | K | 프롬프트 작성 로직 보존. v3에서도 동일 사용. |
+| **整个文件** | K | 原样保留意图分析逻辑。 |
+| 第21行: 加载 `SYSTEM_PROMPT` | K | 完整保留 `builder/prompts/intent_analyzer.md` prompt 文本。v3 phase2 node 直接相同调用。 |
+| 第37-58行: `analyze_intent()` 函数 | K | 保留函数 signature、JSON schema (AgentCreationIntent)、fallback 逻辑。v3 phase2_intent.py 中直接 import 复用。 |
+| 第24-34行: `_build_task_description()` | K | 保留 prompt 编写逻辑。v3 中也相同使用。 |
 
-**위치 변경 필요 없음**: helpers.py의 `invoke_with_json_retry()` 호출은 v3에서도 동일하게 사용.
+**无需改位置**: helpers.py 的 `invoke_with_json_retry()` 调用在 v3 中也相同使用。
 
 ---
 
 #### 3. `backend/app/agent_runtime/builder/sub_agents/tool_recommender.py`
-**상태**: **K (보존) + 프롬프트 재사용**
+**状态**: **K（保留）+ 复用 prompt**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |-----|------|------|
-| **파일 전체** | K | 도구 추천 로직 그대로 보존. |
-| 라인 22: `SYSTEM_PROMPT` | K | `builder/prompts/tool_recommender.md` 프롬프트 완전 보존. v3 phase3_tools.py에서 동일 호출. |
-| 라인 52-85: `recommend_tools()` | K | 함수 시그니처, ToolRecommendation JSON 스키마, 카탈로그 필터링 로직 모두 보존. |
-| 라인 25-49: 헬퍼 함수들 | K | 카탈로그 포맷팅, 작업 설명 생성 로직 보존. |
+| **整个文件** | K | 原样保留工具推荐逻辑。 |
+| 第22行: `SYSTEM_PROMPT` | K | 完整保留 `builder/prompts/tool_recommender.md` prompt。v3 phase3_tools.py 中相同调用。 |
+| 第52-85行: `recommend_tools()` | K | 保留函数 signature、ToolRecommendation JSON schema、catalog filter 逻辑。 |
+| 第25-49行: helper 函数 | K | 保留 catalog formatting、任务描述生成逻辑。 |
 
-**의존성**: v3 phase3_tools.py에서 직접 import하여 재사용.
+**依赖**: 在 v3 phase3_tools.py 直接 import 并复用。
 
 ---
 
 #### 4. `backend/app/agent_runtime/builder/sub_agents/middleware_recommender.py`
-**상태**: **K (보존) + 프롬프트 재사용**
+**状态**: **K（保留）+ 复用 prompt**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | K | 미들웨어 추천 로직 그대로 보존. |
-| 라인 27: `SYSTEM_PROMPT` | K | `builder/prompts/middleware_recommender.md` 프롬프트 완전 보존. v3 phase4_middlewares.py에서 동일 호출. |
-| 라인 64-96: `recommend_middlewares()` | K | 함수 시그니처, MiddlewareRecommendation 스키마, 카탈로그 검증 로직 보존. |
+| **整个文件** | K | 原样保留 middleware 推荐逻辑。 |
+| 第27行: `SYSTEM_PROMPT` | K | 完整保留 `builder/prompts/middleware_recommender.md` prompt。v3 phase4_middlewares.py 中相同调用。 |
+| 第64-96行: `recommend_middlewares()` | K | 保留函数 signature、MiddlewareRecommendation schema、catalog 验证逻辑。 |
 
 ---
 
 #### 5. `backend/app/agent_runtime/builder/sub_agents/prompt_generator.py`
-**상태**: **K (보존) + 프롬프트 재사용**
+**状态**: **K（保留）+ 复用 prompt**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | K | 시스템 프롬프트 생성 로직 그대로 보존. |
-| 라인 25: `SYSTEM_PROMPT` | K | `builder/prompts/prompt_generator.md` 프롬프트 완전 보존. v3 phase5_prompt.py에서 동일 호출. |
-| 라인 88-163: `generate_system_prompt()` | K | 함수 시그니처, 프롬프트 검증 (필수 섹션), fallback 로직 모두 보존. |
-| 라인 79-85: `_has_required_sections()` | K | 프롬프트 품질 검증 로직 보존. |
+| **整个文件** | K | 原样保留 system prompt 生成逻辑。 |
+| 第25行: `SYSTEM_PROMPT` | K | 完整保留 `builder/prompts/prompt_generator.md` prompt。v3 phase5_prompt.py 中相同调用。 |
+| 第88-163行: `generate_system_prompt()` | K | 保留函数 signature、prompt 验证（必需 section）、fallback 逻辑。 |
+| 第79-85行: `_has_required_sections()` | K | 保留 prompt 质量验证逻辑。 |
 
-**중요 메모**: LLM 출력 구조(마크다운 형식, 8+1 섹션)는 반드시 보존해야 함. v3 phase5에서도 동일 검증 사용.
+**重要备注**: LLM 输出结构（Markdown 格式, 8+1 section）必须保留。v3 phase5 也使用相同验证。
 
 ---
 
 #### 6. `backend/app/agent_runtime/builder/sub_agents/helpers.py`
-**상태**: **K (보존, 공통 인프라)**
+**状态**: **K（保留, 通用基础设施）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | K | 모든 서브에이전트가 공유하는 공통 헬퍼. v3에서도 필수. |
-| 라인 36-46: `load_prompt()` | K | 프롬프트 파일 로더, 캐싱. v3에서도 동일 사용. |
-| 라인 144-192: `invoke_with_json_retry()` | K | LLM 호출 + JSON 파싱 + API 재시도 로직. v3 intent, tool, middleware 노드에서 직접 호출. |
-| 라인 195-247: `invoke_for_text()` | K | 텍스트 응답(프롬프트) 생성 로직. v3 phase5_prompt.py에서 동일 호출. |
-| 라인 66-92: `_get_builder_model()`, `_get_fallback_model()` | K | 모델 팩토리. v3에서도 동일 사용. |
-| 라인 94-141: `_invoke_with_api_retry()` | K | API 오류 재시도 로직. v3 all nodes에서 사용. |
+| **整个文件** | K | 所有 sub-agent 共享的通用 helper。v3 仍必需。 |
+| 第36-46行: `load_prompt()` | K | prompt 文件 loader, cache。v3 中也相同使用。 |
+| 第144-192行: `invoke_with_json_retry()` | K | LLM 调用 + JSON parsing + API retry 逻辑。v3 intent, tool, middleware node 直接调用。 |
+| 第195-247行: `invoke_for_text()` | K | 生成 text response(prompt) 的逻辑。v3 phase5_prompt.py 中相同调用。 |
+| 第66-92行: `_get_builder_model()`, `_get_fallback_model()` | K | model factory。v3 中也相同使用。 |
+| 第94-141行: `_invoke_with_api_retry()` | K | API error retry 逻辑。v3 all nodes 使用。 |
 
-**의존성**: 
-- `app.agent_runtime.model_factory.create_chat_model` import → 변경 없음
-- `app.config.settings` import → 변경 없음
+**依赖**:
+- import `app.agent_runtime.model_factory.create_chat_model` → 无变化
+- import `app.config.settings` → 无变化
 
 ---
 
-#### 7. `backend/app/agent_runtime/builder/prompts/` (4개 파일)
-**상태**: **K (완전 보존, LLM 프롬프트 텍스트)**
+#### 7. `backend/app/agent_runtime/builder/prompts/`（4个文件）
+**状态**: **K（完全保留, LLM prompt 文本）**
 
-| 파일 | 라인 | 상태 | 설명 |
+| 文件 | 行数 | 状态 | 说明 |
 |------|------|------|------|
-| intent_analyzer.md | 58 | K | AgentCreationIntent JSON 스키마와 매칭하는 LLM 지침. v3 phase2에서 직접 재사용. |
-| tool_recommender.md | 43 | K | ToolRecommendation 배열 생성 지침. v3 phase3에서 직접 재사용. |
-| middleware_recommender.md | 45 | K | MiddlewareRecommendation 배열 생성 지침. v3 phase4에서 직접 재사용. |
-| prompt_generator.md | 126 | K | 8-section 마크다운 프롬프트 구조 지침. v3 phase5에서 직접 재사용. |
+| intent_analyzer.md | 58 | K | 与 AgentCreationIntent JSON schema 匹配的 LLM 指令。v3 phase2 直接复用。 |
+| tool_recommender.md | 43 | K | ToolRecommendation 数组生成指令。v3 phase3 直接复用。 |
+| middleware_recommender.md | 45 | K | MiddlewareRecommendation 数组生成指令。v3 phase4 直接复用。 |
+| prompt_generator.md | 126 | K | 8-section Markdown prompt 结构指令。v3 phase5 直接复用。 |
 
-**주의**: 프롬프트 텍스트는 **절대 수정 금지**. v3 노드가 동일한 LLM 입력/출력 구조를 기대함.
+**注意**: prompt 文本**绝对禁止修改**。v3 node 期待相同 LLM 输入/输出结构。
 
 ---
 
 #### 8. `backend/app/services/builder_service.py`
-**상태**: **M (대부분 이식, 일부 교체)**
+**状态**: **M（大部分迁移，部分替换）**
 
-| 라인 범위 | 항목 | 분류 | 설명 |
+| 行范围 | 项目 | 分类 | 说明 |
 |---------|------|------|------|
-| 34-56 | 세션 CRUD (create_session, get_session) | K | 그대로 재사용. 스키마 동일. |
-| 64-102 | 원자적 상태 전환 (claim_for_streaming, claim_for_confirming) | K | 동시성 제어 로직 재사용. |
-| 115-157 | 카탈로그 조회, 모델 조회 | K | 서브에이전트 동적 주입 로직 보존. v3에서도 필요. |
-| 160-197 | `_save_phase_result()` | M | 로직 재사용하지만, v3에서는 LangGraph checkpoint가 상태 관리 → DB 저장은 phase7/8에서만. |
-| 213-341 | `run_build_stream()` | D | 함수 전체 교체. v3에서는 `graph.astream()` 직접 호출로 대체. |
-| 344-362 | `_detect_event_type()` | M | SSE 이벤트 타입 추론 로직 재사용, v3 Tool UI 이벤트로 확대. |
-| 370-446 | `confirm_build()` | K | 에이전트 생성 로직 그대로 재사용. draft_config → Agent 변환. |
-| 449-468 | `_resolve_tools()` | K | 도구 이름 → DB Tool 매칭 로직 보존. |
+| 34-56 | session CRUD (create_session, get_session) | K | 原样复用。schema 相同。 |
+| 64-102 | 原子状态转换 (claim_for_streaming, claim_for_confirming) | K | 复用并发控制逻辑。 |
+| 115-157 | catalog 查询, model 查询 | K | 保留 sub-agent 动态注入逻辑。v3 也需要。 |
+| 160-197 | `_save_phase_result()` | M | 复用逻辑，但 v3 由 LangGraph checkpoint 管理状态 → DB 保存仅在 phase7/8。 |
+| 213-341 | `run_build_stream()` | D | 整个函数替换。v3 中改为直接调用 `graph.astream()`。 |
+| 344-362 | `_detect_event_type()` | M | 复用 SSE event type 推断逻辑，并扩展到 v3 Tool UI event。 |
+| 370-446 | `confirm_build()` | K | 原样复用智能体创建逻辑。draft_config → Agent 转换。 |
+| 449-468 | `_resolve_tools()` | K | 保留工具名称 → DB Tool 匹配逻辑。 |
 
-**교체 전략**:
-- `run_build_stream()`: v3에서는 `builder_v3/graph.py`에서 `graph = build_builder_graph(); async for msg in graph.astream(...)`로 대체
-- 나머지 함수는 대부분 보존 또는 경미한 수정
+**替换策略**:
+- `run_build_stream()`: v3 中在 `builder_v3/graph.py` 使用 `graph = build_builder_graph(); async for msg in graph.astream(...)` 替代
+- 其余函数大多保留或轻微修改
 
 ---
 
 #### 9. `backend/app/routers/builder.py`
-**상태**: **M (주요 교체 + 신규 엔드포인트)**
+**状态**: **M（主要替换 + 新 endpoint）**
 
-| 라인 범위 | 항목 | 분류 | 설명 |
+| 行范围 | 项目 | 分类 | 说明 |
 |---------|------|------|------|
-| 32-40 | `POST /api/builder` | K | 세션 생성 엔드포인트 보존. |
-| 43-53 | `GET /{session_id}` | K | 세션 조회 엔드포인트 보존. |
-| 56-86 | `GET /{session_id}/stream` | D | **v3에서는 제거 후 `POST /api/builder/{id}/messages`(SSE)로 교체**. 기존 conversations.py 패턴 재사용. |
-| **신규** | `POST /api/builder/{id}/messages` | M(신규) | SSE 스트리밍 엔드포인트 (v3 graph.astream 호출). conversations.py 패턴 차용. |
-| **신규** | `POST /api/builder/{id}/messages/resume` | M(신규) | HiTL 응답 엔드포인트. `Command(resume=...)` 전달. |
-| 89-148 | `POST /{session_id}/confirm` | K | 확인 엔드포인트 보존. 로직 동일. |
+| 32-40 | `POST /api/builder` | K | 保留 session 创建 endpoint。 |
+| 43-53 | `GET /{session_id}` | K | 保留 session 查询 endpoint。 |
+| 56-86 | `GET /{session_id}/stream` | D | **v3 中移除并替换为 `POST /api/builder/{id}/messages`(SSE)**。复用现有 conversations.py 模式。 |
+| **新增** | `POST /api/builder/{id}/messages` | M(新增) | SSE streaming endpoint（调用 v3 graph.astream）。借鉴 conversations.py 模式。 |
+| **新增** | `POST /api/builder/{id}/messages/resume` | M(新增) | HiTL response endpoint。传递 `Command(resume=...)`。 |
+| 89-148 | `POST /{session_id}/confirm` | K | 保留 confirm endpoint。逻辑相同。 |
 
-**마이그레이션**:
-- 기존 `GET /stream` 호출을 `POST /messages` + SSE로 통합
-- `POST /messages/resume` 신규 추가 (ask_user, approval 응답 처리)
+**迁移**:
+- 将现有 `GET /stream` 调用统一为 `POST /messages` + SSE
+- 新增 `POST /messages/resume`（处理 ask_user, approval response）
 
 ---
 
 ### FRONTEND
 
 #### 10. `frontend/src/app/agents/new/conversational/page.tsx`
-**상태**: **D (완전 교체)**
+**状态**: **D（完全替换）**
 
-| 라인 범위 | 항목 | 분류 | 설명 |
+| 行范围 | 项目 | 分类 | 说明 |
 |---------|------|------|------|
-| **파일 전체** | 전체 구현 | D | v2 전용 페이지. v3에서는 `<AssistantThread>` + `<HiTLContext>` 기반으로 완전 재작성. |
-| 60-230 | 상태 관리 (phases, intent, tools, etc.) | D | v2의 로컬 상태 관리는 v3에서 assistant-ui runtime + LangGraph checkpoint로 통합. |
-| 99-187 | `handleBuild()` 로직 | M(부분) | 기본 흐름은 유사하지만, SSE 파싱 대신 `send_message` + `resume` API로 단순화. |
+| **整个文件** | 全部实现 | D | v2 专用页面。v3 完全重写为基于 `<AssistantThread>` + `<HiTLContext>`。 |
+| 60-230 | 状态管理 (phases, intent, tools, etc.) | D | v2 local 状态管理在 v3 中整合到 assistant-ui runtime + LangGraph checkpoint。 |
+| 99-187 | `handleBuild()` 逻辑 | M(部分) | 基本流程类似，但不再解析 SSE，而简化为 `send_message` + `resume` API。 |
 
-**v3 구조**:
+**v3 结构**:
 ```tsx
 <AssistantRuntimeProvider runtime={...}>
   <HiTLContext.Provider value={hitlCallbacks}>
@@ -190,280 +190,280 @@ Builder v2 (7-phase 자동 파이프라인)에서 v3 (LangGraph StateGraph 8-pha
 </AssistantRuntimeProvider>
 ```
 
-폐기 이유: v3은 일반 채팅과 동일한 UI 패턴 사용 → 기존 `page.tsx`의 커스텀 상태 관리 불필요.
+废弃原因: v3 使用与普通聊天相同的 UI pattern → 不再需要现有 `page.tsx` 的 custom 状态管理。
 
 ---
 
 #### 11. `frontend/src/app/agents/new/conversational/_components/builder-thread.tsx`
-**상태**: **D (제거)**
+**状态**: **D（移除）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | D | v2 전용 스레드 컴포넌트. v3에서는 `<AssistantThread>` (일반 채팅 컴포넌트)로 통합. |
-| 라인 25-63 | BuilderThread 컴포넌트 | D | custom composer, message primitives → 일반 AssistantThread 대체. |
+| **整个文件** | D | v2 专用 thread 组件。v3 整合为 `<AssistantThread>`（普通聊天组件）。 |
+| 第25-63行 | BuilderThread 组件 | D | custom composer, message primitives → 替换为普通 AssistantThread。 |
 
-**이유**: v3은 채팅과 동일한 메시지 구조 사용 → 빌더 전용 커스텀 불필요.
+**原因**: v3 使用与聊天相同的消息结构 → 不再需要 builder 专用 custom。
 
 ---
 
 #### 12. `frontend/src/app/agents/new/conversational/_components/phase-timeline.tsx`
-**상태**: **M(개념 이식, 파일 제거)**
+**状态**: **M(概念迁移, 移除文件)**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | D(파일) | v2 전용 타임라인 컴포넌트. |
-| 라인 17-51: `PhaseIcon`, `PhaseStatusBadge` 컴포넌트 | M(UI 패턴 이식) | v3 `phase-timeline-ui.tsx`에서 동일한 아이콘(체크/시계/경고) + 뱃지 스타일 재사용. |
-| 라인 69-156: `PhaseTimeline` 메인 컴포넌트 | M(UI 패턴 이식) | v3에서 **8-phase로 확대**하되, 렌더링 로직(연결선, 상태 표시) 같은 패턴 사용. |
+| **整个文件** | D（文件） | v2 专用时间线组件。 |
+| 第 17-51 行：`PhaseIcon`、`PhaseStatusBadge` 组件 | M（移植 UI 模式） | 在 v3 `phase-timeline-ui.tsx` 中复用相同的图标（勾选/时钟/警告）+ 徽章样式。 |
+| 第 69-156 行：`PhaseTimeline` 主组件 | M（移植 UI 模式） | 在 v3 中**扩展为 8-phase**，但使用相同的渲染逻辑（连接线、状态显示）模式。 |
 
-**v3 변경**:
-- Phase 개수: 7 → 8 (이미지 생성 추가)
-- 진행 상황 카드는 **메시지 내 ToolMessage**로 emit (매 phase 전환 시 누적)
+**v3 变更**：
+- Phase 数量：7 → 8（新增图像生成）
+- 进度卡片以**消息内 ToolMessage** emit（每次 phase 转换时累积）
 
-**폐기 시점**: v3 phase-timeline-ui.tsx 구현 완료 후.
+**废弃时点**：v3 phase-timeline-ui.tsx 实现完成后。
 
 ---
 
 #### 13. `frontend/src/app/agents/new/conversational/_components/intent-card.tsx`
-**상태**: **M(UI 패턴 이식)**
+**状态**：**M（移植 UI 模式）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | M | v3에서도 Phase 2 완료 결과 표시 필요. |
-| 라인 8-52: IntentCard 컴포넌트 | M | v3 phase2에서 동일한 정보(agent_name_ko, agent_description, use_cases 등) 표시. 스타일 유지. |
+| **整个文件** | M | v3 中也需要显示 Phase 2 完成结果。 |
+| 第 8-52 行：IntentCard 组件 | M | 在 v3 phase2 中显示相同信息（agent_name_ko、agent_description、use_cases 等）。保持样式。 |
 
-**폐기 시점**: 별도 파일로 유지하거나 `message-content.tsx`로 통합 (tool UI registry).
+**废弃时点**：保留为单独文件，或整合到 `message-content.tsx`（tool UI registry）。
 
 ---
 
 #### 14. `frontend/src/app/agents/new/conversational/_components/recommendation-card.tsx`
-**상태**: **M(UI 패턴 이식)**
+**状态**：**M（移植 UI 模式）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | M | v3 Phase 3/4 결과 표시. 하지만 v3에서는 **승인/수정 버튼 추가**. |
-| 라인 19-49: RecommendationCard 컴포넌트 | M(기능 확대) | v3에서는 `recommendation-approval-ui.tsx`로 확대: 추천 리스트 + 수정 의견 textarea + "수정요청"/"승인" 버튼. |
+| **整个文件** | M | 显示 v3 Phase 3/4 结果。但 v3 中**新增批准/修改按钮**。 |
+| 第 19-49 行：RecommendationCard 组件 | M（功能扩展） | 在 v3 中扩展为 `recommendation-approval-ui.tsx`：推荐列表 + 修改意见 textarea + "请求修改"/"批准" 按钮。 |
 
-**v3 변경**:
-- 현재 카드는 읽기 전용
-- v3는 interactive approval UI 필요 (hitl.onResume 콜백)
+**v3 变更**：
+- 当前卡片为只读
+- v3 需要 interactive approval UI（hitl.onResume 回调）
 
 ---
 
 #### 15. `frontend/src/app/agents/new/conversational/_components/draft-config-card.tsx`
-**상태**: **M(UI 패턴 이식)**
+**状态**：**M（移植 UI 模式）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | M | v3 Phase 8 최종 승인 카드로 확대. |
-| 라인 18-126: DraftConfigCard 컴포넌트 | M(기능 확대) | v3에서는 수정 의견 textarea + "승인"/"수정요청" 버튼 추가. router로 phase 2/3/4/5/6 분기. |
+| **整个文件** | M | 扩展为 v3 Phase 8 最终批准卡片。 |
+| 第 18-126 行：DraftConfigCard 组件 | M（功能扩展） | 在 v3 中新增修改意见 textarea + "批准"/"请求修改" 按钮。通过 router 分流到 phase 2/3/4/5/6。 |
 
-**v3 변경**: 현재는 "확인" 버튼만 → v3는 approval interrupt UI 통합.
+**v3 变更**：当前只有 "确认" 按钮 → v3 整合 approval interrupt UI。
 
 ---
 
 #### 16. `frontend/src/lib/chat/use-builder-runtime.ts`
-**상태**: **D (파일 제거, 로직 일부 통합)**
+**状态**：**D（删除文件，部分逻辑整合）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | D | v2 전용 ExternalStoreRuntime 어댑터. |
-| 라인 27-74: `buildVirtualMessages()` 함수 | D | 상태 → ThreadMessageLike 변환. v3에서는 LangGraph 메시지가 이미 올바른 형식. |
-| 라인 89-120+: `useBuilderRuntime()` hook | D | v3에서는 `useAssistantRuntime` (일반 채팅) 사용 가능. |
+| **整个文件** | D | v2 专用 ExternalStoreRuntime 适配器。 |
+| 第 27-74 行：`buildVirtualMessages()` 函数 | D | 状态 → ThreadMessageLike 转换。v3 中 LangGraph 消息已经是正确格式。 |
+| 第 89-120+ 行：`useBuilderRuntime()` hook | D | v3 中可使用 `useAssistantRuntime`（普通聊天）。 |
 
-**폐기 이유**: v3은 일반 채팅 runtime과 통합되므로 별도 어댑터 불필요.
+**废弃原因**：v3 与普通聊天 runtime 整合，因此无需单独适配器。
 
 ---
 
 #### 17. `frontend/src/lib/sse/stream-builder.ts`
-**상태**: **D (제거, 로직 통합)**
+**状态**：**D（删除，整合逻辑）**
 
-| 항목 | 분류 | 설명 |
+| 项目 | 分类 | 说明 |
 |------|------|------|
-| **파일 전체** | D | v2 전용 SSE 스트림 파서. |
-| 라인 5-26: `streamBuilder()` 함수 | D | v3에서는 `stream-builder-message.ts` + `stream-builder-resume.ts`로 분리. |
+| **整个文件** | D | v2 专用 SSE 流解析器。 |
+| 第 5-26 行：`streamBuilder()` 函数 | D | v3 中拆分为 `stream-builder-message.ts` + `stream-builder-resume.ts`。 |
 
-**v3 변경**:
-- 기존: `GET /stream` (SSE)
-- v3: `POST /messages` (SSE, conversations.py 패턴) + `POST /messages/resume`
+**v3 变更**：
+- 现有：`GET /stream`（SSE）
+- v3：`POST /messages`（SSE，conversations.py 模式）+ `POST /messages/resume`
 
 ---
 
 #### 18. `frontend/src/lib/api/builder.ts`
-**상태**: **M(확대 및 수정)**
+**状态**：**M（扩展及修改）**
 
-| 라인 범위 | 항목 | 분류 | 설명 |
+| 行范围 | 项目 | 分类 | 说明 |
 |---------|------|------|------|
-| 5-9 | `start()` 메서드 | K | `POST /api/builder` 그대로 재사용. |
-| 11 | `getSession()` 메서드 | K | `GET /api/builder/{id}` 그대로 재사용. |
-| 13-14 | `confirm()` 메서드 | K | `POST /api/builder/{id}/confirm` 그대로 재사용. |
-| **신규** | `sendMessage()` 메서드 | M(신규) | `POST /api/builder/{id}/messages` (SSE). conversations.ts 패턴 차용. |
-| **신규** | `resume()` 메서드 | M(신규) | `POST /api/builder/{id}/messages/resume`. ask_user/approval 응답 전송. |
+| 5-9 | `start()` 方法 | K | 原样复用 `POST /api/builder`。 |
+| 11 | `getSession()` 方法 | K | 原样复用 `GET /api/builder/{id}`。 |
+| 13-14 | `confirm()` 方法 | K | 原样复用 `POST /api/builder/{id}/confirm`。 |
+| **新增** | `sendMessage()` 方法 | M（新增） | `POST /api/builder/{id}/messages`（SSE）。借用 conversations.ts 模式。 |
+| **新增** | `resume()` 方法 | M（新增） | `POST /api/builder/{id}/messages/resume`。发送 ask_user/approval 响应。 |
 
-**마이그레이션**:
+**迁移**:
 ```typescript
-// 기존 (v2)
-// streamBuilder(sessionId, signal)로 SSE 직접 구독
+// 现有（v2）
+// 通过 streamBuilder(sessionId, signal) 直接订阅 SSE
 
 // v3
-// await builderApi.sendMessage(sessionId, { ... })로 메시지 전송
-// await builderApi.resume(sessionId, { approved: true/false, ... })로 응답
+// 通过 await builderApi.sendMessage(sessionId, { ... }) 发送消息
+// 通过 await builderApi.resume(sessionId, { approved: true/false, ... }) 响应
 ```
 
 ---
 
-## 불필요한 의존성 & 데드 코드
+## 不必要的依赖 & 死代码
 
 ### Backend
 
-1. **`orchestrator.py`의 `build_builder_graph()` 함수** (라인 373-408)
-   - 더 이상 호출되지 않음 (v3에서 제거됨)
-   - `_COMPILED_GRAPH = build_builder_graph()` (라인 416)도 불필요
+1. **`orchestrator.py` 的 `build_builder_graph()` 函数**（第 373-408 行）
+   - 已不再调用（在 v3 中删除）
+   - `_COMPILED_GRAPH = build_builder_graph()`（第 416 行）也不再需要
 
-2. **`builder_service.py`의 `run_build_stream()` 함수** (라인 213-341)
-   - v3에서 `graph.astream()` 직접 호출로 대체
-   - `_detect_event_type()` (라인 344-362)는 부분 재사용 (Tool UI 이벤트 추가)
+2. **`builder_service.py` 的 `run_build_stream()` 函数**（第 213-341 行）
+   - 在 v3 中由直接调用 `graph.astream()` 替代
+   - `_detect_event_type()`（第 344-362 行）部分复用（新增 Tool UI 事件）
 
-3. **`routers/builder.py`의 `GET /stream` 엔드포인트** (라인 56-86)
-   - v3에서는 `POST /messages` (SSE)로 통합
+3. **`routers/builder.py` 的 `GET /stream` endpoint**（第 56-86 行）
+   - 在 v3 中整合为 `POST /messages`（SSE）
 
 ### Frontend
 
-1. **`conversational/page.tsx`의 상태 관리** (라인 60-230)
-   - v2 전용 phase/intent/tools 로컬 상태
-   - v3에서는 assistant-ui runtime + LangGraph checkpoint 사용
+1. **`conversational/page.tsx` 的状态管理**（第 60-230 行）
+   - v2 专用 phase/intent/tools 本地状态
+   - v3 中使用 assistant-ui runtime + LangGraph checkpoint
 
-2. **`use-builder-runtime.ts` 전체**
-   - ExternalStoreRuntime은 v3의 HiTL context와 충돌 가능
-   - 일반 `useAssistantRuntime` 사용으로 대체
+2. **整个 `use-builder-runtime.ts`**
+   - ExternalStoreRuntime 可能与 v3 的 HiTL context 冲突
+   - 改为使用普通 `useAssistantRuntime`
 
-3. **`stream-builder.ts` 전체**
-   - v2 전용 SSE 파서
-   - v3은 `conversations.ts`의 동일한 구조 사용
+3. **整个 `stream-builder.ts`**
+   - v2 专用 SSE 解析器
+   - v3 使用与 `conversations.ts` 相同的结构
 
 ---
 
-## 중복 패턴 (Deduplication 기회)
+## 重复模式（Deduplication 机会）
 
 ### Backend
 
-1. **프롬프트 로딩 + LLM 호출 패턴**
-   - 4개 서브에이전트 모두 동일: `load_prompt()` → `invoke_with_json_retry()` 또는 `invoke_for_text()`
-   - `helpers.py`에 이미 통합됨 ✓ (중복 제거 완료)
+1. **Prompt 加载 + LLM 调用模式**
+   - 4 个 subagent 全都相同：`load_prompt()` → `invoke_with_json_retry()` 或 `invoke_for_text()`
+   - 已整合到 `helpers.py` ✓（重复删除完成）
 
-2. **카탈로그 포맷팅**
-   - `tool_recommender.py`의 `_format_catalog()` (라인 25-35)
-   - `middleware_recommender.py`의 `_format_catalog()` (라인 30-42)
-   - 비슷한 로직, 별도 추출 함수 고려 가능 (v3에서 개선)
+2. **Catalog 格式化**
+   - `tool_recommender.py` 的 `_format_catalog()`（第 25-35 行）
+   - `middleware_recommender.py` 的 `_format_catalog()`（第 30-42 行）
+   - 逻辑相似，可考虑单独提取函数（在 v3 中改进）
 
 ### Frontend
 
-1. **ApprovalCard 패턴** (v3에서 신규)
-   - Phase 3, 4, 5, 8에서 반복: "추천 항목 + 수정 의견 textarea + 승인/수정 버튼"
-   - `recommendation-approval-ui.tsx` 하나로 통합 가능 (prop으로 제목/아이템 전달)
+1. **ApprovalCard 模式**（v3 中新增）
+   - 在 Phase 3、4、5、8 中重复："推荐项 + 修改意见 textarea + 批准/修改按钮"
+   - 可统一为一个 `recommendation-approval-ui.tsx`（通过 prop 传入标题/项目）
 
-2. **Icon 재사용**
-   - `PhaseTimeline`의 체크/시계/경고 아이콘 → `phase-timeline-ui.tsx`에서도 동일
-   - 아이콘 라이브러리 컴포넌트화 고려
+2. **Icon 复用**
+   - `PhaseTimeline` 的勾选/时钟/警告图标 → `phase-timeline-ui.tsx` 中也相同
+   - 可考虑将图标组件化为 library component
 
 ---
 
-## 마이그레이션 체크리스트
+## 迁移检查清单
 
-### 삭제 금지 (v3 구현 완료까지)
+### 禁止删除（直到 v3 实现完成）
 
-- [ ] `builder/sub_agents/intent_analyzer.py` — 보존, phase2에서 import
-- [ ] `builder/sub_agents/tool_recommender.py` — 보존, phase3에서 import
-- [ ] `builder/sub_agents/middleware_recommender.py` — 보존, phase4에서 import
-- [ ] `builder/sub_agents/prompt_generator.py` — 보존, phase5에서 import
-- [ ] `builder/sub_agents/helpers.py` — 보존, 모든 phase에서 import
-- [ ] `builder/prompts/*.md` — 보존, 프롬프트 텍스트 변경 금지
-- [ ] `services/builder_service.py` 중 `confirm_build()`, `_resolve_tools()` — 보존
+- [ ] `builder/sub_agents/intent_analyzer.py` — 保留，在 phase2 中 import
+- [ ] `builder/sub_agents/tool_recommender.py` — 保留，在 phase3 中 import
+- [ ] `builder/sub_agents/middleware_recommender.py` — 保留，在 phase4 中 import
+- [ ] `builder/sub_agents/prompt_generator.py` — 保留，在 phase5 中 import
+- [ ] `builder/sub_agents/helpers.py` — 保留，在所有 phase 中 import
+- [ ] `builder/prompts/*.md` — 保留，禁止修改 prompt 文本
+- [ ] `services/builder_service.py` 中的 `confirm_build()`、`_resolve_tools()` — 保留
 
-### 교체할 항목 (v3 구현 후)
+### 要替换的项目（v3 实现后）
 
 - [ ] `orchestrator.py` → `builder_v3/graph.py`, `builder_v3/nodes/*.py`
 - [ ] `builder_service.run_build_stream()` → `builder_v3/graph.astream()`
-- [ ] `routers/builder.py GET /stream` → `POST /messages` (conversations.py 패턴)
-- [ ] `conversational/page.tsx` → AssistantThread + HiTLContext 기반 재작성
-- [ ] `use-builder-runtime.ts` → 제거 또는 `useAssistantRuntime` 사용
-- [ ] `stream-builder.ts` → 제거 또는 `stream-builder-message.ts` + `resume.ts`로 분리
+- [ ] `routers/builder.py GET /stream` → `POST /messages`（conversations.py 模式）
+- [ ] `conversational/page.tsx` → 基于 AssistantThread + HiTLContext 重写
+- [ ] `use-builder-runtime.ts` → 删除或使用 `useAssistantRuntime`
+- [ ] `stream-builder.ts` → 删除或拆分为 `stream-builder-message.ts` + `resume.ts`
 
-### 삭제할 항목 (v3 안정화 후, 점진 전환)
+### 要删除的项目（v3 稳定后，逐步切换）
 
-- [ ] `builder/orchestrator.py` (라인 1-463)
+- [ ] `builder/orchestrator.py`（第 1-463 行）
 - [ ] `conversational/_components/builder-thread.tsx`
-- [ ] `conversational/_components/phase-timeline.tsx` (v3 `phase-timeline-ui.tsx` 구현 후)
+- [ ] `conversational/_components/phase-timeline.tsx`（v3 `phase-timeline-ui.tsx` 实现后）
 - [ ] `lib/sse/stream-builder.ts`
 - [ ] `lib/chat/use-builder-runtime.ts`
 
-### UI 컴포넌트 이식 (concept + 기능 확대)
+### UI 组件移植（concept + 功能扩展）
 
-- [ ] `intent-card.tsx` → v3에서도 사용 (Phase 2 결과)
-- [ ] `recommendation-card.tsx` → v3 `recommendation-approval-ui.tsx` (승인/수정 버튼 추가)
-- [ ] `draft-config-card.tsx` → v3 `draft-config-ui.tsx` (승인/수정 버튼 + router 분기)
-- [ ] Phase 2/3/4/5/8의 공통 approval UI 통합
+- [ ] `intent-card.tsx` → v3 中继续使用（Phase 2 结果）
+- [ ] `recommendation-card.tsx` → v3 `recommendation-approval-ui.tsx`（新增批准/修改按钮）
+- [ ] `draft-config-card.tsx` → v3 `draft-config-ui.tsx`（批准/修改按钮 + router 分流）
+- [ ] 整合 Phase 2/3/4/5/8 的公共 approval UI
 
 ---
 
-## 리스크 및 주의사항
+## 风险及注意事项
 
-### 높음 (Critical)
+### 高（Critical）
 
-1. **프롬프트 텍스트 변경 금지**
-   - `builder/prompts/*.md`의 내용은 **절대 수정하지 말 것**
-   - v3 노드가 동일한 JSON 스키마와 마크다운 구조를 기대함
-   - 변경 필요 시 v3 노드도 함께 업데이트
+1. **禁止修改 prompt 文本**
+   - **绝对不要修改** `builder/prompts/*.md` 的内容
+   - v3 node 期待相同的 JSON schema 和 Markdown 结构
+   - 如需变更，也要同时更新 v3 node
 
-2. **`helpers.py` 함수 시그니처 보존**
-   - `invoke_with_json_retry()`, `invoke_for_text()` 파라미터 변경 금지
-   - 4개 서브에이전트 + v3 노드 모두 의존
+2. **保留 `helpers.py` 函数签名**
+   - 禁止更改 `invoke_with_json_retry()`、`invoke_for_text()` 参数
+   - 4 个 subagent + v3 node 全部依赖
 
-3. **라우터 migration 순서**
-   - `routers/builder.py`의 GET `/stream` 제거 전에 v3 POST `/messages` 엔드포인트 반드시 완성
-   - 그 사이 dual-support 필요할 수 있음
+3. **Router migration 顺序**
+   - 删除 `routers/builder.py` 的 GET `/stream` 前，必须先完成 v3 POST `/messages` endpoint
+   - 期间可能需要 dual-support
 
-### 중간 (Medium)
+### 中（Medium）
 
-4. **상태 머신 일관성**
+4. **状态机一致性**
    - BuilderStatus enum (BUILDING → STREAMING → PREVIEW → CONFIRMING → COMPLETED)
-   - v3의 phase7(PREVIEW 전환), phase8(COMPLETED 전환) 타이밍 명확히
-   - 기존 confirm_build() 로직과 일치 필수
+   - 明确 v3 的 phase7（转换到 PREVIEW）、phase8（转换到 COMPLETED）时机
+   - 必须与现有 confirm_build() 逻辑一致
 
-5. **이미지 저장 위치 결정**
-   - Phase 6에서 생성한 이미지 URL 저장처: 로컬 파일 vs S3 vs base64
-   - `builders_sessions.draft_config.image_url`에 저장 후 agents 테이블로 이전
-   - agents 테이블에 `image_url` 컬럼 없으면 알렘빅 마이그레이션 필요
+5. **决定图像保存位置**
+   - Phase 6 生成的图像 URL 保存位置：本地文件 vs S3 vs base64
+   - 保存到 `builders_sessions.draft_config.image_url` 后迁移到 agents 表
+   - 如果 agents 表没有 `image_url` 列，则需要 Alembic migration
 
-### 낮음 (Low)
+### 低（Low）
 
-6. **프론트엔드 빌드 회귀**
-   - `use-chat-runtime.ts` 추상화로 기존 conversations 페이지 영향 가능성
-   - Step 3에서 회귀 테스트 필수
+6. **Frontend build 回归**
+   - `use-chat-runtime.ts` 抽象化可能影响现有 conversations 页面
+   - Step 3 中必须进行回归测试
 
 ---
 
-## 최종 판정
+## 最终判定
 
-| 판정 | 상태 | 설명 |
+| 判定 | 状态 | 说明 |
 |------|------|------|
-| **GREEN** ✓ | ANALYSIS_COMPLETE | 모든 파일 분류 명확, 의존성 정리 완료, 삭제 항목 확정. |
-| | RISK_LOW | 프롬프트/스키마 보존, helpers.py 안정화로 리스크 최소화. |
-| | READY_FOR_IMPLEMENTATION | v3 implementation 단계로 즉시 진행 가능. |
+| **GREEN** ✓ | ANALYSIS_COMPLETE | 所有文件分类清晰，依赖整理完成，删除项目已确定。 |
+| | RISK_LOW | 保留 prompt/schema，通过稳定 helpers.py 将风险降至最低。 |
+| | READY_FOR_IMPLEMENTATION | 可立即进入 v3 implementation 阶段。 |
 
 ---
 
-## 산출물
+## 产出物
 
-- **분석 파일**: `/Users/chester/dev/natural-mold/tasks/deletion-analysis.md` ✓
-- **분류 완료**:
-  - 보존 (K): 11개 항목
-  - 이식 (M): 8개 항목
-  - 삭제 (D): 5개 항목
-- **추가 조사 필요**: 0개
-- **블로커**: 0개
+- **分析文件**：`/Users/chester/dev/natural-mold/tasks/deletion-analysis.md` ✓
+- **分类完成**：
+  - 保留（K）：11 个项目
+  - 移植（M）：8 个项目
+  - 删除（D）：5 个项目
+- **需要额外调查**：0 个
+- **Blocker**：0 个
 
 ---
 
-**분석 수행자**: 베조스 (Bezos)  
-**분석 완료**: 2026-04-26  
-**상태**: ANALYSIS_COMPLETE, GREEN ✓
+**分析执行者**：贝索斯（Bezos）<br>
+**分析完成**：2026-04-26<br>
+**状态**：ANALYSIS_COMPLETE, GREEN ✓

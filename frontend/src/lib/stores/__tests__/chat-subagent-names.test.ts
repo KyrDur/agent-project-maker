@@ -7,23 +7,23 @@ import {
 } from '../chat-subagent-names'
 
 describe('chat-subagent-names store', () => {
-  it('같은 conversation의 매핑을 누적 병합한다', () => {
+  it('累积 merge 同一 conversation 的 mapping', () => {
     const store = createStore()
     store.set(mergeConversationSubagentNamesAtom, {
       conversationId: 'c1',
-      names: { agent_11111111: '리서처' },
+      names: { agent_11111111: '调研员' },
     })
     store.set(mergeConversationSubagentNamesAtom, {
       conversationId: 'c1',
-      names: { agent_22222222: '작성자' },
+      names: { agent_22222222: '作者' },
     })
 
     expect(store.get(chatSubagentNamesAtom)).toEqual({
-      c1: { agent_11111111: '리서처', agent_22222222: '작성자' },
+      c1: { agent_11111111: '调研员', agent_22222222: '作者' },
     })
   })
 
-  it('다른 conversation은 서로 격리한다', () => {
+  it('不同 conversation 相互隔离', () => {
     const store = createStore()
     store.set(mergeConversationSubagentNamesAtom, { conversationId: 'c1', names: { a: 'A' } })
     store.set(mergeConversationSubagentNamesAtom, { conversationId: 'c2', names: { b: 'B' } })
@@ -31,7 +31,7 @@ describe('chat-subagent-names store', () => {
     expect(store.get(chatSubagentNamesAtom)).toEqual({ c1: { a: 'A' }, c2: { b: 'B' } })
   })
 
-  it('같은 매핑을 다시 병합해도 idempotent하다 (replay 안전)', () => {
+  it('重复 merge 相同 mapping 仍是 idempotent（replay 安全）', () => {
     const store = createStore()
     const payload = { conversationId: 'c1', names: { a: 'A' } }
     store.set(mergeConversationSubagentNamesAtom, payload)
@@ -40,9 +40,9 @@ describe('chat-subagent-names store', () => {
     expect(store.get(chatSubagentNamesAtom)).toEqual({ c1: { a: 'A' } })
   })
 
-  it('resolveSubagentDisplayName은 매핑이 있으면 치환, 없으면 raw name을 반환한다', () => {
+  it('resolveSubagentDisplayName 有 mapping 时替换，没有时返回 raw name', () => {
     expect(resolveSubagentDisplayName(undefined, 'agent_123')).toBe('agent_123')
-    expect(resolveSubagentDisplayName({ agent_123: '봇' }, 'agent_123')).toBe('봇')
+    expect(resolveSubagentDisplayName({ agent_123: '机器人' }, 'agent_123')).toBe('机器人')
     expect(resolveSubagentDisplayName({ other: 'x' }, 'agent_123')).toBe('agent_123')
   })
 })

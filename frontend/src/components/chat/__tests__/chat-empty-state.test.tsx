@@ -27,7 +27,7 @@ vi.mock('@/lib/hooks/use-templates', () => ({
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
   return {
     id: 'agent-1',
-    name: '문서화 에이전트',
+    name: '文档化智能体',
     description: null,
     system_prompt: 'p',
     status: 'active',
@@ -47,7 +47,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 const OPENWIKI_TEMPLATE = {
   id: 'tpl-1',
-  usage_example: 'openwiki 저장소의 위키를 만들어줘',
+  usage_example: '帮我为 openwiki 仓库创建 wiki',
 } as unknown as Template
 
 beforeEach(() => {
@@ -57,13 +57,13 @@ beforeEach(() => {
 })
 
 describe('ChatEmptyState', () => {
-  it('스킬/도구/MCP 능력 칩을 상시 표시한다', () => {
+  it('始终显示技能/工具/MCP 能力 chip', () => {
     const agent = makeAgent({
       skills: [{ id: 's1', name: 'openwiki' }],
       tools: [{ id: 't1', name: 'Web Search' }],
       mcp_tools: [{ id: 'm1', name: 'notion_search', server_id: 'sv', server_name: 'Notion' }],
     } as Partial<Agent>)
-    render(<ChatEmptyState agent={agent} fallback="대화를 시작해보세요" />)
+    render(<ChatEmptyState agent={agent} fallback="开始对话吧" />)
     const chips = screen.getByText('openwiki').closest('[data-moldy-empty-capabilities]')
     expect(chips).not.toBeNull()
     expect(screen.getByText('emptyState.canDo')).toBeInTheDocument()
@@ -71,37 +71,37 @@ describe('ChatEmptyState', () => {
     expect(screen.getByText('notion_search')).toBeInTheDocument()
   })
 
-  it('능력이 6개를 넘으면 +N 칩으로 접는다', () => {
+  it('能力超过 6 个时折叠为 +N chip', () => {
     const agent = makeAgent({
-      tools: Array.from({ length: 8 }, (_, i) => ({ id: `t${i}`, name: `도구 ${i}` })),
+      tools: Array.from({ length: 8 }, (_, i) => ({ id: `t${i}`, name: `工具 ${i}` })),
     } as Partial<Agent>)
     render(<ChatEmptyState agent={agent} fallback="来自" />)
     expect(screen.getByText('emptyState.moreCapabilities(2)')).toBeInTheDocument()
-    expect(screen.queryByText('도구 7')).not.toBeInTheDocument()
+    expect(screen.queryByText('工具 7')).not.toBeInTheDocument()
   })
 
-  it('opener가 있으면 템플릿 조회 없이 opener 스타터를 쓴다', () => {
+  it('有 opener 时不查询模板，使用 opener starter', () => {
     const agent = makeAgent({
-      opener_questions: ['오늘 일정 알려줘'],
+      opener_questions: ['告诉我今天的日程'],
       template_id: 'tpl-1',
     } as Partial<Agent>)
     render(<ChatEmptyState agent={agent} fallback="来自" />)
-    expect(screen.getByText('오늘 일정 알려줘')).toBeInTheDocument()
+    expect(screen.getByText('告诉我今天的日程')).toBeInTheDocument()
     expect(useTemplatesMock).toHaveBeenCalledWith(undefined, { enabled: false })
   })
 
-  it('opener가 없으면 템플릿 usage_example을 스타터로 폴백하고 클릭 시 컴포저를 채운다', async () => {
+  it('没有 opener 时回退到模板 usage_example 作为 starter，点击后填入 composer', async () => {
     const user = userEvent.setup()
     useTemplatesMock.mockReturnValue({ data: [OPENWIKI_TEMPLATE] })
     const agent = makeAgent({ template_id: 'tpl-1' } as Partial<Agent>)
     render(<ChatEmptyState agent={agent} fallback="来自" />)
-    const starter = screen.getByText('openwiki 저장소의 위키를 만들어줘')
+    const starter = screen.getByText('帮我为 openwiki 仓库创建 wiki')
     expect(useTemplatesMock).toHaveBeenCalledWith(undefined, { enabled: true })
     await user.click(starter)
-    expect(setText).toHaveBeenCalledWith('openwiki 저장소의 위키를 만들어줘')
+    expect(setText).toHaveBeenCalledWith('帮我为 openwiki 仓库创建 wiki')
   })
 
-  it('opener도 템플릿도 없으면 스타터 없이 렌더된다', () => {
+  it('opener 和模板都没有时，不显示 starter', () => {
     render(<ChatEmptyState agent={makeAgent()} fallback="来自" />)
     expect(document.querySelector('[data-moldy-empty-starters]')).toBeNull()
   })

@@ -5,7 +5,7 @@ import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-h
 
 /**
  * Wave — chat export (G5) + in-conversation search (G6). Sends a message, then
- * screenshots the export dialog (navigator session menu → 내보내기) and the
+ * screenshots the export dialog (navigator session menu → 导出) and the
  * Ctrl+F search overlay. Gated by E2E_CAPTURE_TOUR=1.
  */
 
@@ -59,21 +59,21 @@ test.describe('Chat export + search captures', () => {
     const setup = await setupLangGraphV3Agent(request)
     const { parentAgentId: agentId, csrfHeaders } = setup
 
-    const conversationId = await freshConversation(request, csrfHeaders, agentId, '내보내기·검색 캡쳐')
+    const conversationId = await freshConversation(request, csrfHeaders, agentId, '导出·搜索截图')
     await gotoChat(page, agentId, conversationId)
-    // 여러 턴을 보낸다. "E2E"는 user 메시지 + scripted assistant 응답
-    // ("E2E scripted document model is ready.") 양쪽에 있어 user/LLM 답변 모두
-    // 검색·하이라이트되는 것을 시연한다.
+    // 发送多个轮次。"E2E" 同时存在于 user 消息 + scripted assistant 响应
+    // ("E2E scripted document model is ready.") 两侧，因此 user/LLM 回答都
+    // 用来演示搜索和高亮。
     for (const text of [
-      'E2E 회의 내용을 요약해줘',
-      'E2E 회의 안건도 정리해줘',
-      'E2E 다음 회의 일정 알려줘',
+      '总结一下 E2E 会议内容',
+      '也整理一下 E2E 会议议题',
+      '告诉我 E2E 下次会议安排',
     ]) {
       await sendMessage(page, text)
       await settleStream(page)
     }
 
-    // G5 — navigator session menu (dropdown with the 내보내기 item) → export dialog.
+    // G5 — navigator session menu (dropdown with the 导出 item) → export dialog.
     await page.getByRole('button', { name: '对话菜单' }).first().click()
     const exportItem = page.getByRole('menuitem', { name: '导出' })
     await expect(exportItem).toBeVisible({ timeout: 10_000 })

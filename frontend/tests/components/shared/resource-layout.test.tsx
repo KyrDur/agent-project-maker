@@ -9,19 +9,19 @@ describe('resource layout primitives', () => {
         value="all"
         onValueChange={() => undefined}
         tabs={[
-          { value: 'all', label: '所有时间', countLabel: '7개' },
-          { value: 'data', label: '数据', countLabel: '2개' },
+          { value: 'all', label: '全部', countLabel: '7 个' },
+          { value: 'data', label: '数据', countLabel: '2 个' },
         ]}
       />,
     )
 
-    const activeTab = screen.getByRole('tab', { name: '전체 7개' })
+    const activeTab = screen.getByRole('tab', { name: '全部 7 个' })
     const inactiveTab = screen.getByRole('tab', { name: '数据' })
 
     expect(activeTab).toHaveAttribute('aria-selected', 'true')
-    expect(within(activeTab).getByText('7개')).toBeInTheDocument()
+    expect(within(activeTab).getByText('7 个')).toBeInTheDocument()
     expect(inactiveTab).toHaveAttribute('aria-selected', 'false')
-    expect(screen.queryByText('2개')).not.toBeInTheDocument()
+    expect(screen.queryByText('2 个')).not.toBeInTheDocument()
   })
 
   it('keeps panel chrome separate from scrollable content', () => {

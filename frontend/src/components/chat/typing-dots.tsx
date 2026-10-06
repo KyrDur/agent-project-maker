@@ -1,15 +1,15 @@
 'use client'
 
 export interface TypingDotsProps {
-  /** 옆에 표시할 보조 라벨. 예: `의도를 정리하고 있어요…` */
+  /** 显示在旁边的辅助标签。例：`正在整理意图…` */
   label?: string
 }
 
 /**
- * Builder 응답 진행 인디케이터.
+ * Builder 响应进行中指示器。
  *
- * 3개 점이 cb-bounce(translateY + opacity)로 0.15초씩 stagger되어 움직임.
- * 옆에 label을 두면 typing 텍스트로 함께 표시.
+ * 3 个点以 cb-bounce(translateY + opacity) 每隔 0.15 秒 stagger 动画。
+ * 若旁边提供 label，则同时作为 typing 文本显示。
  */
 export function TypingDots({ label }: TypingDotsProps) {
   return (

@@ -1,40 +1,40 @@
-# Wave 2 구현 체크리스트 (feature/chat-wow-wave2)
+# Wave 2 实现 checklist (feature/chat-wow-wave2)
 
-정밀 검증(2026-07-04, main fdef4567) 기반. 각 항목은 커밋 단위로 진행.
+基于精密验证（2026-07-04, main fdef4567）。各项按 commit 单位推进。
 
-- [x] W2-1 팀 스트립 — `subagent-team-strip.tsx` (커밋 6519530a)
-  - useSubagentSnapshots + chatSubagentNames 표시명 치환, 칩 클릭 → 우측 레일
-  - 검증: vitest 6/6, tsc
-- [x] W2-2 검색 리치카드 (커밋 cce9293d)
-  - parseSearchResults {items} + description/thumbnail/lprice, Tavily answer 박스
-  - definition_key 이름 등록(naver_search_*, google_search_*) + shape 폴백 라우팅
-  - 검증: vitest 14/14 + 관련 회귀 213, tsc, i18n
-- [x] W2-3 Memory 회상 칩 (커밋 de71db42)
-  - cfg.recalled_memories → moldy.memory_recalled stream-head 이벤트(stable id)
-  - 프론트 replay:true 훅 + 상시 칩. 검증: pytest 293, vitest 8/8
-- [x] W2-4/6 genui producer + 스킬 실행 카드 (커밋 56285b34)
-  - UI_DATA_TOOL_TRANSFORMERS: execute_in_skill → terminal (OUTPUT_FILES 제거, 6k 캡)
-  - SkillExecutionToolUI: 스킬명/커맨드/파일 칩(파일 API 링크)
-  - 검증: pytest 277(agent_runtime)+projection, vitest 584(chat 스코프)
-- [x] W2-5 E2E + 캡처
-  - [x] scripted 픽스처: E2E_SEARCH_RICH(answer)/E2E_SEARCH_SHOP(items shape, thumbnail 키 필수 — image 상대경로는 http 가드에 걸림)
-  - [x] captures-wave2-scenario.spec.ts (7 캡처, 1 passed 2.1m) — 기억 resetMemories(rerun-safe) + 말미 정리(user-scope 누출 방지)
-  - [x] 백엔드 전체 pytest: 2520 passed (+5 skill-eval .env 의존 — SKILL_EVALUATION_ENABLED=true로 통과 확인)
-  - [x] vitest 전체: 1219/1219
-  - [x] 회귀 E2E: hitl-approval/chat-generative-ui 전부 green. **stale 3건 발견·갱신**:
-    chat-stream-integrity :63/:299 + chat-langgraph-v3 :47 — PR #272가 승인 카드
-    헤드라인을 스킬명(docx-document)으로 바꾸고 그룹 카드가 '승인 대기 N건'으로
-    바뀐 뒤 갱신 안 된 단언들. **main 체크아웃 대조 실행으로 pre-existing 확증**
-    후 새 계약으로 갱신 → 3건 모두 통과.
-  - [x] 팀 스트립 ↳ 마커: SDK depth는 root=0/직접 위임=1 → 중첩 판정 depth>1로 수정
-  - [x] 캡처 PNG 7장 사용자 전달
+- [x] W2-1 团队 strip — `subagent-team-strip.tsx`（commit 6519530a）
+  - useSubagentSnapshots + chatSubagentNames 显示名替换，点击 chip → 右侧 rail
+  - 验证: vitest 6/6, tsc
+- [x] W2-2 搜索 rich card（commit cce9293d）
+  - parseSearchResults {items} + description/thumbnail/lprice，Tavily answer box
+  - 注册 definition_key 名称（naver_search_*, google_search_*）+ shape fallback routing
+  - 验证: vitest 14/14 + 相关回归 213, tsc, i18n
+- [x] W2-3 Memory recall chip（commit de71db42）
+  - cfg.recalled_memories → moldy.memory_recalled stream-head event(stable id)
+  - frontend replay:true hook + 常驻 chip。验证: pytest 293, vitest 8/8
+- [x] W2-4/6 genui producer + skill 执行 card（commit 56285b34）
+  - UI_DATA_TOOL_TRANSFORMERS: execute_in_skill → terminal（移除 OUTPUT_FILES，6k cap）
+  - SkillExecutionToolUI: skill 名称/命令/文件 chip（文件 API 链接）
+  - 验证: pytest 277(agent_runtime)+projection, vitest 584(chat scope)
+- [x] W2-5 E2E + capture
+  - [x] scripted fixture: E2E_SEARCH_RICH(answer)/E2E_SEARCH_SHOP(items shape, thumbnail key 必须 — image 相对路径会被 http guard 拦截)
+  - [x] captures-wave2-scenario.spec.ts（7 个 capture, 1 passed 2.1m）— memory resetMemories(rerun-safe) + 末尾清理（防止 user-scope 泄漏）
+  - [x] backend 全量 pytest: 2520 passed（+5 skill-eval 依赖 .env — 已确认设置 SKILL_EVALUATION_ENABLED=true 后通过）
+  - [x] vitest 全量: 1219/1219
+  - [x] 回归 E2E: hitl-approval/chat-generative-ui 全部 green。**发现·更新 stale 3 项**:
+    chat-stream-integrity :63/:299 + chat-langgraph-v3 :47 — PR #272 将 approval card
+    headline 改为 skill 名（docx-document），group card 改为 '待批准 N项'
+    变更后未更新的断言。**通过 main checkout 对照执行确认 pre-existing**
+    后更新为新契约 → 3 项全部通过。
+  - [x] team strip ↳ marker: SDK depth 为 root=0/直接委派=1 → 将嵌套判断修正为 depth>1
+  - [x] 向用户交付 7 张 capture PNG
 
-## 검증 커맨드
-- backend: `uv run --with pytest-xdist pytest -q -n 8` (skill-eval 5건은 SKILL_EVALUATION_ENABLED=true 필요)
+## 验证命令
+- backend: `uv run --with pytest-xdist pytest -q -n 8`（skill-eval 5 项需要 SKILL_EVALUATION_ENABLED=true）
 - frontend: `pnpm vitest run && pnpm exec tsc --noEmit && pnpm lint:i18n`
-- 캡처: `E2E_CAPTURE_TOUR=1 E2E_FRONTEND_PORT=3310 E2E_BACKEND_PORT=8310 DATABASE_URL=...5436... DATABASE_URL_SYNC=... RATE_LIMIT_ENABLED=false E2E_TEST_HELPERS_ENABLED=true pnpm exec playwright test e2e/captures/captures-wave2-scenario.spec.ts`
+- capture: `E2E_CAPTURE_TOUR=1 E2E_FRONTEND_PORT=3310 E2E_BACKEND_PORT=8310 DATABASE_URL=...5436... DATABASE_URL_SYNC=... RATE_LIMIT_ENABLED=false E2E_TEST_HELPERS_ENABLED=true pnpm exec playwright test e2e/captures/captures-wave2-scenario.spec.ts`
 
-## 알려진 함정 (이번 세션 발견)
-- lint:design-system은 main에서도 exit 1 (pre-existing, message-attachments/approval-card)
-- makeAssistantToolUI render 테스트: renderFn을 Provider "아래 컴포넌트" 렌더 중에 호출해야 context가 잡힘
-- ui_data custom name은 무접두 "ui_data" (side-effect 관례; moldy.* 아님)
+## 已知陷阱（本 session 发现）
+- lint:design-system 在 main 也会 exit 1（pre-existing, message-attachments/approval-card）
+- makeAssistantToolUI render 测试: 必须在渲染 Provider "下方组件" 期间调用 renderFn，才能获取 context
+- ui_data custom name 为无前缀 "ui_data"（side-effect 惯例；不是 moldy.*）

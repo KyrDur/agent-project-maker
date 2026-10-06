@@ -356,7 +356,7 @@ async def test_discover_deepseek_falls_back_when_models_endpoint_times_out(
 @pytest.mark.asyncio
 async def test_unknown_definition_raises(db: AsyncSession) -> None:
     cred = await _make_credential(
-        db, definition_key="naver_search", data={"client_id": "id", "client_secret": "s"}
+        db, definition_key="google_search", data={"api_key": "id", "cse_id": "s"}
     )
     with pytest.raises(ValueError, match="discoverable"):
         await model_discovery.discover_from_credential(db, cred)

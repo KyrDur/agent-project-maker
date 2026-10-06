@@ -1,4 +1,4 @@
-"""Assistant v2 서비스 — 대화 관리, SSE 스트리밍."""
+"""Assistant v2 服务 — 对话管理、SSE 流式传输。"""
 
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ async def stream_assistant_message(
     *,
     locale: str = "zh-CN",
 ) -> AsyncGenerator[str, None]:
-    """Assistant 메시지를 SSE 스트리밍으로 처리한다.
+    """通过 SSE 流式处理 Assistant 消息。
 
-    기존 채팅 인프라(stream_agent_response)를 그대로 재사용한다 (ADR-005 AD-6).
-    checkpointer가 히스토리를 자동 관리하므로 별도 세션 테이블 불필요.
+    原样复用现有聊天基础设施（stream_agent_response）（ADR-005 AD-6）。
+    checkpointer 会自动管理历史记录，因此无需单独的会话表。
     """
     try:
         agent = await build_assistant_agent(db, agent_id, user_id, thread_id)

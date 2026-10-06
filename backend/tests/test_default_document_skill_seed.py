@@ -17,7 +17,6 @@ from app.storage.paths import resolve_data_path
         ("docx-document", "node", "docx"),
         ("xlsx-spreadsheet", "node", "xlsx"),
         ("pptx-presentation", "node", "pptx"),
-        ("patent-hwpx-generator", "python", "hwpx"),
         ("openwiki", "python", "md"),
     ],
 )

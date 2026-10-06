@@ -291,7 +291,7 @@ async def test_update_model_config_invalid(db: AsyncSession, patch_write_session
 
     # max_tokens negative
     result = await tool.ainvoke({"max_tokens": -1})
-    assert "양수" in result
+    assert "正数" in result
 
 
 # ---------------------------------------------------------------------------
@@ -599,7 +599,7 @@ async def test_update_chat_openers(db: AsyncSession, patch_write_session):
     tools = _build_write_tools(db, agent_id)
     tool = _find_tool(tools, "update_chat_openers")
 
-    result = await tool.ainvoke({"openers": ["안녕하세요", "도움이 필요하세요?"]})
+    result = await tool.ainvoke({"openers": ["你好", "需要帮助吗？"]})
     assert "开启器 2 设置完成" in result
 
 
@@ -646,8 +646,8 @@ async def test_create_cron_schedule_recurring(db: AsyncSession, patch_write_sess
     result = await tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "name": "매 시간 뉴스",
-            "message": "매 시간 뉴스 검색",
+            "name": "每小时新闻",
+            "message": "每小时搜索新闻",
             "cron_expression": "0 * * * *",
         }
     )
@@ -655,7 +655,7 @@ async def test_create_cron_schedule_recurring(db: AsyncSession, patch_write_sess
 
     trigger = await db.get(AgentTrigger, uuid.UUID(_extract_schedule_id(result)))
     assert trigger is not None
-    assert trigger.name == "매 시간 뉴스"
+    assert trigger.name == "每小时新闻"
     assert trigger.trigger_type == "cron"
     assert trigger.schedule_config == {"cron_expression": "0 * * * *"}
     assert trigger.timezone == "Asia/Seoul"
@@ -671,7 +671,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
     result = await tool.ainvoke(
         {
             "schedule_type": "interval",
-            "name": "10분 모니터링",
+            "name": "10分钟监控",
             "message": "立即查看",
             "interval_minutes": 10,
             "timezone": "Asia/Seoul",
@@ -684,7 +684,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
 
     trigger = await db.get(AgentTrigger, uuid.UUID(_extract_schedule_id(result)))
     assert trigger is not None
-    assert trigger.name == "10분 모니터링"
+    assert trigger.name == "10分钟监控"
     assert trigger.trigger_type == "interval"
     assert trigger.schedule_config == {"interval_minutes": 10}
     assert trigger.timezone == "Asia/Seoul"
@@ -699,12 +699,12 @@ async def test_create_cron_schedule_one_time(db: AsyncSession, patch_write_sessi
     tools = _build_write_tools(db, agent_id)
     tool = _find_tool(tools, "create_cron_schedule")
 
-    # 고정 날짜는 시간이 지나면 과거가 되어 깨진다 — 항상 미래인 상대 시각 사용
+    # 固定日期会随着时间推移变成过去而失效 — 始终使用未来的相对时间
     future = (datetime.now(UTC) + timedelta(days=1)).replace(microsecond=0, tzinfo=None)
     result = await tool.ainvoke(
         {
             "schedule_type": "one_time",
-            "message": "내일 리포트",
+            "message": "明天的报告",
             "scheduled_at": future.isoformat(),
         }
     )
@@ -787,7 +787,7 @@ async def test_update_cron_schedule(db: AsyncSession, patch_write_session):
     create_result = await create_tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "message": "매 시간 검색",
+            "message": "每小时搜索",
             "cron_expression": "0 * * * *",
         }
     )
@@ -799,7 +799,7 @@ async def test_update_cron_schedule(db: AsyncSession, patch_write_session):
         {
             "schedule_id": schedule_id,
             "cron_expression": "30 * * * *",
-            "message": "30분마다 검색",
+            "message": "每30分钟搜索",
         }
     )
     assert "系统提示修复完成" in result
@@ -807,7 +807,7 @@ async def test_update_cron_schedule(db: AsyncSession, patch_write_session):
     trigger = await db.get(AgentTrigger, uuid.UUID(schedule_id))
     assert trigger is not None
     assert trigger.schedule_config == {"cron_expression": "30 * * * *"}
-    assert trigger.input_message == "30분마다 검색"
+    assert trigger.input_message == "每30分钟搜索"
 
 
 @pytest.mark.asyncio
@@ -817,7 +817,7 @@ async def test_update_cron_schedule_validates_uuid_and_datetime_strings(
     agent_id, _ = await _seed_full(db)
     tools = _build_write_tools(db, agent_id)
 
-    conversation = Conversation(agent_id=agent_id, title="선택 대화")
+    conversation = Conversation(agent_id=agent_id, title="选定对话")
     db.add(conversation)
     await db.commit()
     await db.refresh(conversation)
@@ -826,7 +826,7 @@ async def test_update_cron_schedule_validates_uuid_and_datetime_strings(
     create_result = await create_tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "message": "매 시간 검색",
+            "message": "每小时搜索",
             "cron_expression": "0 * * * *",
         }
     )
@@ -860,11 +860,11 @@ async def test_update_cron_schedule_by_name_requires_unique_match(
     create_tool = _find_tool(tools, "create_cron_schedule")
     update_tool = _find_tool(tools, "update_cron_schedule")
 
-    for message in ("첫 번째", "두 번째"):
+    for message in ("第一个", "第二个"):
         result = await create_tool.ainvoke(
             {
                 "schedule_type": "recurring",
-                "name": "아침 뉴스",
+                "name": "晨间新闻",
                 "message": message,
                 "cron_expression": "0 9 * * *",
             }
@@ -873,7 +873,7 @@ async def test_update_cron_schedule_by_name_requires_unique_match(
 
     result = await update_tool.ainvoke(
         {
-            "schedule_name": "아침 뉴스",
+            "schedule_name": "晨间新闻",
             "cron_expression": "30 9 * * *",
         }
     )
@@ -915,7 +915,7 @@ async def test_delete_cron_schedule(db: AsyncSession, patch_write_session):
     create_result = await create_tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "message": "삭제 테스트",
+            "message": "删除测试",
             "cron_expression": "0 * * * *",
         }
     )
@@ -960,7 +960,7 @@ async def test_enable_cron_schedule(db: AsyncSession, patch_write_session):
     create_result = await create_tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "message": "활성화 테스트",
+            "message": "启用测试",
             "cron_expression": "0 * * * *",
         }
     )
@@ -1033,7 +1033,7 @@ async def test_disable_cron_schedule(db: AsyncSession, patch_write_session):
     create_result = await create_tool.ainvoke(
         {
             "schedule_type": "recurring",
-            "message": "비활성화 테스트",
+            "message": "禁用测试",
             "cron_expression": "0 * * * *",
         }
     )

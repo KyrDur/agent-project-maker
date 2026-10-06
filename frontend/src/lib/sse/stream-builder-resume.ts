@@ -3,11 +3,11 @@ import type { Decision, SSEEvent, SSEEventType } from '@/lib/types'
 import { streamSSEPost } from './parse-sse'
 
 /**
- * Builder v3 — interrupt 응답 후 그래프 재개.
+ * Builder v3 — interrupt 响应后恢复 graph。
  *
- * ADR-012 §Phase 5 — 표준 ``decisions: Decision[]`` wire 단일 형식 (clean break).
- * Builder router 가 ``decisions_to_builder_response`` helper 로 phase 별 native
- * shape (string / approval dict / image dict) 으로 변환한 뒤 graph 에 전달.
+ * ADR-012 §Phase 5 — 标准 ``decisions: Decision[]`` wire 单一格式（clean break）。
+ * Builder router 用 ``decisions_to_builder_response`` helper 按 phase 转换为 native
+ * shape（string / approval dict / image dict）后再传给 graph。
  */
 export async function* streamBuilderResume(
   sessionId: string,

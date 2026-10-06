@@ -73,7 +73,7 @@ test.describe('Task 8 recovery and discovery browser acceptance', () => {
       const composer = page.locator('textarea[data-moldy-composer-input="true"]').last()
       await expect(composer).toBeVisible()
 
-      await page.getByRole('button', { name: /명령어 찾아보기|Browse commands/ }).click()
+      await page.getByRole('button', { name: /浏览命令|Browse commands/ }).click()
       await expect(composer).toHaveValue('/')
       await expect(composer).toBeFocused()
       await expect(page.getByRole('listbox')).toBeVisible()
@@ -186,13 +186,13 @@ test.describe('Task 8 recovery and discovery browser acceptance', () => {
         `[data-testid="run-summary"][data-run-id="${activeRunId}"]`,
       )
       await expect(canceledSummary).toBeVisible({ timeout: 15_000 })
-      await expect(canceledSummary).toContainText('도구 총 0')
-      await expect(canceledSummary).toContainText('서브 에이전트 총 0')
+      await expect(canceledSummary).toContainText('工具总数 0')
+      await expect(canceledSummary).toContainText('子 Agent 总数 0')
       const canceledNotice = page.locator(`[data-moldy-message-id="moldy-canceled-${activeRunId}"]`)
       await expect(canceledNotice).toBeVisible({ timeout: 15_000 })
-      await expect(canceledNotice).toContainText(/중단됨|Canceled/)
+      await expect(canceledNotice).toContainText(/已取消|Canceled/)
       await expect(page.locator('[data-moldy-stop-button="true"]')).toHaveCount(0)
-      await expect(page.getByRole('button', { name: /전송|Send/ }).last()).toBeVisible()
+      await expect(page.getByRole('button', { name: /发送|Send/ }).last()).toBeVisible()
       await capture(page, testInfo, '768-server-canceled.png')
 
       expect(errors.console).toEqual([])

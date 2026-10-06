@@ -46,7 +46,7 @@ function selectedArtifactForPayload(
   return items[0] ?? null
 }
 
-/** 생성 산출물 1개 행 — 클릭 시 우측 레일 미리보기 페인으로 전환(기존 동작 유지). */
+/** 1 行生成产物 —— 点击后切换到右侧 rail 的预览 pane（保持现有行为）。 */
 function GeneratedFileRow({
   artifact,
   active,
@@ -98,7 +98,7 @@ function GeneratedFileRow({
   )
 }
 
-/** 사용자 첨부 1개 카드 — 읽기 전용(제거/수정 없음). 클릭 시 commit-5 미리보기 다이얼로그. */
+/** 1 张用户附件卡 —— 只读（不可移除/修改）。点击后打开 commit-5 预览 dialog。 */
 function AttachedFileCard({ file }: { file: FileItem }) {
   const t = useTranslations('chat.rightRail.artifacts')
   const tFiles = useTranslations('chat.files')

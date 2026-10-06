@@ -1,57 +1,57 @@
 # Chat Scroll Follow Streaming UX Plan
 
-작성일: 2026-06-05
+编写日期：2026-06-05
 
-## 목적
+## 目的
 
-긴 deepagent 실행 중 채팅 뷰포트가 사용자의 읽기 위치를 빼앗지 않도록, LambChat의 스크롤 팔로우 정책을 Moldy의 실제 assistant-ui 기반 채팅 구조에 맞게 차용한다.
+为避免长时间 deepagent 执行期间聊天 viewport 抢走用户阅读位置，将 LambChat 的滚动跟随策略按 Moldy 实际基于 assistant-ui 的聊天结构进行移植。
 
-핵심 목표는 다음 세 가지다.
+核心目标有以下三点。
 
-1. 사용자가 바닥에 머물러 있으면 스트리밍 응답, 도구 결과, 레이아웃 높이 변화가 계속 바닥을 따라간다.
-2. 사용자가 위로 스크롤해 과거 메시지나 도구 로그를 읽기 시작하면 자동 추적을 즉시 해제한다.
-3. 사용자가 아래 화살표 버튼을 누르거나 새 메시지를 보내면 추적을 명시적으로 재개한다.
+1. 当用户停留在底部时，流式响应、工具结果、布局高度变化都持续跟随到底部。
+2. 当用户向上滚动开始阅读历史消息或工具日志时，立即解除自动跟随。
+3. 当用户点击向下箭头按钮或发送新消息时，明确恢复跟随。
 
-## 이 문서만 보고 개발하는 방법
+## 仅凭本文档进行开发的方法
 
-이 문서는 이전 대화 맥락 없이도 구현할 수 있도록 작성한다. 구현자는 아래 순서대로 읽고 작업하면 된다.
+本文档编写为无需此前对话上下文也能实现。开发者按以下顺序阅读并工作即可。
 
-1. "현재 Moldy 동작 진단"에서 현재 코드의 출발점을 확인한다.
-2. "차용할 정책"에서 제품 동작의 상태 모델과 전이 규칙을 확인한다.
-3. "구현 설계"와 "단계별 작업 계획"에 맞춰 파일을 추가하거나 수정한다.
-4. "구현 상세 계약"의 함수 signature와 알고리즘을 기준으로 코드를 작성한다.
-5. "테스트 상세 계약"의 테스트 이름과 arrange/act/assert를 기준으로 Vitest를 작성한다.
-6. "수용 기준"과 "수동 QA"를 통과하면 작업 완료로 본다.
+1. 在“当前 Moldy 行为诊断”中确认当前代码的起点。
+2. 在“要借鉴的策略”中确认产品行为的状态模型与转移规则。
+3. 按“实现设计”和“分阶段工作计划”添加或修改文件。
+4. 以“实现详细契约”中的函数 signature 和算法为基准编写代码。
+5. 以“测试详细契约”中的测试名称和 arrange/act/assert 为基准编写 Vitest。
+6. 通过“验收标准”和“手动 QA”后视为工作完成。
 
-대상 repository는 `/Users/chester/dev/ref/natural-mold`이며, frontend 작업 디렉터리는 `/Users/chester/dev/ref/natural-mold/frontend`다.
+目标 repository 为 `/Users/chester/dev/ref/natural-mold`，frontend 工作目录为 `/Users/chester/dev/ref/natural-mold/frontend`。
 
-## 확인한 소스
+## 已确认的源码
 
 ### Moldy
 
-| 파일 | 현재 역할 |
+| 文件 | 当前角色 |
 | --- | --- |
-| `frontend/src/components/chat/assistant-thread.tsx` | 공용 채팅 Thread UI. `ThreadPrimitive.Viewport`를 렌더하고, `onScroll`에서 `isThreadViewportAtBottom`만 계산해 아래 화살표 버튼 표시 여부를 관리한다. |
-| `frontend/src/components/chat/scroll-bottom.ts` | `scrollHeight`, `scrollTop`, `clientHeight` 기준으로 "바닥인가"만 판단하는 작은 유틸. |
-| `frontend/src/components/chat/__tests__/scroll-bottom.test.ts` | 1px rounding, overflow 없음, 바닥/비바닥만 검증한다. |
-| `frontend/src/lib/chat/use-chat-runtime.ts` | SSE 스트림을 assistant-ui `ExternalStoreRuntime` 메시지로 변환한다. `content_delta`는 rAF로 배치되어 스트리밍 메시지 내용을 갱신한다. |
-| `frontend/src/lib/chat/convert-message.ts` | backend `Message`를 assistant-ui 메시지로 변환한다. `stream-` prefix assistant 메시지는 `metadata.custom.isStreamingMessage = true`로 표시한다. |
-| `frontend/package.json` | `@assistant-ui/react`는 `^0.12.24`. 현재 설치 링크는 `@assistant-ui/react@0.12.28` 기준으로 확인했다. |
+| `frontend/src/components/chat/assistant-thread.tsx` | 公共聊天 Thread UI。渲染 `ThreadPrimitive.Viewport`，并在 `onScroll` 中仅计算 `isThreadViewportAtBottom` 来管理向下箭头按钮是否显示。 |
+| `frontend/src/components/chat/scroll-bottom.ts` | 基于 `scrollHeight`、`scrollTop`、`clientHeight` 只判断“是否在底部”的小型工具。 |
+| `frontend/src/components/chat/__tests__/scroll-bottom.test.ts` | 仅验证 1px rounding、无 overflow、底部/非底部。 |
+| `frontend/src/lib/chat/use-chat-runtime.ts` | 将 SSE stream 转换为 assistant-ui `ExternalStoreRuntime` 消息。`content_delta` 通过 rAF batching 更新流式消息内容。 |
+| `frontend/src/lib/chat/convert-message.ts` | 将 backend `Message` 转换为 assistant-ui 消息。带 `stream-` prefix 的 assistant 消息会标记为 `metadata.custom.isStreamingMessage = true`。 |
+| `frontend/package.json` | `@assistant-ui/react` 为 `^0.12.24`。已按当前安装链接 `@assistant-ui/react@0.12.28` 确认。 |
 
 ### LambChat
 
-| 파일 | 차용할 포인트 |
+| 文件 | 可借鉴点 |
 | --- | --- |
-| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/useMessageScroll.followState.ts` | 스크롤 팔로우를 순수 상태 전이로 분리한다. `userScrolledUp`, `autoScrollActive`, `streamLockActive`, `manualDetachFromStream`이 핵심이다. |
-| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/messageScrollUtils.ts` | 바닥/근접/이탈 threshold, user scroll 판정, 반복 bottom scroll, streaming finish 판정이 분리되어 있다. |
-| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/useMessageScroll.hook.ts` | wheel/touch/scroll/resize/layout 변화에 따라 순수 상태 전이를 실제 DOM 스크롤과 연결한다. |
-| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/__tests__/useMessageScroll.test.ts` | 모바일 detach, 데스크톱 detach, stream finish settle, explicit scrollToBottom re-entry 등 체감 UX를 테스트로 고정한다. |
+| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/useMessageScroll.followState.ts` | 将滚动跟随拆分为纯状态转移。核心是 `userScrolledUp`、`autoScrollActive`、`streamLockActive`、`manualDetachFromStream`。 |
+| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/messageScrollUtils.ts` | 分离底部/接近/脱离 threshold、user scroll 判定、重复 bottom scroll、streaming finish 判定。 |
+| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/useMessageScroll.hook.ts` | 根据 wheel/touch/scroll/resize/layout 变化，将纯状态转移连接到实际 DOM 滚动。 |
+| `/Users/chester/dev/ref/LambChat/frontend/src/components/layout/AppContent/__tests__/useMessageScroll.test.ts` | 通过测试固定移动端 detach、桌面端 detach、stream finish settle、explicit scrollToBottom re-entry 等实际体验 UX。 |
 
-## 현재 Moldy 동작 진단
+## 当前 Moldy 行为诊断
 
-### 현재 구현
+### 当前实现
 
-`AssistantThread`는 다음 흐름만 갖고 있다.
+`AssistantThread` 目前只有以下流程。
 
 ```tsx
 const [isViewportAtBottom, setIsViewportAtBottom] = useState(true)
@@ -62,7 +62,7 @@ const handleViewportScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
 }, [])
 ```
 
-그리고 `ThreadPrimitive.Viewport`에 이 핸들러를 연결한다.
+然后将这个 handler 连接到 `ThreadPrimitive.Viewport`。
 
 ```tsx
 <ThreadPrimitive.Viewport
@@ -71,7 +71,7 @@ const handleViewportScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
 >
 ```
 
-아래 화살표 버튼은 `useThreadViewport((v) => v.scrollToBottom)`만 호출한다.
+下方箭头按钮只调用 `useThreadViewport((v) => v.scrollToBottom)`。
 
 ```tsx
 function ScrollToBottomButton({ isAtBottom }: { isAtBottom: boolean }) {
@@ -81,56 +81,56 @@ function ScrollToBottomButton({ isAtBottom }: { isAtBottom: boolean }) {
 }
 ```
 
-`scroll-bottom.ts`는 1px 이내면 바닥으로 취급한다.
+`scroll-bottom.ts` 将距离 1px 以内视为已到底部。
 
 ```ts
 return Math.abs(scrollHeight - scrollTop - clientHeight) <= 1 || scrollHeight <= clientHeight
 ```
 
-### assistant-ui 기본 동작
+### assistant-ui 默认行为
 
-현재 `ThreadPrimitive.Viewport`는 props를 별도로 넘기지 않으므로 assistant-ui 기본 auto-scroll이 켜진다.
+当前 `ThreadPrimitive.Viewport` 没有额外传入 props，因此会启用 assistant-ui 默认 auto-scroll。
 
-설치된 `@assistant-ui/react@0.12.28` 기준으로 `ThreadPrimitive.Viewport`는 내부에서 `useThreadViewportAutoScroll`을 사용한다.
+以已安装的 `@assistant-ui/react@0.12.28` 为准，`ThreadPrimitive.Viewport` 内部使用 `useThreadViewportAutoScroll`。
 
-- `turnAnchor`가 `"bottom"`이면 `autoScroll` 기본값은 `true`다.
-- content resize 시 `autoScroll && isAtBottom`이면 `scrollToBottom("instant")`를 호출한다.
-- run start, initialize, thread switch 때도 기본적으로 바닥으로 스크롤한다.
-- viewport store에는 `isAtBottom`, `scrollToBottom`, `onScrollToBottom`이 있다.
+- 当 `turnAnchor` 为 `"bottom"` 时，`autoScroll` 默认值为 `true`。
+- content resize 时，如果 `autoScroll && isAtBottom`，会调用 `scrollToBottom("instant")`。
+- run start、initialize、thread switch 时默认也会滚动到底部。
+- viewport store 中有 `isAtBottom`、`scrollToBottom`、`onScrollToBottom`。
 
-즉 Moldy는 assistant-ui의 기본 자동 스크롤 위에 "버튼 표시용 바닥 여부"만 별도로 얹고 있다. 사용자가 위로 스크롤했을 때 assistant-ui의 `isAtBottom`이 false가 되면 기본적으로 content resize auto-scroll은 멈추지만, Moldy 코드 차원에서 다음 정책은 아직 고정되어 있지 않다.
+也就是说，Moldy 只是在 assistant-ui 的默认自动滚动之上，额外叠加了“用于显示按钮的是否到底部”状态。用户向上滚动后，如果 assistant-ui 的 `isAtBottom` 变为 false，content resize auto-scroll 默认会停止，但在 Moldy 代码层面，以下策略仍未被明确固定。
 
-- 사용자의 upward wheel/touch를 "자동 추적 해제 의도"로 명시적으로 다루지 않는다.
-- 프로그램이 만든 scroll과 사용자가 만든 scroll을 구분하지 않는다.
-- 모바일 touch/visual viewport 변화 중 `manualDetachFromStream` 같은 잠금이 없다.
-- streaming assistant가 끝날 때 바닥 근처라면 마지막 settle scroll을 할지 결정하지 않는다.
-- 위 행동을 검증하는 테스트가 없다.
+- 没有将用户的 upward wheel/touch 明确视为“取消自动跟随的意图”。
+- 没有区分程序产生的 scroll 与用户产生的 scroll。
+- 移动端 touch/visual viewport 变化期间，没有 `manualDetachFromStream` 之类的锁。
+- streaming assistant 结束时，如果接近底部，没有决定是否执行最后一次 settle scroll。
+- 没有验证上述行为的测试。
 
-## 사용자 문제 시나리오
+## 用户问题场景
 
-### 1. 긴 deepagent 로그를 읽는 중 화면이 바닥으로 끌리는 느낌
+### 1. 阅读较长 deepagent 日志时，感觉画面被拉回底部
 
-deepagent는 tool call, tool result, approval UI, phase timeline, markdown 텍스트가 길게 이어진다. 사용자가 중간 도구 결과를 읽으려고 위로 올렸는데 새 토큰이나 tool result 높이 변화 때문에 화면이 계속 움직이면 UX가 크게 나빠진다.
+deepagent 会连续出现很长的 tool call、tool result、approval UI、phase timeline、markdown 文本。用户为了阅读中间的工具结果向上滚动，但如果因为新 token 或 tool result 高度变化导致画面持续移动，UX 会明显变差。
 
-현재 assistant-ui 기본값만으로도 일부 detach는 되지만, Moldy의 제품 정책으로 테스트에 고정되어 있지 않아 향후 `ThreadPrimitive.Viewport` props 변경, assistant-ui 버전 변경, 버튼 상태 변경, builder variant 변경 때 회귀하기 쉽다.
+仅凭当前 assistant-ui 默认值也能实现部分 detach，但由于没有将其作为 Moldy 的产品策略固化到测试中，未来修改 `ThreadPrimitive.Viewport` props、升级 assistant-ui 版本、改变按钮状态或 builder variant 时都很容易回归。
 
-### 2. 모바일에서 터치만 시작해도 읽기 의도가 생긴다
+### 2. 在移动端，只要开始触摸就意味着产生了阅读意图
 
-LambChat은 모바일에서 active stream 중 `touchstart` 또는 명시적인 upward gesture가 들어오면 `manualDetachFromStream`을 켠다. 이유는 모바일에서 키보드, safe area, visual viewport resize가 빈번하고, 사용자가 손을 댄 직후 passive bottom scroll이 다시 추적을 켜면 "내가 화면을 잡았는데 도로 끌려간다"는 느낌이 생기기 때문이다.
+LambChat 在移动端 active stream 期间，只要出现 `touchstart` 或明确的 upward gesture，就会启用 `manualDetachFromStream`。原因是移动端经常发生键盘、safe area、visual viewport resize 变化，如果用户刚把手放上去，passive bottom scroll 又重新开启跟随，就会产生“我已经抓住画面，却又被拖走”的感觉。
 
-Moldy는 모바일 builder/chat 화면 모두 같은 `AssistantThread`를 쓰므로, 이 정책을 공용으로 가져오는 편이 좋다.
+Moldy 的移动端 builder/chat 画面都使用同一个 `AssistantThread`，因此适合共用这项策略。
 
-### 3. 새 메시지 전송은 항상 새 추적 사이클이다
+### 3. 发送新消息始终是一个新的跟随周期
 
-사용자가 이전 응답에서 detach 상태였더라도 새 메시지를 보내면 최신 turn으로 이동해야 한다. LambChat 테스트의 `local send clears the detach lock and starts a fresh follow cycle` 케이스가 여기에 해당한다.
+即使用户在上一条回复中处于 detach 状态，发送新消息后也应该移动到最新 turn。LambChat 测试中的 `local send clears the detach lock and starts a fresh follow cycle` 就属于这一场景。
 
-Moldy에서는 `useChatRuntime.onNew`, `onResumeDecisions`, `sendMessage`, edit/regenerate가 모두 새 stream을 시작할 수 있다. UI 쪽에서는 assistant-ui `thread.messages`의 마지막 appended user message 또는 `thread.isRunning` 전환을 보고 bottom scroll을 시작할 수 있다.
+在 Moldy 中，`useChatRuntime.onNew`、`onResumeDecisions`、`sendMessage`、edit/regenerate 都可能启动新的 stream。UI 侧可以观察 assistant-ui `thread.messages` 最后 appended user message 或 `thread.isRunning` 的切换来启动 bottom scroll。
 
-## 차용할 정책
+## 要借鉴的策略
 
-### 상태 모델
+### 状态模型
 
-LambChat의 상태 이름을 거의 그대로 차용하되 파일/타입명은 Moldy 맥락에 맞춘다.
+基本沿用 LambChat 的状态名称，但文件/类型名按照 Moldy 的语境调整。
 
 ```ts
 export interface ThreadScrollFollowState {
@@ -141,47 +141,47 @@ export interface ThreadScrollFollowState {
 }
 ```
 
-각 필드 의미는 다음과 같다.
+各字段含义如下。
 
-| 필드 | 의미 |
+| 字段 | 含义 |
 | --- | --- |
-| `userScrolledUp` | 사용자가 현재 응답을 따라가지 않고 위쪽 내용을 읽는 중이다. message update auto-scroll을 막는다. |
-| `autoScrollActive` | 현재 bottom scroll loop가 동작 중이다. layout height 변화가 있어도 바닥을 따라가야 한다. |
-| `streamLockActive` | assistant stream이 active인 동안 bottom follow를 유지해야 한다. 긴 streaming 중 높이 변화가 계속 생기는 상황을 위한 잠금이다. |
-| `manualDetachFromStream` | 특히 모바일에서 사용자가 active stream을 수동 detach했다. passive resize나 near-bottom 판정으로 자동 재결합하면 안 된다. explicit scrollToBottom 또는 새 local send로만 해제한다. |
+| `userScrolledUp` | 用户当前没有跟随回复，而是在阅读上方内容。阻止 message update auto-scroll。 |
+| `autoScrollActive` | 当前 bottom scroll loop 正在运行。即使 layout height 发生变化也应跟随底部。 |
+| `streamLockActive` | assistant stream 处于 active 时需要维持 bottom follow。用于长时间 streaming 中高度持续变化的情况。 |
+| `manualDetachFromStream` | 尤其在移动端，用户手动从 active stream detach。不能因 passive resize 或 near-bottom 判定而自动重新连接。只能通过 explicit scrollToBottom 或新的 local send 解除。 |
 
-### 핵심 전이
+### 核心状态转移
 
-| 이벤트 | 전이 |
+| 事件 | 转移 |
 | --- | --- |
-| viewport가 바닥 도달 | `userScrolledUp=false`. 단, `manualDetachFromStream`은 해제하지 않는다. |
-| explicit scrollToBottom 클릭 | `userScrolledUp=false`, `autoScrollActive=true`, active stream이면 `streamLockActive=true`, `manualDetachFromStream=false`. |
-| 새 user message append | detach lock을 해제하고 바닥으로 이동한다. |
-| active stream 중 upward wheel/touch/scroll | `userScrolledUp=true`, `autoScrollActive=false`, `streamLockActive=false`. 모바일이면 `manualDetachFromStream=true`. |
-| streaming assistant finish + 바닥 근처 + detach 아님 | 마지막 레이아웃 settle을 위해 `request-scroll-to-bottom`. |
-| streaming assistant finish + detach 상태 | 아무 scroll도 하지 않는다. |
-| viewport resize/layout change | detach가 아니고 follow active 또는 near bottom일 때만 bottom scroll. |
+| viewport 到达底部 | `userScrolledUp=false`。但不解除 `manualDetachFromStream`。 |
+| 点击 explicit scrollToBottom | `userScrolledUp=false`、`autoScrollActive=true`，若为 active stream 则 `streamLockActive=true`，`manualDetachFromStream=false`。 |
+| append 新 user message | 解除 detach lock 并移动到底部。 |
+| active stream 中 upward wheel/touch/scroll | `userScrolledUp=true`、`autoScrollActive=false`、`streamLockActive=false`。若为移动端则 `manualDetachFromStream=true`。 |
+| streaming assistant finish + 接近底部 + 非 detach | 为最后一次布局 settle 执行 `request-scroll-to-bottom`。 |
+| streaming assistant finish + detach 状态 | 不执行任何 scroll。 |
+| viewport resize/layout change | 仅在非 detach 且 follow active 或 near bottom 时执行 bottom scroll。 |
 
-## 구현 설계
+## 实现设计
 
-### 파일 구성
+### 文件结构
 
-권장 파일 구성은 다음과 같다.
+建议的文件结构如下。
 
-| 파일 | 작업 |
+| 文件 | 工作 |
 | --- | --- |
-| `frontend/src/components/chat/scroll-bottom.ts` | 기존 `isThreadViewportAtBottom` 유지. distance/near-bottom/away-from-bottom helper를 추가한다. |
-| `frontend/src/components/chat/scroll-follow-state.ts` | LambChat의 `useMessageScroll.followState.ts`에 해당하는 순수 상태 전이 유틸을 추가한다. |
-| `frontend/src/components/chat/use-thread-scroll-follow.ts` | assistant-ui viewport, `useAuiState`, DOM event, ResizeObserver를 연결하는 React hook을 추가한다. |
-| `frontend/src/components/chat/assistant-thread.tsx` | 기존 `isViewportAtBottom` state와 `handleViewportScroll`을 hook 결과로 대체한다. `ThreadPrimitive.Viewport` props를 controlled policy에 맞춘다. |
-| `frontend/src/components/chat/__tests__/scroll-follow-state.test.ts` | 순수 전이 테스트를 추가한다. LambChat 테스트 중 Moldy에 맞는 케이스를 이식한다. |
-| `frontend/tests/components/chat/assistant-thread-scroll-follow.test.tsx` | assistant-ui mock 기반 component integration 테스트를 추가한다. |
+| `frontend/src/components/chat/scroll-bottom.ts` | 保留现有 `isThreadViewportAtBottom`。新增 distance/near-bottom/away-from-bottom helper。 |
+| `frontend/src/components/chat/scroll-follow-state.ts` | 新增对应 LambChat `useMessageScroll.followState.ts` 的纯状态转移工具。 |
+| `frontend/src/components/chat/use-thread-scroll-follow.ts` | 新增连接 assistant-ui viewport、`useAuiState`、DOM event、ResizeObserver 的 React hook。 |
+| `frontend/src/components/chat/assistant-thread.tsx` | 用 hook 结果替换现有 `isViewportAtBottom` state 和 `handleViewportScroll`。让 `ThreadPrimitive.Viewport` props 符合 controlled policy。 |
+| `frontend/src/components/chat/__tests__/scroll-follow-state.test.ts` | 新增纯状态转移测试。移植 LambChat 测试中适合 Moldy 的用例。 |
+| `frontend/tests/components/chat/assistant-thread-scroll-follow.test.tsx` | 新增基于 assistant-ui mock 的 component integration 测试。 |
 
-### `scroll-bottom.ts` 확장
+### 扩展 `scroll-bottom.ts`
 
-현재 함수는 유지한다. 기존 테스트가 깨지지 않아야 한다.
+保留当前函数。现有测试不能被破坏。
 
-추가 helper는 다음 정도면 충분하다.
+新增以下程度的 helper 就足够了。
 
 ```ts
 export function getThreadViewportDistanceFromBottom(metrics: ThreadViewportScrollMetrics): number {
@@ -204,19 +204,19 @@ export function isThreadViewportAwayFromBottom(
 }
 ```
 
-권장 threshold:
+建议 threshold：
 
-| 항목 | Desktop | Mobile | 이유 |
+| 项目 | Desktop | Mobile | 原因 |
 | --- | --- | --- | --- |
-| exact bottom | 1px | 1px | 현재 동작 유지. 버튼 표시에는 엄격한 바닥 판정이 적합하다. |
-| near bottom | 48px | 120px | 모바일은 safe area/keyboard/손가락 스크롤 오차가 크다. LambChat의 `getAutoScrollResumeThresholdPx`와 유사하다. |
-| away from bottom | 16px | 50px 이상 | 작은 rounding이 아니라 실제로 사용자가 벗어났는지 판단한다. |
+| exact bottom | 1px | 1px | 保持当前行为。按钮显示适合采用严格的底部判定。 |
+| near bottom | 48px | 120px | 移动端 safe area/keyboard/手指滚动误差更大。与 LambChat 的 `getAutoScrollResumeThresholdPx` 类似。 |
+| away from bottom | 16px | 50px 以上 | 判断用户是否真正离开底部，而非轻微 rounding。 |
 
 ### `scroll-follow-state.ts`
 
-순수 유틸은 React와 DOM을 모르게 만든다. 이렇게 해야 LambChat처럼 UX 정책을 작은 테스트로 고정할 수 있다.
+纯工具函数不要感知 React 和 DOM。这样才能像 LambChat 一样用小型测试固定 UX 策略。
 
-주요 export:
+主要 export：
 
 ```ts
 export type ThreadScrollUpdateAction =
@@ -246,17 +246,17 @@ export function hasNewOutgoingMessage(...)
 export function shouldStopAutoScrollOnUserScroll(...)
 ```
 
-Moldy에 맞춘 차이:
+针对 Moldy 的差异：
 
-- LambChat은 `isLoadingHistory`, `pendingHistoryScroll`, external navigation까지 함께 다룬다. Moldy 1차 범위에서는 제외한다.
-- LambChat은 Virtuoso를 사용하지만 Moldy는 assistant-ui viewport div를 사용한다. 순수 상태 전이는 동일하게 가져오고, scroll runner는 별도로 작성한다.
-- Moldy의 streaming 여부는 assistant-ui `message.status.type === 'running'`을 우선 사용하고, `metadata.custom.isStreamingMessage`는 보조 신호로 쓴다.
+- LambChat 还会同时处理 `isLoadingHistory`、`pendingHistoryScroll`、external navigation。Moldy 第 1 阶段范围中排除这些内容。
+- LambChat 使用 Virtuoso，但 Moldy 使用 assistant-ui viewport div。纯状态转移保持一致，scroll runner 单独编写。
+- Moldy 的 streaming 状态优先使用 assistant-ui `message.status.type === 'running'`，并将 `metadata.custom.isStreamingMessage` 作为辅助信号。
 
 ### `use-thread-scroll-follow.ts`
 
-hook은 `AssistantThread` 안에서 호출한다.
+hook 在 `AssistantThread` 内调用。
 
-권장 interface:
+建议 interface：
 
 ```ts
 interface UseThreadScrollFollowOptions {
@@ -275,7 +275,7 @@ interface UseThreadScrollFollowReturn {
 }
 ```
 
-구현에서 사용할 assistant-ui state:
+实现中要使用的 assistant-ui state：
 
 ```ts
 const threadMessages = useAuiState((s) =>
@@ -295,13 +295,13 @@ const threadIsRunning = useAuiState((s) => s.thread.isRunning)
 const requestAssistantUiScrollToBottom = useThreadViewport((v) => v.scrollToBottom)
 ```
 
-`sessionKey`는 `conversationId ?? '__local_thread__'`를 기본으로 쓴다. conversation 전환 시 follow state를 reset한다.
+`sessionKey` 默认使用 `conversationId ?? '__local_thread__'`。conversation 切换时 reset follow state。
 
-### assistant-ui auto-scroll 제어
+### 控制 assistant-ui auto-scroll
 
-커스텀 정책이 들어가면 assistant-ui 기본 content resize auto-scroll과 충돌하지 않도록 `ThreadPrimitive.Viewport`를 controlled하게 둔다.
+引入自定义策略后，为避免与 assistant-ui 默认的 content resize auto-scroll 冲突，应将 `ThreadPrimitive.Viewport` 设为 controlled。
 
-권장 props:
+建议 props：
 
 ```tsx
 <ThreadPrimitive.Viewport
@@ -318,25 +318,25 @@ const requestAssistantUiScrollToBottom = useThreadViewport((v) => v.scrollToBott
 >
 ```
 
-초기 history load와 thread switch는 1차 구현에서 다음 중 하나를 선택한다.
+初始 history load 和 thread switch 在第 1 阶段实现中可从以下方案中选择一个。
 
-1. `scrollToBottomOnInitialize`와 `scrollToBottomOnThreadSwitch`는 assistant-ui 기본값으로 유지한다.
-2. 모든 자동 옵션을 끄고 `sessionKey` 변경 effect에서 직접 bottom scroll한다.
+1. `scrollToBottomOnInitialize` 和 `scrollToBottomOnThreadSwitch` 保持 assistant-ui 默认值。
+2. 关闭所有自动选项，在 `sessionKey` 变化的 effect 中直接 bottom scroll。
 
-권장안은 2번이다. 이유는 scroll follow 정책이 한 곳에 모이고, session reset 테스트를 작성하기 쉽기 때문이다.
+建议采用方案 2。因为 scroll follow 策略可以集中在一处，也更容易编写 session reset 测试。
 
 ```tsx
 scrollToBottomOnInitialize={false}
 scrollToBottomOnThreadSwitch={false}
 ```
 
-단, 이 경우 빈 상태/초기 로드/대화 전환에서 바닥 이동이 실제로 유지되는지 component test와 수동 검증이 필요하다.
+但这种情况下，需要通过 component test 和手动验证确认空状态/初始加载/对话切换时确实仍会移动到底部。
 
 ### bottom scroll runner
 
-단순히 한 번 `scrollToBottom()`을 호출하면 streaming markdown, tool result, 이미지/코드 블록, approval card 높이 변화에 밀릴 수 있다. LambChat처럼 짧은 반복 runner를 둔다.
+如果只调用一次 `scrollToBottom()`，可能会被 streaming markdown、tool result、图片/代码块、approval card 的高度变化顶开。应像 LambChat 一样设置一个短时重复 runner。
 
-Moldy용 runner는 Virtuoso API가 필요 없다. viewport div와 assistant-ui `scrollToBottom`만 사용한다.
+Moldy 用的 runner 不需要 Virtuoso API。只使用 viewport div 和 assistant-ui `scrollToBottom`。
 
 ```ts
 function forceThreadViewportToBottom(viewport: HTMLElement | null) {
@@ -345,26 +345,26 @@ function forceThreadViewportToBottom(viewport: HTMLElement | null) {
 }
 ```
 
-runner 정책:
+runner 策略：
 
-- 시작 즉시 assistant-ui `scrollToBottom({ behavior: 'auto' })`와 direct `scrollTop = scrollHeight`를 모두 실행한다.
-- `ignoreProgrammaticScrollUntilRef.current = Date.now() + 120`으로 다음 scroll event를 사용자 scroll로 오판하지 않는다.
-- interval은 desktop 16ms, mobile 20ms 전후.
-- 기본 max duration은 240-500ms, stream lock active면 height change가 있는 동안 keep-alive한다.
-- `shouldAbort`가 `userScrolledUpRef.current === true`이면 즉시 중단한다.
-- ResizeObserver가 가능하면 viewport의 첫 번째 content child를 observe한다. 없으면 interval만 사용한다.
+- 启动后立即同时执行 assistant-ui `scrollToBottom({ behavior: 'auto' })` 和 direct `scrollTop = scrollHeight`。
+- 通过 `ignoreProgrammaticScrollUntilRef.current = Date.now() + 120`，避免将下一次 scroll event 误判为用户 scroll。
+- interval 约为 desktop 16ms、mobile 20ms。
+- 默认 max duration 为 240-500ms，如果 stream lock active，则在 height change 期间 keep-alive。
+- 如果 `shouldAbort` 为 `userScrolledUpRef.current === true`，则立即中断。
+- 如果可用 ResizeObserver，就 observe viewport 的第一个 content child。否则只使用 interval。
 
-### 버튼 동작
+### 按钮行为
 
-현재 `ScrollToBottomButton`은 내부에서 `useThreadViewport`를 직접 읽는다. controlled hook을 쓰면 버튼은 명령만 받아야 한다.
+当前 `ScrollToBottomButton` 在内部直接读取 `useThreadViewport`。使用 controlled hook 后，按钮应该只接收命令。
 
-변경 전:
+变更前：
 
 ```tsx
 <ScrollToBottomButton isAtBottom={isViewportAtBottom} />
 ```
 
-변경 후:
+变更后：
 
 ```tsx
 <ScrollToBottomButton
@@ -373,149 +373,149 @@ runner 정책:
 />
 ```
 
-`scrollToBottom`은 `manualDetachFromStream`을 clear하는 explicit action이어야 한다. passive resize나 near-bottom 판정은 이 lock을 clear하면 안 된다.
+`scrollToBottom` 应该是一个会 clear `manualDetachFromStream` 的 explicit action。passive resize 或 near-bottom 判定不能 clear 这个 lock。
 
-## 단계별 작업 계획
+## 分阶段工作计划
 
-### Phase 1. 순수 유틸과 테스트
+### Phase 1. 纯工具和测试
 
-작업:
+工作：
 
-- `scroll-bottom.ts`에 distance/near/away helper 추가.
-- `scroll-follow-state.ts` 추가.
-- LambChat 테스트 중 다음 케이스를 Moldy 스타일의 Vitest로 이식.
+- 在 `scroll-bottom.ts` 中新增 distance/near/away helper。
+- 新增 `scroll-follow-state.ts`。
+- 将 LambChat 测试中的以下用例移植为 Moldy 风格的 Vitest。
 
-필수 테스트:
+必测项：
 
-| 테스트 | 기대 |
+| 测试 | 预期 |
 | --- | --- |
-| at bottom change clears `userScrolledUp` | 바닥 도달 시 사용자가 위로 올렸다는 flag만 clear한다. |
+| at bottom change clears `userScrolledUp` | 到达底部时，只 clear 用户向上滚动过的 flag。 |
 | mobile upward scroll detaches active stream | `manualDetachFromStream=true`, `autoScrollActive=false`, `streamLockActive=false`. |
-| mobile touchstart detaches immediately | active stream follow 중 touch 시작만으로 detach. |
+| mobile touchstart detaches immediately | active stream follow 期间，仅开始 touch 就 detach。 |
 | desktop upward wheel detaches without manual mobile lock | `userScrolledUp=true`, `manualDetachFromStream=false`. |
-| detached stream finish does not scroll | `getThreadMessageUpdateScrollAction`이 `null`. |
-| stream finish near bottom settles | detach가 아니고 stream lock 유지 중이면 `request-scroll-to-bottom`. |
-| explicit scrollToBottom clears detach | `manualDetachFromStream=false`, follow 재개. |
-| local send clears detach | 새 user message append는 `scroll-to-bottom`. |
-| passive bottom scroll does not clear mobile detach lock | `clearManualDetachFromStream=false`이면 lock 유지. |
+| detached stream finish does not scroll | `getThreadMessageUpdateScrollAction` 为 `null`。 |
+| stream finish near bottom settles | 非 detach 且仍维持 stream lock 时，执行 `request-scroll-to-bottom`。 |
+| explicit scrollToBottom clears detach | `manualDetachFromStream=false`，恢复 follow。 |
+| local send clears detach | append 新 user message 时执行 `scroll-to-bottom`。 |
+| passive bottom scroll does not clear mobile detach lock | 当 `clearManualDetachFromStream=false` 时维持 lock。 |
 
-검증 명령:
+验证命令：
 
 ```bash
 cd frontend
 pnpm vitest run src/components/chat/__tests__/scroll-bottom.test.ts src/components/chat/__tests__/scroll-follow-state.test.ts
 ```
 
-### Phase 2. Hook 통합
+### Phase 2. Hook 集成
 
-작업:
+工作：
 
-- `use-thread-scroll-follow.ts` 추가.
-- `AssistantThread`의 local `isViewportAtBottom` state와 `handleViewportScroll`을 hook으로 교체.
-- `ThreadPrimitive.Viewport`에 `ref`, `autoScroll={false}`, scroll/touch/wheel 핸들러 연결.
-- `ScrollToBottomButton`에 `onScrollToBottom` prop 추가.
-- `conversationId`를 `sessionKey`로 넘겨 대화 전환 reset.
+- 新增 `use-thread-scroll-follow.ts`。
+- 用 hook 替换 `AssistantThread` 的 local `isViewportAtBottom` state 和 `handleViewportScroll`。
+- 在 `ThreadPrimitive.Viewport` 上连接 `ref`、`autoScroll={false}`、scroll/touch/wheel handler。
+- 为 `ScrollToBottomButton` 新增 `onScrollToBottom` prop。
+- 将 `conversationId` 作为 `sessionKey` 传入，以便对话切换时 reset。
 
-주의:
+注意：
 
-- `useAuiState` selector에서 `s.thread.messages` 전체 객체를 그대로 반환하면 token마다 불필요한 rerender가 커질 수 있다. `id`, `role`, `status.type`, `metadata.custom.isStreamingMessage`만 projection한다.
-- `scrollToBottom` 호출은 rAF로 한 번 늦춰 DOM이 새 메시지를 그린 뒤 실행한다.
-- 프로그램 scroll 직후 발생한 `scroll` event는 `ignoreProgrammaticScrollUntilRef`로 무시한다.
+- 如果在 `useAuiState` selector 中原样返回整个 `s.thread.messages` 对象，每个 token 都可能造成大量不必要的 rerender。只 projection `id`、`role`、`status.type`、`metadata.custom.isStreamingMessage`。
+- `scrollToBottom` 调用通过 rAF 延迟一次，在 DOM 绘制新消息后再执行。
+- 程序 scroll 后立即发生的 `scroll` event 通过 `ignoreProgrammaticScrollUntilRef` 忽略。
 
 ### Phase 3. Component integration test
 
-기존 테스트 mock은 `ThreadPrimitive.Viewport`가 `className`과 `children`만 받는 passthrough라 scroll event 검증에 부족하다. 새 테스트 파일에서는 별도 mock을 만들거나 기존 mock을 보강한다.
+现有测试 mock 中，`ThreadPrimitive.Viewport` 只是接收 `className` 和 `children` 的 passthrough，不足以验证 scroll event。新测试文件中应创建单独的 mock，或增强现有 mock。
 
-검증할 항목:
+需要验证的项目：
 
-| 테스트 | 기대 |
+| 测试 | 预期 |
 | --- | --- |
 | viewport receives controlled auto-scroll props | `autoScroll=false`, `scrollToBottomOnRunStart=false`. |
-| not-at-bottom shows button | `scrollHeight/clientHeight/scrollTop` 조작 후 button visible. |
-| clicking button calls hook scroll action | mock `scrollToBottom` 또는 direct viewport scroll 호출 확인. |
-| upward wheel while running keeps button visible and prevents auto re-entry | state가 detached로 유지. |
-| sessionKey change resets bottom state | conversationId 변경 후 bottom state 초기화. |
+| not-at-bottom shows button | 操作 `scrollHeight/clientHeight/scrollTop` 后 button visible。 |
+| clicking button calls hook scroll action | 确认调用 mock `scrollToBottom` 或 direct viewport scroll。 |
+| upward wheel while running keeps button visible and prevents auto re-entry | state 保持 detached。 |
+| sessionKey change resets bottom state | conversationId 变化后初始化 bottom state。 |
 
-검증 명령:
+验证命令：
 
 ```bash
 cd frontend
 pnpm vitest run tests/components/chat/assistant-thread-scroll-follow.test.tsx
 ```
 
-### Phase 4. 수동 QA와 Playwright 후보
+### Phase 4. 手动 QA 与 Playwright 候选
 
-수동 QA 시나리오:
+手动 QA 场景：
 
-1. 일반 conversation 화면에서 긴 응답을 시작한다.
-2. 응답 도중 위로 스크롤해 이전 tool result를 읽는다.
-3. 새 토큰/도구 결과가 계속 도착해도 화면이 아래로 끌려가지 않는지 확인한다.
-4. 아래 화살표 버튼을 누르면 최신 응답 하단으로 이동하고 이후 다시 따라가는지 확인한다.
-5. 같은 시나리오를 builder variant에서 반복한다.
-6. 모바일 viewport에서 touchstart/touchmove 후 자동 재결합이 일어나지 않는지 확인한다.
-7. 새 메시지를 보내면 이전 detach와 관계없이 최신 turn으로 이동하는지 확인한다.
+1. 在普通 conversation 画面启动一个较长回复。
+2. 回复过程中向上滚动，阅读之前的 tool result。
+3. 确认即使新 token/工具结果持续到达，画面也不会被拉到底部。
+4. 按下下方箭头按钮后，确认会移动到最新回复底部，并继续跟随。
+5. 在 builder variant 中重复相同场景。
+6. 在移动端 viewport 中 touchstart/touchmove 后，确认不会发生自动重新连接。
+7. 发送新消息后，确认无论之前是否 detach，都移动到最新 turn。
 
-Playwright 자동화 후보:
+Playwright 自动化候选：
 
-- mock SSE endpoint가 긴 `content_delta`를 일정 간격으로 내보내도록 구성.
-- 사용자가 viewport를 위로 스크롤한 후 `scrollTop`이 임의로 증가하지 않는지 assert.
-- button click 후 `scrollTop + clientHeight`가 `scrollHeight` 근처가 되는지 assert.
+- 配置 mock SSE endpoint，使其按固定间隔输出较长的 `content_delta`。
+- 用户向上滚动 viewport 后，assert `scrollTop` 不会被任意增加。
+- button click 后，assert `scrollTop + clientHeight` 接近 `scrollHeight`。
 
-## 수용 기준
+## 验收标准
 
-기능 수용 기준:
+功能验收标准：
 
-- 사용자가 active stream 중 위로 스크롤하면 이후 streaming text/tool UI height 변화가 viewport를 바닥으로 끌고 가지 않는다.
-- 사용자가 아래 화살표를 누르면 detach lock이 해제되고 active stream follow가 재개된다.
-- 새 user message, edit, regenerate, HITL resume으로 새 run이 시작되면 fresh follow cycle이 시작된다.
-- 모바일에서는 touchstart/touchmove로 active stream detach가 가능하고 passive viewport resize로 lock이 해제되지 않는다.
-- 기존 아래 화살표 버튼의 접근성 속성(`aria-label`, `aria-hidden`, `tabIndex`, disabled)은 유지된다.
+- 用户在 active stream 中向上滚动后，后续 streaming text/tool UI height 变化不会把 viewport 拉到底部。
+- 用户点击下方箭头后，detach lock 被解除，active stream follow 恢复。
+- 当新 user message、edit、regenerate、HITL resume 启动新 run 时，会开始 fresh follow cycle。
+- 在移动端，可通过 touchstart/touchmove 从 active stream detach，且 passive viewport resize 不会解除 lock。
+- 保留现有下方箭头按钮的无障碍属性（`aria-label`、`aria-hidden`、`tabIndex`、disabled）。
 
-테스트 수용 기준:
+测试验收标准：
 
-- `scroll-bottom.test.ts` 기존 테스트 통과.
-- `scroll-follow-state.test.ts`가 LambChat에서 차용한 핵심 상태 전이를 커버.
-- `assistant-thread` component test가 controlled viewport props와 button 재결합 경로를 커버.
-- `pnpm vitest run` 전체 또는 최소 채팅 관련 테스트 통과.
+- `scroll-bottom.test.ts` 现有测试通过。
+- `scroll-follow-state.test.ts` 覆盖从 LambChat 借鉴的核心状态转移。
+- `assistant-thread` component test 覆盖 controlled viewport props 和 button 重新连接路径。
+- 全部 `pnpm vitest run` 或至少聊天相关测试通过。
 
-## 비범위
+## 非范围
 
-이번 작업에서 하지 않는 것:
+本次工作不做以下内容：
 
-- Virtuoso 도입. Moldy는 assistant-ui viewport를 유지한다.
-- backend SSE protocol 변경.
-- message virtualization 도입.
-- LambChat의 external navigation/reveal_file anchor scroll 이식.
-- history pagination 최종 스크롤 정책. Moldy에 history loading UX가 별도 구현되면 후속 문서로 다룬다.
-- nested subagent anchor navigation. 다만 ResizeObserver 기반 bottom runner가 nested tool/subagent panel의 높이 변화도 일반 layout change로 처리해야 한다.
+- 引入 Virtuoso。Moldy 继续使用 assistant-ui viewport。
+- 修改 backend SSE protocol。
+- 引入 message virtualization。
+- 移植 LambChat 的 external navigation/reveal_file anchor scroll。
+- history pagination 的最终滚动策略。如果 Moldy 另行实现 history loading UX，再用后续文档处理。
+- nested subagent anchor navigation。不过，基于 ResizeObserver 的 bottom runner 应把 nested tool/subagent panel 的高度变化也当作普通 layout change 处理。
 
-## 리스크와 대응
+## 风险与应对
 
-| 리스크 | 대응 |
+| 风险 | 应对 |
 | --- | --- |
-| assistant-ui 버전 변경으로 `useAuiState((s) => s.thread.messages)` shape가 바뀔 수 있음 | 현재 설치본 `@assistant-ui/react@0.12.28` 기준으로 작성했다. 구현 시 타입 에러를 우선 확인하고 selector projection을 최소화한다. |
-| assistant-ui 기본 auto-scroll을 끄면 초기 로드/대화 전환 bottom 이동이 빠질 수 있음 | `sessionKey` reset effect와 component test로 보완한다. 필요하면 initialize/threadSwitch만 assistant-ui 기본값을 유지하는 fallback을 둔다. |
-| token마다 messages projection이 바뀌어 rerender가 늘 수 있음 | selector에서 필요한 primitive만 반환하고, scroll action 판단은 `previousMessagesRef`와 cheap snapshot 비교로 처리한다. |
-| direct `scrollTop = scrollHeight`와 assistant-ui `scrollToBottom` 중복 호출이 튈 수 있음 | programmatic scroll ignore window를 두고, behavior는 기본 `auto`로 통일한다. |
-| 모바일 touchstart detach가 너무 민감할 수 있음 | active stream follow 상태에서만 touchstart detach를 적용한다. stream이 없거나 follow가 꺼져 있으면 상태 변화 없음. |
-| near-bottom threshold가 버튼 표시와 충돌할 수 있음 | 버튼 표시는 기존 exact bottom 기준을 유지하고, auto-scroll 재개/settle 판단만 near-bottom threshold를 사용한다. |
+| assistant-ui 版本变化后，`useAuiState((s) => s.thread.messages)` shape 可能改变 | 本文以当前安装的 `@assistant-ui/react@0.12.28` 为准。实现时优先确认类型错误，并尽量减少 selector projection。 |
+| 关闭 assistant-ui 默认 auto-scroll 后，初始加载/对话切换的 bottom 移动可能丢失 | 用 `sessionKey` reset effect 和 component test 补足。必要时可设置 fallback，仅对 initialize/threadSwitch 保留 assistant-ui 默认值。 |
+| 每个 token 都导致 messages projection 变化，rerender 可能增加 | selector 只返回必要 primitive，scroll action 判定通过 `previousMessagesRef` 与 cheap snapshot 比较完成。 |
+| direct `scrollTop = scrollHeight` 与 assistant-ui `scrollToBottom` 重复调用可能造成跳动 | 设置 programmatic scroll ignore window，并统一使用默认 `auto` behavior。 |
+| 移动端 touchstart detach 可能过于敏感 | 仅在 active stream follow 状态应用 touchstart detach。没有 stream 或 follow 已关闭时不改变状态。 |
+| near-bottom threshold 可能与按钮显示冲突 | 按钮显示继续使用现有 exact bottom 标准，仅在 auto-scroll 恢复/settle 判定中使用 near-bottom threshold。 |
 
-## 권장 구현 순서 요약
+## 建议实现顺序摘要
 
-1. `scroll-follow-state.ts`를 만들고 LambChat의 순수 상태 전이 테스트를 Moldy/Vitest로 먼저 고정한다.
-2. `scroll-bottom.ts`를 확장하되 기존 exact bottom 동작은 유지한다.
-3. `use-thread-scroll-follow.ts`에서 assistant-ui `useAuiState`, `useThreadViewport`, viewport ref, wheel/touch/scroll event를 연결한다.
-4. `AssistantThread`에 hook을 붙이고 `ThreadPrimitive.Viewport`를 controlled auto-scroll로 전환한다.
-5. 버튼 클릭이 explicit re-entry가 되도록 `ScrollToBottomButton`을 prop 기반으로 바꾼다.
-6. component test와 수동 QA로 default/builder/mobile 흐름을 확인한다.
+1. 创建 `scroll-follow-state.ts`，先用 Moldy/Vitest 固定 LambChat 的纯状态转移测试。
+2. 扩展 `scroll-bottom.ts`，同时保持现有 exact bottom 行为。
+3. 在 `use-thread-scroll-follow.ts` 中连接 assistant-ui `useAuiState`、`useThreadViewport`、viewport ref、wheel/touch/scroll event。
+4. 将 hook 接入 `AssistantThread`，并把 `ThreadPrimitive.Viewport` 切换为 controlled auto-scroll。
+5. 将 `ScrollToBottomButton` 改为基于 prop，使按钮点击成为 explicit re-entry。
+6. 通过 component test 和手动 QA 确认 default/builder/mobile 流程。
 
-## 구현 상세 계약
+## 实现详细契约
 
-이 절은 실제 구현자가 문서만 보고 코드를 작성할 수 있도록 파일별 계약을 정의한다. 코드 블록은 완성 코드에 가깝지만, import 정렬과 타입 좁히기는 실제 TypeScript 에러에 맞춰 조정한다.
+本节定义各文件契约，使实际实现者只看文档也能编写代码。代码块接近完整代码，但 import 排序和类型收窄应根据实际 TypeScript 错误调整。
 
 ### 1. `scroll-bottom.ts`
 
-기존 `isThreadViewportAtBottom` 함수는 이름과 의미를 그대로 유지한다. 아래 helper를 같은 파일에 추가한다.
+保留现有 `isThreadViewportAtBottom` 函数的名称和含义。在同一文件中新增以下 helper。
 
 ```ts
 export interface ThreadViewportScrollMetrics {
@@ -558,18 +558,18 @@ export function isThreadViewportAwayFromBottom(
 }
 ```
 
-추가 테스트는 `frontend/src/components/chat/__tests__/scroll-bottom.test.ts`에 넣는다.
+新增测试放入 `frontend/src/components/chat/__tests__/scroll-bottom.test.ts`。
 
-- `getThreadViewportDistanceFromBottom`이 일반 overflow에서 남은 px를 반환한다.
-- content가 viewport보다 작으면 near bottom이다.
-- threshold 안쪽이면 near bottom이다.
-- threshold 바깥이면 away from bottom이다.
+- `getThreadViewportDistanceFromBottom` 在普通 overflow 情况下返回剩余 px。
+- content 小于 viewport 时视为 near bottom。
+- 在 threshold 内时视为 near bottom。
+- 超出 threshold 时视为 away from bottom。
 
 ### 2. `scroll-follow-state.ts`
 
-새 파일: `frontend/src/components/chat/scroll-follow-state.ts`
+新文件：`frontend/src/components/chat/scroll-follow-state.ts`
 
-이 파일은 React import가 없어야 한다. 상태 전이는 순수 함수로 유지한다.
+该文件不能有 React import。状态转移保持为纯函数。
 
 ```ts
 export type ThreadScrollUpdateAction = 'scroll-to-bottom' | 'request-scroll-to-bottom' | null
@@ -600,7 +600,7 @@ export function createThreadScrollFollowState(
 }
 ```
 
-bottom 도달 전이:
+bottom 到达转移：
 
 ```ts
 export function getNextThreadScrollFollowStateForAtBottomChange({
@@ -618,7 +618,7 @@ export function getNextThreadScrollFollowStateForAtBottomChange({
 }
 ```
 
-명시적 또는 passive bottom scroll 전이:
+显式或 passive bottom scroll 转移：
 
 ```ts
 export function getNextThreadScrollFollowStateForBottomScroll({
@@ -646,7 +646,7 @@ export function getNextThreadScrollFollowStateForBottomScroll({
 }
 ```
 
-사용자 의도와 gesture 전이:
+用户意图与 gesture 转移：
 
 ```ts
 function hasActiveStreamFollow({
@@ -684,7 +684,7 @@ export const getNextThreadScrollFollowStateForUserGesture =
   getNextThreadScrollFollowStateForUserIntent
 ```
 
-사용자 scroll 전이:
+用户 scroll 转移：
 
 ```ts
 export function shouldStopAutoScrollOnUserScroll({
@@ -753,7 +753,7 @@ export function getNextThreadScrollFollowStateForUserScroll({
 }
 ```
 
-메시지 변화에 따른 scroll action:
+由消息变化触发的 scroll action：
 
 ```ts
 export function hasNewOutgoingMessage(
@@ -890,11 +890,11 @@ export function getThreadMessageUpdateScrollAction({
 
 ### 3. `use-thread-scroll-follow.ts`
 
-새 파일: `frontend/src/components/chat/use-thread-scroll-follow.ts`
+新文件：`frontend/src/components/chat/use-thread-scroll-follow.ts`
 
-이 hook은 `AssistantThread`에서만 호출한다. assistant-ui context 안에서 실행되어야 하므로 `ThreadPrimitive.Root` 바깥으로 빼면 안 된다.
+该 hook 只在 `AssistantThread` 中调用。由于必须在 assistant-ui context 内运行，不能移到 `ThreadPrimitive.Root` 外部。
 
-필수 import:
+必需 import：
 
 ```ts
 import {
@@ -946,7 +946,7 @@ export interface UseThreadScrollFollowReturn {
 }
 ```
 
-상수:
+常量：
 
 ```ts
 const MOBILE_BREAKPOINT_PX = 640
@@ -988,7 +988,7 @@ const threadMessages = useAuiState((s) =>
 )
 ```
 
-hook 내부 refs:
+hook 内部 refs：
 
 ```ts
 const viewportElementRef = useRef<HTMLDivElement | null>(null)
@@ -1019,7 +1019,7 @@ const viewportRef = useCallback<RefCallback<HTMLDivElement>>((node) => {
 }, [])
 ```
 
-state 적용 helper:
+state 应用 helper：
 
 ```ts
 const applyFollowState = useCallback((nextState: ThreadScrollFollowState) => {
@@ -1032,7 +1032,7 @@ const applyFollowState = useCallback((nextState: ThreadScrollFollowState) => {
 }, [])
 ```
 
-bottom scroll runner는 1차 구현에서 복잡도를 낮춰도 된다. 최소 계약은 다음과 같다.
+bottom scroll runner 在第 1 阶段实现中可以降低复杂度。最小契约如下。
 
 ```ts
 const requestAssistantUiScrollToBottom = useThreadViewport((v) => v.scrollToBottom)
@@ -1047,7 +1047,7 @@ const forceViewportToBottom = useCallback(() => {
 }, [requestAssistantUiScrollToBottom])
 ```
 
-반복 runner 계약:
+重复 runner 契约：
 
 ```ts
 const startScrollToBottomLoop = useCallback(() => {
@@ -1311,27 +1311,27 @@ return {
 }
 ```
 
-### 4. `assistant-thread.tsx` 변경 계약
+### 4. `assistant-thread.tsx` 变更契约
 
-수정 파일: `frontend/src/components/chat/assistant-thread.tsx`
+修改文件：`frontend/src/components/chat/assistant-thread.tsx`
 
-현재 import:
+当前 import：
 
 ```ts
 import { useCallback, useMemo, useState, type UIEvent } from 'react'
 ```
 
-변경 후 `AssistantThread`에서 local scroll state를 제거하면 `useState`, `UIEvent`는 다른 곳에서 쓰는지 확인하고 필요 없는 항목을 제거한다. 이 파일에는 `CopyButton`, `BranchPicker` 등에서 `useState`를 계속 쓰므로 `useState` 자체는 유지될 가능성이 높다. `UIEvent`는 제거 가능성이 높다.
+变更后，如果从 `AssistantThread` 中移除 local scroll state，需要确认 `useState`、`UIEvent` 是否在其他位置使用，并删除不需要的项。该文件中的 `CopyButton`、`BranchPicker` 等仍会继续使用 `useState`，因此 `useState` 本身很可能保留。`UIEvent` 很可能可以删除。
 
-`useThreadViewport`는 현재 `ScrollToBottomButton` 안에서만 쓰인다. 버튼이 prop 기반으로 바뀌면 `@assistant-ui/react` import에서 제거한다.
+`useThreadViewport` 当前只在 `ScrollToBottomButton` 内使用。按钮改为基于 prop 后，应从 `@assistant-ui/react` import 中移除。
 
-추가 import:
+新增 import：
 
 ```ts
 import { useThreadScrollFollow } from '@/components/chat/use-thread-scroll-follow'
 ```
 
-기존 코드 제거:
+删除现有代码：
 
 ```ts
 const [isViewportAtBottom, setIsViewportAtBottom] = useState(true)
@@ -1341,7 +1341,7 @@ const handleViewportScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
 }, [])
 ```
 
-대체 코드:
+替换代码：
 
 ```ts
 const {
@@ -1358,7 +1358,7 @@ const {
 })
 ```
 
-`ThreadPrimitive.Viewport` 변경:
+修改 `ThreadPrimitive.Viewport`：
 
 ```tsx
 <ThreadPrimitive.Viewport
@@ -1377,7 +1377,7 @@ const {
 >
 ```
 
-버튼 호출 변경:
+修改按钮调用：
 
 ```tsx
 <ScrollToBottomButton
@@ -1386,7 +1386,7 @@ const {
 />
 ```
 
-`ScrollToBottomButton` 변경:
+修改 `ScrollToBottomButton`：
 
 ```tsx
 function ScrollToBottomButton({
@@ -1415,25 +1415,25 @@ function ScrollToBottomButton({
 }
 ```
 
-삭제 import:
+删除 import：
 
 ```ts
 import { isThreadViewportAtBottom } from '@/components/chat/scroll-bottom'
 ```
 
-`isThreadViewportAtBottom`은 새 hook 안에서 사용한다.
+`isThreadViewportAtBottom` 在新的 hook 内使用。
 
-## 테스트 상세 계약
+## 测试详细契约
 
-테스트는 세 층으로 나눈다.
+测试分为三层。
 
-1. 작은 수학 helper 테스트: `scroll-bottom.test.ts`
-2. 상태 머신 테스트: `scroll-follow-state.test.ts`
-3. React 통합 테스트: `assistant-thread-scroll-follow.test.tsx`
+1. 小型数学 helper 测试：`scroll-bottom.test.ts`
+2. 状态机测试：`scroll-follow-state.test.ts`
+3. React 集成测试：`assistant-thread-scroll-follow.test.tsx`
 
-### 1. `scroll-bottom.test.ts` 추가 케이스
+### 1. `scroll-bottom.test.ts` 新增用例
 
-기존 테스트 아래에 추가한다.
+添加到现有测试下方。
 
 ```ts
 import {
@@ -1481,9 +1481,9 @@ it('treats a viewport outside the away threshold as away from bottom', () => {
 
 ### 2. `scroll-follow-state.test.ts`
 
-새 파일: `frontend/src/components/chat/__tests__/scroll-follow-state.test.ts`
+新文件：`frontend/src/components/chat/__tests__/scroll-follow-state.test.ts`
 
-필수 import:
+必需 import：
 
 ```ts
 import { describe, expect, it } from 'vitest'
@@ -1499,7 +1499,7 @@ import {
 } from '../scroll-follow-state'
 ```
 
-테스트 1: 바닥 도달 시 user flag 해제.
+测试 1：到达底部时解除 user flag。
 
 ```ts
 it('clears the user-scrolled flag when the viewport reaches bottom', () => {
@@ -1522,7 +1522,7 @@ it('clears the user-scrolled flag when the viewport reaches bottom', () => {
 })
 ```
 
-테스트 2: 모바일 upward scroll detach.
+测试 2：移动端 upward scroll detach。
 
 ```ts
 it('marks the active mobile stream as manually detached on upward scroll', () => {
@@ -1549,7 +1549,7 @@ it('marks the active mobile stream as manually detached on upward scroll', () =>
 })
 ```
 
-테스트 3: 모바일 touchstart detach.
+测试 3：移动端 touchstart detach。
 
 ```ts
 it('detaches the active mobile stream immediately on touch intent', () => {
@@ -1569,7 +1569,7 @@ it('detaches the active mobile stream immediately on touch intent', () => {
 })
 ```
 
-테스트 4: 데스크톱 wheel detach는 mobile lock 없음.
+测试 4：桌面端 wheel detach 不启用 mobile lock。
 
 ```ts
 it('detaches desktop stream follow without setting the mobile detach lock', () => {
@@ -1587,7 +1587,7 @@ it('detaches desktop stream follow without setting the mobile detach lock', () =
 })
 ```
 
-테스트 5: mobile detach lock 중에는 near bottom이어도 auto-scroll 재개 없음.
+测试 5：处于 mobile detach lock 时，即使 near bottom 也不恢复 auto-scroll。
 
 ```ts
 it('does not re-arm streaming follow while mobile detach lock is active', () => {
@@ -1605,7 +1605,7 @@ it('does not re-arm streaming follow while mobile detach lock is active', () => 
 })
 ```
 
-테스트 6: stream finish near bottom settle.
+测试 6：stream finish near bottom settle。
 
 ```ts
 it('settles the bottom lock when the active stream finishes near the bottom', () => {
@@ -1623,7 +1623,7 @@ it('settles the bottom lock when the active stream finishes near the bottom', ()
 })
 ```
 
-테스트 7: detached stream finish는 scroll 없음.
+测试 7：detached stream finish 不执行 scroll。
 
 ```ts
 it('does not settle the bottom lock when a detached stream finishes', () => {
@@ -1642,7 +1642,7 @@ it('does not settle the bottom lock when a detached stream finishes', () => {
 })
 ```
 
-테스트 8: explicit scrollToBottom clears detach.
+测试 8：explicit scrollToBottom clears detach。
 
 ```ts
 it('explicit scrollToBottom clears the detach lock and resumes follow', () => {
@@ -1664,7 +1664,7 @@ it('explicit scrollToBottom clears the detach lock and resumes follow', () => {
 })
 ```
 
-테스트 9: passive scroll은 detach lock을 clear하지 않는다.
+测试 9：passive scroll 不 clear detach lock。
 
 ```ts
 it('passive bottom scroll does not clear the mobile detach lock', () => {
@@ -1683,7 +1683,7 @@ it('passive bottom scroll does not clear the mobile detach lock', () => {
 })
 ```
 
-테스트 10: 새 user message는 fresh follow cycle.
+测试 10：新 user message 开始 fresh follow cycle。
 
 ```ts
 it('local send clears the detach lock and starts a fresh follow cycle', () => {
@@ -1706,7 +1706,7 @@ it('local send clears the detach lock and starts a fresh follow cycle', () => {
 })
 ```
 
-테스트 11: latest assistant stream finish detector.
+测试 11：latest assistant stream finish detector。
 
 ```ts
 it('detects when the latest assistant stream finishes', () => {
@@ -1728,18 +1728,18 @@ it('detects when the latest assistant stream finishes', () => {
 
 ### 3. `assistant-thread-scroll-follow.test.tsx`
 
-새 파일: `frontend/tests/components/chat/assistant-thread-scroll-follow.test.tsx`
+新文件：`frontend/tests/components/chat/assistant-thread-scroll-follow.test.tsx`
 
-목표는 실제 assistant-ui 전체를 띄우는 것이 아니라, Moldy의 `AssistantThread`가 새 hook/props/button 계약을 제대로 연결하는지 보는 것이다.
+目标不是启动完整的 assistant-ui，而是确认 Moldy 的 `AssistantThread` 是否正确连接新的 hook/props/button 契约。
 
 mock strategy:
 
-- `ThreadPrimitive.Viewport` mock은 전달받은 props를 실제 `<div>`에 spread해야 한다.
-- `useAuiState` mock은 `thread.messages`, `thread.isRunning`, `message` context를 반환할 수 있어야 한다.
-- `useThreadViewport` mock은 `scrollToBottom` spy를 selector에 넘겨야 한다.
-- `ThreadPrimitive.Messages` mock은 최소 UserMessage/AssistantMessage를 렌더한다.
+- `ThreadPrimitive.Viewport` mock 必须把接收到的 props spread 到实际 `<div>` 上。
+- `useAuiState` mock 必须能够返回 `thread.messages`、`thread.isRunning`、`message` context。
+- `useThreadViewport` mock 必须把 `scrollToBottom` spy 传给 selector。
+- `ThreadPrimitive.Messages` mock 至少渲染 UserMessage/AssistantMessage。
 
-테스트 scaffold:
+测试 scaffold：
 
 ```ts
 import type { ReactNode } from 'react'
@@ -1787,7 +1787,7 @@ vi.mock('@assistant-ui/react', () => {
       If: ({ children }: { children?: ReactNode }) => <>{children}</>,
     },
     MessagePrimitive: {
-      Content: () => <span>메시지</span>,
+      Content: () => <span>消息</span>,
     },
     ComposerPrimitive: {
       Root: passthrough,
@@ -1849,7 +1849,7 @@ vi.mock('@assistant-ui/react', () => {
 })
 ```
 
-테스트 1: viewport controlled props.
+测试 1：viewport controlled props。
 
 ```ts
 it('renders the viewport with controlled auto-scroll props', () => {
@@ -1861,9 +1861,9 @@ it('renders the viewport with controlled auto-scroll props', () => {
 })
 ```
 
-주의: React가 boolean custom prop을 DOM attribute로 어떻게 내리는지 테스트 환경에서 다를 수 있다. 불안정하면 mock `Viewport` 안에서 props를 별도 spy에 저장해 `expect(lastViewportProps.autoScroll).toBe(false)` 방식으로 검증한다. 이 방식을 권장한다.
+注意：React 将 boolean custom prop 以何种方式下发为 DOM attribute，可能因测试环境而异。如果不稳定，可在 mock `Viewport` 内将 props 单独保存到 spy，再用 `expect(lastViewportProps.autoScroll).toBe(false)` 方式验证。推荐这种方式。
 
-테스트 2: not-at-bottom shows button.
+测试 2：not-at-bottom shows button。
 
 ```ts
 it('shows the scroll-to-bottom button when viewport is away from bottom', () => {
@@ -1883,7 +1883,7 @@ it('shows the scroll-to-bottom button when viewport is away from bottom', () => 
 })
 ```
 
-테스트 3: button click delegates explicit re-entry.
+测试 3：button click delegates explicit re-entry。
 
 ```ts
 it('scrolls to bottom when the floating button is clicked', () => {
@@ -1903,7 +1903,7 @@ it('scrolls to bottom when the floating button is clicked', () => {
 })
 ```
 
-테스트 4: active stream upward wheel detach.
+测试 4：active stream upward wheel detach。
 
 ```ts
 it('keeps the viewport detached after an upward wheel gesture during streaming', () => {
@@ -1943,60 +1943,60 @@ it('keeps the viewport detached after an upward wheel gesture during streaming',
 })
 ```
 
-테스트 4는 구현 방식에 따라 rerender가 필요할 수 있다. `render` 결과의 `rerender(<AssistantThread />)`를 사용해 message update effect를 다시 태운다.
+测试 4 根据实现方式可能需要 rerender。使用 `render` 结果中的 `rerender(<AssistantThread />)` 再次触发 message update effect。
 
-### 4. 실행 명령
+### 4. 执行命令
 
-최소 검증:
+最小验证：
 
 ```bash
 cd frontend
 pnpm vitest run src/components/chat/__tests__/scroll-bottom.test.ts src/components/chat/__tests__/scroll-follow-state.test.ts tests/components/chat/assistant-thread-scroll-follow.test.tsx
 ```
 
-채팅 관련 회귀:
+聊天相关回归：
 
 ```bash
 cd frontend
 pnpm vitest run src/components/chat/__tests__ tests/components/chat src/lib/chat/__tests__
 ```
 
-전체 frontend 단위 테스트:
+全部 frontend 单元测试：
 
 ```bash
 cd frontend
 pnpm vitest run
 ```
 
-## 구현 중 확인해야 할 실제 코드 포인트
+## 实现过程中需要确认的实际代码点
 
-작업 전후로 반드시 확인할 파일과 이유:
+工作前后必须确认的文件及原因：
 
-| 파일 | 확인 이유 |
+| 文件 | 确认原因 |
 | --- | --- |
-| `frontend/src/components/chat/assistant-thread.tsx` | `useThreadViewport` import 제거 여부, `ScrollToBottomButton` prop 변경, `ThreadPrimitive.Viewport` props 변경. |
-| `frontend/tests/components/chat/assistant-thread-actions.test.tsx` | 기존 assistant-ui mock이 `useThreadViewport` state shape를 단순하게 가정한다. 새 hook이 `useAuiState`를 요구하면 mock 보강이 필요할 수 있다. |
-| `frontend/tests/components/chat/assistant-thread-edit.test.tsx` | 위와 동일하게 assistant-ui mock 보강 가능성이 있다. |
-| `frontend/src/components/chat/builder-overrides.tsx` | builder variant 자체는 `AssistantThread` viewport를 공유하므로 별도 변경은 없어야 한다. 다만 streaming indicator가 동일하게 동작하는지 수동 QA가 필요하다. |
-| `frontend/src/lib/chat/convert-message.ts` | streaming assistant marker인 `metadata.custom.isStreamingMessage`가 유지되는지 확인한다. |
-| `frontend/src/lib/chat/use-chat-runtime.ts` | `stream-` id assistant message가 streaming 중 유지되고, message_end 후 `isRunning`/status 전환이 hook selector에서 감지되는지 확인한다. |
+| `frontend/src/components/chat/assistant-thread.tsx` | 是否移除 `useThreadViewport` import、修改 `ScrollToBottomButton` prop、修改 `ThreadPrimitive.Viewport` props。 |
+| `frontend/tests/components/chat/assistant-thread-actions.test.tsx` | 现有 assistant-ui mock 对 `useThreadViewport` state shape 的假设很简单。若新 hook 需要 `useAuiState`，可能需要增强 mock。 |
+| `frontend/tests/components/chat/assistant-thread-edit.test.tsx` | 与上面相同，可能需要增强 assistant-ui mock。 |
+| `frontend/src/components/chat/builder-overrides.tsx` | builder variant 本身共享 `AssistantThread` viewport，因此原则上不需要单独修改。但需要手动 QA 确认 streaming indicator 也以同样方式工作。 |
+| `frontend/src/lib/chat/convert-message.ts` | 确认作为 streaming assistant marker 的 `metadata.custom.isStreamingMessage` 是否保留。 |
+| `frontend/src/lib/chat/use-chat-runtime.ts` | 确认 `stream-` id assistant message 在 streaming 中保持，并在 message_end 后由 hook selector 感知 `isRunning`/status 切换。 |
 
 ## Definition Of Done
 
-아래 조건을 모두 만족해야 완료다.
+必须满足以下全部条件才算完成。
 
-- 새 문서의 Phase 1, Phase 2, Phase 3 작업이 모두 구현되어 있다.
-- `ThreadPrimitive.Viewport`는 커스텀 follow hook이 제어한다.
-- 사용자가 active stream 중 위로 스크롤하면 이후 content resize와 message update가 bottom scroll을 실행하지 않는다.
-- 아래 화살표 버튼 클릭은 `manualDetachFromStream`을 해제하고 follow를 재개한다.
-- 새 user message append는 이전 detach 상태와 관계없이 bottom scroll을 시작한다.
-- 모바일 touchstart 또는 upward touchmove는 active stream follow를 detach한다.
-- `scroll-bottom.test.ts`, `scroll-follow-state.test.ts`, `assistant-thread-scroll-follow.test.tsx`가 통과한다.
-- 기존 `assistant-thread-actions.test.tsx`, `assistant-thread-edit.test.tsx`가 새 assistant-ui mock 요구사항에 맞게 통과한다.
-- 수동 QA에서 default conversation과 builder variant 모두 같은 스크롤 정책을 보인다.
+- 新文档中的 Phase 1、Phase 2、Phase 3 工作全部已实现。
+- `ThreadPrimitive.Viewport` 由自定义 follow hook 控制。
+- 用户在 active stream 中向上滚动后，后续 content resize 和 message update 不会执行 bottom scroll。
+- 点击下方箭头按钮会解除 `manualDetachFromStream` 并恢复 follow。
+- append 新 user message 会无视之前的 detach 状态，开始 bottom scroll。
+- 移动端 touchstart 或 upward touchmove 会从 active stream follow detach。
+- `scroll-bottom.test.ts`、`scroll-follow-state.test.ts`、`assistant-thread-scroll-follow.test.tsx` 均通过。
+- 现有 `assistant-thread-actions.test.tsx`、`assistant-thread-edit.test.tsx` 按新的 assistant-ui mock 要求通过。
+- 手动 QA 中，default conversation 与 builder variant 都表现出相同的滚动策略。
 
-## 최종 판단
+## 最终判断
 
-이 항목은 Moldy에 차용할 가치가 높다. 현재 Moldy는 assistant-ui 기본 auto-scroll에 의존하고 있어 기본적인 채팅 경험은 동작하지만, deepagent처럼 긴 스트리밍과 도구 UI height 변화가 많은 제품에서는 "사용자가 읽는 위치를 존중한다"는 정책을 명시적으로 가져가는 편이 안전하다.
+该项很值得借鉴到 Moldy。当前 Moldy 依赖 assistant-ui 默认 auto-scroll，基本聊天体验可以运行，但对于 deepagent 这类长 streaming 且工具 UI height 变化很多的产品，显式采用“尊重用户正在阅读的位置”这一策略更安全。
 
-LambChat의 구현을 그대로 복사하지 말고, 순수 상태 전이와 테스트 철학을 차용한 뒤 assistant-ui viewport에 맞는 작은 hook으로 통합하는 것이 가장 적합하다.
+最合适的方式不是直接复制 LambChat 的实现，而是借鉴其纯状态转移和测试理念，再集成为适合 assistant-ui viewport 的小型 hook。

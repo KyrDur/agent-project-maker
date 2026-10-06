@@ -140,7 +140,7 @@ async def create_e2e_mcp_apps_fixture(
                     tool_calls=[
                         {
                             "name": "weather",
-                            "args": {"city": "Seoul"},
+                            "args": {"city": "Shanghai"},
                             "id": tool_call_id,
                             "type": "tool_call",
                         }

@@ -468,7 +468,7 @@ async def record_import_audit(
     )
 
 
-# -- Health polling (BE-S9 — 본문은 app.scheduler에서 이관) ----------------------
+# -- Health polling (BE-S9 — 正文从 app.scheduler 迁移而来) ----------------------
 
 
 async def poll_mcp_servers_health(

@@ -23,7 +23,7 @@ async function collect<T>(gen: AsyncGenerator<T>): Promise<T[]> {
 }
 
 describe('withAutoResume', () => {
-  it('primary 가 정상 종료하면 resume 을 호출하지 않는다', async () => {
+  it('primary 正常结束时不调用 resume', async () => {
     const resume = vi.fn(() => null)
     const result = await collect(
       withAutoResume(
@@ -39,7 +39,7 @@ describe('withAutoResume', () => {
     expect(resume).not.toHaveBeenCalled()
   })
 
-  it('primary 가 throw 하면 lastEventId 와 함께 resume 을 호출하고 이어 받는다', async () => {
+  it('primary throw 时带着 lastEventId 调用 resume 并继续接收', async () => {
     const resume = vi.fn((lastEventId, attempt) => {
       expect(lastEventId).toBe('a-2')
       expect(attempt).toBe(1)
@@ -66,7 +66,7 @@ describe('withAutoResume', () => {
     expect(resume).toHaveBeenCalledOnce()
   })
 
-  it('콜백 호출 순서: onReconnecting → 첫 event → onReconnected', async () => {
+  it('回调调用顺序：onReconnecting → 第一个 event → onReconnected', async () => {
     const calls: string[] = []
     await collect(
       withAutoResume<TestEvent>(
@@ -83,7 +83,7 @@ describe('withAutoResume', () => {
     expect(calls).toEqual(['reconnecting:1', 'reconnected'])
   })
 
-  it('maxAttempts 초과 시 onFailed 후 throw', async () => {
+  it('超过 maxAttempts 时，先 onFailed 再 throw', async () => {
     const onFailed = vi.fn()
     const onReconnecting = vi.fn()
     await expect(
@@ -103,7 +103,7 @@ describe('withAutoResume', () => {
     expect(onFailed).toHaveBeenCalledOnce()
   })
 
-  it('4xx StreamHttpError 는 retry 하지 않는다 (RESUME_NOT_FOUND/INTERRUPT_PENDING)', async () => {
+  it('4xx StreamHttpError 不 retry（RESUME_NOT_FOUND/INTERRUPT_PENDING）', async () => {
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
     const onFailed = vi.fn()
     await expect(
@@ -119,7 +119,7 @@ describe('withAutoResume', () => {
     expect(onFailed).toHaveBeenCalledOnce()
   })
 
-  it('RUN_ATTACH_RETRY StreamApiError 409 는 retry 한다', async () => {
+  it('RUN_ATTACH_RETRY StreamApiError 409 会 retry', async () => {
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
     const result = await collect(
       withAutoResume<TestEvent>(
@@ -136,7 +136,7 @@ describe('withAutoResume', () => {
     expect(resume).toHaveBeenCalledOnce()
   })
 
-  it('RESUME_NOT_FOUND StreamApiError 404 는 retry 하지 않는다', async () => {
+  it('RESUME_NOT_FOUND StreamApiError 404 不 retry', async () => {
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
     const onFailed = vi.fn()
     await expect(
@@ -152,7 +152,7 @@ describe('withAutoResume', () => {
     expect(onFailed).toHaveBeenCalledOnce()
   })
 
-  it('AbortError 는 retry 없이 그대로 전파', async () => {
+  it('AbortError 不 retry，原样传播', async () => {
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
     await expect(
       collect(
@@ -166,7 +166,7 @@ describe('withAutoResume', () => {
     expect(resume).not.toHaveBeenCalled()
   })
 
-  it('signal.aborted 면 retry 하지 않는다', async () => {
+  it('signal.aborted 时不 retry', async () => {
     const controller = new AbortController()
     controller.abort()
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
@@ -181,7 +181,7 @@ describe('withAutoResume', () => {
     expect(resume).not.toHaveBeenCalled()
   })
 
-  it('resumeFactory 가 null 을 반환하면 더 이상 retry 하지 않는다', async () => {
+  it('resumeFactory 返回 null 后不再 retry', async () => {
     const onFailed = vi.fn()
     await expect(
       collect(
@@ -195,7 +195,7 @@ describe('withAutoResume', () => {
     expect(onFailed).toHaveBeenCalledOnce()
   })
 
-  it('재시도 stream 이 정상 종료 후 또 throw 하면 attempt 가 reset 되어 max 까지 다시 시도', async () => {
+  it('重试 stream 正常结束后如果再次 throw，attempt 会 reset，并重新尝试直到 max', async () => {
     const sources: AsyncGenerator<TestEvent>[] = [
       throwAfter([{ id: 'a-1', payload: 1 }], new TypeError('1')),
       throwAfter([{ id: 'a-2', payload: 2 }], new TypeError('2')),
@@ -223,7 +223,7 @@ describe('withAutoResume', () => {
     expect(result.map((e) => e.payload)).toEqual([1, 2, 3, 4])
   })
 
-  it('backoff sleep 도중 abort 되면 retry 없이 즉시 throw', async () => {
+  it('backoff sleep 过程中 abort 时，不 retry，立即 throw', async () => {
     const controller = new AbortController()
     const onFailed = vi.fn()
     const resume = vi.fn(() => fromArray([{ id: 'a-2', payload: 2 }]))
@@ -234,7 +234,7 @@ describe('withAutoResume', () => {
         onFailed,
       }),
     )
-    // backoff 시작 시점을 보장 — 한 microtask 양보 후 abort.
+    // 确保 backoff 已开始 — 让出一个 microtask 后 abort。
     await Promise.resolve()
     controller.abort()
     await expect(promise).rejects.toBeInstanceOf(DOMException)
@@ -242,7 +242,7 @@ describe('withAutoResume', () => {
     expect(onFailed).toHaveBeenCalledOnce()
   })
 
-  it('resumeFactory 가 sync throw 하면 caller 로 그대로 전파', async () => {
+  it('resumeFactory sync throw 时原样传播给 caller', async () => {
     const onFailed = vi.fn()
     const fatal = new Error('factory fatal')
     await expect(
@@ -258,7 +258,7 @@ describe('withAutoResume', () => {
     ).rejects.toBe(fatal)
   })
 
-  it('primary 가 0개 event 후 throw 해도 resume 은 lastEventId=undefined 로 호출', async () => {
+  it('primary 在 0 个 event 后 throw 时，resume 仍以 lastEventId=undefined 调用', async () => {
     const resume = vi.fn((lastEventId) => {
       expect(lastEventId).toBeUndefined()
       return fromArray([{ id: 'a-1', payload: 1 }])
@@ -272,7 +272,7 @@ describe('withAutoResume', () => {
     expect(resume).toHaveBeenCalledOnce()
   })
 
-  it('id 가 없는 event 는 lastEventId 를 갱신하지 않는다', async () => {
+  it('没有 id 的 event 不更新 lastEventId', async () => {
     const resume = vi.fn((lastEventId) => {
       expect(lastEventId).toBe('a-1')
       return fromArray([{ id: 'a-2', payload: 2 }])

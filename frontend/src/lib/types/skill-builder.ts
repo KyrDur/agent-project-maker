@@ -3,10 +3,10 @@ import type { JsonValue } from './json'
 export type SkillBuilderMode = 'create' | 'improve'
 
 export type SkillBuilderStatus =
-  // v2 상태 기계 (빌더 챗): active → confirming → completed (+abandoned = GC 대상)
+  // v2 state machine（builder chat）：active → confirming → completed（+abandoned = GC 对象）
   | 'active'
   | 'abandoned'
-  // 구 one-pass 플로우 레거시 값 — 기존 row 호환용
+  // 旧 one-pass flow 的 legacy 值 — 用于兼容现有 row
   | 'collecting'
   | 'drafting'
   | 'review'
@@ -66,7 +66,7 @@ export type SkillBuilderStartRequest = {
   readonly source_skill_id?: string | null
 }
 
-/** 세션 목록용 경량 응답 — draft/snapshot 등 무거운 컬럼 없음 (Phase 2). */
+/** session 列表用轻量响应 — 不含 draft/snapshot 等重字段（Phase 2）。 */
 export type SkillBuilderSessionBrief = {
   readonly id: string
   readonly mode: SkillBuilderMode
@@ -85,7 +85,7 @@ export type SkillBuilderSessionListParams = {
   readonly limit?: number
 }
 
-/** 드래프트 워크스페이스 파일 요약 (레일 소스 뷰, M7) — 내용 없음. */
+/** draft workspace 文件摘要（rail source view，M7）— 不含内容。 */
 export type SkillBuilderFileEntry = {
   readonly path: string
   readonly size: number
@@ -125,9 +125,9 @@ export type SkillBuilderSession = {
   readonly eval_result?: Readonly<Record<string, JsonValue>> | null
   readonly trigger_eval_result?: Readonly<Record<string, JsonValue>> | null
   readonly finalized_skill_id?: string | null
-  // v2 (빌더 챗): 히든 에이전트의 진짜 conversation. agent_id는 대화 역참조로
-  // 백엔드 라우터가 채운다 — /skills/builder/[sessionId]가 ChatRuntimeSection
-  // 마운트에 사용.
+  // v2（builder chat）：hidden agent 的真实 conversation。agent_id 通过对话反向引用由
+  // backend router 填充 — /skills/builder/[sessionId] 用于 ChatRuntimeSection
+  // mount。
   readonly conversation_id?: string | null
   readonly agent_id?: string | null
   readonly error_message?: string | null

@@ -1,11 +1,11 @@
 /**
- * 스킬 스튜디오 6탭 IA — pathname에서 활성 탭/컨텍스트를 파생하는 순수 헬퍼.
+ * Skill Studio 6-tab IA — 从 pathname 派生 active tab/context 的纯 helper。
  *
- * 라우트 계약 (Phase 2 스펙 AD-1):
+ * route 契约（Phase 2 规范 AD-1）：
  *   /skills                                 → list
  *   /skills/builder(/[sessionId])           → builder
- *   /skills/[skillId]/{evaluation,versions,source,settings} → 해당 탭
- *   /skills/[skillId]                       → source (서버 redirect와 동일 해석)
+ *   /skills/[skillId]/{evaluation,versions,source,settings} → 对应 tab
+ *   /skills/[skillId]                       → source（与 server redirect 相同解释）
  */
 
 export type SkillStudioTab = 'list' | 'builder' | 'evaluation' | 'versions' | 'source' | 'settings'
@@ -34,9 +34,9 @@ export function isSkillScopedStudioTab(value: string): value is SkillScopedStudi
 
 export type SkillStudioContext = {
   readonly activeTab: SkillStudioTab
-  /** 스킬 스코프 라우트의 skillId (빌더/목록에서는 null). */
+  /** skill scope route 的 skillId（在 builder/list 中为 null）。 */
   readonly skillId: string | null
-  /** 빌더 세션 라우트의 sessionId. */
+  /** builder session route 的 sessionId。 */
   readonly sessionId: string | null
 }
 
@@ -57,9 +57,9 @@ export function deriveSkillStudioContext(pathname: string | null | undefined): S
 }
 
 /**
- * 탭 이동 대상 URL. 스킬 스코프 탭은 컨텍스트 스킬이 없으면 null(비활성).
- * 빌더 탭은 컨텍스트 스킬이 있으면 인덱스에 skillId를 넘겨 해당 스킬의
- * 세션 이력/개선 CTA로 스코프한다.
+ * tab 跳转目标 URL。skill scope tab 在没有 context skill 时为 null（disabled）。
+ * builder tab 在存在 context skill 时将 skillId 传给 index，
+ * 从而将 session history/improve CTA scope 到该 skill。
  */
 export function skillStudioTabHref(tab: SkillStudioTab, skillId: string | null): string | null {
   if (tab === 'list') return '/skills'
@@ -70,7 +70,7 @@ export function skillStudioTabHref(tab: SkillStudioTab, skillId: string | null):
   return `/skills/${encodeURIComponent(skillId)}/${tab}`
 }
 
-/** 레거시 `?detailId=&tab=` 딥링크의 탭 값 → 스튜디오 세그먼트 매핑 (M2b redirect). */
+/** legacy `?detailId=&tab=` deeplink 的 tab 值 → studio segment 映射（M2b redirect）。 */
 export function legacyDetailTabToStudioTab(tab: string | null | undefined): SkillScopedStudioTab {
   switch (tab) {
     case 'evaluation':

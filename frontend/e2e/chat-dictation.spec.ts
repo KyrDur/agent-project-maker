@@ -168,13 +168,13 @@ test.describe('Editable browser dictation', () => {
     const messagesBefore = await messageCount(request, fixture.conversationId)
 
     await page.getByRole('button', { name: '开始语音输入' }).click()
-    await emitSpeech(page, '부분', false)
-    await expect(composer).toHaveValue('초안 부분')
-    await expect(page.getByText('부분', { exact: true })).toBeVisible()
+    await emitSpeech(page, '部分', false)
+    await expect(composer).toHaveValue('draft 部分')
+    await expect(page.getByText('部分', { exact: true })).toBeVisible()
     await page.screenshot({ path: path.join(CAPTURE_DIR, 'partial-editable.png'), fullPage: true })
 
     await emitSpeech(page, '确认', true)
-    await expect(composer).toHaveValue('초안 확정')
+    await expect(composer).toHaveValue('确认 draft')
     await expect.poll(() => messageCount(request, fixture.conversationId)).toBe(messagesBefore)
     await page.screenshot({ path: path.join(CAPTURE_DIR, 'final-not-sent.png'), fullPage: true })
 

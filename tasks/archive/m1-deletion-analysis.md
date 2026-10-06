@@ -1,176 +1,176 @@
-## M1 삭제 분석 보고서
+## M1 删除分析报告
 
-> 분석일: 2026-04-05
-> 분석 대상: SPEC.md M1 마일스톤 — 의존성 + 엔진 교체 (기본)
+> 分析日期：2026-04-05
+> 分析对象：SPEC.md M1 milestone — 依赖关系 + engine 替换（基础）
 
 ---
 
-### 즉시 삭제 가능 (M1 scope)
+### 可立即删除（M1 scope）
 
 #### 1. `create_mcp_tool()` — tool_factory.py:319-346
 
-MCP 서버 도구를 LangChain StructuredTool로 수동 래핑하는 함수.
-`langchain-mcp-adapters`의 `load_mcp_tools()`가 대체.
+将 MCP server tool 手动包装为 LangChain StructuredTool 的函数。
+由 `langchain-mcp-adapters` 的 `load_mcp_tools()` 替代。
 
-- **참조하는 코드:**
+- **引用代码：**
   - `executor.py:94` — `from app.agent_runtime.tool_factory import create_mcp_tool` (lazy import)
-  - `executor.py:96-103` — `create_mcp_tool()` 호출 (type == "mcp" 분기)
-- **테스트 참조:** 없음 (테스트에서 직접 import하지 않음)
+  - `executor.py:96-103` — 调用 `create_mcp_tool()`（type == "mcp" 分支）
+- **测试引用：** 无（测试中没有直接 import）
 
 #### 2. `_build_args_schema()` — tool_factory.py:298-316
 
-JSON Schema → Pydantic 모델 변환. `create_mcp_tool()` 내부에서만 사용.
+JSON Schema → Pydantic model 转换。仅在 `create_mcp_tool()` 内使用。
 
-- **참조하는 코드:**
-  - `tool_factory.py:339` — `create_mcp_tool()` 내부에서 호출
-- **테스트 참조:** 없음
-- **비고:** `create_mcp_tool()`의 내부 의존성이므로 함께 삭제
+- **引用代码：**
+  - `tool_factory.py:339` — 在 `create_mcp_tool()` 内调用
+- **测试引用：** 无
+- **备注：** 因为是 `create_mcp_tool()` 的内部依赖，所以一起删除
 
 #### 3. `call_mcp_tool()` — mcp_client.py:106-120
 
-MCP 서버에서 도구를 실행하는 함수. `langchain-mcp-adapters` 어댑터가 대체.
+在 MCP server 上执行 tool 的函数。由 `langchain-mcp-adapters` adapter 替代。
 
-- **참조하는 코드:**
+- **引用代码：**
   - `tool_factory.py:328` — `from app.agent_runtime.mcp_client import call_mcp_tool` (lazy import)
-  - `tool_factory.py:334` — `create_mcp_tool()` 내부 클로저에서 호출
-- **테스트 참조:** 없음
-- **비고:** `create_mcp_tool()` 제거 시 참조가 모두 사라짐
+  - `tool_factory.py:334` — 在 `create_mcp_tool()` 内部 closure 中调用
+- **测试引用：** 无
+- **备注：** 删除 `create_mcp_tool()` 后所有引用都会消失
 
 #### 4. `_extract_text()` — mcp_client.py:76-82
 
-`call_mcp_tool()` 내부에서만 사용하는 헬퍼 함수. CallToolResult.content에서 텍스트 추출.
+仅由 `call_mcp_tool()` 内部使用的 helper 函数。从 CallToolResult.content 提取 text。
 
-- **참조하는 코드:**
-  - `mcp_client.py:115` — `call_mcp_tool()` 내부에서 호출
-- **비고:** `call_mcp_tool()` 제거 시 더 이상 사용처 없음. 함께 삭제
+- **引用代码：**
+  - `mcp_client.py:115` — 在 `call_mcp_tool()` 内调用
+- **备注：** 删除 `call_mcp_tool()` 后不再有使用处。一起删除
 
-#### 5. MCP 이름 가공/중복 감지 로직 — chat_service.py:201-214
+#### 5. MCP 名称加工/重复检测逻辑 — chat_service.py:201-214
 
-중복 MCP 도구 이름에 서버 호스트를 접두사로 붙이는 로직.
-`langchain-mcp-adapters`가 도구 이름 관리를 처리하므로 불필요.
+给重复的 MCP tool 名添加 server host 前缀的逻辑。
+`langchain-mcp-adapters` 会处理 tool 名管理，因此不再需要。
 
-- **참조하는 코드:** `build_tools_config()` 내부 로직 (외부 참조 없음)
-- **영향 범위:**
-  - `chat_service.py:195-198` — `mcp_server_url`, `mcp_tool_name` 설정 (type == "mcp" 분기 전체)
-  - `chat_service.py:201-214` — name_counts 기반 중복 감지 + urlparse 리네이밍
-- **테스트 참조:** 없음 (직접 테스트 없음)
+- **引用代码：** `build_tools_config()` 内部逻辑（无外部引用）
+- **影响范围：**
+  - `chat_service.py:195-198` — 设置 MCP tool 的 `mcp_server_url`, `mcp_tool_name`（整个 type == "mcp" 分支）
+  - `chat_service.py:201-214` — 基于 name_counts 的重复检测 + urlparse 重命名
+- **测试引用：** 无（无直接测试）
 
-#### 6. `create_react_agent` 폴백 로직 — executor.py:27-57
+#### 6. `create_react_agent` fallback 逻辑 — executor.py:27-57
 
-`build_agent()` 함수 전체. `create_agent` 시도 → 실패 시 `create_react_agent` 폴백.
-`create_deep_agent`로 완전 교체되므로 이 함수 자체가 재작성 대상.
+整个 `build_agent()` 函数。尝试 `create_agent` → 失败时 fallback 到 `create_react_agent`。
+将完全替换为 `create_deep_agent`，因此该函数本身需要重写。
 
-- **참조하는 코드:**
+- **引用代码：**
   - `executor.py:9` — `from langgraph.prebuilt import create_react_agent` (import)
-  - `executor.py:120` — `build_agent()` 호출
-- **테스트 참조:**
+  - `executor.py:120` — 调用 `build_agent()`
+- **测试引用：**
   - `test_executor.py:14` — `@patch("app.agent_runtime.executor.create_react_agent")`
   - `test_executor.py:30` — `@patch("app.agent_runtime.executor.create_react_agent")`
   - `test_executor.py:15-27` — `test_build_agent_calls_langgraph`
   - `test_executor.py:31-38` — `test_build_agent_returns_agent`
 
-#### 7. executor.py MCP 도구 분기 — executor.py:93-104
+#### 7. executor.py MCP tool 分支 — executor.py:93-104
 
-`execute_agent_stream()` 내 type == "mcp" 분기. `create_mcp_tool()` lazy import + 호출.
+`execute_agent_stream()` 内 type == "mcp" 分支。lazy import + 调用 `create_mcp_tool()`。
 
-- **참조하는 코드:** `execute_agent_stream()` 내부 (외부 참조 없음)
-- **비고:** MCP 도구 생성을 `langchain-mcp-adapters`로 교체 시 이 분기 전체 재작성
+- **引用代码：** `execute_agent_stream()` 内部（无外部引用）
+- **备注：** 将 MCP tool 创建改为 `langchain-mcp-adapters` 时，需要重写整个分支
 
 ---
 
-### 삭제 시 수정 필요한 코드
+### 删除时需要修改的代码
 
-| 파일:라인 | 현재 참조 | 수정 방법 |
+| 文件:行 | 当前引用 | 修改方式 |
 |-----------|----------|----------|
-| `executor.py:9` | `from langgraph.prebuilt import create_react_agent` | 제거 (create_deep_agent import로 교체) |
-| `executor.py:18-21` | `from app.agent_runtime.tool_factory import create_builtin_tool, create_prebuilt_tool, create_tool_from_db` | `create_mcp_tool` import 제거됨 (이미 lazy import이므로 영향 없음) |
-| `executor.py:27-57` | `build_agent()` 함수 전체 | `create_deep_agent()` 호출로 재작성 |
-| `executor.py:93-104` | type == "mcp" 분기 | `langchain-mcp-adapters` 기반으로 재작성 |
-| `executor.py:105-114` | type == "skill_package" 분기 | M3에서 제거 예정. M1에서는 유지 |
-| `chat_service.py:195-198` | MCP 도구의 `mcp_server_url`, `mcp_tool_name` 설정 | MCP 도구 처리 방식 변경에 맞게 수정 (어댑터가 URL 직접 사용) |
-| `chat_service.py:201-214` | MCP 이름 중복 감지 로직 | 전체 삭제 (어댑터가 처리) |
-| `chat_service.py:210` | `from urllib.parse import urlparse` (lazy import) | 중복 감지 로직 삭제 시 함께 제거 |
-| `test_executor.py:14-38` | `build_agent()` 테스트 2개 | `create_deep_agent` 기반으로 재작성 |
-| `test_executor.py:394` | MCP 도구 config mock | 테스트 업데이트 필요 |
-| `conversations.py:109` | `save_message()` 호출 | M2 scope (M1에서는 유지) |
-| `conversations.py:115` | `list_messages()` 호출 | M2 scope (M1에서는 유지) |
-| `conversations.py:147` | `save_message()` 호출 | M2 scope (M1에서는 유지) |
-| `trigger_executor.py:43,84` | `save_message()` 호출 | M2 scope (M1에서는 유지) |
+| `executor.py:9` | `from langgraph.prebuilt import create_react_agent` | 删除（替换为 create_deep_agent import） |
+| `executor.py:18-21` | `from app.agent_runtime.tool_factory import create_builtin_tool, create_prebuilt_tool, create_tool_from_db` | 删除 `create_mcp_tool` import（目前已是 lazy import，因此无影响） |
+| `executor.py:27-57` | 整个 `build_agent()` 函数 | 重写为调用 `create_deep_agent()` |
+| `executor.py:93-104` | type == "mcp" 分支 | 基于 `langchain-mcp-adapters` 重写 |
+| `executor.py:105-114` | type == "skill_package" 分支 | 计划在 M3 删除。M1 中保留 |
+| `chat_service.py:195-198` | MCP tool 的 `mcp_server_url`, `mcp_tool_name` 设置 | 按新的 MCP tool 处理方式修改（adapter 直接使用 URL） |
+| `chat_service.py:201-214` | MCP 名称重复检测逻辑 | 全部删除（由 adapter 处理） |
+| `chat_service.py:210` | `from urllib.parse import urlparse`（lazy import） | 删除重复检测逻辑时一并移除 |
+| `test_executor.py:14-38` | 2 个 `build_agent()` 测试 | 按 `create_deep_agent` 重写 |
+| `test_executor.py:394` | MCP tool config mock | 需要更新测试 |
+| `conversations.py:109` | `save_message()` 调用 | M2 scope（M1 中保留） |
+| `conversations.py:115` | `list_messages()` 调用 | M2 scope（M1 中保留） |
+| `conversations.py:147` | `save_message()` 调用 | M2 scope（M1 中保留） |
+| `trigger_executor.py:43,84` | `save_message()` 调用 | M2 scope（M1 中保留） |
 
 ---
 
-### 안전한 제거 순서
+### 安全删除顺序
 
-1. **`_build_args_schema()`** (tool_factory.py:298-316) — `create_mcp_tool()` 내부에서만 사용. 선행 제거 안전
-2. **`call_mcp_tool()` + `_extract_text()`** (mcp_client.py:76-120) — `create_mcp_tool()` 내부에서만 참조. `create_mcp_tool()` 제거 전에 먼저 제거 가능
-3. **`create_mcp_tool()`** (tool_factory.py:319-346) — 위 두 의존성 제거 후 안전하게 삭제
-4. **executor.py type == "mcp" 분기** (executor.py:93-104) — `create_mcp_tool()` 제거 후 이 분기를 langchain-mcp-adapters로 교체
-5. **chat_service.py MCP 이름 가공/중복 감지** (chat_service.py:195-214 내 MCP 관련 부분) — executor.py 교체 후 삭제
-6. **`build_agent()` 함수 + create_react_agent import** (executor.py:9, 27-57) — `create_deep_agent()`로 재작성. 이것이 핵심 교체이므로 MCP 정리 후 수행
+1. **`_build_args_schema()`**（tool_factory.py:298-316）— 仅在 `create_mcp_tool()` 内使用。可安全优先删除
+2. **`call_mcp_tool()` + `_extract_text()`**（mcp_client.py:76-120）— 仅在 `create_mcp_tool()` 内引用。可在删除 `create_mcp_tool()` 前先移除
+3. **`create_mcp_tool()`**（tool_factory.py:319-346）— 删除上述两个依赖后可安全删除
+4. **executor.py type == "mcp" 分支**（executor.py:93-104）— 删除 `create_mcp_tool()` 后，把此分支替换为 langchain-mcp-adapters
+5. **chat_service.py MCP 名称加工/重复检测**（chat_service.py:195-214 内 MCP 相关部分）— executor.py 替换后删除
+6. **`build_agent()` 函数 + create_react_agent import**（executor.py:9, 27-57）— 重写为 `create_deep_agent()`。这是核心替换，因此在整理 MCP 后执行
 
-> **원칙:** 잎(leaf) → 줄기 순서로 제거. 참조가 없는 것부터 삭제하여 중간에 깨진 참조가 발생하지 않도록 함.
+> **原则：** 从叶子（leaf）到树干依次删除。先删无引用项，避免中途产生 broken reference。
 
 ---
 
-### 유지해야 하는 코드 (주의!)
+### 必须保留的代码（注意！）
 
-| 함수/파일 | 위치 | 유지 이유 |
+| 函数/文件 | 位置 | 保留原因 |
 |-----------|------|----------|
-| `test_mcp_connection()` | mcp_client.py:10-73 | MCP 서버 등록 UI에서 연결 테스트에 사용. `routers/tools.py:64`에서 import |
-| `list_mcp_tools()` | mcp_client.py:85-103 | MCP 서버 도구 발견 UI에서 사용. `services/tool_service.py:59`에서 import |
-| `create_builtin_tool()` | tool_factory.py:164-169 | builtin 도구 생성 (DuckDuckGo, Scraper, DateTime). Python 기반이라 MCP 대체 불가 |
-| `create_prebuilt_tool()` | tool_factory.py:269-295 | prebuilt API 도구 생성 (Naver, Google). Python 기반이라 MCP 대체 불가 |
-| `create_tool_from_db()` | tool_factory.py:134-150 | custom HTTP 도구 생성. 사용자 정의 도구에 필요 |
-| `_build_http_tool_func()` | tool_factory.py:100-131 | `create_tool_from_db()` 내부 의존성 |
-| `_BUILTIN_BUILDERS` | tool_factory.py:157-161 | `create_builtin_tool()` 내부 레지스트리 |
-| `_PREBUILT_REGISTRY` | tool_factory.py:179-266 | `create_prebuilt_tool()` 내부 레지스트리 |
-| `build_effective_prompt()` | chat_service.py:169-175 | M3까지 스킬 주입에 사용. M1에서는 유지 |
-| `build_tools_config()` | chat_service.py:178-232 | 도구 config 빌드. MCP 관련 부분만 수정, 함수 자체는 유지 |
-| `save_message()` | chat_service.py:73-104 | M2 scope. M1에서는 유지 |
-| `list_messages()` | chat_service.py:61-70 | M2 scope. M1에서는 유지 |
-| `model_factory.py` | 전체 | LLM 인스턴스 생성. 변경 없음 |
-| `streaming.py` | 전체 | SSE 변환. 변경 없음 |
-| `message_utils.py` | 전체 | 메시지 변환 유틸리티 |
-| `middleware_registry.py` | 전체 | 미들웨어 빌드. create_deep_agent에 전달 |
+| `test_mcp_connection()` | mcp_client.py:10-73 | 用于 MCP server 注册 UI 的连接测试。由 `routers/tools.py:64` import |
+| `list_mcp_tools()` | mcp_client.py:85-103 | 用于 MCP server tool discovery UI。由 `services/tool_service.py:59` import |
+| `create_builtin_tool()` | tool_factory.py:164-169 | 创建 builtin tool（DuckDuckGo, Scraper, DateTime）。基于 Python，不能由 MCP 替代 |
+| `create_prebuilt_tool()` | tool_factory.py:269-295 | 创建 prebuilt API tool（Naver, Google）。基于 Python，不能由 MCP 替代 |
+| `create_tool_from_db()` | tool_factory.py:134-150 | 创建 custom HTTP tool。用户自定义 tool 需要 |
+| `_build_http_tool_func()` | tool_factory.py:100-131 | `create_tool_from_db()` 的内部依赖 |
+| `_BUILTIN_BUILDERS` | tool_factory.py:157-161 | `create_builtin_tool()` 内部 registry |
+| `_PREBUILT_REGISTRY` | tool_factory.py:179-266 | `create_prebuilt_tool()` 内部 registry |
+| `build_effective_prompt()` | chat_service.py:169-175 | 到 M3 为止用于注入 skill。M1 中保留 |
+| `build_tools_config()` | chat_service.py:178-232 | 构建 tool config。只修改 MCP 相关部分，函数本身保留 |
+| `save_message()` | chat_service.py:73-104 | M2 scope。M1 中保留 |
+| `list_messages()` | chat_service.py:61-70 | M2 scope。M1 中保留 |
+| `model_factory.py` | 整个文件 | 创建 LLM instance。无变更 |
+| `streaming.py` | 整个文件 | SSE 转换。无变更 |
+| `message_utils.py` | 整个文件 | 消息转换 utility |
+| `middleware_registry.py` | 整个文件 | 构建 middleware。传给 create_deep_agent |
 
 ---
 
-### 삭제 검토 필요 (M1 scope 외)
+### 需要评估删除（M1 scope 外）
 
-| 항목 | 파일 | 이유 | 리스크 |
+| 项目 | 文件 | 原因 | 风险 |
 |------|------|------|--------|
-| `TokenTrackingCallback` | token_tracker.py | 프로덕션 코드에서 사용하지 않음 (테스트만 존재). FR-7에서 astream() usage_metadata로 대체 예정 | 낮음 — M4에서 판단 |
-| `skill_tool_factory.py` | 전체 | M3에서 `create_deep_agent(skills=[...])` 대체 예정 | M3 scope |
-| `skill_executor.py` | 전체 | M3에서 deep agent FilesystemMiddleware 대체 예정 | M3 scope |
-| executor.py type == "skill_package" 분기 | executor.py:105-114 | M3에서 제거 예정 | M3 scope |
-| `build_effective_prompt()` 스킬 주입 | chat_service.py:169-175 | M3에서 제거 예정 | M3 scope |
-| `build_tools_config()` skill_package 분기 | chat_service.py:216-230 | M3에서 제거 예정 | M3 scope |
-| `creation_agent.py` | 전체 | M4에서 create_deep_agent 기반으로 교체 예정 | M4 scope |
-| `fix_agent.py` | 전체 | M4에서 create_deep_agent 기반으로 교체 가능 | M4 scope, 우선순위 낮음 |
-| `save_message()`, `list_messages()` | chat_service.py:61-104 | M2에서 checkpointer 전환 시 제거/교체 | M2 scope |
-| `trigger_executor.py` save_message 호출 | trigger_executor.py:43,84 | M2+M4에서 deep agent invoke()로 교체 | M2/M4 scope |
+| `TokenTrackingCallback` | token_tracker.py | production code 中未使用（仅存在测试）。FR-7 计划用 astream() usage_metadata 替代 | 低 — M4 判断 |
+| `skill_tool_factory.py` | 整个文件 | 计划在 M3 用 `create_deep_agent(skills=[...])` 替代 | M3 scope |
+| `skill_executor.py` | 整个文件 | 计划在 M3 用 deep agent FilesystemMiddleware 替代 | M3 scope |
+| executor.py type == "skill_package" 分支 | executor.py:105-114 | 计划在 M3 删除 | M3 scope |
+| `build_effective_prompt()` skill 注入 | chat_service.py:169-175 | 计划在 M3 删除 | M3 scope |
+| `build_tools_config()` skill_package 分支 | chat_service.py:216-230 | 计划在 M3 删除 | M3 scope |
+| `creation_agent.py` | 整个文件 | 计划在 M4 改为基于 create_deep_agent | M4 scope |
+| `fix_agent.py` | 整个文件 | 可在 M4 改为基于 create_deep_agent | M4 scope，优先级低 |
+| `save_message()`, `list_messages()` | chat_service.py:61-104 | M2 切换到 checkpointer 时删除/替换 | M2 scope |
+| `trigger_executor.py` save_message 调用 | trigger_executor.py:43,84 | M2+M4 中改为 deep agent invoke() | M2/M4 scope |
 
 ---
 
-### 단순화 제안
+### 简化建议
 
-| 항목 | 현재 | 제안 | 마일스톤 |
+| 项目 | 当前 | 建议 | milestone |
 |------|------|------|---------|
-| MCP 도구 생성 경로 | `chat_service.build_tools_config()` → MCP config dict 생성 → `executor.py` → `create_mcp_tool()` → `call_mcp_tool()` (3단 래핑) | `executor.py` → `langchain-mcp-adapters` `load_mcp_tools()` 직접 호출 (1단) | M1 |
-| `build_agent()` 함수 | try create_agent → except → create_react_agent (폴백 패턴) | `create_deep_agent()` 직접 호출 (폴백 없음) | M1 |
-| `mcp_client.py` 파일 크기 | 3개 함수 (120줄) | 2개 함수 (103줄) — `call_mcp_tool()` + `_extract_text()` 제거 후 | M1 |
-| `tool_factory.py` 파일 크기 | builtin + prebuilt + custom + MCP (347줄) | builtin + prebuilt + custom만 (296줄) — MCP 관련 51줄 제거 | M1 |
+| MCP tool 创建路径 | `chat_service.build_tools_config()` → 创建 MCP config dict → `executor.py` → `create_mcp_tool()` → `call_mcp_tool()`（3 层包装） | `executor.py` → 直接调用 `langchain-mcp-adapters` `load_mcp_tools()`（1 层） | M1 |
+| `build_agent()` 函数 | try create_agent → except → create_react_agent（fallback pattern） | 直接调用 `create_deep_agent()`（无 fallback） | M1 |
+| `mcp_client.py` 文件大小 | 3 个函数（120 lines） | 2 个函数（103 lines）— 删除 `call_mcp_tool()` + `_extract_text()` 后 | M1 |
+| `tool_factory.py` 文件大小 | builtin + prebuilt + custom + MCP（347 lines） | 仅 builtin + prebuilt + custom（296 lines）— 删除 MCP 相关 51 lines | M1 |
 
 ---
 
-### 삭제 영향 요약
+### 删除影响摘要
 
-| 삭제 대상 | 프로덕션 코드 참조 | 테스트 참조 | 안전도 |
+| 删除对象 | production code 引用 | 测试引用 | 安全度 |
 |-----------|-------------------|------------|--------|
-| `_build_args_schema()` | `tool_factory.py` 내부 1곳 | 없음 | 안전 |
-| `create_mcp_tool()` | `executor.py` 1곳 (lazy import) | 없음 | 안전 (executor 재작성 시) |
-| `call_mcp_tool()` | `tool_factory.py` 내부 1곳 | 없음 | 안전 |
-| `_extract_text()` | `mcp_client.py` 내부 1곳 | 없음 | 안전 |
-| MCP 이름 가공 로직 | `chat_service.py` 내부 | 없음 | 안전 |
-| `build_agent()` 재작성 | `executor.py` 내부 1곳 | `test_executor.py` 2곳 | 테스트 재작성 필요 |
-| `create_react_agent` import | `executor.py:9` | `test_executor.py` 2곳 | 테스트 재작성 필요 |
+| `_build_args_schema()` | `tool_factory.py` 内部 1 处 | 无 | 安全 |
+| `create_mcp_tool()` | `executor.py` 1 处（lazy import） | 无 | 安全（重写 executor 时） |
+| `call_mcp_tool()` | `tool_factory.py` 内部 1 处 | 无 | 安全 |
+| `_extract_text()` | `mcp_client.py` 内部 1 处 | 无 | 安全 |
+| MCP 名称加工逻辑 | `chat_service.py` 内部 | 无 | 安全 |
+| 重写 `build_agent()` | `executor.py` 内部 1 处 | `test_executor.py` 2 处 | 需要重写测试 |
+| `create_react_agent` import | `executor.py:9` | `test_executor.py` 2 处 | 需要重写测试 |

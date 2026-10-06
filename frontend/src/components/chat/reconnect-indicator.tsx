@@ -5,8 +5,8 @@ import { Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { reconnectStateAtom } from '@/lib/stores/chat-store'
 
-/** SSE stream 이 끊겨 자동 재연결 중일 때만 보이는 배지. 실패 시 toast 로
- *  알리고 배지는 idle 로 즉시 복귀. */
+/** 仅在 SSE stream 中断并自动重连时显示的 badge。失败时通过 toast
+ *  通知，并立即将 badge 恢复为 idle。 */
 export function ReconnectIndicator() {
   const state = useAtomValue(reconnectStateAtom)
   const t = useTranslations('chat.reconnect')

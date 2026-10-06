@@ -100,10 +100,10 @@ def test_prepare_skill_subprocess_args_rejects_npm_and_npx(tmp_path: Path) -> No
 
 @pytest.mark.asyncio
 async def test_execute_in_skill_kills_subprocess_on_cancellation(tmp_path: Path) -> None:
-    """run cancel(Stop)이 실행 중인 skill subprocess를 고아로 남기지 않는다 (P3.2).
+    """run cancel(Stop) 不会留下正在执行的 skill subprocess 孤儿进程 (P3.2)。
 
-    wait_for 가 취소되면 timeout kill 경로도 함께 취소되므로, CancelledError
-    분기가 직접 proc.kill() 하지 않으면 스크립트가 취소 후에도 계속 돈다.
+    wait_for 被取消时，timeout kill 路径也会一起取消，因此若 CancelledError
+    分支不直接 proc.kill()，脚本在取消后仍会继续运行。
     """
     runtime_root = tmp_path / "runtime"
     skill_dir = runtime_root / "sleeper"
@@ -139,7 +139,7 @@ async def test_execute_in_skill_kills_subprocess_on_cancellation(tmp_path: Path)
             }
         )
     )
-    # subprocess 가 실제로 시작될 때까지 대기 (스크립트가 PID 파일을 씀)
+    # 等待 subprocess 实际启动（脚本会写 PID 文件）
     for _ in range(250):
         if pid_file.exists() and pid_file.read_text().strip():
             break
@@ -153,7 +153,7 @@ async def test_execute_in_skill_kills_subprocess_on_cancellation(tmp_path: Path)
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    # proc.kill() + wait() 가 실행됐다면 PID 는 곧 사라진다
+    # 如果执行了 proc.kill() + wait()，PID 很快会消失
     for _ in range(150):
         try:
             os.kill(pid, 0)
@@ -161,5 +161,5 @@ async def test_execute_in_skill_kills_subprocess_on_cancellation(tmp_path: Path)
             break
         await asyncio.sleep(0.02)
     else:
-        os.kill(pid, 9)  # 테스트 실패 시 고아 프로세스 정리
+        os.kill(pid, 9)  # 测试失败时清理孤儿进程
         raise AssertionError("skill subprocess survived cancellation")

@@ -13,7 +13,7 @@ interface ToolUiMetadata {
   hitl_interrupt_id: string
   hitl_action_index: number
   hitl_total_actions: number
-  /** 스킬 빌더 AD-4 — "留出本次会议的剩余时间" 옵션 노출 (review_configs 플래그). */
+  /** Skill builder AD-4——显示"留出本次会议的剩余时间"选项（review_configs flag）。 */
   session_consent_eligible?: boolean
 }
 

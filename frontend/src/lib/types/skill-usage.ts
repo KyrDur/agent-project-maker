@@ -1,4 +1,4 @@
-/** Phase 3 스킬 축 usage 요약 — 실측 귀속만 (평가 런 토큰/비용 + 채팅 실행 횟수). */
+/** Phase 3 技能维度 usage 摘要 — 仅实测归属（evaluation run token/cost + chat 执行次数）。 */
 
 export type SkillUsageDailyPoint = {
   readonly date: string
@@ -13,10 +13,10 @@ export type SkillUsageSummary = {
   readonly days: number
   readonly tokens_in: number
   readonly tokens_out: number
-  /** 단가가 알려진 이벤트의 비용 합 — 단가 없는 이벤트는 기여하지 않는다. */
+  /** 已知单价 event 的 cost 总和 — 无单价 event 不计入。 */
   readonly cost_usd: number
   readonly priced_event_count: number
-  /** 토큰은 썼지만 단가가 없어 비용을 모르는 이벤트 수 (모름 ≠ 무료). */
+  /** 使用了 token 但没有单价、因此 cost 未知的 event 数量（未知 ≠ 免费）。 */
   readonly unpriced_token_event_count: number
   readonly evaluation_run_count: number
   readonly chat_execution_count: number

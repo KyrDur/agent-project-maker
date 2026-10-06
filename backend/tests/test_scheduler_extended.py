@@ -212,7 +212,7 @@ async def test_register_broker_eviction_job_adds_60s_interval(
 async def test_register_broker_eviction_job_replaces_existing(
     running_scheduler: AsyncIOScheduler,
 ) -> None:
-    """Idempotent: 두 번 호출해도 job 이 하나만 존재."""
+    """Idempotent: 即使调用两次也只存在一个 job。"""
     register_broker_eviction_job()
     register_broker_eviction_job()
     jobs = [j for j in running_scheduler.get_jobs() if j.id == BROKER_EVICTION_JOB_ID]
@@ -228,7 +228,7 @@ async def test_register_broker_eviction_job_skips_when_scheduler_stopped() -> No
 
 
 def test_evict_expired_brokers_drops_closed_past_ttl() -> None:
-    """Job 본체 — closed_at 이 충분히 과거면 dict 에서 pop."""
+    """Job 主体 — 若 closed_at 已足够久远，则从 dict 中 pop。"""
     from datetime import timedelta
 
     from app.agent_runtime.event_broker import BrokerRegistry
@@ -246,7 +246,7 @@ def test_evict_expired_brokers_drops_closed_past_ttl() -> None:
 
 
 def test_evict_expired_brokers_swallows_exceptions() -> None:
-    """예외가 cron loop 를 죽이면 안 됨 — broad-except 가 다음 호출 보장."""
+    """异常不能杀死 cron loop — broad-except 保证后续调用。"""
 
     class Boom:
         def evict_expired(self, ttl_seconds: int = 300) -> int:

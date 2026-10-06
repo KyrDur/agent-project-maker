@@ -1,4 +1,4 @@
-"""Phase 3 §7 — 휴먼 피드백 (스킬 단위 + 평가 케이스 단위, 표시 전용)."""
+"""Phase 3 §7 — 人工反馈（技能级 + 评估用例级，仅展示）。"""
 
 from __future__ import annotations
 
@@ -89,14 +89,14 @@ async def test_skill_feedback_upsert_roundtrip(
 
     put_up = await client.put(
         f"/api/skills/{skill.id}/feedback",
-        json={"rating": "up", "comment": "표 정리가 정확해요"},
+        json={"rating": "up", "comment": "表格整理得很准确"},
     )
     assert put_up.status_code == 200, put_up.text
     body = put_up.json()
     assert body["up_count"] == 1
     assert body["down_count"] == 0
     assert body["mine"]["rating"] == "up"
-    assert body["mine"]["comment"] == "표 정리가 정확해요"
+    assert body["mine"]["comment"] == "表格整理得很准确"
 
     # Same user flips the rating — still one row (unique skill+user).
     put_down = await client.put(
@@ -173,7 +173,7 @@ async def test_case_feedback_upsert_roundtrip(
 
     put = await client.put(
         f"{base}/case-feedback",
-        json={"case_index": 1, "verdict": "disagree", "comment": "grader가 형식을 놓침"},
+        json={"case_index": 1, "verdict": "disagree", "comment": "grader 漏掉了格式"},
     )
     assert put.status_code == 200, put.text
     assert put.json()["verdict"] == "disagree"

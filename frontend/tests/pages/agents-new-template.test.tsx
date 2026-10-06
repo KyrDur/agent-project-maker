@@ -120,7 +120,7 @@ describe('TemplateSelectionPage', () => {
 
   it('renders category tabs', () => {
     render(<TemplateSelectionPage />)
-    expect(screen.getByText('所有时间')).toBeInTheDocument()
+    expect(screen.getByText('全部')).toBeInTheDocument()
     expect(screen.getByText('生产力')).toBeInTheDocument()
     expect(screen.getByText('通讯')).toBeInTheDocument()
     expect(screen.getByText('数据')).toBeInTheDocument()
@@ -146,7 +146,7 @@ describe('TemplateSelectionPage', () => {
 
     render(<TemplateSelectionPage />)
 
-    const createButtons = await screen.findAllByRole('button', { name: /이 템플릿으로 생성/ })
+    const createButtons = await screen.findAllByRole('button', { name: /从此模板创建/ })
     await user.click(createButtons[0])
 
     expect(mockCreateAgentFn).toHaveBeenCalledWith(
@@ -243,7 +243,7 @@ describe('TemplateSelectionPage', () => {
       isLoading: false,
     })
     render(<TemplateSelectionPage />)
-    const createButtons = await screen.findAllByText('来自')
+    const createButtons = await screen.findAllByText('开始')
     expect(createButtons.length).toBe(mockTemplateList.length)
   })
 
@@ -254,7 +254,7 @@ describe('TemplateSelectionPage', () => {
     })
     render(<TemplateSelectionPage />)
 
-    expect(screen.getAllByText(`${mockTemplateList.length}개`)).toHaveLength(1)
+    expect(screen.getAllByText(`${mockTemplateList.length} 模板`)).toHaveLength(1)
     expect(screen.queryByText('Agent Gallery')).not.toBeInTheDocument()
     expect(screen.getByText('找不到合适的模板？').closest('a')).toHaveClass('mt-auto')
   })

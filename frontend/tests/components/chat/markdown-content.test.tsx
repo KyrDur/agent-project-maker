@@ -118,9 +118,9 @@ describe('MarkdownContent', () => {
   })
 
   it('renders KaTeX math via remark-math + rehype-katex', () => {
-    // inline 수식 — $E=mc^2$
+    // inline 公式 — $E=mc^2$
     const { container } = render(<MarkdownContent content={'$E=mc^2$'} />)
-    // rehype-katex가 .katex 클래스를 가진 span을 만든다.
+    // rehype-katex 会创建带有 .katex 类的 span。
     expect(container.querySelector('.katex')).toBeInTheDocument()
   })
 
@@ -129,20 +129,20 @@ describe('MarkdownContent', () => {
     const { container } = render(
       <MarkdownContent content={`\`\`\`mermaid\n${code}\n\`\`\``} isStreaming />,
     )
-    // 스트리밍 중에는 raw code block으로 떨어진다 (불완전 파싱 방지).
+    // 流式传输期间会退回 raw code block（防止不完整解析）。
     expect(container.textContent).toContain('graph TD')
   })
 
-  it('remark-breaks: 단일 줄바꿈을 <br>로 변환한다', () => {
-    // GitHub markdown 표준은 single newline을 무시(공백)하지만 remarkBreaks가
-    // <br>로 바꿔 LLM의 줄바꿈 의도를 보존한다.
+  it('remark-breaks: 将单个换行转换为 <br>', () => {
+    // GitHub markdown 标准会忽略 single newline（视为空格），但 remarkBreaks 会
+    // 转为 <br>，从而保留 LLM 的换行意图。
     const content = 'first line\nsecond line'
     const { container } = render(<MarkdownContent content={content} />)
     const br = container.querySelector('br')
     expect(br).toBeInTheDocument()
   })
 
-  it('remark-breaks: 빈 줄(double newline)은 단락 분기로 그대로 유지', () => {
+  it('remark-breaks: 空行(double newline)仍保持为段落分隔', () => {
     const content = 'paragraph one\n\nparagraph two'
     const { container } = render(<MarkdownContent content={content} />)
     const ps = container.querySelectorAll('p')

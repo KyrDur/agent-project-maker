@@ -38,13 +38,13 @@ def _draft_zip_bytes(
     slug: str,
     zip_from_workspace: bool,
 ) -> bytes:
-    """확정할 zip 소스 선택 (Phase 1.5).
+    """选择用于确认的 zip 源（Phase 1.5）。
 
-    빌더 챗 finalize 경로(``zip_from_workspace=True``)는 워크스페이스 디스크가
-    source of truth — text 어댑터(``draft.files``)가 싣지 못하는 바이너리 asset을
-    바이트 그대로 포함한다. REST ``/confirm``은 클라이언트가 게시한
-    ``draft_package``가 계약이므로 기존 text zip 경로를 유지한다(워크스페이스
-    디스크와 게시된 드래프트가 다를 수 있다).
+    builder chat finalize 路径（``zip_from_workspace=True``）以工作区磁盘为
+    source of truth — 将 text 适配器（``draft.files``）无法承载的二进制 asset
+    按原字节包含。REST ``/confirm`` 的契约是客户端发布的
+    ``draft_package``，因此保留现有 text zip 路径（工作区磁盘
+    可能与已发布草稿不同）。
     """
 
     from app.services import skill_draft_workspace as workspace
@@ -60,13 +60,13 @@ async def _merge_workspace_binary_secret_issues(
     *,
     known_paths: set[str],
 ) -> None:
-    """디스크 zip에는 실리지만 text 어댑터 스캔엔 안 잡히는 파일(널바이트 등)의
-    secret 검출을 검증 결과에 합류시킨다 — 기존 게이트 계약(SECRET_DETECTED,
-    ``secret_scan_blocked`` 감사)이 그대로 작동한다 (Phase 1.5 리뷰 갭).
+    """将会被写入磁盘 zip、但未被 text 适配器扫描捕获的文件（如含空字节）的
+    secret 检测合并到验证结果 — 现有 gate 契约（SECRET_DETECTED、
+    ``secret_scan_blocked`` 审计）继续照常工作（Phase 1.5 review gap）。
 
-    스캔은 디스크 순회+IO라 zip 빌드와 대칭으로 스레드에서 돌린다.
-    ``known_paths``는 이미 메모리에 있는 ``draft.files``에서 파생 — 워크스페이스
-    full-read를 중복하지 않는다 (R2 리뷰).
+    扫描涉及磁盘遍历 + IO，因此与 zip 构建对称地在线程中执行。
+    ``known_paths`` 从已经在内存中的 ``draft.files`` 派生 — 不重复
+    full-read 工作区（R2 review）。
     """
 
     from app.services import skill_draft_workspace as workspace
@@ -95,8 +95,8 @@ async def confirm_builder_session(
         execution_profile=draft.execution_profile,
     )
     if zip_from_workspace and session.draft_workspace_path:
-        # 디스크 zip 경로는 어댑터 밖 파일도 실리므로 스캔 커버리지를 zip 소스에
-        # 맞춘다 — 널바이트 파일로 secret scan을 우회하는 갭 차단.
+        # 磁盘 zip 路径还会包含适配器外文件，因此扫描覆盖范围要与 zip 源
+        # 对齐 — 堵住通过空字节文件绕过 secret scan 的缺口。
         await _merge_workspace_binary_secret_issues(
             validation_result,
             session.draft_workspace_path,
@@ -167,8 +167,8 @@ async def _confirm_create(
         provided=session.changelog_draft,
     )
     slug = await unique_skill_slug(db, user_id=user_id, requested=draft.slug)
-    # zip 빌드는 디스크 순회 + 압축이라 이벤트 루프에서 돌리지 않는다
-    # (improve의 replace_skill_storage 오프로드와 대칭).
+    # zip 构建涉及磁盘遍历 + 压缩，因此不在事件循环中运行
+    # （与 improve 的 replace_skill_storage offload 对称）。
     zip_bytes = await run_sync(
         partial(_draft_zip_bytes, session, draft, slug=slug, zip_from_workspace=zip_from_workspace)
     )

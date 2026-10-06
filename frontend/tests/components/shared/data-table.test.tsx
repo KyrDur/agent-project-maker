@@ -2,8 +2,8 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { render, screen, userEvent } from '../../test-utils'
 import { DataTable } from '@/components/ui/data-table'
 
-// FilterDef(Radix Select) 상호작용용 경량 mock — jsdom에서 실제 Radix Select는
-// 포인터 캡처 의존으로 불안정하다 (models 페이지 테스트 선례).
+// 用于 FilterDef(Radix Select) 交互的轻量 mock — 在 jsdom 中真实 Radix Select
+// 依赖 pointer capture，表现不稳定（models 页面测试先例）。
 let lastOnValueChange: ((value: string) => void) | undefined
 vi.mock('@/components/ui/select', () => ({
   Select: ({
@@ -53,22 +53,22 @@ describe('DataTable', () => {
       <DataTable
         columns={columns}
         data={[
-          { id: '1', name: '첫 번째' },
-          { id: '2', name: '두 번째' },
+          { id: '1', name: '第一个' },
+          { id: '2', name: '第二个' },
         ]}
         pageSize={1}
       />,
     )
 
-    expect(screen.getByText('1페이지 / 2페이지 · 2개 항목')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /이전/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /다음/ })).toBeInTheDocument()
+    expect(screen.getByText('第 1 页 / 共 2 页 · 2 个项目')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /上一页/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /下一页/ })).toBeInTheDocument()
   })
 
   it('does not recompute global search results on same-prop rerenders', async () => {
     const data = [
-      { id: '1', name: '첫 번째' },
-      { id: '2', name: '두 번째' },
+      { id: '1', name: '第一个' },
+      { id: '2', name: '第二个' },
     ]
     const filterFn = vi.fn((row: Row, query: string) =>
       row.name.toLowerCase().includes(query),
@@ -83,7 +83,7 @@ describe('DataTable', () => {
       />,
     )
 
-    await userEvent.type(screen.getByPlaceholderText('搜索...'), '첫')
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '第一')
     const callsAfterSearch = filterFn.mock.calls.length
 
     rerender(
@@ -98,12 +98,12 @@ describe('DataTable', () => {
     expect(filterFn).toHaveBeenCalledTimes(callsAfterSearch)
   })
 
-  // R5 회귀 3종 — rowSelection prune/pageIndex clamp effect의 자기 파괴 방지.
+  // R5 三类回归 — 防止 rowSelection prune/pageIndex clamp effect 自我破坏。
 
-  it('loading 플리커(쿼리 키 변경으로 data가 잠시 []) 동안 선택을 지우지 않는다', () => {
+  it('loading 闪烁（query key 变化导致 data 暂时为 []）期间不清除选择', () => {
     const rows = [
-      { id: '1', name: '첫 번째' },
-      { id: '2', name: '두 번째' },
+      { id: '1', name: '第一个' },
+      { id: '2', name: '第二个' },
     ]
     const onStateChange = vi.fn()
     const controlled = {
@@ -114,19 +114,19 @@ describe('DataTable', () => {
     }
     const { rerender } = render(<DataTable {...controlled} data={rows} />)
 
-    // 검색 키 입력/kind 탭 전환을 흉내: data가 빈 배열 + loading=true.
+    // 模拟搜索键输入/kind 标签切换：data 为空数组 + loading=true.
     rerender(<DataTable {...controlled} data={[]} loading />)
     expect(onStateChange).not.toHaveBeenCalled()
 
-    // 로딩이 끝나고 행이 진짜 사라졌을 때만 prune이 동작한다.
+    // 只有加载结束且该行确实消失时 prune 才生效。
     rerender(<DataTable {...controlled} data={[rows[1]]} loading={false} />)
     expect(onStateChange).toHaveBeenCalled()
   })
 
-  it('내부 검색으로 가려진 선택 행은 prune되지 않는다', async () => {
+  it('被内部搜索隐藏的已选行不会被 prune', async () => {
     const rows = [
-      { id: '1', name: '첫 번째' },
-      { id: '2', name: '두 번째' },
+      { id: '1', name: '第一个' },
+      { id: '2', name: '第二个' },
     ]
     const onStateChange = vi.fn()
     render(
@@ -140,16 +140,16 @@ describe('DataTable', () => {
       />,
     )
 
-    // '첫 번째'(선택됨)를 가리는 검색 — 선택 키는 data prop 기준으로 유효하다.
-    await userEvent.type(screen.getByPlaceholderText('搜索...'), '두')
-    expect(screen.queryByText('첫 번째')).not.toBeInTheDocument()
+    // 隐藏 '第一个'（已选择）的搜索 — 选择 key 以 data prop 为准仍然有效。
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '二')
+    expect(screen.queryByText('第一个')).not.toBeInTheDocument()
     expect(onStateChange).not.toHaveBeenCalled()
   })
 
-  it('내부 검색으로 가려진 선택 행도 부모 통지 payload에 유지된다 (R6)', async () => {
+  it('被内部搜索隐藏的已选行也会保留在父级通知 payload 中 (R6)', async () => {
     const rows = [
-      { id: '1', name: '첫 번째' },
-      { id: '2', name: '두 번째' },
+      { id: '1', name: '第一个' },
+      { id: '2', name: '第二个' },
     ]
     const onSelectionChange = vi.fn()
     render(
@@ -166,21 +166,21 @@ describe('DataTable', () => {
     expect(onSelectionChange).toHaveBeenLastCalledWith([rows[0]])
     const callsBeforeSearch = onSelectionChange.mock.calls.length
 
-    // 선택 행을 가리는 검색 — payload가 검색-스코프 row model 기준이면 여기서
-    // []로 재통지돼 부모 상태(벌크 대상)와 체크박스가 발산한다.
-    await userEvent.type(screen.getByPlaceholderText('搜索...'), '두')
+    // 隐藏已选行的搜索 — 如果 payload 基于搜索 scope 的 row model，则这里
+    // 会重新通知为 []，导致父级状态（批量对象）与 checkbox 分叉。
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), '二')
 
     expect(onSelectionChange).toHaveBeenCalledTimes(callsBeforeSearch)
     expect(onSelectionChange).toHaveBeenLastCalledWith([rows[0]])
   })
 
-  it('id 없는 행도 검색 중 선택이 올바른 행을 통지한다 — 객체 참조 Map id 공간 (R7)', async () => {
-    // id 필드가 없는 행: index 폴백 id가 filtered/data에서 갈리면 검색 중
-    // 체크한 행(C)이 아니라 data[0](A)이 payload에 실린다.
+  it('没有 id 的行在搜索中也会通知正确的行 — 对象引用 Map id 空间 (R7)', async () => {
+    // 没有 id 字段的行：若 index fallback id 在 filtered/data 中分叉，则搜索时
+    // payload 中会放入 data[0](A)，而不是勾选的行(C)。
     interface Anon {
       name: string
     }
-    const rows: Anon[] = [{ name: 'A행' }, { name: 'B행' }, { name: 'C행' }]
+    const rows: Anon[] = [{ name: 'A行' }, { name: 'B行' }, { name: 'C行' }]
     const onSelectionChange = vi.fn()
     const anonColumns: ColumnDef<Anon>[] = [
       { accessorKey: 'name', header: '名称', cell: ({ row }) => row.original.name },
@@ -195,13 +195,13 @@ describe('DataTable', () => {
       />,
     )
 
-    await userEvent.type(screen.getByPlaceholderText('搜索...'), 'C행')
+    await userEvent.type(screen.getByPlaceholderText('搜索...'), 'C行')
     await userEvent.click(screen.getByRole('checkbox', { name: '选择行' }))
 
     expect(onSelectionChange).toHaveBeenLastCalledWith([rows[2]])
   })
 
-  it('컬럼 필터로 줄어든 표는 범위 밖 페이지에 좌초하지 않는다', async () => {
+  it('经列筛选缩小后的表格不会停留在越界页面', async () => {
     interface TypedRow extends Row {
       type: string
     }
@@ -210,9 +210,9 @@ describe('DataTable', () => {
       { accessorKey: 'type', header: '类型', cell: ({ row }) => row.original.type },
     ]
     const rows: TypedRow[] = [
-      { id: '1', name: 'A행', type: 'x' },
-      { id: '2', name: 'B행', type: 'x' },
-      { id: '3', name: 'C행', type: 'y' },
+      { id: '1', name: 'A行', type: 'x' },
+      { id: '2', name: 'B行', type: 'x' },
+      { id: '3', name: 'C行', type: 'y' },
     ]
     render(
       <DataTable
@@ -220,21 +220,21 @@ describe('DataTable', () => {
         data={rows}
         pageSize={1}
         filters={[
-          { columnId: 'type', label: '类型', options: [{ value: 'x', label: 'X만' }] },
+          { columnId: 'type', label: '类型', options: [{ value: 'x', label: '仅 X' }] },
         ]}
       />,
     )
 
-    // 3페이지(C행)로 이동 후 필터로 2행(x)만 남긴다.
-    await userEvent.click(screen.getByRole('button', { name: /다음/ }))
-    await userEvent.click(screen.getByRole('button', { name: /다음/ }))
-    expect(screen.getByText('C행')).toBeInTheDocument()
+    // 移动到第 3 页(C行)后，用筛选只保留 2 行(x)。
+    await userEvent.click(screen.getByRole('button', { name: /下一页/ }))
+    await userEvent.click(screen.getByRole('button', { name: /下一页/ }))
+    expect(screen.getByText('C行')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'X만' }))
+    await userEvent.click(screen.getByRole('button', { name: '仅 X' }))
 
-    // 클램프가 없으면 pageIndex=2가 pageCount=2 밖에 남아 빈 바디 + 페이지네이션
-    // 숨김의 dead-end가 된다 — 마지막 유효 페이지(B행)로 수렴해야 한다.
-    expect(screen.getByText('B행')).toBeInTheDocument()
-    expect(screen.getByText('2페이지 / 2페이지 · 2개 항목')).toBeInTheDocument()
+    // 如果没有 clamp，pageIndex=2 会停在 pageCount=2 之外，导致空 body + pagination
+    // 隐藏形成 dead-end — 应收敛到最后一个有效页面(B行)。
+    expect(screen.getByText('B行')).toBeInTheDocument()
+    expect(screen.getByText('第 2 页 / 共 2 页 · 2 个项目')).toBeInTheDocument()
   })
 })

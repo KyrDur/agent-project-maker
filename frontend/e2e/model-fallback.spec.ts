@@ -155,7 +155,7 @@ test.describe('Model Fallback', () => {
     await expect(nameInput).toHaveValue('Research Assistant')
 
     // Open the Model dialog (configure button next to the model row).
-    await page.getByRole('button', { name: /model configuration|모델 설정/i }).click()
+    await page.getByRole('button', { name: /model configuration|模型设置/i }).click()
 
     // Fallback section is part of the dialog body.
     const fallbackSection = page.getByTestId('fallback-section')
@@ -183,15 +183,15 @@ test.describe('Model Fallback', () => {
     await expect(page.getByTestId('fallback-select-0')).toBeVisible()
 
     // Close the dialog so the Save button at the page header is reachable.
-    await page.getByRole('button', { name: /^done$|^완료$/i }).click()
+    await page.getByRole('button', { name: /^done$|^完成$/i }).click()
 
     // Save the agent.
-    const saveButton = page.getByRole('button', { name: /^save$|^저장$/i })
+    const saveButton = page.getByRole('button', { name: /^save$|^保存$/i })
     await expect(saveButton).toBeEnabled()
     await saveButton.click()
 
     // Saved toast confirms the PATCH cycle.
-    await expect(page.getByText(/저장되었습니다|saved/i).first()).toBeVisible()
+    await expect(page.getByText(/已保存|saved/i).first()).toBeVisible()
 
     expect(lastPatchBody, 'PATCH body should have been captured').not.toBeNull()
     const patched = lastPatchBody as Record<string, unknown> | null

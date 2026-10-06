@@ -1,7 +1,7 @@
 """Tool definition dataclass — the per-key schema + runner bundle.
 
 A :class:`ToolDefinition` is registered once per logical tool family
-(``http_request``, ``naver_search_blog``, ...). It declares the parameter
+(``http_request``, ``google_search_web``, ...). It declares the parameter
 fields the user fills in, the credential definition keys it accepts, and the
 async runner that executes a single invocation.
 """
@@ -53,6 +53,8 @@ class ToolDefinition:
     # tool does not require a credential. The first entry is treated as the
     # preferred default by the UI.
     credential_definition_keys: list[str] = field(default_factory=list)
+    # Some tools accept authentication but can also call public endpoints.
+    credential_optional: bool = False
     risk_level: ToolRiskLevel | str = ToolRiskLevel.READ_ONLY
     requires_approval: bool | None = None
     allowed_decisions: tuple[DecisionType, ...] = ()
@@ -71,7 +73,8 @@ class ToolDefinition:
             "category": self.category,
             "parameters": [p.serialize() for p in self.parameters],
             "credential_definition_keys": list(self.credential_definition_keys),
-            "requires_credential": bool(self.credential_definition_keys),
+            "requires_credential": bool(self.credential_definition_keys)
+            and not self.credential_optional,
             "risk": risk_metadata_dict(
                 self.risk_level,
                 requires_approval=self.requires_approval,

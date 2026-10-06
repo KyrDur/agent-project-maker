@@ -810,9 +810,9 @@ async def enable_item(
     user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ) -> MarketplaceItemOut:
-    """Disable 의 inverse — ``status: disabled → published`` 로 복원. ACL
-    / visibility / is_listed 는 그대로 유지된다 — owner 가 다시 노출하려면
-    별도 흐름(visibility 변경 + super_user listing approve) 을 거친다.
+    """Disable 的 inverse — 恢复为 ``status: disabled → published``。ACL
+    / visibility / is_listed 保持不变 — owner 如要重新公开，
+    需要另走流程（修改 visibility + super_user listing approve）。
     """
 
     item = await publish_service.enable_item(db, item_id=item_id, user=user)
@@ -849,11 +849,11 @@ async def admin_set_item_listed(
     user: CurrentUser = Depends(require_super_user),
     _csrf: None = Depends(verify_csrf),
 ) -> MarketplaceItemOut:
-    """Spec §10.5 — super_user가 public item의 ``is_listed``를 토글한다.
+    """Spec §10.5 — super_user 切换 public item 的 ``is_listed``。
 
-    카탈로그 default filter는 ``is_listed=True``인 public 항목만 검색
-    결과에 노출한다 (PRD §11.7). 부적절한 public 항목을 unlist하거나
-    pending moderation에서 approve할 때 사용한다. CSRF 검증 필수.
+    catalog default filter 只会把 ``is_listed=True`` 的 public 项暴露在
+    搜索结果中（PRD §11.7）。用于将不合适的 public 项 unlist，或在
+    pending moderation 中 approve。必须校验 CSRF。
     """
 
     item = await db.get(MarketplaceItem, item_id)
@@ -878,53 +878,3 @@ async def admin_set_item_listed(
     if loaded is None:
         raise marketplace_item_not_found()
     return await catalog_service.project_item(db, item=loaded, user=user)
-
-
-# ---------------------------------------------------------------------------
-# Admin (super_user) — k-skill sync status (Spec §10.4 admin)
-# ---------------------------------------------------------------------------
-
-
-@router.post("/admin/k-skill/sync")
-async def admin_k_skill_sync_status(
-    db: AsyncSession = Depends(get_db),
-    _user: CurrentUser = Depends(require_super_user),
-    _csrf: None = Depends(verify_csrf),
-) -> dict:
-    """Spec §10.4 — operator inspection endpoint.
-
-    **Does not execute** the sync — that's an out-of-band CLI run
-    (``uv run python -m app.scripts.sync_k_skill``). This endpoint just
-    surfaces the current population: how many k-skill items exist,
-    their statuses, and the most recent ``updated_at`` so the dashboard
-    can tell whether a fresh CLI run is overdue.
-    """
-
-    rows = (
-        (
-            await db.execute(
-                select(MarketplaceItem)
-                .where(MarketplaceItem.source_kind == "k-skill")
-                .order_by(MarketplaceItem.updated_at.desc())
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    return {
-        "count": len(rows),
-        "last_updated_at": rows[0].updated_at.isoformat() if rows else None,
-        "items": [
-            {
-                "id": str(r.id),
-                "name": r.name,
-                "slug": r.slug,
-                "status": r.status,
-                "source_external_id": r.source_external_id,
-                "latest_version_id": str(r.latest_version_id) if r.latest_version_id else None,
-                "updated_at": r.updated_at.isoformat(),
-            }
-            for r in rows
-        ],
-    }

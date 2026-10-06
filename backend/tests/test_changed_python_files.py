@@ -137,7 +137,7 @@ def test_collector_uses_final_rename_extension(checker: Path, git_repo: tuple[Pa
 
 @pytest.mark.parametrize("checker", CHECKERS)
 @pytest.mark.parametrize(
-    "filename", ["space name.py", "tab\tname.py", "line\nname.py", "-leading.py", "한글.py"]
+    "filename", ["space name.py", "tab\tname.py", "line\nname.py", "-leading.py", "韩文.py"]
 )
 def test_collector_handles_nul_safe_names(
     checker: Path, filename: str, git_repo: tuple[Path, str]

@@ -35,6 +35,33 @@ def apply_patches(
             raise ValueError("optimization_patch_target_invalid")
         if snapshot_value(change.content) != change.content:
             raise ValueError("optimization_patch_redacted")
+        if change.target == "runtime_config":
+            allowed = {
+                "model_call_limit.run_limit": (1, 30),
+                "tool_call_limit.limit": (1, 30),
+                "model_retry.max_retries": (0, 3),
+                "tool_retry.max_retries": (0, 3),
+            }
+            if change.resource_id not in allowed or change.operation != "replace_value":
+                raise ValueError("optimization_runtime_config_invalid")
+            bounds = allowed[change.resource_id]
+            number = json.loads(change.content)
+            if type(number) is not int or not bounds[0] <= number <= bounds[1]:
+                raise ValueError("optimization_runtime_config_invalid")
+            kind, parameter = change.resource_id.split(".")
+            middleware = next(
+                (m for m in config.get("middleware_configs", []) if m["type"] == kind), None
+            )
+            if middleware is None:
+                raise ValueError("optimization_runtime_config_missing")
+            before = json.dumps(middleware.get("params", {}).get(parameter))
+            if before != change.old_content:
+                raise ValueError("optimization_value_mismatch")
+            middleware.setdefault("params", {})[parameter] = number
+            diffs.append(
+                {**change.model_dump(mode="json"), "before": before, "after": json.dumps(number)}
+            )
+            continue
         holder, field = config, "system_prompt"
         if change.target == "skill_content":
             holder = next(
@@ -58,7 +85,11 @@ def apply_patches(
             holder = next(
                 (
                     tool
-                    for name, key in [("tool_links", "tool_id"), ("mcp_tool_links", "mcp_tool_id")]
+                    for name, key in [
+                        ("tool_links", "tool_id"),
+                        ("mcp_tool_links", "mcp_tool_id"),
+                        ("planned_tools", "tool_name"),
+                    ]
                     for tool in config.get(name, [])
                     if str(tool.get(key)) == change.resource_id
                 ),
@@ -90,13 +121,27 @@ def apply_patches(
         if after == before:
             continue
         holder[field] = after
+        if field == "content":
+            import hashlib
+
+            holder["content_hash"] = hashlib.sha256(after.encode("utf-8")).hexdigest()
         diffs.append({**change.model_dump(mode="json"), "before": before, "after": after})
     return candidate, diffs, deferred
 
 
 def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
     # Compare the exact frozen experiment, not dataset IDs or freshly saved cases.
-    keys = ("eval_spec", "spec_hash", "rubric_hash", "roles", "execution_mode")
+    keys = (
+        "eval_spec",
+        "spec_hash",
+        "rubric_hash",
+        "roles",
+        "execution_mode",
+        "requirements_hash",
+        "resolved_roles",
+        "resolved_examinee",
+        "role_configurations",
+    )
     if (
         baseline.dataset_hash != candidate.dataset_hash
         or baseline.cases_snapshot_json != candidate.cases_snapshot_json
@@ -137,7 +182,8 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
             [r.get("metric_scores", {}).get(name) for r in side.values()] for side in (left, right)
         ]
         if any(v is None for row in values for v in row):
-            complete = False
+            if any(v is not None for row in values for v in row):
+                complete = False
             deltas[name] = {"before": None, "after": None, "delta": None}
             continue
         before = sum(v["score"] for v in values[0]) / n
@@ -180,6 +226,12 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
             "delta": after_rate - before_rate,
         },
         "metrics": deltas,
+        "outcome": "improved"
+        if improved
+        else "regressed"
+        if after_rate < before_rate
+        or any(v["delta"] is not None and v["delta"] < -1e-9 for v in deltas.values())
+        else "unchanged",
         "decision": "rejected" if reasons else "accepted",
         "reasons": reasons
         or ["pass_rate_improved" if after_rate > before_rate else "semantic_metrics_improved"],

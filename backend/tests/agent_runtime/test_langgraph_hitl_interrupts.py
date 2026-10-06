@@ -79,7 +79,7 @@ async def test_langgraph_runner_emits_input_requested_for_execute_in_skill_inter
                     }
                 ],
             ),
-            AIMessage(content="문서 생성이 완료되었습니다."),
+            AIMessage(content="文档生成已完成。"),
         ]
     )
     agent = build_agent(
@@ -158,4 +158,4 @@ async def test_langgraph_runner_emits_input_requested_for_execute_in_skill_inter
     assert [
         payload for payload in resumed_payloads if payload.get("method") == "input.requested"
     ] == []
-    assert "문서 생성이 완료되었습니다." in _message_text(resumed_payloads)
+    assert "文档生成已完成。" in _message_text(resumed_payloads)

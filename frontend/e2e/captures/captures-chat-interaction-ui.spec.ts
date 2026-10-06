@@ -65,7 +65,7 @@ async function captureAskUser(
     (await toolUi.count()) > 0
       ? toolUi.locator('xpath=../..')
       : page
-          .getByText(/입력이 필요합니다|Input Required/)
+          .getByText(/需要输入|Input Required/)
           .last()
           .locator('xpath=ancestor::div[contains(@class,"moldy-chat-card")][1]')
   await expect(card).toBeVisible()
@@ -105,10 +105,10 @@ test.describe('Chat interaction UI comparison captures', () => {
           csrfHeaders,
           agentId,
           'E2E_ASK_USER_FRUIT',
-          /어떤 과일이 좋아요|🍎 사과/,
+          /喜欢什么水果|🍎 苹果/,
           '01-ask-user-single.png',
         )
-        await page.getByRole('option', { name: /직접 입력|Custom answer/ }).last().click()
+        await page.getByRole('option', { name: /直接输入|Custom answer/ }).last().click()
         await page.setViewportSize(MOBILE)
         await captureViewport(page, WAVE, '11-ask-user-custom-mobile.png')
         await page.setViewportSize(DESKTOP)
@@ -120,7 +120,7 @@ test.describe('Chat interaction UI comparison captures', () => {
           csrfHeaders,
           agentId,
           'E2E_ASK_USER_MULTI',
-          /복수 선택|러닝|클라이밍/,
+          /多选|跑步|攀岩/,
           '02-ask-user-multi.png',
         ),
       )
@@ -131,7 +131,7 @@ test.describe('Chat interaction UI comparison captures', () => {
           csrfHeaders,
           agentId,
           'E2E_ASK_USER_TEXT',
-          /톤을 자유롭게|어떤 톤으로/,
+          /自由选择语气|用什么语气/,
           '03-ask-user-text.png',
         ),
       )
@@ -142,7 +142,7 @@ test.describe('Chat interaction UI comparison captures', () => {
           csrfHeaders,
           agentId,
           'E2E_ASK_USER_FLOW',
-          /여행 선호 조사|어디로 떠나/,
+          /旅行偏好调查|去哪里旅行/,
           '04-ask-user-question-flow.png',
         ),
       )
@@ -155,7 +155,7 @@ test.describe('Chat interaction UI comparison captures', () => {
           'HITL single after',
         )
         await gotoChat(page, agentId, conversationId)
-        await sendMessage(page, '문서 생성 도구를 사용해 승인 후 실행해줘')
+        await sendMessage(page, '使用文档生成工具，批准后执行')
         const approval = page.locator('[data-testid^="approval-action-"]').last()
         await expect(approval).toBeVisible({ timeout: 40_000 })
         await captureLocator(approval, WAVE, '07-hitl-single.png')
@@ -199,8 +199,8 @@ test.describe('Chat interaction UI comparison captures', () => {
         )
         expect(active.ok()).toBeTruthy()
         await gotoChat(page, agentId, conversationId)
-        const firstQueueItem = await sendForStrategy(page, '첫 번째 대기 메시지', 'enqueue')
-        await sendForStrategy(page, '두 번째 대기 메시지', 'enqueue')
+        const firstQueueItem = await sendForStrategy(page, '第一条等待消息', 'enqueue')
+        await sendForStrategy(page, '第二条等待消息', 'enqueue')
         const queuePanel = page.locator('[data-moldy-message-queue]')
         await expect(queuePanel).toBeVisible()
         await captureLocator(queuePanel, WAVE, '05-message-queue.png')

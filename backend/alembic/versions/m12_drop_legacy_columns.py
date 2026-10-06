@@ -4,25 +4,25 @@ Revision ID: m12_drop_legacy_columns
 Revises: m11_custom_connection
 Create Date: 2026-04-21
 
-SCOPE_REDUCED_2 (2026-04-21): M6는 세 컬럼만 drop.
+SCOPE_REDUCED_2 (2026-04-21)：M6 只 drop 三个列。
 - tools.auth_config
 - tools.credential_id (+ FK fk_tools_credential_id)
 - agent_tools.config
 
-mcp_servers 테이블 + tools.mcp_server_id 는 M6.1로 이월 (옵션 D 선행 필요).
+mcp_servers 表 + tools.mcp_server_id 延后到 M6.1（需要先完成选项 D）。
 
-## pre-check (프로덕션 필수)
-docs/design-docs/m6-cleanup-migration-spec.md §5.1 (A)(C) 쿼리를 확인한 뒤 적용.
+## pre-check（生产环境必需）
+确认 docs/design-docs/m6-cleanup-migration-spec.md §5.1 (A)(C) 查询后再应用。
 
-추가 사전점검 — PREBUILT `provider_name IS NULL` 행 확인:
+额外预检查 — 检查 PREBUILT `provider_name IS NULL` 行：
     SELECT count(*) FROM tools WHERE type = 'prebuilt' AND provider_name IS NULL;
-0 기대. 0이 아니면 `_resolve_legacy_tool_auth` 제거 이후 해당 행은
-env fallback으로 평가되어 시맨틱이 바뀔 수 있음(이전에는 inline auth_config
-반환). m10 매핑 누락 가능성이 있으므로 migration 전에 provider_name 백필
-or 해당 row 정리 필요.
+期望为 0。若不为 0，在移除 `_resolve_legacy_tool_auth` 后，这些行会
+按 env fallback 评估，语义可能发生变化（此前返回 inline auth_config
+）。可能存在 m10 映射遗漏，因此在 migration 前需要对 provider_name 执行回填
+or 清理对应 row。
 
 ## downgrade
-구조만 복구, 데이터는 영구 상실. 프로덕션 롤백은 DB 스냅샷 복원을 사용.
+仅恢复结构，数据永久丢失。生产环境回滚应使用 DB 快照恢复。
 """
 
 from __future__ import annotations
@@ -38,15 +38,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Preflight: stale legacy row가 남아 있으면 upgrade를 abort한다. drop은
-    # 데이터 영구 상실이므로 docstring의 pre-check를 실행 가능한 assertion으로.
+    # Preflight：若仍有 stale legacy row，则 abort upgrade。由于 drop 会
+    # 导致数据永久丢失，因此将 docstring 中的 pre-check 实现为可执行 assertion。
     _assert_no_stale_legacy_rows()
 
     # 1) FK drop (tools.credential_id → credentials.id)
-    #    FK 이름은 m6_add_credentials.py에서 명시한 "fk_tools_credential_id".
+    #    FK 名称为 m6_add_credentials.py 中明确指定的 "fk_tools_credential_id"。
     op.drop_constraint("fk_tools_credential_id", "tools", type_="foreignkey")
 
-    # 2) tools legacy 컬럼 drop
+    # 2) drop tools legacy 列
     op.drop_column("tools", "credential_id")
     op.drop_column("tools", "auth_config")
 
@@ -57,8 +57,8 @@ def upgrade() -> None:
 def _assert_no_stale_legacy_rows() -> None:
     """Abort upgrade if any row still depends on the columns we're about to drop.
 
-    sqlite in-memory 테스트에서는 conftest가 최신 모델을 바로 생성하므로
-    legacy 컬럼 자체가 없을 수 있다. 그 경우 체크를 건너뛴다.
+    在 sqlite in-memory 测试中，conftest 会直接创建最新模型，因此
+    legacy 列本身可能不存在。此时跳过检查。
     """
     from app.services.legacy_invariants import collect_legacy_checks
 
@@ -85,23 +85,23 @@ def _assert_no_stale_legacy_rows() -> None:
 
 def downgrade() -> None:
     # downgrade: structure only — DATA LOSS IS PERMANENT.
-    # tools.auth_config / tools.credential_id, agent_tools.config 의 원본
-    # 데이터는 복구되지 않는다. 프로덕션 롤백이 필요하면 alembic downgrade
-    # 대신 DB 스냅샷 복원을 사용하라.
+    # tools.auth_config / tools.credential_id、agent_tools.config 的原始
+    # 数据不会恢复。若生产环境需要回滚，请不要使用 alembic downgrade，
+    # 而应使用 DB 快照恢复。
 
-    # 1) agent_tools.config 복원
+    # 1) 恢复 agent_tools.config
     op.add_column(
         "agent_tools",
         sa.Column("config", sa.JSON(), nullable=True),
     )
 
-    # 2) tools.auth_config 복원
+    # 2) 恢复 tools.auth_config
     op.add_column(
         "tools",
         sa.Column("auth_config", sa.JSON(), nullable=True),
     )
 
-    # 3) tools.credential_id + FK 복원
+    # 3) 恢复 tools.credential_id + FK
     op.add_column(
         "tools",
         sa.Column("credential_id", sa.Uuid(), nullable=True),

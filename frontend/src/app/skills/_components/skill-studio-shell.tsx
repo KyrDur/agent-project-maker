@@ -28,11 +28,11 @@ import {
 } from '../_lib/skill-studio-tabs'
 
 /**
- * 스킬 스튜디오 셸 — 6탭 내비 + 현재 스킬 컨텍스트 바 (Phase 2 스펙 AD-2).
+ * Skill Studio shell — 6-tab navigation + 当前 skill context bar（Phase 2 规范 AD-2）。
  *
- * layout은 하위 세그먼트 params에 접근할 수 없으므로(Next.js 계약) 클라이언트
- * 훅(pathname)으로 활성 탭/컨텍스트를 파생한다. 빌더 라우트의 컨텍스트 스킬은
- * 세션의 source(개선 원본) → finalized(생성 산출물) 순으로 역참조한다.
+ * layout 无法访问子 segment params（Next.js 契约），因此通过 client
+ * hook(pathname) 派生 active tab/context。builder route 的 context skill
+ * 按 session source（improve 原始项）→ finalized（生成产物）顺序反向解析。
  */
 export function SkillStudioShell() {
   const t = useTranslations('skill.studio')
@@ -44,8 +44,8 @@ export function SkillStudioShell() {
   const builderSkillId = context.sessionId
     ? (builderSession?.source_skill_id ?? builderSession?.finalized_skill_id ?? null)
     : null
-  // 빌더 인덱스(/skills/builder?skillId=)의 스코프 스킬 — pathname에는 없어
-  // 쿼리에서 보충한다. 놓치면 스킬 스코프 탭 4개가 disabled로 오표기된다(리뷰 R).
+  // builder index（/skills/builder?skillId=）的 scope skill — pathname 中没有，
+  // 从 query 补充。漏掉会导致 4 个 skill scope tab 被错误显示为 disabled（review R）。
   const builderIndexSkillId =
     context.activeTab === 'builder' && context.sessionId === null
       ? searchParams.get('skillId')
@@ -62,7 +62,7 @@ export function SkillStudioShell() {
   }
 
   function handleSwitchSkill(skill: Skill) {
-    // 활성 탭 유지(§2.2) — 빌더 탭에서는 대상 스킬 스코프의 빌더 인덱스로.
+    // 保持 active tab（§2.2）— 在 builder tab 中跳到目标 skill scope 的 builder index。
     if (context.activeTab === 'builder') {
       router.push(skillStudioTabHref('builder', skill.id) ?? '/skills/builder')
       return
@@ -203,15 +203,15 @@ function SkillSwitcher({
       >
         <span className="truncate">{skill.name}</span>
         <Badge variant="secondary" className="moldy-ui-micro shrink-0">
-          {/* raw enum('package'/'text')이 한국어 카피 옆에 노출되지 않게 목록
-              표와 같은 typeFilter 키로 번역한다 (R5). */}
+          {/* 避免 raw enum('package'/'text') 暴露在中文界面文案旁，列表
+              使用与表格相同的 typeFilter key 进行翻译（R5）。 */}
           {skillT(`typeFilter.${skill.kind}`)}
         </Badge>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-        {/* useSkills는 팝업이 열려 content가 마운트될 때만 구독 — 셸이 모든
-            스킬 라우트에서 전체 목록(+enrichment)을 상시 fetch하지 않게 한다. */}
+        {/* useSkills 仅在 popup 打开、content mount 时订阅 — 避免 shell 在所有
+            skill route 中持续 fetch 完整列表(+enrichment)。 */}
         <SkillSwitcherItems currentSkillId={skill.id} onSwitchSkill={onSwitchSkill} />
       </DropdownMenuContent>
     </DropdownMenu>

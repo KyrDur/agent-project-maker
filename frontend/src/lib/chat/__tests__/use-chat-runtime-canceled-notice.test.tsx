@@ -87,41 +87,41 @@ function message(overrides: Pick<Message, 'id' | 'role' | 'content'> & Partial<M
 
 async function* emptyStream(): AsyncGenerator<SSEEvent> {}
 
-/** thread 렌더 목록의 메시지별 텍스트(텍스트 파트 연결)를 추출한다. */
+/** 提取 thread 渲染列表中每条消息的文本（连接文本 part）。 */
 function threadTexts(runtime: ReturnType<typeof useChatRuntime>['runtime']): string[] {
   return runtime.thread
     .getState()
     .messages.map((m) => m.content.map((part) => (part.type === 'text' ? part.text : '')).join(''))
 }
 
-const CANCELED_TEXT = '응답이 중단되었습니다'
+const CANCELED_TEXT = '响应已中断'
 
 describe('appendDurableCanceledNotice', () => {
-  it('마지막 assistant 메시지 끝에 notice 텍스트를 덧붙이고 원본은 변경하지 않는다', () => {
+  it('在最后一条 assistant 消息末尾追加 notice 文本且不修改原文', () => {
     const original = [
-      message({ id: 'm1', role: 'user', content: '질문' }),
-      message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
+      message({ id: 'm1', role: 'user', content: '问题' }),
+      message({ id: 'm2', role: 'assistant', content: '部分响应' }),
     ]
 
     const result = appendDurableCanceledNotice(original, CANCELED_TEXT, conversationRun('canceled'))
 
     expect(result).toHaveLength(2)
-    expect(result[1].content).toBe(`부분 응답\n\n${CANCELED_TEXT}`)
-    expect(original[1].content).toBe('부분 응답')
+    expect(result[1].content).toBe(`部分响应\n\n${CANCELED_TEXT}`)
+    expect(original[1].content).toBe('部分响应')
   })
 
-  it('notice가 이미 붙어 있으면 중복으로 덧붙이지 않는다', () => {
+  it('notice 已存在时不重复追加', () => {
     const original = [
-      message({ id: 'm1', role: 'assistant', content: `부분 응답\n\n${CANCELED_TEXT}` }),
+      message({ id: 'm1', role: 'assistant', content: `部分响应\n\n${CANCELED_TEXT}` }),
     ]
 
     const result = appendDurableCanceledNotice(original, CANCELED_TEXT, conversationRun('canceled'))
 
     expect(result).toHaveLength(1)
-    expect(result[0].content).toBe(`부분 응답\n\n${CANCELED_TEXT}`)
+    expect(result[0].content).toBe(`部分响应\n\n${CANCELED_TEXT}`)
   })
 
-  it('빈 콘텐츠의 assistant 메시지에는 notice 텍스트만 채운다', () => {
+  it('对内容为空的 assistant 消息只填入 notice 文本', () => {
     const original = [message({ id: 'm1', role: 'assistant', content: '' })]
 
     const result = appendDurableCanceledNotice(original, CANCELED_TEXT, conversationRun('canceled'))
@@ -129,8 +129,8 @@ describe('appendDurableCanceledNotice', () => {
     expect(result[0].content).toBe(CANCELED_TEXT)
   })
 
-  it('마지막이 user 메시지면 run id로 키된 합성 assistant notice를 덧붙인다', () => {
-    const original = [message({ id: 'm1', role: 'user', content: '질문' })]
+  it('最后一条是 user 消息时，追加以 run id 为键的合成 assistant notice', () => {
+    const original = [message({ id: 'm1', role: 'user', content: '问题' })]
     const run = conversationRun('canceled')
 
     const result = appendDurableCanceledNotice(original, CANCELED_TEXT, run)
@@ -144,8 +144,8 @@ describe('appendDurableCanceledNotice', () => {
     })
   })
 
-  it('합성 notice의 created_at은 completed_at → cancel_requested_at → updated_at 순으로 고른다', () => {
-    const original = [message({ id: 'm1', role: 'user', content: '질문' })]
+  it('合成 notice 的 created_at 按 completed_at → cancel_requested_at → updated_at 顺序选择', () => {
+    const original = [message({ id: 'm1', role: 'user', content: '问题' })]
     const withoutCompleted = conversationRun('canceling', { completed_at: null })
     const withoutBoth = conversationRun('canceling', {
       completed_at: null,
@@ -169,13 +169,13 @@ describe('useChatRuntime durable canceled notice', () => {
     vi.clearAllMocks()
   })
 
-  it('latest_run이 canceled면 fetch 메시지만으로 notice를 렌더한다 (refetch 와이프/새로고침 시나리오)', async () => {
+  it('latest_run 为 canceled 时，仅根据 fetch 消息渲染 notice（refetch 清空/刷新场景）', async () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
-            message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
+            message({ id: 'm2', role: 'assistant', content: '部分响应' }),
           ],
           streamFn: emptyStream,
           conversationId: 'conversation-1',
@@ -186,16 +186,16 @@ describe('useChatRuntime durable canceled notice', () => {
 
     await waitFor(() => {
       const texts = threadTexts(result.current.runtime)
-      // useTranslations mock이 key를 그대로 반환하므로 notice 텍스트는 'canceled'
-      expect(texts[texts.length - 1]).toBe('부분 응답\n\ncanceled')
+      // useTranslations mock 原样返回 key，因此 notice 文本为 'canceled'
+      expect(texts[texts.length - 1]).toBe('部分响应\n\ncanceled')
     })
   })
 
-  it('출력 전에 취소되어 assistant 메시지가 없으면 합성 notice 메시지를 렌더한다', async () => {
+  it('在输出前被取消、没有 assistant 消息时渲染合成 notice 消息', async () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
-          messages: [message({ id: 'm1', role: 'user', content: '질문' })],
+          messages: [message({ id: 'm1', role: 'user', content: '问题' })],
           streamFn: emptyStream,
           conversationId: 'conversation-1',
           latestRun: conversationRun('canceled'),
@@ -210,13 +210,13 @@ describe('useChatRuntime durable canceled notice', () => {
     })
   })
 
-  it('canceling 상태도 notice를 렌더한다 (cancel 직후 worker 전이 전 refetch 케이스)', async () => {
+  it('canceling 状态也渲染 notice（刚 cancel、worker 转换前的 refetch 场景）', async () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
-            message({ id: 'm2', role: 'assistant', content: '부분 응답' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
+            message({ id: 'm2', role: 'assistant', content: '部分响应' }),
           ],
           streamFn: emptyStream,
           conversationId: 'conversation-1',
@@ -227,17 +227,17 @@ describe('useChatRuntime durable canceled notice', () => {
 
     await waitFor(() => {
       const texts = threadTexts(result.current.runtime)
-      expect(texts[texts.length - 1]).toBe('부분 응답\n\ncanceled')
+      expect(texts[texts.length - 1]).toBe('部分响应\n\ncanceled')
     })
   })
 
-  it('latest_run이 completed면 notice를 렌더하지 않는다', async () => {
+  it('latest_run 为 completed 时不渲染 notice', async () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
           messages: [
-            message({ id: 'm1', role: 'user', content: '질문' }),
-            message({ id: 'm2', role: 'assistant', content: '완성된 응답' }),
+            message({ id: 'm1', role: 'user', content: '问题' }),
+            message({ id: 'm2', role: 'assistant', content: '完整响应' }),
           ],
           streamFn: emptyStream,
           conversationId: 'conversation-1',
@@ -249,7 +249,7 @@ describe('useChatRuntime durable canceled notice', () => {
     await waitFor(() => {
       const texts = threadTexts(result.current.runtime)
       expect(texts).toHaveLength(2)
-      expect(texts[1]).toBe('완성된 응답')
+      expect(texts[1]).toBe('完整响应')
     })
   })
 })

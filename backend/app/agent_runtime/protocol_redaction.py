@@ -364,16 +364,16 @@ def _redact_tool_event(data: Any) -> Any:
     return safe
 
 
-# W2-3 회상 이벤트 — 영속/공유 표면에는 기억 내용을 남기지 않는다. 프론트는
-# 리로드 시 brief의 id로 메모리 API에서 내용을 재조회한다 (memory-tool-ui의
-# useMemoryProposal 재조회와 동일 계약).
+# W2-3 回忆事件 — 不在持久化/共享表面保留记忆内容。前端会
+# 在 reload 时通过 brief 的 id 从记忆 API 重新查询内容（与 memory-tool-ui 的
+# useMemoryProposal 重新查询使用相同协议）。
 _MEMORY_RECALLED_NAMES: Final = frozenset({"moldy.memory_recalled", "memory_recalled"})
 
-# 스킬 빌더 레일 이벤트 (AD-5) — 의도적 pass-through 등록. 페이로드 계약이
-# 요약 전용이다: skill_draft는 경로/크기/변경 수만, skill_validation은
-# code/severity/message/path 이슈만 (SecretFinding은 값 없이 path+kind).
-# 파일 내용·시크릿 값은 이벤트에 실리지 않는다(§6-7). 계약이 바뀌어 내용이
-# 실리게 되면 여기서 마스킹을 추가해야 한다 (이름 기반 매처 등록 규칙).
+# Skill Builder rail 事件（AD-5）— 有意注册为 pass-through。payload 协议
+# 仅用于摘要：skill_draft 只包含路径/大小/变更数，skill_validation 只包含
+# code/severity/message/path 问题（SecretFinding 不含值，仅 path+kind）。
+# 文件内容和 secret 值不会放入事件（§6-7）。若协议变化并开始携带内容，
+# 则必须在此处添加掩码（基于名称的 matcher 注册规则）。
 _SKILL_BUILDER_PASSTHROUGH_NAMES: Final = frozenset(
     {"moldy.skill_draft", "skill_draft", "moldy.skill_validation", "skill_validation"}
 )

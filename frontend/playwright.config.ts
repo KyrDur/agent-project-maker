@@ -76,8 +76,8 @@ const runtimeWebServers = [
     ? []
     : [
         {
-          // SKILL_EVALUATION_ENABLED 기본 false(기존 계약 — eval worker 소음 차단).
-          // Phase 3 평가 런 투어만 E2E_SKILL_EVALUATION_ENABLED=true로 켠다.
+          // SKILL_EVALUATION_ENABLED 默认 false（既有契约 — 阻断 eval worker 噪声）。
+          // 仅 Phase 3 evaluation run tour 会以 E2E_SKILL_EVALUATION_ENABLED=true 开启。
           command: buildBackendWebServerCommand(
             e2eLane,
             process.env.E2E_SKILL_EVALUATION_ENABLED === 'true',

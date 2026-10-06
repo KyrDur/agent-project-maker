@@ -1709,7 +1709,7 @@ it('shows OAuth connect action for Atlassian registry entries', async () => {
   // Mock credential types including mcp_oauth2
   // Mock no existing credentials
   // Open wizard, click Atlassian Rovo card, navigate to auth tab
-  // Assert "Atlassian 연결" / "Connect Atlassian" action is visible
+  // Assert "连接 Atlassian" / "Connect Atlassian" action is visible
 })
 ```
 
@@ -1747,8 +1747,8 @@ In `frontend/src/components/mcp/mcp-server-wizard.tsx`:
 
 - When selected registry entry has `credential_definition_key === 'mcp_oauth2'`, show:
   - Existing credential picker filtered to `mcp_oauth2`.
-  - "새 Atlassian 자격증명 만들기" action if none exists.
-  - "Atlassian 연결" action once a credential is selected.
+  - "创建新的 Atlassian 凭据" action if none exists.
+  - "连接 Atlassian" action once a credential is selected.
 - When creating from registry, prefill credential data:
 
 ```ts
@@ -1760,7 +1760,7 @@ In `frontend/src/components/mcp/mcp-server-wizard.tsx`:
 }
 ```
 
-- After OAuth completion message, enable the existing "테스트" button and call probe/discover.
+- After OAuth completion message, enable the existing "测试" button and call probe/discover.
 
 - [ ] **Step 4: Add i18n keys**
 
@@ -1768,11 +1768,11 @@ Add Korean keys under `mcp.wizard.auth`:
 
 ```json
 {
-  "connectOAuth": "Atlassian 연결",
-  "createOAuthCredential": "새 Atlassian 자격증명 만들기",
-  "oauthConnected": "OAuth 연결이 완료되었습니다.",
-  "oauthWaiting": "열린 창에서 Atlassian 로그인과 권한 동의를 완료하세요.",
-  "oauthPopupBlocked": "로그인 창을 열 수 없습니다. 팝업 차단 설정을 확인하세요."
+  "connectOAuth": "连接 Atlassian",
+  "createOAuthCredential": "创建新的 Atlassian 凭据",
+  "oauthConnected": "OAuth 连接已完成。",
+  "oauthWaiting": "请在打开的窗口中完成 Atlassian 登录和权限同意。",
+  "oauthPopupBlocked": "无法打开登录窗口。请检查弹窗拦截设置。"
 }
 ```
 
@@ -1837,15 +1837,15 @@ test.describe('Manual Atlassian MCP OAuth', () => {
     await page.goto('/mcp-servers')
 
     await page
-      .getByRole('button', { name: /새 MCP 서버|서버 추가/ })
+      .getByRole('button', { name: /新 MCP 服务器|添加服务器/ })
       .first()
       .click()
 
     await page.getByTestId('registry-card-atlassian-rovo').click()
-    await page.getByRole('button', { name: /인증으로 계속/ }).click()
+    await page.getByRole('button', { name: /使用认证继续/ }).click()
 
     const popupPromise = page.waitForEvent('popup')
-    await page.getByRole('button', { name: /Atlassian 연결|Connect Atlassian/ }).click()
+    await page.getByRole('button', { name: /连接 Atlassian|Connect Atlassian/ }).click()
     const popup = await popupPromise
     await popup.waitForLoadState('domcontentloaded')
 
@@ -1865,12 +1865,12 @@ test.describe('Manual Atlassian MCP OAuth', () => {
 
     await popup.waitForEvent('close', { timeout: 600_000 })
 
-    await expect(page.getByText(/OAuth 연결이 완료되었습니다|OAuth connection completed/i)).toBeVisible({
+    await expect(page.getByText(/OAuth 连接已完成|OAuth connection completed/i)).toBeVisible({
       timeout: 60_000,
     })
 
-    await page.getByRole('button', { name: /테스트|Test/ }).click()
-    await expect(page.getByText(/연결됨|connected|도구 발견됨|tools discovered/i)).toBeVisible({
+    await page.getByRole('button', { name: /测试|Test/ }).click()
+    await expect(page.getByText(/已连接|connected|已发现工具|tools discovered/i)).toBeVisible({
       timeout: 120_000,
     })
 

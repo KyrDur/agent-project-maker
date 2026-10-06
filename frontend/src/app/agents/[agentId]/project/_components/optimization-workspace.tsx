@@ -16,10 +16,14 @@ function sortNewest(runs: readonly EvaluationRun[]): EvaluationRun[] {
 
 function needsOptimization(run: EvaluationRun): boolean {
   return Boolean(
-    run.results_json?.some((item) => item.status !== 'passed') ||
-      run.bad_cases_json?.length ||
-      run.comparison_json?.analysis ||
-      run.comparison_json?.proposals?.length,
+    run.results_json?.some(
+      (item) =>
+        item.status !== 'passed' ||
+        Object.values(item.metric_scores ?? {}).some((metric) => metric.score < 1),
+    ) ||
+    run.bad_cases_json?.length ||
+    run.comparison_json?.analysis ||
+    run.comparison_json?.proposals?.length,
   )
 }
 
@@ -61,9 +65,7 @@ export function OptimizationWorkspace({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            {workspaceT('empty')}
-          </p>
+          <p className="text-sm text-muted-foreground">{workspaceT('empty')}</p>
         )}
       </SettingsSectionCard>
 

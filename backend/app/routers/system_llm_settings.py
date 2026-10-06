@@ -1,11 +1,4 @@
-"""System LLM settings router (ADR-019) — operator-only role→model selection.
-
-Every endpoint is guarded by ``require_super_user``. The screen lets an operator
-pick, per platform role, a system LLM credential
-and a model discovered from it (via the existing
-``POST /api/credentials/{id}/discover-models``). Credential CRUD stays on the
-existing System Credentials screen (ADR-019 §결정4).
-"""
+"""Authenticated personal model settings (legacy URL retained)."""
 
 from __future__ import annotations
 
@@ -21,14 +14,13 @@ from app.dependencies import (
     CurrentUser,
     get_current_user,
     get_db,
-    require_super_user,
     verify_csrf,
 )
 from app.models.system_llm_setting import (
     SYSTEM_LLM_ROLES,
     VISIBLE_SYSTEM_LLM_ROLES,
-    SystemLlmSetting,
 )
+from app.models.user_llm_setting import UserLlmSetting
 from app.schemas.model import ModelTestResponse
 from app.schemas.system_llm_setting import (
     SystemLlmSettingOut,
@@ -59,24 +51,26 @@ _LLM_DEFINITION_KEYS = frozenset(
 # Unified message for any invalid credential selection. Distinguishing
 # "missing" from "wrong type" only in the server log avoids leaking which
 # system credentials exist (enumeration oracle, security.md).
-_INVALID_CREDENTIAL_DETAIL = "credential_id must reference an existing system LLM credential"
+_INVALID_CREDENTIAL_DETAIL = "credential_id must reference an active personal LLM credential"
 
 _PROVIDER_MISMATCH_DETAIL = (
-    "credential_id must reference a system credential for the selected provider"
+    "credential_id must reference a personal credential for the selected provider"
 )
 
 
-async def _load_valid_system_llm_credential(db: AsyncSession, credential_id: uuid.UUID):
-    cred = await credential_service.get_system(db, credential_id)
-    if cred is None:
+async def _load_valid_system_llm_credential(
+    db: AsyncSession, credential_id: uuid.UUID, user_id: uuid.UUID
+):
+    cred = await credential_service.get_for_user(db, credential_id, user_id)
+    if cred is None or cred.status != "active":
         logger.info(
-            "Rejected system LLM credential %s: not an existing system credential",
+            "Rejected personal LLM credential %s: not an active owned credential",
             credential_id,
         )
         raise HTTPException(status_code=404, detail=_INVALID_CREDENTIAL_DETAIL)
     if cred.definition_key not in _LLM_DEFINITION_KEYS:
         logger.info(
-            "Rejected system LLM credential %s: definition_key %r not an LLM provider",
+            "Rejected personal LLM credential %s: definition_key %r not an LLM provider",
             credential_id,
             cred.definition_key,
         )
@@ -84,7 +78,7 @@ async def _load_valid_system_llm_credential(db: AsyncSession, credential_id: uui
     return cred
 
 
-async def _build_out(db: AsyncSession, setting: SystemLlmSetting) -> SystemLlmSettingOut:
+async def _build_out(db: AsyncSession, setting: UserLlmSetting) -> SystemLlmSettingOut:
     """Materialize a settings row into the API shape.
 
     ``provider`` comes from ``credential.definition_key`` (no decrypt).
@@ -93,23 +87,32 @@ async def _build_out(db: AsyncSession, setting: SystemLlmSetting) -> SystemLlmSe
     rather than failing the whole list.
     """
 
+    cred = None
     credential_name: str | None = None
     provider: str | None = None
     base_url: str | None = None
+    key_available = False
 
     if setting.credential_id is not None:
-        cred = await credential_service.get_system(db, setting.credential_id)
+        cred = await credential_service.get_for_user(db, setting.credential_id, setting.user_id)
         if cred is not None:
             credential_name = cred.name
             provider = cred.definition_key
             try:
                 payload = await credential_service.decrypt_with_external(cred.data_encrypted)
+                key_available = bool(payload.get("api_key") or payload.get("token"))
                 raw = payload.get("base_url")
                 base_url = str(raw) if raw else None
             except Exception:  # noqa: BLE001
                 logger.exception("System LLM credential %s decryption failed", cred.id)
 
-    configured = setting.credential_id is not None and bool(setting.model_name)
+    configured = (
+        cred is not None
+        and provider is not None
+        and cred.status == "active"
+        and bool(setting.model_name)
+        and key_available
+    )
     return SystemLlmSettingOut(
         role=setting.role,
         credential_id=setting.credential_id,
@@ -125,17 +128,17 @@ async def _build_out(db: AsyncSession, setting: SystemLlmSetting) -> SystemLlmSe
 @router.get("", response_model=list[SystemLlmSettingOut])
 async def list_system_llm_settings(
     db: AsyncSession = Depends(get_db),
-    _user: CurrentUser = Depends(require_super_user),
+    user: CurrentUser = Depends(get_current_user),
 ) -> list[SystemLlmSettingOut]:
-    """All user-facing role slots. Super_user only."""
-    result = await db.execute(select(SystemLlmSetting))
+    """Current user’s role slots."""
+    result = await db.execute(select(UserLlmSetting).where(UserLlmSetting.user_id == user.id))
     by_role = {s.role: s for s in result.scalars().all()}
     out: list[SystemLlmSettingOut] = []
     for role in SYSTEM_LLM_ROLES:
         setting = by_role.get(role)
         if setting is None:
             # Seed missing (e.g. legacy DB) — self-heal so the screen renders.
-            setting = SystemLlmSetting(role=role)
+            setting = UserLlmSetting(user_id=user.id, role=role)
             db.add(setting)
             await db.flush()
         if role in VISIBLE_SYSTEM_LLM_ROLES:
@@ -146,34 +149,32 @@ async def list_system_llm_settings(
 @router.get("/readiness")
 async def system_llm_readiness(
     db: AsyncSession = Depends(get_db),
-    _user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(get_current_user),
 ) -> list[dict[str, object]]:
     """Public authenticated readiness view without credential metadata."""
 
-    result = await db.execute(select(SystemLlmSetting))
-    by_role = {s.role: s for s in result.scalars().all()}
+    from app.services.system_credential_resolver import (
+        SystemModelNotConfiguredError,
+        resolve_system_model,
+    )
+
     rows: list[dict[str, object]] = []
     for role in VISIBLE_SYSTEM_LLM_ROLES:
         if role == "image":
             continue
-        setting = by_role.get(role)
-        provider = None
-        if setting is not None and setting.credential_id is not None:
-            credential = await credential_service.get_system(db, setting.credential_id)
-            provider = credential.definition_key if credential is not None else None
-        rows.append(
-            {
-                "role": role,
-                "configured": bool(
-                    setting
-                    and setting.credential_id is not None
-                    and setting.model_name
-                    and provider
-                ),
-                "provider": provider,
-                "model_name": setting.model_name if setting is not None else None,
-            }
-        )
+        try:
+            resolved = await resolve_system_model(db, role, user.id)
+        except SystemModelNotConfiguredError:
+            rows.append({"role": role, "configured": False, "provider": None, "model_name": None})
+        else:
+            rows.append(
+                {
+                    "role": role,
+                    "configured": True,
+                    "provider": resolved.provider,
+                    "model_name": resolved.model_name,
+                }
+            )
     return rows
 
 
@@ -182,12 +183,12 @@ async def test_system_llm_selection(
     payload: SystemLlmTestRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(require_super_user),
+    user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ) -> ModelTestResponse:
-    """Test the exact provider + system credential + model selected in the UI."""
+    """Test the current user’s selected provider, credential and model."""
 
-    cred = await _load_valid_system_llm_credential(db, payload.credential_id)
+    cred = await _load_valid_system_llm_credential(db, payload.credential_id, user.id)
     if cred.definition_key != payload.provider:
         raise HTTPException(status_code=422, detail=_PROVIDER_MISMATCH_DETAIL)
 
@@ -226,20 +227,22 @@ async def update_system_llm_setting(
     payload: SystemLlmSettingUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user: CurrentUser = Depends(require_super_user),
+    user: CurrentUser = Depends(get_current_user),
     _csrf: None = Depends(verify_csrf),
 ) -> SystemLlmSettingOut:
-    """Select (or clear) the credential/model for a role. Super_user only."""
+    """Select (or clear) the current user’s credential/model for a role."""
     if role not in SYSTEM_LLM_ROLES:
         raise HTTPException(status_code=404, detail="unknown system LLM role")
 
     if payload.credential_id is not None:
-        await _load_valid_system_llm_credential(db, payload.credential_id)
+        await _load_valid_system_llm_credential(db, payload.credential_id, user.id)
 
-    result = await db.execute(select(SystemLlmSetting).where(SystemLlmSetting.role == role))
+    result = await db.execute(
+        select(UserLlmSetting).where(UserLlmSetting.role == role, UserLlmSetting.user_id == user.id)
+    )
     setting = result.scalar_one_or_none()
     if setting is None:
-        setting = SystemLlmSetting(role=role)
+        setting = UserLlmSetting(user_id=user.id, role=role)
         db.add(setting)
 
     setting.credential_id = payload.credential_id
@@ -258,7 +261,7 @@ async def update_system_llm_setting(
         target_type="system_llm_setting",
         target_id=role,
         target_name_snapshot=role,
-        target_owner_user_id=None,
+        target_owner_user_id=user.id,
         outcome="success",
         request=request,
         metadata={

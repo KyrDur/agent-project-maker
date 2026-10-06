@@ -1,74 +1,70 @@
-# Contributing to Moldy
+# 参与 Agent Project Maker 开发
 
-Moldy는 PoC 단계의 AI 에이전트 빌더입니다. 기여를 환영합니다.
+欢迎贡献。项目目标是帮助用户通过模拟实践与评测证据理解并改进 AI 智能体。
 
-## 시작하기
+## 开始开发
 
-전체 세팅은 루트 [`README.md`](./README.md) / [`README_KO.md`](./README_KO.md) +
-백엔드 [`backend/README.md`](./backend/README.md) 참조.
+配置说明见根目录 [README.md](./README.md) 和 [backend/README.md](./backend/README.md)。
 
 ```bash
-# 런타임: Python 3.12 → uv가 자동 설치 · Node 22 → 직접 설치 (.node-version = 22)
+# Python 3.12 由 uv 管理；Node 22 由 .node-version 指定。
 
-# DB
+# 数据库
 docker-compose up -d postgres
 
-# Backend
+# 后端
 cd backend && uv sync && uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8001
 
-# Frontend
+# 前端
 cd frontend && pnpm install && pnpm dev
 ```
 
-## 브랜치 / 커밋 규칙
+## 分支与提交
 
-- main 직접 커밋 금지 — 기능은 `feature/{이름}`, 버그는 `fix/{이슈}`, 청소는 `chore/{대상}` 브랜치에서 작업 후 PR 머지
-- 커밋 메시지: `[타입] 제목` (한국어, 50자 이내)
-  - 타입: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-- 본문은 변경 의도(WHY) 위주. 무엇을 했는지(WHAT)는 diff에서 보이므로 핵심만
-- 커밋 끝에 `Co-Authored-By: Claude <noreply@anthropic.com>` 권장 (Claude Code 사용 시)
+- 不直接提交到 main；在工作分支完成修改，通过 PR 合并。Codex 工作分支使用 `codex/` 前缀。
+- 提交信息使用 `<type>(<scope>): <subject>`，英文祈使句；类型包括 `feat`、`fix`、`docs`、`style`、`refactor`、`test`、`chore`。
+- 提交正文重点说明改动原因；PR 说明包含最终行为、验证结果和实际限制。
+- 使用协作工具时，只记录实际参与者，不添加未经确认的共同作者。
 
-## 코드 컨벤션
+## 代码约定
 
-세부 컨벤션은 루트 `CLAUDE.md` + `frontend/AGENTS.md`에 정리되어 있습니다. 핵심:
+完整要求见 [AGENTS.md](./AGENTS.md) 和 [frontend/AGENTS.md](./frontend/AGENTS.md)。
 
-### Backend (Python 3.12, FastAPI, SQLAlchemy 2.0 async, ruff, pyright)
+### 后端
 
-- 타입 힌트 필수, async/await + `select()` 쿼리
-- 라우터 → 서비스 → 모델 3계층, 비즈니스 로직은 `services/`
-- 새 테이블 추가 시 `uv run alembic revision -m "..." --autogenerate` 후 검토
-- 테스트: `aiosqlite` in-memory 기반 단위 테스트 (Postgres 불필요). 통합 테스트는 `pytest -m integration`
-- 린트: `uv run ruff check . && uv run ruff format .`
+- Python 3.12、FastAPI、SQLAlchemy 2.0 async，使用类型提示、async/await 和 `select()`。
+- Router → Service → Model 三层结构，业务逻辑位于 `services/`。
+- 新增存储须附 Alembic 迁移，并验证历史兼容。
+- 单元测试使用 aiosqlite；集成测试使用隔离 PostgreSQL，执行 `pytest -m integration`。
+- 静态检查与格式化：`uv run ruff check .`、`uv run ruff format .`。
 
-### Frontend (Next.js 16 + React 19 + TailwindCSS v4 + shadcn/ui)
+### 前端
 
-- TypeScript strict, `any` 금지 — `unknown` + 타입 가드
-- React 19 Server Components 우선, `'use client'` 최소화
-- 다이얼로그는 `<DialogShell>` + `DIALOG_SIZE`/`DIALOG_HEIGHT` 토큰 (직접 `<DialogContent>` 금지)
-- 폼 footer는 `FormFooter` 재사용 (`onCancel` + `onSubmit` + `pending`)
-- 헤더 chrome 없는 다이얼로그는 `<DialogShell.Header srOnly title="..." />`
-- 한국어 날짜는 `formatLongDate`/`formatMediumDate` (`lib/utils/format-relative-time.ts`) — KST 고정
-- 빌드: `pnpm lint && pnpm build`
+- Next.js 16、React 19、TailwindCSS v4、shadcn/ui；修改前阅读本地 Next.js 文档。
+- TypeScript strict，使用 `unknown` 和类型守卫，不使用 `any`。
+- 优先 Server Components；尽量减少 `'use client'`。
+- 对话框使用 `<DialogShell>` 与 `DIALOG_SIZE`/`DIALOG_HEIGHT`，不直接使用 `<DialogContent>`。
+- 表单页脚复用 `FormFooter`，支持 `onCancel`、`onSubmit` 与 `pending`。
+- 隐藏标题栏时使用 `<DialogShell.Header srOnly title="..." />`。
+- 日期使用 `formatLongDate`/`formatMediumDate` 等公共函数，核对当前界面语言与时区。
+- 执行 `pnpm lint && pnpm build`，文案修改同步执行 `pnpm lint:i18n`。
 
-### 디자인 토큰
+### 设计 token
 
-- 강조색: `--primary-strong` (emerald 어두운 톤). `text-primary`는 옅은 surface — 강조 의도면 `text-primary-strong`
-- 시맨틱 상태: `--status-{success,info,warn,danger,accent}` — raw `bg-amber-*`, `bg-sky-*` 금지
-- 자세한 스펙: `docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md`
+- 强调文字使用 `--primary-strong`，`text-primary` 用于较浅的表面颜色。
+- 状态使用 `--status-{success,info,warn,danger,accent}`，不直接使用 `bg-amber-*`、`bg-sky-*`。
+- 详细说明见 `docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md`。
 
-## PR 체크리스트
+## PR 检查
 
-- [ ] 테스트 통과 (`uv run pytest`, `pnpm build`)
-- [ ] 린트 통과 (`uv run ruff check .`, `pnpm lint`)
-- [ ] DB 변경 시 alembic 마이그레이션 포함
-- [ ] PR 본문에 변경 의도 + 검증 결과 명시
-- [ ] 관련 이슈 번호 연결 (있을 경우)
+- [ ] 相关测试和构建通过，未完成的真实模型验收明确标记。
+- [ ] Ruff 与前端静态检查通过。
+- [ ] 数据库修改附带迁移及兼容验证。
+- [ ] PR 描述说明改动目的、验证和限制。
+- [ ] 关联相关 issue（如有）。
 
-## 보안 이슈
+## 安全与许可
 
-보안 취약점은 공개 Issue로 보고하지 마시고 [`SECURITY.md`](./SECURITY.md)의 절차를 따라주세요.
-
-## 라이선스
-
-기여하신 내용은 MIT 라이선스로 배포됩니다 (`LICENSE` 참조).
+安全漏洞请按 [SECURITY.md](./SECURITY.md) 的流程报告，不发布公开 issue。
+贡献内容按 [MIT 许可](./LICENSE) 分发；保留第三方许可与来源说明。

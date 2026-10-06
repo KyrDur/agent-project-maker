@@ -1,7 +1,7 @@
-"""m70(skill usage ledger + human feedback + run.usage) 마이그레이션 검증.
+"""验证 m70(skill usage ledger + human feedback + run.usage) 迁移。
 
-m64/m68 테스트와 동일한 sqlite 라운드트립 방식 — 리비전 체인과 업/다운
-그레이드 실행 가능성만 가드한다 (실배포는 PostgreSQL).
+采用与 m64/m68 测试相同的 sqlite 往返方式 — 仅守卫 版本链与升/降级
+可执行性（实际部署为 PostgreSQL）。
 """
 
 from __future__ import annotations

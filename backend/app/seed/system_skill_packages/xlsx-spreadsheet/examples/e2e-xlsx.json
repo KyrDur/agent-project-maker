@@ -1,18 +1,18 @@
 {
-  "title": "Moldy XLSX Viewer 검증",
+  "title": "Moldy XLSX Viewer 验证",
   "sheets": [
     {
-      "name": "검증요약",
-      "headers": ["항목", "状态", "비고"],
+      "name": "验证摘要",
+      "headers": ["项目", "状态", "备注"],
       "rows": [
-        ["JS runner", "通行证", "node scripts/create_xlsx.cjs"],
-        ["Artifact ingest", "通行证", "conversation_artifacts"],
-        ["Viewer", "通行证", "SheetJS table UI"]
+        ["JS runner", "通过", "node scripts/create_xlsx.cjs"],
+        ["Artifact ingest", "通过", "conversation_artifacts"],
+        ["Viewer", "通过", "SheetJS table UI"]
       ]
     },
     {
-      "name": "측정값",
-      "headers": ["日期", "문서유형", "생성수", "预览"],
+      "name": "测量值",
+      "headers": ["日期", "文档类型", "生成数量", "预览"],
       "rows": [
         ["2026-06-07", "DOCX", 1, "docx-preview"],
         ["2026-06-07", "XLSX", 1, "SheetJS"],

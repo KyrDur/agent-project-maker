@@ -5,7 +5,7 @@ import { atom } from 'jotai'
  *
  * The backend injects up to N memory records into each run's system prompt and
  * ships the briefs once per run over a custom `moldy.memory_recalled` event
- * (see `memory-recall-events.ts`). The chat renders them as a "기억 N개 참고"
+ * (see `memory-recall-events.ts`). The chat renders them as a "参考 N 条记忆"
  * chip. Later runs REPLACE the conversation entry (recall is recomputed per
  * run), and replay on reload re-populates in event order so the last run wins.
  */

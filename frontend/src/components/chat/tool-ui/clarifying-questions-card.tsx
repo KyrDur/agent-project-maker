@@ -3,17 +3,17 @@
 import { useTranslations } from 'next-intl'
 
 export interface ClarifyingQuestionsCardProps {
-  /** 헤더 라벨. 기본 `확인이 필요해요`. */
+  /** 标题区标签。默认为 `需要确认`。 */
   label?: string
-  /** 질문 목록 — 각 항목은 문자열 또는 [본문, 힌트] 튜플. 힌트는 muted-soft 색으로 inline 표시. */
+  /** 问题列表 — 每项为字符串或 [正文, 提示] 元组。提示使用 muted-soft 颜色 inline 显示。 */
   items: Array<string | { text: string; hint?: string }>
 }
 
 /**
- * Builder Phase 2 진행 중 표시되는 "澄清标题" 카드.
+ * Builder Phase 2 进行中显示的 "澄清标题" 卡片。
  *
- * 봇 메시지 안 child block 으로 자리잡는 presentational 컴포넌트.
- * 백엔드가 별도 tool로 emit하기 시작하면 그 tool UI에서 이 컴포넌트를 wrap해 사용.
+ * 作为机器人消息内 child block 的 presentational 组件。
+ * 如果后端后续开始通过独立 tool emit，则在该 tool UI 中 wrap 此组件使用。
  */
 export function ClarifyingQuestionsCard({ label, items }: ClarifyingQuestionsCardProps) {
   const t = useTranslations('chat.intentSummary')

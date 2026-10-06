@@ -60,11 +60,11 @@ async def agent_link_counts_by_skill(
     user_id: uuid.UUID,
     skill_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, int]:
-    """스킬별 연결 에이전트 수 — 단일 GROUP BY 역집계.
+    """每个 skill 的关联 Agent 数 — 单次 GROUP BY 反向聚合。
 
-    ``Skill.used_by_count`` 컬럼은 쓰기 동기화가 없어(생성 시 0 고정) 신뢰할
-    수 없다 — 직렬화 시점에 이 집계로 덮어쓴다. 히든 에이전트
-    (``runtime_profile != 'standard'``)는 다른 모든 표면과 동일하게 제외.
+    ``Skill.used_by_count`` 列没有写入同步（创建时固定为 0），因此不可信 —
+    序列化时用该聚合结果覆盖。隐藏 Agent
+    （``runtime_profile != 'standard'``）与其他所有表面一样排除。
     """
 
     if not skill_ids:

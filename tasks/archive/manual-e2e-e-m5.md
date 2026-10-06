@@ -1,24 +1,24 @@
-# Manual E2E — 백로그 E M5
+# Manual E2E — backlog E M5
 
-**작성자**: 베조스 (QA DRI)
-**일자**: 2026-04-19
-**검증 방식**: **코드 경로 정적 추적** (static trace) + 자동 회귀 (pytest/lint/build)
-**브라우저 실측**: **미수행** — docker-compose + DB + dev server 구동 시간 비용. 정적 추적으로 불변식 전수 검증한 뒤 사티아 판정에 위임. S6 게이트 통과 후 PR 리뷰 단계에서 사용자 수동 검증 권장.
+**作者**：贝索斯 (QA DRI)
+**日期**：2026-04-19
+**验证方式**：**代码路径静态追踪**（static trace）+ 自动回归（pytest/lint/build）
+**浏览器实测**：**未执行** — docker-compose + DB + dev server 启动成本较高。通过静态追踪完整验证 invariants 后，交由萨提亚判定。S6 gate 通过后，建议在 PR review 阶段由用户手动验证。
 
 ---
 
-## 0. 자동 회귀 결과 (PASS 전수)
+## 0. 自动回归结果（全部 PASS）
 
-| 항목 | 기대 | 실제 | 판정 |
+| 项目 | 预期 | 实际 | 判定 |
 |------|------|------|------|
 | Backend pytest | 646 pass | `646 passed, 1 deselected, 3 warnings in 80.53s` | ✅ PASS |
 | Backend ruff | 0 error | `All checks passed!` | ✅ PASS |
-| Frontend lint | 기존 1건(use-chat-runtime.ts:74)만 | `1 problem (0 errors, 1 warning)` 동일 위치 | ✅ PASS (신규 깨짐 0) |
+| Frontend lint | 仅现有 1 项（use-chat-runtime.ts:74） | `1 problem (0 errors, 1 warning)` 相同位置 | ✅ PASS（新增破坏 0） |
 | Frontend build | PASS | `✓ Generating static pages (14/14)` | ✅ PASS |
-| F 흡수 grep | 외부 호출 0 | `rg "PrebuiltAuthDialog\|CustomAuthDialog\|MCPServerAuthDialog" src/app src/components --glob '!*auth-dialog.tsx'` → 0 | ✅ PASS |
-| 백엔드 변경 | 0 | `git diff --shortstat main...HEAD -- backend/` → empty | ✅ PASS |
+| F 吸收 grep | 外部调用 0 | `rg "PrebuiltAuthDialog\|CustomAuthDialog\|MCPServerAuthDialog" src/app src/components --glob '!*auth-dialog.tsx'` → 0 | ✅ PASS |
+| 后端变更 | 0 | `git diff --shortstat main...HEAD -- backend/` → empty | ✅ PASS |
 
-**커맨드 기록**:
+**命令记录**：
 ```bash
 cd backend && uv run pytest        # 646 passed
 cd backend && uv run ruff check .  # All checks passed
@@ -28,162 +28,162 @@ cd frontend && pnpm build          # ✓
 
 ---
 
-## 1. 수용 기준별 코드 경로 검증
+## 1. 按验收标准验证代码路径
 
-### S1: PREBUILT — /connections → Naver 연결 추가 → tool 자동 매칭 (M3 회귀)
+### S1: PREBUILT — /connections → 添加 Naver 连接 → tool 自动匹配（M3 回归）
 
-**경로 추적**:
-1. `/connections` 진입 (`app/connections/page.tsx:32`) — `useConnections()` 로 all connections 페칭, `grouped['prebuilt']` 분리.
-2. `PrebuiltSection` 렌더 (`page.tsx:82-164`) — 4종 provider 서브그룹, 각 "연결 추가" 버튼이 `setDialogProvider(provider)` 세팅.
-3. 버튼 클릭 → `ConnectionBindingDialog(type='prebuilt', providerName=…)` 렌더 (`page.tsx:152-161`).
-4. `PrebuiltBody.handleSave` (`connection-binding-dialog.tsx:162-198`) — default connection 없으면 `createConnection({type, provider_name, credential_id, is_default: true})` 호출.
-5. `useCreateConnection` (M3 구현) onSuccess → setQueryData seed (progress.txt 라인 8 패턴).
-6. `/tools` 진입 시 `prebuiltConfiguredProviders` 재계산 (`app/tools/page.tsx:380-385`): `is_default && credential_id && status === 'active'` 조건 만족 시 provider_name이 Set에 추가.
-7. `getAuthStatus(tool, set)` (`tools/page.tsx:100-104`) — `tool.provider_name`이 set에 있으면 `configured` 판정. ToolCard 배지 "인증됨(녹색)".
+**路径追踪**:
+1. 进入 `/connections`（`app/connections/page.tsx:32`）— 通过 `useConnections()` 获取 all connections，分离 `grouped['prebuilt']`。
+2. 渲染 `PrebuiltSection`（`page.tsx:82-164`）— 4 类 provider 子组，各"添加连接"按钮设置 `setDialogProvider(provider)`。
+3. 点击按钮 → 渲染 `ConnectionBindingDialog(type='prebuilt', providerName=…)`（`page.tsx:152-161`）。
+4. `PrebuiltBody.handleSave`（`connection-binding-dialog.tsx:162-198`）— 若没有 default connection，则调用 `createConnection({type, provider_name, credential_id, is_default: true})`。
+5. `useCreateConnection`（M3 实现）onSuccess → setQueryData seed（progress.txt 第 8 行模式）。
+6. 进入 `/tools` 时重新计算 `prebuiltConfiguredProviders`（`app/tools/page.tsx:380-385`）：满足 `is_default && credential_id && status === 'active'` 条件时，将 provider_name 添加到 Set。
+7. `getAuthStatus(tool, set)`（`tools/page.tsx:100-104`）— 若 `tool.provider_name` 在 set 中则判定为 `configured`。ToolCard 徽章"已认证（绿色）"。
 
-**판정**: ✅ **PASS** — M3 자동 매칭 invariant 보존. fail-closed 조건 3개 중 하나라도 빠지면 `not_configured` (§S4에서 재검증).
+**判定**: ✅ **PASS** — 保留 M3 自动匹配 invariant。fail-closed 的 3 个条件任一缺失则为 `not_configured`（在 §S4 再次验证）。
 
-### S2: CUSTOM — tool 생성 → AddToolDialog Custom 탭 → 신규 credential → connection 자동 생성 (M4 회귀)
+### S2: CUSTOM — 创建 tool → AddToolDialog Custom 标签页 → 新建 credential → 自动创建 connection（M4 回归）
 
-**경로 추적**:
-1. `/tools` → "도구 추가" → `AddToolDialog` (`add-tool-dialog.tsx`). Custom 탭은 **M5에서 미변경** (progress.txt S3 구현 결과 L81: "add-tool-dialog.tsx MCP 탭은 손대지 않음" — Custom 탭도 동일하게 M4 상태 유지).
-2. `resolveCustomConnectionId` (`add-tool-dialog.tsx:96-116`) — cache에서 find → 없으면 `createConnection.mutateAsync({type:'custom', provider_name:'custom_api_key', credential_id, display_name})` 실행.
-3. Tool POST에 `connection_id` + bridge `credential_id` 함께 전송 (progress.txt L14: CUSTOM `tool.credential_id`는 `connection.credential_id`에서 derive — chat_service가 connection 기반 해석).
-4. M4 bridge 보존 확인: `add-tool-dialog.tsx:157-160` 주석 "M5에서 consumer 전환 후 제거" — 베조스 S1 §3.1에서 **M6로 보류** 판정. M5에서 미제거가 올바른 동작.
+**路径追踪**:
+1. `/tools` → "添加工具" → `AddToolDialog`（`add-tool-dialog.tsx`）。Custom 标签页在 **M5 中未修改**（progress.txt S3 实现结果 L81："未触碰 add-tool-dialog.tsx MCP 标签页" — Custom 标签页同样保持 M4 状态）。
+2. `resolveCustomConnectionId`（`add-tool-dialog.tsx:96-116`）— 从 cache 中 find → 若没有则执行 `createConnection.mutateAsync({type:'custom', provider_name:'custom_api_key', credential_id, display_name})`。
+3. Tool POST 时同时发送 `connection_id` + bridge `credential_id`（progress.txt L14：CUSTOM `tool.credential_id` 从 `connection.credential_id` derive — chat_service 基于 connection 解析）。
+4. 确认保留 M4 bridge：`add-tool-dialog.tsx:157-160` 注释"在 M5 切换 consumer 后移除" — 贝索斯 S1 §3.1 判定为**推迟到 M6**。M5 中未移除是正确行为。
 
-**판정**: ✅ **PASS** — M4 find-or-create invariant 보존. Custom 탭 코드 경로 0 변경.
+**判定**: ✅ **PASS** — 保留 M4 find-or-create invariant。Custom 标签页代码路径 0 修改。
 
-### S3: MCP — AddToolDialog MCP 탭 → server 등록 (M4 회귀)
+### S3: MCP — AddToolDialog MCP 标签页 → 注册 server（M4 回归）
 
-**경로 추적**:
-1. `AddToolDialog` MCP 탭 — `registerMCP.mutateAsync({name, url, credential_id})` 기존 흐름 유지 (`add-tool-dialog.tsx:87-94`).
-2. 탭 내부 "새 credential 생성" CTA는 `CredentialFormDialog`로 직접 오픈 (`add-tool-dialog.tsx:258-262, 372-379`) — **ConnectionBindingDialog 통합 안 함** (progress.txt v2 §67: "MCP 스코프 축소 — server create은 add-tool-dialog 유지").
-3. `/tools` MCP 섹션의 `MCPServerGroupCard.auth` 메뉴 → `ConnectionBindingDialog(type='mcp', mcpServerId=server.id)` (`mcp-server-group-card.tsx:143 변경 예상 — 확인됨`). `McpBody.handleSave` (`connection-binding-dialog.tsx:457-470`) → `useUpdateMCPServer({credential_id})` — mcp_server row PATCH, Connection 엔티티 미생성.
-4. `useToolsByConnection` (`use-tools.ts:85-101`)의 MCP 분기 — `mcp_server.credential_id === connection.credential_id` 이중 hop으로 tool 집계. /connections MCP 섹션 카드에 사용 tool 카운트 정확히 노출.
+**路径追踪**:
+1. `AddToolDialog` MCP 标签页 — 保持现有 `registerMCP.mutateAsync({name, url, credential_id})` 流程（`add-tool-dialog.tsx:87-94`）。
+2. 标签页内"新建 credential" CTA 直接打开 `CredentialFormDialog`（`add-tool-dialog.tsx:258-262, 372-379`）— **不整合 ConnectionBindingDialog**（progress.txt v2 §67："缩小 MCP scope — server create 保留 add-tool-dialog"）。
+3. `/tools` MCP 区域的 `MCPServerGroupCard.auth` 菜单 → `ConnectionBindingDialog(type='mcp', mcpServerId=server.id)`（`mcp-server-group-card.tsx:143 预计修改 — 已确认`）。`McpBody.handleSave`（`connection-binding-dialog.tsx:457-470`）→ `useUpdateMCPServer({credential_id})` — PATCH mcp_server row，不创建 Connection 实体。
+4. `useToolsByConnection`（`use-tools.ts:85-101`）的 MCP 分支 — 通过 `mcp_server.credential_id === connection.credential_id` 双 hop 聚合 tool。在 /connections MCP 区域卡片中准确显示所用 tool 数量。
 
-**판정**: ✅ **PASS** — MCP server 등록은 M4 흐름 100% 유지, credential 재바인딩만 ConnectionBindingDialog로 수렴. /connections MCP 섹션 "연결 추가" CTA는 `<AddToolDialog trigger={...} />` 로 위임 (`app/connections/page.tsx:236-243`) — spec §3.3 옵션 A 채택 기록과 일치.
+**判定**: ✅ **PASS** — MCP server 注册保留 M4 流程 100%，仅 credential 重新绑定收敛到 ConnectionBindingDialog。/connections MCP 区域"添加连接" CTA 委托给 `<AddToolDialog trigger={...} />`（`app/connections/page.tsx:236-243`）— 与 spec §3.3 采用选项 A 的记录一致。
 
-### S4: fail-closed — Connection status toggle disabled → tool 호출 시 disabled 에러 (M3/M4 invariant)
+### S4: fail-closed — Connection status toggle disabled → 调用 tool 时出现 disabled 错误（M3/M4 invariant）
 
-**경로 추적**:
-1. `/connections` → Connection 카드 클릭 → `ConnectionDetailSheet` 오픈 (`app/connections/page.tsx:70-73`).
-2. Danger zone "active/disabled 토글" 버튼 (`connection-detail-sheet.tsx:254-262`) → `updateConnection.mutate({id, data: {status: 'disabled'}})`.
-3. Backend: `connections` 테이블 status 컬럼 업데이트 (M2 구현).
-4. **fail-closed 체크 #1 (UI 배지)**: `tools/page.tsx:383` `if (conn.is_default && conn.credential_id && conn.status === 'active')` — status가 'disabled'이면 `prebuiltConfiguredProviders` Set에서 **자동 제거**. ToolCard 배지 `not_configured` (amber) 로 전환.
-5. **fail-closed 체크 #2 (runtime)**: `backend/app/services/chat_service.py`의 `_gate_connection_active` / `_resolve_prebuilt_auth` / `_resolve_custom_auth` (progress.txt Policy Invariants L16). M5 백엔드 변경 0건 → M2/M3/M4 fail-closed 경로 100% 보존.
+**路径追踪**:
+1. `/connections` → 点击 Connection 卡片 → 打开 `ConnectionDetailSheet`（`app/connections/page.tsx:70-73`）。
+2. Danger zone "active/disabled 切换"按钮（`connection-detail-sheet.tsx:254-262`）→ `updateConnection.mutate({id, data: {status: 'disabled'}})`。
+3. Backend：更新 `connections` 表的 status 列（M2 实现）。
+4. **fail-closed 检查 #1（UI 徽章）**：`tools/page.tsx:383` `if (conn.is_default && conn.credential_id && conn.status === 'active')` — status 为 'disabled' 时，从 `prebuiltConfiguredProviders` Set 中**自动移除**。ToolCard 徽章切换为 `not_configured`（amber）。
+5. **fail-closed 检查 #2（runtime）**：`backend/app/services/chat_service.py` 的 `_gate_connection_active` / `_resolve_prebuilt_auth` / `_resolve_custom_auth`（progress.txt Policy Invariants L16）。M5 backend 修改 0 项 → 保留 M2/M3/M4 fail-closed 路径 100%。
 
-**판정**: ✅ **PASS** — UI 판정(L383)과 runtime gate(chat_service) 양쪽 모두 status='active' 필수 조건. M5 변경 없음.
+**判定**: ✅ **PASS** — UI 判定（L383）和 runtime gate（chat_service）双方都要求 status='active'。M5 无修改。
 
-### S5: Connection 삭제 — 사용 중 tool 있을 때 차단
+### S5: 删除 Connection — 有正在使用的 tool 时阻止
 
-**경로 추적**:
+**路径追踪**:
 1. `ConnectionDetailSheet.DetailBody` (`connection-detail-sheet.tsx:70-342`):
-   - L81 `tools = useToolsByConnection(connection)` — 현재 연결 사용 tool 목록.
+   - L81 `tools = useToolsByConnection(connection)` — 当前连接所用 tool 列表。
    - L105-106 `toolCount = tools.length; hasUsage = toolCount > 0`.
-   - L270 삭제 버튼 `disabled={hasUsage || deleteConnection.isPending}` — **사용 중이면 버튼 자체 비활성**.
-   - L276-280 `hasUsage`면 amber 경고 카피 `deleteBlockedByUsage` 노출.
-2. L282-285 `isOnlyDefaultPrebuilt`(PREBUILT의 유일한 default 삭제) 경고 카피 `defaultPrebuiltWarning` — 팀쿡 spec §5 요건.
-3. 삭제 진행 시 `useDeleteConnection` (M2 구현) 호출 — connection row만 제거, credential row는 고아 허용 (progress.txt v2 §70).
+   - L270 删除按钮 `disabled={hasUsage || deleteConnection.isPending}` — **正在使用时按钮本身禁用**。
+   - L276-280 若 `hasUsage` 则显示 amber 警告文案 `deleteBlockedByUsage`。
+2. L282-285 `isOnlyDefaultPrebuilt`（删除 PREBUILT 唯一 default）警告文案 `defaultPrebuiltWarning` — 库克 spec §5 要求。
+3. 执行删除时调用 `useDeleteConnection`（M2 实现）— 仅移除 connection row，允许 credential row 孤立（progress.txt v2 §70）。
 
-**판정**: ✅ **PASS** — 클라이언트 측 UX gate + backend 측 참조 무결성 제약 이중 차단. M5에서 UX 차단 신규 구현.
+**判定**: ✅ **PASS** — 客户端 UX gate + backend 引用完整性约束双重阻止。M5 新增 UX 阻止。
 
-### S6: N:1 credential — 같은 credential 참조하는 여러 CUSTOM tool이 1 connection 공유 (M4 invariant)
+### S6: N:1 credential — 引用同一 credential 的多个 CUSTOM tool 共享 1 个 connection（M4 invariant）
 
-**경로 추적**:
+**路径追踪**:
 1. `CustomBody.handleSave` (`connection-binding-dialog.tsx:318-363`) — find-or-create:
-   - L334-337 `qc.getQueryData(scopeKey({type:'custom', provider_name:'custom_api_key'}))`로 현재 캐시 조회.
-   - L338-348 `existing = cached?.find(c => c.credential_id === credentialId)` → 있으면 **재사용** (no POST).
-2. `add-tool-dialog.tsx:96-116` `resolveCustomConnectionId` — 동일 패턴 (M4 경로).
-3. Backend: connection row에 credential_id FK, 유니크 제약 없음 — N tool이 같은 connection을 N:1로 참조 (ADR-008 §3).
+   - L334-337 通过 `qc.getQueryData(scopeKey({type:'custom', provider_name:'custom_api_key'}))` 查询当前缓存。
+   - L338-348 `existing = cached?.find(c => c.credential_id === credentialId)` → 若存在则**复用**（no POST）。
+2. `add-tool-dialog.tsx:96-116` `resolveCustomConnectionId` — 相同模式（M4 路径）。
+3. Backend：connection row 有 credential_id FK，无唯一约束 — N 个 tool 以 N:1 方式引用同一个 connection（ADR-008 §3）。
 
-**판정**: ✅ **PASS** — 2개 진입점(new tool / rebind) 모두 find-or-create, 중복 connection 생성 차단.
+**判定**: ✅ **PASS** — 2 个入口（new tool / rebind）均为 find-or-create，阻止重复创建 connection。
 
-### S7: getAuthStatus 회귀 — Custom tool "configured" 배지 (베조스 S1 위험 #1)
+### S7: getAuthStatus 回归 — Custom tool "configured" 徽章（贝索斯 S1 风险 #1）
 
-**경로 추적**:
-1. `getAuthStatus` (`tools/page.tsx:92-114`) — Custom tool 분기:
-   - L105 `if (tool.credential_id) return 'configured'` — **legacy path 유지** (bridge 보존 원칙).
-   - L109-112 `auth_config` fallback — 서버가 마스킹한 '***' 값도 presence로 판정.
-2. M5 변경사항과 교차:
-   - S3 ConnectionBindingDialog(type='custom').handleSave (`connection-binding-dialog.tsx:322-348`): `connection.credential_id`만 PATCH, **`tool.credential_id` 미접촉** — progress.txt v2 §66 bridge 보존 정책 준수.
-   - M4 이후 생성된 tool은 create 시 `credential_id` 함께 전송 (`add-tool-dialog.tsx:158-160`). `configured` 판정 유지.
-3. 회귀 시나리오 테이블:
+**路径追踪**:
+1. `getAuthStatus`（`tools/page.tsx:92-114`）— Custom tool 分支：
+   - L105 `if (tool.credential_id) return 'configured'` — **保留 legacy path**（bridge 保留原则）。
+   - L109-112 `auth_config` fallback — 服务器掩码后的 '***' 值也按 presence 判定。
+2. 与 M5 修改交叉检查：
+   - S3 ConnectionBindingDialog(type='custom').handleSave（`connection-binding-dialog.tsx:322-348`）：仅 PATCH `connection.credential_id`，**不触碰 `tool.credential_id`** — 遵守 progress.txt v2 §66 bridge 保留策略。
+   - M4 之后创建的 tool 在 create 时一并发送 `credential_id`（`add-tool-dialog.tsx:158-160`）。保持 `configured` 判定。
+3. 回归场景表：
 
-| Tool 상태 | credential_id | connection_id | getAuthStatus | 비고 |
+| Tool 状态 | credential_id | connection_id | getAuthStatus | 备注 |
 |-----------|--------------|---------------|----------------|------|
-| legacy-only (M3 이전) | 있음 | NULL | `configured` | ✅ 하위호환 |
-| M4 신규 (bridge) | 있음 | 있음 | `configured` | ✅ |
-| 가상 "M5 신규 without credential_id" | NULL | 있음 | `not_configured` | ⚠️ progress.txt v2 §74 발생 시 판정 확장 필요 — **현 M5에선 발생 불가** (add-tool-dialog가 여전히 credential_id 전송) |
+| legacy-only（M3 之前） | 有 | NULL | `configured` | ✅ 向后兼容 |
+| M4 新增（bridge） | 有 | 有 | `configured` | ✅ |
+| 假想"M5 新增 without credential_id" | NULL | 有 | `not_configured` | ⚠️ 若发生 progress.txt v2 §74 则需扩展判定 — **当前 M5 不可能发生**（add-tool-dialog 仍发送 credential_id） |
 
-**판정**: ✅ **PASS** — 베조스 S1 §위험#1 플래그 해소. 현 M5 스코프에서 회귀 경로 0. M6 legacy drop 시 `connection_id` 기반 판정으로 확장 필요 (M6 요구사항으로 이월).
+**判定**: ✅ **PASS** — 解决贝索斯 S1 §风险#1 标记。当前 M5 scope 中回归路径 0。M6 legacy drop 时需扩展为基于 `connection_id` 判定（转入 M6 要求）。
 
 ---
 
-## 2. 추가 점검 (M5 고유 항목)
+## 2. 追加检查（M5 特有项目）
 
-### 2.1 Credential 직접 노출 제거 확인
-- `/connections`에 `CredentialCard` import 0 (`rg "CredentialCard" frontend/src/app/connections` → 0).
-- `filteredCredentials`/`search`/`typeFilter` 로컬 state 0 (새 `page.tsx`에 존재하지 않음).
-- Credential 편집은 ConnectionDetailSheet 내 "credential 편집" 버튼 → `CredentialFormDialog(editingCredential)` 직접 오픈 (`connection-detail-sheet.tsx:213-218`).
+### 2.1 确认移除 Credential 直接暴露
+- `/connections` 中 `CredentialCard` import 0（`rg "CredentialCard" frontend/src/app/connections` → 0）。
+- `filteredCredentials`/`search`/`typeFilter` 本地 state 0（新的 `page.tsx` 中不存在）。
+- Credential 编辑通过 ConnectionDetailSheet 内"编辑 credential"按钮 → 直接打开 `CredentialFormDialog(editingCredential)`（`connection-detail-sheet.tsx:213-218`）。
 
-### 2.2 i18n 키 충돌 부재
-- `connections.bindingDialog.{prebuilt,custom,mcp}.*` 신규 키 — 기존 `tool.customAuth.*`, `tool.mcpServer.auth.*`와 네임스페이스 분리.
-- `connections.sections.{prebuilt,custom,mcp}.*`, `connections.card.*`, `connections.detail.*` 신규 — `connections.prebuiltSection.*`는 deprecated로 M6 drop 대상.
+### 2.2 无 i18n 键冲突
+- `connections.bindingDialog.{prebuilt,custom,mcp}.*` 新增键 — 与现有 `tool.customAuth.*`、`tool.mcpServer.auth.*` namespace 分离。
+- `connections.sections.{prebuilt,custom,mcp}.*`、`connections.card.*`、`connections.detail.*` 新增 — `connections.prebuiltSection.*` 已 deprecated，作为 M6 drop 对象。
 
-### 2.3 M5.5/M6 경계 준수
-- `git diff main...HEAD -- backend/` → **0** (M5 스코프 계약).
+### 2.3 遵守 M5.5/M6 边界
+- `git diff main...HEAD -- backend/` → **0**（M5 scope 契约）。
 - `git diff main...HEAD -- backend/alembic/` → 0.
-- `agent_tools.connection_id` column / chat_service 분기 — grep 0 (M5에서 미터치).
-- legacy 컬럼 drop 시도 — 0.
+- `agent_tools.connection_id` column / chat_service 分支 — grep 0（M5 未触碰）。
+- 尝试 drop legacy 列 — 0。
 
-### 2.4 사티아/팀쿡 spec 수용
-- spec `§3.3 옵션 A` "MCP 섹션 CTA = AddToolDialog 재사용" — `app/connections/page.tsx:236-243` 일치.
-- spec "Connection 삭제 ≠ Credential 삭제, credential 고아 허용" — `useDeleteConnection` 호출로 준수 (credential row 보존).
-- spec "drawer에서 MCP rebind은 안내만" — `connection-detail-sheet.tsx:314` 주석 그대로.
-
----
-
-## 3. 브라우저 실측 권장 시나리오 (S6/PR 단계 체크리스트)
-
-사티아가 PR 머지 전 또는 사용자가 로컬 확인 시 수행 권장:
-
-```
-□ /connections 빈 상태 → EmptyStateAllSections 표시
-□ /connections PREBUILT Naver 서브그룹 "연결 추가" → dialog → credential 입력 → connection 생성 → 카드 등장
-□ /tools 진입 → Naver 도구 배지 "인증됨(녹색)" 전환
-□ Connection 카드 클릭 → Drawer 열림 → 사용 tool 목록에 Naver 도구 이름 표시
-□ Drawer status toggle "비활성화" → /tools 배지 "미인증(amber)" 으로 회귀 없이 전환
-□ CUSTOM: /tools "도구 추가" → Custom 탭 → credential 생성 → tool 등록 → /connections CUSTOM 섹션에 connection 카드 등장
-□ 같은 credential로 CUSTOM 도구 하나 더 등록 → connection은 1개 유지, Drawer 사용 tool 2건 표시
-□ MCP: /tools "도구 추가" → MCP 탭 → URL + credential → server 등록 → /tools MCP 카드 노출
-□ MCP 카드 메뉴 "인증" → ConnectionBindingDialog(type='mcp') 열림 → credential 교체 → server.credential 갱신
-□ Drawer 삭제 버튼: 사용 tool >0이면 disabled + amber 경고
-□ 도구 삭제 후 Drawer 삭제 활성화 → 삭제 → 카드 제거 + credential 보존 (CredentialFormDialog에서 존재 확인)
-□ 키보드 네비: Drawer 내 Tab 순서, ESC 닫힘, focus trap
-```
+### 2.4 接受 Satya/库克 spec
+- spec `§3.3 选项 A` "MCP 区域 CTA = 复用 AddToolDialog" — 与 `app/connections/page.tsx:236-243` 一致。
+- spec "删除 Connection ≠ 删除 Credential，允许 credential 孤立" — 调用 `useDeleteConnection`，遵守要求（保留 credential row）。
+- spec "drawer 中 MCP rebind 仅做提示" — `connection-detail-sheet.tsx:314` 注释保持原样。
 
 ---
 
-## 4. 발견 이슈
+## 3. 建议浏览器实测场景（S6/PR 阶段检查清单）
 
-**없음** — 코드 경로 정적 추적 + 자동 회귀 전수 PASS. 베조스 S1 위험 5건 모두 해소:
+建议 Satya 在 PR 合并前或用户本地确认时执行：
 
-| S1 위험 | 해소 경로 |
+```
+□ /connections 空状态 → 显示 EmptyStateAllSections
+□ /connections PREBUILT Naver 子组"添加连接" → dialog → 输入 credential → 创建 connection → 卡片出现
+□ 进入 /tools → Naver 工具徽章切换为"已认证（绿色）"
+□ 点击 Connection 卡片 → 打开 Drawer → 使用 tool 列表中显示 Naver 工具名称
+□ Drawer status toggle "禁用" → /tools 徽章无回归地切换为"未认证（amber）"
+□ CUSTOM：/tools "添加工具" → Custom 标签页 → 创建 credential → 注册 tool → /connections CUSTOM 区域出现 connection 卡片
+□ 使用同一 credential 再注册一个 CUSTOM 工具 → connection 保持 1 个，Drawer 显示使用 tool 2 项
+□ MCP：/tools "添加工具" → MCP 标签页 → URL + credential → 注册 server → /tools 显示 MCP 卡片
+□ MCP 卡片菜单"认证" → 打开 ConnectionBindingDialog(type='mcp') → 更换 credential → 更新 server.credential
+□ Drawer 删除按钮：使用 tool >0 时 disabled + amber 警告
+□ 删除工具后启用 Drawer 删除 → 删除 → 移除卡片 + 保留 credential（在 CredentialFormDialog 中确认存在）
+□ 键盘导航：Drawer 内 Tab 顺序、ESC 关闭、focus trap
+```
+
+---
+
+## 4. 发现的问题
+
+**无** — 代码路径静态追踪 + 自动回归全量 PASS。贝索斯 S1 的 5 项风险全部解决：
+
+| S1 风险 | 解决路径 |
 |---------|-----------|
-| #1 getAuthStatus 회귀 | bridge 보존 정책으로 현 M5 변경 0, §1.7 테이블로 입증 |
-| #2 CUSTOM bridge override 처리 | spec v2 §66 반영 — `connection.credential_id`만 PATCH |
-| #3 MCP server/credential UX 분리 | spec §3.3 옵션 A 채택 — AddToolDialog 재사용 |
-| #4 Credential 삭제 semantics | Drawer에서 "이 연결만 삭제" 명시 + credential 고아 허용 |
-| #5 add-tool-dialog MCP 탭 흡수 범위 | 미흡수 결정 — server create은 기존 탭 유지 |
+| #1 getAuthStatus 回归 | 通过 bridge 保留策略，当前 M5 修改 0，§1.7 表格证明 |
+| #2 CUSTOM bridge override 处理 | 应用 spec v2 §66 — 仅 PATCH `connection.credential_id` |
+| #3 MCP server/credential UX 分离 | 采用 spec §3.3 选项 A — 复用 AddToolDialog |
+| #4 Credential 删除 semantics | Drawer 中明确"仅删除此连接" + 允许 credential 孤立 |
+| #5 add-tool-dialog MCP 标签页吸收范围 | 决定不吸收 — server create 保留现有标签页 |
 
 ---
 
-## 5. S6 게이트 권고
+## 5. S6 gate 建议
 
-**PASS → S6 진입 허용**. 사티아에게:
-- 자동 회귀 전수 통과
-- 코드 경로 불변식 전수 검증
-- 베조스 S1 위험 5건 해소 완료
-- 백엔드 변경 0건 확인
+**PASS → 允许进入 S6**。给 Satya：
+- 自动回归全量通过
+- 全量验证代码路径 invariant
+- 贝索斯 S1 的 5 项风险已全部解决
+- 确认 backend 修改 0 项
 
-**단서**: 위 §3 브라우저 실측 체크리스트는 S6 PR 리뷰 또는 사용자 최종 확인 단계에서 수행 필요. 베조스는 e2e-agent-browser 가동 가능 — 사티아가 요청하면 수행.
+**说明**: 上述 §3 浏览器实测检查清单需在 S6 PR review 或用户最终确认阶段执行。贝索斯可运行 e2e-agent-browser — Satya 请求时执行。

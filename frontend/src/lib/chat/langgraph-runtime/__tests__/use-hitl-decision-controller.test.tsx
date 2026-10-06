@@ -288,7 +288,7 @@ describe('useHitlDecisionController', () => {
     const oldPayload: StandardInterruptPayload = {
       ...payload,
       action_requests: [
-        { name: 'ask_user', args: { question: '계속할까요?' } },
+        { name: 'ask_user', args: { question: '要继续吗？' } },
         { name: 'send_email', args: { to: 'old@example.com' } },
       ],
       review_configs: [
@@ -300,7 +300,7 @@ describe('useHitlDecisionController', () => {
       ...oldPayload,
       namespace: ['tools:new-generation'],
       action_requests: [
-        { name: 'ask_user', args: { question: '새 작업을 계속할까요?' } },
+        { name: 'ask_user', args: { question: '要继续新任务吗？' } },
         { name: 'send_email', args: { to: 'new@example.com' } },
       ],
     }
@@ -322,8 +322,8 @@ describe('useHitlDecisionController', () => {
 
     const staleDecision = result.current.registerDecision(
       0,
-      { type: 'respond', message: '네' },
-      '네',
+      { type: 'respond', message: '是' },
+      '是',
       oldPayload.interrupt_id,
     )
     const staleRejection = expect(staleDecision).rejects.toMatchObject({ name: 'AbortError' })
@@ -333,8 +333,8 @@ describe('useHitlDecisionController', () => {
 
     const first = result.current.registerDecision(
       0,
-      { type: 'respond', message: '계속' },
-      '계속',
+      { type: 'respond', message: '继续' },
+      '继续',
       nextPayload.interrupt_id,
     )
     const second = result.current.registerDecision(
@@ -348,7 +348,7 @@ describe('useHitlDecisionController', () => {
     expect(stream.respond).toHaveBeenCalledOnce()
     expect(stream.respond).toHaveBeenCalledWith(
       {
-        decisions: [{ type: 'respond', message: '계속' }, { type: 'approve' }],
+        decisions: [{ type: 'respond', message: '继续' }, { type: 'approve' }],
       },
       { interruptId: nextPayload.interrupt_id, namespace: ['tools:new-generation'] },
     )

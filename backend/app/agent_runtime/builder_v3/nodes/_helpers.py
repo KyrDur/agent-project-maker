@@ -1,12 +1,13 @@
-"""Builder v3 노드 공통 헬퍼.
+"""Builder v3 节点通用辅助函数。
 
-- ToolMessage 페어(AIMessage + ToolMessage) 생성 — assistant-ui Tool UI용
-- 진행 상황 카드 emit
-- 텍스트 메시지 emit
+- 生成 ToolMessage 对（AIMessage + ToolMessage）— 用于 assistant-ui Tool UI
+- emit 进度状态卡
+- emit 文本消息
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import uuid
 from typing import Any
@@ -33,10 +34,10 @@ def make_tool_card(
     *,
     intro_text: str = "",
 ) -> tuple[list[BaseMessage], str]:
-    """assistant-ui가 렌더링하는 Tool UI 카드 (AIMessage + ToolMessage 페어)를 만든다.
+    """创建 assistant-ui 渲染的 Tool UI 卡片（AIMessage + ToolMessage 对）。
 
-    데이터 표시용 카드 (phase_timeline 등 결과만 보여주면 되는 경우).
-    HiTL 입력 폼이 필요한 카드는 ``make_pending_tool_card`` 를 사용한다.
+    用于显示数据的卡片（仅需展示 phase_timeline 等结果的情况）。
+    需要 HiTL 输入表单的卡片使用 ``make_pending_tool_card``。
 
     Returns:
         (messages, tool_call_id)
@@ -60,12 +61,12 @@ def make_pending_tool_card(
     *,
     intro_text: str = "",
 ) -> tuple[list[BaseMessage], str]:
-    """HiTL 입력 폼용 — AIMessage(tool_calls)만 emit하고 ToolMessage는 생략한다.
+    """用于 HiTL 输入表单 — 仅 emit AIMessage(tool_calls)，省略 ToolMessage。
 
-    assistant-ui가 ``result === undefined`` 로 인식하여 입력 폼(요청 처리 대기)을
-    렌더링하도록 하는 패턴. 사용자가 응답한 후 wait 노드에서
-    ``close_pending_tool_card`` 로 ToolMessage를 추가하면 status가 complete로 전환되어
-    카드가 더 이상 actionable하지 않게 된다.
+    assistant-ui 将其识别为 ``result === undefined``，从而显示输入表单（等待处理请求）
+    的模式。用户响应后，在 wait 节点中
+    通过 ``close_pending_tool_card`` 添加 ToolMessage，status 切换为 complete，
+    使卡片不再 actionable。
 
     Returns:
         (messages, tool_call_id)
@@ -83,12 +84,12 @@ def close_pending_tool_card(
     tool_name: str,
     summary: str,
 ) -> list[BaseMessage]:
-    """wait 노드 응답 처리 후 pending 카드를 close (status='complete'로 전환).
+    """wait 节点处理响应后 close pending 卡片（切换为 status='complete'）。
 
-    ToolMessage(tool_call_id=...)를 emit하여 frontend의 result를 채운다.
-    stale 카드가 다시 actionable해지지 않도록 한다.
+    emit ToolMessage(tool_call_id=...)，填充 frontend 的 result。
+    防止 stale 卡片再次变为 actionable。
 
-    tool_call_id가 None이면 빈 리스트 반환 (no-op).
+    如果 tool_call_id 为 None，则返回空列表（no-op）。
     """
     if not tool_call_id:
         return []
@@ -102,10 +103,13 @@ def close_pending_tool_card(
 
 
 def parse_approval_response(response: Any) -> tuple[bool, str]:
-    """approval interrupt 응답 → (approved, revision_text) 정규화.
+    """approval interrupt 响应 → 规范化为 (approved, revision_text)。
 
-    Phase 3/4/5 wait 노드가 공통으로 사용.
+    Phase 3/4/5 wait 节点通用。
     """
+    if isinstance(response, str):
+        with contextlib.suppress(ValueError):
+            response = json.loads(response)
     if isinstance(response, dict):
         approved = bool(response.get("approved"))
         revision = response.get("revision_message") or response.get("message") or ""
@@ -120,18 +124,18 @@ def parse_choice_response(
     *,
     prompt_keys: tuple[str, ...] = ("prompt", "auto_prompt"),
 ) -> tuple[str, str]:
-    """phase6 image_choice/image_approval interrupt 응답 → (choice, prompt) 정규화.
+    """phase6 image_choice/image_approval interrupt 响应 → 规范化为 (choice, prompt)。
 
-    수용 형식:
+    接受格式:
     - dict: ``{"choice": "...", "prompt"|"auto_prompt": "..."}`` (canonical)
-    - str: 단일 옵션 라벨 (e.g. ``"skip"``, ``"generate"``, ``"确认"``)
-    - str (JSON): ``'{"choice":"skip","prompt":"..."}'`` — frontend 에서 dict
-      의도로 JSON.stringify 한 페이로드가 router 어댑터의 ``respond`` 분기에서
-      string 으로 전달된 경우 backward-compatible 하게 dict 분기로 fallthrough.
+    - str: 单个选项标签 (e.g. ``"skip"``, ``"generate"``, ``"确认"``)
+    - str (JSON): ``'{"choice":"skip","prompt":"..."}'`` — frontend 以 dict
+      意图执行 JSON.stringify 后的载荷，如果在 router 适配器的 ``respond`` 分支中
+      以 string 形式传递，则以 backward-compatible 方式 fallthrough 到 dict 分支。
 
-    JSON.parse 가 dict 가 아니거나 실패하면 평범한 string 옵션으로 취급한다.
+    如果 JSON.parse 结果不是 dict 或解析失败，则按普通 string 选项处理。
     """
-    # JSON 문자열 fallback — dict 의도가 string 으로 직렬화된 경우 복원
+    # JSON 字符串 fallback — 恢复原本意图为 dict、但被序列化成 string 的情况
     if isinstance(response, str):
         stripped = response.strip()
         if stripped.startswith("{") and stripped.endswith("}"):
@@ -140,7 +144,7 @@ def parse_choice_response(
                 if isinstance(parsed, dict):
                     response = parsed
             except (json.JSONDecodeError, ValueError):
-                pass  # 평범한 string — 그대로 진행
+                pass  # 普通 string — 原样继续
 
     if isinstance(response, dict):
         choice = str(response.get("choice", "")).lower()
@@ -159,12 +163,12 @@ def parse_choice_response(
 def parse_question_flow_response(
     response: Any,
 ) -> tuple[dict[str, list[str]], dict[str, str]]:
-    """ask_user question_flow resume 응답 → (answers, labels) 정규화.
+    """ask_user question_flow resume 响应 → 规范化为 (answers, labels)。
 
-    Frontend는 현재 ``respond(message)`` contract를 유지하기 위해 structured
-    selection을 JSON string으로 보낸다. Builder wait 노드는 이 값을 복원하고,
-    legacy plain string 응답은 빈 structured 응답으로 돌려 backward compatibility를
-    유지한다.
+    Frontend 为保持当前 ``respond(message)`` contract，将 structured
+    selection 作为 JSON string 发送。Builder wait 节点恢复该值，
+    legacy plain string 响应则转为空 structured 响应，以保持 backward compatibility
+    。
     """
     if isinstance(response, str):
         stripped = response.strip()
@@ -214,14 +218,14 @@ def build_approval_result(
     revision_default: str,
     clear_field: str,
 ) -> dict[str, Any]:
-    """phase 3/4/5 approval 응답을 dict로 변환 (라우팅은 conditional_edges가).
+    """将 phase 3/4/5 approval 响应转换为 dict（路由由 conditional_edges 决定）。
 
-    승인 시: completion 메시지 + ``current_phase`` 전진 + 카드 close.
-    수정 시: ``last_revision_message`` 만 set + 카드 close. **list 형 필드 (tools,
-    middlewares) 는 clear 하지 않는다** — 다음 self-loop 의 추천기가 직전
-    값을 "수정 대상" 컨텍스트로 LLM 에 전달해 사용자 한정 표현 ("이것만"
-    등) 을 정확히 반영하기 위함. ``system_prompt`` 같은 단일 텍스트 필드는
-    clear 해 강제 재생성.
+    批准时: completion 消息 + ``current_phase`` 前进 + 卡片 close。
+    修改时: 仅 set ``last_revision_message`` + 卡片 close。**不 clear list 类型字段 (tools,
+    middlewares)** — 下一次 self-loop 的推荐器将此前
+    值作为 "修改对象" 上下文传给 LLM，以准确反映用户限定表达 ("只要这个"
+    等)。像 ``system_prompt`` 这样的单一文本字段则
+    clear 以强制重新生成。
     """
     if approved:
         close_msgs = close_pending_tool_card(pending_tc_id, tool_name, tr("approved_4131b9"))
@@ -242,15 +246,15 @@ def build_approval_result(
         "last_revision_message": revision_text,
         "pending_tool_call_id": None,
     }
-    # 리스트 필드 (tools/middlewares) 는 보존 — 다음 추천기 LLM 입력으로 사용.
-    # 텍스트 필드 (system_prompt) 만 None 으로 clear.
+    # 保留列表字段（tools/middlewares）— 作为下一次推荐器 LLM 的输入。
+    # 仅将文本字段（system_prompt）clear 为 None。
     if clear_field not in ("tools", "middlewares"):
         result[clear_field] = None
     return result
 
 
 def build_phase_intro(phase_id: int, todos: list[PhaseTodo] | None) -> list[BaseMessage]:
-    """Phase 진입 시 표시할 메시지: 진행 상황 카드(in_progress) + 짧은 인사."""
+    """进入 Phase 时显示的消息：进度状态卡(in_progress) + 简短问候。"""
     new_todos = update_phase_status(todos, phase_id, "in_progress")
     msgs, _ = make_tool_card(
         PHASE_TIMELINE_TOOL,
@@ -267,7 +271,7 @@ def build_phase_complete(
     todos: list[PhaseTodo] | None,
     summary_text: str,
 ) -> list[BaseMessage]:
-    """Phase 완료 시: 완료 처리된 진행 상황 카드 + 요약 메시지."""
+    """Phase 完成时：已完成处理的进度状态卡 + 摘要消息。"""
     new_todos = mark_completed_through(todos, phase_id)
     msgs, _ = make_tool_card(
         PHASE_TIMELINE_TOOL,
@@ -278,10 +282,10 @@ def build_phase_complete(
 
 
 def _extract_text_from_content(content: Any) -> str:
-    """LangChain Message.content (str | list[block]) → plain string.
+    """LangChain Message.content (str | list[块]) → plain string。
 
-    Anthropic multi-block content (e.g. [{"type": "text", "text": "..."}, ...])
-    를 raw stringify 대신 텍스트 블록만 추출한다.
+    对 Anthropic multi-block content (e.g. [{"type": "text", "text": "..."}, ...])
+    不做 raw stringify，而只提取文本 block。
     """
     if isinstance(content, str):
         return content
@@ -299,7 +303,7 @@ def _extract_text_from_content(content: Any) -> str:
 
 
 def get_last_user_text(state: BuilderState) -> str:
-    """state.messages에서 마지막 HumanMessage 텍스트를 가져온다."""
+    """从 state.messages 获取最后一条 HumanMessage 文本。"""
     for msg in reversed(state.get("messages") or []):
         if isinstance(msg, HumanMessage):
             return _extract_text_from_content(msg.content)
@@ -311,5 +315,5 @@ def ensure_todos(state: BuilderState) -> list[PhaseTodo]:
 
 
 def updated_todos_after(phase_id: int, todos: list[PhaseTodo] | None) -> list[PhaseTodo]:
-    """Phase X 완료 후의 todos: 1..X completed, X+1 in_progress 후보(pending 유지)."""
+    """Phase X 完成后的 todos：1..X completed，X+1 作为 in_progress 候选（保持 pending）。"""
     return mark_completed_through(todos, phase_id)

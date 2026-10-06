@@ -135,7 +135,7 @@ export function buildScheduleRequest(
           trigger_type: 'interval',
           schedule_config: { interval_minutes: form.intervalMinutes },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )
@@ -146,7 +146,7 @@ export function buildScheduleRequest(
           trigger_type: 'one_time',
           schedule_config: { scheduled_at: new Date(form.scheduledAt).toISOString() },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )
@@ -157,7 +157,7 @@ export function buildScheduleRequest(
           trigger_type: 'cron',
           schedule_config: { cron_expression: `${form.minute} ${form.hour} * * *` },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )
@@ -169,7 +169,7 @@ export function buildScheduleRequest(
           trigger_type: 'cron',
           schedule_config: { cron_expression: `${form.minute} ${form.hour} * * ${days}` },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )
@@ -183,7 +183,7 @@ export function buildScheduleRequest(
             cron_expression: `${form.minute} ${form.hour} ${form.monthDay} * *`,
           },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )
@@ -194,7 +194,7 @@ export function buildScheduleRequest(
           trigger_type: 'cron',
           schedule_config: { cron_expression: form.cronExpression.trim() },
           input_message: options.inputMessage.trim() || DEFAULT_SCHEDULE_INPUT_MESSAGE,
-          timezone: 'Asia/Seoul',
+          timezone: 'Asia/Shanghai',
         },
         options,
       )

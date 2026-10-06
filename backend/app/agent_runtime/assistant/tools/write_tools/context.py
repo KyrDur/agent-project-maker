@@ -1,9 +1,9 @@
-"""Assistant 쓰기 도구 — 공유 컨텍스트.
+"""Assistant 写入工具 — 共享上下文。
 
-클로저 캡처(agent_id/user_id/async_session_factory) 대신 명시적 객체로 전달한다.
-`session_factory`는 `build_write_tools`가 호출 시점에 패키지 전역
-`async_session_factory`를 읽어 주입한다 (테스트 monkeypatch 표면 유지 —
-그룹 모듈이 `async_session_factory`를 직접 import하면 patch를 우회하므로 금지).
+不使用闭包捕获(agent_id/user_id/async_session_factory)，而是通过显式对象传递。
+`session_factory` 由 `build_write_tools` 在调用时读取包级全局
+`async_session_factory` 并注入（保留测试 monkeypatch 表面 —
+如果组模块直接对 `async_session_factory` 执行 import，会绕过 patch，因此禁止）。
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from app.models.agent import Agent
 
 @dataclass(frozen=True)
 class WriteToolContext:
-    """쓰기 도구 그룹 빌더가 공유하는 실행 컨텍스트."""
+    """写入工具组构建器共享的执行上下文。"""
 
     session_factory: Callable[[], AsyncSession]
     agent_id: uuid.UUID

@@ -410,9 +410,9 @@ def _provider_wire_shape(
         # GPT-5 family — new field name, no temperature override.
         body["max_completion_tokens"] = TEST_COMPLETION_TOKEN_CAP
     else:
-        # cap = 200: reasoning 미지원 모델 = 항상 짧은 응답이라 비용 동일,
-        # reasoning 모델 (qwen reasoning, deepseek-r 등) 은 hidden CoT 토큰
-        # 소진 후에도 "pong" 한 단어가 visible content 로 남을 여유.
+        # cap = 200: 不支持 reasoning 的模型 = 始终为短响应，成本相同，
+        # reasoning 模型（qwen reasoning、deepseek-r 等）在 hidden CoT token
+        # 用尽后，也给 "pong" 这一单词的 visible content 留出空间。
         body["max_tokens"] = TEST_COMPLETION_TOKEN_CAP
         body["temperature"] = 0
     headers: dict[str, str] = {"Content-Type": "application/json"}

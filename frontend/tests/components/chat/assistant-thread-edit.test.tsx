@@ -29,7 +29,7 @@ vi.mock('@assistant-ui/react', () => {
       If: ({ children }: { children?: ReactNode }) => <>{children}</>,
     },
     MessagePrimitive: {
-      Content: () => <span>메시지</span>,
+      Content: () => <span>消息</span>,
     },
     ComposerPrimitive: {
       Root: ({ children, className }: { children?: ReactNode; className?: string }) => {

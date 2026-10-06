@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * 스킬 단위 휴먼 피드백 카드 (Phase 3 §7, D2) — up/down + 코멘트.
- * 표시 전용: 통과율/health 계산에 반영되지 않는다.
+ * 技能级人工反馈卡片 (Phase 3 §7, D2) — up/down + 评论。
+ * 仅用于显示：不计入通过率/health 计算。
  */
 
 import { useState } from 'react'

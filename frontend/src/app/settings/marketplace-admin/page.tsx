@@ -15,12 +15,7 @@ import { OriginBadge } from '@/components/marketplace/badges/origin-badge'
 import { PublicationBadge } from '@/components/marketplace/badges/publication-badge'
 import { useSession } from '@/lib/auth/session'
 import { ApiError } from '@/lib/api/client'
-import {
-  useAdminSetListed,
-  useDisableItem,
-  useKSkillSyncStatus,
-  useModerationQueue,
-} from '@/lib/hooks/use-marketplace'
+import { useAdminSetListed, useDisableItem, useModerationQueue } from '@/lib/hooks/use-marketplace'
 import { formatMediumDate } from '@/lib/utils/format-relative-time'
 import { SettingsShell } from '../_components/settings-shell'
 
@@ -30,7 +25,6 @@ export default function MarketplaceAdminPage() {
   const { data: user, isLoading: userLoading } = useSession()
   const superUser = !!user?.is_super_user
   const { data: queue, isLoading } = useModerationQueue(superUser)
-  const { data: kSkillStatus } = useKSkillSyncStatus(superUser)
   const disable = useDisableItem()
   const setListed = useAdminSetListed()
 
@@ -145,38 +139,6 @@ export default function MarketplaceAdminPage() {
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-sm">{t('syncTitle')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {kSkillStatus ? (
-              <>
-                <p>
-                  <span className="text-muted-foreground">{t('sync.count')} </span>
-                  <span className="font-medium">{kSkillStatus.count}</span>
-                </p>
-                <p>
-                  <span className="text-muted-foreground">{t('sync.lastUpdated')} </span>
-                  <span className="font-medium">
-                    {kSkillStatus.last_updated_at
-                      ? formatMediumDate(kSkillStatus.last_updated_at)
-                      : '-'}
-                  </span>
-                </p>
-              </>
-            ) : (
-              <p className="text-muted-foreground">{t('loading')}</p>
-            )}
-            <pre className="overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">
-              {t('sync.command')}
-            </pre>
-            <p className="break-keep text-pretty text-xs text-muted-foreground">
-              {t('sync.cliOnly')}
-            </p>
           </CardContent>
         </Card>
       </div>

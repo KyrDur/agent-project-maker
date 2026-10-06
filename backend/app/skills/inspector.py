@@ -56,12 +56,12 @@ def parse_skill_md(
         post = frontmatter.loads(raw)
         metadata = dict(post.metadata or {})
     except Exception as exc:
-        # 하위 파서의 예외 표면은 열거 불가다: yaml.YAMLError(파서 오류)뿐
-        # 아니라 non-string 최상위 키(`on:`/날짜/정수)는 Post(**metadata)에서
-        # TypeError, 깊은 중첩은 RecursionError를 던진다 — 소비자들이 예외
-        # tuple 열거로 따라잡으려다 rollback 409/500 비대칭이 3라운드 연속
-        # 재발했다(R7~R8). leaf에서 계약 타입(SkillMetadataError=ValueError)
-        # 으로 정규화한다. 좁은 래핑이라 프로그래밍 오류 은폐 표면도 작다.
+        # 下游 parser 的异常表面无法穷举：不仅 yaml.YAMLError（parser 错误），
+        # non-string 顶层 key（`on:`/日期/整数）还会在 Post(**metadata) 中触发
+        # TypeError，深度嵌套会抛 RecursionError — 消费方试图通过枚举异常
+        # tuple 追赶时，rollback 409/500 不对称已连续 3 轮
+        # 再次发生（R7~R8）。在 leaf 中按契约类型（SkillMetadataError=ValueError）
+        # 进行规范化。由于包装范围窄，隐藏编程错误的表面也很小。
         raise SkillMetadataError(f"invalid SKILL.md frontmatter: {exc}") from exc
     if require_metadata:
         validate_skill_metadata(metadata)

@@ -103,34 +103,34 @@ export const REALISTIC_AGENTS: ReadonlyArray<{
   readonly system_prompt: string
 }> = [
   {
-    name: '핏라이프 멤버십 지원봇',
-    description: '헬스장 멤버십 문의·예약·취소를 처리하는 고객지원 에이전트',
+    name: 'FitLife 会员支持机器人',
+    description: '处理健身房会员咨询、预约和取消的客户支持 Agent',
     system_prompt:
-      '당신은 핏라이프 피트니스의 고객지원 상담원입니다. 멤버십 크레딧 조회, 수업 예약, 멤버십 취소를 도와줍니다. 한 번에 하나씩, 친절하고 간결하게 응대하세요.',
+      '你是 FitLife Fitness 的客户支持客服。帮助查询会员积分、预约课程和取消会员。一次只处理一件事，友好且简洁地回应。',
   },
   {
-    name: '여행 일정 플래너',
-    description: '목적지·기간·예산을 받아 맞춤 여행 일정을 설계하는 에이전트',
+    name: '旅行行程规划器',
+    description: '根据目的地、时长和预算设计定制旅行行程的 Agent',
     system_prompt:
-      '당신은 여행 플래너입니다. 사용자의 목적지, 기간, 예산, 취향을 파악해 하루 단위 일정과 추천 장소를 제안합니다.',
+      '你是旅行规划师。了解用户的目的地、时长、预算和偏好，按天提供行程和推荐地点。',
   },
   {
-    name: '사내 IT 헬프데스크',
-    description: '비밀번호 초기화·VPN·장비 요청 등 사내 IT 문의를 처리',
+    name: '公司内部 IT 服务台',
+    description: '处理密码重置、VPN、设备申请等公司内部 IT 咨询',
     system_prompt:
-      '당신은 사내 IT 헬프데스크 상담원입니다. 비밀번호 초기화, VPN 연결, 장비 신청 절차를 안내합니다.',
+      '你是公司内部 IT 服务台客服。指导密码重置、VPN 连接和设备申请流程。',
   },
   {
-    name: '제품 피드백 요약봇',
-    description: '고객 리뷰와 설문을 분석해 핵심 인사이트를 요약',
+    name: '产品反馈摘要机器人',
+    description: '分析客户评论和问卷并总结核心洞察',
     system_prompt:
-      '당신은 제품 피드백 분석가입니다. 고객 리뷰를 주제별로 분류하고 긍정/부정 신호와 개선 우선순위를 요약합니다.',
+      '你是产品反馈分析师。按主题分类客户评论，并总结正面/负面信号和改进优先级。',
   },
   {
-    name: '마케팅 카피 어시스턴트',
-    description: '캠페인 문구·SNS 게시물·이메일 카피 초안을 생성',
+    name: '营销文案助手',
+    description: '生成活动文案、SNS 帖子和邮件文案草稿',
     system_prompt:
-      '당신은 마케팅 카피라이터입니다. 브랜드 톤에 맞춰 광고 문구, SNS 게시물, 이메일 제목을 여러 안으로 제안합니다.',
+      '你是营销文案撰稿人。根据品牌语调，为广告文案、SNS 帖子和邮件标题提供多个方案。',
   },
 ]
 
@@ -217,17 +217,17 @@ export async function createRichAgent(
   const skillId = await installDocxSkill(request, csrfHeaders)
   const toolIds = await systemToolIds(request, 3)
   const child = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '예약 처리 보조',
-    description: '수업 예약/취소 전용 서브에이전트',
-    system_prompt: '예약과 취소만 전담합니다.',
+    name: '预约处理助手',
+    description: '课程预约/取消专用子 Agent',
+    system_prompt: '只负责预约和取消。',
     model_id: modelId,
   })
   const childId = isRecord(child) && typeof child.id === 'string' ? child.id : null
   const agent = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '핏라이프 멤버십 지원봇',
-    description: '헬스장 멤버십 문의·예약·취소를 처리하는 고객지원 에이전트',
+    name: 'FitLife 会员支持机器人',
+    description: '处理健身房会员咨询、预约和取消的客户支持 Agent',
     system_prompt:
-      '당신은 핏라이프 피트니스의 고객지원 상담원입니다. 멤버십 크레딧 조회, 수업 예약, 멤버십 취소를 도와줍니다. 한 번에 하나씩, 친절하고 간결하게 응대하세요.',
+      '你是 FitLife Fitness 的客户支持客服。帮助查询会员积分、预约课程和取消会员。一次只处理一件事，友好且简洁地回应。',
     model_id: modelId,
     tool_ids: toolIds,
     skill_ids: skillId ? [skillId] : [],
@@ -259,23 +259,23 @@ export async function createConfiguredAgent(
   const skillId = await installDocxSkill(request, csrfHeaders)
   const toolIds = await systemToolIds(request, 3)
   const child = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '예약 처리 보조',
-    description: '수업 예약/취소 전용 서브에이전트',
-    system_prompt: '예약과 취소만 전담합니다.',
+    name: '预约处理助手',
+    description: '课程预约/取消专用子 Agent',
+    system_prompt: '只负责预约和取消。',
     model_id: modelId,
   })
   const childId = isRecord(child) && typeof child.id === 'string' ? child.id : null
   const agent = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '핏라이프 멤버십 지원봇',
-    description: '헬스장 멤버십 문의·예약·취소를 처리하는 고객지원 에이전트',
+    name: 'FitLife 会员支持机器人',
+    description: '处理健身房会员咨询、预约和取消的客户支持 Agent',
     system_prompt:
-      '당신은 핏라이프 피트니스의 고객지원 상담원입니다. 멤버십 크레딧 조회, 수업 예약, 멤버십 취소를 도와줍니다. 한 번에 하나씩, 친절하고 간결하게 응대하세요.',
+      '你是 FitLife Fitness 的客户支持客服。帮助查询会员积分、预约课程和取消会员。一次只处理一件事，友好且简洁地回应。',
     model_id: modelId,
     identity_mode: 'fixed',
     opener_questions: [
-      '멤버십 크레딧이 얼마나 남았는지 알려줘',
-      '이번 주 요가 수업을 예약하고 싶어',
-      '멤버십을 취소하려면 어떻게 해?',
+      '告诉我会员积分还剩多少',
+      '我想预约本周的瑜伽课',
+      '要怎么取消会员？',
     ],
     tool_ids: toolIds,
     skill_ids: skillId ? [skillId] : [],
@@ -293,10 +293,10 @@ export async function addIntervalTrigger(
   minutes: number,
 ): Promise<void> {
   await apiPostJson(request, `${API_BASE}/api/agents/${agentId}/triggers`, csrfHeaders, {
-    name: '매일 멤버십 리포트',
+    name: '每日会员报告',
     trigger_type: 'interval',
     schedule_config: { interval_minutes: minutes },
-    input_message: '오늘의 멤버십 현황을 요약해줘.',
+    input_message: '总结一下今天的会员情况。',
   }).catch(() => {})
 }
 

@@ -6,15 +6,15 @@ describe('SettingsSectionCard', () => {
     render(
       <SettingsSectionCard
         title="配置模型"
-        description="기본 모델과 자격증명을 관리합니다."
-        actions={<button type="button">저장</button>}
+        description="管理默认模型和凭证。"
+        actions={<button type="button">保存</button>}
       >
         <div>section body</div>
       </SettingsSectionCard>,
     )
 
     expect(screen.getByRole('heading', { name: '配置模型' })).toBeInTheDocument()
-    expect(screen.getByText('기본 모델과 자격증명을 관리합니다.')).toBeInTheDocument()
+    expect(screen.getByText('管理默认模型和凭证。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument()
     expect(screen.getByText('section body')).toBeInTheDocument()
   })

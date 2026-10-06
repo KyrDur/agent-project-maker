@@ -198,7 +198,7 @@ export function buildDownloadFilename(
   const cleanBase = fallbackBase
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣._-]+/gi, '-')
+    .replace(/[^a-z0-9一-鿿._-]+/gi, '-')
     .replace(/^-+|-+$/g, '')
   return `${cleanBase || 'chat-visual'}.${fallbackExtension}`
 }
@@ -413,12 +413,12 @@ Add this under `chat` in `frontend/messages/ko.json`:
 
 ```json
 "visualExport": {
-  "download": "이미지 다운로드",
-  "copy": "이미지 복사",
-  "downloaded": "이미지를 다운로드했어요.",
-  "copied": "이미지를 클립보드에 복사했어요.",
-  "downloadFailed": "이미지 다운로드에 실패했습니다.",
-  "copyFailed": "이미지 복사에 실패했습니다."
+  "download": "下载图片",
+  "copy": "复制图片",
+  "downloaded": "图片已下载。",
+  "copied": "图片已复制到剪贴板。",
+  "downloadFailed": "图片下载失败。",
+  "copyFailed": "图片复制失败。"
 }
 ```
 
@@ -643,8 +643,8 @@ it('downloads and copies the original image source instead of the preview source
   expect(img).not.toBeNull()
   fireEvent.load(img as HTMLImageElement)
 
-  fireEvent.click(view.getByLabelText('이미지 다운로드'))
-  fireEvent.click(view.getByLabelText('이미지 복사'))
+  fireEvent.click(view.getByLabelText('下载图片'))
+  fireEvent.click(view.getByLabelText('复制图片'))
 
   await waitFor(() => {
     expect(downloadRemoteImage).toHaveBeenCalledWith(
@@ -783,8 +783,8 @@ describe('MermaidDiagram', () => {
       expect(mermaid.render).toHaveBeenCalled()
     })
 
-    fireEvent.click(screen.getByLabelText('이미지 다운로드'))
-    fireEvent.click(screen.getByLabelText('이미지 복사'))
+    fireEvent.click(screen.getByLabelText('下载图片'))
+    fireEvent.click(screen.getByLabelText('复制图片'))
 
     await waitFor(() => {
       expect(downloadMermaidSvgAsPng).toHaveBeenCalledWith(

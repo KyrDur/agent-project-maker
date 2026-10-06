@@ -61,19 +61,19 @@ export function SkillsPageClient() {
     setCreateOpen(true)
   }
 
-  // 상세는 다이얼로그가 아니라 스튜디오 라우트 — 레거시 `?detailId=` 진입은
-  // page.tsx 서버 redirect가 흡수한다 (Phase 2).
+  // detail 不是 dialog，而是 studio route — legacy `?detailId=` 入口由
+  // page.tsx server redirect 吸收（Phase 2）。
   function openDetail(id: string) {
     router.push(`/skills/${id}/source`)
   }
 
-  // 빌더 챗 진입 — 세션 시작/라우팅/실패 토스트는 공유 launcher가 소유한다.
-  // 다이얼로그는 onStartChat 직후 스스로 닫히므로 여기서 닫기를 관리하지 않는다.
+  // 进入 builder chat — session 启动/routing/失败 toast 由共享 launcher 管理。
+  // dialog 会在 onStartChat 后立即自行关闭，因此这里不管理关闭。
   function openBuilderCreate(request: string) {
     void launcher.startCreate(request)
   }
 
-  // 목록 표의 행 "编辑" — 목업 계약대로 improve 빌더 세션을 바로 시작한다.
+  // list 表格中的 row "编辑" — 按 mock 契约直接启动 improve builder session。
   function openBuilderImprove(skillId: string) {
     void launcher.startImprove(skillId)
   }
@@ -81,8 +81,8 @@ export function SkillsPageClient() {
   const data = useMemo(() => skills ?? [], [skills])
 
   const filteredSkills = useMemo(() => {
-    // 스프레드는 useMemo 안에서 1회 — 렌더마다 새 identity를 만들면
-    // DataTable 선택 통지 effect가 재순환한다 (리뷰 R).
+    // spread 在 useMemo 内只执行一次 — 如果每次 render 都创建新 identity，
+    // DataTable 选择通知 effect 会循环触发（review R）。
     return [
       ...filterSkillList(data, {
         kind: activeTab,

@@ -19,7 +19,7 @@ import type { Model } from '@/lib/types/model'
 
 /**
  * Credential definition keys that supply LLM API access. Used by the picker
- * to filter out non-LLM rows (Naver search, Google search, MCP OAuth, ...).
+ * to filter out non-LLM rows (Google search, MCP OAuth, ...).
  * Kept in one place so a new provider only needs touching here.
  */
 export const LLM_DEFINITION_KEYS = [

@@ -1,4 +1,4 @@
-"""BuilderSession DB model — Builder v2 빌드 세션 상태 저장."""
+"""BuilderSession DB model — 保存 Builder v2 Build Session 状态。"""
 
 from __future__ import annotations
 
@@ -24,15 +24,15 @@ class BuilderSession(Base):
     current_phase: Mapped[int] = mapped_column(default=0, nullable=False)
     project_path: Mapped[str] = mapped_column(String(500), default="", nullable=False)
 
-    # Phase별 중간 결과 (JSON 컬럼)
+    # 各 Phase 的中间结果（JSON 列）
     intent: Mapped[dict | None] = mapped_column(JSON)  # type: ignore[type-arg]
     tools_result: Mapped[list | None] = mapped_column(JSON)  # type: ignore[type-arg]
     middlewares_result: Mapped[list | None] = mapped_column(JSON)  # type: ignore[type-arg]
     system_prompt: Mapped[str | None] = mapped_column(Text)
     draft_config: Mapped[dict | None] = mapped_column(JSON)  # type: ignore[type-arg]
 
-    # ``ON DELETE SET NULL`` — agent 가 삭제돼도 builder session 은 감사/
-    # 히스토리 트레일 보존을 위해 살아남고 reference 만 끊는다. cascade 아님.
+    # ``ON DELETE SET NULL`` — 即使 agent 被删除，builder session 仍会为审计/
+    # history trail 保留，只断开 reference，并非 cascade。
     agent_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agents.id", ondelete="SET NULL"), nullable=True
     )

@@ -51,7 +51,7 @@ test('keyboard users can skip repeated navigation and return focus to the main c
   errors,
 }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /E2E User/ })).toBeVisible()
 
   await page.keyboard.press('Tab')
   const skipLink = page.getByRole('link', { name: '跳至主要内容' })
@@ -92,7 +92,7 @@ test('dashboard stays within interaction and layout stability budgets', async ({
   errors,
 }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /E2E User님/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /E2E User/ })).toBeVisible()
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>

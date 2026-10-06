@@ -154,7 +154,7 @@ async def test_each_resolved_item_is_bounded_by_utf8_bytes(
 ) -> None:
     seeded = await seed_resource_context(db)
     path = tmp_path / "multibyte.txt"
-    path.write_text("가" * MAX_RESOURCE_CONTEXT_ITEM_BYTES, encoding="utf-8")
+    path.write_text("甲" * MAX_RESOURCE_CONTEXT_ITEM_BYTES, encoding="utf-8")
     attachment = MessageAttachment(
         user_id=seeded.user.id,
         conversation_id=seeded.conversation.id,

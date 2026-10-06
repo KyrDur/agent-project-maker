@@ -76,7 +76,7 @@ describe('SidebarUtilityFooter', () => {
     await user.click(screen.getByRole('button', { name: '深色模式' }))
 
     expect(themeMocks.setTheme).toHaveBeenCalledWith('dark')
-    expect(screen.getByRole('button', { name: '语言' })).toHaveTextContent('KO')
+    expect(screen.getByRole('button', { name: '语言' })).toHaveTextContent('ZH-CN')
     expect(screen.getByRole('button', { name: 'User menu' })).toBeInTheDocument()
   })
 })

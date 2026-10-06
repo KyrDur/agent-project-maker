@@ -132,7 +132,7 @@ test.describe('Health check', () => {
     // Initial healthy chip
     await expect(page.getByText('健康', { exact: true }).first()).toBeVisible()
 
-    // Click "立即查看" action — request fires, list refetches, chip swaps to 주의.
+    // Click "立即查看" action — request fires, list refetches, chip swaps to 注意。
     await page.getByTestId('check-now-model-1').click()
     await expect(page.getByText('警告', { exact: true }).first()).toBeVisible()
   })
@@ -157,6 +157,6 @@ test.describe('Health check', () => {
     await expect(timeline.locator('[data-status]')).toHaveCount(30)
 
     // Latest probe metadata is surfaced in the panel header
-    await expect(page.getByText(/최근 프로브/)).toBeVisible()
+    await expect(page.getByText(/最近探测/)).toBeVisible()
   })
 })

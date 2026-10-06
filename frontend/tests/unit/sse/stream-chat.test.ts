@@ -228,8 +228,8 @@ describe('streamChat', () => {
     await expect(collectEvents('conv-1', 'test')).rejects.toThrow('HTTP 500')
   })
 
-  // body 가 null 인 응답 처리는 fetchEventSource 라이브러리 내부 로직으로
-  // 흡수됐다 — caller side 단위 검증은 더 이상 의미 없음.
+  // body 为 null 的响应处理已被 fetchEventSource library 内部逻辑
+  // 吸收 — caller side 单元验证已无意义。
 
   it('sends correct URL, method, and body', async () => {
     let capturedUrl = ''
@@ -245,7 +245,7 @@ describe('streamChat', () => {
 
     expect(capturedUrl).toBe(`${API_BASE}/api/conversations/conv-42/messages`)
     expect(capturedInit?.method).toBe('POST')
-    // fetchEventSource가 ``Accept: text/event-stream``을 추가 발행 → partial 매칭.
+    // fetchEventSource 添加 ``Accept: text/event-stream`` → partial 匹配。
     expect(capturedInit?.headers).toMatchObject({
       'Content-Type': 'application/json',
     })
@@ -265,8 +265,8 @@ describe('streamChat', () => {
     const controller = new AbortController()
     await collectEvents('conv-1', 'test', controller.signal)
 
-    // fetchEventSource는 caller signal을 자체 AbortController에 link한다 —
-    // 동일 인스턴스가 아닐 수 있으므로 "AbortSignal이 전달됐다"만 검증.
+    // fetchEventSource 会把 caller signal link 到自身 AbortController —
+    // 由于可能不是同一实例，因此只验证"已传递 AbortSignal"。
     expect(capturedSignal).toBeInstanceOf(AbortSignal)
   })
 

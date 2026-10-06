@@ -9,7 +9,7 @@ const packageSkill = {
   id: 'skill-export',
   name: 'Portable Export',
   slug: 'portable-export',
-  description: '포터블 .skill 다운로드를 검증하는 패키지 스킬입니다.',
+  description: '这是用于验证 portable .skill 下载的 package skill。',
   kind: 'package',
   version: '1.0.0',
   storage_path: null,
@@ -75,7 +75,7 @@ test.describe('Skill package export', () => {
       return route.fulfill({ status: 404, json: { detail: pathName } })
     })
 
-    // Phase 2 스튜디오 — 내보내기는 설정 탭이 소유한다 (D1).
+    // Phase 2 studio — export 由 settings tab 管理（D1）。
     await page.goto(`/skills/${packageSkill.id}/settings`)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Portable Export')
 

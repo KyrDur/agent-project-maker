@@ -1,117 +1,117 @@
-# 삭제 분석 보고서 — 백로그 E M1 (Connections 테이블 + CRUD API)
+# 删除分析报告 — Backlog E M1（Connections 表 + CRUD API）
 
-**브랜치**: `feature/connections-table`
-**작성자**: 베조스 (QA)
-**작성일**: 2026-04-18
+**分支**：`feature/connections-table`
+**作者**：贝索斯（QA）
+**编写日期**：2026-04-18
 **ADR**: `docs/design-docs/adr-008-connection-entity.md`
-**스코프 정의**: M1은 `connections` 테이블을 **parallel run** 상태로 신규 추가하는 것만이 목표. 기존 시스템(chat_service, executor, tools, mcp_servers) 영향도 0. 실제 기존 코드 삭제는 M6 `m12_drop_legacy_columns`의 책임.
+**Scope 定义**：M1 的目标仅是在 **parallel run** 状态下新增 `connections` 表。对现有系统（chat_service, executor, tools, mcp_servers）影响度为 0。实际删除现有代码由 M6 `m12_drop_legacy_columns` 负责。
 
 ---
 
-## 분석 원칙
+## 分析原则
 
-ADR-008 §이행 전략(M1~M6 마이그레이션 테이블) + `progress.txt` 파일 경계를 기준으로 M1에서 "제거 또는 단순화"할 수 있는 항목을 식별한다. M1은 신규 추가 전용 마일스톤이므로 **drive-by 삭제는 금지**. 발견한 legacy 자산은 모두 후속 마일스톤 티켓으로 분리한다.
-
----
-
-## 즉시 삭제 가능
-
-**0건.**
-
-M1 스코프(`connections` 테이블 신설 + CRUD API + 신규 테스트)는 추가만 다루며, 기존 파일을 참조하거나 대체하지 않는다. 따라서 이 PR에서 안전하게 지울 수 있는 코드는 존재하지 않는다.
+以 ADR-008 §迁移策略（M1~M6 migration 表）+ `progress.txt` 文件边界为依据，识别 M1 中可 "删除或简化" 的项目。M1 是仅新增专用 milestone，因此**禁止 drive-by 删除**。发现的 legacy 资产全部拆分到后续 milestone ticket。
 
 ---
 
-## 삭제 검토 필요 (후속 마일스톤으로 이월)
+## 可立即删除
 
-아래 항목은 **connection 도입과 장기적으로 중복·불필요**해지지만, ADR-008 §이행 전략에서 M2 이후에 단계적으로 제거하기로 이미 합의된 자산이다. M1에서는 건드리지 않는다.
+**0 项。**
 
-1. **`backend/app/models/tool.py:34-57` — `MCPServer` 테이블 전체**
-   - ADR-008 §이행 전략 M2 (`m9_migrate_mcp_to_connections`): 각 row → `connections(type='mcp', extra_config={url,auth_type,headers,env_vars,...})`로 이관. `url`, `auth_type`, `auth_config`, `credential_id` 모두 connection으로 이동.
-   - 실제 drop: **M6** (`m12_drop_legacy_columns`). M1에서는 read-only 유지.
-   - 권고: **M1 스코프 외.** 건드리지 말 것.
+M1 scope（新建 `connections` 表 + CRUD API + 新测试）只涉及新增，不引用或替换现有文件。因此本 PR 中不存在可安全删除的代码。
+
+---
+
+## 需要评估删除（移交后续 milestone）
+
+以下项目随着 **connection 引入，长期会变得重复·不必要**，但这些资产已在 ADR-008 §迁移策略中约定从 M2 以后逐步删除。M1 中不触碰。
+
+1. **`backend/app/models/tool.py:34-57` — 整个 `MCPServer` 表**
+   - ADR-008 §迁移策略 M2（`m9_migrate_mcp_to_connections`）：各 row → 迁移至 `connections(type='mcp', extra_config={url,auth_type,headers,env_vars,...})`。`url`, `auth_type`, `auth_config`, `credential_id` 全部迁移到 connection。
+   - 实际 drop：**M6**（`m12_drop_legacy_columns`）。M1 中保持 read-only。
+   - 建议：**超出 M1 scope。** 不要触碰。
 
 2. **`backend/app/models/tool.py:75-77` — `Tool.credential_id` FK**
-   - ADR-008 §이행 전략 M4 (`m11_migrate_custom_credentials`): CUSTOM 도구의 기존 `tool.credential_id` → 1 credential = 1 connection으로 이관, 여러 도구가 N:1로 공유.
-   - 실제 drop: **M6**.
-   - 권고: **M1 스코프 외.**
+   - ADR-008 §迁移策略 M4（`m11_migrate_custom_credentials`）：现有 CUSTOM 工具的 `tool.credential_id` → 1 credential = 1 connection 迁移，多个工具以 N:1 共享。
+   - 实际 drop：**M6**。
+   - 建议：**超出 M1 scope。**
 
 3. **`backend/app/models/tool.py:67` — `Tool.mcp_server_id` FK**
-   - ADR-008 §이행 전략 M2에서 `Tool.connection_id` 컬럼을 새로 추가하고 `mcp_server_id` 기반으로 매핑 후, M6에서 drop.
-   - 권고: **M1 스코프 외.**
+   - ADR-008 §迁移策略 M2 中新增 `Tool.connection_id` 列，并基于 `mcp_server_id` 映射后，在 M6 中 drop。
+   - 建议：**超出 M1 scope。**
 
 4. **`backend/app/models/tool.py:73-74` — `Tool.auth_type`, `Tool.auth_config`**
-   - PREBUILT/CUSTOM 도구의 inline auth 설정. connection 도입 후 해석 경로에서 제거됨 (ADR §3, §이행 전략 M6 drop 목록).
-   - 권고: **M1 스코프 외.**
+   - PREBUILT/CUSTOM 工具的 inline auth 设置。引入 connection 后会从解析路径中删除（ADR §3, §迁移策略 M6 drop 列表）。
+   - 建议：**超出 M1 scope。**
 
 5. **`backend/app/models/tool.py:16-31` — `AgentToolLink.config` JSON**
-   - ADR-008 §3 문말: "`agent_tools.config` (기존 JSON)은 M6에서 drop". `agent_tools.connection_id` (M2 추가)로 대체.
-   - 권고: **M1 스코프 외.**
+   - ADR-008 §3 末句："`agent_tools.config`（现有 JSON）在 M6 中 drop"。由 `agent_tools.connection_id`（M2 新增）替代。
+   - 建议：**超出 M1 scope。**
 
-6. **프론트엔드 3개 auth 다이얼로그** (`prebuilt-auth-dialog`, `custom-auth-dialog`, `mcp-server-auth-dialog`)
-   - ADR §결과 "UI 통합": `ConnectionBindingDialog` 1개 + context prop로 M5에서 흡수 (백로그 F).
-   - 권고: **M1 스코프 외.** M5 티켓에서 처리.
+6. **Frontend 3 个 auth dialog**（`prebuilt-auth-dialog`, `custom-auth-dialog`, `mcp-server-auth-dialog`）
+   - ADR §结果 "UI 整合"：1 个 `ConnectionBindingDialog` + context prop 在 M5 中吸收（Backlog F）。
+   - 建议：**超出 M1 scope。** 在 M5 ticket 中处理。
 
 7. **`backend/app/services/credential_service.py:110-119` — `resolve_server_auth`**
-   - 현재: `MCPServer` → credential 또는 inline auth_config의 우선순위 해석 헬퍼.
-   - connection 경유 해석으로 전환되면(M2) 단계적으로 dead path가 된다. 다만 M2 이관 중에도 legacy 경로가 공존하므로 **M2 완료 후까지는 유지** — 최종 제거는 M6 legacy drop과 동시.
-   - 권고: **M1 스코프 외.** M6 cleanup 체크리스트에 포함.
+   - 当前：`MCPServer` → credential 或 inline auth_config 的优先级解析 helper。
+   - 切换为经由 connection 解析后（M2）会逐步成为 dead path。但 M2 迁移期间 legacy 路径仍共存，因此**至少保留到 M2 完成后** — 最终删除与 M6 legacy drop 同步。
+   - 建议：**超出 M1 scope。** 纳入 M6 cleanup checklist。
 
-8. **`backend/app/services/credential_service.py:122-142` — `get_usage_count`의 `tool_count` / `mcp_server_count`**
-   - connection 도입 후 유저 관점 "어디서 쓰이는지"는 connection 사용량 기준으로 재계산해야 자연스럽다. 다만 legacy 컬럼이 drop되는 M6 전까지는 두 count 모두 의미 있음.
-   - 권고: **M1 스코프 외.** M5/M6에서 `connection_count` 추가 후 재설계.
-
----
-
-## 단순화 제안
-
-1. **`connections.provider_name` validator — `CREDENTIAL_PROVIDERS` 재사용 (피차이용 가이드)**
-   - 제안: `backend/app/schemas/connection.py`의 `ConnectionCreate` `provider_name` Pydantic validator에서 `type='prebuilt'` 분기를 `set(CREDENTIAL_PROVIDERS.keys())`로 체크. 문자열 enum을 **별도로 정의하지 말 것.**
-   - 근거: `credential_registry.py:11`의 `CREDENTIAL_PROVIDERS` dict가 이미 진실 기준(SOT). connection 전용 enum을 복제하면 두 곳에서 5종을 유지해야 하는 drift 위험이 생긴다.
-   - 조치: 피차이가 S2에서 직접 import — `from app.services.credential_registry import CREDENTIAL_PROVIDERS`.
-
-2. **MCP `extra_config` validator — ADR 명시 필드만 강제 (피차이용 가이드)**
-   - 제안: `extra_config`는 `url`, `auth_type`만 required로 강제. `headers`, `env_vars`, `transport`, `timeout`은 optional. **템플릿 해석(`${credential.xxx}`)은 M1에서 구현하지 말 것** (ADR §2 마지막 문단 — "M2 MCP 실행 경로에서 수행").
-   - 근거: M1 스코프는 "스키마만 허용". 템플릿 해석 로직이 지금 들어오면 M2 실행 경로 변경 시 중복 제거 비용 발생.
-   - 조치: 피차이가 `extra_config` validator에서 타입/필수키 체크만. 런타임 해석 금지.
-
-3. **`ConnectionResponse`는 decrypted 데이터 반환 금지 (피차이/젠슨 공통)**
-   - 제안: `ConnectionResponse`에 `credential_id: UUID | None`만 노출. credential 본체(`data`)는 기존 `CredentialResponse`에서 이미 비노출 원칙 (`credential_service._to_response`가 `resolve_credential_data` 호출 안 함). Connection도 동일 원칙.
-   - 근거: ADR-008 §보안 — "클라이언트 응답에 실제 비밀값 노출 없음". `extra_config.env_vars`도 템플릿 값 그대로 반환 (M1에서는 해석 없음 = 안전).
-   - 조치: 피차이가 `ConnectionResponse` 정의 시 credential 객체 embed 금지. id만.
-
-4. **테스트 격리 — 기존 `test_credentials.py` / `test_tools.py` 변경 금지 (베조스 본인 가이드)**
-   - 제안: S4 `test_connections.py`는 신규 파일 단일. 기존 회귀 스위트(545+) 수정 일절 없음.
-   - 근거: M1이 parallel run이므로 기존 동작 시맨틱 0 변화 — 기존 테스트가 실패하면 그것 자체가 regression 시그널이다. 기존 테스트를 고쳐 PASS를 맞추면 regression을 감춘다.
-   - 조치: S4 구현 시 `tests/conftest.py`, `tests/test_credentials.py` 등은 읽기만. IDOR 패턴은 참고만.
-
-5. **Alembic `m8_add_connections` downgrade 완전성 (젠슨용 가이드)**
-   - 제안: `downgrade()`에서 인덱스 drop → 테이블 drop 순. SQLite 호환을 위해 인덱스 drop은 `op.drop_index(..., table_name="connections")` 명시.
-   - 근거: 백로그 C progress.txt 학습 — SQLite에서 `op.batch_alter_table`/`drop_index` 명시 필요. 왕복 검증(`upgrade → downgrade → upgrade`) 필수.
-   - 조치: 젠슨이 S3 작성 시 upgrade/downgrade 모두 테스트하고 CHECKPOINT 검증 커맨드 통과 확인.
+8. **`backend/app/services/credential_service.py:122-142` — `get_usage_count` 的 `tool_count` / `mcp_server_count`**
+   - 引入 connection 后，从用户角度看 "在哪里使用" 更自然的是按 connection usage 重新计算。但在 legacy 列于 M6 drop 前，这两个 count 仍有意义。
+   - 建议：**超出 M1 scope。** M5/M6 中新增 `connection_count` 后重新设计。
 
 ---
 
-## 보류 / 스코프 외 (기록용)
+## 简化建议
 
-다음 항목은 보았으나 **명시적으로 M1 스코프 외**로 분류해 이월:
+1. **`connections.provider_name` validator — 复用 `CREDENTIAL_PROVIDERS`（给 Pichai 的指南）**
+   - 建议：在 `backend/app/schemas/connection.py` 的 `ConnectionCreate` `provider_name` Pydantic validator 中，对 `type='prebuilt'` 分支用 `set(CREDENTIAL_PROVIDERS.keys())` 检查。**不要单独定义**字符串 enum。
+   - 依据：`credential_registry.py:11` 的 `CREDENTIAL_PROVIDERS` dict 已经是真实标准（SOT）。如果复制 connection 专用 enum，就会出现两处都要维护 5 种类型的 drift 风险。
+   - 措施：由 Pichai 在 S2 中直接 import — `from app.services.credential_registry import CREDENTIAL_PROVIDERS`。
 
-- `backend/app/routers/credentials.py` 전체 — connection 도입과 무관, 변경 없음.
-- `backend/app/models/credential.py` — credential 자체는 그대로 유지 (ADR §결정). `user_id`, 암호화, field_keys 캐시(ADR-007) 모두 존속.
-- `backend/app/services/credential_registry.py` — **존속 필수**. connection validator가 이 dict를 SOT로 참조한다(위 단순화 제안 #1 참고).
-- `backend/app/services/credential_service.py:45-54`의 함수 내부 import — 백로그 C 보고서에서 "M3에서 젠슨이 상단 이동" 권고 상태였으나 이번 E-M1 스코프도 아님. 건드리지 않음.
-- 프론트엔드 `/connections` 페이지, `tool-configs-dialog` 등 — M5 UI 통합 범위.
+2. **MCP `extra_config` validator — 仅强制 ADR 明确字段（给 Pichai 的指南）**
+   - 建议：`extra_config` 只强制 `url`, `auth_type` required。`headers`, `env_vars`, `transport`, `timeout` optional。**M1 中不要实现模板解析（`${credential.xxx}`）**（ADR §2 最后一段 — "在 M2 MCP 执行路径中执行"）。
+   - 依据：M1 scope 是 "只允许 schema"。如果现在加入模板解析逻辑，在 M2 执行路径变更时会产生去重成本。
+   - 措施：Pichai 在 `extra_config` validator 中只检查类型/必需 key。禁止 runtime 解析。
+
+3. **`ConnectionResponse` 禁止返回 decrypted 数据（Pichai/Jensen 共通）**
+   - 建议：`ConnectionResponse` 只暴露 `credential_id: UUID | None`。credential 本体（`data`）在现有 `CredentialResponse` 中已遵循不暴露原则（`credential_service._to_response` 不调用 `resolve_credential_data`）。Connection 也遵循相同原则。
+   - 依据：ADR-008 §安全 — "client response 中不暴露实际 secret value"。`extra_config.env_vars` 也原样返回模板值（M1 中不解析 = 安全）。
+   - 措施：Pichai 定义 `ConnectionResponse` 时禁止 embed credential object。仅 id。
+
+4. **测试隔离 — 禁止修改现有 `test_credentials.py` / `test_tools.py`（贝索斯本人指南）**
+   - 建议：S4 `test_connections.py` 仅新建一个文件。现有 regression suite（545+）完全不修改。
+   - 依据：M1 是 parallel run，因此现有行为 semantic 变化为 0 — 如果现有测试失败，本身就是 regression 信号。通过修改现有测试来让其 PASS 会掩盖 regression。
+   - 措施：S4 实现时 `tests/conftest.py`, `tests/test_credentials.py` 等只读。IDOR 模式仅作参考。
+
+5. **Alembic `m8_add_connections` downgrade 完整性（给 Jensen 的指南）**
+   - 建议：`downgrade()` 中按 index drop → table drop 顺序。为兼容 SQLite，index drop 明确使用 `op.drop_index(..., table_name="connections")`。
+   - 依据：Backlog C progress.txt 学习 — SQLite 中需要明确 `op.batch_alter_table`/`drop_index`。必须往返验证（`upgrade → downgrade → upgrade`）。
+   - 措施：Jensen 在 S3 编写时同时测试 upgrade/downgrade，并确认通过 CHECKPOINT 验证命令。
 
 ---
 
-## 결론
+## 暂缓 / 超出 scope（记录用）
 
-| 분류 | 건수 | 비고 |
+查看了以下项目，但**明确分类为超出 M1 scope**并移交：
+
+- 整个 `backend/app/routers/credentials.py` — 与引入 connection 无关，不变。
+- `backend/app/models/credential.py` — credential 本身原样保留（ADR §决定）。`user_id`, 加密, field_keys cache（ADR-007）全部继续存在。
+- `backend/app/services/credential_registry.py` — **必须保留**。connection validator 将此 dict 作为 SOT 引用（参见上方简化建议 #1）。
+- `backend/app/services/credential_service.py:45-54` 的函数内部 import — Backlog C 报告中建议 "由 Jensen 在 M3 移到顶部"，但这次 E-M1 scope 也不包含。不要触碰。
+- Frontend `/connections` 页面、`tool-configs-dialog` 等 — M5 UI 整合范围。
+
+---
+
+## 结论
+
+| 分类 | 数量 | 备注 |
 |------|------|------|
-| **즉시 삭제** | **0건** | M1은 신규 추가 전용 |
-| **단순화 제안** | **5건** | 모두 S2/S3/S4 신규 파일 작성 가이드 — 기존 코드 변경 없음 |
-| **보류 (후속 마일스톤)** | **8건** | M2 2건(MCPServer, Tool.mcp_server_id), M4 1건(Tool.credential_id), M5 1건(프론트 다이얼로그), M6 4건(Tool.auth_type/auth_config, AgentToolLink.config, resolve_server_auth, get_usage_count 재설계) |
+| **立即删除** | **0 项** | M1 仅用于新增 |
+| **简化建议** | **5 项** | 全部为 S2/S3/S4 新文件编写指南 — 不修改现有代码 |
+| **暂缓（后续 milestone）** | **8 项** | M2 2 项（MCPServer, Tool.mcp_server_id）, M4 1 项（Tool.credential_id）, M5 1 项（Frontend dialog）, M6 4 项（Tool.auth_type/auth_config, AgentToolLink.config, resolve_server_auth, get_usage_count 重新设计） |
 
-**베조스 판단**: M1은 "추가만" 마일스톤이며, 기존 legacy 자산은 ADR-008 §이행 전략에 이미 제거 일정이 문서화되어 있다. 이 PR에서 legacy를 건드리면 parallel run 원칙이 깨져 롤백 가능성이 소실된다. **Drive-by 금지, Minimal Impact 원칙 준수.**
+**贝索斯判断**：M1 是 "只新增" milestone，现有 legacy 资产的删除计划已记录在 ADR-008 §迁移策略中。如果在本 PR 中触碰 legacy，就会破坏 parallel run 原则并失去 rollback 能力。**禁止 Drive-by，遵守 Minimal Impact 原则。**
 
-단순화 5건은 모두 **신규 파일 작성 가이드**로, 피차이(S2)와 젠슨(S3), 그리고 나 자신의 S4 구현이 drift/중복/보안 이슈를 피하도록 하는 사전 정렬 장치다.
+简化 5 项全部是**新文件编写指南**，用于预先对齐 Pichai（S2）、Jensen（S3）以及我自己的 S4 实现，避免 drift/重复/安全问题。

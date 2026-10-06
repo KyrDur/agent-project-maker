@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1. llm_providers 테이블 생성
+    # 1. 创建 llm_providers 表
     op.create_table(
         "llm_providers",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
 
-    # 2. models에 provider_id, context_window, modalities 컬럼 추가
+    # 2. 向 models 添加 provider_id、context_window、modalities 列
     op.add_column("models", sa.Column("provider_id", sa.Uuid(), nullable=True))
     op.create_foreign_key(
         "fk_models_provider_id",
@@ -44,11 +44,11 @@ def upgrade() -> None:
     op.add_column("models", sa.Column("input_modalities", sa.JSON(), nullable=True))
     op.add_column("models", sa.Column("output_modalities", sa.JSON(), nullable=True))
 
-    # 3. model_name/display_name 길이 확장 (100 → 200)
+    # 3. 扩展 model_name/display_name 长度（100 → 200）
     op.alter_column("models", "model_name", type_=sa.String(200), existing_type=sa.String(100))
     op.alter_column("models", "display_name", type_=sa.String(200), existing_type=sa.String(100))
 
-    # 4. 기존 models → llm_providers 데이터 마이그레이션
+    # 4. 迁移现有 models → llm_providers 数据
     op.execute(
         """
         INSERT INTO llm_providers
@@ -75,7 +75,7 @@ def upgrade() -> None:
         """
     )
 
-    # 5. models.provider_id를 매칭된 llm_provider id로 UPDATE
+    # 5. 将 models.provider_id UPDATE 为匹配的 llm_provider id
     op.execute(
         """
         UPDATE models m

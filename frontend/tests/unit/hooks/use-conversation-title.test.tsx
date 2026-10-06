@@ -68,7 +68,7 @@ describe('useConversationTitle', () => {
     })
 
     expect(result.current).toBe('List Title')
-    // 캐시 적중 시 detail 쿼리는 비활성으로 남아 fetch가 발생하지 않는다
+    // cache 命中时 detail query 保持 disabled，不会发生 fetch
     expect(queryClient.getQueryState(conversationKeys.detail('conv-1'))?.fetchStatus).toBe('idle')
   })
 
@@ -103,7 +103,7 @@ describe('useConversationTitle', () => {
       { wrapper: Wrapper },
     )
 
-    // fetch가 끝나기 전에는 에이전트 이름으로 폴백한다
+    // fetch 完成前 fallback 为智能体名称
     expect(result.current).toBe('Fallback Agent')
     await waitFor(() => expect(result.current).toBe('Test Conversation'))
   })

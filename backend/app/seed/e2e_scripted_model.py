@@ -50,6 +50,7 @@ async def seed_e2e_scripted_model(db: AsyncSession) -> Model | None:
         await db.flush()
         logger.info("seed_e2e_scripted_model: created %s", E2E_SCRIPTED_MODEL_NAME)
         await _seed_scripted_system_llm(db)
+        await _seed_scripted_personal_llm(db)
         return model
 
     model.display_name = E2E_SCRIPTED_DISPLAY_NAME
@@ -61,6 +62,7 @@ async def seed_e2e_scripted_model(db: AsyncSession) -> Model | None:
     await db.flush()
     logger.info("seed_e2e_scripted_model: refreshed %s", E2E_SCRIPTED_MODEL_NAME)
     await _seed_scripted_system_llm(db)
+    await _seed_scripted_personal_llm(db)
     return model
 
 
@@ -68,13 +70,13 @@ E2E_SCRIPTED_SYSTEM_CREDENTIAL_NAME = "[e2e] Scripted System LLM"
 
 
 async def _seed_scripted_system_llm(db: AsyncSession) -> None:
-    """스킬 빌더 챗 E2E용 System LLM(text_primary) 시드.
+    """用于 Skill Builder 聊天 E2E 的 System LLM(text_primary) seed。
 
-    빌더 챗의 히든 에이전트는 런타임에 ``resolve_system_model('text_primary')``
-    로 모델을 재해석한다(ADR-019) — throwaway E2E 스택에서 이 슬롯이 비어 있으면
-    빌더가 409로 막히므로, scripted 모델을 가리키는 system credential + 설정을
-    깔아 준다. **이미 설정된 text_primary는 건드리지 않는다** (실 LiteLLM
-    구성(seed_e2e_llm)이나 운영자 선택을 덮어쓰지 않음).
+    Builder 聊天的 hidden Agent 会在 runtime 中通过 ``resolve_system_model('text_primary')``
+    重新解析模型（ADR-019）— 如果 throwaway E2E stack 中该 slot 为空，
+    Builder 会被 409 阻止，因此预置指向 scripted 模型的 system credential + 配置。
+    **不要修改已经设置的 text_primary**（不覆盖真实 LiteLLM
+    配置（seed_e2e_llm）或 operator 的选择）。
     """
 
     from app.credentials import service as credential_service
@@ -130,3 +132,54 @@ __all__ = [
     "E2E_SCRIPTED_SYSTEM_CREDENTIAL_NAME",
     "seed_e2e_scripted_model",
 ]
+
+
+async def _seed_scripted_personal_llm(db: AsyncSession) -> None:
+    from app.credentials import service as credential_service
+    from app.models.credential import Credential
+    from app.models.user import User
+    from app.models.user_llm_setting import UserLlmSetting
+
+    user = (
+        await db.execute(select(User).where(User.email == settings.e2e_user_email))
+    ).scalar_one_or_none()
+    if user is None:
+        return
+    name = "[e2e] Scripted personal model"
+    cred = (
+        await db.execute(
+            select(Credential).where(
+                Credential.user_id == user.id,
+                Credential.is_system.is_(False),
+                Credential.name == name,
+            )
+        )
+    ).scalar_one_or_none()
+    if cred is None:
+        cred = await credential_service.create(
+            db,
+            user_id=user.id,
+            definition_key=E2E_SCRIPTED_PROVIDER,
+            name=name,
+            data={"api_key": "e2e-scripted"},
+            source="seed",
+        )
+    for role in ("builder", "evaluation_generator", "judge_optimizer", "text_primary"):
+        row = (
+            await db.execute(
+                select(UserLlmSetting).where(
+                    UserLlmSetting.user_id == user.id,
+                    UserLlmSetting.role == role,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            db.add(
+                UserLlmSetting(
+                    user_id=user.id,
+                    role=role,
+                    credential_id=cred.id,
+                    model_name=E2E_SCRIPTED_MODEL_NAME,
+                )
+            )
+    await db.flush()

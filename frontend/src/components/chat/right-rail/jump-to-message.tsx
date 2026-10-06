@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils'
 const HIGHLIGHT_MS = 1500
 
 /**
- * `[data-moldy-message-id="<id>"]` 앵커를 조회한다. 메시지 id는 UUID 계열이지만
- * selector 안전을 위해 ``CSS.escape``(있으면)로 이스케이프한다.
+ * 查询 `[data-moldy-message-id="<id>"]` anchor。消息 id 属于 UUID 系列，但
+ * 为保证 selector 安全，使用 ``CSS.escape``（若存在）进行转义。
  */
 function findMessageAnchor(messageId: string): HTMLElement | null {
   if (typeof document === 'undefined') return null
@@ -21,14 +21,14 @@ function findMessageAnchor(messageId: string): HTMLElement | null {
   return el instanceof HTMLElement ? el : null
 }
 
-/** 메시지가 현재 로드된 transcript(가상화 없음)에 존재하는지. */
+/** 判断消息是否存在于当前已加载的 transcript（无虚拟化）。 */
 export function messageAnchorExists(messageId: string): boolean {
   return findMessageAnchor(messageId) !== null
 }
 
 /**
- * 로드된 transcript에서 해당 메시지로 스크롤 + 잠깐 하이라이트한다.
- * 앵커가 없으면(다른 페이지의 메시지) 아무 동작 없이 false를 반환한다.
+ * 在已加载 transcript 中滚动到该消息 + 短暂高亮。
+ * 若无 anchor（其他页面的消息），不执行任何操作并返回 false。
  */
 export function jumpToMessage(messageId: string): boolean {
   const el = findMessageAnchor(messageId)
@@ -76,10 +76,10 @@ function subscribeAnchors(onStoreChange: () => void): () => void {
 }
 
 /**
- * 메시지 앵커가 현재 transcript에 존재하는지 DOM에서 구독한다.
- * transcript는 가상화되지 않으므로 "로드된 메시지"에 대해서만 앵커가 있다.
- * ``useSyncExternalStore``로 외부 mutable 소스(DOM)를 읽어 effect-setState 없이
- * 렌더 중 스냅샷을 얻고, 공유 옵저버로 메시지가 늦게 로드돼도 갱신한다.
+ * 在 DOM 中订阅消息 anchor 是否存在于当前 transcript。
+ * transcript 未虚拟化，因此只有"已加载消息"才有 anchor。
+ * 用 ``useSyncExternalStore`` 读取外部 mutable source(DOM)，无需 effect-setState
+ * 即可在 render 中获取 snapshot，并通过共享 observer 在消息延迟加载后也能更新。
  */
 function useMessageInLoadedPage(messageId: string | null | undefined): boolean {
   const getSnapshot = useCallback(
@@ -90,10 +90,10 @@ function useMessageInLoadedPage(messageId: string | null | undefined): boolean {
 }
 
 /**
- * 파일 → 대화 메시지로 이동하는 액션.
- * - 메시지가 로드된 페이지에 있으면 "前往留言处" 버튼.
- * - 없으면(이전 페이지) 비활성 "早些时候的消息" 라벨 + 네이티브 tooltip.
- * - message_id가 없으면 렌더하지 않는다.
+ * 从文件 → 对话消息的跳转 action。
+ * - 消息在已加载页面中时显示"前往留言处"按钮。
+ * - 不在时（更早页面）显示禁用的"早些时候的消息"标签 + 原生 tooltip。
+ * - 没有 message_id 时不渲染。
  */
 export function JumpToMessageButton({
   messageId,

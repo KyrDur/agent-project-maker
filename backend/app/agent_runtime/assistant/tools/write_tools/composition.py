@@ -1,4 +1,4 @@
-"""Assistant 쓰기 도구 — 구성 그룹 (미들웨어/서브에이전트/스킬 add/remove)."""
+"""Assistant 写入工具 — 配置组（中间件/子智能体/技能 add/remove）。"""
 
 from __future__ import annotations
 
@@ -19,15 +19,15 @@ from app.models.skill import AgentSkillLink, Skill
 
 
 def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
-    """미들웨어/서브에이전트/스킬 구성 도구 6개를 생성한다."""
+    """创建 6 个中间件/子智能体/技能配置工具。"""
 
     # ------ 3. add_middleware_to_agent ------
 
     async def add_middleware_to_agent(middleware_names: list[str]) -> str:
-        """에이전트에 미들웨어를 추가합니다 (배치 지원).
+        """向智能体添加中间件（支持批量）。
 
         Args:
-            middleware_names: 추가할 미들웨어 type 키 목록
+            middleware_names: 要添加的中间件 type 键列表
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -55,10 +55,10 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 4. remove_middleware_from_agent ------
 
     async def remove_middleware_from_agent(middleware_names: list[str]) -> str:
-        """에이전트에서 미들웨어를 제거합니다 (배치 지원).
+        """从智能体移除中间件（支持批量）。
 
         Args:
-            middleware_names: 제거할 미들웨어 type 키 목록
+            middleware_names: 要移除的中间件 type 键列表
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -85,10 +85,10 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 5. add_subagent_to_agent ------
 
     async def add_subagent_to_agent(agent_ids: list[str]) -> str:
-        """에이전트에 서브에이전트를 추가합니다 (배치 지원).
+        """向智能体添加子智能体（支持批量）。
 
         Args:
-            agent_ids: 추가할 서브에이전트 UUID 목록 (문자열)
+            agent_ids: 要添加的子智能体 UUID 列表（字符串）
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -99,8 +99,8 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             added: list[str] = []
             skipped: list[str] = []
 
-            # 1차 파싱: UUID 변환 + 자기참조/중복 즉시 분류
-            candidates: dict[uuid.UUID, str] = {}  # uuid → raw_id (검증 대상)
+            # 第 1 次解析：UUID 转换 + 立即分类自引用/重复项
+            candidates: dict[uuid.UUID, str] = {}  # uuid → raw_id（待校验对象）
             for raw_id in agent_ids:
                 try:
                     sid = uuid.UUID(raw_id)
@@ -115,20 +115,20 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                     continue
                 candidates[sid] = raw_id
 
-            # 2차 일괄 검증: 단일 IN 쿼리로 소유권 확인 (N+1 제거)
+            # 第 2 次批量校验：通过单个 IN 查询确认所有权（移除 N+1）
             name_by_id: dict[uuid.UUID, str] = {}
             if candidates:
                 result = await session.execute(
                     select(Agent.id, Agent.name).where(
                         Agent.id.in_(candidates.keys()),
                         Agent.user_id == ctx.user_id,
-                        # 히든 런타임 에이전트는 서브에이전트 결선 불가.
+                        # 隐藏运行时智能体不能连接为子智能体。
                         Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
                     )
                 )
                 name_by_id = {row.id: row.name for row in result.all()}
 
-            # 3차 append (검증 통과한 것만)
+            # 第 3 次 append（仅限校验通过项）
             next_pos = max((link.position for link in agent.sub_agent_links), default=-1) + 1
             for sid, raw_id in candidates.items():
                 if sid not in name_by_id:
@@ -155,10 +155,10 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 6. remove_subagent_from_agent ------
 
     async def remove_subagent_from_agent(agent_ids: list[str]) -> str:
-        """에이전트에서 서브에이전트를 제거합니다 (배치 지원).
+        """从智能体移除子智能体（支持批量）。
 
         Args:
-            agent_ids: 제거할 서브에이전트 UUID 목록 (문자열)
+            agent_ids: 要移除的子智能体 UUID 列表（字符串）
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -194,10 +194,10 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 6-2. add_skill_to_agent ------
 
     async def add_skill_to_agent(skill_names: list[str]) -> str:
-        """에이전트에 스킬을 추가합니다 (배치 지원).
+        """向智能体添加技能（支持批量）。
 
         Args:
-            skill_names: 추가할 스킬 이름 목록 (Skill.name 매칭)
+            skill_names: 要添加的技能名称列表（匹配 Skill.name）
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -217,7 +217,7 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                 )
                 .order_by(Skill.created_at.asc())
             )
-            # 동명 skill이 여러 개일 때 가장 먼저 생성된 1건만 채택 (per name dedupe)
+            # 存在多个同名 skill 时，只采用最先创建的 1 个（per name dedupe）
             unique_by_name: dict[str, Skill] = {}
             for s in result.scalars().all():
                 key = s.name.lower()
@@ -244,10 +244,10 @@ def build_composition_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 6-3. remove_skill_from_agent ------
 
     async def remove_skill_from_agent(skill_names: list[str]) -> str:
-        """에이전트에서 스킬을 제거합니다 (배치 지원).
+        """从智能体移除技能（支持批量）。
 
         Args:
-            skill_names: 제거할 스킬 이름 목록 (Skill.name 매칭)
+            skill_names: 要移除的技能名称列表（匹配 Skill.name）
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)

@@ -48,7 +48,7 @@ const FAKE_MESSAGES = {
       id: 'message-user-token-usage',
       conversation_id: CONVERSATION_ID,
       role: 'user',
-      content: '토큰 사용량 hover를 확인해줘.',
+      content: '确认 token 用量 hover。',
       tool_calls: null,
       tool_call_id: null,
       created_at: ISO,
@@ -66,7 +66,7 @@ const FAKE_MESSAGES = {
       id: 'message-assistant-token-usage',
       conversation_id: CONVERSATION_ID,
       role: 'assistant',
-      content: '토큰 사용량 상세 팝오버가 정상적으로 표시되는 응답입니다.',
+      content: '这是 token 用量详情 popover 正常显示的响应。',
       tool_calls: null,
       tool_call_id: null,
       created_at: ISO,
@@ -98,12 +98,12 @@ const FAKE_THREAD_STATE = {
       {
         type: 'human',
         id: 'message-user-token-usage',
-        content: '토큰 사용량 hover를 확인해줘.',
+        content: '确认 token 用量 hover。',
       },
       {
         type: 'ai',
         id: 'message-assistant-token-usage',
-        content: '토큰 사용량 상세 팝오버가 정상적으로 표시되는 응답입니다.',
+        content: '这是 token 用量详情 popover 正常显示的响应。',
         usage_metadata: {
           input_tokens: 1200,
           output_tokens: 900,
@@ -194,7 +194,7 @@ test.describe('Chat token usage hover', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(
-      page.getByText('토큰 사용량 상세 팝오버가 정상적으로 표시되는 응답입니다.'),
+      page.getByText('这是 token 用量详情 popover 正常显示的响应。'),
     ).toBeVisible()
 
     const tokenButton = page.getByRole('button', { name: '切换咏叹调' })
@@ -205,7 +205,7 @@ test.describe('Chat token usage hover', () => {
 
     const tooltip = page.getByRole('tooltip').filter({ hasText: 'Token 用量' })
     await expect(tooltip).toBeVisible()
-    await expect(tooltip).toContainText('2,100 합계')
+    await expect(tooltip).toContainText('合计 2,100')
     await expect(tooltip).toContainText('输入')
     await expect(tooltip).toContainText('1,200')
     await expect(tooltip).toContainText('输出')

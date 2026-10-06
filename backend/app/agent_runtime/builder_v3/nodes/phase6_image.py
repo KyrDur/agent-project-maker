@@ -1,9 +1,9 @@
-"""Phase 6 — 에이전트 이미지 생성 (4-노드 패턴).
+"""Phase 6 — 智能体图片生成（4-节点模式）。
 
-phase6_choice_propose: 1차 image_choice ToolMessage emit (또는 provider 없으면 즉시 skip)
-phase6_choice_wait: interrupt → skip/generate 분기
-phase6_image_generate: 이미지 생성 + 2차 image_approval ToolMessage emit
-phase6_image_approval: interrupt → 확정/재생성/skip 분기
+phase6_choice_propose: emit 第一次 image_choice ToolMessage（或 provider 不存在则立即 skip）
+phase6_choice_wait: interrupt → skip/generate 分支
+phase6_image_generate: 图片生成 + emit 第二次 image_approval ToolMessage
+phase6_image_approval: interrupt → 确认/重新生成/skip 分支
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def _get_image_prompt_seed(state: BuilderState) -> str:
 
 
 async def phase6_choice_propose(state: BuilderState) -> dict:
-    """1차: image_choice 카드 emit. provider 없으면 image_skipped=True로 fall-through."""
+    """第一次：emit image_choice 卡片。provider 不存在则设置 image_skipped=True 并 fall-through。"""
     if not await is_image_generation_available():
         info_msgs, _ = make_tool_card(
             "image_choice",
@@ -100,7 +100,7 @@ async def phase6_choice_propose(state: BuilderState) -> dict:
 
 
 async def phase6_choice_wait(state: BuilderState) -> dict:
-    """interrupt → skip/generate 결정을 state에 반영. 라우팅은 graph가."""
+    """interrupt → 将 skip/generate 决策反映到 state。路由由 graph 决定。"""
     auto_prompt = _get_image_prompt_seed(state)
 
     response = interrupt(
@@ -120,7 +120,7 @@ async def phase6_choice_wait(state: BuilderState) -> dict:
 
     pending_tc_id = state.get("pending_tool_call_id")
 
-    if choice in ("skip", "跳过", "넘어가"):
+    if choice in ("skip", "跳过"):
         close_msgs = close_pending_tool_card(pending_tc_id, "image_choice", "skip")
         complete_msgs = build_phase_complete(
             6,
@@ -145,7 +145,7 @@ async def phase6_choice_wait(state: BuilderState) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Node: phase6_image_generate (이미지 생성 + image_approval ToolMessage emit)
+# Node: phase6_image_generate（图片生成 + emit image_approval ToolMessage）
 # ---------------------------------------------------------------------------
 
 
@@ -202,12 +202,12 @@ async def phase6_image_generate(state: BuilderState) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Node: phase6_image_approval (interrupt + 분기)
+# Node: phase6_image_approval（interrupt + 分支）
 # ---------------------------------------------------------------------------
 
 
 async def phase6_image_approval(state: BuilderState) -> dict:
-    """interrupt → 확정/재생성/skip 결정을 state에 반영. 라우팅은 graph가."""
+    """interrupt → 将确认/重新生成/skip 决策反映到 state。路由由 graph 决定。"""
     response = interrupt(
         {
             "type": "image_approval",
@@ -251,7 +251,7 @@ async def phase6_image_approval(state: BuilderState) -> dict:
             "pending_tool_call_id": None,
         }
 
-    # regenerate — image_url 클리어 + last_revision_message 설정
+    # regenerate — 清空 image_url + 设置 last_revision_message
     close_msgs = close_pending_tool_card(pending_tc_id, "image_approval", tr("regenerate_bd72a5"))
     base_prompt: Any = state.get("image_url") and _get_image_prompt_seed(state)
     target_prompt = new_prompt or base_prompt or _get_image_prompt_seed(state)

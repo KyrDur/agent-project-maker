@@ -18,20 +18,20 @@ describe('FormFieldShell', () => {
       <FormFieldShell
         id="model"
         label="模型"
-        description="응답 생성에 사용할 모델입니다."
+        description="用于生成响应的模型。"
         required
-        error="모델을 선택해 주세요."
+        error="请选择模型。"
       >
         <Input id="model" aria-invalid />
       </FormFieldShell>,
     )
 
     expect(screen.getByText('*')).toBeInTheDocument()
-    expect(screen.getByText('응답 생성에 사용할 모델입니다.')).toHaveAttribute(
+    expect(screen.getByText('用于生成响应的模型。')).toHaveAttribute(
       'id',
       'model-description',
     )
-    expect(screen.getByText('모델을 선택해 주세요.')).toHaveAttribute('id', 'model-error')
+    expect(screen.getByText('请选择模型。')).toHaveAttribute('id', 'model-error')
   })
 
   it('supports inline control layout and field actions', () => {
@@ -40,18 +40,18 @@ describe('FormFieldShell', () => {
         <FormFieldShell
           id="memory-enabled"
           label="启用内存"
-          description="끄면 에이전트가 메모리를 읽지 않습니다."
+          description="关闭后，智能体将不会读取记忆。"
           layout="inline"
         >
           <Input id="memory-enabled" type="checkbox" />
         </FormFieldShell>
-        <FormFieldShell id="model" label="模型" actions={<button type="button">불러오기</button>}>
+        <FormFieldShell id="model" label="模型" actions={<button type="button">应用</button>}>
           <Input id="model" />
         </FormFieldShell>
       </>,
     )
 
     expect(screen.getByLabelText('启用内存')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '提交' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '应用' })).toBeInTheDocument()
   })
 })

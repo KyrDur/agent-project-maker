@@ -85,7 +85,7 @@ async def resolve_agent_context(
     *,
     checkpoint_id: str | None = None,
 ) -> AgentConfig:
-    """conversation + agent 조회 -> AgentConfig 생성."""
+    """查询 conversation + agent -> 创建 AgentConfig。"""
 
     conv = await chat_service.get_owned_conversation_with_agent(db, conversation_id, user.id)
     if not conv:
@@ -210,11 +210,11 @@ async def _resolve_skill_builder_agent_context(
     runtime_policy: ResolvedRuntimePolicy,
     checkpoint_id: str | None,
 ) -> AgentConfig:
-    """히든 빌더 에이전트의 대화 → AgentConfig (스펙 AD-1/AD-3/AD-5).
+    """隐藏 builder Agent 的对话 → AgentConfig（规范 AD-1/AD-3/AD-5）。
 
-    모델은 seed 시점 FK가 아니라 **항상** System LLM(text_primary)로 재해석하고
-    (ADR-019), 빌더 세션을 conversation_id 역참조로 찾아 드래프트 워크스페이스
-    경로와 ``moldy.skill_draft`` stream-head 페이로드를 cfg에 싣는다.
+    模型不使用 seed 时的 FK，而是**始终**重新解析为 System LLM(text_primary)
+    （ADR-019），并通过 conversation_id 反向查找 builder 会话，将草稿工作区
+    路径与 ``moldy.skill_draft`` stream-head payload 放入 cfg。
     """
 
     from sqlalchemy import select
@@ -228,7 +228,7 @@ async def _resolve_skill_builder_agent_context(
     )
 
     try:
-        resolved = await resolve_system_model(db, "builder")
+        resolved = await resolve_system_model(db, "builder", user.id)
     except SystemModelNotConfiguredError as exc:
         raise system_llm_not_configured() from exc
 
@@ -238,25 +238,25 @@ async def _resolve_skill_builder_agent_context(
             SkillBuilderSession.conversation_id == conv.id,
             SkillBuilderSession.user_id == user.id,
         )
-        # 세션↔대화 1:1은 DB 제약이 아니라 관례다 — 방어적으로 최신 1건만
-        # 취해 MultipleResultsFound 500을 차단한다 (R2).
+        # 会话↔对话 1:1 并非 DB 约束，而是约定 — 为防御起见只取最新 1 条
+        # 以避免 MultipleResultsFound 500（R2）。
         .order_by(SkillBuilderSession.created_at.desc())
         .limit(1)
     )
     session = result.scalar_one_or_none()
     if session is None:
-        # 빌더 대화인데 매칭 세션이 없거나 남의 세션 — 접근 불가로 통일
+        # 若是 builder 对话但没有匹配会话或属于其他用户 — 统一视为不可访问
         # (enumeration-safe 404).
         raise conversation_not_found()
 
     if not session.draft_workspace_path:
-        # start v2가 항상 채우지만, 방어적으로 재생성 (멱등).
+        # start v2 始终会填充，但为防御起见重新生成（幂等）。
         session.draft_workspace_path = skill_draft_workspace.create_workspace(session.id)
         await db.flush()
 
-    # AD-4 — 세션 동의를 정책 제외 목록으로 스레딩. 드래프트가 지금
-    # ``requires_network`` 상태면 기록된 동의가 있어도 무시한다 (동의 이후
-    # 드래프트가 네트워크 요구로 바뀌었을 수 있음 — 매 resolve 재검증).
+    # AD-4 — 将会话同意项传入策略排除列表。若草稿当前
+    # 处于 ``requires_network`` 状态，即使已有记录的同意也忽略（同意之后
+    # 草稿可能已改为需要网络 — 每次 resolve 时重新验证）。
     from app.agent_runtime.skill_builder.tools import SESSION_CONSENT_ELIGIBLE_TOOLS
 
     consented_tools: list[str] = []
@@ -265,7 +265,7 @@ async def _resolve_skill_builder_agent_context(
         consented_tools = sorted(
             name for name in (session.tool_consents or {}) if name in SESSION_CONSENT_ELIGIBLE_TOOLS
         )
-        # 아직 동의되지 않은 eligible 도구 → 승인 카드에 동의 옵션 노출.
+        # 尚未同意的 eligible 工具 → 在批准卡片中显示同意选项。
         consent_offer_tools = sorted(SESSION_CONSENT_ELIGIBLE_TOOLS - set(consented_tools))
 
     identity = resolve_agent_run_identity(
@@ -282,7 +282,7 @@ async def _resolve_skill_builder_agent_context(
         model_name=resolved.model_name,
         api_key=resolved.api_key,
         base_url=resolved.base_url,
-        # 자리표시자 — ``_prepare_skill_builder_components`` 가 prompt.md로 교체.
+        # 占位符 — ``_prepare_skill_builder_components`` 会替换为 prompt.md。
         system_prompt=agent.system_prompt,
         tools_config=[],
         thread_id=str(conv.id),
@@ -482,11 +482,11 @@ def build_artifact_recorder(
 def build_persist_callback(
     conversation_id: uuid.UUID, run_id: str
 ) -> Callable[[list[dict[str, Any]]], Awaitable[None]]:
-    # BE-P5(d): run-scoped persisted-event-id 캐시. append_events 는 partial
-    # flush 마다 누적 chunk 전체 id 를 재 SELECT 했다(긴 턴에서 O(T²/64)).
-    # 첫 flush 에서 DB 시드 후 증분 유지한다. 불변식: 캐시 ⊆ DB — commit
-    # 성공분만 반영하고, 실패 시 None 으로 리셋해 재시도 chunk 가 DB 재로드
-    # 경로로 dedup 되게 한다 (캐시가 DB 를 앞서면 재시도 이벤트가 유실된다).
+    # BE-P5(d): run-scoped persisted-event-id 缓存。append_events 过去会在每次 partial
+    # flush 时重新 SELECT 累计 chunk 的全部 id（长 turn 中为 O(T²/64)）。
+    # 第一次 flush 时从 DB seed，之后增量维护。不变量：缓存 ⊆ DB — 只在 commit
+    # 成功后反映；失败时重置为 None，使重试 chunk 通过 DB 重新加载
+    # 路径进行 dedup（若缓存领先于 DB，会丢失重试事件）。
     seen_event_ids: set[str] | None = None
 
     async def _callback(events_chunk: list[dict[str, Any]]) -> None:
@@ -524,8 +524,8 @@ def build_persist_callback(
         except Exception:
             seen_event_ids = None
             raise
-        # commit 성공 후에만 캐시 갱신 — chunk id 는 known 과의 차집합이
-        # 곧 방금 persist 된 id 셋이므로 그대로 합류한다 (idempotent).
+        # 仅在 commit 成功后更新缓存 — chunk id 与 known 的差集
+        # 正是刚刚 persist 的 id 集，因此可直接并入（idempotent）。
         known.update(
             event_id
             for evt in events_chunk

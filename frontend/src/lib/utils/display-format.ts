@@ -1,7 +1,7 @@
 import { parseTimestamp } from './format-relative-time'
 
 export const DEFAULT_DISPLAY_LOCALE = 'zh-CN'
-export const DEFAULT_DISPLAY_TIME_ZONE = 'Asia/Seoul'
+export const DEFAULT_DISPLAY_TIME_ZONE = 'Asia/Shanghai'
 export const DEFAULT_EMPTY_DISPLAY = '-'
 
 type DisplayDateValue = Date | number | string | null | undefined

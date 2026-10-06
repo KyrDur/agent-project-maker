@@ -1,197 +1,197 @@
 # Security Checklist — ADR-016 Multi-user Auth
 
-검증 일자: 2026-05-09
-검증자: bezos (S7 통합 검증)
-브랜치: `feature/multiuser-auth`
+验证日期：2026-05-09
+验证者：bezos（S7 集成验证）
+分支：`feature/multiuser-auth`
 
 ---
 
-## 1. Cookie 보안
+## 1. Cookie 安全
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
 | Access cookie `httponly=True` | PASS | `app/auth/cookies.py:52` |
 | Refresh cookie `httponly=True` | PASS | `app/auth/cookies.py:57` |
-| CSRF cookie `httponly=False` | PASS | double-submit 패턴, JS read 필요 — 의도된 설정 |
-| `cookie_secure` config 토글 | PASS | dev=False (HTTP), prod=True 운영자가 반드시 설정 (`config.py:120`) |
-| `cookie_samesite` 기본 `lax` | PASS | cross-origin POST 차단 |
-| Cookie max_age == JWT exp | PASS | 좀비 쿠키 방지 (`cookies.py:52`) |
+| CSRF cookie `httponly=False` | PASS | double-submit 模式，JS read 必需 — 有意设置 |
+| `cookie_secure` config 开关 | PASS | dev=False（HTTP），prod=True 必须由运维设置（`config.py:120`） |
+| `cookie_samesite` 默认 `lax` | PASS | 阻断 cross-origin POST |
+| Cookie max_age == JWT exp | PASS | 防止僵尸状态（`cookies.py:52`） |
 
-**운영 액션 필수**: `.env`에 `COOKIE_SECURE=true` + 적절한 `COOKIE_DOMAIN` 설정. 미설정 시 HTTPS 환경에서도 `Secure` flag가 누락된다.
+**运维操作必需**：在 `.env` 设置 `COOKIE_SECURE=true` + 合适的 `COOKIE_DOMAIN`。若未设置，即使在 HTTPS 环境中也会缺少 `Secure` flag。
 
 ---
 
 ## 2. CORS
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| `allow_origins`는 wildcard 아님 | PASS | `main.py:226` 명시적 도메인 (`localhost:3000`) |
-| `allow_credentials=True` | PASS | cookie flow 필수 |
-| `expose_headers`는 최소화 | PASS | `X-Run-Id`, `X-Resume-Mode`만 |
+| `allow_origins` 不是 wildcard | PASS | `main.py:226` 显式 域（`localhost:3000`） |
+| `allow_credentials=True` | PASS | cookie flow 必需 |
+| `expose_headers` 最小化 | PASS | 仅 `X-Run-Id`, `X-Resume-Mode` |
 
-**운영 액션 필수**: 프로덕션 배포 시 `main.py:226`의 hard-coded origins를 `settings.cors_allow_origins` 환경변수 기반으로 교체 — 현재는 dev origin이 박혀 있어 프로덕션에서 도메인이 다르면 작동 불가 (또는 새 코드 PR 필요).
+**运维操作必需**：生产部署时将 `main.py:226` 的 hard-coded origins 改为基于 `settings.cors_allow_origins` 环境变量 — 当前写死 dev origin，如果生产 域 不同将无法工作（或需要新 代码 PR）。
 
 ---
 
 ## 3. JWT
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| `JWT_SECRET` 환경변수 분리 | PASS | `config.py:110`, 코드 하드코딩 X |
-| Dev fallback (ephemeral) 경고 로그 | PASS | `auth/jwt.py:58-64` WARNING 로그 |
-| HS256 알고리즘 | PASS | 단일 백엔드 → 대칭키 OK |
-| 토큰 type 분리 (`access`/`refresh`/`csrf`) | PASS | decode 시 `expected_type` 검증 |
-| Refresh 토큰 SHA-256 hash 저장 | PASS | DB leak 시 토큰 자체 노출 X |
+| `JWT_SECRET` 环境变量独立 | PASS | `config.py:110`，代码硬编码 X |
+| Dev fallback (ephemeral) 警告 日志 | PASS | `auth/jwt.py:58-64` WARNING 日志 |
+| HS256 算法 | PASS | 单后端 → 对称密钥 OK |
+| 令牌 type 区分（`access`/`refresh`/`csrf`） | PASS | decode 时验证 `expected_type` |
+| Refresh 令牌保存 SHA-256 hash | PASS | DB leak 时令牌本身暴露 X |
 | Required claims (`exp`, `iat`, `sub`, `type`, `jti`) | PASS | `decode_token` `options.require` |
 
-**운영 액션 필수**: 프로덕션 deploy 전 `JWT_SECRET`을 32 byte 이상 랜덤 값으로 환경변수 설정 (`openssl rand -base64 48`). 미설정 시 매 프로세스 재시작마다 모든 세션이 무효화된다.
+**运维操作必需**：生产环境 deploy 前，将 `JWT_SECRET` 设置为至少 32 byte 的随机环境变量（`openssl rand -base64 48`）。若未设置，每次进程重启都会使所有会话失效。
 
 ---
 
 ## 4. Rate Limiting
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
 | `/register` rate limit | PASS | `5/hour` (`routers/auth.py:53`) |
 | `/login` rate limit | PASS | `10/minute` (`routers/auth.py:81`) |
 | `/refresh` rate limit | PASS | `30/minute` (`routers/auth.py:128`) |
-| `/logout` rate limit | NONE | 로그아웃 abuse 표면 작음 — 허용 |
+| `/logout` rate limit | NONE | 注销 abuse 攻击面小 — 可接受 |
 | Public share endpoint | PASS | `60/minute` per IP |
 
-**운영 권고**: `slowapi`의 in-memory storage는 다중 워커 환경에서 워커별로 카운트가 갈라진다. 프로덕션은 Redis 백엔드로 교체 권고.
+**运维建议**：`slowapi` 的 in-memory storage 在多 工作进程 环境中会按 工作进程 分开计数。生产建议改为 Redis 后端。
 
 ---
 
-## 5. Password / 계정 보호
+## 5. Password / 账号保护
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| bcrypt cost factor 12 | PASS | `auth/password.py:31` (OWASP 2023 권고) |
-| `passlib` CryptContext 사용 | PASS | 알고리즘 swap 가능 구조 |
-| Timing attack 완화 (dummy verify) | PASS | unknown email에서도 verify 호출 (`auth_service.py:107`) |
+| bcrypt cost factor 12 | PASS | `auth/password.py:31`（OWASP 2023 建议） |
+| 使用 `passlib` CryptContext | PASS | 支持 算法 swap 的结构 |
+| 缓解 Timing attack（dummy verify） | PASS | unknown email 也会调用 verify（`auth_service.py:107`） |
 | Min password length 8 | PASS | `schemas/auth.py:15` |
-| Failed login counter | PARTIAL | **BUG**: 카운터 증가가 commit되지 않음 (escalation 1) |
-| Account lockout (5회 → 15분) | PARTIAL | **BUG**: 동일 root cause로 lockout 미작동 (escalation 1) |
+| Failed login counter | PARTIAL | **BUG**：计数器增加未 commit（escalation 1） |
+| Account lockout（5 次 → 15 分钟） | PARTIAL | **BUG**：同一 root cause 导致 lockout 不工作（escalation 1） |
 
 ---
 
-## 6. Refresh Token 보안
+## 6. Refresh Token 安全
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| Refresh rotation on each use | PASS | 정상 경로 검증 (test_auth_refresh) |
-| Replay 401 응답 | PASS | 즉시 거부 |
-| Replay 시 mass-revoke 활성 토큰 | PARTIAL | **BUG**: AppError 전 revoke가 commit되지 않음 (escalation 2) |
-| DB whitelist 검증 (`token_hash`) | PASS | unique index, scalar 조회 |
-| Expiry 검증 (`expires_at <= now`) | PASS | 401 invalid_refresh |
+| Refresh rotation on each use | PASS | 正常路径已验证（test_auth_refresh） |
+| Replay 401 响应 | PASS | 立即拒绝 |
+| Replay 时 mass-revoke 活跃令牌 | PARTIAL | **BUG**：AppError 前 revoke 未 commit（escalation 2） |
+| DB whitelist 验证（`token_hash`） | PASS | unique index，scalar 查询 |
+| Expiry 验证（`expires_at <= now`） | PASS | 401 invalid_refresh |
 
 ---
 
 ## 7. CSRF
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| Double-submit (header == cookie) | PASS | 7/7 테스트 통과 |
-| Bootstrap endpoints exempt | PASS | register/login/refresh — 사용자 미존재 |
+| Double-submit（header == cookie） | PASS | 7/7 测试通过 |
+| Bootstrap endpoints exempt | PASS | register/login/refresh — 用户不存在 |
 | GET/HEAD/OPTIONS exempt | PASS | safe methods |
-| Cross-account CSRF token 거부 | PASS | `sub` claim user.id 비교 |
-| Garbage token 거부 | PASS | InvalidTokenError → 403 |
+| Cross-account CSRF token 拒绝 | PASS | `sub` claim 与 user.id 比较 |
+| Garbage token 拒绝 | PASS | InvalidTokenError → 403 |
 
 ---
 
-## 8. 권한 분리 (RBAC)
+## 8. 权限分离（RBAC）
 
-| 항목 | 상태 | 메모 |
+| 项目 | 状态 | 备注 |
 |------|------|------|
-| `require_super_user` gate | PASS | 6개 엔드포인트 (system-credentials × 5, models POST/PATCH/DELETE × 3) |
-| 일반 user의 system credential 접근 | PASS | 403 (테스트 검증) |
-| 일반 user의 model mutation | PASS | 403 (테스트 검증) |
-| First user 자동 super_user | PASS | `allow_first_user_as_admin` 토글 |
+| `require_super_user` gate | PASS | 6 个 端点（system-credentials × 5, models POST/PATCH/DELETE × 3） |
+| 普通 user 访问 system credential | PASS | 403（测试验证） |
+| 普通 user 执行 model mutation | PASS | 403（测试验证） |
+| First user 自动 super_user | PASS | `allow_first_user_as_admin` 开关 |
 
-**운영 액션 필수**: 운영자 계정 가입 직후 `.env`에서 `ALLOW_FIRST_USER_AS_ADMIN=false`로 변경. 미변경 시 사고로 DB가 비면 다음 가입자가 super_user가 됨.
+**运维操作必需**：运维账号注册后立即在 `.env` 将 `ALLOW_FIRST_USER_AS_ADMIN=false`。若不修改，一旦因事故导致 DB 为空，下一个注册用户会成为 super_user。
 
 ---
 
 ## 9. Multi-user Isolation Matrix (10/10 PASS)
 
-| 시나리오 | 결과 | 응답 |
+| 场景 | 结果 | 响应 |
 |----------|------|------|
-| User B → User A's agent GET | PASS | 404 (not 403, enumeration oracle 차단) |
+| User B → User A's agent GET | PASS | 404（not 403，阻断 enumeration oracle） |
 | User B → User A's agent PUT/DELETE | PASS | 404 |
-| Agent list per-user filter | PASS | B는 빈 리스트 |
+| Agent list per-user filter | PASS | B 是空列表 |
 | User B → User A's trigger PUT/DELETE | PASS | 404 |
-| 일반 user → /api/system-credentials GET | PASS | 403 |
-| 일반 user → /api/system-credentials POST | PASS | 403 |
+| 普通 user → /api/system-credentials GET | PASS | 403 |
+| 普通 user → /api/system-credentials POST | PASS | 403 |
 | Super_user → /api/system-credentials GET | PASS | 200 |
-| 일반 user → /api/models POST | PASS | 403 |
-| User B → User A's agent usage | PASS | 404 또는 빈 aggregate |
+| 普通 user → /api/models POST | PASS | 403 |
+| User B → User A's agent usage | PASS | 404 或空 aggregate |
 | User B → User A's conversation PATCH/DELETE | PASS | 404 |
 
 ---
 
 ## 10. User Deletion / Cleanup (8/8 PASS)
 
-- LangGraph thread 삭제 per conversation: PASS
-- 다른 user의 thread는 보존: PASS
+- LangGraph thread 删除 per conversation: PASS
+- 保留其他 user 的 thread：PASS
 - Active refresh tokens revoke: PASS
-- Checkpointer unavailable 시에도 refresh revoke: PASS
-- User row 삭제 → agent CASCADE: PASS
-- System credential (`user_id=NULL`) 보존: PASS
+- Checkpointer unavailable 时也执行 refresh revoke：PASS
+- 删除 User row → agent CASCADE：PASS
+- 保留 System credential（`user_id=NULL`）：PASS
 - RefreshToken FK CASCADE: PASS
 - Unknown user_id no-op: PASS
 
 ---
 
-## OWASP Top 10 자가점검
+## OWASP Top 10 自检
 
-| 카테고리 | 결과 | 비고 |
+| 类别 | 结果 | 备注 |
 |----------|------|------|
-| A01 Broken Access Control | PASS | super_user 가드 + service-level owner filter |
+| A01 Broken Access Control | PASS | super_user 防护 + service-level owner filter |
 | A02 Cryptographic Failures | PASS | bcrypt cost 12, JWT HS256, refresh token hash storage |
-| A03 Injection | PASS | SQLAlchemy ORM (raw SQL 없음) |
-| A04 Insecure Design | NOTE | Audit log은 `actor_user_id`만 — 행위 자체의 immutable trail은 없음 (Phase 2 후속) |
-| A05 Security Misconfiguration | RISK | `cookie_secure`/`cors_allow_origins` 운영자 설정 의존 (위 섹션 1, 2 운영 액션) |
-| A06 Vulnerable Components | DEFER | dependency scan은 별도 CI 이슈 |
-| A07 Auth Failures | **PARTIAL** | replay defense + lockout 둘 다 commit 누락 버그 (escalation 1, 2) |
-| A08 Software Integrity Failures | PASS | JWT signature 검증, CHECK constraint |
+| A03 Injection | PASS | SQLAlchemy ORM（无 raw SQL） |
+| A04 Insecure Design | NOTE | Audit log 只有 `actor_user_id` — 没有行为本身的 immutable trail（Phase 2 后续） |
+| A05 Security Misconfiguration | RISK | `cookie_secure`/`cors_allow_origins` 依赖运维设置（见上文 部分 1, 2 的运维 操作） |
+| A06 Vulnerable Components | DEFER | dependency scan 是单独 CI 问题 |
+| A07 Auth Failures | **PARTIAL** | replay defense + lockout 都有 commit 漏掉的 错误（escalation 1, 2） |
+| A08 Software Integrity Failures | PASS | JWT signature 验证，CHECK constraint |
 | A09 Logging Failures | PASS | `logger.warning` on replay, `actor_user_id` audit |
-| A10 SSRF | N/A | 사용자가 server-side URL fetch를 직접 트리거하는 경로 미식별 |
+| A10 SSRF | N/A | 未识别出用户可直接 触发器 server-side URL fetch 的路径 |
 
 ---
 
-## ESCALATION 사항 (사티아 → 코드 owner에게)
+## ESCALATION 项（萨提亚 → 代码 owner）
 
-### Escalation 1 — Login failure 카운터 미커밋 (CRITICAL)
+### Escalation 1 — Login failure 计数器 未 提交（CRITICAL）
 
-**증상**: `auth_service.authenticate`에서 비밀번호 오류 시 `record_login_failure(db, user)` 호출 후 즉시 `AppError` raise. 라우터는 success path에서만 `db.commit()`을 호출하므로 카운터 증가가 롤백된다.
+**症状**：`auth_service.authenticate` 在密码错误时调用 `record_login_failure(db, user)` 后立即 raise `AppError`。路由器 只在 success path 调用 `db.commit()`，因此 计数器 增加会 回滚。
 
-**영향**: `failed_login_attempts`가 영구히 0 → 5회 lockout이 실제로 작동하지 않음. 무제한 brute-force 가능.
+**影响**：`failed_login_attempts` 永久为 0 → 5 次 lockout 实际不工作。可无限 brute-force。
 
-**수정 위치**: `backend/app/routers/auth.py` `login_endpoint` 또는 `services/user_service.py` `record_login_failure`.
+**修改位置**：`backend/app/routers/auth.py` `login_endpoint` 或 `services/user_service.py` `record_login_failure`。
 
-**권고 fix**: `record_login_failure`를 별도 short-lived session에서 실행하거나, 라우터에서 `try/except AppError`로 감싸서 commit 후 re-raise.
+**建议 fix**：让 `record_login_failure` 在独立 short-lived session 中执行，或在 路由器 中用 `try/except AppError` 包裹，commit 后再 re-raise。
 
-**테스트**: `tests/test_auth_login.py::test_wrong_password_returns_401_and_increments_counter` (xfail strict). 수정 후 `xfail` 데코레이터 제거.
+**测试**：`tests/test_auth_login.py::test_wrong_password_returns_401_and_increments_counter`（xfail strict）。修复后移除 `xfail` 装饰器。
 
-### Escalation 2 — Refresh replay mass-revoke 미커밋 (CRITICAL)
+### Escalation 2 — Refresh replay mass-revoke 未 提交（CRITICAL）
 
-**증상**: `auth_service.rotate_refresh`에서 replay 감지 시 `_revoke_all_active(db, user_id)` UPDATE 발행 후 `AppError` raise. 라우터 commit 누락으로 mass-revoke 롤백.
+**症状**：`auth_service.rotate_refresh` 检测到 replay 时发出 `_revoke_all_active(db, user_id)` UPDATE 后 raise `AppError`。路由器 漏 commit，导致 mass-revoke 回滚。
 
-**영향**: 도난당한 refresh token이 노출되어도 victim의 active 세션이 자동 무효화되지 않음. ADR-016 §5.2의 핵심 보안 결정이 무력화됨.
+**影响**：即使被盗 refresh token 泄漏，victim 的 active 会话 也不会自动失效。ADR-016 §5.2 的核心安全决定被架空。
 
-**수정 위치**: 동일 (`auth_service.rotate_refresh` 내부에서 `await db.commit()` 후 raise, 또는 라우터에서 처리).
+**修改位置**：同上（在 `auth_service.rotate_refresh` 内 `await db.commit()` 后 raise，或由 路由器 处理）。
 
-**테스트**: `tests/test_auth_refresh.py::test_refresh_replay_revokes_all_active` (xfail strict).
+**测试**：`tests/test_auth_refresh.py::test_refresh_replay_revokes_all_active`（xfail strict）。
 
 ---
 
-## 운영자 deploy 직전 필수 액션 3가지
+## 运维 deploy 前必做 3 项
 
-1. **`JWT_SECRET`을 32 byte 이상 랜덤 값으로 환경변수에 설정.** 미설정 시 ephemeral 키로 토큰이 매 재시작마다 무효화된다.
-2. **`COOKIE_SECURE=true`로 변경 + `COOKIE_DOMAIN` 명시.** HTTPS 환경에서도 미설정 시 cookie의 `Secure` flag가 누락되어 MITM 노출.
-3. **위 2건의 ESCALATION 수정 머지 + `xfail` 데코레이터 제거 후 회귀 테스트 통과 확인.** 미수정 상태로 deploy하면 brute-force/refresh 도난 방어가 무력화된다.
+1. **将 `JWT_SECRET` 设置为至少 32 byte 的随机环境变量。** 若未设置，使用 ephemeral 键 时 令牌 会在每次重启后失效。
+2. **设置 `COOKIE_SECURE=true` + 明确 `COOKIE_DOMAIN`。** 即使在 HTTPS 环境中，未设置也会导致 cookie 缺少 `Secure` flag，暴露于 MITM。
+3. **合并 上述 2 项 ESCALATION 修复 + 移除 `xfail` 装饰器 后确认回归测试通过。** 若未修复就 deploy，brute-force/refresh 令牌 被盗防御会失效。
 
-추가 권고:
-- 첫 운영자 가입 직후 `.env`의 `ALLOW_FIRST_USER_AS_ADMIN=false`로 토글 끄기.
-- `main.py:226`의 `allow_origins`를 환경변수 기반으로 변경 (현재 dev origin 하드코딩).
-- `slowapi` rate-limit storage를 Redis로 교체 (다중 워커 환경).
+补充建议：
+- 首个运维账号注册后立即将 `.env` 中 `ALLOW_FIRST_USER_AS_ADMIN=false`，关闭 开关。
+- 将 `main.py:226` 的 `allow_origins` 改为基于环境变量（当前 硬编码 dev origin）。
+- 将 `slowapi` rate-limit storage 改为 Redis（多 工作进程 环境）。

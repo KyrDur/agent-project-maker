@@ -18,18 +18,18 @@ function renderFooter(overrides: Partial<Parameters<typeof SkillDetailPackageFoo
 }
 
 describe('SkillDetailPackageFooter', () => {
-  it('패키지 요약(크기·버전·연결 수)과 저장 버튼을 렌더한다 — Phase 2 소스 탭 계약', () => {
+  it('渲染包摘要（大小·版本·连接数）和保存按钮 — Phase 2 源标签页契约', () => {
     renderFooter()
 
-    // usedBy 요약 라인이 상시 노출 — 패키지 총 크기의 유일한 표시처(리뷰 R).
+    // usedBy 摘要行始终显示 — 包总大小唯一的显示位置（审查 R）。
     expect(screen.getByText(/1\.0\.0/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存文件' })).toBeEnabled()
-    // 삭제/내보내기/닫기는 설정 탭·행 메뉴 소관 — 푸터에 없어야 한다.
+    // 删除/导出/关闭由设置标签页·行菜单负责 — 页脚中不应出现。
     expect(screen.queryByRole('button', { name: '导出.skill' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '删除技能' })).not.toBeInTheDocument()
   })
 
-  it('저장 비활성 상태를 반영한다', () => {
+  it('反映保存禁用状态', () => {
     renderFooter({ saveDisabled: true })
 
     expect(screen.getByRole('button', { name: '保存文件' })).toBeDisabled()

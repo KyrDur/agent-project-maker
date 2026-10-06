@@ -1,14 +1,14 @@
 """M63: chat navigator keyset pagination indexes.
 
-source 컬럼을 포함한 복합 인덱스를 추가하고, M53 conversations 인덱스 2개를
-제거한다. 제거 대상을 쓰던 쿼리는 전부 source equality 조건을 포함하거나
-leading agent_id 컬럼만으로 충분해 신규 인덱스가 대체한다 (ORDER BY DESC는
-ASC 인덱스의 backward scan으로 커버되므로 방향은 무관).
+添加包含 source 列的复合索引，并删除 2 个 M53 conversations 索引。
+原先使用这些被删除索引的查询都包含 source equality 条件，或者
+仅靠 leading agent_id 列就足够，因此可由新索引替代（ORDER BY DESC
+可通过 ASC 索引的 backward scan 覆盖，因此方向无关）。
 
-source 조건 없이 leading agent_id에만 의존하는 쿼리는 agent_service.py의 집계
-3곳(list_agents, list_agent_summaries, get_agent)이다. 신규
-인덱스는 폭이 2→4컬럼으로 늘어 이 쿼리들의 스캔 I/O가 소폭 증가할 수 있으나,
-agent_id prefix 매칭은 그대로 유효하다.
+不带 source 条件、仅依赖 leading agent_id 的查询，是 agent_service.py 中的聚合
+共 3 处（list_agents, list_agent_summaries, get_agent）。新
+索引宽度从 2→4 列，这些查询的扫描 I/O 可能略有增加，但
+agent_id prefix 匹配仍然有效。
 """
 
 from __future__ import annotations
@@ -53,8 +53,8 @@ def upgrade() -> None:
         ["source", "created_at", "id", "agent_id"],
     )
     op.create_index("ix_agents_user_id_id", "agents", ["user_id", "id"])
-    # 이 인덱스를 쓰던 쿼리는 source equality를 포함하거나 leading agent_id로 충분하다
-    # — 전부 신규 인덱스가 대체한다
+    # 使用这些索引的查询要么包含 source equality，要么仅用 leading agent_id 就足够
+    # — 全部由新索引替代
     op.drop_index("ix_conversations_agent_pinned_updated_id", table_name="conversations")
     op.drop_index("ix_conversations_agent_updated", table_name="conversations")
 

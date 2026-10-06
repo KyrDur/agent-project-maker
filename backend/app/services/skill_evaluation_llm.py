@@ -1,15 +1,15 @@
-"""LLM 스킬 평가 러너 ``llm-2`` — 실측 with/without A/B (Phase 3 §4, D1).
+"""LLM skill 评估 runner ``llm-2`` — 实测 with/without A/B（Phase 3 §4, D1）。
 
-케이스마다 최대 3회의 싱글턴 모델 콜을 수행한다:
+每个 case 最多执行 3 次单例模型调用：
 
-1. with-arm — 스킬 페이로드(+실행 케이스면 샌드박스 실행 결과)와 함께 과제 해결
-2. without-arm — 스킬 컨텍스트 없이 같은 과제 해결 (baseline **실측**)
-3. grader — 두 실제 산출물을 expected에 대해 채점
+1. with-arm — 带 skill payload（若为执行 case，还带 sandbox 执行结果）解决任务
+2. without-arm — 不带 skill 上下文解决同一任务（baseline **实测**）
+3. grader — 按 expected 对两个真实产出评分
 
-legacy ``llm-1``은 grader가 baseline을 "估计"했다 — llm-2의 baseline 수치는
-전부 실행 산출물 채점이다. arm별 wall-clock/usage_metadata가 케이스 행의
-``duration_ms``/``tokens``/``baseline_*`` 슬롯을 채워 benchmark/kpi 델타가
-실측으로 계산된다.
+legacy ``llm-1`` 中 grader 会"估计" baseline — llm-2 的 baseline 数值
+全部来自对实际执行产出的评分。每个 arm 的 wall-clock/usage_metadata 填入 case 行的
+``duration_ms``/``tokens``/``baseline_*`` 槽位，使 benchmark/kpi delta
+基于实测计算。
 """
 
 from __future__ import annotations

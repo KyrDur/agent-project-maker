@@ -193,8 +193,8 @@
   "view_the_agent_s_cron_d4e26d": "View the agent's cron schedule list",
   "opener_v_setup_completed_a623d2": "Opener {v0} setup completed.",
   "up_to_openers_can_be_b22846": "Up to 12 openers can be set.",
-  "the_assistant_cannot_be_used_c11b21": "The assistant cannot be used until the operator completes System LLM Setup (Text Model).",
-  "the_operator_must_select_the_2bd719": "The operator must select the image model in the System LLM settings.",
+  "the_assistant_cannot_be_used_c11b21": "Add your personal API key and choose a text model in My AI settings before using the assistant.",
+  "the_operator_must_select_the_2bd719": "Choose an image model in your personal AI settings.",
   "invalid_cron_expression_v_five_d4ae76": "Invalid cron expression: '{v0}'. Five fields are required (Minute Hour Day Monday Weekday).",
   "invalid_schedule_id_22d6bb": "Invalid schedule ID.",
   "response_format_error_v_33515d": "Response format error: {v0}",
@@ -268,5 +268,14 @@
   "builder_runtime_retry": "Check again",
   "builder_runtime_links": "[Configure personal credentials](/credentials) · [Configure models](/models), then return here to continue.",
   "builder_tool_unavailable": "A required tool is unavailable. Fix or remove it in Tools settings, then rebuild.",
-  "builder_tool_credential": "A required tool lacks a usable compatible personal credential. Bind one in Tools settings, then rebuild."
+  "builder_tool_credential": "A required tool lacks a usable compatible personal credential. Bind one in Tools settings, then rebuild.",
+  "generation_failed_retry": "Generation failed. Confirmed content is preserved. Check your personal model settings and retry.",
+  "generation_retry": "Retry this stage",
+  "requirements_reason": "Explain why you confirm these requirements and simulation assumptions",
+  "requirement_goal": "Goal",
+  "requirement_inputs": "Inputs",
+  "requirement_deliverables": "Deliverables",
+  "requirement_business_rules": "Business rules and simulation assumptions",
+  "requirement_success_conditions": "Success conditions",
+  "capabilities_reason": "Reason for confirming the capability plan (required)"
 }

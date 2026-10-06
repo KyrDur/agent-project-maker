@@ -1,156 +1,156 @@
-# S1 삭제 분석 보고서 — 백로그 E M5
+# S1 删除分析报告 — Backlog E M5
 
-**작성자**: 베조스
-**일자**: 2026-04-19
-**스코프**: 프론트엔드 전용 (백엔드 0건 수정)
-**근거**: CHECKPOINT.md §S1, ADR-008, exec-plan §4 M5
-
----
-
-## Working-Backwards 요약
-
-사용자 관점에서 M5가 끝난 세상:
-- `/connections` 진입 → Connection 카드(PREBUILT/CUSTOM/MCP 섹션) 1급, Credential 카드 직접 노출 0.
-- "연결 추가"를 누르면 어디서든 **같은 ConnectionBindingDialog**가 열린다 (3종 표면 → 1).
-- 도구 카드의 "인증" 버튼, `/add-tool` MCP 탭의 "등록" 버튼도 같은 셸로 수렴.
-- 백엔드는 M4 상태 그대로 (`connections` 테이블 + `agent_tools.connection_id` 없이).
-
-**M5.5(추후)**: agent-level override (`agent_tools.connection_id`) — 본 M5에서 **절대 미접촉**.
-**M6(추후)**: legacy 컬럼 drop (`tool.credential_id`, `tool.auth_config`, `tool.mcp_server_id`, `agent_tools.config`, `mcp_servers` 테이블) — 본 M5에서 **미접촉**.
+**作者**：贝索斯
+**日期**：2026-04-19
+**Scope**：仅 Frontend（Backend 修改 0 项）
+**依据**：CHECKPOINT.md §S1, ADR-008, exec-plan §4 M5
 
 ---
 
-## 1. 즉시 삭제 (M5에서 바로 제거)
+## Working-Backwards 摘要
 
-### 1.1 `frontend/src/app/connections/page.tsx` — Credential 카드 표면
-| 대상 | 위치 | 사유 |
+从用户视角看 M5 完成后的世界：
+- 进入 `/connections` → Connection 卡片（PREBUILT/CUSTOM/MCP section）为 1 级对象，Credential 卡片直接暴露 0 个。
+- 点击 "添加连接" 后，无论从哪里进入都会打开**相同的 ConnectionBindingDialog**（3 种 surface → 1）。
+- 工具卡片的 "认证" 按钮、`/add-tool` MCP tab 的 "注册" 按钮也收敛到同一个 shell。
+- Backend 保持 M4 状态不变（`connections` 表 + 无 `agent_tools.connection_id`）。
+
+**M5.5（后续）**：agent-level override（`agent_tools.connection_id`）— 本 M5 中**绝对不触碰**。
+**M6（后续）**：legacy 列 drop（`tool.credential_id`, `tool.auth_config`, `tool.mcp_server_id`, `agent_tools.config`, `mcp_servers` 表）— 本 M5 中**不触碰**。
+
+---
+
+## 1. 立即删除（M5 中直接删除）
+
+### 1.1 `frontend/src/app/connections/page.tsx` — Credential 卡片 surface
+| 对象 | 位置 | 原因 |
 |------|------|------|
-| `CredentialCard` 컴포넌트 | `page.tsx:302-368` | Credential은 Connection 상세 drawer 안에서만 노출. 1급 카드로 나열 금지 (ADR-008 재편 방향) |
-| `filteredCredentials`/`search`/`typeFilter` | `page.tsx:64-84, 108-134` | Credential 검색/필터는 Connection 중심 페이지에서 의미 없음. Connection 자체 검색으로 대체 (S4에서 재구성) |
-| `deletingTarget` + `AlertDialog` delete 흐름 | `page.tsx:67, 172-199` | Credential 삭제는 Connection 상세에서 수행 (연결 해제 포함 UX) |
-| `openCreate`/`openEdit` 단독 진입 | `page.tsx:86-94, 130-134, 166-170` | "연결 추가" CTA → ConnectionBindingDialog로 통합 |
-| `useCredentialProviders`/`getProviderLabel` 상위 사용 | `page.tsx:59, 99-102, 148` | Credential 카드 제거 후 같은 데이터는 Connection 상세에서 참조 (re-use로 이동) |
+| `CredentialCard` 组件 | `page.tsx:302-368` | Credential 只在 Connection detail drawer 中暴露。禁止作为 1 级卡片列出（ADR-008 重构方向） |
+| `filteredCredentials`/`search`/`typeFilter` | `page.tsx:64-84, 108-134` | Credential 搜索/filter 在 Connection 中心页面没有意义。替换为 Connection 自身搜索（S4 中重构） |
+| `deletingTarget` + `AlertDialog` delete 流程 | `page.tsx:67, 172-199` | Credential 删除在 Connection detail 中执行（包含解除连接 UX） |
+| `openCreate`/`openEdit` 单独入口 | `page.tsx:86-94, 130-134, 166-170` | "添加连接" CTA → 统一为 ConnectionBindingDialog |
+| 顶层使用 `useCredentialProviders`/`getProviderLabel` | `page.tsx:59, 99-102, 148` | 删除 Credential 卡片后，同一数据在 Connection detail 中引用（迁移到 re-use） |
 
-**근거**: CHECKPOINT §스코프 합의 "Credential 카드 제거, Connection이 1급".
-**주의**: `useCredentials`/`useDeleteCredential` **hook 자체는 유지** — Connection 상세 drawer가 재사용한다 (아래 §3 보류 대상과 구분).
+**依据**：CHECKPOINT §scope 协议 "删除 Credential 卡片，Connection 为 1 级对象"。
+**注意**：`useCredentials`/`useDeleteCredential` **hook 本身保留** — Connection detail drawer 会复用（与下方 §3 暂缓对象区分）。
 
-### 1.2 호출부: `tools/page.tsx` 의 PREBUILT 분기
-| 대상 | 위치 | 처리 |
+### 1.2 调用处：`tools/page.tsx` 的 PREBUILT 分支
+| 对象 | 位置 | 处理 |
 |------|------|------|
-| `PrebuiltAuthDialog` import + 호출 | `app/tools/page.tsx:30, 241-249` | `ConnectionBindingDialog(type='prebuilt', providerName=tool.provider_name)` 직접 호출로 교체. trigger prop 대신 open state로 전환 (S3) |
-| `PrebuiltAuthDialog` 파일 자체 | `components/tool/prebuilt-auth-dialog.tsx` (60줄) | 현재 thin wrapper. legacy fallback 한 줄(`!isPrebuiltProviderName → CustomAuthDialog`)만 남아 있음. 제거 시 fallback 경로 소멸 → M6 legacy drop과 함께 처리해야 안전하므로 **파일은 M6까지 유지**, 호출부만 교체 |
+| `PrebuiltAuthDialog` import + 调用 | `app/tools/page.tsx:30, 241-249` | 改为直接调用 `ConnectionBindingDialog(type='prebuilt', providerName=tool.provider_name)`。从 trigger prop 切换为 open state（S3） |
+| `PrebuiltAuthDialog` 文件本身 | `components/tool/prebuilt-auth-dialog.tsx`（60 行） | 当前 thin wrapper。只剩一行 legacy fallback（`!isPrebuiltProviderName → CustomAuthDialog`）。删除会导致 fallback 路径消失 → 与 M6 legacy drop 一起处理才安全，因此**文件保留到 M6**，只替换调用处 |
 
-**결정**: 파일은 M6까지 thin wrapper로 남기되, `tools/page.tsx` 호출부를 `ConnectionBindingDialog` 직접 호출로 옮겨 **M5의 "3 dialog → 1" 흡수 검증이 grep으로 통과**하게 한다.
-
----
-
-## 2. 단순화/대체 (ConnectionBindingDialog로 흡수)
-
-### 2.1 `CustomAuthDialog` (components/tool/custom-auth-dialog.tsx, 108줄)
-- **현재 표면**: `CredentialSelect` + `CredentialFormDialog` + `useUpdateToolAuthConfig({credentialId})` — `tool.credential_id` 직접 편집.
-- **M5 처리**: ConnectionBindingDialog에 `type='custom'` 분기 추가 (find-or-create connection, CUSTOM `provider_name='custom_api_key'` scope).
-- **호출부 교체**: `app/tools/page.tsx:252-260` — CustomAuthDialog → ConnectionBindingDialog(type='custom', tool).
-- **주의(M4 bridge)**: CustomAuthDialog는 오직 "기존 tool의 credential 교체"만 수행 — connection_id를 변경하지 않음. 교체 후에도 chat_service `_resolve_custom_auth`가 `tool.connection_id`에서 credential을 derive하므로 **connection_id가 이미 세팅된 tool의 credential 교체**는 connection.credential_id PATCH로 해결 (ADR-008 N:1).
-- **파일 자체 유지 여부**: CustomAuthDialog는 `PrebuiltAuthDialog`의 legacy fallback(§3)에서도 참조된다. **파일은 M6까지 유지**, 호출부만 교체.
-
-### 2.2 `MCPServerAuthDialog` (components/tool/mcp-server-auth-dialog.tsx, 110줄)
-- **현재 표면**: `server.credential_id` + `useUpdateMCPServer({credential_id})` — mcp_servers row의 credential FK 직접 편집.
-- **M5 처리**: ConnectionBindingDialog에 `type='mcp'` 분기 추가. 단, backend `mcp_servers` 테이블/`useUpdateMCPServer` API는 **M6까지 유지**.
-- **호출부 교체**: `components/tool/mcp-server-group-card.tsx:28, 143`.
-- **비대칭성**: MCP는 PREBUILT/CUSTOM과 달리 **server 엔티티(URL+name)가 선행**하고 credential은 2차 속성. M5에서는 "인증" 진입 시 **credential binding만** ConnectionBindingDialog로 흡수하고, server create/rename/delete는 그대로 둔다. 즉 `type='mcp'`는 mcp_server_id를 외부 context로 받아 credential만 교체하는 셸로 설계.
-- **risk**: MCP connection 엔티티 자체가 M4에서 존재하는지 확인 필요 — exec-plan §4 M5에서 "server config 입력"까지 명시되어 있으나, ADR-008 상 MCP connection = 1 server, credential은 server의 속성. S2에서 팀쿡 spec으로 확정.
-
-### 2.3 `add-tool-dialog` MCP 탭 (components/tool/add-tool-dialog.tsx, 383줄)
-- **현재 흐름**: form(name, url, credential_id) → `useRegisterMCPServer` → discoveredTools 표시.
-- **M5 처리**: MCP 탭 본체는 유지하되 credential select 영역을 **ConnectionBindingDialog 진입 버튼**으로 재배선 OR 현재 CredentialSelect를 유지하고 "새 credential 생성"을 ConnectionBindingDialog(type='mcp')로 통합.
-- **권장**: MCP tab은 "신규 server 등록" 목적이므로 ConnectionBindingDialog 통합은 과잉. CredentialSelect 그대로 두고 **"새 credential 만들기" CTA만** ConnectionBindingDialog로 수렴 — 저커버그 S3에서 판단. 
-- **Custom 탭**: M4에서 이미 connection find-or-create로 전환됨 (add-tool-dialog.tsx:96-116). **변경 없음**. 단, `credential_id: customCredentialId` bridge 전송 라인(157-160)은 §3 보류(M6).
+**决定**：文件作为 thin wrapper 保留到 M6，但将 `tools/page.tsx` 调用处改为直接调用 `ConnectionBindingDialog`，让 **M5 的 "3 dialog → 1" 吸收验证可以通过 grep**。
 
 ---
 
-## 3. 보류 M6 — Legacy Drop 대상 (M5에서 절대 미접촉)
+## 2. 简化/替换（吸收到 ConnectionBindingDialog）
 
-### 3.1 `tool.credential_id` 기반 코드
-| 파일 | 라인 | 보류 사유 |
+### 2.1 `CustomAuthDialog`（components/tool/custom-auth-dialog.tsx, 108 行）
+- **当前 surface**：`CredentialSelect` + `CredentialFormDialog` + `useUpdateToolAuthConfig({credentialId})` — 直接编辑 `tool.credential_id`。
+- **M5 处理**：给 ConnectionBindingDialog 新增 `type='custom'` 分支（find-or-create connection，CUSTOM `provider_name='custom_api_key'` scope）。
+- **替换调用处**：`app/tools/page.tsx:252-260` — CustomAuthDialog → ConnectionBindingDialog(type='custom', tool)。
+- **注意（M4 bridge）**：CustomAuthDialog 只执行 "替换现有 tool 的 credential" — 不更改 connection_id。替换后 chat_service `_resolve_custom_auth` 从 `tool.connection_id` derive credential，因此**已设置 connection_id 的 tool 的 credential 替换**通过 connection.credential_id PATCH 解决（ADR-008 N:1）。
+- **文件本身是否保留**：CustomAuthDialog 也被 `PrebuiltAuthDialog` 的 legacy fallback（§3）引用。**文件保留到 M6**，只替换调用处。
+
+### 2.2 `MCPServerAuthDialog`（components/tool/mcp-server-auth-dialog.tsx, 110 行）
+- **当前 surface**：`server.credential_id` + `useUpdateMCPServer({credential_id})` — 直接编辑 mcp_servers row 的 credential FK。
+- **M5 处理**：给 ConnectionBindingDialog 新增 `type='mcp'` 分支。但 backend `mcp_servers` 表/`useUpdateMCPServer` API **保留到 M6**。
+- **替换调用处**：`components/tool/mcp-server-group-card.tsx:28, 143`。
+- **非对称性**：MCP 与 PREBUILT/CUSTOM 不同，**server entity（URL+name）先存在**，credential 是 2 级属性。M5 中进入 "认证" 时，只将**credential binding**吸收到 ConnectionBindingDialog，server create/rename/delete 保持原样。也就是说 `type='mcp'` 设计为接收 mcp_server_id 作为外部 context、只替换 credential 的 shell。
+- **risk**：需要确认 MCP connection entity 本身在 M4 是否存在 — exec-plan §4 M5 明确到 "输入 server config"，但 ADR-008 中 MCP connection = 1 server，credential 是 server 属性。由团队 Cook 在 S2 spec 中确定。
+
+### 2.3 `add-tool-dialog` MCP tab（components/tool/add-tool-dialog.tsx, 383 行）
+- **当前流程**：form(name, url, credential_id) → `useRegisterMCPServer` → 显示 discoveredTools。
+- **M5 处理**：保留 MCP tab 本体，但将 credential select 区域重新接线为**进入 ConnectionBindingDialog 的按钮** OR 保留当前 CredentialSelect，只将 "创建新 credential" 统一到 ConnectionBindingDialog(type='mcp')。
+- **推荐**：MCP tab 目的是 "注册新 server"，因此整合 ConnectionBindingDialog 过度。保留 CredentialSelect，只让**"创建新 credential" CTA** 收敛到 ConnectionBindingDialog — 由 Zuckerberg 在 S3 判断。
+- **Custom tab**：M4 已切换为 connection find-or-create（add-tool-dialog.tsx:96-116）。**不变**。但传递 `credential_id: customCredentialId` bridge 的行（157-160）移交 §3 暂缓（M6）。
+
+---
+
+## 3. 暂缓 M6 — Legacy Drop 对象（M5 中绝对不触碰）
+
+### 3.1 基于 `tool.credential_id` 的代码
+| 文件 | 行 | 暂缓原因 |
 |------|------|-----------|
-| `components/tool/prebuilt-auth-dialog.tsx` | 33-35 | provider_name NULL fallback → CustomAuthDialog 위임. backend legacy fallback과 1:1 대응. M6에서 fallback 경로 일괄 제거 시 동시 삭제 |
-| `components/tool/custom-auth-dialog.tsx` | 16, 36, 42-46 | `useUpdateToolAuthConfig`로 `tool.credential_id`를 직접 편집. backend `tool.credential_id` 컬럼 drop과 묶여야 안전 |
-| `components/tool/add-tool-dialog.tsx` | 153-160 | Custom tool create 시 `credential_id` 필드 함께 전송 (bridge). "M5에서 consumer 전환 후 제거" 주석 있으나, consumer = `tools/page.tsx` getAuthStatus도 `tool.credential_id` 의존 — **모두 M6에서 일괄 제거**가 안전 |
-| `app/tools/page.tsx` | `getAuthStatus`(미열람 구간) | Custom tool "configured" 판정이 `tool.credential_id` 기반. Connection 기반으로 전환 시 backend API 응답에 connection 요약 포함 필요 여부 확인 — **M6 scope** |
+| `components/tool/prebuilt-auth-dialog.tsx` | 33-35 | provider_name NULL fallback → 委托给 CustomAuthDialog。与 backend legacy fallback 1:1 对应。M6 中统一删除 fallback 路径时同步删除 |
+| `components/tool/custom-auth-dialog.tsx` | 16, 36, 42-46 | 通过 `useUpdateToolAuthConfig` 直接编辑 `tool.credential_id`。必须与 backend `tool.credential_id` 列 drop 绑定才安全 |
+| `components/tool/add-tool-dialog.tsx` | 153-160 | 创建 Custom tool 时同时发送 `credential_id` 字段（bridge）。虽有 "M5 consumer 切换后删除" 注释，但 consumer = `tools/page.tsx` getAuthStatus 也依赖 `tool.credential_id` — **全部在 M6 中统一删除**才安全 |
+| `app/tools/page.tsx` | `getAuthStatus`（未阅读区间） | Custom tool "configured" 判定基于 `tool.credential_id`。切换为 Connection-based 后需确认 backend API response 是否要包含 connection summary — **M6 scope** |
 
 ### 3.2 `tool.auth_config` (inline auth)
-- **보류**: M6 legacy drop 대상. `components/tool/custom-auth-dialog.tsx:42-45`의 `useUpdateToolAuthConfig({authConfig: {}, credentialId})` 호출이 `auth_config`를 비우는 경로. M6에서 컬럼과 함께 제거.
+- **暂缓**：M6 legacy drop 对象。`components/tool/custom-auth-dialog.tsx:42-45` 的 `useUpdateToolAuthConfig({authConfig: {}, credentialId})` 调用会清空 `auth_config`。M6 中与列一起删除。
 
-### 3.3 `tool.mcp_server_id` & `mcp_servers` 테이블
-- **보류**: `lib/api/` 내 mcp_server 관련 API, `useRegisterMCPServer`, `useUpdateMCPServer`, `useDeleteMCPServer`, `mcp-server-group-card.tsx`, `mcp-server-rename-dialog`, `mcp-server-auth-dialog.tsx` 전체. M6에서 Connection(type='mcp')로 server 엔티티 통합 후 일괄 제거.
-- **M5 허용**: M5.2 호출부 교체(§2.2)는 표면 변경만 — `useUpdateMCPServer({credential_id})` 호출 자체는 유지 (ConnectionBindingDialog 내부에서 호출하거나 별도 mutation hook로 우회).
+### 3.3 `tool.mcp_server_id` & `mcp_servers` 表
+- **暂缓**：`lib/api/` 内 mcp_server 相关 API、`useRegisterMCPServer`、`useUpdateMCPServer`、`useDeleteMCPServer`、`mcp-server-group-card.tsx`、`mcp-server-rename-dialog`、整个 `mcp-server-auth-dialog.tsx`。M6 中将 server entity 整合到 Connection(type='mcp') 后统一删除。
+- **M5 允许**：M5.2 调用处替换（§2.2）只改变 surface — `useUpdateMCPServer({credential_id})` 调用本身保留（在 ConnectionBindingDialog 内调用或通过单独 mutation hook 绕行）。
 
 ### 3.4 `agent_tools.config` JSON
-- **보류**: agent별 도구 설정 JSON. M5 스코프 외. agent 편집 페이지에서 사용 중이면 M6까지 유지.
+- **暂缓**：agent 级工具设置 JSON。超出 M5 scope。若 agent 编辑页面仍在使用，则保留到 M6。
 
-### 3.5 `PrebuiltAuthDialog`/`CustomAuthDialog`/`MCPServerAuthDialog` 파일 자체
-- **보류**: §1.2, §2.1, §2.2 결정에 따라 **호출부만 교체**, 파일은 M6까지 thin wrapper로 유지. F 흡수 검증은 grep 호출부 0으로 판정 (CHECKPOINT §S3 마지막 체크리스트 기준으로 OK).
-
----
-
-## 4. 보류 M5.5 — agent_tools.connection_id override (M5에서 절대 미접촉)
-
-### 현재 코드베이스 스캔 결과
-- **agent_tools.connection_id 컬럼 미존재** (M4 상태). grep `connection_id.*agent_tools` → 0.
-- **agent 도구별 connection override UI 미존재**. `app/agents/[id]/config/*`는 agent_tools.config JSON 기반 설정만 다룸.
-- **결론**: M5.5는 backend m12 + chat_service 분기 + 신규 UI 전부 **신규 작업**. M5에서 건드릴 기존 코드 없음.
-
-**M5에서의 행동**: `frontend/src/app/agents/[id]/config/**`, `backend/app/services/chat_service*`, `backend/app/routers/agent_tools*`, `backend/alembic/versions/**` — **touch 금지**.
+### 3.5 `PrebuiltAuthDialog`/`CustomAuthDialog`/`MCPServerAuthDialog` 文件本身
+- **暂缓**：根据 §1.2、§2.1、§2.2 决定，**只替换调用处**，文件作为 thin wrapper 保留到 M6。F 吸收验证以 grep 调用处 0 判定（按 CHECKPOINT §S3 最后 checklist 为 OK）。
 
 ---
 
-## 5. 신규 작업 (M5에서 생성할 항목 — 삭제 대상 아니지만 맥락)
+## 4. 暂缓 M5.5 — agent_tools.connection_id override（M5 中绝对不触碰）
 
-- `components/connection/connection-binding-dialog.tsx` — 이미 M3에서 PREBUILT 전용으로 존재 (237줄). M5 S3에서 `type` discriminated union으로 확장 (prebuilt | custom | mcp).
-- `messages/ko.json` `connection.binding.{custom,mcp}.*` 키 추가 (기존 prebuilt 섹션 있음).
-- Connection 상세 drawer/modal (S4) — `credentials` hook 재사용.
+### 当前 codebase 扫描结果
+- **不存在 agent_tools.connection_id 列**（M4 状态）。grep `connection_id.*agent_tools` → 0。
+- **不存在 agent 工具级 connection override UI**。`app/agents/[id]/config/*` 只处理基于 agent_tools.config JSON 的设置。
+- **结论**：M5.5 的 backend m12 + chat_service 分支 + 新 UI 全部是**新工作**。M5 中没有现有代码可触碰。
+
+**M5 中的行为**：`frontend/src/app/agents/[id]/config/**`, `backend/app/services/chat_service*`, `backend/app/routers/agent_tools*`, `backend/alembic/versions/**` — **禁止 touch**。
 
 ---
 
-## 6. 검증 체크리스트 (M5 완료 시 재확인)
+## 5. 新工作（M5 中要创建的项目 — 虽非删除对象但用于上下文）
+
+- `components/connection/connection-binding-dialog.tsx` — 已在 M3 作为 PREBUILT 专用存在（237 行）。M5 S3 中扩展为 `type` discriminated union（prebuilt | custom | mcp）。
+- `messages/ko.json` 新增 `connection.binding.{custom,mcp}.*` key（已有 prebuilt section）。
+- Connection detail drawer/modal（S4）— 复用 `credentials` hook。
+
+---
+
+## 6. 验证 checklist（M5 完成时重新确认）
 
 ```bash
-# F 흡수: 3 AuthDialog 호출부가 0이어야 함 (파일은 thin wrapper로 남음)
+# F 吸收：3 个 AuthDialog 调用处必须为 0（文件保留为 thin wrapper）
 rg -n "PrebuiltAuthDialog|CustomAuthDialog|MCPServerAuthDialog" frontend/src/app frontend/src/components --glob '!*auth-dialog.tsx'
-# 기대: 0 hits
+# 预期：0 hits
 
-# ConnectionBindingDialog 호출처 ≥ 3 (tools/page.tsx × 2, mcp-server-group-card.tsx × 1, connections/page.tsx × 1)
+# ConnectionBindingDialog 调用处 ≥ 3（tools/page.tsx × 2, mcp-server-group-card.tsx × 1, connections/page.tsx × 1）
 rg -l "ConnectionBindingDialog" frontend/src
 
-# 백엔드 0건
+# Backend 0 项
 git diff main...HEAD -- backend/ | wc -l
-# 기대: 0
+# 预期：0
 
-# agent_tools / chat_service / alembic 0건
+# agent_tools / chat_service / alembic 0 项
 git diff main...HEAD -- 'backend/app/services/chat_service*' 'backend/app/routers/agent_tools*' 'backend/alembic/' | wc -l
-# 기대: 0
+# 预期：0
 ```
 
 ---
 
-## 7. 위험 신호 (사티아에게 공유)
+## 7. 风险信号（与 Satya 共享）
 
-1. **PrebuiltAuthDialog 파일 존치 vs 삭제 판단**: 현재 thin wrapper + legacy fallback이 backend fallback과 1:1 대응. 삭제하면 legacy provider_name NULL tool이 "관리 불가"가 됨. **권장: 파일 유지, 호출부만 교체**.
-2. **CustomAuthDialog의 connection semantics**: "credential만 교체" → connection.credential_id PATCH로 해결 가능. 단, M4 bridge override 흐름(`tool.credential_id != connection.credential_id`)을 사용자가 이미 만들어 놓은 row가 있다면 PATCH 방향이 bridge를 덮어쓸 수 있음 — **S3 구현 시 팀쿡 spec에서 "기존 bridge row는 어떻게 처리할 것인가" 명시 필요**.
-3. **MCP server + credential 분리 UX**: ConnectionBindingDialog(type='mcp')가 server_id를 props로 받아야 한다. 신규 server create는 여전히 add-tool-dialog에서 수행 — UX가 두 군데로 쪼개짐. 팀쿡 S2에서 통합 vs 분리 결정 필요.
-4. **tools/page.tsx getAuthStatus**: 본 분석에서 파일 상단(~30-220)은 미열람. `tool.credential_id` 기반 "configured" 판정이 있다면 CustomAuthDialog 교체 후에도 UI 회귀 없이 동작하는지 **S3 구현 중 확인**.
-5. **Credential hook 재사용 경계**: `useCredentials` 자체는 Connection 상세 drawer에서 재사용. 하지만 `useDeleteCredential`은 Connection 삭제와 혼동 위험 — "Connection 삭제 = Credential 삭제"인지 "Connection 삭제 ≠ Credential 삭제(다른 connection이 참조 가능)"인지 spec 명시 필요.
+1. **PrebuiltAuthDialog 文件保留 vs 删除判断**：当前 thin wrapper + legacy fallback 与 backend fallback 1:1 对应。删除会使 legacy provider_name NULL tool "无法管理"。**推荐：保留文件，只替换调用处**。
+2. **CustomAuthDialog 的 connection semantics**："只替换 credential" → 可通过 connection.credential_id PATCH 解决。但如果用户已经创建了使用 M4 bridge override 流程（`tool.credential_id != connection.credential_id`）的 row，PATCH 方向可能覆盖 bridge — **S3 实现时需在团队 Cook spec 中明确 "如何处理现有 bridge row"**。
+3. **MCP server + credential 分离 UX**：ConnectionBindingDialog(type='mcp') 需要通过 props 接收 server_id。新 server create 仍在 add-tool-dialog 中执行 — UX 被分到两处。团队 Cook S2 中需要决定整合 vs 分离。
+4. **tools/page.tsx getAuthStatus**：本分析未阅读文件上半部分（~30-220）。如果存在基于 `tool.credential_id` 的 "configured" 判定，替换 CustomAuthDialog 后是否仍能在 UI 中无回归工作，**S3 实现中确认**。
+5. **Credential hook 复用边界**：`useCredentials` 本身在 Connection detail drawer 中复用。但 `useDeleteCredential` 容易与 Connection 删除混淆 — spec 需要明确 "Connection 删除 = Credential 删除" 还是 "Connection 删除 ≠ Credential 删除（可能被其他 connection 引用）"。
 
 ---
 
-## 8. 분류 요약표
+## 8. 分类摘要表
 
-| 카테고리 | 건수 |
+| 类别 | 数量 |
 |----------|------|
-| 즉시 삭제 (M5) | 5개 (connections/page.tsx Credential 카드 섹션 관련) + 호출부 교체 3건 |
-| 단순화/대체 (M5) | 3개 dialog 호출부 → ConnectionBindingDialog 흡수 |
-| 보류 M6 | legacy 컬럼 4종 + 파일 3개(thin wrapper) + mcp_servers API 일체 |
-| 보류 M5.5 | 없음 (신규 기능, 기존 코드 미변경) |
-| 백엔드 변경 | **0건** |
+| 立即删除（M5） | 5 个（connections/page.tsx Credential 卡片 section 相关）+ 调用处替换 3 项 |
+| 简化/替换（M5） | 3 个 dialog 调用处 → 吸收到 ConnectionBindingDialog |
+| 暂缓 M6 | legacy 列 4 类 + 文件 3 个（thin wrapper）+ 全部 mcp_servers API |
+| 暂缓 M5.5 | 无（新功能，不改现有代码） |
+| Backend 变更 | **0 项** |
 
-**Bezos "?"**: tools/page.tsx `getAuthStatus`의 Custom tool 판정 로직이 `tool.credential_id` 의존이면, S3 구현 후 "Custom 도구가 connection 바인딩되어도 '미설정'으로 표시" 회귀 가능 → 저커버그 구현 시 확인할 것.
+**Bezos "?"**：如果 tools/page.tsx `getAuthStatus` 的 Custom tool 判定依赖 `tool.credential_id`，S3 实现后可能出现 "Custom 工具已绑定 connection 仍显示为 '未设置'" 的回归 → Zuckerberg 实现时确认。

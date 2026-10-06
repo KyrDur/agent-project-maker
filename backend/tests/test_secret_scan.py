@@ -1,4 +1,4 @@
-"""M6 Slice C — Secret scanner unit tests (Phase 1 출시 게이트).
+"""M6 Slice C — Secret scanner unit tests (Phase 1 发布门槛).
 
 Spec §13.1 + Bezos OI-4. Targets ``app.marketplace.secret_scan``:
 
@@ -10,7 +10,7 @@ Spec §13.1 + Bezos OI-4. Targets ``app.marketplace.secret_scan``:
   symlink skip.
 
 Pairs with the integration smoke in ``test_marketplace_publish.py`` —
-젠슨's `test_upload_rejects_env_file` / `test_upload_rejects_openai_key_in_content`
+詹森's `test_upload_rejects_env_file` / `test_upload_rejects_openai_key_in_content`
 / `test_upload_allows_placeholder_sk_example` verify the publish/upload
 router-layer hookup. This file pins every individual regex so a future
 tweak surfaces immediately at unit-test granularity.

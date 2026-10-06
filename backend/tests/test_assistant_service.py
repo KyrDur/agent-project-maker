@@ -46,7 +46,7 @@ async def test_stream_assistant_message():
             agent_id=agent_id,
             user_id=user_id,
             thread_id=thread_id,
-            user_message="시스템 프롬프트 수정해줘",
+            user_message="帮我修改系统提示词",
         ):
             collected.append(chunk)
 

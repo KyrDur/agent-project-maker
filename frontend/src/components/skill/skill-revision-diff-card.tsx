@@ -20,16 +20,16 @@ import {
 
 const SKILL_MD = 'SKILL.md'
 
-// diff 계산/렌더 상한 — 2MB 상한의 병적 입력에서 Myers diff + 라인당 DOM이
-// 메인 스레드를 잡는 것을 막는다(초과 시 placeholder, 소스 뷰어로 유도).
+// diff 计算/渲染上限 — 防止在 2MB 上限的病态输入中 Myers diff + 每行 DOM
+// 卡住主线程（超限时显示 placeholder，引导到源查看器）。
 const MAX_DIFF_LINES = 5000
 
 /**
- * 선택 리비전 vs parent 리비전의 SKILL.md 라인 diff (Phase 2 목업 ver-diff).
+ * 选中修订版 vs parent 修订版的 SKILL.md 行 diff (Phase 2 模拟 ver-diff)。
  *
- * 최초 리비전(parent 없음)은 빈 원본 대비 전체 추가로, pruned 스냅샷과
- * 콘텐츠 404(바이너리 등)는 placeholder로 처리한다 — diff 계산은 프론트,
- * 백엔드는 원문만 제공한다 (스펙 AD-6).
+ * 首个修订版（无 parent）相对空原文视为全部新增，pruned 快照和
+ * 内容 404（二进制等）按 placeholder 处理 — diff 在前端计算，
+ * 后端只提供原文 (规范 AD-6)。
  */
 export function SkillRevisionDiffCard({
   skillId,
@@ -43,8 +43,8 @@ export function SkillRevisionDiffCard({
   const t = useTranslations('skill.studio.versions')
   const pruned = Boolean(detail?.metadata_json?.snapshot_pruned)
   const parentRevisionId = detail?.parent_revision_id ?? null
-  // detail이 로드되기 전에는 pruned가 미확정(false로 보임) — 그대로 fetch하면
-  // pruned 리비전 선택마다 확정 404 요청이 placeholder보다 먼저 나간다 (R5).
+  // detail 加载前 pruned 尚未确定（看起来为 false）— 若直接 fetch，
+  // 每次选择 pruned 修订版时，确定的 404 请求都会先于 placeholder 发出 (R5)。
   const contentEnabled = Boolean(detail) && !pruned
   const current = useSkillRevisionFileContent(
     skillId,
@@ -121,7 +121,7 @@ function DiffBody({
   if (currentError || currentText === undefined) {
     return <DiffPlaceholder message={t('diffUnavailable')} />
   }
-  // parent 스냅샷이 pruned/유실이면 비교 기준이 없다 — 명시 placeholder.
+  // parent 快照若被 pruned/丢失，就没有比较基准 — 显式显示 placeholder。
   if (parentError || parentText === undefined) {
     return <DiffPlaceholder message={t('parentUnavailable')} />
   }
@@ -137,7 +137,7 @@ function DiffLines({
   readonly currentText: string
 }) {
   const t = useTranslations('skill.studio.versions')
-  // 부모 리렌더(rollback pending 등)마다 diff를 재계산하지 않는다.
+  // 不在每次父级重新渲染（rollback pending 等）时重新计算 diff。
   const lines = useMemo(
     () => computeCappedRevisionDiffLines(parentText, currentText),
     [parentText, currentText],
@@ -173,7 +173,7 @@ function DiffLineRow({ line }: { readonly line: RevisionDiffLine }) {
   )
 }
 
-/** 할당 없는 라인 수 세기 — 사전 검사 자체가 병적 입력에서 비싸지 않게. */
+/** 不分配内存的行数统计 — 让预检查本身在病态输入下也不昂贵。 */
 export function countInputLines(text: string): number {
   let count = 1
   for (let i = 0; i < text.length; i += 1) {
@@ -183,25 +183,25 @@ export function countInputLines(text: string): number {
 }
 
 /**
- * 상한이 걸린 diff 계산 — null = 너무 커서 diff 생략(placeholder 유도).
+ * 带上限的 diff 计算 — null = 过大，省略 diff（引导 placeholder）。
  *
- * 순서가 계약이다 (R6): ① 동일 텍스트는 크기와 무관하게 "변경 없음"(빈 배열)
- * — 사전 검사가 먼저면 6천 라인 무변경 롤백 리비전이 "변경이 너무 큼"으로
- * 오표기된다. ② O(ND) Myers 이전의 싼 라인 수 사전 검사 — diff 출력은
- * max(입력 라인) 이상이므로 한쪽 입력만으로 초과 확정이면 건너뛴다(사후
- * 검사만으로는 2MB 병적 입력에서 placeholder를 정하기 전에 메인 스레드가
- * 얼어붙는다, R5). ③ 사후 검사 — 입력은 상한 내지만 출력이 초과하는 경우.
+ * 顺序是契约的一部分 (R6)：① 相同文本无论大小都视为 "无变更"（空数组）
+ * — 如果预检查先执行，6千行无变更回滚修订版会被误标为 "变更过大"。
+ * ② 在 O(ND) Myers 前做低成本行数预检查 — diff 输出至少为 max(输入行数)，
+ * 因此若只凭一侧输入即可确定超限，就直接跳过（仅靠事后检查会在 2MB 病态输入中，
+ * 还没来得及决定 placeholder 就先冻住主线程，R5）。③ 事后检查 — 输入在上限内，
+ * 但输出超过上限的情况。
  */
 export function computeCappedRevisionDiffLines(
   parentText: string,
   currentText: string,
 ): readonly RevisionDiffLine[] | null {
-  // 동일성은 diff 옵션(stripTrailingCr/ignoreNewlineAtEof)과 같은 정규화로
-  // 판정한다 — 바이트 비교만 하면 CRLF 스냅샷 vs LF 리비전(옵션이 노린 바로
-  // 그 입력 클래스)이 상한 초과 시 "변경 없음" 대신 "너무 큼"으로 오표기 (R7).
+  // 相同性用与 diff 选项(stripTrailingCr/ignoreNewlineAtEof)一致的规范化方式
+  // 判断 — 如果只做字节比较，CRLF 快照 vs LF 修订版（正是该选项针对的
+  // 输入类别）在超限时会被误标为"无变更"而不是"过大" (R7)。
   if (parentText === currentText) return []
-  // 빈 문자열은 정규화 비교에서 제외 — ''(0줄)와 '\n'(빈 줄 1개)는 jsdiff
-  // 기준 실제 변경인데 정규화가 둘을 합쳐 거짓 "변경 없음"을 만들었다 (R8).
+  // 空字符串不参与规范化比较 — ''(0行) 与 '\n'(1个空行) 按 jsdiff
+  // 标准属于真实变更，但规范化会把两者合并，产生错误的"无变更" (R8)。
   if (
     parentText !== '' &&
     currentText !== '' &&
@@ -219,9 +219,9 @@ export function computeCappedRevisionDiffLines(
   return lines.length > MAX_DIFF_LINES ? null : lines
 }
 
-/** diff 옵션과 동치인 동일성 정규화 — CRLF→LF + 말미 개행 보장(ensure).
- * strip 방식은 '\n\n' vs '\n'을 합쳐 거짓 "변경 없음"을 만든다 — 개행을
- * 지우는 대신 채워야 ignoreNewlineAtEof("말미 개행 유무만 무시")와 동치 (R8). */
+/** 与 diff 选项等价的相同性规范化 — CRLF→LF + 保证末尾换行(ensure)。
+ * strip 方式会把 '\n\n' vs '\n' 合并成错误的"无变更" — 应补齐换行而不是删除，
+ * 才与 ignoreNewlineAtEof("只忽略末尾是否有换行")等价 (R8)。 */
 function normalizeForIdentity(text: string): string {
   const unified = text.includes('\r\n') ? text.split('\r\n').join('\n') : text
   return unified.endsWith('\n') ? unified : `${unified}\n`

@@ -2,6 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { useSession } from '@/lib/auth/session'
+import { personalAiQueryKeys } from '@/lib/query-keys/personal-ai'
 import { systemLlmSettingsApi } from '@/lib/api/system-llm-settings'
 import type {
   SystemLlmRole,
@@ -9,20 +11,21 @@ import type {
   SystemLlmTestRequest,
 } from '@/lib/types/system-llm-setting'
 
-const KEY_LIST = ['system-llm-settings'] as const
-const KEY_READINESS = ['system-llm-readiness'] as const
-
 export function useSystemLlmSettings() {
+  const { data: user } = useSession()
   return useQuery({
-    queryKey: KEY_LIST,
+    queryKey: personalAiQueryKeys.settings(user?.id),
+    enabled: !!user?.id,
     queryFn: systemLlmSettingsApi.list,
     staleTime: 30_000,
   })
 }
 
 export function useSystemLlmReadiness() {
+  const { data: user } = useSession()
   return useQuery({
-    queryKey: KEY_READINESS,
+    queryKey: personalAiQueryKeys.readiness(user?.id),
+    enabled: !!user?.id,
     queryFn: systemLlmSettingsApi.readiness,
     staleTime: 30_000,
   })
@@ -34,8 +37,7 @@ export function useUpdateSystemLlmSetting() {
     mutationFn: ({ role, data }: { role: SystemLlmRole; data: SystemLlmSettingUpdate }) =>
       systemLlmSettingsApi.update(role, data),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: KEY_LIST })
-      void qc.invalidateQueries({ queryKey: KEY_READINESS })
+      void qc.invalidateQueries({ queryKey: personalAiQueryKeys.all })
     },
   })
 }

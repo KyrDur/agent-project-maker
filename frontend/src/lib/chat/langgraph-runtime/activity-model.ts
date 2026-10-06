@@ -285,7 +285,7 @@ function reduceCustom(current: readonly RunActivity[], event: ProtocolEvent): Ru
     })
   }
   if (name === 'compaction' || name === 'moldy.compaction') {
-    // Transient "압축 중…" — running while deepagents summarizes; flips to
+    // Transient "压缩中…"——running while deepagents summarizes; flips to
     // complete (and disappears from the strip) once the done marker lands. Same
     // activity id across running/done so upsert transitions the one pill.
     const state = isRecord(payload) ? textValue(payload.state) : undefined

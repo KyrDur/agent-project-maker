@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
 }))
 const router = { push: mocks.push, replace: mocks.replace }
 vi.mock('next/navigation', () => ({ useRouter: () => router }))
+vi.mock('@/lib/hooks/use-system-llm-settings', () => ({
+  useSystemLlmSettings: () => ({ data: [{ role: 'builder', model_name: 'configured-model' }] }),
+}))
 vi.mock('@/lib/api/builder', () => ({ builderApi: mocks }))
 vi.mock('@/lib/sse/stream-builder-resume', () => ({
   streamBuilderResume: (...args: unknown[]) => {

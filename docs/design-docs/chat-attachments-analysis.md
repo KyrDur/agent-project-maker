@@ -1,109 +1,109 @@
-# 채팅 첨부 파일 — 개발 기획 분석 (결정 전 단계)
+# 聊天附件 — 开发规划分析（决策前阶段）
 
-> 목적: "첨부 파일을 제대로 처리"하기 위해 **고려해야 할 것**, **결정해야 할 것**, **작업 분량**을 사전 분석한다. 구현 결정은 이 문서의 "결정 항목"을 사용자가 정한 뒤 별도 SPEC/plan으로 진행한다.
-> 근거: backend/frontend 소스 분석 + LangChain 1.x(`langchain_core 1.4.7`) 소스 + assistant-ui 0.14.18 + assistant-ui 첨부 문서.
+> 目的：为“正确处理附件”预先分析**需要考虑的事项**、**需要决定的事项**、**工作量**。实现决策将在用户确定本文档中的“决策项”后，另行进入 SPEC/plan。
+> 依据：backend/frontend 源码分析 + LangChain 1.x（`langchain_core 1.4.7`）源码 + assistant-ui 0.14.18 + assistant-ui 附件文档。
 
 ---
 
-## 0. 핵심 재정의 — "첨부 처리"는 두 개의 분리된 기능이다
+## 0. 核心重新定义 — “附件处理”是两个独立功能
 
-| | 무엇 | 현재 상태 | 가치 |
+| | 内容 | 当前状态 | 价值 |
 |---|---|---|---|
-| **① 표시(display)** | 사용자가 보낸 첨부를 transcript(user 버블)에 다시 보여줌 | ❌ 전송 후 사라짐 (composer staging만 존재) | "내가 뭘 보냈는지" UX |
-| **② 모델 입력(ingestion)** | 에이전트가 첨부 파일 **내용**을 실제로 봄 (이미지/문서) | ❌ **0%** — 모델은 텍스트만 받음 | "에이전트가 첨부를 이해" — 진짜 기능 |
+| **① 显示(display)** | 将用户发送的附件再次显示在 transcript（user 气泡）中 | ❌ 发送后消失（仅存在 composer staging） | “我发送了什么”的 UX |
+| **② 模型输入(ingestion)** | Agent 实际看到附件文件的**内容**（图片/文档） | ❌ **0%** — 模型只接收文本 | “Agent 理解附件” — 真正功能 |
 
-두 기능은 **독립적으로** 출시 가능하다. ①만 해도 가치가 있고(보낸 것 확인), ②는 ①과 별개의 백엔드 작업(메시지 조립 + provider 게이팅)이다. **가장 큰 결정은 "어디까지 할 것인가"다.**
-
----
-
-## 1. 현재 상태 (확정)
-
-### 백엔드
-- **모델은 텍스트만 받는다.** `send_message` → `input_payload=[{"role":"user","content":data.content}]` → `convert_to_langchain_messages`(message_utils.py:167) → `HumanMessage(content=<string>)`. 첨부 파일은 디스크에서 읽히지도, content block으로 주입되지도 않음. 에이전트는 첨부 존재 자체를 모름.
-- **첨부 저장**: `message_attachments` 행. 업로드 시 `message_id`·`conversation_id` null → 전송 시 `link_attachments_to_conversation`이 `conversation_id`만 세팅(`message_id`는 여전히 null).
-- **읽기 누락**: GET /messages hydration이 `conversation_id == c AND message_id IS NOT NULL`로 필터 → message_id가 null이라 **0건 → 첨부가 응답에서 누락**.
-- **보안 갭** (멀티유저에서 중요):
-  - `GET /api/uploads/{id}` **인증 없음** — UUID만 알면 누구나 다운로드.
-  - 업로드 파일 **암호화 안 됨** (평문 디스크 저장, `./data/uploads/`).
-  - orphan(미전송) 업로드 **GC 잡 미구현**.
-  - 화이트리스트: image/*, text/*, application/pdf, application/json, 20MiB.
-- **message_id 타이밍**: HumanMessage id는 **서버 생성, 런 종료 후**에야 확정 → Path A는 `finalize_turn` 류 훅에서 backfill 필요. 클라이언트가 미리 지정 불가.
-
-### 프론트
-- **생성 파일(아티팩트)은 이미 풍부하게 렌더됨**: preview registry 16종(image/pdf/docx/xlsx/pptx/hwp/mermaid/markdown/code/json/table/...), 우측 레일, 라이브러리 페이지, assistant 메시지 인라인 카드(`AssistantArtifactCards`).
-- **사용자 첨부는 전송 후 아무 데도 안 보임**. `convert-message.ts`는 `message.attachments` → assistant-ui `CompleteAttachment` 변환 코드를 **이미 보유**(백엔드가 echo만 하면 됨). 단 user 버블에 `MessagePrimitive.Attachments` **미사용**.
-- assistant-ui 0.14.18: `MessagePrimitive.Attachments components={{ Image, Document, File, Attachment }}` + `useAttachmentSrc()` + `AttachmentPrimitive.unstable_Thumb`(썸네일) + 클릭→프리뷰 다이얼로그 패턴 제공.
+两个功能可以**独立**发布。即使只做 ① 也有价值（确认已发送内容），② 是与 ① 分开的后端工作（消息组装 + provider gating）。**最大的决策是“做到什么范围”。**
 
 ---
 
-## 2. LangChain 1.x 권장 방식 (②를 한다면)
+## 1. 当前状态（已确认）
 
-**마크다운 링크 텍스트가 아니라 표준 content block으로 보낸다.** `HumanMessage(content_blocks=[...])`:
-- **이미지** → `{type:"image", base64, mime_type}` (또는 url)
-- **PDF** → `{type:"file", base64, mime_type:"application/pdf"}` (provider 지원 시)
+### 后端
+- **模型只接收文本。** `send_message` → `input_payload=[{"role":"user","content":data.content}]` → `convert_to_langchain_messages`（message_utils.py:167）→ `HumanMessage(content=<string>)`。附件既未从磁盘读取，也未注入 content block。Agent 甚至不知道附件存在。
+- **附件保存**：`message_attachments` 行。上传时 `message_id`·`conversation_id` 为 null → 发送时 `link_attachments_to_conversation` 仅设置 `conversation_id`（`message_id` 仍为 null）。
+- **读取遗漏**：GET /messages hydration 以 `conversation_id == c AND message_id IS NOT NULL` 过滤 → 因 message_id 为 null，得到 **0 条 → 附件从响应中遗漏**。
+- **安全缺口**（多用户环境中重要）：
+  - `GET /api/uploads/{id}` **无认证** — 只要知道 UUID，任何人都能下载。
+  - 上传文件**未加密**（明文保存在磁盘，`./data/uploads/`）。
+  - orphan（未发送）上传**未实现 GC job**。
+  - 白名单：image/*, text/*, application/pdf, application/json, 20MiB。
+- **message_id 时机**：HumanMessage id **由服务器生成，直到 run 结束后**才确定 → Path A 需要在 `finalize_turn` 类 hook 中 backfill。客户端无法预先指定。
+
+### 前端
+- **生成文件（artifact）已经支持丰富渲染**：preview registry 16 类（image/pdf/docx/xlsx/pptx/hwp/mermaid/markdown/code/json/table/...）、右侧栏、Library 页面、assistant 消息内联卡片（`AssistantArtifactCards`）。
+- **用户附件发送后完全不显示。** `convert-message.ts` 已经包含 `message.attachments` → assistant-ui `CompleteAttachment` 的转换代码（只需后端 echo 即可）。但 user 气泡中**未使用** `MessagePrimitive.Attachments`。
+- assistant-ui 0.14.18：提供 `MessagePrimitive.Attachments components={{ Image, Document, File, Attachment }}` + `useAttachmentSrc()` + `AttachmentPrimitive.unstable_Thumb`（缩略图）+ 点击→预览对话框模式。
+
+---
+
+## 2. LangChain 1.x 推荐方式（若实现②）
+
+**不是 Markdown 链接文本，而是以标准 content block 发送。** `HumanMessage(content_blocks=[...])`：
+- **图片** → `{type:"image", base64, mime_type}`（或 url）
+- **PDF** → `{type:"file", base64, mime_type:"application/pdf"}`（provider 支持时）
 - **.txt/.md** → `{type:"text-plain", text}`
-- **docx/xlsx/pptx/csv 등** → **네이티브 block 없음** → 서버에서 텍스트 추출 후 주입
+- **docx/xlsx/pptx/csv 等** → **没有原生 block** → 服务器提取文本后注入
 
-### provider 지원 매트릭스
-| provider | 이미지 | PDF/파일 | 비고 |
+### provider 支持矩阵
+| provider | 图片 | PDF/文件 | 备注 |
 |---|---|---|---|
-| **OpenAI** | ✅ image_url | ✅ base64/file_id (**Chat Completions는 파일 URL 거부**, 파일명 필요) | |
-| **Anthropic** | ✅ | ✅ document(PDF/text/url) | 파일을 document block으로 |
+| **OpenAI** | ✅ image_url | ✅ base64/file_id（**Chat Completions 拒绝文件 URL**，需要文件名） | |
+| **Anthropic** | ✅ | ✅ document（PDF/text/url） | 将文件作为 document block |
 | **Google** | ✅ inline_data | ✅ PDF base64/file_uri | |
-| **OpenRouter/openai_compatible/Hancom 게이트웨이** | ⚠️ 모델 의존 | ⚠️ 모델 의존 | **보장 안 됨** — 현재 system 모델이 Hancom 게이트웨이 |
+| **OpenRouter/openai_compatible/Hancom 网关** | ⚠️ 取决于模型 | ⚠️ 取决于模型 | **不保证** — 当前 system 模型为 Hancom 网关 |
 
-- **미지원 block → `ValueError` (silent fallback 없음)** → 반드시 `(provider, model)` 능력으로 **게이팅** 필요.
-- deepagents는 multimodal HumanMessage를 그대로 통과시킴. 단 **media는 토큰 수를 부풀려 auto-compaction 임계치에 영향**(context-window 작업과 연동).
-- `model_factory`는 multimodal에 손 안 댐 — 작업은 **메시지 조립 경로**(messages_history 생성부)에 들어감.
-- **대안(이미 존재)**: Assistant 에이전트는 multimodal 대신 **read-as-tool(RAG)** 패턴 사용(`list_agent_files`→`read_agent_file`→텍스트로 답). 문서 Q&A엔 이 방식도 유효하며 이미 배선됨.
+- **不支持的 block → `ValueError`（无 silent fallback）** → 必须按 `(provider, model)` 能力进行**门控**。
+- deepagents 会原样传递 multimodal HumanMessage。但 **media 会显著增加 token 数，影响 auto-compaction 阈值**（与 context-window 工作联动）。
+- `model_factory` 不处理 multimodal — 工作应进入**消息组装路径**（messages_history 生成处）。
+- **替代方案（已存在）**：Assistant Agent 不使用 multimodal，而采用 **read-as-tool(RAG)** 模式（`list_agent_files`→`read_agent_file`→以文本回答）。对文档 Q&A 也有效，且已完成接线。
 
 ---
 
-## 3. 생성 파일 vs 첨부 파일 (UI에서 같이 표현?)
+## 3. 生成文件 vs 附件文件（UI 是否统一展示？）
 
-| | 첨부(입력) `message_attachments` | 생성(출력) `conversation_artifacts` (M59) |
+| | 附件（输入）`message_attachments` | 生成（输出）`conversation_artifacts` (M59) |
 |---|---|---|
-| 누가 | 사용자 업로드 | 에이전트 도구(write_file 등) |
-| 언제 | 전송 전 | 런 중/후 |
-| 위치 | user 버블에 표시해야 함(목표) | 우측 레일/라이브러리/assistant 인라인 카드(이미 있음) |
-| 버전 | 없음 | 버전 관리됨 |
-| 프리뷰 | 없음(신규) | preview registry 16종(재사용 가능) |
+| 谁 | 用户上传 | Agent 工具（write_file 等） |
+| 何时 | 发送前 | run 中/后 |
+| 位置 | 应显示在 user 气泡中（目标） | 右侧栏/Library/assistant 内联卡片（已存在） |
+| 版本 | 无 | 有版本管理 |
+| 预览 | 无（新增） | preview registry 16 类（可复用） |
 
-**결정 필요**: 둘을 시각적으로 같게(통합 파일 UI) 갈지, 다르게(입력=중립/2차, 출력=주요) 갈지. 위치는 자연히 다름(user 버블 vs 레일).
+**需要决策**：两者视觉上是否统一（统一文件 UI），或区分（输入=中性/次要，输出=主要）。位置天然不同（user 气泡 vs 侧栏）。
 
 ---
 
-## 4. 결정 항목 (사용자가 정해야 할 것)
+## 4. 决策项（需要用户确定）
 
-| # | 결정 | 옵션 | 추천 |
+| # | 决策 | 选项 | 推荐 |
 |---|---|---|---|
-| **D1. 스코프** | 어디까지? | (a) **표시만** / (b) 표시+모델입력(multimodal) / (c) 표시+모델입력(RAG read-tool) | **단계적**: 먼저 (a), 이후 (b) — 아래 phasing |
-| **D2. 모델 입력 방식** | (b/c 선택 시) | multimodal content blocks vs 서버 텍스트 추출(RAG) | 이미지=multimodal, 문서=텍스트추출/RAG 혼합 |
-| **D3. 지원 타입** | 무엇을 받나 | 이미지만 / +PDF / +office(docx·xlsx) | 이미지 먼저, PDF 다음 |
-| **D4. provider 게이팅** | vision 미지원(Hancom 게이트웨이 등)일 때 | 텍스트추출 fallback / 첨부 거부+경고 / 그냥 표시만 | 능력 게이팅 + 미지원 시 표시만(모델 주입 skip) |
-| **D5. 표시 UX** | user 버블 렌더 | 이미지 썸네일+파일 칩 / 클릭 시 프리뷰(레일 재사용 vs 라이트박스) / generated와 시각 구분 | 썸네일+칩, 클릭→기존 ArtifactPreview 레일 재사용 |
-| **D6. 보안** | 업로드 접근/암호화 | GET 인증 추가? 암호화? | **인증은 사실상 필수**(멀티유저 취약점), 암호화는 정책 결정 |
-| **D7. orphan GC** | 미전송 업로드 보존 | 24h/7d/… | 별도 cron, 24h 제안 |
-| **D8. message_id 연결** | Path A 백필 시점 | finalize_turn 훅 | finalize_turn |
+| **D1. 范围** | 做到哪里？ | (a) **仅显示** / (b) 显示+模型输入(multimodal) / (c) 显示+模型输入(RAG read-tool) | **分阶段**：先 (a)，之后 (b) — 见下方 phasing |
+| **D2. 模型输入方式** | 选择 (b/c) 时 | multimodal content blocks vs 服务器文本提取(RAG) | 图片=multimodal，文档=文本提取/RAG 混合 |
+| **D3. 支持类型** | 接收什么 | 仅图片 / +PDF / +office(docx·xlsx) | 先图片，再 PDF |
+| **D4. provider 门控** | vision 不支持（Hancom 网关等）时 | 文本提取 fallback / 拒绝附件+警告 / 仅显示 | 能力门控 + 不支持时仅显示（skip 模型注入） |
+| **D5. 显示 UX** | user 气泡渲染 | 图片缩略图+文件 chip / 点击时预览（复用侧栏 vs lightbox） / 与 generated 视觉区分 | 缩略图+chip，点击→复用现有 ArtifactPreview 侧栏 |
+| **D6. 安全** | 上传访问/加密 | 增加 GET 认证？加密？ | **认证实际上是必须的**（多用户漏洞），加密属于策略决策 |
+| **D7. orphan GC** | 未发送上传保留多久 | 24h/7d/… | 单独 cron，建议 24h |
+| **D8. message_id 关联** | Path A 回填时机 | finalize_turn hook | finalize_turn |
 
 ---
 
-## 5. 작업 분량 / 단계 제안
+## 5. 工作量 / 阶段建议
 
-> 각 phase는 독립 출시 가능. 권장 순서.
+> 每个 phase 都可独立发布。推荐顺序如下。
 
-- **Phase 0 — 보안 (권장 선행, S~M)**: `GET /api/uploads/{id}` 소유권/인증 가드 + orphan GC 잡. *멀티유저에서 UUID-guessable 다운로드는 실제 취약점이라 표시 기능과 무관하게 우선.* (D6/D7)
-- **Phase 1 — 표시 (M, 2~3일)**: 백엔드 `finalize_turn`에서 `message_attachments.message_id` backfill + hydration이 echo → 프론트 `MessagePrimitive.Attachments`로 user 버블 렌더(썸네일/칩) + 클릭 프리뷰(ArtifactPreview 재사용). 모델 입력 없이도 "보낸 첨부 보임" 완성. (D5/D8) — 백엔드+프론트+테스트+E2E.
-- **Phase 2 — 모델 입력: 이미지 (M~L)**: 메시지 조립 경로에서 이미지 첨부를 `image` content block으로 주입 + `(provider,model)` vision 게이팅 + 토큰/compaction 영향 확인. (D2/D4) — 백엔드 중심.
-- **Phase 3 — 문서 (L)**: PDF=file block(provider별), office=서버 텍스트 추출 또는 RAG read-tool, `file_id` 재사용. (D3) — 백엔드 + 추출 파이프라인.
+- **Phase 0 — 安全（建议先做，S~M）**：`GET /api/uploads/{id}` 所有权/认证 guard + orphan GC job。*多用户环境中可猜 UUID 下载属于真实漏洞，与显示功能无关也应优先处理。*（D6/D7）
+- **Phase 1 — 显示（M，2~3天）**：后端在 `finalize_turn` 回填 `message_attachments.message_id` + hydration echo → 前端用 `MessagePrimitive.Attachments` 在 user 气泡渲染（缩略图/chip）+ 点击预览（复用 ArtifactPreview）。即使没有模型输入，也能完成“看到已发送附件”。（D5/D8）— 后端+前端+测试+E2E。
+- **Phase 2 — 模型输入：图片（M~L）**：在消息组装路径将图片附件注入 `image` content block + `(provider,model)` vision 门控 + 检查 token/compaction 影响。（D2/D4）— 以后端为主。
+- **Phase 3 — 文档（L）**：PDF=file block（按 provider），office=服务器文本提取或 RAG read-tool，复用 `file_id`。（D3）— 后端 + 提取流水线。
 
-**대략 총량**: ①표시까지(Phase 0+1) = **M (3~5일)**. ②모델입력 풀(Phase 2+3) = **추가 L~XL (1.5~3주)**, provider 게이팅·추출·토큰관리 때문.
+**大致总量**：做到①显示（Phase 0+1）= **M（3~5天）**。做到②完整模型输入（Phase 2+3）= **额外 L~XL（1.5~3周）**，原因是 provider 门控、提取、token 管理。
 
 ---
 
-## 6. 리스크 / 주의
+## 6. 风险 / 注意事项
 
-- **보안**: 표시 기능을 켜면 첨부 URL이 더 노출됨 → Phase 0(인증) 선행이 안전.
-- **provider 게이팅**: 현재 system LLM이 Hancom 게이트웨이라 vision 보장 안 됨 → 모델별 능력 매트릭스 + 미지원 시 graceful 처리 필수(미처리 시 `ValueError`로 런 실패).
-- **토큰/비용**: base64 이미지·PDF는 prompt 토큰 폭증 → context-window/compaction과 연동, `file_id` 참조로 재전송 회피 고려.
-- **데이터 모델**: 첨부는 message-scoped(Path A)로 가야 reload/공유/브랜치에 정확. conversation-scoped(Path B)는 매핑이 약해 비추.
+- **安全**：开启显示功能会让附件 URL 暴露更多 → 先做 Phase 0（认证）更安全。
+- **provider 门控**：当前 system LLM 为 Hancom 网关，不能保证 vision → 必须有模型级能力矩阵 + 不支持时 graceful 处理（未处理会因 `ValueError` 导致 run 失败）。
+- **token/成本**：base64 图片·PDF 会让 prompt token 暴增 → 与 context-window/compaction 联动，并考虑通过 `file_id` 引用避免重复发送。
+- **数据模型**：附件应采用 message-scoped（Path A），这样 reload/分享/分支才准确。conversation-scoped（Path B）映射较弱，不推荐。

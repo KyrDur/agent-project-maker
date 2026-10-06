@@ -33,8 +33,8 @@ from app.config import settings
 from app.credentials import service as credential_service
 from app.models.credential import Credential
 from app.models.model import Model
-from app.models.system_llm_setting import SystemLlmSetting
 from app.models.user import User
+from app.models.user_llm_setting import UserLlmSetting
 
 logger = logging.getLogger(__name__)
 
@@ -145,22 +145,23 @@ async def seed_e2e_llm(db: AsyncSession) -> Model | None:
         model.is_visible = True
         await db.flush()
 
-    # 4) System LLM text_primary + text_fallback -> system credential + model.
-    for role in _E2E_LLM_ROLES:
-        setting = (
-            await db.execute(
-                select(SystemLlmSetting).where(SystemLlmSetting.role == role).limit(1)
-            )
-        ).scalar_one_or_none()
-        if setting is None:
-            db.add(
-                SystemLlmSetting(role=role, credential_id=system_cred.id, model_name=model_name)
-            )
-        else:
-            setting.credential_id = system_cred.id
-            setting.model_name = model_name
+    # Personal E2E selections; no administrator credential fallback.
+    if e2e_user is not None and user_cred is not None:
+        for role in ("builder", "evaluation_generator", "judge_optimizer", "text_fallback"):
+            row = (
+                await db.execute(
+                    select(UserLlmSetting).where(
+                        UserLlmSetting.user_id == e2e_user.id,
+                        UserLlmSetting.role == role,
+                    )
+                )
+            ).scalar_one_or_none()
+            if row is None:
+                row = UserLlmSetting(user_id=e2e_user.id, role=role)
+                db.add(row)
+            row.credential_id = user_cred.id
+            row.model_name = model_name
     await db.flush()
-    logger.info("seed_e2e_llm: text_primary/text_fallback -> %s (%s)", model_name, base_url)
     return model
 
 

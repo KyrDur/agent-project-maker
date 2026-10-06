@@ -84,14 +84,14 @@ describe('generative UI render (path A)', () => {
       <Harness
         uiType="data_table"
         props={{
-          title: '캡쳐 테이블',
+          title: '截图表格',
           columns: [{ key: 'name', header: '名称' }],
           rows: [{ name: 'Zed' }],
         }}
       />,
     )
     await waitFor(() => expect(screen.getByTestId('data-ui-data-table')).toBeInTheDocument())
-    expect(screen.getByText('캡쳐 테이블')).toBeInTheDocument()
+    expect(screen.getByText('截图表格')).toBeInTheDocument()
     expect(screen.getByText('Zed')).toBeInTheDocument()
   })
 
@@ -99,19 +99,19 @@ describe('generative UI render (path A)', () => {
     render(
       <Harness
         uiType="chart"
-        props={{ chartType: 'bar', title: '캡쳐 차트', series: [{ label: 'A', value: 5 }] }}
+        props={{ chartType: 'bar', title: '截图图表', series: [{ label: 'A', value: 5 }] }}
       />,
     )
     await waitFor(() => expect(screen.getByTestId('data-ui-chart')).toBeInTheDocument())
-    expect(screen.getByText('캡쳐 차트')).toBeInTheDocument()
+    expect(screen.getByText('截图图表')).toBeInTheDocument()
   })
 
   it('routes a stats part to the Stats component', async () => {
     render(
-      <Harness uiType="stats" props={{ items: [{ label: '총 요청', value: 1240, delta: 12 }] }} />,
+      <Harness uiType="stats" props={{ items: [{ label: '总请求数', value: 1240, delta: 12 }] }} />,
     )
     await waitFor(() => expect(screen.getByTestId('data-ui-stats')).toBeInTheDocument())
-    expect(screen.getByText('총 요청')).toBeInTheDocument()
+    expect(screen.getByText('总请求数')).toBeInTheDocument()
     expect(screen.getByText('1,240')).toBeInTheDocument()
   })
 

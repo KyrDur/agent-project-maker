@@ -1,102 +1,102 @@
-# ADR-003: 스킬 + 메모리 전환 설계
+# ADR-003：Skill + Memory 迁移设计
 
-## 상태: 승인됨
+## 状态：已批准
 
-## 맥락
+## 背景
 
-현재 Moldy의 스킬 시스템은 두 가지 커스텀 경로로 동작한다:
+当前 Moldy 的 skill 系统通过两条自定义路径运行：
 
-1. **Text 스킬**: `build_effective_prompt()`가 DB `content` 필드를 시스템 프롬프트에 직접 주입
-2. **Package 스킬**: `skill_tool_factory.py`가 `run_*`, `read_*_file` LangChain 도구로 변환, `skill_executor.py`가 Python 스크립트 실행
+1. **Text skill**：`build_effective_prompt()` 将 DB `content` 字段直接注入 system prompt
+2. **Package skill**：`skill_tool_factory.py` 转换为 `run_*`、`read_*_file` LangChain 工具，`skill_executor.py` 执行 Python 脚本
 
-이 방식의 문제점:
-- **프로그레시브 디스클로저 없음**: 모든 스킬 콘텐츠가 시스템 프롬프트에 일괄 주입되어 토큰 낭비
-- **이중 경로**: text/package 타입에 따라 완전히 다른 코드 경로, 유지보수 부담
-- **커스텀 도구 오버헤드**: `skill_tool_factory.py` + `skill_executor.py`가 LangChain 도구를 수동 생성
-- **메모리 부재**: 에이전트별 장기 기억(AGENTS.md) 시스템 없음
+该方式的问题：
+- **没有渐进式披露**：所有 skill 内容一次性注入 system prompt，造成 token 浪费
+- **双路径**：根据 text/package 类型走完全不同的代码路径，维护负担较大
+- **自定义工具开销**：`skill_tool_factory.py` + `skill_executor.py` 手动创建 LangChain 工具
+- **缺少 memory**：没有按 agent 区分的长期记忆（AGENTS.md）系统
 
-M1에서 `create_deep_agent`로 전환 완료되었으므로, deepagents 네이티브 `skills`/`memory` 파라미터를 활용하여 스킬과 메모리 시스템을 통합한다.
+M1 已完成向 `create_deep_agent` 的迁移，因此利用 deepagents 原生 `skills`/`memory` 参数统一 skill 与 memory 系统。
 
 ---
 
-## 결정
+## 决定
 
-### 1. Backend 선택: FilesystemBackend
+### 1. Backend 选择：FilesystemBackend
 
 ```python
 from deepagents.backends import FilesystemBackend
 
 backend = FilesystemBackend(
-    root_dir="./data",        # backend/data/ 디렉토리
-    virtual_mode=True,        # 보안: 경로 탈출 방지
+    root_dir="./data",        # backend/data/ 目录
+    virtual_mode=True,        # 安全：防止路径逃逸
 )
 ```
 
-**선택 근거:**
-- 스킬(SKILL.md)과 메모리(AGENTS.md) 모두 디스크에 존재 → FilesystemBackend가 자연스러움
-- CompositeBackend의 StateBackend 기본 라우트는 불필요 (에이전트 스크래치패드 미사용)
-- 단일 백엔드로 `/skills/`와 `/agents/` 경로를 모두 커버
-- `virtual_mode=True`로 경로 탈출(`..`, `~`) 방지
+**选择依据：**
+- skill（SKILL.md）和 memory（AGENTS.md）都存在于磁盘 → FilesystemBackend 更自然
+- CompositeBackend 的 StateBackend 默认路由没有必要（未使用 agent scratchpad）
+- 用单一 backend 同时覆盖 `/skills/` 和 `/agents/` 路径
+- 通过 `virtual_mode=True` 防止路径逃逸（`..`、`~`）
 
-**가상 경로 매핑:**
+**虚拟路径映射：**
 
-| 가상 경로 | 디스크 경로 | 용도 |
+| 虚拟路径 | 磁盘路径 | 用途 |
 |-----------|------------|------|
-| `/skills/{skill_id}/SKILL.md` | `data/skills/{skill_id}/SKILL.md` | 스킬 로딩 |
-| `/skills/{skill_id}/references/` | `data/skills/{skill_id}/references/` | 참조 문서 |
-| `/agents/{agent_id}/AGENTS.md` | `data/agents/{agent_id}/AGENTS.md` | 에이전트 메모리 |
+| `/skills/{skill_id}/SKILL.md` | `data/skills/{skill_id}/SKILL.md` | skill 加载 |
+| `/skills/{skill_id}/references/` | `data/skills/{skill_id}/references/` | 参考文档 |
+| `/agents/{agent_id}/AGENTS.md` | `data/agents/{agent_id}/AGENTS.md` | agent memory |
 
-### 2. Skills 경로 매핑
+### 2. Skills 路径映射
 
-#### `_list_skills` 동작 분석
+#### `_list_skills` 行为分析
 
-deepagents `SkillsMiddleware`의 `_list_skills(backend, source_path)` 함수는:
+deepagents `SkillsMiddleware` 的 `_list_skills(backend, source_path)` 函数会：
 
-1. `backend.ls_info(source_path)` → 소스 디렉토리 내 항목 나열
-2. `is_dir=True`인 항목(서브디렉토리)만 필터링
-3. 각 서브디렉토리에서 `SKILL.md` 다운로드
-4. YAML frontmatter 파싱 → `SkillMetadata` 반환
+1. `backend.ls_info(source_path)` → 列出 source 目录中的条目
+2. 只筛选 `is_dir=True` 的条目（子目录）
+3. 从每个子目录下载 `SKILL.md`
+4. 解析 YAML frontmatter → 返回 `SkillMetadata`
 
-**기대 구조:**
+**预期结构：**
 ```
-source_path/           ← _list_skills에 전달되는 경로
-└── skill-name/        ← 서브디렉토리 (is_dir=True)
-    ├── SKILL.md       ← 필수 (frontmatter: name, description)
-    └── ...            ← 참조 문서, 스크립트 등
+source_path/           ← 传给 _list_skills 的路径
+└── skill-name/        ← 子目录（is_dir=True）
+    ├── SKILL.md       ← 必需（frontmatter: name, description）
+    └── ...            ← 参考文档、脚本等
 ```
 
-**현재 디스크 구조:**
+**当前磁盘结构：**
 ```
 data/skills/                          ← source_path = "/skills/"
-└── d9f14fdf-...-81ae53783ef4/        ← skill_id 서브디렉토리
-    ├── SKILL.md                      ← ✅ 존재
+└── d9f14fdf-...-81ae53783ef4/        ← skill_id 子目录
+    ├── SKILL.md                      ← ✅ 存在
     ├── scripts/
     ├── references/
     └── floor_images/
 ```
 
-→ `skills=["/skills/"]`로 전달하면 `_list_skills`가 모든 스킬을 자동 탐색.
+→ 传入 `skills=["/skills/"]` 后，`_list_skills` 会自动发现所有 skill。
 
-#### Per-Agent 스킬 필터링
+#### Per-Agent skill 过滤
 
-현재 `_list_skills`는 소스 디렉토리의 **모든** 스킬을 반환한다. 에이전트별 필터링은 deepagents API에서 직접 지원하지 않음.
+当前 `_list_skills` 会返回 source 目录中的**所有** skill。deepagents API 不直接支持按 agent 过滤。
 
-**PoC 전략**: `/skills/` 단일 소스로 모든 스킬 로드. 프로그레시브 디스클로저 방식이므로 에이전트는 필요한 스킬만 로드한다. 시스템 프롬프트에서 에이전트 연결 스킬 이름을 명시하여 가이드.
+**PoC 策略**：以 `/skills/` 作为单一 source 加载所有 skill。由于采用渐进式披露，agent 只会加载需要的 skill。通过 system prompt 明确 agent 已连接的 skill 名称进行引导。
 
-**향후 프로덕션 전략** (M3 스코프 아님):
-- `FilteringFilesystemBackend` 구현 (ls_info 결과를 agent_skills 기반으로 필터링)
-- 또는 per-agent 스킬 디렉토리 (`data/agents/{agent_id}/skills/`) + 파일 복사
+**未来生产环境策略**（不属于 M3 scope）：
+- 实现 `FilteringFilesystemBackend`（基于 agent_skills 过滤 ls_info 结果）
+- 或使用 per-agent skill 目录（`data/agents/{agent_id}/skills/`）+ 文件复制
 
-### 3. Text 스킬 통합: 디스크 물질화
+### 3. Text skill 统一：磁盘物化
 
-Text 스킬(DB `content` 필드만 존재, `storage_path` 없음)을 deepagents 네이티브 방식으로 통합하려면 디스크에 `SKILL.md` 파일이 필요하다.
+要以 deepagents 原生方式统一 Text skill（仅有 DB `content` 字段，没有 `storage_path`），需要在磁盘上提供 `SKILL.md` 文件。
 
-**물질화 전략:**
+**物化策略：**
 
 ```python
-# skill_service.py — 스킬 생성/수정 시
+# skill_service.py — 创建/修改 skill 时
 def _materialize_skill_to_disk(skill: Skill) -> str:
-    """text 스킬의 content를 data/skills/{id}/SKILL.md로 기록."""
+    """将 text skill 的 content 写入 data/skills/{id}/SKILL.md。"""
     skill_dir = Path(settings.skills_data_dir) / str(skill.id)
     skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -107,45 +107,45 @@ def _materialize_skill_to_disk(skill: Skill) -> str:
     return str(skill_dir)
 ```
 
-**실행 시점:**
-- 스킬 **생성** 시: `create_skill()` → `_materialize_skill_to_disk()` → `storage_path` 설정
-- 스킬 **수정** 시: `update_skill()` → `_materialize_skill_to_disk()` → SKILL.md 덮어쓰기
-- **기존 text 스킬**: 서버 시작 시 또는 첫 사용 시 lazy 물질화
+**执行时点：**
+- **创建** skill 时：`create_skill()` → `_materialize_skill_to_disk()` → 设置 `storage_path`
+- **修改** skill 时：`update_skill()` → `_materialize_skill_to_disk()` → 覆盖 SKILL.md
+- **现有 text skill**：服务器启动时或首次使用时 lazy 物化
 
-**DB 모델 변경:**
-- `Skill.type` 필드: 그대로 유지 ("text" | "package"). UI 구분용.
-- `Skill.storage_path`: text 스킬도 물질화 후 설정됨.
-- `Skill.content`: **source of truth** 유지. 디스크 파일은 파생물.
+**DB 模型变更：**
+- `Skill.type` 字段：保持不变（"text" | "package"），用于 UI 区分。
+- `Skill.storage_path`：text skill 物化后也会设置。
+- `Skill.content`：继续作为 **source of truth**。磁盘文件是派生物。
 
-### 4. Memory 경로 패턴
+### 4. Memory 路径模式
 
 ```
 data/agents/{agent_id}/AGENTS.md
 ```
 
-**파라미터 전달:**
+**参数传递：**
 ```python
 memory=[f"/agents/{agent_id}/AGENTS.md"]
 ```
 
-**MemoryMiddleware 동작:**
+**MemoryMiddleware 行为：**
 1. `backend.download_files(["/agents/{agent_id}/AGENTS.md"])`
-2. 파일 존재 시 → 콘텐츠를 시스템 프롬프트에 주입
-3. 파일 미존재 시 → `file_not_found` → 무시 (에러 없음)
+2. 文件存在时 → 将内容注入 system prompt
+3. 文件不存在时 → `file_not_found` → 忽略（无错误）
 
-**디렉토리 생성 시점:**
-- **에이전트 생성 시**: `agent_service.create_agent()` → `data/agents/{agent_id}/` 생성
-- 빈 AGENTS.md 생성 (선택적) 또는 파일 없이 시작 → MemoryMiddleware가 무시
-- 에이전트가 대화 중 Write 도구로 AGENTS.md 작성 가능
+**目录创建时点：**
+- **创建 agent 时**：`agent_service.create_agent()` → 创建 `data/agents/{agent_id}/`
+- 创建空 AGENTS.md（可选），或无文件启动 → MemoryMiddleware 忽略
+- agent 可在对话中通过 Write 工具写入 AGENTS.md
 
-**AGENTS.md 초기 콘텐츠:**
+**AGENTS.md 初始内容：**
 ```markdown
 # Agent Memory
 
-(에이전트가 학습한 내용이 여기에 기록됩니다)
+（agent 学到的内容会记录在这里）
 ```
 
-### 5. `build_agent()` 시그니처 변경
+### 5. `build_agent()` 签名变更
 
 ```python
 def build_agent(
@@ -157,8 +157,8 @@ def build_agent(
     checkpointer: Any | None = None,
     store: Any | None = None,
     backend: Any | None = None,
-    skills: list[str] | None = None,       # ← 신규
-    memory: list[str] | None = None,       # ← 신규
+    skills: list[str] | None = None,       # ← 新增
+    memory: list[str] | None = None,       # ← 新增
     name: str | None = None,
 ) -> Any:
     """Build a deep agent. Returns CompiledStateGraph."""
@@ -176,30 +176,30 @@ def build_agent(
     )
 ```
 
-### 6. `execute_agent_stream()` 변경
+### 6. `execute_agent_stream()` 变更
 
 ```python
 async def execute_agent_stream(
-    # ... 기존 파라미터 ...
-    agent_skills: list[dict] | None = None,   # ← 신규: [{skill_id, storage_path}]
-    agent_id: str | None = None,               # ← 신규: 메모리 경로용
+    # ... 现有参数 ...
+    agent_skills: list[dict] | None = None,   # ← 新增：[{skill_id, storage_path}]
+    agent_id: str | None = None,               # ← 新增：用于 memory 路径
 ) -> AsyncGenerator[str, None]:
-    # ... 기존 도구 생성 ...
-    # skill_package 분기 제거
+    # ... 创建现有工具 ...
+    # 移除 skill_package 分支
 
-    # Backend 생성
+    # 创建 Backend
     from deepagents.backends import FilesystemBackend
     backend = FilesystemBackend(
         root_dir=str(Path(__file__).resolve().parent.parent.parent / "data"),
         virtual_mode=True,
     )
 
-    # Skills 소스 구성
+    # 构建 Skills source
     skills_sources: list[str] | None = None
     if agent_skills:
         skills_sources = ["/skills/"]
 
-    # Memory 소스 구성
+    # 构建 Memory source
     memory_sources: list[str] | None = None
     if agent_id:
         memory_sources = [f"/agents/{agent_id}/AGENTS.md"]
@@ -215,19 +215,19 @@ async def execute_agent_stream(
         memory=memory_sources,
         name=f"agent_{thread_id[:8]}",
     )
-    # ... 기존 스트리밍 ...
+    # ... 现有 streaming ...
 ```
 
-### 7. 호출자 변경 (conversations.py)
+### 7. 调用方变更（conversations.py）
 
 ```python
-# 기존
+# 现有
 system_prompt = build_effective_prompt(agent)
 tools_config = build_tools_config(agent, str(conversation.id))
 
-# 변경 후
-system_prompt = agent.system_prompt  # build_effective_prompt 제거
-tools_config = build_tools_config(agent, str(conversation.id))  # skill_package 제거됨
+# 变更后
+system_prompt = agent.system_prompt  # 移除 build_effective_prompt
+tools_config = build_tools_config(agent, str(conversation.id))  # 已移除 skill_package
 agent_skills = [
     {"skill_id": str(link.skill.id), "storage_path": link.skill.storage_path}
     for link in agent.skill_links
@@ -244,9 +244,9 @@ async for chunk in execute_agent_stream(
 
 ---
 
-## 대안
+## 替代方案
 
-### 대안 A: CompositeBackend (StateBackend + FilesystemBackend)
+### 方案 A：CompositeBackend（StateBackend + FilesystemBackend）
 
 ```python
 backend = CompositeBackend(
@@ -258,11 +258,11 @@ backend = CompositeBackend(
 )
 ```
 
-**장점**: 에이전트 스크래치패드(ephemeral) 제공
-**단점**: StateBackend는 팩토리 패턴 필요 (`lambda rt: StateBackend(rt)`). 스크래치패드 사용 시나리오 없음. 불필요한 복잡성.
-**판단**: 현재 스코프에서 스크래치패드 불필요 → 기각
+**优点**：提供 agent scratchpad（ephemeral）
+**缺点**：StateBackend 需要 factory 模式（`lambda rt: StateBackend(rt)`）。没有 scratchpad 使用场景，增加了不必要的复杂性。
+**判断**：当前 scope 不需要 scratchpad → 否决
 
-### 대안 B: StoreBackend (PostgresStore)
+### 方案 B：StoreBackend（PostgresStore）
 
 ```python
 backend = CompositeBackend(
@@ -274,130 +274,130 @@ backend = CompositeBackend(
 )
 ```
 
-**장점**: 메모리가 DB에 저장되어 cross-thread 공유, 백업 용이
-**단점**: StoreBackend는 namespace 기반 — AGENTS.md 파일 패턴과 호환 복잡. 추가 인프라(PostgresStore). MemoryMiddleware가 `download_files()` 사용 → StoreBackend 호환성 확인 필요.
-**판단**: PoC 단계에서 과도한 복잡성 → 기각. 향후 프로덕션에서 재검토.
+**优点**：memory 存入 DB，可 cross-thread 共享，便于备份
+**缺点**：StoreBackend 基于 namespace — 与 AGENTS.md 文件模式兼容较复杂。还需额外基础设施（PostgresStore）。MemoryMiddleware 使用 `download_files()` → 需要确认 StoreBackend 兼容性。
+**判断**：PoC 阶段复杂度过高 → 否决。未来生产环境再评估。
 
-### 대안 C: skills 파라미터 미사용, 시스템 프롬프트 유지
+### 方案 C：不使用 skills 参数，保留 system prompt
 
-**장점**: 변경 최소
-**단점**: deepagents 프로그레시브 디스클로저 활용 불가. M3 목표 미달성.
-**판단**: 목표와 불일치 → 기각
+**优点**：变更最少
+**缺点**：无法利用 deepagents 渐进式披露，无法达到 M3 目标。
+**判断**：与目标不一致 → 否决
 
-### 대안 D: Per-agent 심볼릭 링크
+### 方案 D：Per-agent 符号链接
 
-각 에이전트의 연결된 스킬만 `data/agents/{agent_id}/skills/` 디렉토리에 심볼릭 링크.
+仅将每个 agent 已连接的 skill 符号链接到 `data/agents/{agent_id}/skills/` 目录。
 
-**장점**: 에이전트별 스킬 격리
-**단점**: `FilesystemBackend`는 `O_NOFOLLOW` 플래그로 심볼릭 링크 추종 차단 (Linux/macOS). 실제로 동작하지 않음.
-**판단**: 기술적 불가 → 기각
+**优点**：按 agent 隔离 skill
+**缺点**：`FilesystemBackend` 通过 `O_NOFOLLOW` 标志阻止跟随符号链接（Linux/macOS），实际无法工作。
+**判断**：技术上不可行 → 否决
 
 ---
 
-## 설계 상세
+## 设计详情
 
-### 디렉토리 구조 변경
+### 目录结构变更
 
 ```
 data/
-├── skills/                        # 기존 유지
+├── skills/                        # 保持现有
 │   └── {skill_id}/
 │       ├── SKILL.md               # frontmatter: name, description
-│       ├── scripts/               # (package 스킬)
+│       ├── scripts/               # （package skill）
 │       ├── references/
 │       └── _outputs/
 │
-├── agents/                        # ← 신규
+├── agents/                        # ← 新增
 │   └── {agent_id}/
-│       └── AGENTS.md              # 에이전트 장기 기억
+│       └── AGENTS.md              # agent 长期记忆
 │
-└── conversations/                 # 기존 유지
+└── conversations/                 # 保持现有
     └── {conversation_id}/
 ```
 
-### 제거 대상 코드
+### 待移除代码
 
-| 파일 | 제거 내용 | 이유 |
+| 文件 | 移除内容 | 原因 |
 |------|-----------|------|
-| `skill_tool_factory.py` | 전체 삭제 | deepagents SkillsMiddleware가 대체 |
-| `skill_executor.py` | 전체 삭제 | 스크립트 실행은 에이전트 빌트인 도구로 대체 |
-| `chat_service.py` | `build_effective_prompt()` 스킬 주입 로직 | SkillsMiddleware가 시스템 프롬프트 주입 담당 |
-| `chat_service.py` | `build_tools_config()` skill_package 로직 | skill_package 도구 변환 불필요 |
-| `executor.py` | `skill_package` 분기 | 도구 생성 대신 skills 파라미터 사용 |
+| `skill_tool_factory.py` | 全部删除 | 由 deepagents SkillsMiddleware 替代 |
+| `skill_executor.py` | 全部删除 | 脚本执行由 agent 内置工具替代 |
+| `chat_service.py` | `build_effective_prompt()` skill 注入逻辑 | 由 SkillsMiddleware 负责注入 system prompt |
+| `chat_service.py` | `build_tools_config()` skill_package 逻辑 | 无需将 skill_package 转换为工具 |
+| `executor.py` | `skill_package` 分支 | 改用 skills 参数而非创建工具 |
 
-### 유지 대상
+### 保留项
 
-| 항목 | 이유 |
+| 项目 | 原因 |
 |------|------|
-| `Skill` DB 모델 | UI에서 스킬 CRUD 필요. `content` 필드는 source of truth |
-| `AgentSkillLink` 모델 | 에이전트-스킬 연결 관리 |
-| `skill_service.py` | 스킬 CRUD 서비스 (물질화 로직 추가) |
-| `routers/skills.py` | 스킬 API 엔드포인트 |
-| `schemas/skill.py` | API 스키마 |
+| `Skill` DB 模型 | UI 仍需要 skill CRUD。`content` 字段作为 source of truth |
+| `AgentSkillLink` 模型 | 管理 agent-skill 连接 |
+| `skill_service.py` | skill CRUD 服务（新增物化逻辑） |
+| `routers/skills.py` | skill API 端点 |
+| `schemas/skill.py` | API schema |
 
-### 데이터 흐름 (M3 이후)
+### 数据流（M3 之后）
 
 ```
 POST /api/conversations/{id}/messages
 │
 ├─ 1. maybe_set_auto_title(content)
-├─ 2. get_agent_with_tools(agent_id)  [skill_links 포함]
-├─ 3. system_prompt = agent.system_prompt  ← build_effective_prompt 제거
-├─ 4. build_tools_config(agent)  ← skill_package 분기 제거
+├─ 2. get_agent_with_tools(agent_id)  [包含 skill_links]
+├─ 3. system_prompt = agent.system_prompt  ← 移除 build_effective_prompt
+├─ 4. build_tools_config(agent)  ← 移除 skill_package 分支
 ├─ 5. agent_skills = [linked package skills]
 │
 ├─ 6. execute_agent_stream(
 │       ..., agent_skills=agent_skills, agent_id=str(agent.id))
 │    │
 │    ├─ 6a. create_chat_model()
-│    ├─ 6b. create tools (builtin/prebuilt/custom/mcp)  ← skill_package 제거
+│    ├─ 6b. create tools (builtin/prebuilt/custom/mcp)  ← 移除 skill_package
 │    ├─ 6c. FilesystemBackend(root_dir=data/, virtual_mode=True)
 │    ├─ 6d. build_agent(skills=["/skills/"], memory=["/agents/{id}/AGENTS.md"],
 │    │       backend=backend, ...)
 │    │    └─ create_deep_agent(skills=..., memory=..., backend=...)
 │    │         ├─ SkillsMiddleware → before_agent: _list_skills("/skills/")
-│    │         │   → 서브디렉토리 스캔 → SKILL.md 파싱 → 메타데이터 상태 저장
-│    │         │   → wrap_model_call: 시스템 프롬프트에 스킬 목록 주입
+│    │         │   → 扫描子目录 → 解析 SKILL.md → 保存 metadata 状态
+│    │         │   → wrap_model_call：向 system prompt 注入 skill 列表
 │    │         └─ MemoryMiddleware → before_agent: download AGENTS.md
-│    │             → wrap_model_call: 시스템 프롬프트에 메모리 콘텐츠 주입
+│    │             → wrap_model_call：向 system prompt 注入 memory 内容
 │    └─ 6e. stream_agent_response()
 │
 └─ 7. StreamingResponse → Frontend (SSE)
 ```
 
-### 스킬 생성/수정 흐름
+### skill 创建/修改流程
 
 ```
 POST /api/skills (create)  |  PUT /api/skills/{id} (update)
 │
 ├─ skill_service.create_skill() / update_skill()
-│   ├─ DB에 Skill 레코드 저장
+│   ├─ 在 DB 中保存 Skill 记录
 │   └─ _materialize_skill_to_disk(skill)
-│       ├─ data/skills/{skill.id}/ 디렉토리 생성
-│       ├─ SKILL.md 작성 (frontmatter + content)
-│       └─ skill.storage_path = str(skill_dir) 설정
+│       ├─ 创建 data/skills/{skill.id}/ 目录
+│       ├─ 写入 SKILL.md（frontmatter + content）
+│       └─ 设置 skill.storage_path = str(skill_dir)
 │
 └─ Response: SkillResponse
 ```
 
 ---
 
-## 결과
+## 结果
 
-### 긍정적
-- **프로그레시브 디스클로저**: 스킬이 한 번에 로드되지 않고, 에이전트가 필요 시 탐색
-- **코드 감소**: `skill_tool_factory.py` + `skill_executor.py` + 관련 로직 제거 (~150줄)
-- **통합 경로**: text/package 구분 없이 모든 스킬이 SKILL.md 기반으로 통합
-- **메모리 시스템**: 에이전트별 장기 기억(AGENTS.md) 지원
-- **프레임워크 활용**: deepagents 네이티브 middleware 활용으로 유지보수 부담 감소
+### 正面影响
+- **渐进式披露**：skill 不会一次性全部加载，agent 按需探索
+- **减少代码**：移除 `skill_tool_factory.py` + `skill_executor.py` + 相关逻辑（~150 行）
+- **统一路径**：不再区分 text/package，所有 skill 都统一基于 SKILL.md
+- **Memory 系统**：支持按 agent 区分的长期记忆（AGENTS.md）
+- **利用框架能力**：使用 deepagents 原生 middleware，降低维护负担
 
-### 부정적
-- **PoC 한계 — 스킬 격리 없음**: 모든 에이전트가 `/skills/` 전체를 탐색. 에이전트별 필터링은 프로그레시브 디스클로저 + 시스템 프롬프트 가이드에 의존
-- **디스크 물질화 필요**: text 스킬을 디스크에 기록하는 추가 I/O. Content 필드와 SKILL.md 이중 관리 (DB가 source of truth)
-- **스크립트 실행 방식 변경**: 기존 `skill_executor.py`의 격리된 Python 실행이 사라짐. 에이전트의 일반 도구로 대체되므로 보안 격리 약화 (PoC에서는 수용 가능)
+### 负面影响
+- **PoC 限制 — 无 skill 隔离**：所有 agent 都可探索完整 `/skills/`。按 agent 过滤依赖渐进式披露 + system prompt 引导
+- **需要磁盘物化**：将 text skill 写入磁盘会增加 I/O。Content 字段与 SKILL.md 双重管理（DB 为 source of truth）
+- **脚本执行方式变更**：现有 `skill_executor.py` 的隔离 Python 执行消失，改由 agent 通用工具执行，因此安全隔离减弱（PoC 阶段可接受）
 
-### 향후 과제 (M3 이후)
-- [ ] Per-agent 스킬 필터링 (FilteringFilesystemBackend 또는 custom middleware)
-- [ ] 메모리 자동 관리 (요약, 정리, 만료)
-- [ ] StoreBackend 전환 검토 (cross-instance 메모리 공유 필요 시)
-- [ ] 스킬 스크립트 격리 실행 환경 (sandbox)
+### 后续事项（M3 之后）
+- [ ] Per-agent skill 过滤（FilteringFilesystemBackend 或 custom middleware）
+- [ ] memory 自动管理（摘要、整理、过期）
+- [ ] 评估迁移到 StoreBackend（需要 cross-instance memory 共享时）
+- [ ] skill 脚本隔离执行环境（sandbox）

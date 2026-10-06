@@ -25,11 +25,11 @@ export function fileItemToBrief(file: FileItem): MessageAttachmentBrief {
 }
 
 /**
- * 비이미지 첨부(PDF/문서/텍스트…)의 미리보기 다이얼로그.
+ * 非图片附件（PDF/文档/文本……）的预览 dialog。
  *
- * 이미지가 여는 ``ChatImage`` 라이트박스와 **같은 풀스크린 ``DialogShell`` 껍데기**를
- * 써서 두 뷰어가 시각적으로 일관되게 보이게 한다(내용은 ``ArtifactPreview``로 타입별
- * 렌더 — 미지원은 다운로드 fallback). ``open``일 때만 마운트해 불필요한 fetch를 막는다.
+ * 使用与图片打开的 ``ChatImage`` lightbox **相同的全屏 ``DialogShell`` 外壳**，
+ * 让两个 viewer 在视觉上保持一致（内容由 ``ArtifactPreview`` 按类型
+ * render —— 不支持时 fallback 到下载）。仅在 ``open`` 时 mount，避免无用 fetch。
  */
 export function AttachmentPreviewDialog({
   brief,
@@ -62,11 +62,11 @@ export function AttachmentPreviewDialog({
 }
 
 /**
- * 보낸 메시지 버블에 표시되는 첨부 1개.
- * - 이미지: 채팅 공용 ``ChatImage`` 재사용 → 마크다운/인라인 이미지와 동일한
- *   썸네일 + 클릭 시 풀스크린 라이트박스(일관 UX).
- * - 그 외(PDF/문서/텍스트): 파일 칩 → ``ArtifactPreview`` 다이얼로그(미지원은 다운로드 fallback).
- * 보낸 첨부이므로 읽기 전용(제거/수정 없음).
+ * 已发送消息气泡中显示的 1 个附件。
+ * - 图片：复用聊天公共 ``ChatImage`` → 与 markdown/inline image 相同的
+ *   缩略图 + 点击后全屏 lightbox（一致 UX）。
+ * - 其他(PDF/文档/文本)：文件 chip → ``ArtifactPreview`` dialog（不支持时 fallback 到下载）。
+ * 因为是已发送附件，所以只读（不可移除/修改）。
  */
 export function MessageAttachmentItem({ brief }: { brief: MessageAttachmentBrief }) {
   const tMessageArtifacts = useTranslations('chat.message.artifacts')
@@ -97,10 +97,10 @@ export function MessageAttachmentItem({ brief }: { brief: MessageAttachmentBrief
 }
 
 /**
- * 보낸 user 메시지 버블의 첨부 행. assistant-ui ``MessagePrimitive.Attachments``
- * render-prop으로 각 첨부를 순회한다. 첨부가 없으면 아무것도 렌더하지 않는다.
+ * 已发送 user 消息气泡的附件行。通过 assistant-ui ``MessagePrimitive.Attachments``
+ * render-prop 遍历各附件。没有附件时不渲染任何内容。
  *
- * 무한 렌더 가드: count selector는 reference-stable한 숫자만 반환한다.
+ * 无限 render guard：count selector 只返回 reference-stable 的数字。
  */
 export function UserMessageAttachments() {
   // The v3 runtime builds messages from LangGraph state (LangChain messages),

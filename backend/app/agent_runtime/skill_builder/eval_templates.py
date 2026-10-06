@@ -21,11 +21,11 @@ _STRUCTURED_SIGNALS = (
     "json",
     "extract",
     "structured",
-    "액션",
-    "표",
-    "추출",
-    "구조화",
-    "회의록",
+    "行动",
+    "表格",
+    "提取",
+    "结构化",
+    "会议纪要",
 )
 _RESEARCH_SIGNALS = (
     "research",
@@ -34,10 +34,10 @@ _RESEARCH_SIGNALS = (
     "cite",
     "web",
     "搜索",
-    "조사",
+    "调研",
     "来源",
-    "근거",
-    "자료",
+    "依据",
+    "资料",
 )
 _TEMPLATES = {
     "structured_extraction": EvalTemplate(

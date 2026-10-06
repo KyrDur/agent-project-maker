@@ -63,9 +63,9 @@ function updateUsageMap(
   if (shouldDeleteSuperseded && supersededKey) {
     delete next[supersededKey]
   }
-  // v3는 같은 메시지에 token-only(message-finish)와 timing/cost 포함(합성 usage)
-  // 두 소스가 와서 서로 덮어쓴다. 비어 있는 timing/cost를 기존 값으로 backfill해
-  // 어느 순서로 도착해도 유실되지 않게 한다.
+  // v3 会给同一消息提供 token-only（message-finish）与包含 timing/cost 的（合成 usage）
+  // 两个来源，彼此可能覆盖。用已有值 backfill 新 usage 中为空的 timing/cost，
+  // 确保无论到达顺序如何都不会丢失。
   const merged = mergeUsageTiming(next[key], usage)
   if (sameUsage(next[key], merged) && !shouldDeleteSuperseded) {
     return current
@@ -110,10 +110,10 @@ function sameUsage(
 }
 
 /**
- * v3는 같은 메시지에 usage 소스가 둘 — ① message-finish의 raw usage_metadata(token만),
- * ② 합성 `usage` 프로토콜 이벤트(token + cost + 스트리밍 timing). 둘이 같은 키로 매핑돼
- * 나중에 온 쪽이 덮어쓰므로 timing/cost가 한쪽에만 있으면 유실된다. 새 usage가 비운
- * timing/cost를 기존 값으로 backfill해 도착 순서와 무관하게 보존한다.
+ * v3 对同一消息有两个 usage 来源——① message-finish 的 raw usage_metadata（只有 token），
+ * ② 合成 `usage` 协议事件（token + cost + streaming timing）。二者映射到同一 key，
+ * 后到者会覆盖前者，因此 timing/cost 只存在于一方时可能丢失。用旧值 backfill
+ * 新 usage 中为空的 timing/cost，确保与到达顺序无关地保留。
  */
 function mergeUsageTiming(
   prev: TokenUsageBreakdown | undefined,
@@ -180,7 +180,7 @@ function usageFingerprint(usage: TokenUsageBreakdown | undefined): string {
     cache_creation_tokens: usage.cache_creation_tokens,
     cache_read_tokens: usage.cache_read_tokens,
     estimated_cost: usage.estimated_cost,
-    // timing이 token-only usage 뒤에 도착할 때 useStableUsageMap이 재메모화하도록 포함.
+    // 将 timing 纳入依赖，使 timing 在 token-only usage 之后到达时 useStableUsageMap 会重新 memoize。
     ttft_ms: usage.ttft_ms,
     generation_ms: usage.generation_ms,
     tokens_per_second: usage.tokens_per_second,
@@ -515,10 +515,10 @@ export function useLangGraphUsageEffects({
     [attachedFingerprint],
   )
 
-  // 컨텍스트 게이지용 — 가장 최근 assistant 메시지의 usage(점유량은 prompt_tokens,
-  // 세션 누적이 아니라 "현재 컨텍스트 크기 = 마지막 턴 입력"). usagesByMessageId의
-  // 키(run/message id)는 렌더 메시지 id와 어긋날 수 있으므로, usage가 이미 붙은
-  // attachedMessages에서 토큰 팝오버와 동일하게 usageFromMessage로 읽는다.
+  // 用于 context gauge——最近一条 assistant 消息的 usage（占用量用 prompt_tokens，
+  // 不是会话累计，而是"当前 context 大小 = 最后一轮输入"）。usagesByMessageId 的
+  // key（run/message id）可能与渲染消息 id 不一致，因此从已附加 usage 的
+  // attachedMessages 中像 token popover 一样通过 usageFromMessage 读取。
   const latestTurnUsage = useMemo<TokenUsageBreakdown | null>(() => {
     for (let index = attachedMessages.length - 1; index >= 0; index -= 1) {
       const message = attachedMessages[index]

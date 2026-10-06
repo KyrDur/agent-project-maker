@@ -141,15 +141,11 @@ class TestCanViewItem:
         assert can_view_item(item, _user(UNRELATED_ID)) is True
 
     def test_system_item_visible_to_everyone(self) -> None:
-        item = _build_item(
-            visibility="system", is_system=True, owner_id=None
-        )
+        item = _build_item(visibility="system", is_system=True, owner_id=None)
         assert can_view_item(item, _user(UNRELATED_ID)) is True
 
     def test_disabled_item_hidden_from_unrelated_user(self) -> None:
-        item = _build_item(
-            visibility="public", status="disabled", is_listed=True
-        )
+        item = _build_item(visibility="public", status="disabled", is_listed=True)
         assert can_view_item(item, _user(UNRELATED_ID)) is False
         # super_user keeps view rights (admin moderation flow).
         assert can_view_item(item, _user(SUPER_ID, is_super=True)) is True
@@ -182,9 +178,7 @@ class TestCanInstallItem:
         assert can_install_item(item, _user(UNRELATED_ID)) is False
 
     def test_disabled_item_install_blocked_for_non_super_user(self) -> None:
-        item = _build_item(
-            visibility="public", status="disabled", is_listed=True
-        )
+        item = _build_item(visibility="public", status="disabled", is_listed=True)
         assert can_install_item(item, _user(UNRELATED_ID)) is False
         # Owner can re-install their own disabled draft for testing.
         # super_user can install for rescue.
@@ -229,16 +223,14 @@ class TestIsOwner:
         assert is_owner(item, _user(UNRELATED_ID)) is False
 
     def test_system_item_has_no_owner(self) -> None:
-        item = _build_item(
-            visibility="system", is_system=True, owner_id=None
-        )
+        item = _build_item(visibility="system", is_system=True, owner_id=None)
         # Even when the caller passes the OWNER_ID, ownership predicate
         # must be False (system items have no owner row).
         assert is_owner(item, _user(OWNER_ID)) is False
 
 
 # ===========================================================================
-# Router-level enumeration-oracle test (CRITICAL — Phase 1 출시 게이트)
+# Router-level enumeration-oracle test（CRITICAL — Phase 1 发布 gate）
 # ===========================================================================
 
 
@@ -263,9 +255,7 @@ async def _client_for_user(user: CurrentUser) -> AsyncClient:
     return AsyncClient(transport=transport, base_url="http://test")
 
 
-async def _seed_private_item(
-    db: AsyncSession, *, owner_id: uuid.UUID
-) -> MarketplaceItem:
+async def _seed_private_item(db: AsyncSession, *, owner_id: uuid.UUID) -> MarketplaceItem:
     """Insert a private item owned by ``owner_id``. Status=draft so only
     the owner can see it (Spec §12)."""
 
@@ -294,9 +284,9 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 class TestEnumerationOracleSafety:
-    """Phase 1 출시 게이트 — Access control.
+    """Phase 1 发布 gate — Access control。
 
-    ``rules/security.md``: "존재 여부와 권한 검증의 외부 응답을 통일".
+    ``rules/security.md``: "统一存在性与权限校验的外部响应"。
     Anything but ``404 MARKETPLACE_ITEM_NOT_FOUND`` from these endpoints
     is a leak.
     """
@@ -337,9 +327,7 @@ class TestEnumerationOracleSafety:
         assert r_hidden.json() == r_missing.json()
 
     @pytest.mark.asyncio
-    async def test_owner_can_see_their_own_private_item(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_owner_can_see_their_own_private_item(self, db_session: AsyncSession) -> None:
         """Sanity check the 404 isn't over-reaching."""
 
         item = await _seed_private_item(db_session, owner_id=OWNER_ID)
@@ -350,32 +338,25 @@ class TestEnumerationOracleSafety:
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["id"] == str(item.id)
-        # Publication summary가 owner 본인에게 정상 노출되는지만 검증한다.
-        # 카탈로그 서비스는 publication_link가 있을 때만 published_* 상태를
-        # 표시한다 (orphaned owner — source skill을 삭제한 케이스 — 에서는
-        # not_published로 떨어뜨려야 자기 publish 백업본을 다시 install 가능).
-        # 이 fixture는 publication_link 없이 draft row만 만들므로
-        # "draft" 또는 "not_published" 둘 다 valid 한 owner view.
+        # 只验证 Publication summary 能正常对 owner 本人暴露。
+        # 目录服务仅在存在 publication_link 时才显示 published_* 状态
+        # （对于 orphaned owner — 已删除 source skill 的情况 — 应
+        # 必须降为 not_published，才能将自己的 publish 备份副本重新 install）。
+        # 此 fixture 只创建不带 publication_link 的 draft row，因此
+        # "draft" 或 "not_published" 都是 valid 的 owner view。
         assert body["publication_summary"]["state"] in ("draft", "not_published")
 
     @pytest.mark.asyncio
-    async def test_versions_list_uses_same_404_envelope(
-        self, db_session: AsyncSession
-    ) -> None:
+    async def test_versions_list_uses_same_404_envelope(self, db_session: AsyncSession) -> None:
         """``GET /items/{id}/versions`` shares the enumeration gate."""
 
         item = await _seed_private_item(db_session, owner_id=OWNER_ID)
 
         async with await _client_for_user(_user(UNRELATED_ID)) as client:
-            resp = await client.get(
-                f"/api/marketplace/items/{item.id}/versions"
-            )
+            resp = await client.get(f"/api/marketplace/items/{item.id}/versions")
 
         assert resp.status_code == 404
-        assert (
-            resp.json().get("error", {}).get("code")
-            == "MARKETPLACE_ITEM_NOT_FOUND"
-        )
+        assert resp.json().get("error", {}).get("code") == "MARKETPLACE_ITEM_NOT_FOUND"
 
     @pytest.mark.asyncio
     async def test_version_detail_unreachable_when_parent_hidden(

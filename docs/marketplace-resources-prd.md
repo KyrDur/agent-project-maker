@@ -1,26 +1,26 @@
 # natural-mold Marketplace Resources PRD
 
-> 작성일: 2026-05-18
-> 버전: v0.4 (2026-09-08 source-aligned status 반영)
-> 베이스: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-prd.md` v0.3, `marketplace-resources-spec.md` v0.3
-> 범위: Agent / MCP / Skill 공유 마켓플레이스 + built-in k-skill 카탈로그 + credential 연결 UX
+> 编写日期: 2026-05-18
+> 版本: v0.4 (反映 2026-09-08 source-aligned status)
+> base: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-prd.md` v0.3, `marketplace-resources-spec.md` v0.3
+> scope: Agent / MCP / Skill 共享 marketplace + built-in k-skill catalog + credential connection UX
 
 ## Changelog
 
-| 버전 | 날짜 | 변경 내용 |
+| 版本 | 日期 | 变更内容 |
 |------|------|-----------|
-| v0.4 | 2026-09-08 | MCP/Agent publish/install 구현과 공용 wizard를 현재 상태에 반영. 아래 Phase 1~4 목록은 도입 당시 설계 순서이며 미구현 목록이 아님. E2E 상태는 `e2e-coverage.md`에서 관리. |
-| v0.3 | 2026-06-07 | 실제 소스 기준 구현 상태 갱신. M40~M44 marketplace/skill lineage/relative storage, M59 artifact 연계 시점 기준으로 catalog/install/update/uninstall/publish/ACL/admin listed state/secret scan/k-skill importer/skill credential binding/selected-skill runtime mount/credential env injection/redaction이 구현되어 있음을 반영. 남은 범위는 MCP/Agent resource publish 확장과 E2E/운영 hardening 중심. |
-| v0.2 | 2026-05-18 | natural-mold 소스코드 심층 분석 결과 반영. **execute_in_skill subprocess runner는 이미 도입되어 있음**을 정정(이전 v0.1의 잘못된 가정 폐기). 빈 구멍은 (a) credential env 주입 없음, (b) broad skill mount(`/skills/`), (c) packager에 secret scan 없음, (d) AgentSkillLink에 config 필드 없음, (e) Skill 모델에 source/dirty/origin 컬럼 없음. 14개 기존 credential definition 목록 명시 + k-skill용 신규 정의 추가 필요. ADR-007/009/013/016과의 정확한 매핑. |
-| v0.1 | 2026-05-18 | (폐기됨) 초기 적용본. 잘못된 가정 다수 포함. |
+| v0.4 | 2026-09-08 | 将 MCP/Agent publish/install 实现与通用 wizard 反映到当前状态。下方 Phase 1~4 列表是引入时的设计顺序，并非未实现清单。E2E 状态在 `e2e-coverage.md` 管理。 |
+| v0.3 | 2026-06-07 | 按实际 source 更新实现状态。反映截至 M40~M44 marketplace/skill lineage/relative storage、M59 artifact 联动时点，catalog/install/update/uninstall/publish/ACL/admin listed state/secret scan/k-skill importer/skill credential binding/selected-skill runtime mount/credential env injection/redaction 已实现。剩余范围以扩展 MCP/Agent resource publish 与 E2E/运营 hardening 为主。 |
+| v0.2 | 2026-05-18 | 反映 natural-mold source code 深入分析结果。修正为 **execute_in_skill subprocess runner 已经引入**(废弃此前 v0.1 的错误假设)。空缺是 (a) 无 credential env 注入, (b) broad skill mount(`/skills/`), (c) packager 无 secret scan, (d) AgentSkillLink 无 config 字段, (e) Skill model 无 source/dirty/origin 列。明确列出 14 个现有 credential definition + 需要为 k-skill 添加新 definition。与 ADR-007/009/013/016 的准确 mapping。 |
+| v0.1 | 2026-05-18 | (已废弃) 初始适配版。包含多项错误假设。 |
 
 ---
 
 ## 2026-09-08 Current Implementation Status
 
-이 문서의 v0.2 본문은 2026-05-18 기준 설계 baseline을 많이 보존한다. 현재
-소스 기준으로는 Skill뿐 아니라 MCP template과 Agent spec의 게시·설치 및
-공용 wizard까지 들어와 있으므로, 아래 상태표를 우선 신뢰한다.
+本文档 v0.2 正文大量保留了以 2026-05-18 为基准的设计 baseline。当前
+按 source 看，不仅 Skill，MCP template 与 Agent spec 的发布·安装及
+通用 wizard 也已加入，因此优先信任下方状态表。
 
 | Area | Status in source |
 |------|------------------|
@@ -42,269 +42,269 @@
 
 ## Decision Summary
 
-이 PRD의 핵심 결정은 원본과 동일하다 — "마켓플레이스는 배포 원본이고, 실행은 사용자 계정에 설치된 copy가 담당한다". natural-mold의 실제 코드 상태에 맞춰 다음 결정을 명시한다.
+本 PRD 的核心决定与原文相同 — "marketplace 是发布原本，执行由安装到用户账户的 copy 负责"。根据 natural-mold 的实际代码状态，明确以下决定。
 
-| 결정 | 선택 | 이유 |
+| 决定 | 选择 | 理由 |
 |------|------|------|
-| 마켓플레이스 리소스 범위 | Skill, MCP, Agent (Tool은 비목표) | Tool은 `backend/app/tools/registry.py`의 메모리 기반 `ToolDefinition`으로 운영자가 코드로 정의하는 자산이며 사용자가 만들거나 공유하지 않는다 |
-| 단계 분리 | Phase 1 Skill / Phase 2 MCP / Phase 3 Agent | 원본 PRD 단계 유지. Skill 루프가 가장 닫혀 있고 즉시 가치가 크다 |
-| Skill runtime baseline | deepagents + `execute_in_skill` subprocess runner + selected-skill mount + credential env injection + redaction contract 구현됨 | 새 runner를 도입하지 않고 기존 runtime을 확장한 상태 |
-| k-skill 도입 | GitHub `NomaDamas/k-skill` upstream을 sync job으로 fetch → system marketplace item으로 등록 | upstream 코드를 직접 수정하지 않고 immutable snapshot으로 가져옴 |
-| Public publish 정책 | published vs listed 분리, super_user만 listed 토글 가능 | 누구나 publish 가능하되 카탈로그 노출은 운영자 게이트 |
-| 인증 전제 | ADR-016 멀티유저 인증 완료 상태 | JWT(HS256) + HttpOnly Cookie + refresh rotation + super_user 권한이 이미 적용됨 |
-| Visibility 모델 | private / restricted / public / unlisted / system | 원본 그대로 |
-| Credential 처리 | 중앙 `credentials` 테이블 + Cipher V2 + field_keys 캐시 + is_system 분리 재사용 | ADR-007/009 인프라 위에 binding/requirement 모델 구현 |
-| 설치 방식 | marketplace version을 사용자 소유 installed resource로 복사 | 원본 결정 유지 |
-| 버전 정책 | published version immutable | 원본 결정 유지 |
-| 업데이트 | 자동 업데이트 금지, 사용자가 명시적으로 적용 | 원본 결정 유지 |
-| 출처 표시 | 모든 installed Agent/MCP/Skill에 origin과 publication state 표시 | Skill lineage 및 MCP/Agent projection 구현. 조합별 E2E 커버리지는 별도 관리 |
+| marketplace resource 范围 | Skill, MCP, Agent (Tool 为非目标) | Tool 是 `backend/app/tools/registry.py` 中基于内存的 `ToolDefinition`，属于由运营者通过代码定义的资产，用户不会创建或共享 |
+| 阶段拆分 | Phase 1 Skill / Phase 2 MCP / Phase 3 Agent | 保持原 PRD 阶段。Skill loop 最闭环且即时价值最大 |
+| Skill runtime baseline | 已实现 deepagents + `execute_in_skill` subprocess runner + selected-skill mount + credential env injection + redaction contract | 未引入新 runner，而是在扩展现有 runtime 的状态 |
+| 引入 k-skill | 通过 sync job fetch GitHub `NomaDamas/k-skill` upstream → 登记为 system marketplace item | 不直接修改 upstream code，以 immutable snapshot 方式导入 |
+| Public publish 策略 | 分离 published vs listed，只有 super_user 可切换 listed | 任何人都可 publish，但 catalog 展示受 operator gate 控制 |
+| 认证前提 | ADR-016 多用户认证已完成状态 | 已应用 JWT(HS256) + HttpOnly Cookie + refresh rotation + super_user 权限 |
+| Visibility 模型 | private / restricted / public / unlisted / system | 与原文相同 |
+| Credential 处理 | 复用中央 `credentials` 表 + Cipher V2 + field_keys cache + is_system 分离 | 在 ADR-007/009 基础设施之上实现 binding/requirement model |
+| 安装方式 | 将 marketplace version 复制为用户拥有的 installed resource | 保持原决定 |
+| 版本策略 | published version immutable | 保持原决定 |
+| 更新 | 禁止自动更新，由用户明确应用 | 保持原决定 |
+| 来源显示 | 所有 installed Agent/MCP/Skill 显示 origin 与 publication state | 已实现 Skill lineage 及 MCP/Agent projection。各组合的 E2E coverage 单独管理 |
 
 ## MVP Product Bet
 
-Phase 1의 목표는 "사용자가 built-in k-skill을 골라 자기 Skill로 설치하고, 필요한 경우 credential을 연결한 뒤 agent에 붙여 실행할 수 있다"였다. 이 흐름은 구현됐으며 MCP/Agent 게시·설치에도 확장됐다. 현재 남은 과제는 새 구현으로 취급하는 것이 아니라 운영/E2E 신뢰도를 높이는 것이다.
+Phase 1 的目标是"用户选择 built-in k-skill 安装成自己的 Skill，必要时连接 credential 后挂到 agent 上执行"。该流程已实现，并已扩展到 MCP/Agent 发布·安装。当前剩余课题不是视为新实现，而是提升运营/E2E 可信度。
 
-MVP에서 반드시 보여야 하는 경험:
+MVP 中必须呈现的体验:
 
-- Marketplace > Skills에서 built-in/system skill을 찾고 설치한다.
-- 인증이 필요한 skill은 설치 전후에 무엇이 필요한지 명확히 보인다.
-- 사용자는 중앙 `credentials`에 값을 저장하고 skill requirement에 연결한다.
-- 설치된 skill은 기존 내 Skill처럼 agent에 연결되고, agent 실행 시 **선택된 skill의 디렉토리만 노출**되며 **mapped env var로 credential이 subprocess에 주입**된다.
-- restricted로 공유된 skill은 허용된 사용자에게만 보인다.
-- upstream k-skill update는 update available로 표시되지만 자동 적용되지 않는다.
-- 누구나 public publish할 수 있지만, super_user가 listed로 승인하지 않은 항목은 검색 카탈로그에 노출되지 않는다 (링크로만 접근 가능).
+- 在 Marketplace > Skills 中找到 built-in/system skill 并安装。
+- 对需要认证的 skill，在安装前后都明确显示需要什么。
+- 用户将值保存到中央 `credentials`，并连接到 skill requirement。
+- 已安装 skill 像现有我的 Skill 一样连接到 agent，agent 执行时**只暴露所选 skill 的目录**，并通过 **mapped env var 将 credential 注入 subprocess**。
+- 以 restricted 方式共享的 skill 只对获准用户可见。
+- upstream k-skill update 显示为 update available，但不会自动应用。
+- 任何人都可以 public publish，但未经 super_user 批准为 listed 的项目不会显示在搜索 catalog 中 (只能通过链接访问)。
 
-## 1. 배경
+## 1. 背景
 
-natural-mold는 ADR-016에 따라 멀티유저 인증을 완료했고, Agent / MCP server / Skill / Credential / Tool이 모두 사용자 소유 리소스로 관리된다. JWT(HS256) + HttpOnly Cookie + refresh token rotation + `is_super_user` 역할이 적용되어 있다.
+natural-mold 已按 ADR-016 完成多用户认证，Agent / MCP server / Skill / Credential / Tool 都作为用户拥有的 resource 管理。已应用 JWT(HS256) + HttpOnly Cookie + refresh token rotation + `is_super_user` 角色。
 
-이미 갖춰진 구조 (마켓플레이스 설계에서 재사용):
+已具备的结构 (marketplace 设计中复用):
 
-| 영역 | 모듈/경로 | 상태 |
+| 区域 | module/path | 状态 |
 |------|----------|------|
-| Skill 모델 | `backend/app/models/skill.py:Skill` | text/package kind, storage_path, content_hash, version, package_metadata, used_by_count |
-| Skill 서비스 | `backend/app/skills/service.py` | CRUD, `to_runtime_dict`, 파일시스템 관리(`data/skills/<id>/`) |
-| Skill 패키저 | `backend/app/skills/packager.py` | `.skill` ZIP extract, symlink/zip-slip/null-byte 방지, 50MB 제한 |
-| Skill 인스펙터 | `backend/app/skills/inspector.py` | SKILL.md frontmatter parse, 안전 파일 접근 |
-| Skill 런타임 | `backend/app/skills/runtime.py:build_skills_for_agent` + `prompt.py:build_skills_prompt` | AgentSkillLink → descriptor + LLM prompt 주입 |
-| Skill 실행 도구 | `backend/app/agent_runtime/skill_executor.py` | **`execute_in_skill` subprocess runner 동작 중**. Python allowlist, timeout, output dir, credential env injection, redaction 계약 |
-| Agent runtime | `runtime_component_builder.py:build_agent` + `create_deep_agent` + `FilesystemBackend(_DATA_DIR, virtual_mode=True)` | deepagents 기반, 선택된 skill을 `/runtime/<thread_id>/.../skills/`로 mount |
-| MCP 모델 | `models/mcp_server.py`, `mcp_tool.py`, `AgentMcpToolLink` | transport(stdio/sse/streamable_http), `is_system`(M26), health_status |
-| MCP discovery | `app/mcp/client.py`, `app/mcp/discovery.py` | 연결 + `list_tools` + credential 보간 + last_seen_at upsert |
-| MCP health polling | `app/scheduler.py:MCP_HEALTH_JOB_ID` | APScheduler 5분 interval |
-| Credential 모델 | `models/credential.py` | `is_system` + CHECK constraint, key_id, field_keys 캐시 |
+| Skill model | `backend/app/models/skill.py:Skill` | text/package kind, storage_path, content_hash, version, package_metadata, used_by_count |
+| Skill service | `backend/app/skills/service.py` | CRUD, `to_runtime_dict`, filesystem 管理(`data/skills/<id>/`) |
+| Skill packager | `backend/app/skills/packager.py` | `.skill` ZIP extract, 防止 symlink/zip-slip/null-byte, 50MB 限制 |
+| Skill inspector | `backend/app/skills/inspector.py` | SKILL.md frontmatter parse, 安全文件访问 |
+| Skill runtime | `backend/app/skills/runtime.py:build_skills_for_agent` + `prompt.py:build_skills_prompt` | AgentSkillLink → descriptor + 注入 LLM prompt |
+| Skill 执行工具 | `backend/app/agent_runtime/skill_executor.py` | **`execute_in_skill` subprocess runner 正在运行**。Python allowlist, timeout, output dir, credential env injection, redaction contract |
+| Agent runtime | `runtime_component_builder.py:build_agent` + `create_deep_agent` + `FilesystemBackend(_DATA_DIR, virtual_mode=True)` | 基于 deepagents，将所选 skill mount 到 `/runtime/<thread_id>/.../skills/` |
+| MCP model | `models/mcp_server.py`, `mcp_tool.py`, `AgentMcpToolLink` | transport(stdio/sse/streamable_http), `is_system`(M26), health_status |
+| MCP discovery | `app/mcp/client.py`, `app/mcp/discovery.py` | 连接 + `list_tools` + credential interpolation + last_seen_at upsert |
+| MCP health polling | `app/scheduler.py:MCP_HEALTH_JOB_ID` | APScheduler 5 分钟 interval |
+| Credential model | `models/credential.py` | `is_system` + CHECK constraint, key_id, field_keys cache |
 | Cipher V2 | `app/security/cipher.py` | HKDF-SHA256 + AES-256-GCM, multi-key rotation, info=`moldy-encryption-v1` |
-| Credential 정의 | `app/credentials/definitions/` | 22개 등록: LLM, Google/Naver, HTTP, MCP secret/OAuth2, SRT/KTX/Forest Trip/KIPRIS/DART/ODsay/Coupang/K-Skill Proxy |
-| Credential 보간 | `app/credentials/interpolation.py:resolve_deep` | `={{ $credentials.x }}` (MCP env_vars/headers에서 사용) |
-| 인증 | `app/auth/`, `app/dependencies.py` | `get_current_user`, `require_super_user`, `verify_csrf` |
+| Credential definition | `app/credentials/definitions/` | 已注册 22 个: LLM, Google/Naver, HTTP, MCP secret/OAuth2, SRT/KTX/Forest Trip/KIPRIS/DART/ODsay/Coupang/K-Skill Proxy |
+| Credential interpolation | `app/credentials/interpolation.py:resolve_deep` | `={{ $credentials.x }}` (用于 MCP env_vars/headers) |
+| 认证 | `app/auth/`, `app/dependencies.py` | `get_current_user`, `require_super_user`, `verify_csrf` |
 
-이미 갖춰진 인프라는 PRD에서 "신규 도입"이 아니라 "재사용"으로 명시한다.
+PRD 中将已具备的基础设施明确为"复用"，而不是"新增引入"。
 
-다음 단계는 사용자가 만든 Agent/MCP/Skill을 다른 사용자와 공유하고, 운영자가 제공하는 built-in 리소스를 사용자가 선택적으로 가져와 쓸 수 있는 공유 layer다.
+下一阶段是共享 layer，让用户创建的 Agent/MCP/Skill 可与其他用户共享，并让用户可选择性获取运营方提供的 built-in resource 使用。
 
-특히 `NomaDamas/k-skill` 저장소는 한국형 업무/생활 자동화 skill 모음으로 natural-mold에 built-in skill catalog로 적합하다. upstream은 계속 업데이트되므로 hard fork하지 않고, 특정 upstream commit의 skill snapshot을 검증 후 catalog version으로 가져온다.
+尤其 `NomaDamas/k-skill` 仓库是韩国业务/生活自动化 skill 集合，适合作为 natural-mold 的 built-in skill catalog。upstream 会持续更新，因此不 hard fork，而是验证特定 upstream commit 的 skill snapshot 后作为 catalog version 导入。
 
-## 2. 문제 정의
+## 2. 问题定义
 
-### 2026-05-18 baseline 문제와 2026-06-07 상태
+### 2026-05-18 baseline 问题与 2026-06-07 状态
 
-아래 항목은 v0.2 작성 시점의 gap이었고, 현재는 대부분 구현 완료 상태다.
+下列项目是编写 v0.2 时的 gap，目前大部分已实现完成。
 
 | Baseline gap | 2026-06-07 source status |
 |--------------|--------------------------|
-| Skill 공유 불가 | Marketplace item/version/install/publish 구현 |
-| 공통 marketplace layer 부재 | M40 marketplace tables + service/router 구현 |
-| built-in / 사용자 자산 통합 UX 부재 | Marketplace catalog/detail/admin + origin/publication summary 구현 |
-| Skill credential 요구사항 미선언 | `credential_requirements`, `skill_credential_bindings`, binding validation 구현 |
-| AgentSkillLink override 자리 없음 | M42 `agent_skills.config` 구현 |
-| Skill marketplace 추적 컬럼 없음 | M41 skill lineage/source/origin/dirty columns 구현 |
-| Broad skill mount | selected-skill runtime mount under `/runtime/<thread_id>/.../skills/` 구현 |
-| `execute_in_skill` env credential 미주입 | runtime credential resolution + mapped env injection 구현 |
-| Secret scan 부재 | marketplace publish/upload secret scan 구현 |
-| 공유 시 private data 누출 위험 | publish strip, secret scan, binding, redaction 계약 구현 |
+| Skill 无法共享 | 已实现 Marketplace item/version/install/publish |
+| 缺少通用 marketplace layer | 已实现 M40 marketplace tables + service/router |
+| 缺少 built-in / 用户资产统一 UX | 已实现 Marketplace catalog/detail/admin + origin/publication summary |
+| 未声明 Skill credential requirement | 已实现 `credential_requirements`, `skill_credential_bindings`, binding validation |
+| AgentSkillLink 无 override 位置 | 已实现 M42 `agent_skills.config` |
+| Skill 无 marketplace tracking column | 已实现 M41 skill lineage/source/origin/dirty columns |
+| Broad skill mount | 已实现 selected-skill runtime mount under `/runtime/<thread_id>/.../skills/` |
+| `execute_in_skill` 未注入 env credential | 已实现 runtime credential resolution + mapped env injection |
+| 缺少 Secret scan | 已实现 marketplace publish/upload secret scan |
+| 共享时存在 private data 泄漏风险 | 已实现 publish strip, secret scan, binding, redaction contract |
 
-### 원하는 상태
+### 目标状态
 
-- 사용자는 자신이 만든 Agent/MCP/Skill을 marketplace에 올릴 수 있다.
-- 공유 범위는 private, 특정 사용자 제한, 전체 공개(listed/unlisted), built-in/system을 지원한다.
-- 다른 사용자는 marketplace 항목을 자기 계정으로 설치할 수 있다.
-- built-in k-skill 항목은 super_user가 upstream에서 동기화하고, 사용자는 필요한 skill만 선택 설치한다.
-- Skill이 credential을 필요로 하면 marketplace와 설치 화면에 명확히 표시된다.
-- credential 값은 절대 marketplace package에 포함되지 않고, 사용자별 `credentials`로 등록해 연결한다.
-- 설치된 resource는 원본 marketplace version과 연결되어 업데이트 가능 상태를 표시한다.
-- agent runtime은 **선택된 skill만 노출**하고, credential은 **subprocess env로만 주입**한다.
+- 用户可以将自己创建的 Agent/MCP/Skill 发布到 marketplace。
+- 共享范围支持 private、指定用户 restricted、全体公开(listed/unlisted)、built-in/system。
+- 其他用户可以将 marketplace item 安装到自己的账户。
+- built-in k-skill item 由 super_user 从 upstream 同步，用户只选择安装需要的 skill。
+- Skill 如需 credential，需在 marketplace 和安装页面清楚显示。
+- credential 值绝不包含在 marketplace package 中，而是按用户注册到 `credentials` 并连接。
+- installed resource 与原 marketplace version 关联，并显示是否有可用更新。
+- agent runtime **只暴露所选 skill**，credential **仅通过 subprocess env 注入**。
 
-## 3. 목표
+## 3. 目标
 
-1. Agent, MCP, Skill을 하나의 marketplace resource model로 공유한다.
-2. 기존 사용자 소유 테이블(`agents`, `mcp_servers`, `skills`)을 실제 설치본으로 유지한다.
-3. Marketplace item/version을 배포 가능한 immutable snapshot으로 관리한다.
-4. 공개 범위와 특정 사용자 접근 제어를 지원한다.
-5. Built-in k-skill을 system marketplace item으로 가져온다.
-6. Skill credential requirements와 user credential binding을 도입한다 (Phase 1).
-7. 공유/설치/업데이트 흐름에서 secret이 유출되지 않도록 한다 (packager에 secret scan 추가, publish 시 strip).
-8. `execute_in_skill` 실행 시 selected-skill mount + credential env 주입 + redaction을 보장한다.
+1. 将 Agent, MCP, Skill 作为一个 marketplace resource model 共享。
+2. 保持现有用户拥有的表(`agents`, `mcp_servers`, `skills`)作为实际安装副本。
+3. 将 Marketplace item/version 作为可发布的 immutable snapshot 管理。
+4. 支持公开范围与指定用户访问控制。
+5. 将 Built-in k-skill 作为 system marketplace item 导入。
+6. 引入 Skill credential requirements 与 user credential binding (Phase 1)。
+7. 确保共享/安装/更新流程中 secret 不泄漏 (packager 添加 secret scan，publish 时 strip)。
+8. `execute_in_skill` 执行时保证 selected-skill mount + credential env 注入 + redaction。
 
-## 4. 비목표
+## 4. 非目标
 
-- **Tool 마켓플레이스**: natural-mold의 도구는 `backend/app/tools/registry.py`의 메모리 기반 `ToolDefinition`으로 운영자가 코드로 정의한다. 사용자가 만들거나 공유하지 않는다. 사용자 정의 도구가 필요해지면 별도 PRD.
-- **새 skill runner 도입**: 이미 `execute_in_skill` subprocess runner가 있으므로 새로 만들지 않는다. Node/curl 같은 추가 runtime은 향후 별도 ADR.
-- 결제·유료 마켓플레이스
-- 별점·리뷰·랭킹 알고리즘
-- 외부 공개 URL로 anonymous 실행
-- 조직/팀 단위 권한 모델
-- Agent 실행 결과, 대화 기록, token usage 공유
-- Skill code sandbox 완전 격리 (Phase 1에서는 현재 allowlist + 30초 timeout 유지)
-- k-skill upstream에 PR을 보내거나 upstream 코드를 natural-mold용으로 수정
+- **Tool marketplace**: natural-mold 的工具是 `backend/app/tools/registry.py` 中基于内存的 `ToolDefinition`，由运营方通过代码定义。用户不会创建或共享。如以后需要用户自定义工具，另开 PRD。
+- **引入新 skill runner**: 已有 `execute_in_skill` subprocess runner，因此不新建。Node/curl 等附加 runtime 未来另开 ADR。
+- 支付·付费 marketplace
+- 星级·review·ranking algorithm
+- 通过外部公开 URL anonymous 执行
+- 组织/团队级权限模型
+- 共享 Agent 执行结果、conversation history、token usage
+- Skill code sandbox 完全隔离 (Phase 1 维持当前 allowlist + 30 秒 timeout)
+- 向 k-skill upstream 提交 PR 或为 natural-mold 修改 upstream code
 
-## 5. 사용자 유형
+## 5. 用户类型
 
-| 사용자 | 설명 | 주요 행동 |
+| 用户 | 说明 | 主要行为 |
 |--------|------|-----------|
-| 일반 사용자 | natural-mold 계정 (`users` row, `is_super_user=False`) | marketplace 탐색, resource 설치, 내 resource 게시, restricted 공유 대상 지정 |
-| 제작자 | Agent/MCP/Skill을 만들어 공유하는 사용자 | version publish, 공개 범위 설정, 업데이트 게시 |
-| 설치자 | 다른 사용자의 resource를 가져와 쓰는 사용자 | credential 연결, agent에 연결, 업데이트 적용 |
-| super_user | 운영자/관리자 (`users.is_super_user=True`) | built-in/system resource sync, public item의 listed 승인/disable, system credential 관리, k-skill 동기화 실행 |
+| 普通用户 | natural-mold 账户 (`users` row, `is_super_user=False`) | 浏览 marketplace、安装 resource、发布我的 resource、指定 restricted 共享对象 |
+| 创作者 | 创建并共享 Agent/MCP/Skill 的用户 | version publish, 设置公开范围, 发布更新 |
+| 安装者 | 获取并使用其他用户 resource 的用户 | 连接 credential, 连接到 agent, 应用更新 |
+| super_user | 运营者/管理员 (`users.is_super_user=True`) | built-in/system resource sync, public item 的 listed 批准/disable, system credential 管理, 执行 k-skill 同步 |
 
-## 6. Resource 개념
+## 6. Resource 概念
 
 ### Installed Resource
 
-사용자의 계정에 실제로 설치되어 실행되는 리소스다. 기존 테이블을 그대로 사용한다.
+这是实际安装到用户账户并执行的 resource。继续使用现有表。
 
 - Agent: `agents`
 - MCP: `mcp_servers`, `mcp_tools`
 - Skill: `skills`
 
-Installed resource는 `user_id`를 가진다. 사용자는 자기 installed resource만 수정·삭제·agent에 연결할 수 있다.
+Installed resource 拥有 `user_id`。用户只能修改·删除·连接到 agent 自己的 installed resource。
 
-Phase 1에서 `skills` 테이블에 추가할 컬럼 (모두 nullable, backfill):
+Phase 1 中需添加到 `skills` 表的 column (全部 nullable, backfill):
 
-- `is_system` (BOOLEAN DEFAULT FALSE) — 시스템 시드와 동일 패턴
+- `is_system` (BOOLEAN DEFAULT FALSE) — 与 system seed 相同 pattern
 - `source_kind` (VARCHAR 40) — `user`, `k-skill`, `import`, `system_seed`
 - `source_marketplace_item_id` (UUID NULL FK)
 - `source_marketplace_version_id` (UUID NULL FK)
 - `source_commit` (VARCHAR 80 NULL)
-- `credential_requirements` (JSON NULL) — version에서 복사한 fast-display copy
-- `execution_profile` (JSON NULL) — version에서 복사
+- `credential_requirements` (JSON NULL) — 从 version 复制的 fast-display copy
+- `execution_profile` (JSON NULL) — 从 version 复制
 - `origin_kind` (VARCHAR 40 DEFAULT 'created_by_me')
 - `origin_user_id` (UUID NULL FK users)
 - `origin_marketplace_item_id` (UUID NULL FK)
 - `origin_marketplace_version_id` (UUID NULL FK)
-- `is_dirty` (BOOLEAN DEFAULT FALSE) — installed resource 수정 추적 (텍스트 content/files endpoint에서 설정)
+- `is_dirty` (BOOLEAN DEFAULT FALSE) — 追踪 installed resource 修改 (在 text content/files endpoint 中设置)
 
-`AgentSkillLink`에 추가할 컬럼:
+需添加到 `AgentSkillLink` 的 column:
 
-- `config` (JSON NULL) — `{ "credential_bindings": { "<requirement_key>": "<credential_id>" } }` 형태의 agent-skill 단위 override
+- `config` (JSON NULL) — `{ "credential_bindings": { "<requirement_key>": "<credential_id>" } }` 形式的 agent-skill 级 override
 
 ### Marketplace Item
 
-공유 가능한 logical 항목이다. 하나의 item은 여러 version을 가진다.
+这是可共享的 logical item。一个 item 可有多个 version。
 
 - `resource_type`: `agent | mcp | skill`
-- 작성자: 일반 사용자 또는 system (super_user)
-- 공개 범위: private, restricted, public, unlisted, system
-- 검색 카탈로그 노출 여부: `is_listed` (super_user만 토글)
-- 검색/카탈로그 표시용 metadata 포함
+- 作者: 普通用户或 system (super_user)
+- 公开范围: private, restricted, public, unlisted, system
+- 是否在搜索 catalog 中显示: `is_listed` (仅 super_user 可 toggle)
+- 包含用于搜索/catalog 展示的 metadata
 
 ### Marketplace Version
 
-설치 가능한 immutable snapshot이다.
+这是可安装的 immutable snapshot。
 
-- Skill: `.skill` package snapshot 또는 storage snapshot
+- Skill: `.skill` package snapshot 或 storage snapshot
 - MCP: MCP server template + auth requirements + tool discovery hints (Phase 2)
 - Agent: agent spec + tool/MCP/skill references + model preference (Phase 3)
 
-한번 publish된 version은 수정하지 않는다. 변경이 필요하면 새 version을 만든다. 오타 같은 메타데이터 수정은 item-level metadata 업데이트로 처리한다.
+一旦 publish 的 version 不再修改。如需变更则创建新 version。拼写错误等 metadata 修改通过 item-level metadata update 处理。
 
 ### Installation
 
-사용자가 marketplace version을 자기 계정으로 가져온 기록이다.
+这是用户将 marketplace version 获取到自己账户的记录。
 
-- source item/version 추적
-- 설치된 `agents.id`, `mcp_servers.id`, `skills.id`와 연결
-- 업데이트 가능 여부 판단(`update_available`), dirty 상태(`is_dirty`) 추적
+- 追踪 source item/version
+- 与已安装的 `agents.id`, `mcp_servers.id`, `skills.id` 关联
+- 判断是否可更新(`update_available`)，追踪 dirty 状态(`is_dirty`)
 
 ### Resource Origin
 
-Installed Agent/MCP/Skill 목록과 상세 화면은 사용자가 리소스의 출처를 즉시 이해할 수 있게 표시해야 한다.
+Installed Agent/MCP/Skill 列表和详情页面必须让用户能够立即理解 resource 的来源。
 
-| Origin | 의미 | 표시 예시 |
+| Origin | 含义 | 展示示例 |
 |--------|------|-----------|
-| `created_by_me` | 사용자가 직접 생성한 리소스 (text skill 등) | `Created by me` |
-| `imported_by_me` | 사용자가 파일/URL로 가져온 리소스 (예: `.skill` ZIP 업로드) | `Imported by me` |
-| `built_in_k_skill` | system marketplace의 k-skill에서 설치한 skill | `Built-in · k-skill` |
-| `shared_with_me` | 다른 사용자가 restricted/public으로 공유한 리소스를 설치 | `Shared by {user}` |
-| `community` | 공개 marketplace item을 설치 | `Community` |
-| `system_seed` | 시스템 시드(`bootstrap_from_env`)가 기본 제공한 리소스 | `System` |
+| `created_by_me` | 用户直接创建的 resource (text skill 等) | `Created by me` |
+| `imported_by_me` | 用户通过文件/URL 导入的 resource (例如上传 `.skill` ZIP) | `Imported by me` |
+| `built_in_k_skill` | 从 system marketplace 的 k-skill 安装的 skill | `Built-in · k-skill` |
+| `shared_with_me` | 安装其他用户通过 restricted/public 共享的 resource | `Shared by {user}` |
+| `community` | 安装公开 marketplace item | `Community` |
+| `system_seed` | 系统 seed(`bootstrap_from_env`)默认提供的 resource | `System` |
 
-Origin은 ownership을 바꾸지 않는다. `Built-in · k-skill`로 표시되더라도 설치된 skill row는 설치자 소유다.
+Origin 不改变 ownership。即使显示为 `Built-in · k-skill`，安装后的 skill row 仍归安装者所有。
 
 ### Publication State
 
-내가 소유한 Agent/MCP/Skill은 marketplace에 게시된 상태를 별도로 가진다.
+我拥有的 Agent/MCP/Skill 另有 marketplace publication 状态。
 
-| Publication State | 의미 | 사용자 액션 |
+| Publication State | 含义 | 用户操作 |
 |-------------------|------|-------------|
-| `not_published` | marketplace item 없음 | Publish |
-| `draft` | 게시 준비 중, owner만 접근 | Continue setup |
-| `published_private` | marketplace item은 있으나 owner만 접근 | Change visibility, New version |
-| `published_restricted` | 특정 사용자에게 공유됨 | Manage users, New version |
-| `published_public_listed` | 공개 + 검색 노출 (super_user 승인 통과) | New version, Disable |
-| `published_public_unlisted` | 공개됐지만 검색 노출 안 됨 (super_user 미승인) | Request listing, Copy link |
-| `published_unlisted` | 명시적으로 unlisted 선택 (링크 접근만) | Copy link, Change visibility |
-| `disabled` | super_user가 게시 중단 | Re-enable 또는 keep disabled |
+| `not_published` | 无 marketplace item | Publish |
+| `draft` | 正在准备发布，仅 owner 可访问 | Continue setup |
+| `published_private` | 有 marketplace item 但仅 owner 可访问 | Change visibility, New version |
+| `published_restricted` | 已共享给指定用户 | Manage users, New version |
+| `published_public_listed` | 公开 + 搜索可见 (通过 super_user 批准) | New version, Disable |
+| `published_public_unlisted` | 已公开但不在搜索中显示 (未获 super_user 批准) | Request listing, Copy link |
+| `published_unlisted` | 明确选择 unlisted (仅链接访问) | Copy link, Change visibility |
+| `disabled` | super_user 停止发布 | Re-enable 或 keep disabled |
 
-Installed resource 화면에서는 origin badge와 publication badge를 동시에 보여준다.
+Installed resource 页面同时显示 origin badge 和 publication badge。
 
-## 7. 공개 범위
+## 7. 公开范围
 
-| Visibility | 의미 | 접근 |
+| Visibility | 含义 | 访问 |
 |------------|------|------|
-| `private` | 작성자만 볼 수 있는 draft 또는 개인 item | owner만 view/manage |
-| `restricted` | 특정 사용자만 볼 수 있음 (ACL) | owner + ACL 대상 |
-| `public` | 모든 로그인 사용자가 볼 수 있음 (단, 검색 노출은 `is_listed`에 따름) | 모든 사용자 view/install |
-| `unlisted` | 링크를 가진 사용자만 접근 | 검색에는 노출 안 됨 |
-| `system` | 운영자가 제공하는 built-in catalog | 모든 사용자 view/install, super_user manage |
+| `private` | 仅作者可见的 draft 或个人 item | 仅 owner view/manage |
+| `restricted` | 仅指定用户可见 (ACL) | owner + ACL 对象 |
+| `public` | 所有已登录用户可见 (但搜索可见性取决于 `is_listed`) | 所有用户 view/install |
+| `unlisted` | 只有持有链接的用户可访问 | 不在搜索中显示 |
+| `system` | 运营方提供的 built-in catalog | 所有用户 view/install, super_user manage |
 
-`restricted`는 user 단위 ACL로 시작한다.
+`restricted` 从 user 级 ACL 开始。
 
-### Published vs Listed 분리
+### 分离 Published vs Listed
 
-`visibility=public`인 항목은 별도로 `is_listed` 플래그를 가진다.
+`visibility=public` 的 item 另有 `is_listed` flag。
 
-- 기본값: `is_listed=False`
-- `is_listed=True`는 super_user만 토글 가능
-- 카탈로그의 기본 listing(`/api/marketplace/items` 기본 조회)은 `is_listed=True OR visibility=system OR owner=current_user OR ACL` 조건만 보여준다
-- `is_listed=False`인 public item은 직접 ID/슬러그를 알면 접근/설치 가능 (unlisted와 동일한 효과)
-- super_user가 부적절한 public 항목을 발견하면 `is_listed=False`로 unlist하거나 `status=disabled`로 비활성화한다
+- 默认值: `is_listed=False`
+- 只有 super_user 可以 toggle `is_listed=True`
+- catalog 的默认 listing(`/api/marketplace/items` 默认查询)只显示满足 `is_listed=True OR visibility=system OR owner=current_user OR ACL` 条件的项目
+- `is_listed=False` 的 public item 若知道直接 ID/slug，仍可访问/安装 (效果与 unlisted 相同)
+- super_user 发现不合适的 public item 时，可设 `is_listed=False` 进行 unlist，或设 `status=disabled` 禁用
 
-### 권한 정책 매트릭스
+### 权限策略矩阵
 
 | Actor | private | restricted | public | unlisted | system |
 |-------|---------|------------|--------|----------|--------|
 | Owner | view/manage/install | view/manage/install | view/manage/install | view/manage/install | N/A |
 | ACL view | no | view | N/A | no | N/A |
 | ACL install | no | view/install | N/A | no | N/A |
-| Any logged-in user | no | no | view(listed만 검색)/install | direct-link view/install | view/install |
+| Any logged-in user | no | no | view(仅 listed 可搜索)/install | direct-link view/install | view/install |
 | super_user | view/manage | view/manage | view/manage/list/disable | view/manage/list/disable | view/manage |
 
-비인가 사용자가 item detail 또는 install을 시도하면 기본적으로 404로 응답해 private/restricted item 존재 여부를 노출하지 않는다 (CLAUDE.md `enumeration oracle` 방지 원칙).
+未授权用户尝试 item detail 或 install 时，默认返回 404，避免暴露 private/restricted item 是否存在 (遵循 CLAUDE.md 的 `enumeration oracle` 防护原则)。
 
-## 8. Credential 원칙
+## 8. Credential 原则
 
-natural-mold는 이미 ADR-007/009에 따라 `credentials` 테이블 + Cipher V2 + field_keys 캐시를 갖추고 있다. 마켓플레이스는 이 시스템을 그대로 재사용한다.
+natural-mold 已按 ADR-007/009 具备 `credentials` 表 + Cipher V2 + field_keys cache。marketplace 直接复用该系统。
 
-1. Marketplace item/version에는 credential value를 저장하지 않는다.
-2. Skill/MCP/Agent는 필요한 credential type과 field requirement만 선언한다 (`credential_requirements` JSON).
-3. 사용자는 설치 시 자기 `credentials` row를 선택하거나 새로 만든다.
-4. 실행 시 runtime은 연결된 credential을 복호화해 해당 process/tool call에만 주입한다.
-5. System credential(`is_system=True`, `user_id IS NULL`)은 일반 사용자에게 노출하거나 자동 연결하지 않는다 (`/api/system-credentials`는 super_user 전용).
-6. Hosted proxy 기반 skill은 사용자 credential이 필요 없는 것으로 표시하되, operator/system dependency로 구분한다.
+1. Marketplace item/version 中不保存 credential value。
+2. Skill/MCP/Agent 只声明所需 credential type 和 field requirement (`credential_requirements` JSON)。
+3. 用户安装时选择自己已有的 `credentials` row 或新建。
+4. 执行时 runtime 解密已连接 credential，仅注入到对应 process/tool call。
+5. System credential(`is_system=True`, `user_id IS NULL`)不向普通用户暴露，也不自动连接 (`/api/system-credentials` 仅限 super_user)。
+6. 基于 Hosted proxy 的 skill 标记为不需要用户 credential，但区分为 operator/system dependency。
 
-### Credential 정의 상태
+### Credential definition 状态
 
-`backend/app/credentials/definitions/`에는 2026-06-07 현재 22개 definition이
-등록되어 있다. k-skill 요구사항으로 계획했던 정의도 이미 추가되어 있다.
+截至 2026-06-07，`backend/app/credentials/definitions/` 中有 22 个 definition
+definition 已注册。为 k-skill requirement 计划的 definition 也已添加。
 
 | definition_key | Fields | Used by |
 |----------------|--------|---------|
@@ -317,35 +317,35 @@ natural-mold는 이미 ADR-007/009에 따라 `credentials` 테이블 + Cipher V2
 | `coupang_partners` | `access_key`, `secret_key` | Coupang Partners skills |
 | `k_skill_proxy` | proxy credentials | hosted k-skill proxy |
 
-기존 LLM/검색/HTTP/MCP 정의(openai, anthropic, google_genai, azure_openai,
+保留现有 LLM/搜索/HTTP/MCP definition(openai, anthropic, google_genai, azure_openai,
 openrouter, openai_compatible, google_search, naver_search,
 google_workspace_oauth2, http_bearer, http_basic, http_api_key, mcp_secret,
-mcp_oauth2)는 유지된다.
+mcp_oauth2)。
 
-이들 정의는 기존 `CredentialRegistry` 싱글톤(import time 자동 등록)에 등록되어 있다. field_keys 캐시(ADR-007)는 신규 row 생성 시 자동 채워진다.
+这些 definition 已注册到现有 `CredentialRegistry` singleton(import time 自动注册)。创建新 row 时会自动填充 field_keys cache(ADR-007)。
 
-### Credential UX 원칙
+### Credential UX 原则
 
-- Marketplace 카드에는 credential value가 아니라 requirement 상태만 표시한다.
-- 설치 wizard는 required credential을 먼저 해결하게 하되, 사용자가 `나중에 설정`을 선택하면 `needs_setup` 상태로 설치할 수 있다.
-- `needs_setup`인 skill은 agent에 연결할 수는 있지만 runtime 실행 전 fail-fast로 막고 설정 CTA를 보여준다.
-- compatible credential이 이미 있으면 기본 선택값으로 제안하지만 자동 저장하지 않는다.
-- optional credential은 설치를 막지 않고, 연결하면 더 풍부한 기능이 열린다.
-- manual login skill은 Credential 저장 화면으로 보내지 않고, 브라우저/로컬 앱 세션이 필요하다는 상태로 분리한다.
+- Marketplace card 只显示 requirement 状态，不显示 credential value。
+- 安装 wizard 先解决 required credential，但若用户选择 `稍后设置`，可以以 `needs_setup` 状态安装。
+- `needs_setup` skill 可以连接到 agent，但 runtime 执行前要 fail-fast 阻止，并显示设置 CTA。
+- 如果已有 compatible credential，则作为默认选项建议，但不自动保存。
+- optional credential 不阻止安装，连接后可开启更丰富功能。
+- manual login skill 不跳转到 Credential 保存页面，而是单独标记为需要浏览器/本地 app session 的状态。
 
 ## 9. Skill Credential Requirement
 
-Skill은 다음 상태 중 하나를 가져야 한다.
+Skill 必须具有以下状态之一。
 
-| 상태 | 의미 | UX |
+| 状态 | 含义 | UX |
 |------|------|----|
-| none | 인증 불필요 | `No credential needed` |
-| optional | 있으면 더 풍부한 경로 사용 | `Optional credential` |
-| required | 실행 전 사용자 credential 필요 | `Credential required` |
-| hosted_proxy | 운영자 proxy key 사용, 사용자 key 불필요 | `Uses hosted proxy` |
-| manual_login | 사용자가 브라우저/앱에서 직접 로그인 필요 | `Manual login required` |
+| none | 无需认证 | `No credential needed` |
+| optional | 有则可使用更丰富路径 | `Optional credential` |
+| required | 执行前需要用户 credential | `Credential required` |
+| hosted_proxy | 使用运营方 proxy key，无需用户 key | `Uses hosted proxy` |
+| manual_login | 需要用户在浏览器/app 中直接登录 | `Manual login required` |
 
-예시:
+示例:
 
 - `srt-booking`: `required`, `srt_account`
 - `ktx-booking`: `required`, `ktx_account`
@@ -354,87 +354,87 @@ Skill은 다음 상태 중 하나를 가져야 한다.
 - `kakaotalk-mac`: `manual_login`
 - `korean-spell-check`: `none`
 
-## 10. 주요 사용자 시나리오
+## 10. 主要用户场景
 
-### 10.1 built-in skill 설치
+### 10.1 安装 built-in skill
 
-1. 사용자가 Marketplace > Skills에서 `korean-spell-check`를 검색한다.
-2. 카드에 `Built-in`, `No credential needed`, `ko-KR`, `writing`이 표시된다.
-3. 사용자가 Install을 누른다.
-4. natural-mold가 해당 marketplace version을 사용자의 `skills` row로 설치한다 (storage는 `data/skills/<skill_id>/`).
-5. `skills.origin_kind='built_in_k_skill'`, `source_marketplace_*` 컬럼이 채워진다.
-6. 사용자는 agent 설정에서 해당 skill을 선택한다.
+1. 用户在 Marketplace > Skills 搜索 `korean-spell-check`。
+2. card 显示 `Built-in`, `No credential needed`, `ko-KR`, `writing`。
+3. 用户点击 Install。
+4. natural-mold 将对应 marketplace version 安装为用户的 `skills` row (storage 为 `data/skills/<skill_id>/`)。
+5. 填充 `skills.origin_kind='built_in_k_skill'`, `source_marketplace_*` column。
+6. 用户在 agent 设置中选择该 skill。
 
-### 10.2 credential required skill 설치
+### 10.2 安装 credential required skill
 
-1. 사용자가 `srt-booking`을 설치하려 한다.
-2. 설치 화면이 `SRT account credential required`를 표시한다.
-3. 사용자는 기존 `srt_account` credential을 선택하거나 새로 만든다.
-4. 설치 후 `skill_credential_bindings` row가 생성된다.
-5. Agent 실행 시 runtime은 binding된 credential을 복호화해 mapped env var(`KSKILL_SRT_ID`, `KSKILL_SRT_PASSWORD`)로 `execute_in_skill` subprocess에 주입한다.
+1. 用户尝试安装 `srt-booking`。
+2. 安装页面显示 `SRT account credential required`。
+3. 用户选择现有 `srt_account` credential 或新建。
+4. 安装后创建 `skill_credential_bindings` row。
+5. Agent 执行时 runtime 解密 binding 的 credential，并以 mapped env var(`KSKILL_SRT_ID`, `KSKILL_SRT_PASSWORD`)注入 `execute_in_skill` subprocess。
 
-### 10.3 사용자가 자기 skill 공유
+### 10.3 用户共享自己的 skill
 
-1. 사용자가 `/skills`에서 자기 skill 상세를 연다.
-2. `Publish to Marketplace`를 누른다.
-3. 공유 전 검사 화면(secret scan + 파일 트리 preview)에서 name, description, tags, license, credential requirements, included files를 확인한다.
-4. visibility를 `public` 또는 `restricted`로 선택한다.
-5. publish하면 marketplace item/version이 생성된다 (`is_listed=False`로 시작).
-6. 다른 사용자는 install해서 자기 skill copy로 가져온다.
+1. 用户在 `/skills` 打开自己的 skill 详情。
+2. 点击 `Publish to Marketplace`。
+3. 在共享前检查页面(secret scan + 文件树 preview)确认 name, description, tags, license, credential requirements, included files。
+4. visibility 选择 `public` 或 `restricted`。
+5. publish 后创建 marketplace item/version (从 `is_listed=False` 开始)。
+6. 其他用户 install 后获取为自己的 skill copy。
 
-### 10.4 특정 사용자에게만 공유
+### 10.4 仅共享给指定用户
 
-1. 제작자가 visibility를 `restricted`로 선택한다.
-2. 허용할 사용자 이메일을 입력한다.
-3. `marketplace_item_acl` row가 생성된다.
-4. 대상 사용자만 marketplace에서 item을 볼 수 있고 설치할 수 있다.
-5. 대상에서 제거되면 새 설치는 막히지만 이미 설치된 copy는 유지한다.
+1. 创作者将 visibility 设为 `restricted`。
+2. 输入允许用户的 email。
+3. 创建 `marketplace_item_acl` row。
+4. 只有目标用户能在 marketplace 看到并安装 item。
+5. 从目标列表移除后会阻止新的安装，但已安装的 copy 保留。
 
-### 10.5 built-in k-skill 업데이트
+### 10.5 更新 built-in k-skill
 
-1. super_user가 k-skill sync job을 실행한다 (`uv run python -m app.scripts.sync_k_skill --ref <commit>`).
-2. job은 upstream commit을 fetch하고 skill layout을 validate한다.
-3. 변경된 skill만 새 marketplace version으로 등록한다.
-4. 기존 설치자는 `Update available` 배지를 본다.
-5. 사용자가 업데이트를 적용하면 installed skill storage가 새 snapshot으로 교체된다.
-6. 사용자가 직접 수정한 installed skill은 `is_dirty=True`로 표시되고 자동 덮어쓰지 않는다.
+1. super_user 执行 k-skill sync job (`uv run python -m app.scripts.sync_k_skill --ref <commit>`)。
+2. job fetch upstream commit 并 validate skill layout。
+3. 只将发生变更的 skill 注册为新 marketplace version。
+4. 现有安装者会看到 `Update available` badge。
+5. 用户应用更新后，installed skill storage 替换为新的 snapshot。
+6. 用户自行修改过的 installed skill 标记为 `is_dirty=True`，不会自动覆盖。
 
-### 10.6 내 리소스 게시 상태 관리
+### 10.6 管理我的 resource 发布状态
 
-1. 사용자가 `/skills`, `/mcp-servers`, dashboard에서 자기 리소스를 본다.
-2. 각 row/card에 origin badge와 publication badge가 표시된다.
-3. 사용자가 직접 만든 리소스에는 `Not published` 또는 `Published · Restricted` 같은 publication badge가 표시된다.
-4. 사용자가 `Publish`를 누르면 marketplace publish wizard가 열린다.
-5. publish 후 기존 리소스 상세에 marketplace 상태와 version/update 액션이 표시된다.
+1. 用户在 `/skills`, `/mcp-servers`, dashboard 中查看自己的 resource。
+2. 每个 row/card 显示 origin badge 和 publication badge。
+3. 用户自己创建的 resource 显示 `Not published` 或 `Published · Restricted` 等 publication badge。
+4. 用户点击 `Publish` 后打开 marketplace publish wizard。
+5. publish 后，现有 resource 详情中显示 marketplace 状态以及 version/update action。
 
-### 10.7 super_user가 public 항목을 listed 승인
+### 10.7 super_user 批准 public item listed
 
-1. super_user가 `Marketplace > Moderation`에서 `is_listed=False`인 public 항목 목록을 본다.
-2. 항목을 열어 metadata, files, credential requirements, 작성자를 확인한다.
-3. `Approve listing`을 누르면 `is_listed=True`로 바뀌고 카탈로그 기본 검색에 노출된다.
-4. 부적절한 항목은 `Disable`로 `status=disabled` 처리한다 (새 설치 차단).
+1. super_user 在 `Marketplace > Moderation` 查看 `is_listed=False` 的 public item 列表。
+2. 打开 item，确认 metadata, files, credential requirements, 作者。
+3. 点击 `Approve listing` 后变为 `is_listed=True`，并出现在 catalog 默认搜索中。
+4. 不合适的 item 通过 `Disable` 设为 `status=disabled` (阻止新安装)。
 
-## 11. 기능 요구사항
+## 11. 功能需求
 
 ### 11.1 Marketplace Catalog
 
-- resource type별 목록 제공: Agent, MCP, Skill
-- 검색: name, description, tag, category, locale
-- 필터: resource type / install state / source / visibility / built-in/system / credential status / execution support level / category / locale
-- 카드 표시: 이름, 설명, 작성자, resource type, visibility, latest version, credential requirement summary, installed/update available 상태, listed/unlisted 배지(public 한정)
+- 按 resource type 提供列表: Agent, MCP, Skill
+- 搜索: name, description, tag, category, locale
+- filter: resource type / install state / source / visibility / built-in/system / credential status / execution support level / category / locale
+- card 展示: 名称, 说明, 作者, resource type, visibility, latest version, credential requirement summary, installed/update available 状态, listed/unlisted badge(仅 public)
 
-Catalog는 사용자가 바로 설치 가능한 항목과 아직 실행 지원이 제한적인 항목을 구분해야 한다. 특히 k-skill은 80개 전체를 가져오더라도 `Python ready`, `Proxy required`, `Node required`, `Manual login`, `Unsupported` 같은 badge를 표시해 기대치를 정확히 맞춘다.
+Catalog 必须区分用户可立即安装的 item 和执行支持仍有限的 item。尤其即使导入全部 80 个 k-skill，也要显示 `Python ready`, `Proxy required`, `Node required`, `Manual login`, `Unsupported` 等 badge，准确管理预期。
 
-기본 탭: `All`, `Agents`, `MCP`, `Skills`, `Installed`
+默认 tab: `All`, `Agents`, `MCP`, `Skills`, `Installed`
 
-설치 상태별 빠른 보기: `Not installed`, `Installed`, `Needs setup`, `Update available`, `Disabled source`
+按安装状态快速查看: `Not installed`, `Installed`, `Needs setup`, `Update available`, `Disabled source`
 
-카드 CTA:
+card CTA:
 
-| 상태 | Primary CTA |
+| 状态 | Primary CTA |
 |------|-------------|
-| 미설치 | Install |
-| 설치됨 | Installed 또는 Open |
+| 未安装 | Install |
+| 已安装 | Installed 或 Open |
 | needs setup | Set up |
 | update available | Update |
 | dirty + update available | Review update |
@@ -442,107 +442,107 @@ Catalog는 사용자가 바로 설치 가능한 항목과 아직 실행 지원�
 
 ### 11.2 Publish
 
-- 사용자는 자기 owned resource를 marketplace에 publish할 수 있다.
-- publish 전 preview에서 제외되는 private data와 secret scan 결과를 보여준다.
-- version은 immutable로 저장한다.
-- 같은 item에 새 version publish 가능.
-- public publish는 최소 metadata validation을 통과해야 한다.
-- restricted publish는 ACL 대상이 1명 이상이어야 한다.
-- public publish는 `is_listed=False`로 시작한다. 사용자는 super_user에게 listing 요청을 보낼 수 있다.
-- publish는 단순 toggle이 아니라 preview, secret scan, credential stripping, immutable version 생성 과정을 거친다.
+- 用户可以将自己 owned resource publish 到 marketplace。
+- publish 前 preview 显示会被排除的 private data 和 secret scan 结果。
+- version 以 immutable 形式保存。
+- 可以在同一个 item 上 publish 新 version。
+- public publish 必须通过最低限度 metadata validation。
+- restricted publish 的 ACL 对象必须至少 1 人。
+- public publish 从 `is_listed=False` 开始。用户可向 super_user 请求 listing。
+- publish 不是简单 toggle，而要经过 preview、secret scan、credential stripping、创建 immutable version 的流程。
 
 ### 11.3 Install
 
-- 사용자는 접근 가능한 marketplace version을 install할 수 있다.
-- 설치 결과는 사용자 소유 installed resource다 (`skills.user_id = current_user.id`).
-- 설치 시 credential requirements를 확인하고 binding wizard를 제공한다.
-- 설치 후 source item/version reference를 보존한다.
-- 같은 item은 여러 번 설치할 수 있되 기본 UX는 기존 설치를 보여주고 update를 유도한다.
+- 用户可以 install 自己有权限访问的 marketplace version。
+- 安装结果是用户拥有的 installed resource (`skills.user_id = current_user.id`)。
+- 安装时检查 credential requirements 并提供 binding wizard。
+- 安装后保留 source item/version reference。
+- 同一个 item 可以多次安装，但默认 UX 显示现有安装并引导 update。
 
 ### 11.4 Update
 
-- installed resource가 source version보다 오래되면 update available로 표시한다.
-- 사용자가 직접 수정한 installed resource는 `is_dirty=True` 상태다. dirty 추적은 다음 endpoint에서 설정한다:
+- installed resource 比 source version 旧时显示 update available。
+- 用户自行修改过的 installed resource 处于 `is_dirty=True` 状态。dirty 追踪在以下 endpoint 中设置:
   - `PUT /api/skills/{id}/content`
   - `PATCH /api/skills/{id}`
   - `PUT|POST|DELETE /api/skills/{id}/files/{path}`
-- dirty 상태 update는 다음 중 하나를 선택한다:
+- dirty 状态 update 选择以下之一:
   - overwrite with latest
   - install as new copy
   - keep current
-- Phase 1에서는 자동 병합을 하지 않는다.
+- Phase 1 不做自动 merge。
 
 ### 11.5 Credential Binding
 
-- Marketplace version은 credential requirements를 가진다 (`marketplace_versions.credential_requirements` JSON).
-- 설치 시 required credential이 없으면 `needs_setup` 상태가 된다.
-- 사용자는 설치 후에도 credential을 연결/교체할 수 있다.
+- Marketplace version 拥有 credential requirements (`marketplace_versions.credential_requirements` JSON)。
+- 安装时缺少 required credential，则变为 `needs_setup` 状态。
+- 用户安装后仍可连接/替换 credential。
 - Binding scope:
-  - skill installation default → `skill_credential_bindings` 테이블
-  - agent-skill override → `agent_skills.config` JSON 필드
-- agent-skill override가 있으면 runtime은 override를 우선한다.
+  - skill installation default → `skill_credential_bindings` 表
+  - agent-skill override → `agent_skills.config` JSON 字段
+- 若存在 agent-skill override，runtime 优先使用 override。
 
 ### 11.5b Runtime Skill Mount and Credential Injection
 
-natural-mold는 deepagents 기반이며 `execute_in_skill` subprocess runner는
-`skill_executor.py`에 분리되어 있다. 2026-06-07 현재 Phase 1의 세 보안
-보강(selected-skill mount, credential env injection, redaction contract)은 구현된
-상태다.
+natural-mold 基于 deepagents，`execute_in_skill` subprocess runner 已
+拆分到 `skill_executor.py`。截至 2026-06-07，Phase 1 的三项 security
+强化(selected-skill mount, credential env injection, redaction contract)已经实现
+完成。
 
-1. **Selected-skill mount**: per-thread 가상 root에 선택된 skill만 노출하고, agent에는 `/runtime/<thread_id>/.../skills/` 경로만 전달한다. 미선택 skill 디렉토리와 다른 사용자의 skill은 노출하지 않는다.
+1. **Selected-skill mount**: 在 per-thread virtual root 中只暴露所选 skill，并且只向 agent 传递 `/runtime/<thread_id>/.../skills/` 路径。不暴露未选择的 skill 目录以及其他用户的 skill。
 
-2. **Credential env injection**: skill의 credential requirement와 user binding을 로드해 복호화한 값을 mapped env var로 주입한다. 주입 대상은 binding된 requirement에 한정하고 agent-skill override를 우선한다.
+2. **Credential env injection**: 加载 skill 的 credential requirement 与 user binding，解密后以 mapped env var 注入。注入对象仅限已 binding 的 requirement，并优先 agent-skill override。
 
-3. **Redaction contract**: log, SSE event, tool result, exception detail, frontend toast에서 mapped env var 값과 민감 키(`password`, `api_key`, `secret`, `token`, `access_key`, `refresh_token`)의 값을 redact한다.
+3. **Redaction contract**: 在 log, SSE event, tool result, exception detail, frontend toast 中 redact mapped env var 值以及敏感 key(`password`, `api_key`, `secret`, `token`, `access_key`, `refresh_token`)的值。
 
-이 세 작업은 보안 영향이 크므로 marketplace 카탈로그/publish 작업과 분리해 검증해야 한다. 새 subprocess runner를 도입하지 않고 기존 runtime을 보강한 방향은 유지한다.
+这三项工作 security 影响较大，因此必须与 marketplace catalog/publish 工作分开验证。保持不引入新 subprocess runner，而是强化现有 runtime 的方向。
 
 ### 11.6 k-skill Built-in Sync
 
 - upstream repo: `https://github.com/NomaDamas/k-skill.git`
-- 운영 설정:
-  - `k_skill_upstream_url`: 기본 GitHub URL
-  - `k_skill_upstream_ref`: 동기화할 commit 또는 branch (`main`이 기본)
-  - `k_skill_sync_dir`: upstream을 clone할 임시 경로 (`./data/upstreams/k-skill`)
-  - `k_skill_builtin_storage_dir`: 검증 완료 후 marketplace storage 경로 (`./data/marketplace/k-skill`)
-- sync job은 upstream을 read-only로 사용한다. upstream 코드를 수정하지 않는다.
-- 실행:
+- 运营设置:
+  - `k_skill_upstream_url`: 默认 GitHub URL
+  - `k_skill_upstream_ref`: 要同步的 commit 或 branch (`main` 为默认)
+  - `k_skill_sync_dir`: clone upstream 的临时路径 (`./data/upstreams/k-skill`)
+  - `k_skill_builtin_storage_dir`: 验证完成后的 marketplace storage 路径 (`./data/marketplace/k-skill`)
+- sync job 以 read-only 方式使用 upstream。不修改 upstream code。
+- 执行:
   - `uv run python -m app.scripts.sync_k_skill --ref main`
   - `uv run python -m app.scripts.sync_k_skill --ref <commit> --dry-run`
-- 각 root skill directory를 marketplace skill item/version으로 upsert한다.
-- 검증: SKILL.md 존재, frontmatter `name`이 디렉토리명과 일치 등 (원본 spec 5.2 그대로).
-- unsupported or restricted skill은 catalog에 표시하되 execution support level을 명시한다 (`ready_python`, `proxy_http`, `node_package`, `browser_or_local`, `manual_only`, `disabled`).
-- disabled upstream skill은 `deprecated` 또는 `disabled`로 표시한다.
-- idempotent: 같은 commit으로 다시 실행하면 새 version이 생기지 않는다 (content_hash 비교).
-- 한 skill의 validation 실패가 전체 sync를 막지 않는다.
-- credential requirement 매핑은 curated map(`K_SKILL_REQUIREMENT_MAP` 등)이 source of truth. regex는 review signal로만 사용.
+- 将每个 root skill directory upsert 为 marketplace skill item/version。
+- 验证: 存在 SKILL.md，frontmatter `name` 与目录名一致等 (保持原 spec 5.2)。
+- unsupported or restricted skill 仍显示在 catalog 中，但明确 execution support level (`ready_python`, `proxy_http`, `node_package`, `browser_or_local`, `manual_only`, `disabled`)。
+- disabled upstream skill 显示为 `deprecated` 或 `disabled`。
+- idempotent: 用相同 commit 再执行时不创建新 version (比较 content_hash)。
+- 单个 skill validation 失败不会阻止整个 sync。
+- credential requirement 映射以 curated map(`K_SKILL_REQUIREMENT_MAP` 等)为 source of truth。regex 仅作为 review signal。
 
-### 11.7 운영자 관리
+### 11.7 运营者管理
 
-- super_user는 system/built-in item을 생성·sync·disable할 수 있다.
-- super_user는 사용자 credential을 복호화하거나 대신 연결할 수 없다 (Cipher V2 활성 키 접근권만 가지고, multi-tenant 정책상 다른 사용자 credential은 별도 ACL 없이 열람 불가).
-- public item이 부적절하면 super_user가 `disabled` 처리할 수 있다.
-- disabled item은 새 설치가 막히고, 기존 설치본은 계속 사용자 소유 copy로 남긴다.
-- super_user는 public item의 `is_listed`를 토글한다 (검색 카탈로그 노출 승인/해제).
-- system item에는 source URL, source commit, sync time, support level을 표시한다.
-- 신규 `/api/marketplace/admin/*` 라우터는 `Depends(require_super_user)`로 보호한다.
+- super_user 可以创建·sync·disable system/built-in item。
+- super_user 不能解密用户 credential 或代用户连接 (仅拥有 Cipher V2 active key 访问权限，按 multi-tenant policy，其他用户 credential 在没有单独 ACL 时不可查看)。
+- public item 不合适时，super_user 可设为 `disabled`。
+- disabled item 阻止新安装，现有安装副本继续作为用户拥有的 copy 保留。
+- super_user toggle public item 的 `is_listed` (批准/取消搜索 catalog 展示)。
+- system item 显示 source URL, source commit, sync time, support level。
+- 新的 `/api/marketplace/admin/*` router 通过 `Depends(require_super_user)` 保护。
 
-### 11.8 사용자 알림과 상태
+### 11.8 用户通知与状态
 
-- `installed`: 이미 설치됨
-- `needs_setup`: 설치됐지만 required credential 미연결
-- `update_available`: 최신 version 존재
-- `dirty`: 사용자가 설치본을 수정해 업데이트 시 충돌 가능
-- `disabled_source`: 원본 marketplace item이 disabled/deprecated
-- `unlisted_public`: 사용자가 publish한 public 항목인데 아직 super_user 승인 전이라 카탈로그에 노출되지 않음
+- `installed`: 已安装
+- `needs_setup`: 已安装但 required credential 未连接
+- `update_available`: 存在最新 version
+- `dirty`: 用户修改了安装副本，update 时可能冲突
+- `disabled_source`: 原 marketplace item 已 disabled/deprecated
+- `unlisted_public`: 用户 publish 的 public item 尚未获得 super_user 批准，因此不在 catalog 中展示
 
-상태는 서로 중첩될 수 있다.
+状态可以互相叠加。
 
-### 11.9 Installed Resource 화면 요구사항
+### 11.9 Installed Resource 页面需求
 
-`/skills`, `/mcp-servers`, agent dashboard는 marketplace와 독립된 내 리소스 관리 화면이지만, marketplace 출처와 게시 상태를 보여줘야 한다.
+`/skills`, `/mcp-servers`, agent dashboard 是独立于 marketplace 的“我的 resource”管理页面，但必须显示 marketplace 来源和发布状态。
 
-공통 표시:
+通用展示:
 
 - origin badge
 - publication badge
@@ -551,97 +551,97 @@ natural-mold는 deepagents 기반이며 `execute_in_skill` subprocess runner는
 - needs setup
 - disabled/deprecated source
 
-Skill 목록 권장 컬럼: Name / Kind / Origin / Marketplace / Credential / Used by / Updated
-MCP 목록 권장 컬럼: Name / Transport / Origin / Marketplace / Credential / Health / Updated
-Agent dashboard/card 권장 badge: Origin / Published visibility / Shared·Installed source / Needs setup / Update available
+Skill 列表推荐 column: Name / Kind / Origin / Marketplace / Credential / Used by / Updated
+MCP 列表推荐 column: Name / Transport / Origin / Marketplace / Credential / Health / Updated
+Agent dashboard/card 推荐 badge: Origin / Published visibility / Shared·Installed source / Needs setup / Update available
 
 ### 11.10 Marketplace UI Reference
 
-Marketplace UI는 기존 natural-mold의 dashboard/table/card/dialog-shell 패턴(`frontend/src/components/`)을 유지하되, 다음 오픈소스 사례를 참고한다.
+Marketplace UI 保持 natural-mold 现有 dashboard/table/card/dialog-shell pattern(`frontend/src/components/`)，同时参考以下开源案例。
 
-| Reference | 참고 포인트 |
+| Reference | 参考点 |
 |-----------|-------------|
-| Cal.com App Store | app install 여부, app package 구조, PR/review 기반 publish 흐름 |
-| Dify Marketplace | resource type별 탐색, Marketplace/GitHub/local package 설치 source 구분 |
+| Cal.com App Store | app install 状态, app package 结构, 基于 PR/review 的 publish 流程 |
+| Dify Marketplace | 按 resource type 浏览, 区分 Marketplace/GitHub/local package 安装 source |
 | Open VSX Registry | versioned extension registry, web UI + publish CLI + server separation |
-| shadcn/ui ecosystem | 현재 UI stack과 맞는 compact card, filter, dialog pattern |
+| shadcn/ui ecosystem | 与当前 UI stack 匹配的 compact card, filter, dialog pattern |
 
-UI를 통째로 가져오지 않는다. 정보 구조, 상태 표시, 설치·게시 흐름만 참고하고 natural-mold의 기존 sidebar, DataTable, card, dialog-shell 패턴(ADR-010)에 맞춘다.
+不整体照搬 UI。只参考 information architecture、状态展示、安装·发布流程，并适配 natural-mold 现有 sidebar, DataTable, card, dialog-shell pattern(ADR-010)。
 
-## 12. 정책 요구사항
+## 12. 策略需求
 
 ### Secret Safety
 
-- Credential data는 marketplace payload에 포함 금지.
-- `.env`, token, cookie, local secret 파일은 package에 포함 금지.
-- import/publish 시 secret-like filenames와 patterns를 검사한다 (`secret_scan.py` 신규 모듈).
-  - 파일명: `.env`, `.env.*`, `secrets.env`, `*.pem`, `*.key`, `*.p12`, `cookies*`, `token*`
-  - 내용 패턴: `sk-[A-Za-z0-9]`, `-----BEGIN PRIVATE KEY-----`, `AWS_SECRET_ACCESS_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`
-- MCP export는 credential reference를 제거하고 requirement로 변환한다.
-- runtime log·SSE event·tool result·toast는 mapped env var 값을 redact한다.
-- 현재 `packager.py`에는 secret scan이 없으므로 신규 모듈로 추가해 publish/import 양방향에서 호출한다.
+- Credential data 禁止包含在 marketplace payload 中。
+- `.env`, token, cookie, local secret 文件禁止包含在 package 中。
+- import/publish 时检查 secret-like filenames 和 patterns (`secret_scan.py` 新 module)。
+  - 文件名: `.env`, `.env.*`, `secrets.env`, `*.pem`, `*.key`, `*.p12`, `cookies*`, `token*`
+  - 内容 pattern: `sk-[A-Za-z0-9]`, `-----BEGIN PRIVATE KEY-----`, `AWS_SECRET_ACCESS_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`
+- MCP export 移除 credential reference，并转换为 requirement。
+- runtime log·SSE event·tool result·toast 对 mapped env var 值进行 redact。
+- 当前 `packager.py` 没有 secret scan，因此新增 module，并在 publish/import 双向调用。
 
 ### Access Control
 
-- private item은 owner만 접근.
-- restricted item은 owner와 ACL 대상만 접근.
-- public/system item은 로그인 사용자 모두 접근(검색 노출은 `is_listed`에 따름).
-- system item manage는 super_user만 가능.
-- 설치된 resource는 설치자 소유이며 원작성자가 직접 수정할 수 없다.
-- runtime은 agent에 선택된 skill만 mount root에 노출한다.
-- 비인가 접근은 404(enumeration oracle 방지).
+- private item 仅 owner 可访问。
+- restricted item 仅 owner 和 ACL 对象可访问。
+- public/system item 所有登录用户均可访问(搜索可见性取决于 `is_listed`)。
+- 只有 super_user 可 manage system item。
+- installed resource 归安装者所有，原作者不能直接修改。
+- runtime 只在 mount root 暴露 agent 所选择的 skill。
+- 未授权访问返回 404(防止 enumeration oracle)。
 
 ### Mutability
 
-- Marketplace item metadata는 owner가 수정할 수 있다.
-- Marketplace version payload는 immutable.
-- Installed resource는 사용자가 자유롭게 수정할 수 있다 (단, `is_dirty=True`로 마킹됨).
-- Source version update는 명시적 사용자 동작으로만 적용한다.
+- Marketplace item metadata 可由 owner 修改。
+- Marketplace version payload immutable。
+- Installed resource 用户可自由修改 (但会标记为 `is_dirty=True`)。
+- Source version update 只能通过用户明确操作应用。
 
-## 13. 성공 지표
+## 13. 成功指标
 
-- built-in k-skill 중 최소 10개를 catalog에서 설치 가능
-- credential required skill 설치 시 누락 credential을 100% 감지
-- public/restricted/private access control 테스트 통과
-- marketplace install 후 기존 agent 설정에서 skill 선택 가능
-- shared skill publish/install E2E 성공
-- credential value가 marketplace payload/API 응답에 노출되지 않음
-- agent runtime에서 선택되지 않은 skill의 파일/디렉토리에 접근 불가
-- `execute_in_skill` subprocess env에 mapped env var 값이 주입되지만 log·SSE·tool result에는 redact
+- built-in k-skill 中至少 10 个可从 catalog 安装
+- 安装 credential required skill 时 100% 检测缺失 credential
+- public/restricted/private access control 测试通过
+- marketplace install 后可在现有 agent 设置中选择 skill
+- shared skill publish/install E2E 成功
+- credential value 不暴露在 marketplace payload/API 响应中
+- agent runtime 无法访问未选择 skill 的文件/目录
+- `execute_in_skill` subprocess env 中会注入 mapped env var 值，但在 log·SSE·tool result 中会 redact
 
-### Phase 1 출시 게이트
+### Phase 1 发布 gate
 
-Phase 1은 다음 조건을 모두 만족해야 사용자에게 노출한다.
+Phase 1 只有满足以下全部条件后才向用户开放。
 
-| Gate | 통과 조건 |
+| Gate | 通过条件 |
 |------|-----------|
-| Access control | private/restricted/public/system item에 대해 owner, ACL user, unrelated user 테스트 통과. 비인가 접근은 404 |
-| Secret safety | publish/import payload, API 응답, log·SSE·tool result에서 credential value 미노출. `secret_scan.py`가 `.env`/PEM/sk- 패턴 등을 차단 |
-| Runtime isolation | agent에 선택된 skill만 per-thread runtime root에 노출됨. 미선택 skill 디렉토리·다른 사용자 skill 접근 불가. `execute_in_skill`이 runtime root 하위만 허용 |
-| Credential runtime | required binding 누락 시 실행 차단(`marketplace_credential_required` 에러), binding 존재 시 mapped env var에만 주입. log·SSE·tool result에는 redact 후 노출 |
-| k-skill sync | dry-run 결과와 실제 sync 결과가 변경 skill/version을 정확히 보고. 같은 commit 재실행 시 신규 version 생성 없음. 한 skill 실패가 전체 sync를 중단하지 않음 |
-| Backward compatibility | 기존 skill upload/edit/delete, agent skill 연결, `/api/skills` 응답이 회귀 테스트 통과. `is_dirty` 추가가 기존 편집 UX를 깨지 않음 |
-| Listing 승인 | public 항목은 `is_listed=True`로 토글되기 전까지 카탈로그 기본 검색에 노출되지 않음. super_user 토글이 정상 동작 |
-| ADR-016 정합 | 모든 신규 라우터가 `get_current_user` 또는 `require_super_user` 의존성을 가짐. 상태 변경은 CSRF 검증 |
+| Access control | 针对 private/restricted/public/system item 的 owner, ACL user, unrelated user 测试通过。未授权访问为 404 |
+| Secret safety | publish/import payload, API 响应, log·SSE·tool result 中不暴露 credential value。`secret_scan.py` 阻止 `.env`/PEM/sk- pattern 等 |
+| Runtime isolation | per-thread runtime root 只暴露 agent 选择的 skill。不可访问未选择 skill 目录·其他用户 skill。`execute_in_skill` 仅允许 runtime root 下路径 |
+| Credential runtime | 缺少 required binding 时阻止执行(`marketplace_credential_required` error)，存在 binding 时只注入 mapped env var。log·SSE·tool result 中以 redact 后形式暴露 |
+| k-skill sync | dry-run 结果和实际 sync 结果准确报告变更的 skill/version。相同 commit 再执行不创建新 version。单个 skill 失败不终止整个 sync |
+| Backward compatibility | 现有 skill upload/edit/delete, agent skill 连接, `/api/skills` 响应通过回归测试。添加 `is_dirty` 不破坏现有编辑 UX |
+| Listing 批准 | public item 在 toggle 为 `is_listed=True` 前不出现在 catalog 默认搜索中。super_user toggle 正常工作 |
+| ADR-016 一致性 | 所有新 router 都有 `get_current_user` 或 `require_super_user` dependency。状态变更进行 CSRF 验证 |
 
-### 사용성 성공 기준
+### 可用性成功标准
 
-- 사용자가 credential 없는 built-in skill을 3분 이내 설치해 agent에 연결할 수 있다.
-- credential required skill 설치 중 필요한 credential type과 field를 혼동하지 않는다.
-- restricted 공유를 받은 사용자가 별도 설명 없이 Marketplace에서 item을 발견하고 설치할 수 있다.
-- update available 상태에서 overwrite와 install new copy의 차이를 UI 문구만으로 이해할 수 있다.
-- super_user가 미승인 public 항목 목록을 한 화면에서 확인하고 listing 승인/거부할 수 있다.
+- 用户能在 3 分钟内安装无需 credential 的 built-in skill 并连接到 agent。
+- 安装 credential required skill 期间，不会混淆所需 credential type 和 field。
+- 收到 restricted 共享的用户无需额外说明即可在 Marketplace 发现并安装 item。
+- 在 update available 状态下，仅通过 UI 文案就能理解 overwrite 与 install new copy 的区别。
+- super_user 可在一个页面查看未批准 public item 列表并批准/拒绝 listing。
 
-## 14. 단계별 출시
+## 14. 分阶段发布
 
 ### Phase 1: Skill Marketplace Foundation
 
-- Marketplace item/version/install schema (Alembic 마이그레이션)
-- `skills` 테이블 컬럼 확장 (origin, source_marketplace_*, is_dirty, credential_requirements 등)
-- `AgentSkillLink.config` 필드 추가
-- `skill_credential_bindings` 테이블
-- 신규 credential definitions(`srt_account`, `ktx_account`, `kipris_plus_api` 등) 추가
-- `secret_scan.py` 모듈
+- Marketplace item/version/install schema (Alembic migration)
+- 扩展 `skills` 表 column (origin, source_marketplace_*, is_dirty, credential_requirements 等)
+- 添加 `AgentSkillLink.config` 字段
+- `skill_credential_bindings` 表
+- 添加新的 credential definitions(`srt_account`, `ktx_account`, `kipris_plus_api` 等)
+- `secret_scan.py` module
 - Skill publish/install/update API
 - Visibility + ACL + `is_listed`
 - Credential requirements + binding API
@@ -649,81 +649,81 @@ Phase 1은 다음 조건을 모두 만족해야 사용자에게 노출한다.
 - **Runtime selected-skill mount fix** (`executor.py` + `_create_skill_execute_tool`)
 - **Runtime credential env injection** + redaction contract
 - Marketplace Skills UI + install/publish wizard
-- super_user listing 승인/disable 도구
+- super_user listing 批准/disable 工具
 
-Phase 1에서 제외:
+Phase 1 排除:
 
-- MCP/Agent marketplace 실제 설치
-- 결제, 리뷰, 랭킹
-- 자동 update/merge
-- 완전한 script sandbox (현재 allowlist + 30초 timeout 유지)
-- 조직/팀 ACL
-- subprocess runner 외 새 runner (Node/curl 등)
+- MCP/Agent marketplace 实际安装
+- 支付, review, ranking
+- 自动 update/merge
+- 完整 script sandbox (维持当前 allowlist + 30 秒 timeout)
+- 组织/团队 ACL
+- subprocess runner 以外的新 runner (Node/curl 等)
 
 ### Phase 2: MCP Marketplace
 
 - MCP server template publish/install
-- MCP credential requirements (env_vars/headers의 `{{$credentials.x}}` 보간 자리를 marketplace requirement로 변환)
+- MCP credential requirements (将 env_vars/headers 的 `{{$credentials.x}}` interpolation 位置转换为 marketplace requirement)
 - MCP discovery result snapshot
 - MCP import/export secret stripping
-- 기존 `mcp_servers.is_system`(M26)과 marketplace system item 조화
+- 协调现有 `mcp_servers.is_system`(M26) 与 marketplace system item
 
 ### Phase 3: Agent Marketplace
 
 - Agent spec publish/install
 - Required tools/MCP/skills dependency graph
 - Bundle install wizard
-- Model/credential rebinding (ADR-013 우선순위 재해석)
+- Model/credential rebinding (重新解释 ADR-013 优先级)
 
 ### Phase 4: Curation and Governance
 
-- moderation status (현 `is_listed`를 확장)
+- moderation status (扩展当前 `is_listed`)
 - deprecate/disable versions
 - usage analytics
 - user-facing update notes
-- 카테고리 큐레이션 (운영자 추천 컬렉션)
+- category curation (运营方推荐 collection)
 
-## 15. Open Questions와 권장 답
+## 15. Open Questions 与推荐答案
 
-1. **public publish를 모든 사용자에게 열 것인가, super_user approval을 거칠 것인가?**
-   → published vs listed를 분리한다. 누구나 publish할 수 있되 `is_listed=True`는 super_user만 토글한다. 본 PRD §7, §11.2, §11.7에 반영됨.
+1. **public publish 是否对所有用户开放，还是需要 super_user approval?**
+   → 分离 published vs listed。任何人都可以 publish，但只有 super_user 可以 toggle `is_listed=True`。已反映在本 PRD §7, §11.2, §11.7。
 
-2. **restricted item의 접근권 회수 시 이미 설치된 copy를 유지할 것인가 삭제·비활성화할 것인가?**
-   → 유지한다. 회수는 새 설치만 막는다. 후속에서 revoke propagation을 옵션으로 추가할 수 있다.
+2. **撤回 restricted item 访问权限时，已安装 copy 是保留还是删除·禁用?**
+   → 保留。撤回只阻止新安装。后续可将 revoke propagation 作为可选项添加。
 
-3. **system credential을 사용하는 hosted proxy skill을 일반 사용자에게 어떻게 비용 제한할 것인가?**
-   → 별도 rate limit과 system dependency 표시를 둔다. 구체 수치는 운영 데이터 확보 후 결정.
+3. **使用 system credential 的 hosted proxy skill 对普通用户如何限制成本?**
+   → 设置单独 rate limit 并显示 system dependency。具体数值在获得运营数据后决定。
 
-4. **Skill script execution은 Python-only로 유지할 것인가, Node/curl runner를 추가할 것인가?**
-   → 이미 Python subprocess runner(`execute_in_skill`)가 동작 중이다. Phase 1은 그 위에 credential 주입과 selected-skill mount를 추가한다. Node/curl runner는 별도 ADR로 분리한다.
+4. **Skill script execution 是否保持 Python-only，还是添加 Node/curl runner?**
+   → Python subprocess runner(`execute_in_skill`) 已在运行。Phase 1 在其上添加 credential 注入和 selected-skill mount。Node/curl runner 拆分为单独 ADR。
 
-5. **k-skill 전체 80개를 모두 catalog에 표시할 것인가, supported subset부터 공개할 것인가?**
-   → 전체 catalog를 표시하되 execution support level로 기대치를 명확히 한다. super_user는 first-wave(Python ready / hosted proxy / required credential with clear schema)를 우선 `is_listed=True`로 승인하고 나머지는 unlisted로 둔다.
+5. **k-skill 全部 80 个是否全部显示在 catalog，还是先公开 supported subset?**
+   → 全量显示 catalog，但通过 execution support level 明确预期。super_user 优先将 first-wave(Python ready / hosted proxy / required credential with clear schema)批准为 `is_listed=True`，其余保持 unlisted。
 
-## 16. 참고 자료
+## 16. 参考资料
 
-- 원본 PRD: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-prd.md` v0.3
-- 원본 Spec: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-spec.md` v0.3 (후속 자체 spec 작성 시 베이스)
+- 原 PRD: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-prd.md` v0.3
+- 原 Spec: `/Users/chester/dev/natural-mold/docs/maketplace/marketplace-resources-spec.md` v0.3 (后续编写自有 spec 时作为 base)
 - ADR-007: Credentials field_keys Cache
 - ADR-009: Greenfield Credentials (Cipher V2, multi-key rotation)
 - ADR-013: Service-side LLM Key from Credentials
 - ADR-016: Multi-user Auth
-- 기존 코드 모듈:
-  - `backend/app/agent_runtime/executor.py` (특히 `_create_skill_execute_tool` line 113-195, `build_agent` line 198+)
+- 现有代码 module:
+  - `backend/app/agent_runtime/executor.py` (尤其 `_create_skill_execute_tool` line 113-195, `build_agent` line 198+)
   - `backend/app/skills/` (service, packager, inspector, runtime, prompt)
   - `backend/app/mcp/` (client, discovery)
   - `backend/app/credentials/` (definitions, interpolation, external_secrets)
   - `backend/app/security/cipher.py`
   - `backend/app/auth/`, `backend/app/dependencies.py`
 - k-skill upstream: `https://github.com/NomaDamas/k-skill`
-- UI 패턴 참고: Cal.com App Store, Dify Marketplace, Open VSX Registry, shadcn/ui
+- UI pattern 参考: Cal.com App Store, Dify Marketplace, Open VSX Registry, shadcn/ui
 
 ---
 
-## 후속 작업 (이 PRD 범위 밖)
+## 后续工作 (超出本 PRD 范围)
 
-이 PRD가 합의되면 다음 산출물을 별도 세션에서 작성한다.
+本 PRD 达成共识后，在单独 session 编写以下产物。
 
-- `docs/marketplace-resources-spec.md`: 정확한 SQL 스키마, Alembic 마이그레이션 순서(`m40` 이후), API endpoint 시그니처, Pydantic 모델, `_create_skill_execute_tool` 패치 디테일, per-thread runtime root 구조, `secret_scan.py` 패턴, k-skill importer 모듈 구조, 신규 credential definition Python 모듈
-- ADR: Skill runtime mount/credential injection 변경 (보안 영향이 크므로 PR/리뷰 분리). ADR-001/003/012 연관
-- 마이그레이션 작업: `skills` 컬럼 추가 + `agent_skills.config` 추가 + 신규 marketplace_* 테이블 4개 (item / version / installation / acl) + `marketplace_publication_links` + `skill_credential_bindings`
+- `docs/marketplace-resources-spec.md`: 准确 SQL schema, Alembic migration 顺序(`m40` 之后), API endpoint signature, Pydantic model, `_create_skill_execute_tool` patch 细节, per-thread runtime root 结构, `secret_scan.py` pattern, k-skill importer module 结构, 新 credential definition Python module
+- ADR: Skill runtime mount/credential injection 变更 (security 影响较大，因此单独 PR/review)。关联 ADR-001/003/012
+- migration 工作: 添加 `skills` column + 添加 `agent_skills.config` + 4 个新 marketplace_* 表 (item / version / installation / acl) + `marketplace_publication_links` + `skill_credential_bindings`

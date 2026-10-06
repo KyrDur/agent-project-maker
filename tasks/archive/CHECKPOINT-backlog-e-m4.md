@@ -1,120 +1,120 @@
-# CHECKPOINT — 백로그 E M4 · CUSTOM Connection 통합
+# CHECKPOINT — backlog E M4 · CUSTOM Connection 集成
 
-**브랜치**: `feature/custom-connection-migration`
+**分支**：`feature/custom-connection-migration`
 **worktree**: `/Users/chester/dev/natural-mold/.claude/worktrees/backlog-e-m4`
-**base**: main @ `44a39c6` (PR #55 머지 — M3 완료)
+**base**：main @ `44a39c6`（PR #55 merge — M3 完成）
 **ADR**: `docs/design-docs/adr-008-connection-entity.md`
-**실행계획**: `docs/exec-plans/active/backlog-e-connection-refactor.md` (§4 M4)
-**팀**: 피차이(Alembic m11 + 모델) + 젠슨(chat_service CUSTOM 분기 + connection_service CUSTOM 헬퍼) + 저커버그(add-tool-dialog Custom 탭 재배선) + 베조스(삭제 분석 + 회귀 + 신규 테스트) — 사티아 리드
+**执行计划**：`docs/exec-plans/active/backlog-e-connection-refactor.md`（§4 M4）
+**团队**：Pichai（Alembic m11 + model）+ Jensen（chat_service CUSTOM 分支 + connection_service CUSTOM helper）+ Zuckerberg（add-tool-dialog Custom tab rewire）+ Bezos（deletion analysis + 回归 + 新增测试）— Satya lead
 
 ---
 
-## 스코프 합의 (2026-04-18)
+## scope 共识 (2026-04-18)
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
-| 스코프 | exec-plan §4 M4 그대로 (백엔드 + add-tool-dialog Custom 탭만) |
-| Legacy fallback | M6까지 유지 — `tool.connection_id IS NULL AND tool.credential_id` 있으면 기존 경로 |
-| M5 범위(custom-auth-dialog 교체 / agent_tools.connection_id override) | 이월 — M4에서 당기지 않음 |
-| CUSTOM Connection 형태 | `type='custom'`, `provider_name='custom_api_key'` (credential_registry), 1 credential = 1 connection, N tools → 1 connection 공유 가능 |
-| 이관 정책(m11) | 기존 `tools.credential_id IS NOT NULL AND type='custom'` row마다 idempotent connection 생성 + `tool.connection_id` FK 설정. credential 1개를 공유하는 여러 tool은 동일 connection 재사용 |
+| scope | 与 exec-plan §4 M4 完全一致（backend + 仅 add-tool-dialog Custom tab） |
+| Legacy fallback | 保留到 M6 — `tool.connection_id IS NULL AND tool.credential_id` 存在时走原路径 |
+| M5 范围（custom-auth-dialog 替换 / agent_tools.connection_id override） | 延后 — M4 不提前做 |
+| CUSTOM Connection 形态 | `type='custom'`, `provider_name='custom_api_key'`（credential_registry），1 credential = 1 connection，N tools → 可共享 1 connection |
+| migration policy（m11） | 对现有 `tools.credential_id IS NOT NULL AND type='custom'` row 每个都 idempotent 创建 connection + 设置 `tool.connection_id` FK。多个 tool 共用 1 个 credential 时复用同一 connection |
 
 ---
 
-## S0: docs/ 구조 확인 [done]
+## S0: docs/ 结构确认 [done]
 
-- [x] main에 docs/, ADR-008, exec-plan 존재
-- [x] M3 progress.txt / CHECKPOINT.md를 tasks/archive/로 이동
-- 검증: `ls tasks/archive/progress-backlog-e-m3.txt tasks/archive/checkpoint-backlog-e-m3.md`
+- [x] main 中存在 docs/、ADR-008、exec-plan
+- [x] 已将 M3 progress.txt / CHECKPOINT.md 移到 tasks/archive/
+- 验证：`ls tasks/archive/progress-backlog-e-m3.txt tasks/archive/checkpoint-backlog-e-m3.md`
 
-## S1: 삭제 분석 (베조스) [blockedBy: S0]
+## S1: deletion analysis（Bezos）[blockedBy: S0]
 
-- [ ] M4 스코프 legacy 코드 식별: CUSTOM에서 `tool.credential_id` 경유 경로, `add-tool-dialog` custom tab의 credential 바인딩, `tools` 라우터에서 CUSTOM credential update 경로
-- [ ] `tasks/deletion-analysis-e-m4.md` (즉시 삭제 / 단순화 / 보류 M6 이월)
-- 검증: 보고서 존재, drive-by 금지 준수
+- [ ] 识别 M4 scope legacy code：CUSTOM 中经 `tool.credential_id` 的路径、`add-tool-dialog` custom tab 的 credential binding、`tools` router 中 CUSTOM credential update 路径
+- [ ] `tasks/deletion-analysis-e-m4.md`（立即删除 / 简化 / 暂缓到 M6）
+- 验证：报告存在，遵守禁止 drive-by
 
-## S2: Alembic m11 + CUSTOM connection backfill (피차이) [blockedBy: S0]
+## S2: Alembic m11 + CUSTOM connection backfill（Pichai）[blockedBy: S0]
 
 - [ ] `backend/alembic/versions/m11_custom_credential_migration.py`
-  - revision ID: `m11_custom_connection` (32자 이하, 축약 — M3 PG VARCHAR(32) 학습)
+  - revision ID：`m11_custom_connection`（≤32 字符，缩写 — 吸取 M3 PG VARCHAR(32) 经验）
   - `down_revision = "m10_prebuilt_connection"`
-  - upgrade: CUSTOM 도구 이관 백필
-    - 대상: `tools.type = 'custom' AND tools.credential_id IS NOT NULL AND tools.connection_id IS NULL`
-    - 각 (user_id, credential_id) 튜플마다 1개 connection 생성 (`type='custom'`, `provider_name='custom_api_key'`, `display_name=credential.name`, `is_default=true`, `status='active'`, `credential_id` FK 설정)
-    - 같은 credential을 참조하는 여러 CUSTOM tool은 동일 connection을 공유 (idempotent: 이미 `(user_id, type='custom', credential_id)` connection이 존재하면 재사용)
-    - 해당 tool rows의 `tool.connection_id` FK 설정
-    - `M11_SEED_MARKER = "[m11-auto-seed]"` 프리픽스를 display_name에 박아 downgrade 식별
-  - downgrade: `[m11-auto-seed]` 마커로 식별된 connection만 삭제 (수동 생성분 보호) + 해당 tool의 connection_id FK 해제
-  - **주의**: `tool.credential_id`는 drop하지 않음 (M6까지 legacy fallback). `tool.auth_config` 또한 유지
-- [ ] **수정 없음**: `app/models/tool.py` `connection_id`/`connection` 이미 M2에서 추가됨 — 확인만
-- 검증: alembic 왕복 PASS, pytest 614+ 회귀 0, idempotent 재실행 검증
+  - upgrade：CUSTOM 工具 migration backfill
+    - 目标：`tools.type = 'custom' AND tools.credential_id IS NOT NULL AND tools.connection_id IS NULL`
+    - 每个 (user_id, credential_id) tuple 创建 1 个 connection（`type='custom'`, `provider_name='custom_api_key'`, `display_name=credential.name`, `is_default=true`, `status='active'`, 设置 `credential_id` FK）
+    - 多个引用同一 credential 的 CUSTOM tool 共用同一 connection（idempotent：如果已存在 `(user_id, type='custom', credential_id)` connection 则复用）
+    - 设置对应 tool rows 的 `tool.connection_id` FK
+    - 在 display_name 前加 `M11_SEED_MARKER = "[m11-auto-seed]"` prefix 供 downgrade 识别
+  - downgrade：仅删除通过 `[m11-auto-seed]` marker 识别出的 connection（保护手动创建项）+ 清除对应 tool 的 connection_id FK
+  - **注意**：不 drop `tool.credential_id`（legacy fallback 保留到 M6）。`tool.auth_config` 也保留
+- [ ] **无需修改**：`app/models/tool.py` 的 `connection_id`/`connection` 已在 M2 添加 — 仅确认
+- 验证：alembic round-trip PASS，pytest 614+ 回归 0，验证 idempotent rerun
 
-## S3: chat_service CUSTOM 분기 재작성 + connection_service CUSTOM 헬퍼 (젠슨) [blockedBy: S2]
+## S3: 重写 chat_service CUSTOM 分支 + connection_service CUSTOM helper（Jensen）[blockedBy: S2]
 
-- [ ] `backend/app/services/chat_service.py:393-396` CUSTOM else 분기 재작성
-  - 신규 우선순위: `tool.type == CUSTOM`
-    1. `tool.connection_id IS NOT NULL AND tool.connection IS NOT NULL` → ownership 가드 (`assert_connection_ownership` + `assert_credential_ownership`) → credential 복호화. `tool.connection.status != 'active'` 또는 `credential IS NULL` → `ToolConfigError` (PREBUILT M3와 동일 fail-closed 정책)
-    2. Legacy fallback: `tool.connection_id IS NULL` → `_resolve_legacy_tool_auth(tool)` (현 경로 유지) — M6까지 tolerance
-  - 신규 모듈-private 헬퍼: `_resolve_custom_auth(tool) -> dict[str, Any]` (M3의 `_resolve_prebuilt_auth` 패턴과 대칭)
-- [ ] `backend/app/services/connection_service.py` — CUSTOM 전용 헬퍼가 필요하면 추가 (PREBUILT bulk 헬퍼는 재사용 불가 — CUSTOM은 tool 단위 FK라 `selectinload(Tool.connection).selectinload(Connection.credential)`로 이미 해결됨. 추가 헬퍼는 **불필요할 가능성 높음**. 젠슨이 판단)
-- [ ] `get_agent_with_tools`의 `selectinload(Tool.connection).selectinload(Connection.credential)` 체인은 M2에서 이미 걸려 있음 — **수정 없음**
-- 검증: ruff PASS, pytest 614+ 회귀 0
+- [ ] 重写 `backend/app/services/chat_service.py:393-396` CUSTOM else 分支
+  - 新优先级：`tool.type == CUSTOM`
+    1. `tool.connection_id IS NOT NULL AND tool.connection IS NOT NULL` → ownership guard（`assert_connection_ownership` + `assert_credential_ownership`）→ credential 解密。若 `tool.connection.status != 'active'` 或 `credential IS NULL` → `ToolConfigError`（与 PREBUILT M3 相同 fail-closed policy）
+    2. Legacy fallback：`tool.connection_id IS NULL` → `_resolve_legacy_tool_auth(tool)`（保留现路径）— tolerance 到 M6
+  - 新增 module-private helper：`_resolve_custom_auth(tool) -> dict[str, Any]`（M3 的 `_resolve_prebuilt_auth` 模式对称，private）
+- [ ] `backend/app/services/connection_service.py` — 如确有需要则增加 CUSTOM helper（PREBUILT bulk helper 不可复用 — CUSTOM 是 tool 级 FK，已有 `selectinload(Tool.connection).selectinload(Connection.credential)` 解决。**很可能不需要**额外 helper，由 Jensen 判断）
+- [ ] `get_agent_with_tools` 的 `selectinload(Tool.connection).selectinload(Connection.credential)` chain 已在 M2 配好 — **无需修改**
+- 验证：ruff PASS，pytest 614+ 回归 0
 
-## S4: 프론트엔드 add-tool-dialog Custom 탭 재배선 (저커버그) [blockedBy: S2]
+## S4: frontend add-tool-dialog Custom tab rewire（Zuckerberg）[blockedBy: S2]
 
-- [ ] `frontend/src/components/tool/add-tool-dialog.tsx` Custom 탭
-  - 현 동작: user가 credential을 직접 선택 → `tool.credential_id`로 저장
-  - 신규 동작: user가 credential 선택 → 없으면 `CredentialFormDialog`로 생성 → 해당 credential에 바인딩된 CUSTOM connection을 find-or-create (`useConnections({type:'custom', provider_name:'custom_api_key'})` + credential_id로 필터) → tool 생성 시 `connection_id` 포함
-  - Legacy fallback 호환: 기존 `credential_id` 기반 tool은 그대로 표시 (M6 drop까지)
-- [ ] `frontend/src/lib/api/tools.ts` / `frontend/src/lib/types/index.ts` — `Tool.connection_id` 이미 M2에서 추가됨. `ToolCreateRequest`에 `connection_id?` 전달 필드 확인 + 누락 시 추가
-- [ ] i18n `messages/ko.json` — `tool.addDialog.custom.*` 메시지 보강 (연결 생성 UX)
-- [ ] **scope out**: `custom-auth-dialog.tsx` 교체(M5), `mcp-server-auth-dialog.tsx` 교체(M5), `/connections` 페이지 CUSTOM 섹션(M5). S1 분석서 "drive-by 금지" 원칙 유지
-- 검증: pnpm lint PASS, pnpm build PASS
+- [ ] `frontend/src/components/tool/add-tool-dialog.tsx` Custom tab
+  - 当前行为：user 直接选择 credential → 保存到 `tool.credential_id`
+  - 新行为：user 选择 credential → 若没有则通过 `CredentialFormDialog` 创建 → find-or-create 绑定该 credential 的 CUSTOM connection（`useConnections({type:'custom', provider_name:'custom_api_key'})` + 按 credential_id filter）→ 创建 tool 时包含 `connection_id`
+  - Legacy fallback 兼容：现有基于 `credential_id` 的 tool 继续显示（直到 M6 drop）
+- [ ] `frontend/src/lib/api/tools.ts` / `frontend/src/lib/types/index.ts` — `Tool.connection_id` 已在 M2 添加。确认 `ToolCreateRequest` 传递 `connection_id?` field，缺失则新增
+- [ ] i18n `messages/ko.json` — 增强 `tool.addDialog.custom.*` message（connection 创建 UX）
+- [ ] **scope out**：替换 `custom-auth-dialog.tsx`（M5）、替换 `mcp-server-auth-dialog.tsx`（M5）、`/connections` 页面 CUSTOM section（M5）。遵守 S1 分析的"禁止 drive-by"原则
+- 验证：pnpm lint PASS，pnpm build PASS
 
-## S5: 회귀 + 신규 테스트 (베조스) [blockedBy: S3, S4]
+## S5: 回归 + 新增测试（Bezos）[blockedBy: S3, S4]
 
-- [ ] `tests/test_connection_custom_resolve.py` 신규
-  - user_A/B 격리: 같은 CUSTOM tool 정의에서 각자의 connection.credential로 분기 (CUSTOM은 공유 행이 아니라 tool 단위라 per-tool user_id 격리 검증)
-  - connection_id 있고 active + credential 있음 → 정상 복호화
-  - connection_id 있고 status='disabled' → `ToolConfigError`
-  - connection_id 있고 credential=NULL → `ToolConfigError`
-  - connection_id=NULL (legacy) + credential_id → 기존 경로 유지
-  - connection_id=NULL + credential_id=NULL + auth_config → inline auth 반환
+- [ ] 新增 `tests/test_connection_custom_resolve.py`
+  - user_A/B 隔离：在同一 CUSTOM tool 定义下，分别走各自 connection.credential（CUSTOM 不是共享 row，而是 tool 级，因此验证 per-tool user_id 隔离）
+  - connection_id 存在且 active + 有 credential → 正常解密
+  - connection_id 存在且 status='disabled' → `ToolConfigError`
+  - connection_id 存在且 credential=NULL → `ToolConfigError`
+  - connection_id=NULL（legacy）+ credential_id → 保持现有路径
+  - connection_id=NULL + credential_id=NULL + auth_config → 返回 inline auth
   - ownership mismatch (connection.user_id ≠ credential.user_id) → `ToolConfigError`
-- [ ] `tests/test_tools_router_extended.py` — CUSTOM tool response에 `connection_id` 필드 회귀 검증
-- [ ] Alembic m11 idempotent + downgrade 가드 (M9/M10 precedent: `inspect.getsource` helper 소스 계약)
-- 검증: `uv run pytest` 614+ 유지 + 신규 PASS
+- [ ] `tests/test_tools_router_extended.py` — 回归验证 CUSTOM tool response 中 `connection_id` field
+- [ ] Alembic m11 idempotent + downgrade guard（M9/M10 precedent：`inspect.getsource` helper source contract）
+- 验证：`uv run pytest` 保持 614+ + 新增 PASS
 
-## S6: 통합 + 커밋 (사티아) [blockedBy: S5]
+## S6: 集成 + commit（Satya）[blockedBy: S5]
 
-- [ ] 전체 verify: ruff + pytest + alembic 왕복 + pnpm lint + pnpm build
+- [ ] 全量 verify：ruff + pytest + alembic round-trip + pnpm lint + pnpm build
 - [ ] /codex:review
-- [ ] HANDOFF.md 업데이트 (M4 완료, 다음 = M5)
-- [ ] 단일 커밋 → PR
+- [ ] 更新 HANDOFF.md（M4 完成，下一个 = M5）
+- [ ] 单一 commit → PR
 
 ---
 
-## 리스크 (M4 포인트)
+## 风险（M4 要点）
 
-1. **credential 공유 → connection 1개** — 같은 credential을 여러 CUSTOM tool이 참조하는 경우, N connection이 아닌 1 connection을 공유해야 한다. m11은 `(user_id, credential_id)` 단위 dedup 필수.
-2. **CUSTOM `user_id`가 있는 row** — CUSTOM tool은 `user_id NOT NULL` (PREBUILT처럼 `is_system=True` 공유 행이 아님). ownership 가드는 실질 동작.
-3. **Legacy fallback 경로 회귀** — `tool.connection_id IS NULL AND credential_id IS NOT NULL` 시나리오는 M3 이전 생성된 CUSTOM tool에 해당. 테스트 필수.
-4. **add-tool-dialog Custom 탭 UX** — find-or-create 패턴은 React Query invalidation 타이밍 + optimistic update 없음 기준. 저커버그 M3 패턴 재사용.
-5. **m11 revision ID 32자 제한** — PG alembic_version VARCHAR(32). `m11_custom_connection`(21자) OK.
-6. **M5 drive-by 금지** — custom-auth-dialog.tsx / mcp-server-auth-dialog.tsx / `/connections` 페이지는 절대 건드리지 않는다.
+1. **credential 共用 → connection 1 个** — 多个 CUSTOM tool 引用同一 credential 时，必须共享 1 connection，而不是 N connection。m11 必须按 `(user_id, credential_id)` dedup。
+2. **带 `user_id` 的 CUSTOM row** — CUSTOM tool 的 `user_id NOT NULL`（不像 PREBUILT 那样 `is_system=True` 共享 row）。ownership guard 实际生效。
+3. **Legacy fallback 路径回归** — `tool.connection_id IS NULL AND credential_id IS NOT NULL` 场景对应 M3 前创建的 CUSTOM tool。必须测试。
+4. **add-tool-dialog Custom tab UX** — find-or-create 模式按 React Query invalidation timing + 无 optimistic update 基准实现。复用 Zuckerberg M3 模式。
+5. **m11 revision ID 32 字符限制** — PG alembic_version VARCHAR(32)。`m11_custom_connection`（21 字符）OK。
+6. **禁止 M5 drive-by** — 绝对不要改 custom-auth-dialog.tsx / mcp-server-auth-dialog.tsx / `/connections` 页面。
 
 ---
 
-## 검증 커맨드
+## 验证命令
 
 ```bash
 cd backend
 uv run ruff check .
 uv run pytest tests/test_connection_custom_resolve.py -v
-uv run pytest                           # 614+ 유지
+uv run pytest                           # 保持 614+
 uv run alembic upgrade head
 uv run alembic downgrade -1
-uv run alembic upgrade head             # 왕복 PASS
+uv run alembic upgrade head             # round-trip PASS
 
 cd ../frontend
 pnpm lint

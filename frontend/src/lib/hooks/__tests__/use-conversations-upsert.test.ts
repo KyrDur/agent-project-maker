@@ -64,34 +64,34 @@ function globalPages(
 }
 
 describe('upsertConversationList', () => {
-  it('캐시가 비어 있으면(undefined) 그대로 undefined를 반환한다', () => {
+  it('缓存为空时（undefined）原样返回 undefined', () => {
     expect(upsertConversationList(undefined, conversation())).toBeUndefined()
   })
 
-  it('빈 배열에 새 행을 prepend한다', () => {
+  it('向空数组 prepend 新行', () => {
     const result = upsertConversationList([], conversation({ id: 'conv-new' }))
     expect(result).toHaveLength(1)
     expect(result?.[0].id).toBe('conv-new')
   })
 
-  it('새 대화를 맨 앞으로 추가한다', () => {
+  it('将新对话添加到最前面', () => {
     const existing = [conversation({ id: 'conv-old' })]
     const result = upsertConversationList(existing, conversation({ id: 'conv-new' }))
     expect(result?.map((row) => row.id)).toEqual(['conv-new', 'conv-old'])
   })
 
-  it('기존 행을 merge하고 맨 앞으로 끌어올린다(중복 없음)', () => {
+  it('merge 现有行并提到最前面（无重复）', () => {
     const existing = [
       conversation({ id: 'a', title: 'old-a', unread_count: 5 }),
       conversation({ id: 'b', title: 'b' }),
     ]
     const result = upsertConversationList(existing, conversation({ id: 'a', title: 'new-a' }))
     expect(result?.map((row) => row.id)).toEqual(['a', 'b'])
-    // next의 필드가 우선, existing 필드는 next에 없을 때만 유지
+    // next 的字段优先，existing 字段仅在 next 中不存在时保留
     expect(result?.[0]).toMatchObject({ id: 'a', title: 'new-a', unread_count: 0 })
   })
 
-  it('원본 배열을 변형하지 않는다(immutability)', () => {
+  it('不修改原数组（immutability）', () => {
     const existing = [conversation({ id: 'a' })]
     const snapshot = [...existing]
     upsertConversationList(existing, conversation({ id: 'a', title: 'changed' }))
@@ -100,18 +100,18 @@ describe('upsertConversationList', () => {
 })
 
 describe('upsertConversationPages', () => {
-  it('데이터가 없으면 undefined를 반환한다', () => {
+  it('没有数据时返回 undefined', () => {
     expect(upsertConversationPages(undefined, conversation())).toBeUndefined()
   })
 
-  it('첫 페이지에 새 대화를 prepend한다', () => {
+  it('向第一页 prepend 新对话', () => {
     const data = listPages([[conversation({ id: 'a' })], [conversation({ id: 'b' })]])
     const result = upsertConversationPages(data, conversation({ id: 'c' }))
     expect(result?.pages[0].items.map((row) => row.id)).toEqual(['c', 'a'])
     expect(result?.pages[1].items.map((row) => row.id)).toEqual(['b'])
   })
 
-  it('다른 페이지에 있던 대화를 제거하고 첫 페이지로 끌어올린다(cross-page dedup)', () => {
+  it('移除其他页面中的对话并提到第一页（cross-page dedup）', () => {
     const data = listPages([
       [conversation({ id: 'a' })],
       [conversation({ id: 'target', title: 'old' }), conversation({ id: 'b' })],
@@ -121,7 +121,7 @@ describe('upsertConversationPages', () => {
     expect(result?.pages[1].items.map((row) => row.id)).toEqual(['b'])
   })
 
-  it('첫 페이지의 기존 행은 merge한다', () => {
+  it('merge 第一页的现有行', () => {
     const data = listPages([[conversation({ id: 'target', unread_count: 3, title: 'old' })]])
     const result = upsertConversationPages(data, conversation({ id: 'target', title: 'new' }))
     expect(result?.pages[0].items).toHaveLength(1)
@@ -130,18 +130,18 @@ describe('upsertConversationPages', () => {
 })
 
 describe('upsertGlobalConversationPages', () => {
-  it('데이터가 없으면 undefined를 반환한다', () => {
+  it('没有数据时返回 undefined', () => {
     expect(upsertGlobalConversationPages(undefined, withAgent())).toBeUndefined()
   })
 
-  it('첫 페이지에 agent 포함 대화를 prepend한다', () => {
+  it('向第一页 prepend 包含 agent 的对话', () => {
     const data = globalPages([[withAgent({ id: 'a' })]])
     const result = upsertGlobalConversationPages(data, withAgent({ id: 'c' }))
     expect(result?.pages[0].items.map((row) => row.id)).toEqual(['c', 'a'])
     expect(result?.pages[0].items[0].agent).toEqual(agentBrief)
   })
 
-  it('cross-page dedup + merge하면서 agent를 항상 새 값으로 덮는다', () => {
+  it('在 cross-page dedup + merge 的同时，始终用新值覆盖 agent', () => {
     const staleAgent: ConversationAgentBrief = { id: 'agent-1', name: 'Stale', image_url: null }
     const data = globalPages([
       [{ ...conversation({ id: 'x' }), agent: agentBrief }],

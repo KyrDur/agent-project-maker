@@ -1,8 +1,4 @@
-"""Phase 4 — 미들웨어 추천 서브에이전트.
-
-AgentCreationIntent + 도구 목록을 분석하여 미들웨어를 추천한다.
-사용 가능한 미들웨어 카탈로그를 동적으로 주입한다 (AD-7).
-"""
+"""阶段 4：根据需求和能力，从目录中推荐运行中间件。"""
 
 from __future__ import annotations
 
@@ -21,8 +17,8 @@ from app.schemas.builder import (
 logger = logging.getLogger(__name__)
 
 _FALLBACK_PROMPT = (
-    "AgentCreationIntent와 도구 목록을 분석하여 적합한 미들웨어를 추천한다. "
-    "카탈로그에 있는 미들웨어만 추천하고, JSON 배열로만 응답한다."
+    "分析 AgentCreationIntent 和能力列表，"
+    "只推荐目录里的必要中间件，仅返回 JSON 数组；无需中间件时返回空数组。"
 )
 
 SYSTEM_PROMPT = load_prompt("middleware_recommender.md") or _FALLBACK_PROMPT
@@ -63,7 +59,7 @@ async def recommend_middlewares(
     tools: list[ToolRecommendation],
     middlewares_catalog: list[dict[str, Any]],
 ) -> list[MiddlewareRecommendation]:
-    """Intent + 도구 기반으로 미들웨어를 추천한다."""
+    """基于 Intent + 工具推荐中间件。"""
     description = _build_task_description(intent, tools, middlewares_catalog)
 
     valid_types = {m.get("type", "").lower() for m in middlewares_catalog}
@@ -87,4 +83,4 @@ async def recommend_middlewares(
         return recommendations
     except (ValueError, TypeError) as exc:
         logger.error("Middleware recommendation failed after retries: %s", exc)
-        return []
+        raise ValueError("builder_middleware_generation_invalid") from exc

@@ -54,10 +54,10 @@ def upgrade() -> None:
         "connections",
         ["user_id", "type", "provider_name"],
     )
-    # Partial unique index — "scope 당 default 1개 이하" 불변식을 DB 레벨에서 강제.
-    # 앱 레벨 count+clear+insert 패턴은 동시 요청에서 race 가능 (Codex adversarial
-    # P2: 두 요청이 동시에 default=true로 insert → 둘 다 default 남음).
-    # SQLite 3.8+ / PostgreSQL 모두 partial unique index 지원.
+    # Partial unique index — 在 DB 层强制"每个 scope 最多 1 个 default"不变量。
+    # 应用层 count+clear+insert 模式在并发请求下可能发生 race（Codex adversarial
+    # P2：两个请求同时以 default=true insert → 两者都保留为 default）。
+    # SQLite 3.8+ / PostgreSQL 均支持 partial unique index。
     op.create_index(
         "uq_connections_one_default_per_scope",
         "connections",
@@ -69,9 +69,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # IF EXISTS: 이전 버전의 m8이 partial unique index 없이 돌았던 DB에서도
-    # 안전하게 downgrade할 수 있도록 (신규 추가 인덱스만 방어). 본 테이블/인덱스는
-    # 처음부터 쌍으로 관리되므로 기본 drop.
+    # IF EXISTS：即使是在旧版 m8 未创建 partial unique index 的 DB 中，
+    # 也能安全 downgrade（只防御新增索引）。本表/索引
+    # 从一开始就成对管理，因此按默认方式 drop。
     op.execute("DROP INDEX IF EXISTS uq_connections_one_default_per_scope")
     op.drop_index("ix_connections_user_type_provider", table_name="connections")
     op.drop_table("connections")

@@ -78,9 +78,9 @@ const versions: MarketplaceVersionSummary[] = [
 const item: MarketplaceItem = {
   id: 'item-1',
   resource_type: 'skill',
-  name: '이미지 생성',
+  name: '图像生成',
   slug: 'image-generation',
-  description: '이미지를 생성합니다.',
+  description: '生成图像。',
   visibility: 'public',
   status: 'published',
   is_system: false,
@@ -101,7 +101,7 @@ const item: MarketplaceItem = {
     support_level: 'proxy_http',
     runners: ['python'],
     requires_network: true,
-    notes: '프록시를 사용합니다.',
+    notes: '使用 proxy。',
   },
   origin_summary: null,
   publication_summary: {
@@ -144,10 +144,10 @@ describe('MarketplaceItemDetailPage', () => {
     expect(screen.getByText('1234567')).toBeInTheDocument()
   })
 
-  it('renders execution profile with Korean labels instead of raw keys', async () => {
+  it('renders execution profile with Chinese labels instead of raw keys', async () => {
     await renderDetailPage()
 
-    expect(await screen.findByText('支持')).toBeInTheDocument()
+    expect(await screen.findByText('支持级别')).toBeInTheDocument()
     expect(screen.getAllByText('需要代理').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('执行器')).toBeInTheDocument()
     expect(screen.getByText('python')).toBeInTheDocument()

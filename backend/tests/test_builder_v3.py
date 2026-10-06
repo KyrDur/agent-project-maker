@@ -1,9 +1,9 @@
-"""Builder v3 단위 테스트.
+"""Builder v3 单元测试。
 
-- 그래프 토폴로지 도달성 검증
-- BuilderState/Todos 헬퍼 검증
+- 验证 graph topology 可达性
+- 验证 BuilderState/Todos helper
 - image_gen public_url/resolve_local_path round-trip
-- 통합: graph.astream end-to-end (mocked LLMs)
+- 集成：graph.astream end-to-end（mocked LLMs）
 """
 
 from __future__ import annotations
@@ -52,9 +52,9 @@ def test_update_phase_status_only_changes_target():
     todos = initial_todos()
     new = update_phase_status(todos, 3, "in_progress")
     assert new[2]["status"] == "in_progress"
-    # 다른 phase는 변경 없음
+    # 其他 phase 无变化
     assert all(t["status"] == "pending" for i, t in enumerate(new) if i != 2)
-    # 원본 불변
+    # 原始值不变
     assert all(t["status"] == "pending" for t in todos)
 
 
@@ -87,7 +87,7 @@ def test_graph_compiles():
 
 
 def test_graph_contains_all_phases():
-    """8-phase 노드 + router가 모두 등록됨 (propose+wait 분리 패턴 포함)."""
+    """8-phase 节点 + router 全部注册（包含 propose+wait 拆分模式）。"""
     g = build_graph()
     expected = {
         "phase1_init",
@@ -113,7 +113,7 @@ def test_graph_contains_all_phases():
 
 
 def test_node_targets_topology_consistent():
-    """각 노드의 가능한 next 노드가 실제 그래프 노드 집합 내에 있어야 한다."""
+    """每个节点可能的 next 节点都必须存在于实际 graph 节点集合内。"""
     targets = get_node_targets()
     g = build_graph()
     valid_nodes = set(g.nodes.keys()) | {"__end__"}
@@ -121,24 +121,24 @@ def test_node_targets_topology_consistent():
     for source, dests in targets.items():
         assert source in g.nodes
         for dest in dests:
-            # END는 langgraph 상수 (str로 비교 시 "__end__")
+            # END 是 langgraph 常量（按 str 比较时为 "__end__"）
             assert dest in valid_nodes or str(dest) == "__end__"
 
 
 def test_phase_order_enforced_by_topology():
-    """Phase 8 도달 시 반드시 Phase 1-7을 거쳐야 한다 (위상학적 검증).
+    """到达 Phase 8 时必须经过 Phase 1-7（拓扑验证）。
 
-    그래프의 정방향 edge 추적 — phase8_build_wait에 도달하려면 어떤 경로든 1~7 노드를 통과.
+    沿 graph 正向 edge 追踪 — 要到达 phase8_build_wait，无论哪条路径都必须经过1~7节点。
     """
     targets = get_node_targets()
 
-    # Phase 1로 도달 가능한 source 노드들 (router는 직접 가지 않음)
+    # 可到达 Phase 1 的 source 节点（router 不直接前往）
     sources_to_phase1 = [src for src, dests in targets.items() if "phase1_init" in dests]
     assert sources_to_phase1 == []
 
-    # phase8_build_wait의 가능한 next: router 또는 END
+    # phase8_build_wait 可选 next：router 或 END
     assert "router" in targets["phase8_build_wait"]
-    # router는 분리된 노드 (phase2_analyze_intent 등)로만 분기
+    # router 只分支到拆分节点（phase2_analyze_intent 等）
     assert "phase2_analyze_intent" in targets["router"]
     assert "phase6_choice_propose" in targets["router"]
 
@@ -154,19 +154,19 @@ def test_image_public_url_format():
 
 
 def test_image_resolve_path_traversal_safe():
-    # 존재하지 않는 파일 → None
+    # 不存在的文件 → None
     result = image_gen.resolve_local_path("session-abc", "../../etc/passwd")
     assert result is None
 
 
 def test_build_default_prompt_includes_metadata():
     prompt = image_gen.build_default_prompt(
-        agent_name="검색 봇",
-        agent_description="인터넷 검색 자동화",
+        agent_name="搜索机器人",
+        agent_description="互联网搜索自动化",
         primary_task_type="默认标题",
     )
-    assert "검색 봇" in prompt
-    assert "인터넷 검색" in prompt or "默认标题" in prompt
+    assert "搜索机器人" in prompt
+    assert "互联网搜索" in prompt or "默认标题" in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -176,32 +176,39 @@ def test_build_default_prompt_includes_metadata():
 
 @pytest.mark.asyncio
 async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
-    """Phase 2 ask_user → resume → intent_confirmed=True → Phase 3 도달.
+    """Phase 2 ask_user → resume → intent_confirmed=True → 到达 Phase 3。
 
-    LLM 호출은 monkeypatch로 mock. interrupt → Command(resume) 흐름 검증.
+    LLM 调用通过 monkeypatch mock。验证 interrupt → Command(resume) 流程。
     """
     from app.agent_runtime.builder_v3 import graph as graph_module
     from app.agent_runtime.builder_v3.nodes import phase2_intent
     from app.schemas.builder import AgentCreationIntent
 
-    # mock analyze_intent → 빈 fallback intent (이름 fallback 라벨)
+    # mock analyze_intent → 空 fallback intent（名称 fallback 标签）
     fake_intent = AgentCreationIntent(
         agent_name="自定义智能体",
-        agent_description="사용자 요청에 따라 생성된 에이전트: x",
+        agent_description="根据用户请求创建的 agent: x",
         primary_task_type="x",
         use_cases=["x"],
+        project_requirements={
+            "goal": "测试任务",
+            "inputs": "模拟输入",
+            "deliverables": "回复",
+            "business_rules": "仅模拟",
+            "success_conditions": "符合给定信息",
+        },
     )
 
     async def _fake_analyze(req: str):
         return fake_intent
 
     async def _fake_suggest(req: str):
-        return ["옵션 A", "옵션 B", "옵션 C"]
+        return ["选项 A", "选项 B", "选项 C"]
 
     monkeypatch.setattr(phase2_intent, "analyze_intent", _fake_analyze)
     monkeypatch.setattr(phase2_intent, "_suggest_name_options", _fake_suggest)
 
-    # Phase 3 의 LLM도 mock — 도구 추천 빈 리스트 반환 (interrupt에서 멈춤 검증이 목적)
+    # Phase 3 的 LLM 也 mock — 返回空 tool 推荐列表（目的在于验证停在 interrupt）
     from app.agent_runtime.builder_v3.nodes import phase3_tools
 
     async def _fake_recommend_tools(intent, catalog):
@@ -215,7 +222,7 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
 
     initial = {
         "messages": [],
-        "user_request": "테스트 요청",
+        "user_request": "测试请求",
         "session_id": "test-session-1",
         "current_phase": 1,
         "tools_catalog": [],
@@ -223,7 +230,7 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
         "default_model_name": "",
     }
 
-    # 첫 호출 → phase1 → phase2_analyze_intent → phase2_intent_wait → interrupt
+    # 第一次调用 → phase1 → phase2_analyze_intent → phase2_intent_wait → interrupt
     result = await compiled.ainvoke(initial, config=config)
     assert "__interrupt__" in result
     interrupts = result["__interrupt__"]
@@ -232,14 +239,24 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
         for intr in interrupts
     )
 
-    # resume — 사용자가 "옵션 A" 선택
-    result2 = await compiled.ainvoke(Command(resume="옵션 A"), config=config)
-    assert "__interrupt__" in result2  # phase 3 approval에서 또 interrupt
-    # state 검증
+    # resume — 用户选择 "选项 A"
+    result2 = await compiled.ainvoke(
+        Command(
+            resume=json.dumps(
+                {
+                    "mode": "question_flow",
+                    "answers": {"agent_name": ["选项 A"], "requirements_reason": ["测试所需"]},
+                }
+            )
+        ),
+        config=config,
+    )
+    assert "__interrupt__" in result2  # phase 3 approval 再次 interrupt
+    # 验证 state
     state = await compiled.aget_state(config)
     assert state.values.get("intent_confirmed") is True
-    assert state.values["intent"]["agent_name"] == "옵션 A"
-    # phase 3 도구 추천 카드는 emit되었어야
+    assert state.values["intent"]["agent_name"] == "选项 A"
+    # phase 3 tool recommendation card 应已 emit
     msgs = state.values.get("messages") or []
     has_recommendation = any(
         any(
@@ -248,28 +265,35 @@ async def test_phase2_to_phase3_with_intent_confirmed_via_resume(monkeypatch):
         )
         for m in msgs
     )
-    assert has_recommendation, "Phase 3 recommendation_approval 카드가 emit되어야 함"
+    assert has_recommendation, "Phase 3 recommendation_approval card 应被 emit"
 
 
 @pytest.mark.asyncio
 async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
-    """Phase 2 ask_user v2는 3개 이상 질문을 제공하고 JSON 응답을 intent에 반영한다."""
+    """Phase 2 ask_user v2 提供3个以上问题，并将 JSON 响应反映到 intent。"""
     from app.agent_runtime.builder_v3 import graph as graph_module
     from app.agent_runtime.builder_v3.nodes import phase2_intent
     from app.schemas.builder import AgentCreationIntent
 
     fake_intent = AgentCreationIntent(
-        agent_name="리서치 에이전트",
-        agent_description="자료를 조사하고 정리하는 에이전트",
-        primary_task_type="자료 조사",
-        use_cases=["자료 조사"],
+        agent_name="研究 agent",
+        agent_description="调查并整理资料的 agent",
+        primary_task_type="资料调查",
+        use_cases=["资料调查"],
+        project_requirements={
+            "goal": "调查资料",
+            "inputs": "给定资料",
+            "deliverables": "总结",
+            "business_rules": "不虚构事实",
+            "success_conditions": "准确总结",
+        },
     )
 
     async def _fake_analyze(req: str):
         return fake_intent
 
     async def _fake_suggest(req: str):
-        return ["리서치봇", "조사도우미", "자료요약가"]
+        return ["研究机器人", "调查助手", "资料摘要员"]
 
     monkeypatch.setattr(phase2_intent, "analyze_intent", _fake_analyze)
     monkeypatch.setattr(phase2_intent, "_suggest_name_options", _fake_suggest)
@@ -288,7 +312,7 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
     result = await compiled.ainvoke(
         {
             "messages": [],
-            "user_request": "조사 에이전트를 만들어줘",
+            "user_request": "帮我创建调查 agent",
             "session_id": "test-session-question-flow",
             "current_phase": 1,
             "tools_catalog": [],
@@ -303,18 +327,19 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
     )
     assert interrupt_payload["type"] == "ask_user"
     assert interrupt_payload["mode"] == "question_flow"
-    assert len(interrupt_payload["questions"]) == 3
+    assert len(interrupt_payload["questions"]) == 9
     assert not any(q["id"] == "identity_mode" for q in interrupt_payload["questions"])
 
     response = {
         "mode": "question_flow",
         "answers": {
-            "agent_name": ["리서치봇"],
+            "agent_name": ["研究机器人"],
+            "requirements_reason": ["只基于给定资料验证总结"],
             "response_tone": ["professional"],
             "output_style": ["detailed"],
         },
         "labels": {
-            "agent_name": "리서치봇",
+            "agent_name": "研究机器人",
             "response_tone": "专业严谨",
             "output_style": "详细说明",
         },
@@ -323,7 +348,7 @@ async def test_phase2_question_flow_payload_and_structured_resume(monkeypatch):
 
     state = await compiled.aget_state(config)
     assert state.values.get("intent_confirmed") is True
-    assert state.values["intent"]["agent_name"] == "리서치봇"
+    assert state.values["intent"]["agent_name"] == "研究机器人"
     assert state.values["intent"]["response_tone"] == "专业严谨"
     assert state.values["intent"]["output_style"] == "详细说明"
     assert state.values["intent"]["identity_mode"] == "per_user"
@@ -377,9 +402,9 @@ def test_phase7_draft_copies_identity_mode():
         {
             "intent": {
                 "agent_name": "Research Agent",
-                "agent_description": "자료를 조사하는 에이전트",
-                "primary_task_type": "자료 조사",
-                "use_cases": ["자료 조사"],
+                "agent_description": "调查资料的 agent",
+                "primary_task_type": "资料调查",
+                "use_cases": ["资料调查"],
                 "identity_mode": "fixed",
             },
             "tools": [],
@@ -429,28 +454,28 @@ def test_phase7_draft_separates_planned_tools_from_real_links():
 
 
 def test_phase8_error_routes_to_end_not_router():
-    """phase8_build_wait에서 confirm 실패(error_message set)면 END로 가야 한다.
+    """phase8_build_wait 中 confirm 失败（error_message set）时应前往 END。
 
-    routing 함수만 단위 테스트.
+    仅单元测试 routing 函数。
     """
     from langgraph.graph import END
 
     from app.agent_runtime.builder_v3.graph import _route_after_phase8_build_wait
 
-    # 승인 + 생성 성공
+    # 批准 + 创建成功
     assert _route_after_phase8_build_wait({"completed": True}) == END
-    # 에러 발생
+    # 发生 error
     assert _route_after_phase8_build_wait({"error_message": "fail"}) == END
-    # 수정 요청
+    # 修改请求
     assert _route_after_phase8_build_wait({"completed": False}) == "router"
     assert _route_after_phase8_build_wait({}) == "router"
 
 
 def test_route_after_approval_factory():
-    """phase 3/4/5 approval routing factory 검증."""
+    """验证 phase 3/4/5 approval routing factory。"""
     from app.agent_runtime.builder_v3.graph import _route_after_approval
 
     route = _route_after_approval("phase4", "phase3_recommend")
-    assert route({"last_revision_message": "다시"}) == "phase3_recommend"
+    assert route({"last_revision_message": "再来一次"}) == "phase3_recommend"
     assert route({"last_revision_message": None}) == "phase4"
     assert route({}) == "phase4"

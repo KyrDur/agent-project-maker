@@ -12,8 +12,8 @@ import { useSkillContent, useUpdateSkillContent } from '@/lib/hooks/use-skills'
 import type { SkillDetailTabRender } from './skill-detail-tab-shell'
 
 /**
- * 소스 탭(텍스트) 에디터 — 저장(=리비전)만 소유한다. 삭제/자격증명은
- * 스튜디오 설정 탭 소관 (Phase 2 D1).
+ * 源标签页(文本) 编辑器 — 只负责保存(=修订版)。删除/凭证由
+ * 工作室设置标签页负责 (Phase 2 D1)。
  */
 export function TextSkillEditor({
   children,
@@ -28,10 +28,10 @@ export function TextSkillEditor({
   const [editor, setEditor] = useState('')
   const [seeded, setSeeded] = useState<string | undefined>(undefined)
 
-  // 서버 콘텐츠가 바뀌면(예: 버전 탭 롤백 후 stale 캐시 → refetch 착지)
-  // 재시드한다 — hydrate-once는 롤백 전 캐시를 잠가 "롤백이 안 먹은" 화면과
-  // 저장 시 롤백을 되돌리는 새 리비전을 만든다 (R5). 단 dirty draft는 보호:
-  // 사용자가 마지막 시드에서 벗어났다면 편집 내용을 덮지 않는다.
+  // 服务器内容变化时（例：版本标签页回滚后 stale 缓存 → refetch 落地）
+  // 重新初始值 — hydrate-once 会锁住回滚前的缓存，导致界面看起来"回滚没生效"，
+  // 并在保存时创建新修订版把回滚撤销 (R5)。但 dirty draft 需保护：
+  // 如果用户已偏离最后一次初始值，则不覆盖编辑内容。
   if (textContent?.content !== undefined && textContent.content !== seeded) {
     const previousSeed = seeded
     setSeeded(textContent.content)

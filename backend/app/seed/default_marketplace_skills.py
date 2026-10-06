@@ -22,7 +22,6 @@ _DEEP_RESEARCH_SKILL_DIR = _PACKAGE_ROOT / "deep-research"
 _DOCX_SKILL_DIR = _PACKAGE_ROOT / "docx-document"
 _XLSX_SKILL_DIR = _PACKAGE_ROOT / "xlsx-spreadsheet"
 _PPTX_SKILL_DIR = _PACKAGE_ROOT / "pptx-presentation"
-_PATENT_HWPX_SKILL_DIR = _PACKAGE_ROOT / "patent-hwpx-generator"
 _OPENWIKI_SKILL_DIR = _PACKAGE_ROOT / "openwiki"
 
 IMAGE_SKILL_REQUIREMENTS: list[dict[str, Any]] = [
@@ -65,13 +64,6 @@ JS_DOCUMENT_EXECUTION_PROFILE: dict[str, Any] = {
     "support_level": "node_package",
     "runners": ["node"],
     "requires_node": True,
-    "timeout_seconds": 120,
-}
-
-PATENT_HWPX_EXECUTION_PROFILE: dict[str, Any] = {
-    "support_level": "ready_python",
-    "runners": ["python"],
-    "requires_python": True,
     "timeout_seconds": 120,
 }
 
@@ -123,20 +115,6 @@ DOCUMENT_SKILL_SPECS: list[dict[str, Any]] = [
         "artifact_extensions": ["pptx"],
         "execution_profile": JS_DOCUMENT_EXECUTION_PROFILE,
         "release_notes": "Initial built-in PPTX presentation generation skill.",
-    },
-    {
-        "slug": "patent-hwpx-generator",
-        "name": "Korean Patent HWPX Generator",
-        "description": (
-            "Generate Korean patent-style HWPX artifacts from structured invention data."
-        ),
-        "skill_dir": _PATENT_HWPX_SKILL_DIR,
-        "categories": ["document", "patent"],
-        "tags": ["hwpx", "patent", "korean"],
-        "runtime": "python",
-        "artifact_extensions": ["hwpx"],
-        "execution_profile": PATENT_HWPX_EXECUTION_PROFILE,
-        "release_notes": "Initial built-in Korean patent HWPX generation skill.",
     },
     {
         "slug": "openwiki",
@@ -570,6 +548,5 @@ __all__ = [
     "IMAGE_SKILL_REQUIREMENTS",
     "JS_DOCUMENT_EXECUTION_PROFILE",
     "OPENWIKI_EXECUTION_PROFILE",
-    "PATENT_HWPX_EXECUTION_PROFILE",
     "seed_default_marketplace_skills",
 ]

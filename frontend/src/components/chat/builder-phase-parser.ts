@@ -1,11 +1,11 @@
 /**
- * Builder phase narration 파서.
+ * Builder phase narration 解析器。
  *
- * 봇 텍스트에 dump되는 phase 전환 문구(`[Phase N 완료]`, `이제 Phase N: <단계명>을
- * 시작합니다` 등)를 SystemEvent 이벤트로 추출하고, 남은 평문은 그대로 반환한다.
+ * 从 机器人文本中提取被 dump 出来的 phase 切换文案（`[Phase N 完成]`、`现在开始 Phase N: <阶段名>`
+ * 等），转换为 SystemEvent 事件，并原样返回剩余普通文本。
  *
- * 정석은 backend에서 `phase_transition` 이벤트를 분리 emit하는 것이지만, 당장
- * 백엔드를 못 건드릴 때 프론트엔드에서 정규식 split로 fallback.
+ * 标准做法应由 backend 单独 emit `phase_transition` 事件；暂时不能改 backend 时，
+ * 前端用正则 split 做 fallback。
  */
 
 export type PhaseTransition = 'started' | 'completed'
@@ -22,14 +22,14 @@ interface PatternMatch {
 }
 
 /**
- * Phase narration 패턴 — 우선순위 순으로 적용. 각 정규식은 1번 캡처에 phase id.
+ * Phase narration 模式 —— 按优先级顺序应用。每个正则的第 1 个捕获组是 phase id。
  *
- * 완료 패턴:
- *   - `[Phase N 완료]` + 후행 narration (`프로젝트 초기화 완료.` 같은 redundant 한 줄)
- * 시작 패턴:
- *   - `이제 Phase N: <name>을 시작합니다 / 진행하겠습니다`
- *   - `이제 Phase N ... 시작/진행`
- *   - `Phase N: <name>` (단독 헤더)
+ * 完成模式:
+ *   - `[Phase N 完成]` + 后续 narration（如 `项目初始化完成。` 这类 redundant 单行）
+ * 开始模式:
+ *   - `现在开始 Phase N: <name> / 将继续进行`
+ *   - `现在 Phase N ... 开始/进行`
+ *   - `Phase N: <name>`（独立标题）
  */
 const COMPLETED_PATTERNS: RegExp[] = [
   /\[Phase\s+(\d+)\s*(?:已完成|完成|completed)\][^\n.!?。！？\[]*[.!?。！？]?\s*/gi,
@@ -64,11 +64,11 @@ function collectMatches(
 }
 
 /**
- * 텍스트를 phase narration / 일반 텍스트 세그먼트로 분리.
+ * 将文本拆分为 phase narration / 普通文本 片段。
  *
- * - 패턴들은 phase 전환 마커로 추출 → SystemEvent로 렌더링.
- * - 매칭 사이의 평문은 trim 후 텍스트 세그먼트로 유지.
- * - 동일 phase + transition이 연속으로 추출되면 dedup.
+ * - 模式 作为 phase 切换 标记 提取 → 渲染为 SystemEvent。
+ * - 匹配 之间的普通文本 trim 后保留为 文本片段。
+ * - 连续提取到相同 phase + transition 时 dedup。
  */
 export function parsePhaseNarration(text: string): PhaseSegment[] {
   if (!text) return []
@@ -79,7 +79,7 @@ export function parsePhaseNarration(text: string): PhaseSegment[] {
   ]
   if (all.length === 0) return [{ kind: 'text', text }]
 
-  // 시작 위치 오름차순. 겹치는 것은 longer 우선 → 앞 패턴 보존
+  // 按起始位置升序。重叠时 longer 优先 → 保留前面的 pattern
   all.sort((a, b) => a.start - b.start || b.end - a.end)
   const merged: PatternMatch[] = []
   let lastEnd = -1

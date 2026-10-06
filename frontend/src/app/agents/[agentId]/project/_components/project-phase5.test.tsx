@@ -50,7 +50,7 @@ it('shows the measured best, rejected latest, report, live chat and ZIP links', 
   expect(screen.getByText(report.sections[0].body)).toBeInTheDocument()
 })
 
-it.each(['ai_product', 'product', 'engineering'])(
+it.each(['ai_product'])(
   'generates and copies %s resume using the selected style',
   async (style) => {
     const copy = vi.fn().mockResolvedValue(undefined)

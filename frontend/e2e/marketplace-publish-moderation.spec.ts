@@ -28,7 +28,7 @@ const itemSchema = z.object({
 const idSchema = z.object({ id: z.string() })
 
 async function publishPublic(page: Page, name: string, sourcePath: string) {
-  const dialog = page.getByRole('dialog', { name: `${name} 게시` })
+  const dialog = page.getByRole('dialog', { name: `${name} 发布` })
   await dialog.getByRole('button', { name: '下一步', exact: true }).click()
   await expect(dialog.getByLabel('名称', { exact: true })).toHaveValue(name)
   await dialog.getByLabel('描述', { exact: true }).fill('Isolated E2E publication')

@@ -50,15 +50,17 @@ async def test_real_report_best_rejected_journey_and_limitations(client, db, com
     assert data["results"]["best_version"] == 2
     assert data["results"]["baseline"]["pass_rate"] == 0.75
     assert data["results"]["best"]["pass_rate"] == 0.9
-    assert data["results"]["metric_deltas"]["task_completion"] == pytest.approx(0.105)
+    # Legacy automatic rounds have no explicit user-selected regression pair.
+    assert data["results"]["candidate"] is None
+    assert data["results"]["metric_deltas"] == {}
     assert [v["decision"] for v in data["versions"]] == ["original", "accepted", "rejected"]
     assert [v["evaluation"]["pass_rate"] for v in data["versions"]] == [0.75, 0.9, 0.85]
     assert data["versions"][1]["comparison"]["fixed_cases"] == 4
     assert data["versions"][1]["comparison"]["regressed_cases"] == 1
     assert data["bad_cases"]["analyzed_count"] == 5
     assert data["bad_cases"]["groups"][0]["root_cause"]
-    assert "mock" in report["markdown"] and "production" in report["markdown"]
-    assert "unverified" in report["markdown"]
+    assert "模拟" in report["markdown"] and "生产部署" in report["markdown"]
+    assert "未验证" in report["markdown"]
     await db.refresh(ex.project)
     assert ex.project.report_json["portfolio_report"]["evidence_hash"] == report["evidence_hash"]
     assert ex.project.report_json["optimization"]["best_version_id"]
@@ -75,39 +77,44 @@ async def test_unavailable_never_fabricated(db, experiment):
     ex.run.status, ex.run.completed_at = "running", None
     await db.commit()
     report = await portfolio.report(db, ex.agent.id, USER)
-    assert report["evidence"]["results"] == {
+    results = dict(report["evidence"]["results"])
+    assert results.pop("latest_version") == 1
+    assert results.pop("current_version") == 1
+    current = results.pop("current")
+    assert current["complete"] is False and current["pass_rate"] is None
+    assert results == {
         "best_version": None,
+        "baseline_version": None,
+        "comparisons": [],
         "baseline": None,
         "best": None,
         "metric_deltas": {},
+        "candidate": None,
+        "candidate_version": None,
     }
-    assert "Unavailable" in report["markdown"]
+    assert "历史" in report["markdown"]
     assert "90.0%" not in report["markdown"]
     resume = await portfolio.resume(db, ex.agent.id, USER, "product")
-    assert len(resume["bullets"]) == 1
+    assert len(resume["bullets"]) >= 1
     assert "%" not in " ".join(resume["bullets"])
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("style", "start"),
-    [
-        ("ai_product", "Developed an evidence-based"),
-        ("product", "Documented an Agent project's"),
-        ("engineering", "Documented immutable"),
-    ],
+    [("ai_product", "围绕")],
 )
 async def test_resume_styles_only_real_numbers(client, db, completed, style, start):
     path = f"/api/agents/{completed.agent.id}/project/resume/generate"
     response = await client.post(path, json={"style": style})
     assert response.status_code == 200
     data = response.json()
-    assert data["style"] == style and 1 <= len(data["bullets"]) <= 3
+    assert data["style"] == style and 1 <= len(data["bullets"]) <= 5
     assert data["bullets"][0].startswith(start)
     text = " ".join(data["bullets"])
-    assert "20-case" in text and "75.0%" in text and "90.0%" in text
+    assert "20" in text and "模拟" in text
     assert "85.0%" not in text and "revenue" not in text
-    assert "unvalidated" in text
+    assert "未验证" in text
     assert (await client.post(path, json={"style": style})).json() == data
     assert (await client.post(path, json={"style": style, "metrics": 100})).status_code == 422
 
@@ -181,7 +188,7 @@ async def test_export_structure_frozen_skills_results_and_no_live_mutation(db, c
         } <= names
         readme = archive.read("agent-project/README.md").decode()
         assert "75.0%" in readme and "90.0%" in readme and "85.0%" in readme
-        assert "## Limitations" in readme and "## Tools & Skills" in readme
+        assert "## 结果与限制" in readme and "## 能力与设计决策" in readme
         instructions = archive.read("agent-project/instructions.md").decode()
         assert "Retrieve sources before answering." in instructions
         assert "Verify every requested section" not in instructions  # V3 rejected

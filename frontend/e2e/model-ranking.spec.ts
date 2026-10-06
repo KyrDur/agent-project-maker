@@ -164,7 +164,7 @@ test.describe('M11 — Model ranking column', () => {
     const rankingsCard = page.getByTestId('model-rankings')
     await expect(rankingsCard).toBeVisible()
     await expect(
-      rankingsCard.getByText(/사용자 지정 ID 모델은 공개 벤치마크와 자동 매칭되지 않습니다/),
+      rankingsCard.getByText(/自定义 ID 模型不会与公开基准自动匹配/),
     ).toBeVisible()
   })
 

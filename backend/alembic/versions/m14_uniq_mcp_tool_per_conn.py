@@ -4,22 +4,22 @@ Revision ID: m14_uniq_mcp_tool_per_conn
 Revises: m13_drop_mcp_legacy
 Create Date: 2026-04-25
 
-`POST /api/connections/{id}/discover-tools`가 user_id × connection × name 기준
-idempotency를 약속하지만, 동시 두 요청이 같은 name에 대해 existing snapshot을
-read-after-snapshot으로 미스하면 중복 Tool row가 생성될 수 있다 (Codex
-adversarial Finding). 앱 레벨 가드(IntegrityError catch + savepoint)는 이
-partial unique index를 최종 안전망으로 사용한다.
+`POST /api/connections/{id}/discover-tools` 按 user_id × connection × name 维度
+承诺 idempotency，但两个并发请求若针对同一 name 都在 existing snapshot 中
+read-after-snapshot 未命中，就可能生成重复 Tool row（Codex
+adversarial Finding）。应用层防护（IntegrityError catch + savepoint）将该
+partial unique index 作为最终安全网。
 
-스코프: type='mcp'인 행에만 적용 — PREBUILT/CUSTOM/BUILTIN은 connection_id가
-NULL일 수 있고 name이 자유롭게 중복될 수 있다.
+范围：仅适用于 type='mcp' 的行 — PREBUILT/CUSTOM/BUILTIN 的 connection_id
+可以为 NULL，name 也可以自由重复。
 
-PostgreSQL/SQLite 둘 다 partial unique index를 지원 (SQLite 3.8+).
+PostgreSQL/SQLite 均支持 partial unique index（SQLite 3.8+）。
 
-## Pre-check 정책 (운영자 안전망)
-M6.1 이전엔 unique 가드가 없었기에 dev/stg 환경에 (user, connection, name)
-중복 mcp tool row가 잔존할 수 있다. 이 마이그레이션은 **silent dedupe를 하지
-않는다** — `agent_tools.tool_id`가 ON DELETE CASCADE라 임의 dedupe는 agent
-바인딩까지 silently 손실시킨다. 운영자가 명시적으로 정리 후 재실행해야 한다.
+## Pre-check 策略（运维安全网）
+M6.1 之前没有 unique 防护，因此 dev/stg 环境中可能残留 (user, connection, name)
+重复 mcp tool row。本次迁移**不会 silent dedupe**
+**不会执行** — 因为 `agent_tools.tool_id` 使用 ON DELETE CASCADE，任意 dedupe 会连同 agent
+绑定一起 silently 丢失。运维人员必须明确清理后重新执行。
 """
 
 from __future__ import annotations
@@ -41,9 +41,9 @@ def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
 
-    # Pre-check: 중복이 있으면 fail-fast. silent DELETE는 agent_tools.tool_id
-    # ON DELETE CASCADE를 통해 agent 바인딩까지 함께 사라지게 하므로 위험.
-    # 운영자가 manual repair 후 재실행하는 경로로 유도.
+    # Pre-check：若存在重复则 fail-fast。silent DELETE 会通过 agent_tools.tool_id
+    # 的 ON DELETE CASCADE 连同 agent 绑定一起删除，因此危险。
+    # 引导运维人员 manual repair 后重新执行。
     dup_groups = bind.execute(
         sa.text(
             """
@@ -75,7 +75,7 @@ def upgrade() -> None:
             f"Sample groups (top 5):\n{sample}"
         )
 
-    # partial unique index — type='mcp'인 행에만 적용
+    # partial unique index — 仅适用于 type='mcp' 的行
     if dialect == "postgresql":
         op.create_index(
             INDEX_NAME,
@@ -85,7 +85,7 @@ def upgrade() -> None:
             postgresql_where=sa.text("type = 'mcp'"),
         )
     elif dialect == "sqlite":
-        # SQLAlchemy 2.x: sqlite_where 인자 미지원. raw DDL.
+        # SQLAlchemy 2.x：不支持 sqlite_where 参数。使用 raw DDL。
         op.execute(
             sa.text(
                 f"CREATE UNIQUE INDEX {INDEX_NAME} "
@@ -94,7 +94,7 @@ def upgrade() -> None:
             )
         )
     else:
-        # 알 수 없는 dialect — 안전하게 일반 unique index (전체 행 적용)
+        # 未知 dialect — 安全起见使用普通 unique index（应用于所有行）
         op.create_index(
             INDEX_NAME,
             "tools",

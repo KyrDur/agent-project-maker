@@ -2,9 +2,9 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
-/* streamdown의 스트리밍 캐럿(caret prop)은 라이브러리 JS 안의 Tailwind arbitrary
-   variant 클래스로 렌더된다 — Tailwind v4는 node_modules를 스캔하지 않으므로
-   해당 유틸리티가 생성되도록 명시적으로 소스에 포함한다. */
+/* streamdown 的 streaming caret(caret prop)会由 library JS 中的 Tailwind arbitrary
+   variant class 渲染 — Tailwind v4 不扫描 node_modules，因此
+   显式包含在 source 中以生成对应 utility。 */
 @source '../../node_modules/streamdown/dist';
 
 @custom-variant dark (&:is(.dark *));
@@ -996,7 +996,7 @@
     transform: translateY(-1px);
   }
 
-  /* 파일 목록 → "대화로 이동" 시 대상 메시지에 잠깐 표시하는 하이라이트. */
+  /* 文件列表 → "前往对话"时，在目标 message 上短暂显示的 highlight。 */
   .moldy-jump-highlight {
     border-radius: var(--moldy-radius-card);
     animation: moldy-jump-highlight 1.5s ease-out;
@@ -3133,7 +3133,7 @@
   }
 }
 
-/* 스크롤은 동작하되 시각적 스크롤바는 숨김 — 대시보드 카드 영역 등에서 사용 */
+/* 保持 scroll 可用但隐藏视觉 scrollbar — 用于 dashboard card 区域等 */
 @utility scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;

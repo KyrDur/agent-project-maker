@@ -25,7 +25,7 @@ BASE = "/api/skill-builder"
 
 @pytest.fixture(autouse=True)
 def _tmp_data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """start v2가 드래프트 워크스페이스를 디스크에 만들므로 data_root 격리."""
+    """start v2 会在磁盘创建草稿工作区，因此隔离 data_root。"""
 
     monkeypatch.setattr(settings, "data_root", str(tmp_path))
 
@@ -61,30 +61,28 @@ def _draft_payload() -> dict[str, object]:
 async def test_start_requires_system_llm(client: AsyncClient) -> None:
     response = await client.post(
         BASE,
-        json={"mode": "create", "user_request": "회의록 스킬 만들어줘"},
+        json={"mode": "create", "user_request": "帮我创建会议纪要技能"},
     )
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "SYSTEM_LLM_NOT_CONFIGURED"
 
 
-async def test_start_create_session(
-    client: AsyncClient, db: AsyncSession, tmp_path: Path
-) -> None:
+async def test_start_create_session(client: AsyncClient, db: AsyncSession, tmp_path: Path) -> None:
     await _configure_system_llm(db)
 
     response = await client.post(
         BASE,
-        json={"mode": "create", "user_request": "회의록 스킬 만들어줘"},
+        json={"mode": "create", "user_request": "帮我创建会议纪要技能"},
     )
 
     assert response.status_code == 201, response.text
     body = response.json()
     assert body["mode"] == "create"
-    # v2: 세션은 빌더 챗 상태 기계의 ACTIVE로 시작한다.
+    # v2: 会话从构建器聊天状态机的 ACTIVE 开始。
     assert body["status"] == "active"
     assert body["source_skill_id"] is None
-    # v2: 히든 에이전트의 draft conversation + 워크스페이스가 붙는다.
+    # v2: 会挂接隐藏智能体的 draft conversation + 工作区。
     assert body["conversation_id"] is not None
     assert body["agent_id"] is not None
     assert (tmp_path / "skill-drafts" / body["id"]).is_dir()
@@ -99,19 +97,13 @@ async def test_start_create_session(
     assert session.draft_workspace_path == f"skill-drafts/{body['id']}"
 
 
-async def test_start_lazy_seeds_hidden_agent_once(
-    client: AsyncClient, db: AsyncSession
-) -> None:
-    """두 번 시작해도 히든 빌더 에이전트는 사용자당 1개만 시드된다."""
+async def test_start_lazy_seeds_hidden_agent_once(client: AsyncClient, db: AsyncSession) -> None:
+    """即使启动两次，隐藏构建器智能体每个用户也只初始化 1 个。"""
 
     await _configure_system_llm(db)
 
-    first = await client.post(
-        BASE, json={"mode": "create", "user_request": "스킬 하나"}
-    )
-    second = await client.post(
-        BASE, json={"mode": "create", "user_request": "스킬 둘"}
-    )
+    first = await client.post(BASE, json={"mode": "create", "user_request": "技能一"})
+    second = await client.post(BASE, json={"mode": "create", "user_request": "技能二"})
 
     assert first.status_code == 201 and second.status_code == 201
     assert first.json()["agent_id"] == second.json()["agent_id"]
@@ -127,7 +119,7 @@ async def test_start_lazy_seeds_hidden_agent_once(
     assert len(hidden_agents) == 1
     assert str(hidden_agents[0].id) == first.json()["agent_id"]
 
-    # 히든 에이전트는 에이전트 목록에 노출되지 않는다.
+    # 隐藏智能体不会暴露在智能体列表中。
     agents = await client.get("/api/agents")
     assert first.json()["agent_id"] not in {a["id"] for a in agents.json()}
 
@@ -137,9 +129,7 @@ async def test_get_session_returns_agent_and_conversation(
 ) -> None:
     await _configure_system_llm(db)
 
-    start = await client.post(
-        BASE, json={"mode": "create", "user_request": "회의록 스킬"}
-    )
+    start = await client.post(BASE, json={"mode": "create", "user_request": "会议纪要技能"})
     session_id = start.json()["id"]
 
     response = await client.get(f"{BASE}/{session_id}")
@@ -172,7 +162,7 @@ async def test_start_improve_session_snapshots_owned_skill(
             json={
                 "mode": "improve",
                 "source_skill_id": str(skill.id),
-                "user_request": "더 정확하게 개선해줘",
+                "user_request": "帮我改得更准确一些",
             },
         )
 
@@ -182,7 +172,7 @@ async def test_start_improve_session_snapshots_owned_skill(
     assert body["source_skill_id"] == str(skill.id)
     assert body["base_content_hash"] == skill.content_hash
     assert body["base_snapshot"]["files"][0]["path"] == "SKILL.md"
-    # v2: improve 시드 — 원본 스킬 파일이 워크스페이스로 복사된다.
+    # v2: improve 初始化 — 原始技能文件会复制到工作区。
     seeded = tmp_path / "skill-drafts" / body["id"] / "SKILL.md"
     assert seeded.is_file()
     assert seeded.read_text() == _skill_content()
@@ -210,7 +200,7 @@ async def test_start_improve_unowned_skill_returns_404(
             json={
                 "mode": "improve",
                 "source_skill_id": str(skill.id),
-                "user_request": "개선해줘",
+                "user_request": "帮我改进一下",
             },
         )
 
@@ -221,7 +211,7 @@ async def test_validate_persists_result(client: AsyncClient, db: AsyncSession) -
     await _configure_system_llm(db)
     start = await client.post(
         BASE,
-        json={"mode": "create", "user_request": "회의록 스킬 만들어줘"},
+        json={"mode": "create", "user_request": "帮我创建会议纪要技能"},
     )
     session_id = start.json()["id"]
 
@@ -243,7 +233,7 @@ async def test_confirm_returns_skill_response(
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         start = await client.post(
             BASE,
-            json={"mode": "create", "user_request": "회의록 스킬 만들어줘"},
+            json={"mode": "create", "user_request": "帮我创建会议纪要技能"},
         )
         session_id = start.json()["id"]
         await client.post(f"{BASE}/{session_id}/validate", json=_draft_payload())
@@ -265,7 +255,7 @@ async def test_confirm_completed_session_is_idempotent(
     with patch.object(skill_service.settings, "data_root", str(tmp_path)):
         start = await client.post(
             BASE,
-            json={"mode": "create", "user_request": "회의록 스킬 만들어줘"},
+            json={"mode": "create", "user_request": "帮我创建会议纪要技能"},
         )
         session_id = start.json()["id"]
         await client.post(f"{BASE}/{session_id}/validate", json=_draft_payload())
@@ -304,7 +294,7 @@ async def test_confirm_improve_conflict_returns_409(
             json={
                 "mode": "improve",
                 "source_skill_id": str(skill.id),
-                "user_request": "개선해줘",
+                "user_request": "帮我改进一下",
             },
         )
         await skill_service.update_text_content(

@@ -111,7 +111,7 @@ async def test_record_turn_empty_events_is_noop() -> None:
 
 @pytest.mark.asyncio
 async def test_record_turn_without_message_start_falls_back_to_uuid() -> None:
-    """비정상 스트림 — message_start 없이 error만 emit된 케이스."""
+    """异常流 — 没有 message_start，只有 error 被 emit 的情况。"""
     conv_id = await _seed_conversation()
     events = [
         {"id": "x-1", "event": "error", "data": {"message": "graph crashed"}},
@@ -120,14 +120,14 @@ async def test_record_turn_without_message_start_falls_back_to_uuid() -> None:
         record = await trace_storage.record_turn(db, conversation_id=conv_id, events=events)
         await db.commit()
         assert record is not None
-        # Fallback uuid는 RFC4122 v4 형식
+        # Fallback uuid 为 RFC4122 v4 格式
         uuid.UUID(record.assistant_msg_id)
         assert record.last_event_id == "x-1"
 
 
 @pytest.mark.asyncio
 async def test_get_traces_for_conversation_orders_by_created_at() -> None:
-    """여러 turn은 created_at 기준 오름차순으로 반환."""
+    """多个 turn 按 created_at 升序返回。"""
     conv_id = await _seed_conversation()
 
     async with TestSession() as db:
@@ -151,7 +151,7 @@ async def test_get_traces_for_conversation_orders_by_created_at() -> None:
 
 @pytest.mark.asyncio
 async def test_record_turn_unique_assistant_msg_id() -> None:
-    """같은 assistant_msg_id로 2번 record하면 unique 제약으로 실패."""
+    """对同一个 assistant_msg_id record 两次会因 unique 约束失败。"""
     conv_id = await _seed_conversation()
     events = _events_for_msg("dup-1")
 
@@ -169,7 +169,7 @@ async def test_record_turn_unique_assistant_msg_id() -> None:
 
 @pytest.mark.asyncio
 async def test_get_traces_endpoint_returns_persisted_turns(client: AsyncClient) -> None:
-    """GET /api/conversations/{id}/traces — service 레이어로 시드 후 조회."""
+    """GET /api/conversations/{id}/traces — 通过 service 层写入后查询。"""
     conv_id = await _seed_conversation()
     async with TestSession() as db:
         await trace_storage.record_turn(
@@ -327,7 +327,7 @@ async def test_get_traces_endpoint_404_for_unknown_conversation(
 async def test_get_traces_endpoint_empty_when_no_turns_recorded(
     client: AsyncClient,
 ) -> None:
-    """대화는 있지만 trace 0건이면 빈 배열 (200)."""
+    """对话存在但 trace 为 0 条时返回空数组 (200)。"""
     conv_id = await _seed_conversation()
     response = await client.get(f"/api/conversations/{conv_id}/traces")
     assert response.status_code == 200
@@ -336,7 +336,7 @@ async def test_get_traces_endpoint_empty_when_no_turns_recorded(
 
 @pytest.mark.asyncio
 async def test_record_turn_persists_linked_message_ids() -> None:
-    """W6 정확도 — raw_msg_ids → parsed UUID로 linked_message_ids에 저장."""
+    """W6 准确性 — raw_msg_ids → 转为 parsed UUID 存入 linked_message_ids。"""
     from app.agent_runtime.message_utils import parse_msg_id
 
     conv_id = await _seed_conversation()
@@ -412,7 +412,7 @@ async def test_record_turn_persists_external_trace_correlation() -> None:
 
 @pytest.mark.asyncio
 async def test_record_turn_linked_ids_default_none() -> None:
-    """raw_msg_ids 미전달 시 linked_message_ids는 None (m32 호환 폴백)."""
+    """未传 raw_msg_ids 时 linked_message_ids 为 None（m32 兼容回退）。"""
     conv_id = await _seed_conversation()
     async with TestSession() as db:
         record = await trace_storage.record_turn(
@@ -427,7 +427,7 @@ async def test_record_turn_linked_ids_default_none() -> None:
 
 @pytest.mark.asyncio
 async def test_record_turn_appends_to_session_without_committing() -> None:
-    """record_turn 자체는 commit 안 함 — caller가 commit 책임."""
+    """record_turn 本身不 commit — caller 负责 commit。"""
     conv_id = await _seed_conversation()
     events = _events_for_msg("uncommitted")
 
@@ -435,7 +435,7 @@ async def test_record_turn_appends_to_session_without_committing() -> None:
     async with TestSession() as db:
         record = await trace_storage.record_turn(db, conversation_id=conv_id, events=events)
         assert record is not None
-        # commit 없이 세션 종료 — 데이터 영속 안 됨
+        # 不 commit 就结束会话 — 数据不会持久化
         await db.rollback()
 
     async with TestSession() as db:
@@ -446,11 +446,11 @@ async def test_record_turn_appends_to_session_without_committing() -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_message_event_cascade_delete_with_conversation() -> None:
-    """conversation 삭제 시 message_events도 함께 삭제 (FK CASCADE).
+    """删除 conversation 时 message_events 也一起删除 (FK CASCADE)。
 
-    Postgres 한정 — aiosqlite는 기본적으로 ``PRAGMA foreign_keys=OFF``라서
-    ``ondelete='CASCADE'``가 무시된다. 마이그레이션에 선언된 cascade가 실제로
-    동작하는지 검증하려면 라이브 PG가 필요하므로 integration 마커를 단다.
+    仅限 Postgres — aiosqlite 默认 ``PRAGMA foreign_keys=OFF``，因此
+    ``ondelete='CASCADE'`` 会被忽略。若要验证迁移声明的 cascade 实际
+    是否生效，需要实时 PG，因此加 integration 标记。
     """
     conv_id = await _seed_conversation(session_factory=async_session)
     async with async_session() as db:
@@ -460,7 +460,7 @@ async def test_message_event_cascade_delete_with_conversation() -> None:
         await db.commit()
 
     async with async_session() as db:
-        # 직접 SQL로 conversation 삭제
+        # 直接通过 SQL 删除 conversation
         from sqlalchemy import select
 
         conv = (

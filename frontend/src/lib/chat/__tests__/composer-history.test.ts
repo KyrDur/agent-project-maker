@@ -9,64 +9,64 @@ import {
 } from '../composer-history'
 
 describe('extractMessageText', () => {
-  it('문자열/텍스트 파트 배열에서 평문을 뽑는다', () => {
-    expect(extractMessageText('안녕')).toBe('안녕')
+  it('从字符串/文本 part 数组中提取纯文本', () => {
+    expect(extractMessageText('你好')).toBe('你好')
     expect(
       extractMessageText([
-        { type: 'text', text: '첫 줄' },
+        { type: 'text', text: '第一行' },
         { type: 'tool-call', toolName: 'x' },
-        { type: 'text', text: '둘째 줄' },
+        { type: 'text', text: '第二行' },
       ]),
-    ).toBe('첫 줄\n둘째 줄')
+    ).toBe('第一行\n第二行')
     expect(extractMessageText(undefined)).toBe('')
   })
 })
 
 describe('collectUserHistory', () => {
-  it('user 메시지만 모으고 연속 중복·빈 항목을 제거한다', () => {
+  it('只收集 user 消息，并移除连续重复项和空项', () => {
     const messages = [
-      { role: 'user', content: '첫 질문' },
-      { role: 'assistant', content: '답' },
-      { role: 'user', content: '첫 질문' }, // 직전과 중복 아님? assistant 사이 → 히스토리상 연속
+      { role: 'user', content: '第一个问题' },
+      { role: 'assistant', content: '回答' },
+      { role: 'user', content: '第一个问题' }, // 与前一个不重复？中间有 assistant → 在 history 中连续
       { role: 'user', content: '   ' },
-      { role: 'user', content: '둘째 질문' },
+      { role: 'user', content: '第二个问题' },
     ]
-    expect(collectUserHistory(messages)).toEqual(['첫 질문', '둘째 질문'])
+    expect(collectUserHistory(messages)).toEqual(['第一个问题', '第二个问题'])
   })
 })
 
-describe('caret line 판정', () => {
-  it('첫 줄/마지막 줄 캐럿을 구분한다', () => {
-    const value = '첫 줄\n둘째 줄'
+describe('caret line 判定', () => {
+  it('区分插入符位于第一行/最后一行', () => {
+    const value = '第一行\n第二行'
     expect(caretOnFirstLine(value, 2)).toBe(true)
     expect(caretOnFirstLine(value, value.length)).toBe(false)
     expect(caretOnLastLine(value, value.length)).toBe(true)
     expect(caretOnLastLine(value, 1)).toBe(false)
-    // 빈 입력은 첫/마지막 줄 동시 성립.
+    // 空输入同时满足第一行/最后一行。
     expect(caretOnFirstLine('', 0)).toBe(true)
     expect(caretOnLastLine('', 0)).toBe(true)
   })
 })
 
 describe('stepHistoryIndex + historyItemAt', () => {
-  const history = ['오래된', '중간', '最新']
+  const history = ['较旧', '中间', '最新']
 
-  it('↑는 최신부터 과거로, 경계에서 멈춘다', () => {
+  it('↑ 从最新向过去遍历，并在边界处停止', () => {
     expect(stepHistoryIndex(3, -1, 'up')).toBe(0)
     expect(stepHistoryIndex(3, 0, 'up')).toBe(1)
     expect(stepHistoryIndex(3, 2, 'up')).toBeNull()
     expect(historyItemAt(history, 0)).toBe('最新')
-    expect(historyItemAt(history, 2)).toBe('오래된')
+    expect(historyItemAt(history, 2)).toBe('较旧')
   })
 
-  it('↓는 최신 방향으로, -1(draft 복원)까지 내려온다', () => {
+  it('↓ 向最新方向移动，直到 -1（恢复 draft）', () => {
     expect(stepHistoryIndex(3, 2, 'down')).toBe(1)
     expect(stepHistoryIndex(3, 0, 'down')).toBe(-1)
     expect(stepHistoryIndex(3, -1, 'down')).toBeNull()
     expect(historyItemAt(history, -1)).toBeNull()
   })
 
-  it('빈 히스토리는 항상 null', () => {
+  it('空历史始终返回 null', () => {
     expect(stepHistoryIndex(0, -1, 'up')).toBeNull()
   })
 })

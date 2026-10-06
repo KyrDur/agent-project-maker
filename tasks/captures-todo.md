@@ -1,111 +1,111 @@
-# 전체 앱 캡처 + 핵심 플로우 E2E
+# 全应用 capture + 核心 flow E2E
 
-브랜치: `test/full-app-captures` (genui HEAD 기준 — 생성 UI 카드 포함).
-산출물: PNG → `output/captures/<wave>/` (gitignore라 로컬). 스크립트만 커밋.
-콘텐츠: 현실적 scripted 픽스처(플로우블한 에이전트/도구). E2E는 2개 플로우만(나머지는 캡처 투어).
+分支：`test/full-app-captures`（基于 genui HEAD — 包含生成 UI card）。
+产出物：PNG → `output/captures/<wave>/`（gitignore，所以在本地）。仅 commit script。
+内容：现实感 scripted fixture（可流转的 agent/tool）。E2E 仅 2 个 flow（其余是 capture tour）。
 
-## 실행 환경 (throwaway 스택)
-- PG: host 5434 (genui에서 띄워둠), `alembic upgrade head` 적용됨.
-- playwright webServer 자동 기동: `E2E_FRONTEND_PORT=3100 E2E_BACKEND_PORT=8101`.
-- 필수 env: `E2E_SCRIPTED_MODEL_ENABLED=true`(키리스 결정적 모델), `E2E_SEED_USER_ENABLED=true`(operator 화면용 super_user 시드), `E2E_TEST_HELPERS_ENABLED=true`, `RATE_LIMIT_ENABLED=false`, `E2E_LIVE_CHAT_SURFACES=1`(게이트).
-- 캡처 스펙은 `E2E_CAPTURE_TOUR=1` 게이트로 일반 CI에서 skip.
+## 执行环境（throwaway stack）
+- PG：host 5434（genui 已启动），已应用 `alembic upgrade head`。
+- playwright webServer 自动启动：`E2E_FRONTEND_PORT=3100 E2E_BACKEND_PORT=8101`。
+- 必需 env：`E2E_SCRIPTED_MODEL_ENABLED=true`（无 key 的确定性 model）、`E2E_SEED_USER_ENABLED=true`（operator 页面用 super_user seed）、`E2E_TEST_HELPERS_ENABLED=true`、`RATE_LIMIT_ENABLED=false`、`E2E_LIVE_CHAT_SURFACES=1`（gate）。
+- capture spec 使用 `E2E_CAPTURE_TOUR=1` gate，在普通 CI 中 skip。
 
-## 재사용 인프라
-- `e2e/fixtures.ts`: loginApi(시드 super_user), apiPostJson/GetJson/DeleteOk, API_BASE.
+## 复用基础设施
+- `e2e/fixtures.ts`：loginApi（seed super_user）、apiPostJson/GetJson/DeleteOk、API_BASE。
 - `e2e/langgraph-v3-helpers.ts`: setupLangGraphV3Agent, sendMessage, waitForActiveRun/RunStatus, approveExecuteInSkill.
-- `e2e/chat-surfaces-live-captures.spec.ts`: capture(page,file) 패턴.
-- scripted 마커: E2E_CHAT_RICH_OUTPUTS, E2E_HITL_APPROVAL/MULTI, E2E_TOOL_GROUP, E2E_SEARCH_GROUP, E2E_ASK_USER_FRUIT, E2E_LANGGRAPH_V3, E2E_DOCX/XLSX/PPTX/HWPX, E2E_TOKEN_USAGE_STREAM, E2E_SLOW_STREAM, E2E_UI_DATA_* (genui).
+- `e2e/chat-surfaces-live-captures.spec.ts`：capture(page,file) 模式。
+- scripted marker：E2E_CHAT_RICH_OUTPUTS, E2E_HITL_APPROVAL/MULTI, E2E_TOOL_GROUP, E2E_SEARCH_GROUP, E2E_ASK_USER_FRUIT, E2E_LANGGRAPH_V3, E2E_DOCX/XLSX/PPTX/HWPX, E2E_TOKEN_USAGE_STREAM, E2E_SLOW_STREAM, E2E_UI_DATA_*（genui）。
 
-## 웨이브
+## Wave
 
-### Wave 0 — 하네스 + 현실적 시드 팩토리
-- [ ] `e2e/captures/_capture-helpers.ts`: CAPTURE_ROOT=output/captures, capture(page,wave,file), 뷰포트, 현실적 에이전트 팩토리(플로우블 이름/프롬프트/도구).
-- [ ] 스택 1회 기동 + 단일 캡처로 파이프라인 검증.
+### Wave 0 — harness + 现实感 seed factory
+- [ ] `e2e/captures/_capture-helpers.ts`：CAPTURE_ROOT=output/captures，capture(page,wave,file)，viewport，现实感 agent factory（可流转名称/prompt/工具）。
+- [ ] stack 启动 1 次 + 用单次 capture 验证 pipeline。
 
-### Wave 1 — 핵심 플로우 2개 (진짜 E2E + 단계 캡처)
-- [ ] `captures-flow-agent-creation.spec.ts`: 자연어 빌더로 에이전트 생성 → 결과 → 생성된 에이전트 채팅 테스트. (영상 2 플로우)
-- [ ] `captures-flow-daily-conversation.spec.ts`: 일상 비서 멀티턴 — 인사→표/마크다운→검색→ask_user→도구그룹→생성UI 카드, 각 턴 캡처. (영상 3 플로우)
+### Wave 1 — 2 个核心 flow（真实 E2E + 分阶段 capture）
+- [ ] `captures-flow-agent-creation.spec.ts`：通过自然语言 Builder 创建 agent → 结果 → 测试生成的 agent 聊天。（视频 2 flow）
+- [ ] `captures-flow-daily-conversation.spec.ts`：日常助手多轮 — 问候→表格/Markdown→搜索→ask_user→工具组→生成 UI card，每轮 capture。（视频 3 flow）
 
-### Wave 2 — 페이지/라우트 투어 (캡처)
-- [ ] 대시보드(/), /agents/new(+conversational/manual/template), 리소스 목록(/skills /tools /mcp-servers /marketplace 탭들 /artifacts), /usage, /settings/*(profile/appearance/credentials/agent-api/audit/security/memory/artifacts/models/schedules), 공유뷰(/shared), 인증(/login /register).
+### Wave 2 — page/route tour（capture）
+- [ ] dashboard(/), /agents/new(+conversational/manual/template), 资源列表(/skills /tools /mcp-servers /marketplace tabs /artifacts), /usage, /settings/*(profile/appearance/credentials/agent-api/audit/security/memory/artifacts/models/schedules), shared view(/shared), auth(/login /register).
 
-### Wave 3 — 다이얼로그/모달 (캡처)
+### Wave 3 — dialog/modal（capture）
 - [ ] share, credential create/detail, tool create/detail, skill create/detail, mcp import/detail, install wizard(steps), publish wizard(steps), schedule create, model test, delete confirm, sub-agents picker, api-key created.
 
-### Wave 4 — 채팅 UI 상태 매트릭스 (캡처)
-- [ ] empty/opener, streaming, tool group, search group, HITL single/multi(승인 전/후), ask_user, reasoning, phase timeline, subagent, deepagents 패널, artifacts inline+rail+preview(docx/xlsx/pptx/hwpx), attachments, 생성UI(data_table/chart/stats/terminal), compaction marker, branch picker, token popover, context gauge, reconnect/stop.
+### Wave 4 — 聊天 UI 状态矩阵（capture）
+- [ ] empty/opener, streaming, tool group, search group, HITL single/multi（批准前/后）, ask_user, reasoning, phase timeline, subagent, deepagents panel, artifacts inline+rail+preview(docx/xlsx/pptx/hwpx), attachments, 生成 UI(data_table/chart/stats/terminal), compaction marker, branch picker, token popover, context gauge, reconnect/stop.
 
-### Wave 5 — operator/super_user 화면 (캡처)
+### Wave 5 — operator/super_user 页面（capture）
 - [ ] system-llm, system-credentials, admin-audit, marketplace-admin(moderation), models(system).
 
-## 진행 로그 (결과)
-- **Wave 0 하네스 ✓** — _capture-helpers.ts (capture/seed/scriptedModelId). 영속 스택(reuseExistingServer)으로 재실행 가속.
-- **Wave 2 페이지 26/26 ✓** — 대시보드(시드 에이전트 5), agent-new(hub/manual/template), 리소스 목록(skills/tools/mcp/marketplace/artifacts), usage, settings/*(profile/appearance/credentials/agent-api/audit/security/memory/artifacts/models/schedules), operator(system-llm/system-credentials/admin-audit/marketplace-admin), auth(login/register). super_user 인증 검증됨.
-- **Wave 4 채팅 상태 13/14 ✓** — rich markdown, tool group, search group, ask_user, 생성UI(table/chart/stats/terminal), HITL 승인(단일+멀티), artifact, langgraph-v3 planning, branch picker. (누락: empty-state — chat 라우트 콜드컴파일 반복 실패, 최소 중요도.)
-- **Wave 3 다이얼로그 5/8 ✓** — credential/skill/mcp/model create + agent delete. (누락: tool/schedule/api-key create — 빈 상태 아이콘 CTA라 라벨 매칭 불가.)
-- **Wave 1 hero 플로우** — 빌더 생성 플로우 ✓(05 welcome + 06 단계 타임라인+이름 제안, video 2 재현). 일상대화 멀티턴 ✗(240s 타임아웃; 컴포넌트는 Wave 4에 전부 존재).
+## 进度日志（结果）
+- **Wave 0 harness ✓** — _capture-helpers.ts（capture/seed/scriptedModelId）。使用 persistent stack（reuseExistingServer）加速重跑。
+- **Wave 2 页面 26/26 ✓** — dashboard（seed agent 5 个）, agent-new(hub/manual/template), 资源列表(skills/tools/mcp/marketplace/artifacts), usage, settings/*(profile/appearance/credentials/agent-api/audit/security/memory/artifacts/models/schedules), operator(system-llm/system-credentials/admin-audit/marketplace-admin), auth(login/register)。已验证 super_user auth。
+- **Wave 4 聊天状态 13/14 ✓** — rich markdown, tool group, search group, ask_user, 生成 UI(table/chart/stats/terminal), HITL 批准（single+multi）, artifact, langgraph-v3 planning, branch picker。（缺失：empty-state — chat route cold compile 反复失败，最低重要度。）
+- **Wave 3 dialog 5/8 ✓** — credential/skill/mcp/model create + agent delete。（缺失：tool/schedule/api-key create — 空状态 icon CTA 无法匹配 label。）
+- **Wave 1 hero flow** — Builder 创建 flow ✓（05 welcome + 06 阶段 timeline+名称建议，video 2 可复现）。日常对话多轮 ✗（240s timeout；组件在 Wave 4 全部存在）。
 
-총 **46장** → output/captures/{wave1-flows,wave2-pages,wave3-dialogs,wave4-chat-states}/
+总计 **46 张** → output/captures/{wave1-flows,wave2-pages,wave3-dialogs,wave4-chat-states}/
 
-## Wave 6 — 코드/백엔드 개선 (사용자 피드백)
-- [x] **차트 색상**: chart-card.tsx 막대/라인을 구분 팔레트로(민트 단색 → indigo/emerald/amber/...). ✓
-- [ ] **ask_user 변형 4종**(scripted 픽스처 추가): ① 텍스트 입력(옵션 없음) ② 단일선택+기타(직접입력) ③ 다중선택(4개, maxSelections>1) ④ question_flow 멀티스텝. (기존: 단일선택 3개=fruit)
-- [ ] (보류/확인) 승인 카드 args가 너무 기술적(raw dict 노출) → approval-card 렌더 개선 여부 사용자 확인.
+## Wave 6 — 代码/backend 改进（用户反馈）
+- [x] **图表颜色**：chart-card.tsx 的 bar/line 改为区分 palette（mint 单色 → indigo/emerald/amber/...）。✓
+- [ ] **ask_user 变体 4 种**（新增 scripted fixture）：① text 输入（无 option）② single-select+其他（直接输入）③ multi-select（4 个，maxSelections>1）④ question_flow 多步骤。（现有：single-select 3 个=fruit）
+- [ ]（保留/确认）批准 card args 过于技术化（暴露 raw dict）→ 是否改进 approval-card rendering，等待用户确认。
 
-## Wave 7 — 콘텐츠 있는/신규 캡처 (사용자 피드백)
-**리치 시드 선행**: 도구·스킬·MCP·트리거 붙은 에이전트 + 대화 여러 개 + 아티팩트(docx+이미지) + 첨부 + usage 데이터.
-- [ ] 에이전트 수정 — 내용 있는 상태 + 탭 전부(basic/tools/skills/mcp/subagents/triggers/memory/api/fallback) + **visual 수정**.
-- [ ] 대시보드 — 에이전트 펼침(세션 리스트 보이는 형태) + **정렬/그룹 변형**(세션단위·에이전트별·정렬옵션).
-- [ ] 사용량(usage) — 데이터 있는 상태.
-- [ ] 스케줄 — 트리거 등록된 상태 + 발생 시 에이전트 **느낌표(attention) 배지**.
-- [ ] 파일/아티팩트 리스트(이미지 포함) + **이미지 클릭 확대(lightbox)**.
-- [ ] 채팅 — 에이전트 이름 옆 hover/click **요약 팝업**.
-- [ ] 채팅 — **trace 화면** + trace에서 실제 대화 표현.
-- [ ] 채팅 — **첨부**: composer 표시 + 메시지 버블 표현.
-- [ ] 채팅 — **todo/플랜** (langgraph_v3 write_todos).
-- [ ] 채팅 — **웹검색 도구 펼친** 상태(출처 전개).
-- [ ] 채팅 — ask_user 변형 5종 캡처(Wave 6 픽스처 기반).
-- [ ] empty-state 채팅 / rich-markdown 상단(메시지 element 캡처).
+## Wave 7 — 有内容/新增 capture（用户反馈）
+**rich seed 前置**：绑定 tool/skill/MCP/trigger 的 agent + 多个对话 + artifact（docx+图片）+ attachment + usage 数据。
+- [ ] agent 修改 — 有内容状态 + 全部 tab（basic/tools/skills/mcp/subagents/triggers/memory/api/fallback）+ **visual 修改**。
+- [ ] dashboard — 展开 agent（显示 session list 的形式）+ **排序/group 变体**（按 session·按 agent·排序 option）。
+- [ ] usage — 有数据状态。
+- [ ] schedule — 已注册 trigger 状态 + 发生时 agent **感叹号（attention）badge**。
+- [ ] 文件/artifact list（包含图片）+ **点击图片放大（lightbox）**。
+- [ ] 聊天 — agent 名称旁 hover/click **摘要 popup**。
+- [ ] 聊天 — **trace 页面** + trace 中展示真实对话。
+- [ ] 聊天 — **attachment**：composer 显示 + message bubble 表达。
+- [ ] 聊天 — **todo/plan**（langgraph_v3 write_todos）。
+- [ ] 聊天 — **web search 工具展开**状态（展开 source）。
+- [ ] 聊天 — capture 5 种 ask_user 变体（基于 Wave 6 fixture）。
+- [ ] empty-state chat / rich-markdown 顶部（message element capture）。
 
-## Wave 6/7 결과 (사용자 피드백 반영)
-- **Wave 6 (7장)**: ask_user 단일/다중/텍스트/question_flow, 웹검색 펼침, todo/플랜, 재색칠 차트. + 백엔드 ask_user 변형 3종 + chart 색상 코드 수정.
-- **Wave 7 (17장)**: 편집 개요+탭(form-visual/test/opener/schedule/settings/api)+visual, 대시보드 세션, 스케줄 등록, 첨부 컴포저, 파일리스트(docx), 첨부 버블, 이미지 lightbox, trace+detail, usage.
+## Wave 6/7 结果（反映用户反馈）
+- **Wave 6（7 张）**：ask_user single/multi/text/question_flow，web search 展开，todo/plan，重新着色 chart。+ backend ask_user 3 种变体 + chart 颜色代码修改。
+- **Wave 7（17 张）**：编辑 overview+tab（form-visual/test/opener/schedule/settings/api）+visual，dashboard session，schedule 已注册，attachment composer，file list（docx），attachment bubble，image lightbox，trace+detail，usage。
 
-**총 70장** → output/captures/{wave1-flows,wave2-pages,wave3-dialogs,wave4-chat-states,wave6-chat-enhancements,wave7-rich-content}/
+**总计 70 张** → output/captures/{wave1-flows,wave2-pages,wave3-dialogs,wave4-chat-states,wave6-chat-enhancements,wave7-rich-content}/
 
-### 미해결(소수) → ✅ 전부 해결 (branch `fix/capture-issues`)
+### 未解决（少数）→ ✅ 全部解决（branch `fix/capture-issues`）
 
-수정 후 영향 스펙 전부 그린: chat-states 14/14(51.7s), flows 2/2(daily 11.6s), dialogs 5/5, rich-content 6/6. 실제 PNG로 검증.
+修改后受影响 spec 全部绿色：chat-states 14/14（51.7s），flows 2/2（daily 11.6s），dialogs 5/5，rich-content 6/6。已用实际 PNG 验证。
 
-- ✅ **12-dashboard-sort**: `dashboard-page-client.tsx` 정렬 트리거에 `data-testid="dashboard-sort-trigger"` 추가 → 스펙 `getByTestId`. (287KB 캡쳐 확인)
-- ✅ **첨부 인라인 버블(15) + 17-lightbox**: 투어 플로우를 검증된 `chat-attachments-display` 스펙대로 재작성(composer 가시성 게이트 + 업로드 201 단언 + alt-text 셀렉터 `getByRole('img',{name:'membership-card.png'})`, best-effort 래핑). (15=97KB, 17=90KB 확인)
-- ✅ **empty-state 채팅 / rich-markdown 상단**: (1) empty-state는 composer 게이트 추가(콜드컴파일 흡수). (2) rich-markdown은 새 `captureLocator`로 메시지 엘리먼트 스코프 스크린샷(내부 overflow-y-auto 클리핑 회피). + 근본 수정: `settle()`의 `waitForLoadState('networkidle')`를 5s 상한으로 캡(chat 라우트는 SSE로 networkidle에 영영 도달 못 해 테스트 타임아웃까지 hang했음). + 워밍업 `beforeAll`(훅 타임아웃 300s)로 cold compile를 테스트 budget 밖으로.
-- ✅ **3 다이얼로그(tool/schedule/api-key)**: 단순 라벨 문제 아니었음 — tool은 카탈로그 카드 클릭(`data-testid="tool-catalog-card"`), schedule은 페이지가 아닌 에이전트 설정 스케줄 탭(`data-testid="trigger-add-button"`), api-key는 deployment 시드 후 활성화(`data-testid="api-key-create-button"`). 전용 테스트 3개로 분리.
-- ✅ **승인 카드 UI 간소화**(approval-card): ① 펼친 args를 raw `JSON.stringify` `<pre>` 덤프 → 읽기 쉬운 key/value 목록(스칼라 그대로, 객체/배열만 compact JSON). ② 도구명 아래 langchain boilerplate 설명(`"Tool execution requires approval\n\nTool: X\nArgs: {...}"` — 헤더·도구명·args 전부 중복) 표시 억제 → 의미 있는 커스텀 설명만 노출. ③ 헤더 제목을 "승인이 필요합니다" → "**도구 사용 승인이 필요합니다**"로(무슨 승인인지 한눈에; args는 기본 접힘 유지). redaction·edit(JSON) 경로 불변. 회귀 테스트 추가(approval-card 8/8, vitest 1124/1124). 최종 카드 = 제목 / 도구명 / 실행 인자(접힘) / 승인·수정·거부.
+- ✅ **12-dashboard-sort**：在 `dashboard-page-client.tsx` 排序 trigger 添加 `data-testid="dashboard-sort-trigger"` → spec `getByTestId`。（已确认 287KB capture）
+- ✅ **attachment inline bubble（15）+ 17-lightbox**：按已验证的 `chat-attachments-display` spec 重写 tour flow（composer 可见性 gate + upload 201 断言 + alt-text selector `getByRole('img',{name:'membership-card.png'})`，best-effort wrapping）。（15=97KB, 17=90KB 已确认）
+- ✅ **empty-state chat / rich-markdown 顶部**：(1) empty-state 新增 composer gate（吸收 cold compile）。(2) rich-markdown 使用新 `captureLocator` 做 message element scoped screenshot（规避内部 overflow-y-auto clipping）。+ 根本修复：给 `settle()` 的 `waitForLoadState('networkidle')` 加 5s 上限（chat route 因 SSE 永远到不了 networkidle，之前一直 hang 到测试 timeout）。+ warming `beforeAll`（hook timeout 300s）把 cold compile 移出测试 budget。
+- ✅ **3 个 dialog（tool/schedule/api-key）**：并非简单 label 问题 — tool 点击 catalog card（`data-testid="tool-catalog-card"`），schedule 不是页面而是 agent 设置 schedule tab（`data-testid="trigger-add-button"`），api-key 在 seed deployment 后激活（`data-testid="api-key-create-button"`）。拆成 3 个专用 test。
+- ✅ **批准 card UI 简化**（approval-card）：① 展开 args 从 raw `JSON.stringify` `<pre>` dump → 易读的 key/value list（scalar 原样，对象/数组仅 compact JSON）。② 抑制工具名下 langchain boilerplate 描述（`"Tool execution requires approval\n\nTool: X\nArgs: {...}"` — header·工具名·args 全重复）→ 仅显示有意义的 custom 描述。③ header 标题从 "需要批准" → "**需要批准工具使用**"（一眼看出批准什么；args 默认折叠）。redaction·edit(JSON) 路径不变。新增 regression test（approval-card 8/8，vitest 1124/1124）。最终 card = 标题 / 工具名 / 执行参数（折叠）/ 批准·修改·拒绝。
 
-#### scripted 그럴싸함 (별도 백엔드 작업) → ✅ 해결
-- `e2e_scripted_model.py`에 `E2E_DAILY_GREETING` 마커 + 따뜻한 일상비서 응답 추가(기본 센티넬 "E2E scripted document model is ready."는 불변 → 의존 테스트 8 프론트+1 백엔드 안 깨짐). 일상대화 hero에 인사 Turn 0로 opt-in. (`01b-greeting-reply.png` 확인)
+#### scripted 更自然（单独 backend 工作）→ ✅ 解决
+- 在 `e2e_scripted_model.py` 新增 `E2E_DAILY_GREETING` marker + 温暖的日常助手响应（默认 sentinel "E2E scripted document model is ready." 不变 → 依赖测试 8 frontend+1 backend 不受影响）。日常对话 hero 作为问候 Turn 0 opt-in。（已确认 `01b-greeting-reply.png`）
 
-#### daily-conversation hero 추가 수정
-- ask_user **선택/재개**(`04-after-selection`)는 인터럽트 루프(20+ 재invoke)로 240s를 넘겨 제거 — wave4 HITL 캡쳐처럼 ask_user 카드(03)를 자연스러운 피날레로. 멀티턴 누적 초과는 `settle` 상한 + 워밍업으로 해소(240s → 11.6s).
+#### daily-conversation hero 追加修改
+- ask_user **选择/恢复**（`04-after-selection`）因 interrupt loop（20+ 次 re-invoke）超过 240s 而移除 — 像 wave4 HITL capture 一样，以 ask_user card（03）作为自然结尾。多轮累积超时通过 `settle` 上限 + warming 解决（240s → 11.6s）。
 
-## Wave 10 — HITL 승인 결정 상태 (edit 견고화 + allowed_decisions 게이팅)
+## Wave 10 — HITL 批准决策状态（edit hardening + allowed_decisions gating）
 
-브랜치 `feature/hitl-edit-hardening`의 HITL 변경(field editor + allowed_decisions 버튼 게이팅)을 화면으로 검증.
-기존 wave4는 카드 **초기 상태**(10-hitl-approval, 11-hitl-multi)만 — 결정(승인/거부/수정) 결과와 새 field editor 화면이 없었음.
+通过画面验证 branch `feature/hitl-edit-hardening` 的 HITL 变更（field editor + allowed_decisions button gating）。
+现有 wave4 只有 card **初始状态**（10-hitl-approval, 11-hitl-multi）— 没有 decision（批准/拒绝/修改）结果和新的 field editor 画面。
 
-- 신규 spec: `e2e/captures/captures-hitl-decisions.spec.ts` (wave10-hitl-decisions). 단일 에이전트(docx skill + subagent)로 시나리오별 fresh 대화, best-effort.
-- 신규 백엔드 fixture: `E2E_HITL_EDIT` (e2e_scripted_model.py) — `edit_file` 호출 1건. execute_in_skill([approve,reject])와 달리 edit_file은 [approve,edit,reject] 정책이라 **수정 버튼 + field editor**가 뜬다. args에 시크릿 키(api_key) 포함 → 에디터의 read-only 잠금(`<redacted>`) 시연.
-- 캡쳐 방법: 카드(`data-testid="approval-action-N"`)는 element-scoped(captureLocator) — 마커 버블 제외. 결정 후 카드는 배지로 교체되어 testid가 사라지므로 배지/멀티는 full-page.
+- 新增 spec：`e2e/captures/captures-hitl-decisions.spec.ts`（wave10-hitl-decisions）。用单一 agent（docx skill + subagent）为每个场景创建 fresh conversation，best-effort。
+- 新增 backend fixture：`E2E_HITL_EDIT`（e2e_scripted_model.py）— 1 次 `edit_file` 调用。与 execute_in_skill([approve,reject]) 不同，edit_file 是 [approve,edit,reject] policy，因此会出现**修改按钮 + field editor**。args 含 secret key（api_key）→ 演示 editor 的 read-only lock（`<redacted>`）。
+- capture 方法：card（`data-testid="approval-action-N"`）使用 element-scoped（captureLocator）— 排除 marker bubble。decision 后 card 替换为 badge，testid 消失，因此 badge/multi 使用 full-page。
 
-8장 (`output/captures/wave10-hitl-decisions/`):
-- [ ] `01-single-card` — execute_in_skill 카드 (승인/거부만 = **게이팅: 수정 버튼 없음**)
-- [ ] `02-single-approved` — 승인 → 승인됨 배지
-- [ ] `03-single-rejected` — 거부 → 거부 확인 → 거부됨 배지
-- [ ] `04-edit-card` — edit_file 카드 (승인/**수정**/거부 = 게이팅 대비)
-- [ ] `05-edit-field-editor` — 수정 클릭 → **field editor**(칸별 편집 + api_key read-only 잠금)
-- [ ] `06-edit-approved` — 한 칸 수정 후 승인 → 수정 승인됨 배지
-- [ ] `07-multi-card` — 멀티(2× execute_in_skill) 카드
-- [ ] `08-multi-approved` — 둘 다 승인 → 승인됨 ×2
+8 张（`output/captures/wave10-hitl-decisions/`）：
+- [ ] `01-single-card` — execute_in_skill card（仅批准/拒绝 = **gating：无修改按钮**）
+- [ ] `02-single-approved` — 批准 → 已批准 badge
+- [ ] `03-single-rejected` — 拒绝 → 拒绝确认 → 已拒绝 badge
+- [ ] `04-edit-card` — edit_file card（批准/**修改**/拒绝 = gating 对比）
+- [ ] `05-edit-field-editor` — 点击修改 → **field editor**（逐字段编辑 + api_key read-only lock）
+- [ ] `06-edit-approved` — 修改一个字段后批准 → 修改已批准 badge
+- [ ] `07-multi-card` — multi（2× execute_in_skill）card
+- [ ] `08-multi-approved` — 两个都批准 → 已批准 ×2
 
-실행: throwaway 스택(PG 5434) + fresh 포트(reuseExistingServer가 stale genui 코드를 재사용하지 않도록). `E2E_CAPTURE_TOUR=1 E2E_SCRIPTED_MODEL_ENABLED=true E2E_SEED_USER_ENABLED=true E2E_TEST_HELPERS_ENABLED=true RATE_LIMIT_ENABLED=false E2E_LIVE_CHAT_SURFACES=1`.
+执行：throwaway stack（PG 5434）+ fresh port（避免 reuseExistingServer 复用 stale genui 代码）。`E2E_CAPTURE_TOUR=1 E2E_SCRIPTED_MODEL_ENABLED=true E2E_SEED_USER_ENABLED=true E2E_TEST_HELPERS_ENABLED=true RATE_LIMIT_ENABLED=false E2E_LIVE_CHAT_SURFACES=1`。

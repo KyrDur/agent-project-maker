@@ -26,7 +26,12 @@ export function ProjectOptimization({
   const analysis = run.comparison_json?.analysis
   const state = run.comparison_json?.optimization
   const badCases = run.bad_cases_json ?? []
-  const failedCount = run.results_json?.filter((r) => r.status !== 'passed').length ?? 0
+  const failedCount =
+    run.results_json?.filter(
+      (r) =>
+        r.status !== 'passed' ||
+        Object.values(r.metric_scores ?? {}).some((metric) => metric.score < 1),
+    ).length ?? 0
   const counts = badCases.reduce<Record<string, number>>((result, item) => {
     result[item.category] = (result[item.category] ?? 0) + 1
     return result
@@ -71,6 +76,7 @@ export function ProjectOptimization({
       {analysis && (
         <>
           <h4 className="font-medium">{t('optimizationPlan')}</h4>
+          <details><summary>{t('analysisEvidence')}</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(analysis, null, 2)}</pre></details>
           <ol className="list-decimal space-y-2 pl-5">
             {analysis.groups.map((group, i) => (
               <li key={i}>

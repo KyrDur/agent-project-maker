@@ -102,6 +102,12 @@ async def experiment(db, monkeypatch):
 
     monkeypatch.setattr(evaluation, "execute_snapshot", examinee)
     monkeypatch.setattr(semantic, "json_call", judge)
+    from app.services import agent_project_llm
+    from tests.project_practice_helpers import author_practice, fixed_examinee, fixed_judge
+
+    monkeypatch.setattr(agent_project_llm, "resolve_system_model", fixed_judge)
+    monkeypatch.setattr(agent_project_llm, "resolve_examinee_model", fixed_examinee)
+    await author_practice(db, agent, TEST_USER_ID, dataset.id)
     run = await evaluation.create_run(
         db,
         agent.id,

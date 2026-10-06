@@ -19,19 +19,19 @@ export function isChatRouteReplacedEvent(
 }
 
 /**
- * draft → real 대화 승격 시 URL만 교체하고 컴포넌트 remount는 피한다
- * (langgraph-v3 전용 경로). Next.js 16 공식 가이드(`docs/.../linking-and-navigating`
- * "Native History API")는 `window.history.replaceState`를 직접 호출하면 Next
- * Router에 통합되어 `usePathname`/`useSearchParams`와 동기화된다고 명시한다.
+ * draft → real 对话升级时只替换 URL，避免组件 remount
+ * （langgraph-v3 专用路径）。Next.js 16 官方指南（`docs/.../linking-and-navigating`
+ * "Native History API"）明确说明，直接调用 `window.history.replaceState` 会与 Next
+ * Router 集成，并与 `usePathname`/`useSearchParams` 同步。
  *
- * 제약/이전 버그:
- * - 반드시 `window.history.replaceState`를 호출해야 한다. `History.prototype`을
- *   직접 부르면 Next가 monkey-patch한 wrapper를 우회해 App Router 캐시/pathname이
- *   갱신되지 않는다 (그러면 "draft 전송 → 다른 대화 클릭 → 뒤로가기"가 엉뚱한
- *   대화나 `/new`로 돌아간다).
- * - state 인자는 새 URL 기준으로 `null`을 넘긴다. 이전 코드는 OLD URL의
- *   `window.history.state`를 그대로 재사용해 뒤로가기 시 stale state가 복원됐다.
- *   Next 가이드 예시와 동일하게 `null`을 쓴다.
+ * 约束/历史 bug：
+ * - 必须调用 `window.history.replaceState`。如果直接调用 `History.prototype`，
+ *   会绕过 Next monkey-patch 的 wrapper，导致 App Router 缓存/pathname
+ *   不更新（这样"draft 发送 → 点击其他对话 → 后退"会回到错误的
+ *   对话或 `/new`）。
+ * - state 参数按新 URL 传 `null`。旧代码直接复用了 OLD URL 的
+ *   `window.history.state`，导致后退时恢复 stale state。
+ *   与 Next 指南示例一致，使用 `null`。
  */
 export function replaceChatRouteWithoutRemount(path: string): void {
   if (typeof window === 'undefined') return
@@ -50,10 +50,10 @@ export function clearChatRouteReplacement(): void {
 }
 
 /**
- * `/agents/<agentId>/conversations/<conversationId>` 경로에서 conversationId를
- * 추출한다. agentId가 다르거나 형식이 안 맞으면 null. conversationId는
- * `decodeURIComponent`로 디코드한다(percent-encoded id 대응). 디코드가 실패하면
- * (malformed % sequence) raw 세그먼트를 그대로 돌려준다.
+ * 从 `/agents/<agentId>/conversations/<conversationId>` 路径中
+ * 提取 conversationId。agentId 不同或格式不匹配时返回 null。conversationId
+ * 用 `decodeURIComponent` 解码（支持 percent-encoded id）。如果解码失败，
+ * （malformed % sequence）则原样返回 raw 段。
  */
 export function conversationIdFromChatPath(pathname: string, agentId: string): string | null {
   const match = /^\/agents\/([^/]+)\/conversations\/([^/]+)$/.exec(pathname)

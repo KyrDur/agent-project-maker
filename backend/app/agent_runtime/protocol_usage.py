@@ -16,7 +16,7 @@ class UsageMetricsPayload(TypedDict):
     cache_creation_tokens: int
     cache_read_tokens: int
     estimated_cost: NotRequired[float]
-    # 스트리밍 timing (live-only) — usage 옆에 실어 같은 경로로 흐른다.
+    # streaming timing (live-only) — 与 usage 一起携带并沿相同路径流转。
     ttft_ms: NotRequired[float]
     generation_ms: NotRequired[float]
     tokens_per_second: NotRequired[float]

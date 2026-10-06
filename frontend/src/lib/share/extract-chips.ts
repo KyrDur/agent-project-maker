@@ -1,19 +1,19 @@
 /**
- * W6 — turn별 SSE 이벤트 시퀀스에서 공개 페이지 칩으로 표시할 정보를 추출.
+ * W6 — 从每个 turn 的 SSE event sequence 中提取要在公开页面 chip 中展示的信息。
  *
- * 입력: ``TurnTrace`` 한 건의 events (``message_start`` … ``message_end``).
- * 출력: ``ChipInfo[]`` — assistant 메시지 본문 위에 떠 있는 도구/서브에이전트
- *      배지 리스트.
+ * 输入：一条 ``TurnTrace`` 的 events（``message_start`` … ``message_end``）。
+ * 输出：``ChipInfo[]`` — 浮在 assistant 消息正文上方的工具/子代理
+ *      badge 列表。
  *
- * 추출 규칙:
- * - ``tool_call_start`` 발견 → 도구 chip 시작 (status="success", kind="tool")
- *   - 같은 ``tool_name``의 ``tool_call_result``가 뒤에 있으면 매칭 (가장 가까운
- *     하나, 일대일). 결과 미도착이면 chip은 그대로 success 처리 (스트림이
- *     이미 종료된 상태라 loading 의미 없음).
- *   - 도구명이 ``task`` 면 서브에이전트 chip으로 변환 (kind="subagent",
- *     이름은 ``args.agent_name`` 또는 ``args.subagent_type`` 폴백).
- *   - 도구명이 ``write_todos`` 면 plan chip — 이름 "Plan", meta는 todos 개수.
- * - 기타 이벤트는 무시 (content_delta 등은 본문 텍스트로 이미 노출).
+ * 提取规则：
+ * - 发现 ``tool_call_start`` → 开始一个工具 chip（status="success", kind="tool"）
+ *   - 若后面存在同一 ``tool_name`` 的 ``tool_call_result`` 则匹配（最近的
+ *     一个，一对一）。若结果未到达，chip 仍按 success 处理（stream
+ *     已结束，因此 loading 没有意义）。
+ *   - 工具名为 ``task`` 时转换为子代理 chip（kind="subagent"，
+ *     名称回退顺序为 ``args.agent_name`` 或 ``args.subagent_type``）。
+ *   - 工具名为 ``write_todos`` 时转换为 plan chip — 名称 "Plan"，meta 为 todos 数量。
+ * - 忽略其他事件（content_delta 等已作为正文文本暴露）。
  */
 
 import { asRecord, isRecord, planMeta, resultMeta, subagentTitle, text } from './chip-values'
@@ -66,18 +66,18 @@ function _legacyChips(events: TraceEvent[]): ChipInfo[] {
 }
 
 /**
- * Turn 1건의 events를 chip 배열로 변환. 빈 배열이면 (tool 호출이 없었던 단순
- * 텍스트 응답) 빈 결과를 반환.
+ * 将一条 Turn 的 events 转换为 chip 数组。若为空数组（没有 tool 调用的普通
+ * 文本响应），返回空结果。
  */
 export function extractChips(turn: TurnTrace): ChipInfo[] {
   return [..._legacyChips(turn.events), ...protocolChips(turn.events)]
 }
 
 /**
- * assistant 메시지 id에 매칭되는 turn을 traces 배열에서 찾는다. 백엔드의
- * ``MessageResponse.id``는 raw langchain id 또는 deterministic uuid5 — 그래도
- * ``TurnTrace.assistant_msg_id``(stream_agent_response의 msg_id)와 동일 문자열
- * 비교가 성립하는 경우가 가장 흔한 경로. 매칭 안 되면 null 반환 → 칩 미표시.
+ * 在 traces 数组中查找与 assistant 消息 id 匹配的 turn。后端的
+ * ``MessageResponse.id`` 是 raw langchain id 或 deterministic uuid5 — 即便如此，
+ * 与 ``TurnTrace.assistant_msg_id``（stream_agent_response 的 msg_id）做字符串
+ * 相等比较仍是最常见路径。匹配不到则返回 null → 不显示 chip。
  */
 export function findTurnForMessage(traces: TurnTrace[], messageId: string): TurnTrace | null {
   for (const t of traces) {

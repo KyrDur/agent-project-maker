@@ -1,21 +1,21 @@
 """Per-run SSE EventBroker primitive (W3-out M1).
 
-연결 신뢰성 레이어의 핵심 요소. POST `/messages` 가 publish하면 broker가 ring
-buffer에 보관 + 모든 라이브 listener의 asyncio.Queue로 fan-out한다. 끊긴
-클라이언트가 GET `/stream?run_id=&last_event_id=` 로 재연결하면 broker가
-살아있을 때 누락된 event를 즉시 replay하고, 이어서 새 토큰을 라이브 구독시킨다.
+连接可靠性层的核心要素。POST `/messages` publish 时，broker 将其保存在 ring
+buffer 中 + fan-out 到所有实时 listener 的 asyncio.Queue。断开的
+客户端通过 GET `/stream?run_id=&last_event_id=` 重新连接时，如果 broker
+仍存活，就会立即 replay 缺失的 event，并继续实时订阅新的令牌。
 
-설계 노트
-- process-local 단일 프로세스 가정 (workers=1). 멀티-워커는 후속 트랙
-  (Redis pub/sub 또는 sticky routing)이 별도 결정.
-- asyncio single-threaded — publish/subscribe 사이의 동기 구간(await가
-  없는 구간)은 사실상 atomic이라 listener 등록과 buffer snapshot 사이의
-  race를 추가 락 없이 제거한다.
-- ring buffer가 가득 차면 oldest event는 silently drop. last_event_id가 이미
-  ring 밖으로 밀린 client는 broker 단독으로는 메꿀 수 없으니 router 레이어가
-  DB replay (`trace_storage.get_trace_by_msg_id`)로 위임한다.
-- listener queue가 가득 찬 slow listener는 publish 경로에서 강제 disconnect
-  되며, 다른 listener의 broadcast는 영향받지 않는다.
+设计说明
+- process-local 单进程假设 (workers=1)。多 worker 属于后续轨道
+  (Redis pub/sub 或 sticky routing) 另行决定。
+- asyncio single-threaded — publish/subscribe 之间的同步区间 (没有 await 的
+  区间) 实际上是 atomic，因此无需额外加锁即可消除 listener 注册与 buffer snapshot 之间的
+  race。
+- ring buffer 满时，oldest event 会 silently drop。若 last_event_id 已经
+  被挤出 ring 的 client，单靠 broker 无法补齐，因此由 router 层委托给
+  DB replay (`trace_storage.get_trace_by_msg_id`)。
+- listener queue 满的 slow listener 会在 publish 路径中被强制 disconnect，
+  其他 listener 的 broadcast 不受影响。
 """
 
 from __future__ import annotations
@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 class BrokeredEvent(TypedDict):
     """Per-event payload published on the broker.
 
-    ``id`` 는 SSE 표준 ``id:`` 필드이며 W3-out resume 시 ``last_event_id`` 의
-    기준이 된다. 형식은 ``streaming.py`` 의 emit 클로저가 결정한다
-    (현재 ``{msg_id}-{seq}``).
+    ``id`` 是 SSE 标准 ``id:`` 字段，是 W3-out resume 时 ``last_event_id`` 的
+    基准。格式由 ``streaming.py`` 的 emit 闭包决定
+    (当前为 ``{msg_id}-{seq}``)。
     """
 
     id: str
@@ -54,14 +54,14 @@ def slice_events_after[E: Mapping[str, Any]](
     """Yield events strictly after the one whose ``id`` matches ``after_id``.
 
     Shared invariant for two replay paths:
-    - ``EventBroker.subscribe`` 의 buffer snapshot 슬라이싱 (live broker)
-    - ``routers/conversations._replay_resume_generator`` 의 DB events 슬라이싱
+    - ``EventBroker.subscribe`` 的 buffer snapshot 切片 (live broker)
+    - ``routers/conversations._replay_resume_generator`` 的 DB events 切片
 
     Semantics:
-    - ``after_id is None`` → yield 모든 evt.
-    - ``after_id`` 와 일치하는 evt 가 있으면 그 evt 까지(포함) skip 후 yield 시작.
-    - ``after_id`` 가 events 안에 없으면(이미 evict 됐거나 newer) 아무것도 yield X.
-      caller 가 이 의미("evicted/missing")를 분리 해석.
+    - ``after_id is None`` → yield 所有 evt。
+    - 如果有与 ``after_id`` 匹配的 evt，则 skip 到该 evt 为止（包含该 evt），之后开始 yield。
+    - 如果 ``after_id`` 不在 events 中（已经被 evict 或者 newer），则不 yield 任何事件（X）。
+      caller 对该含义 ("evicted/missing") 单独解析。
     """
     seen_after = after_id is None
     for evt in events:
@@ -82,14 +82,14 @@ class EventBroker:
     """Per-run SSE event broker.
 
     Args:
-        run_id: assistant message uuid (str). LangGraph turn 식별자.
-        buffer_size: ring buffer maxlen — `2000`이 기본. 평균 이벤트 200B 가정
-            시 약 400KB 메모리 한도.
-        listener_queue_maxsize: 개별 listener queue maxsize. backpressure
-            안전장치. 가득 차면 해당 listener는 disconnect.
-        conversation_id: 같은 conversation 의 새 turn 시작 시
-            ``BrokerRegistry.close_for_conversation`` 으로 일괄 close하기 위한
-            메타데이터.
+        run_id: assistant message uuid (str). LangGraph turn 标识符。
+        buffer_size: ring buffer maxlen — 默认 `2000`。按平均事件 200B 估算，
+            内存上限约为 400KB。
+        listener_queue_maxsize: 单个 listener queue maxsize。backpressure
+            保护机制。满时该 listener 会 disconnect。
+        conversation_id: 同一 conversation 开始新 turn 时，
+            用于通过 ``BrokerRegistry.close_for_conversation`` 批量 close 的
+            元数据。
     """
 
     def __init__(
@@ -135,14 +135,14 @@ class EventBroker:
     def publish_nowait(self, evt: BrokeredEvent) -> None:
         """Synchronous publish — buffer.append + fan-out to listener queues.
 
-        ``stream_agent_response`` 의 ``emit()`` 클로저가 sync 함수라서 sync
-        진입점이 필요. ``publish`` (async)도 내부적으로 이 메서드를 호출.
+        ``stream_agent_response`` 的 ``emit()`` 闭包是 sync 函数，因此需要 sync
+        入口点。``publish`` (async) 内部也会调用此方法。
 
-        Closed broker는 publish를 silently drop한다 (이미 close된 후의 늦은
-        publish 가 stale broadcast를 일으키는 것을 방지).
+        Closed broker 会 silently drop publish（防止已 close 后迟到的
+        publish 引发 stale broadcast）。
 
-        Slow listener (queue 가득 참) 는 즉시 listeners에서 제거되고 sentinel
-        을 받아 자연스럽게 iterator를 종료한다.
+        Slow listener (queue 已满) 会立即从 listeners 中移除并收到 sentinel，
+        从而自然结束 iterator。
         """
         if self._closed:
             return
@@ -158,9 +158,9 @@ class EventBroker:
             except asyncio.QueueFull:
                 self._listeners.discard(q)
                 # Slow listener detected — disconnect for backpressure
-                # protection. 운영 가시성을 위해 logging (악의적 slow consumer
-                # 감지 + 정상 운영 disconnect 빈도 추적). evt id는 마지막
-                # publish 시점의 SSE id라 대략적 위치 추정 용도.
+                # protection. 为了运行可观测性进行 logging（恶意 slow consumer
+                # 检测 + 跟踪正常运行中的 disconnect 频率）。evt id 是最后一次
+                # publish 时的 SSE id，用于估算大致位置。
                 logger.warning(
                     "EventBroker slow listener disconnected run_id=%s "
                     "(queue maxsize=%d). last_event_id=%s",
@@ -179,8 +179,8 @@ class EventBroker:
     async def publish(self, evt: BrokeredEvent) -> None:
         """Async wrapper for ``publish_nowait`` (forward-compat).
 
-        publish 자체는 await하지 않으므로 atomic. caller가 async context에서
-        편하게 부르도록 제공.
+        publish 本身不会 await，因此是 atomic。提供该包装以便 caller 在 async context 中
+        方便调用。
         """
         self.publish_nowait(evt)
 
@@ -202,8 +202,8 @@ class EventBroker:
           (last_event_id present but no replay events) and emitting a stale
           marker via DB replay.
 
-        atomic 보장: ``listeners.add`` 와 ``buffer snapshot`` 사이에 await가
-        없어 publish와 subscribe가 단일 task 내에서 race하지 않는다.
+        atomic 保证：``listeners.add`` 与 ``buffer snapshot`` 之间没有 await，
+        因此 publish 与 subscribe 不会在单个 task 内发生 race。
         """
         # Snapshot buffer + register listener under same sync execution.
         queue: asyncio.Queue[BrokeredEvent | None] = asyncio.Queue(
@@ -239,14 +239,14 @@ class EventBroker:
                     return
                 evt_id = item.get("id")
                 # Defensive dedup vs buffer snapshot — keep, do not remove.
-                # asyncio single-threaded 이라 ``listeners.add`` 와 ``buffer
-                # snapshot`` 사이에 await 가 없어 race 가 사실상 발생하지 않지만,
-                # (a) 미래에 누군가 그 구간에 await 를 끼워 넣으면 race 윈도우가
-                # 열리고, (b) ``publish_nowait`` 가 sync 라 ``put_nowait`` 직후
-                # 같은 evt 가 buffer snapshot 에도 들어갈 가능성이 ABI 변경 시
-                # 미세하게 생긴다. yielded_ids set 은 평균 turn 200 events
-                # 기준 ~10KB 비용으로 idempotency 를 강제 — invariant 보장이
-                # 비용보다 가치 있다.
+                # 因为 asyncio single-threaded，所以 ``listeners.add`` 与 ``buffer
+                # snapshot`` 之间没有 await，实际上不会发生 race，但
+                # (a) 如果未来有人在该区间插入 await，就会打开 race 窗口，
+                # (b) 而且 ``publish_nowait`` 是 sync，因此在 ``put_nowait`` 之后
+                # 同一个 evt 也可能在 ABI 变更时进入 buffer snapshot，
+                # 这种可能性虽然很小。yielded_ids set 以平均每个 turn 200 events
+                # 计，约用 ~10KB 成本来强制保证 idempotency — invariant 保证
+                # 比这点成本更有价值。
                 if isinstance(evt_id, str) and evt_id in yielded_ids:
                     continue
                 yield item
@@ -282,19 +282,19 @@ class EventBroker:
 class BrokerRegistry:
     """Process-local registry of EventBrokers keyed by ``run_id``.
 
-    멀티-워커 환경 지원은 후속 트랙. 단일 워커에서는 dict + asyncio
-    single-thread 모델로 충분하다 (lock 불필요).
+    多 worker 环境支持属于后续轨道。单 worker 下使用 dict + asyncio
+    single-thread 模型就足够了（无需 lock）。
 
-    메모리 보호 — 두 메커니즘이 다른 contract 로 공존:
-    - **APScheduler GC** (정식 청소부, 60s interval, ttl=300s): 정상 운영
-      중 closed broker 의 주기적 회수 + stale live broker 강제 close.
-    - **in-band emergency cap** (즉시 트리거, ``_enforce_capacity``): GC
-      interval 사이에 broker 가 폭주 (예: 단기간 다수 turn 시작) 해도
-      ``max_brokers`` 한도를 넘기지 않게 하는 안전망. closed broker 우선,
-      모두 live 면 가장 오래된 live broker 강제 close.
-    - **per-broker live age cap** (``max_live_age_seconds``): 30분 초과
-      live broker 는 누락된 close() 콜백 신호 — ``evict_expired`` 가 강제
-      close 후 다음 주기에 회수.
+    内存保护 — 两种机制以不同 contract 共存：
+    - **APScheduler GC**（正式清理器，60s interval，ttl=300s）：正常运行
+      期间定期回收 closed broker + 强制 close stale live broker。
+    - **in-band emergency cap**（立即触发，``_enforce_capacity``）：即使在 GC
+      interval 之间 broker 暴增（例如短时间内开始大量 turn），也能确保
+      不超过 ``max_brokers`` 上限。closed broker 优先，
+      如果全是 live，则强制 close 最旧的 live broker。
+    - **per-broker live age cap**（``max_live_age_seconds``）：超过 30 分钟的
+      live broker 表示缺少 close() 回调信号 — ``evict_expired`` 会强制
+      close，并在下一周期回收。
     """
 
     def __init__(
@@ -316,21 +316,21 @@ class BrokerRegistry:
     ) -> EventBroker:
         """Idempotent get-or-create.
 
-        같은 run_id로 두 번 호출 시 같은 EventBroker 인스턴스를 반환한다.
-        기존 broker가 이미 close된 경우(같은 run_id 재사용은 비정상)에는
-        새 broker로 교체한다.
+        同一 run_id 调用两次时返回同一个 EventBroker 实例。
+        如果现有 broker 已经 close（复用同一 run_id 属于异常），
+        则替换为新的 broker。
 
-        한도 도달 시 in-band LRU eviction: ``max_brokers`` 초과면 가장
-        오래된 closed broker부터 dict에서 pop. 모두 live면 가장 오래된
-        live broker를 강제 close + pop. 운영 OOM 방지가 정상 turn 보존
-        보다 우선.
+        达到上限时进行 in-band LRU eviction：若超过 ``max_brokers``，则从 dict 中
+        pop 最旧的 closed broker。若全是 live，则强制 close + pop 最旧的
+        live broker。防止运行 OOM 的优先级
+        高于保留正常 turn。
         """
         broker = self._brokers.get(run_id)
         if broker is None or broker.is_closed:
-            # 같은 run_id 재사용(closed) 케이스에서 자기 자신을 LRU eviction
-            # 후보로 만들지 않도록 먼저 pop. 그 후 capacity 검사 → 새 broker
-            # 등록. _enforce_capacity가 자기 자신의 dict slot을 evict하는
-            # 우연한 정합성에 의존하지 않게 한다.
+            # 在复用同一 run_id（closed）的情况下，先 pop，避免把自身作为 LRU eviction
+            # 不成为候选，先执行 pop。随后检查 capacity → 注册新的 broker
+            # 。避免依赖 _enforce_capacity 恰好 evict 自己的 dict slot
+            # 这种偶然一致性。
             self._brokers.pop(run_id, None)
             self._enforce_capacity()
             broker = EventBroker(
@@ -344,17 +344,17 @@ class BrokerRegistry:
     def _enforce_capacity(self) -> None:
         """Drop oldest closed (or oldest live) brokers until under the cap.
 
-        실제로는 insertion-order 기반 FIFO + closed-우선 정책 (true LRU
-        아님 — 같은 broker가 ``get_or_create`` 재호출되어도 dict 순서는
-        안 바뀐다). 가장 먼저 들어온 broker부터 검사하여 closed면 즉시
-        pop, live면 강제 close 후 pop. ``max_brokers - 1`` 까지 비워야
-        새 entry가 들어갈 자리 확보.
+        实际采用基于 insertion-order 的 FIFO + closed-优先策略（并非 true LRU
+        — 即使同一 broker 再次调用 ``get_or_create``，dict 顺序也
+        不会改变）。从最早加入的 broker 开始检查，closed 就立即
+        pop，live 则强制 close 后 pop。必须清理到 ``max_brokers - 1``，
+        才能为新的 entry 腾出位置。
 
-        ⚠️ 정상 운영 중 live broker 강제 close는 진행 중인 stream을
-        끊는다 (subscriber는 sentinel 받음). 메모리 보호가 turn 보존보다
-        우선. 멀티 테넌트 도입 시 per-user/conversation sub-cap을 추가
-        해야 한 사용자가 다른 사용자의 stream을 끊는 cross-tenant
-        eviction을 방지할 수 있다 (M3+ 후속 트랙).
+        ⚠️ 正常运行中强制 close live broker 会中断正在进行的 stream
+        （subscriber 会收到 sentinel）。内存保护优先于保留 turn。
+        引入多租户后，需要添加 per-user/conversation sub-cap，
+        防止某个用户通过 cross-tenant eviction 中断其他用户的 stream
+        （M3+ 后续轨道）。
         """
         if len(self._brokers) < self._max_brokers:
             return
@@ -379,23 +379,23 @@ class BrokerRegistry:
     def evict_expired(self, ttl_seconds: int = 300) -> int:
         """Evict closed brokers past TTL + force-close stale live brokers.
 
-        두 단계로 정리:
+        分两步清理：
 
-        1. ``broker.closed_at + ttl_seconds`` 가 과거면 dict에서 pop.
-        2. live broker 중 ``broker.created_at + max_live_age_seconds`` 가
-           과거면 강제 close (다음 호출에서 1단계로 정리됨).
-           정상 turn은 분 단위로 끝나므로 30분 초과 live broker는
-           누락된 close() 콜백 또는 finally 미호출의 신호다.
+        1. 如果 ``broker.closed_at + ttl_seconds`` 已经过期，则从 dict 中 pop。
+        2. live broker 中，如果 ``broker.created_at + max_live_age_seconds`` 已
+           过期，则强制 close（下一次调用时在第 1 步清理）。
+           正常 turn 会在数分钟内结束，因此超过 30 分钟的 live broker
+           表示缺少 close() 回调或 finally 未调用。
 
         Returns:
             Number of brokers evicted (closed broker pops only — force-closed
-            live brokers는 다음 호출에서 evict).
+            live broker 会在下一次调用时 evict)。
         """
-        # M-4 fix — created_at/closed_at 은 ``datetime.now(UTC).replace(tzinfo=
-        # None)`` 으로 naive UTC 저장. naive datetime 의 ``.timestamp()`` 는
-        # **로컬 tz 로 해석** (Python docs) 되어 시스템 timezone 이 UTC 가 아니면
-        # cutoff 가 어긋남. naive datetime 끼리 직접 비교하면 timezone 가정과
-        # 무관하게 정확.
+        # M-4 fix — created_at/closed_at 通过 ``datetime.now(UTC).replace(tzinfo=
+        # None)`` 以 naive UTC 保存。naive datetime 的 ``.timestamp()`` 会
+        # **按本地 tz 解析** (Python docs)，因此如果系统 timezone 不是 UTC，
+        # cutoff 就会偏移。直接比较 naive datetime 彼此则与 timezone 假设
+        # 无关且准确。
         now_dt = datetime.now(UTC).replace(tzinfo=None)
         closed_cutoff_dt = now_dt - timedelta(seconds=ttl_seconds)
         live_cutoff_dt = now_dt - timedelta(seconds=self._max_live_age_seconds)
@@ -422,12 +422,12 @@ class BrokerRegistry:
     def close_for_conversation(self, conversation_id: str) -> int:
         """Force-close all live brokers belonging to a conversation.
 
-        같은 conversation 의 새 turn 진입 시 이전 broker를 즉시 회수한다
-        (동시 2 turn은 checkpointer lock으로 이미 금지되지만, 이전 turn의
-        broker가 여전히 라이브 listener를 들고 있는 경우를 정리).
+        同一 conversation 开始新 turn 时立即回收之前的 broker
+        （虽然同时进行 2 个 turn 已被 checkpointer lock 禁止，但会清理此前 turn 的
+        broker 仍持有实时 listener 的情况）。
 
-        M-6: count > 0 이면 logger.info — 정상 운영 중 발생 빈도 추적이
-        디버깅에 도움 (frontend race 로 turn 두 번 보내는 케이스 식별).
+        M-6: count > 0 时 logger.info — 跟踪正常运行中的发生频率
+        有助于调试（识别 frontend race 导致发送两次 turn 的情况）。
 
         Returns:
             Number of brokers closed.
@@ -453,10 +453,10 @@ class BrokerRegistry:
     def close_all(self) -> int:
         """Force-close every live broker (shutdown hook).
 
-        APScheduler 의 ``evict_expired`` GC 보다 더 강한 동작 — TTL 무시하고
-        지금 살아있는 모든 broker 의 listener 에 sentinel 을 보내 그래스풀
-        종료. lifespan shutdown 단계에서 호출되어 in-flight stream consumer
-        가 hang 되지 않게 한다. Idempotent: 이미 closed 인 broker 는 skip.
+        比 APScheduler 的 ``evict_expired`` GC 更强 — 忽略 TTL，
+        向当前所有存活 broker 的 listener 发送 sentinel 以优雅
+        结束。在 lifespan shutdown 阶段调用，防止 in-flight stream consumer
+        hang。Idempotent: 已经 closed 的 broker 会 skip。
 
         Returns:
             Number of brokers actually closed in this call.
@@ -471,14 +471,14 @@ class BrokerRegistry:
     def _clear(self) -> None:
         """Test-only helper — drop all brokers without closing.
 
-        N-4: underscore prefix 로 production import 표면에서 빼서 실수로
-        호출하면 active broker 들이 close 없이 leak (listener task 들이
-        영원히 ``queue.get()`` 에 대기) 되는 사고를 방지. Production code 는
-        ``evict_expired`` 또는 ``close_for_conversation`` / ``close_all`` 사용.
+        N-4: 通过 underscore prefix 将其排除在 production import 表面之外，防止误
+        调用导致 active broker 未 close 就 leak（listener task 会
+        永远等待 ``queue.get()``）。Production code 使用
+        ``evict_expired`` 或 ``close_for_conversation`` / ``close_all``。
         """
         self._brokers.clear()
 
 
-# Module-level singleton. M2의 streaming.py 통합과 M3의 GET resume endpoint가
-# 같은 인스턴스를 참조한다.
+# Module-level singleton. M2 的 streaming.py 集成与 M3 的 GET resume endpoint
+# 引用同一个实例。
 registry: BrokerRegistry = BrokerRegistry()

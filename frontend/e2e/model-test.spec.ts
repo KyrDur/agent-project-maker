@@ -6,7 +6,7 @@ import { test, expect } from './fixtures'
 // run with or without the FastAPI backend up. Coverage:
 // 1. /models row "Test" → mock 200 response → success card → Show Details →
 //    Curl tab → Copy button.
-// 2. ModelAddDialog Custom ID tab → fill form → Test → mock 401 → 인증 실패
+// 2. ModelAddDialog Custom ID tab → fill form → Test → mock 401 → 认证失败
 //    label visible.
 
 const NOW = new Date().toISOString()
@@ -136,12 +136,12 @@ test.describe('Model connection test', () => {
     await expect(page.getByRole('heading', { name: '模型' })).toBeVisible()
     await expect(page.getByText('GPT-4o mini')).toBeVisible()
 
-    await page.getByRole('button', { name: 'GPT-4o mini 테스트' }).click()
+    await page.getByRole('button', { name: 'GPT-4o mini 测试' }).click()
 
-    await expect(page.getByRole('heading', { name: 'GPT-4o mini 테스트' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'GPT-4o mini 测试' })).toBeVisible()
 
     // Success card
-    await expect(page.getByText(/연결 성공/)).toBeVisible()
+    await expect(page.getByText(/连接成功/)).toBeVisible()
     await expect(page.getByText(/Hello! Connection works/)).toBeVisible()
     await expect(page.getByText(/423 ms/)).toBeVisible()
 
@@ -152,7 +152,7 @@ test.describe('Model connection test', () => {
     await expect(page.getByText('已复制')).toBeVisible()
   })
 
-  test('Custom ID tab → mock 401 → 인증 실패', async ({ page }) => {
+  test('Custom ID tab → mock 401 → 认证失败', async ({ page }) => {
     await page.route(/\/api\/models(?:\?.*)?$/, (route) => route.fulfill({ json: [] }))
     await page.route('**/api/models/test-preview', (route) =>
       route.fulfill({ json: AUTH_ERROR_RESPONSE }),
@@ -161,7 +161,7 @@ test.describe('Model connection test', () => {
     await page.goto('/models')
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
     await page.getByRole('tab', { name: '定制' }).click()
@@ -171,8 +171,8 @@ test.describe('Model connection test', () => {
 
     await page.getByTestId('custom-test-button').click()
 
-    // Error card with 인증 실패 label
-    await expect(page.getByText(/인증 실패/)).toBeVisible()
+    // Error card with 认证失败 label
+    await expect(page.getByText(/认证失败/)).toBeVisible()
     await expect(page.getByText(/Invalid API key supplied/)).toBeVisible()
   })
 })

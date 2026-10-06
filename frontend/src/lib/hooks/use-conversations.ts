@@ -54,9 +54,9 @@ export const conversationKeys = {
     ['conversations', conversationId, 'debug-traces', traceId] as const,
 }
 
-/** 대화 내비게이터(사이드바/퀵스위처/대화 목록) 캐시를 무효화한다.
- *  prefix 매칭 특성상 ``list(agentId)``가 page 쿼리까지 포섭하며,
- *  ``['agents']`` 같은 광역 무효화는 무관한 쿼리 refetch를 유발하므로 금지. */
+/** 使对话 navigator（sidebar/quick switcher/对话列表）缓存失效。
+ *  由于 prefix 匹配特性，``list(agentId)`` 会覆盖 page query，
+ *  而像 ``['agents']`` 这样的广域 invalidate 会触发无关 query refetch，因此禁止。 */
 export function invalidateConversationNavigators(
   queryClient: QueryClient,
   agentId?: string | null,
@@ -76,7 +76,7 @@ function mergeConversationRow(current: Conversation | undefined, next: Conversat
   return current ? { ...current, ...next } : next
 }
 
-// M1 — 순수 캐시 upsert 헬퍼는 단위 테스트 대상이라 export한다.
+// M1 — 纯 cache upsert helper 是单元测试对象，因此 export。
 export function upsertConversationList(
   rows: readonly Conversation[] | undefined,
   conversation: Conversation,
@@ -119,8 +119,8 @@ export function upsertGlobalConversationPages(
       if (index !== 0) return { ...page, items: rowsWithoutConversation }
       return {
         ...page,
-        // `...conversation`이 모든 필드(agent 포함)를 덮으므로 existing은 빈
-        // 객체 fallback이면 충분하다.
+        // `...conversation` 会覆盖所有字段（包括 agent），所以 existing 使用空
+        // 对象 fallback 就足够。
         items: [{ ...(existing ?? {}), ...conversation }, ...rowsWithoutConversation],
       }
     }),
@@ -191,7 +191,7 @@ export function useGlobalConversationPages(
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next_cursor ?? undefined,
     enabled: options.enabled ?? true,
-    // 백그라운드 run이 보이는 동안 navigator도 1초 폴링으로 상태를 따라간다
+    // 只要 background run 可见，navigator 也通过每 1 秒 polling 跟踪状态
     refetchInterval: (query) =>
       conversationPagesContainActiveRun(query.state.data?.pages) ? 1000 : false,
   })
@@ -216,8 +216,8 @@ export function useConversationDetail(conversationId: string, enabled = true) {
 export function useMessages(conversationId: string, enabled = true) {
   return useQuery({
     queryKey: conversationKeys.messages(conversationId),
-    // envelope 전체 fetch + select로 ``Message[]``만 노출 — caller 호환을
-    // 유지하면서 ``useMessagesEnvelope``과 cache를 공유한다.
+    // fetch 整个 envelope + 用 select 仅暴露 ``Message[]`` — 在保持 caller 兼容的
+    // 同时与 ``useMessagesEnvelope`` 共享 cache。
     queryFn: () => conversationsApi.messagesEnvelope(conversationId),
     select: (env) => env.messages,
     enabled: enabled && !!conversationId,
@@ -225,8 +225,8 @@ export function useMessages(conversationId: string, enabled = true) {
   })
 }
 
-/** W7-4 — Composer 토큰 바의 cost 표시를 위해 envelope 전체에 접근하는 hook.
- *  ``useMessages``와 동일한 queryKey/queryFn을 공유해 추가 fetch 비용 없음. */
+/** W7-4 — 为了显示 Composer token bar 的 cost 而访问整个 envelope 的 hook。
+ *  与 ``useMessages`` 共享相同的 queryKey/queryFn，不产生额外 fetch 成本。 */
 export function useMessagesEnvelope(conversationId: string, enabled = true) {
   return useQuery({
     queryKey: conversationKeys.messages(conversationId),
@@ -300,8 +300,8 @@ export function useMarkConversationRead(agentId: string) {
 }
 
 /**
- * Follow-up 고스트 제안 1개 생성 (런 종료 시 1회 호출). 생성 불가 시
- * suggestion=null — 고스트를 숨기면 된다.
+ * 生成 1 条 Follow-up ghost 建议（run 结束时调用 1 次）。无法生成时
+ * suggestion=null — 隐藏 ghost 即可。
  */
 export function useFollowupSuggestionMutation() {
   return useMutation({

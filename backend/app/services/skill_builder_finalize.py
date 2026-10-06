@@ -1,11 +1,11 @@
-"""빌더 챗 finalize 오케스트레이션 (M5, 스펙 AD-3).
+"""builder chat finalize 编排（M5，规范 AD-3）。
 
-``finalize_skill`` 도구가 승인 후 호출한다. v1 confirm 플로우를 최대 재사용:
-워크스페이스 → ``SkillDraftPackage`` → ``save_draft_package``(REVIEW) →
-``claim_for_confirming`` → ``confirm_builder_session``(검증 재실행 + secret
-scan + 생성/개선 + 리비전 + eval 수거). 감사 어휘도 v1 계승
-(``skill_builder.confirm_create``/``apply_improvement``/``apply_conflict``/
-``secret_scan_blocked`` + ``skill_revision.create``).
+``finalize_skill`` 工具在批准后调用。最大程度复用 v1 confirm 流程：
+工作区 → ``SkillDraftPackage`` → ``save_draft_package``(REVIEW) →
+``claim_for_confirming`` → ``confirm_builder_session``（重新验证 + secret
+scan + 创建/改进 + revision + 收集 eval）。审计词汇也沿用 v1
+（``skill_builder.confirm_create``/``apply_improvement``/``apply_conflict``/
+``secret_scan_blocked`` + ``skill_revision.create``）。
 """
 
 from __future__ import annotations
@@ -40,8 +40,8 @@ from app.skills.packager import PackageError
 
 logger = logging.getLogger(__name__)
 
-# Phase 2 스튜디오 라우트 — 레거시 `?detailId=`는 프론트 서버 redirect가 흡수하지만
-# 새 페이로드는 정식 라우트를 직접 가리킨다.
+# Phase 2 Studio 路由 — legacy `?detailId=` 会由前端服务器 redirect 吸收，
+# 但新 payload 直接指向正式路由。
 SKILL_DETAIL_DEEPLINK = "/skills/{skill_id}/source"
 
 
@@ -51,17 +51,17 @@ async def finalize_draft_session(
     session_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> dict[str, Any]:
-    """finalize 전체 플로우 실행 — 도구 결과로 쓸 dict 반환 (커밋 포함).
+    """执行完整 finalize 流程 — 返回作为工具结果使用的 dict（包含 commit）。
 
-    성공: ``{skill_id, slug, name, content_hash, deeplink, validation_result}``.
-    실패: ``{error_code, message, ...}`` — 에이전트가 사용자에게 설명한다.
+    成功：``{skill_id, slug, name, content_hash, deeplink, validation_result}``。
+    失败：``{error_code, message, ...}`` — Agent 向用户说明。
     """
 
     session = await skill_builder_service.get_session(db, session_id, user_id)
     if session is None:
         return _error("SESSION_NOT_FOUND", "builder session not found")
 
-    # 멱등: 이미 확정된 세션이면 기존 skill 정보를 그대로 반환.
+    # 幂等：若会话已确认，则原样返回现有 skill 信息。
     if (
         session.status == SkillBuilderStatus.COMPLETED.value
         and session.finalized_skill_id is not None
@@ -75,15 +75,15 @@ async def finalize_draft_session(
     if not session.draft_workspace_path:
         return _error("DRAFT_WORKSPACE_MISSING", "draft workspace is not attached")
 
-    # REST /confirm과 동일한 상태 게이트(R2) — save_draft_package가 상태를
-    # 무조건 REVIEW로 리셋하므로, 게이트 없이 동시 finalize B의 save가 A의
-    # CONFIRMING claim을 되돌려 이중 confirm이 가능해진다 (run 뮤텍스로
-    # 완화되나 도구 경로 자체도 닫는다).
+    # 与 REST /confirm 相同的状态 gate（R2）— save_draft_package 会
+    # 无条件重置状态为 REVIEW，因此若没有 gate，并发 finalize B 的 save 会把 A 的
+    # CONFIRMING claim 回退，导致可以重复 confirm（run mutex 可
+    # 缓解，但工具路径本身也必须关闭）。
     if session.status == SkillBuilderStatus.CONFIRMING.value:
         return _error("SESSION_CONFIRMING", "another finalize is already in progress")
 
-    # 바이너리 asset은 confirm 단계의 디스크 기반 zip(build_workspace_zip_bytes)이
-    # 그대로 싣는다 (Phase 1.5) — draft_package(text 어댑터)는 검증/메타데이터용.
+    # 二进制 asset 由 confirm 阶段基于磁盘的 zip（build_workspace_zip_bytes）
+    # 原样承载（Phase 1.5）— draft_package（text 适配器）仅用于验证/元数据。
     draft = workspace.build_draft_package(session.draft_workspace_path)
     await skill_builder_service.save_draft_package(db, session, draft=draft.model_dump(mode="json"))
     await db.commit()
@@ -98,9 +98,9 @@ async def finalize_draft_session(
 
     actor = await _actor_for(db, user_id)
     try:
-        # zip_from_workspace=True — 빌더 챗 경로는 워크스페이스 디스크가 source of
-        # truth라 바이너리 asset을 포함한 zip을 만든다 (Phase 1.5). REST /confirm은
-        # 게시된 draft_package 계약을 유지하므로 이 플래그를 켜지 않는다.
+        # zip_from_workspace=True — builder chat 路径以工作区磁盘为 source of
+        # truth，因此生成包含二进制 asset 的 zip（Phase 1.5）。REST /confirm
+        # 保持已发布 draft_package 契约，因此不开启此 flag。
         skill = await skill_builder_service.confirm_session(
             db, session, user_id=user_id, zip_from_workspace=True
         )
@@ -140,30 +140,30 @@ async def finalize_draft_session(
             "validation_result": exc.result,
         }
     except SkillBuilderSourceSkillNotFound:
-        # claim이 CONFIRMING을 독립 커밋한 뒤의 실패 — conflict/validation 경로와
-        # 대칭으로 REVIEW로 되돌려야 재시도가 self-heal된다(rollback만으로는 이미
-        # 커밋된 CONFIRMING을 못 되돌려 CONFIRMING 게이트가 재시도를 영구 차단).
+        # claim 独立 commit CONFIRMING 后的失败 — 必须与 conflict/validation 路径
+        # 对称地恢复为 REVIEW，重试才能 self-heal（仅 rollback 无法撤销已经
+        # commit 的 CONFIRMING，否则 CONFIRMING gate 会永久阻止重试）。
         await db.rollback()
         await _release_confirming_claim(db, session_id, user_id)
         return _error("SOURCE_SKILL_NOT_FOUND", "source skill not found")
     except PackageError as exc:
-        # zip 추출 가드(크기/파일 수/경로 방어) 실패 — 바이너리 asset이 실리며
-        # 패키지 상한 초과가 현실화됐다(Phase 1.5). 위 경로들과 대칭으로 claim을
-        # 풀어 에이전트가 파일을 줄인 뒤 재시도할 수 있게 사유를 그대로 전한다.
+        # zip 提取 guard（大小/文件数/路径防护）失败 — 由于加入了二进制 asset，
+        # 包大小超限已成为现实（Phase 1.5）。与上述路径对称地释放 claim，
+        # 将原因原样传递，使 Agent 可缩减文件后重试。
         await db.rollback()
         await _release_confirming_claim(db, session_id, user_id)
         return _error("PACKAGE_INVALID", str(exc))
     except asyncio.CancelledError:
-        # 런 취소(stop)는 BaseException이라 아래 Exception 캐치와 도구 경로의
-        # 광역 catch를 모두 통과한다 — claim 해제만은 shield로 완료시키고
-        # 재전파해 CONFIRMING 잠금 잔존을 막는다 (자체 세션이라 요청 세션
-        # teardown과 무관하게 끝까지 커밋된다).
+        # run 取消（stop）属于 BaseException，因此会穿过下方 Exception catch 与工具路径的
+        # 广域 catch — 但必须通过 shield 完成 claim 释放，并
+        # 重新传播，以防 CONFIRMING 锁残留（使用独立会话，因此与请求会话
+        # teardown 无关，会一直 commit 到完成）。
         with contextlib.suppress(Exception):
             await asyncio.shield(_release_confirming_claim(db, session_id, user_id))
         raise
     except Exception:
-        # 예기치 못한 실패(transient DB 오류 등)도 claim을 해제해 세션이
-        # 거짓 "다른 finalize 진행 중" 상태에 갇히지 않게 한다.
+        # 意外失败（transient DB 错误等）也要释放 claim，避免会话
+        # 卡在虚假的"另一个 finalize 正在进行"状态。
         await db.rollback()
         await _release_confirming_claim(db, session_id, user_id)
         raise
@@ -188,7 +188,7 @@ async def finalize_draft_session(
             await record_revision_create_audit(
                 db,
                 user=actor,
-                request=None,  # type: ignore[arg-type] — 도구 경로: HTTP request 없음
+                request=None,  # type: ignore[arg-type] — 工具路径：没有 HTTP request
                 revision=revision,
             )
     await db.commit()
@@ -205,7 +205,7 @@ def _success(session: SkillBuilderSession, skill: Any) -> dict[str, Any]:
         "content_hash": skill.content_hash,
         "version": skill.version,
         "mode": session.mode,
-        # 완료 카드 딥링크 (스펙 5.1 — Phase 2에서 스튜디오 라우트로 승격).
+        # 完成卡片 deeplink（规范 5.1 — 在 Phase 2 升级为 Studio 路由）。
         "deeplink": SKILL_DETAIL_DEEPLINK.format(skill_id=skill.id),
         "validation_result": session.validation_result,
     }
@@ -214,11 +214,11 @@ def _success(session: SkillBuilderSession, skill: Any) -> dict[str, Any]:
 async def _release_confirming_claim(
     _db: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID
 ) -> None:
-    """post-claim 실패 시 CONFIRMING → REVIEW 복귀 (best-effort self-heal).
+    """post-claim 失败时 CONFIRMING → REVIEW 恢复（best-effort self-heal）。
 
-    자체 세션을 연다 — 취소(shield) 경로에서 요청 세션이 teardown돼도 복귀
-    커밋이 완료되고, 조건부 UPDATE(claim과 대칭)라 원자적이다. 호출자 세션은
-    rollback 상태 그대로 둔다.
+    打开独立会话 — 即使取消（shield）路径中请求会话已 teardown，也能完成恢复
+    commit；且条件 UPDATE（与 claim 对称）是原子的。调用方会话保持
+    rollback 状态。
     """
 
     try:

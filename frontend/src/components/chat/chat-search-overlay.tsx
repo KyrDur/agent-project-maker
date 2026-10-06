@@ -15,16 +15,16 @@ import {
 interface ChatSearchOverlayProps {
   onClose: () => void
   initialQuery?: string
-  /** 검색 스코프. 여러 thread가 마운트된 페이지(설정 fix/test 탭)에서 이 thread의
-   *  viewport로 한정한다. ref로 받아 렌더 중 .current 접근을 피한다(핸들러에서 읽음).
-   *  없으면 document 전역. */
+  /** 搜索 scope。在挂载多个 thread 的页面（设置 fix/test tab）中限定到该 thread 的
+   * viewport。以 ref 传入，避免渲染时访问 .current（在 handler 中读取）。
+   * 若无则使用 document 全局。 */
   searchRootRef?: RefObject<HTMLElement | null>
 }
 
 /**
- * 대화 내 검색(G6) Ctrl+F 오버레이. DOM 앵커에서 텍스트를 수집해 클라이언트 필터
- * 하고, 매치를 ``jumpToMessage``로 스크롤 + 하이라이트한다. Enter/Shift+Enter로
- * 다음/이전, Esc로 닫는다.
+ * 对话内搜索(G6) Ctrl+F overlay。从 DOM anchor 收集文本并在客户端过滤，
+ * 将匹配项通过 ``jumpToMessage`` 滚动 + 高亮。Enter/Shift+Enter 切换
+ * 下一个/上一个，Esc 关闭。
  */
 export function ChatSearchOverlay({
   initialQuery = '',
@@ -82,7 +82,7 @@ export function ChatSearchOverlay({
       event.preventDefault()
       onClose()
     } else if (event.key === 'Enter') {
-      // IME 조합 확정 Enter(한국어/CJK)는 이동을 트리거하지 않는다.
+      // IME 组合输入确认 Enter（中文/CJK）不会触发移动。
       if (event.nativeEvent.isComposing) return
       event.preventDefault()
       go(event.shiftKey ? -1 : 1)

@@ -36,7 +36,7 @@ interface RightPanelProps {
   openerQuestions: string[]
   onOpenerQuestionsChange: (q: string[]) => void
   onRequestDeleteTrigger: (target: { id: string; description: string }) => void
-  /** 새 에이전트 만들기 모드 — agentId 의존 탭은 placeholder */
+  /** 创建新 Agent 模式 — 依赖 agentId 的 tab 为 placeholder */
   createMode?: boolean
   onCreateModeFirstMessage?: (msg: string) => Promise<void>
   initialFixMessage?: string

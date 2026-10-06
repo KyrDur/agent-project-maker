@@ -55,7 +55,7 @@ describe('SchedulesPage', () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.type(screen.getByPlaceholderText('搜索占位符'), '없는 스케줄')
+    await user.type(screen.getByPlaceholderText('搜索占位符'), '不存在的日程')
 
     expect(screen.getByText('已过滤')).toBeInTheDocument()
   })

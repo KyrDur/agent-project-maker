@@ -4,7 +4,6 @@ import { useCallback } from 'react'
 import { useAtom } from 'jotai'
 import {
   BookOpenIcon,
-  LayoutTemplateIcon,
   Plug2Icon,
   PlusIcon,
   ServerIcon,
@@ -44,7 +43,6 @@ export function AppSidebar() {
   const [featuresExpanded, setFeaturesExpanded] = useAtom(featuresExpandedAtom)
 
   const buildItems = [
-    { label: t('nav.templates'), href: '/agents/new/template', icon: LayoutTemplateIcon },
     { label: t('nav.marketplace'), href: '/marketplace', icon: StoreIcon },
   ]
 
@@ -94,7 +92,7 @@ export function AppSidebar() {
 
         <SidebarSeparator />
 
-        {/* Build group — Templates, Marketplace */}
+        {/* Marketplace */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">

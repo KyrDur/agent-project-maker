@@ -1,7 +1,7 @@
-"""Phase 8 — 최종 승인 + 빌드 (propose + wait 2-노드 패턴).
+"""Phase 8 — 最终批准 + 构建（propose + wait 2-节点模式）。
 
-phase8_propose: draft_approval ToolMessage emit + dict 반환
-phase8_build_wait: interrupt → 승인 시 Agent 생성 후 END, 수정 시 router로
+phase8_propose: emit draft_approval ToolMessage + 返回 dict
+phase8_build_wait: interrupt → 批准时创建 Agent 后 END，修改时进入 router
 """
 
 from __future__ import annotations
@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 
 async def _confirm_and_create_agent(state: BuilderState) -> tuple[str | None, str | None]:
-    """builder_session.status=PREVIEW에서 Agent 생성까지 처리.
+    """从 builder_session.status=PREVIEW 处理到创建 Agent。
 
     Returns:
-        (agent_id, error_message). 성공 시 agent_id만, 실패 시 error만 채워짐.
+        (agent_id, error_message). 成功时仅填充 agent_id，失败时仅填充 error。
     """
     session_id_str = state.get("session_id", "")
     if not session_id_str:
@@ -78,7 +78,7 @@ async def _confirm_and_create_agent(state: BuilderState) -> tuple[str | None, st
 
 
 async def _persist_error(state: BuilderState, error_message: str) -> None:
-    """builder_session.error_message + status=FAILED 기록 (frontend가 표시할 수 있도록)."""
+    """记录 builder_session.error_message + status=FAILED（使 frontend 可显示）。"""
     session_id_str = state.get("session_id", "")
     if not session_id_str:
         return
@@ -104,7 +104,7 @@ async def _persist_error(state: BuilderState, error_message: str) -> None:
 
 
 async def phase8_propose(state: BuilderState) -> dict:
-    """draft_approval ToolMessage emit + dict 반환 (interrupt 없음)."""
+    """emit draft_approval ToolMessage + 返回 dict（无 interrupt）。"""
     draft = state.get("draft_config") or {}
     image_url = state.get("image_url") or draft.get("image_url")
 
@@ -118,7 +118,9 @@ async def phase8_propose(state: BuilderState) -> dict:
         session = await db.get(BuilderSession, uuid.UUID(session_id)) if session_id else None
         bindings = await get_builder_personal_bindings(db, session.user_id) if session else []
         try:
-            system_binding = await get_builder_system_runtime(db)
+            system_binding = (
+                await get_builder_system_runtime(db, session.user_id) if session else None
+            )
         except AppError:
             system_binding = None
     chosen = state.get("runtime_model_id")
@@ -233,7 +235,7 @@ async def _propose_final_draft(
 
 
 async def phase8_build_wait(state: BuilderState) -> dict:
-    """interrupt → 승인 시 Agent 생성, 수정 시 last_revision_message만 set. 라우팅은 graph."""
+    """interrupt → 批准时创建 Agent，修改时仅 set last_revision_message。路由由 graph 决定。"""
     setup = state.get("runtime_setup_payload")
     if setup:
         answer = interrupt({"type": "ask_user", **setup})
@@ -282,7 +284,7 @@ async def phase8_build_wait(state: BuilderState) -> dict:
                 "agent_id": agent_id,
                 "pending_tool_call_id": None,
             }
-        # 생성 실패 — 사용자에게 명시적으로 노출
+        # 创建失败 — 明确向用户显示
         err_text = error or tr("agent_creation_failed_472967")
         await _persist_error(state, err_text)
         close_msgs = close_pending_tool_card(
@@ -297,7 +299,7 @@ async def phase8_build_wait(state: BuilderState) -> dict:
             "pending_tool_call_id": None,
         }
 
-    # 수정요청
+    # 修改请求
     revision_text = revision or tr("modification_request_a33895")
     close_msgs = close_pending_tool_card(
         pending_tc_id, "draft_approval", tr("edit_request_v_bc1316", v0=f"{revision_text}")

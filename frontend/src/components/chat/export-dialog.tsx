@@ -44,7 +44,7 @@ export function ExportDialog({ open, onOpenChange, conversationId, title }: Expo
 }
 
 function fileTimestamp(): string {
-  // ISO를 파일명 안전한 형태로 (콜론/점 제거). "2026-07-02T00-30-00".
+  // 将 ISO 转为文件名安全格式（去掉冒号/点）。"2026-07-02T00-30-00"。
   return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 }
 

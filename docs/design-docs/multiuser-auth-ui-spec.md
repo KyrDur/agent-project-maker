@@ -2,663 +2,663 @@
 
 - **Status**: Accepted (2026-05-08)
 - **Author**: tim-cook
-- **Scope**: Phase 7 (프론트엔드 인증) — `~/.claude/plans/replicated-crunching-lark.md` 기반
-- **연관 문서**: `ADR-010-ui-tokens-and-dialog-shell.md` (토큰 시스템), `progress.txt` (API 계약)
-- **승인된 결정**: Email + Password (MVP), HttpOnly Cookie + CSRF, 첫 가입자 자동 super_user
+- **Scope**：Phase 7（前端认证）— 基于 `~/.claude/plans/replicated-crunching-lark.md`
+- **关联文档**：`ADR-010-ui-tokens-and-dialog-shell.md`（token 系统），`progress.txt`（API 契约）
+- **已批准决定**：Email + Password (MVP), HttpOnly Cookie + CSRF, 首位注册用户自动成为 super_user
 
-이 문서는 저커버그(프론트엔드 구현자)가 추가 디자인 결정 없이 그대로 구현할 수 있도록 작성되었다.
-모든 컴포넌트는 shadcn/ui 기존 토큰만 사용한다 — 새 토큰을 만들지 않는다.
-
----
-
-## 1. 디자인 원칙
-
-### 1.1 단순함이 곧 명품
-- **인증은 마찰 없이 빠르게 통과해야 한다.** 사용자는 "로그인"이 목표가 아니라 "에이전트 만들기"가 목표다.
-- 로그인 페이지의 첫 인상은 **3초 안에** 결정된다 — 필드 2개, 버튼 1개, 명확한 위계.
-- 하단 보조 링크(회원가입/비밀번호 찾기)는 시각적 무게를 낮게 (text link, no border).
-- 한 페이지에 한 가지 행동만 — 광고/장식 금지.
-
-### 1.2 디자인 언어 일관성
-- **사용 컴포넌트(shadcn/ui)**: `Card`, `Form`, `Input`, `Button`, `Checkbox`, `Label`, `Dialog`(via `DialogShell`), `Avatar`, `DropdownMenu`, `Toast`(`sonner`), `Alert`.
-- **레이아웃 메트릭**: 카드 패딩 `p-8` (모바일 `p-6`), 필드 간격 `space-y-4`, 폼 내부 라벨↔입력 `space-y-1.5`. ADR-010의 DialogShell 메트릭과 동일한 리듬.
-- **버튼 우선순위**: primary(`Button` default) = 주 액션, ghost/link = 보조 액션. 다이얼로그 푸터 우측 정렬 규칙 동일.
-
-### 1.3 한국어 우선, 영어 fallback
-- 모든 라벨/메시지/에러는 **한국어 1차**로 작성하고 i18n 키 구조는 기존 `t('user.name')` 패턴(`app-sidebar.tsx`)을 따른다.
-- 신규 키 네임스페이스: `auth.*`, `auth.errors.*`, `auth.onboarding.*`.
-- 영어 fallback은 i18n 리소스의 `en` 번들에 둠 (existing 컨벤션).
-
-### 1.4 다크모드 호환
-- shadcn 토큰만 사용하므로 자동 호환된다 — 새 색상 정의 없음.
-- 단 다음만 명시적으로 지킬 것:
-  - 폼 카드 배경: `bg-card text-card-foreground` (다크에서도 분리감 있음)
-  - 보조 텍스트: `text-muted-foreground`
-  - 에러 inline: `text-destructive`
-  - 포커스 링: ADR-010 기준 `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
-
-### 1.5 접근성 우선
-- 모든 input에 `<Label>` 연결, 비밀번호 보기 토글은 `aria-pressed`.
-- 에러는 `aria-live="polite"`로 스크린 리더 알림.
-- Tab 순서는 시각 순서와 일치 — 4번 항목 참고.
+本文档编写目标是让 Zuckerberg（前端实现者）无需额外设计决策即可直接实现。
+所有组件仅使用现有 shadcn/ui token — 不创建新 token。
 
 ---
 
-## 2. 페이지 구조 와이어프레임
+## 1. 设计原则
 
-### 2.1 `/login` — 로그인
+### 1.1 简单即精品
+- **认证应无摩擦地快速完成。** 用户的目标不是“登录”，而是“创建 Agent”。
+- 登录页面的第一印象应在 **3 秒内**形成 — 2 个字段、1 个按钮、清晰层级。
+- 底部辅助链接（注册/找回密码）应降低视觉权重（text link, no border）。
+- 一个页面只做一件事 — 禁止广告/装饰。
 
-#### 데스크탑 (≥ md, 768px)
+### 1.2 设计语言一致性
+- **使用组件(shadcn/ui)**：`Card`, `Form`, `Input`, `Button`, `Checkbox`, `Label`, `Dialog`(via `DialogShell`), `Avatar`, `DropdownMenu`, `Toast`(`sonner`), `Alert`。
+- **布局 metric**：卡片 padding `p-8`（移动端 `p-6`），字段间距 `space-y-4`，表单内 label↔input `space-y-1.5`。与 ADR-010 的 DialogShell metric 保持相同节奏。
+- **按钮优先级**：primary(`Button` default) = 主操作，ghost/link = 辅助操作。Dialog footer 右对齐规则相同。
+
+### 1.3 简体中文优先，英文 fallback
+- 所有 label/message/error 均以**简体中文第 1 优先**编写，i18n key 结构遵循现有 `t('user.name')` pattern（`app-sidebar.tsx`）。
+- 新增 key namespace：`auth.*`, `auth.errors.*`, `auth.onboarding.*`。
+- 英文 fallback 放在 i18n resource 的 `en` bundle 中（existing convention）。
+
+### 1.4 深色模式兼容
+- 因仅使用 shadcn token，可自动兼容 — 不定义新颜色。
+- 但以下项目必须明确遵守：
+  - 表单卡片背景：`bg-card text-card-foreground`（在深色模式下也有分离感）
+  - 辅助文本：`text-muted-foreground`
+  - 错误 inline：`text-destructive`
+  - focus ring：按 ADR-010 使用 `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
+
+### 1.5 可访问性优先
+- 所有 input 连接 `<Label>`，密码显示 toggle 使用 `aria-pressed`。
+- 错误通过 `aria-live="polite"` 通知屏幕阅读器。
+- Tab 顺序与视觉顺序一致 — 参见第 4 项。
+
+---
+
+## 2. 页面结构 wireframe
+
+### 2.1 `/login` — 登录
+
+#### 桌面端 (≥ md, 768px)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                                                                  │
 │  ┌────────────────────────┐  ┌──────────────────────────────┐   │
-│  │  [Brand Mark]          │  │  로그인                       │   │
-│  │  Moldy                 │  │  계정 정보를 입력해 주세요    │   │
+│  │  [Brand Mark]          │  │  登录                       │   │
+│  │  Moldy                 │  │  请输入账户信息              │   │
 │  │                        │  │                              │   │
-│  │  AI 에이전트를          │  │  ┌────────────────────────┐ │   │
-│  │  코드 한 줄 없이        │  │  │ 이메일                  │ │   │
-│  │  만드는 가장            │  │  │ [you@example.com     ] │ │   │
-│  │  단순한 방법.          │  │  └────────────────────────┘ │   │
+│  │  AI Agent              │  │  ┌────────────────────────┐ │   │
+│  │  无需一行代码           │  │  │ 邮箱                    │ │   │
+│  │  即可创建的            │  │  │ [you@example.com     ] │ │   │
+│  │  最简单方式。          │  │  └────────────────────────┘ │   │
 │  │                        │  │                              │   │
-│  │  · 노코드 빌더          │  │  ┌────────────────────────┐ │   │
-│  │  · LangGraph 런타임     │  │  │ 비밀번호      [👁]      │ │   │
-│  │  · 대화형 에이전트       │  │  │ [••••••••           ]  │ │   │
+│  │  · no-code builder     │  │  ┌────────────────────────┐ │   │
+│  │  · LangGraph runtime   │  │  │ 密码          [👁]      │ │   │
+│  │  · 对话式 Agent        │  │  │ [••••••••           ]  │ │   │
 │  │                        │  │  └────────────────────────┘ │   │
-│  │  (옵션 일러스트/패턴)    │  │                              │   │
-│  │                        │  │  ☐ 로그인 유지   비번 찾기 → │   │
+│  │  （可选插图/pattern）   │  │                              │   │
+│  │                        │  │  ☐ 保持登录     找回密码 →  │   │
 │  │                        │  │                              │   │
 │  │                        │  │  ┌────────────────────────┐ │   │
-│  │                        │  │  │      로그인             │ │   │
+│  │                        │  │  │      登录             │ │   │
 │  │                        │  │  └────────────────────────┘ │   │
-│  │                        │  │  ─────  또는  ─────          │   │
-│  │                        │  │  [🇬 Google로 로그인 (곧)]   │   │
+│  │                        │  │  ─────  或  ─────          │   │
+│  │                        │  │  [🇬 使用 Google 登录（即将推出）]   │   │
 │  │                        │  │                              │   │
-│  │                        │  │  계정이 없으신가요? 회원가입 →│   │
+│  │                        │  │  还没有账户？注册 →         │   │
 │  │                        │  └──────────────────────────────┘   │
 │  └────────────────────────┘                                      │
-│   (좌측 1/2)                  (우측 폼, max-w-[420px] center)    │
+│   （左侧 1/2）                （右侧表单，max-w-[420px] center）    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-좌측 컬럼:
-- 그리드: `lg:grid-cols-2` (작은 데스크탑은 단일 컬럼으로 fallback)
-- 배경: `bg-muted/30` (또는 미세한 라이트 패턴 — placeholder)
-- 콘텐츠: 중앙정렬 `flex flex-col justify-center px-12`
-- 브랜드 마크 + tagline + 핵심 가치 3줄 bullet (i18n key: `auth.login.benefits.*`)
+左侧列：
+- grid：`lg:grid-cols-2`（小尺寸桌面端 fallback 为单列）
+- 背景：`bg-muted/30`（或轻微浅色 pattern — placeholder）
+- 内容：居中对齐 `flex flex-col justify-center px-12`
+- 品牌标识 + tagline + 核心价值 3 行 bullet（i18n key: `auth.login.benefits.*`）
 
-우측 컬럼:
-- 폼: `Card` (border, `shadow-sm`, `rounded-2xl`, `p-8`, `max-w-[420px]`)
-- 헤더: 제목 `text-2xl font-semibold tracking-tight` + 설명 `text-sm text-muted-foreground`
+右侧列：
+- 表单：`Card`（border, `shadow-sm`, `rounded-2xl`, `p-8`, `max-w-[420px]`）
+- header：标题 `text-2xl font-semibold tracking-tight` + 描述 `text-sm text-muted-foreground`
 
-#### 모바일 (< md)
+#### 移动端 (< md)
 
 ```
 ┌──────────────────────┐
-│  Moldy               │  ← brand bar (sticky 아님, scroll 가능)
-│  AI 에이전트 빌더     │
+│  Moldy               │  ← brand bar（非 sticky，可 scroll）
+│  AI Agent Builder     │
 ├──────────────────────┤
 │                      │
-│  로그인               │
-│  계정 정보를 입력      │
+│  登录                 │
+│  输入账户信息          │
 │                      │
-│  [이메일          ]   │
+│  [邮箱            ]   │
 │                      │
-│  [비밀번호  👁    ]   │
+│  [密码      👁    ]   │
 │                      │
-│  ☐ 유지   비번 찾기   │
+│  ☐ 保持   找回密码    │
 │                      │
-│  [    로그인     ]    │
+│  [    登录       ]    │
 │                      │
-│  ── 또는 ──           │
-│  [ Google (곧) ]      │
+│  ── 或 ──           │
+│  [ Google（即将推出）]  │
 │                      │
-│  회원가입 →            │
+│  注册 →               │
 │                      │
 └──────────────────────┘
 ```
-- 단일 컬럼, 좌우 padding `px-6`
-- 폼 카드는 모바일에서 `border-0 shadow-none p-0` (여백만으로 분리)
+- 单列，左右 padding `px-6`
+- 表单卡片在移动端使用 `border-0 shadow-none p-0`（仅靠留白分隔）
 
-#### 필드 명세
+#### 字段规范
 
-| 필드 | type | 검증 | placeholder |
+| 字段 | type | 验证 | placeholder |
 |------|------|------|-------------|
-| 이메일 | `email`, `autoComplete="email"`, `inputMode="email"`, `required` | 클라이언트는 단순 `@` 포함만 검사. 강한 검증은 서버 | `you@example.com` |
-| 비밀번호 | `password`, `autoComplete="current-password"`, `required` | 빈 값 검사만 | (없음) |
+| 邮箱 | `email`, `autoComplete="email"`, `inputMode="email"`, `required` | 客户端仅检查是否包含 `@`。严格验证由服务器完成 | `you@example.com` |
+| 密码 | `password`, `autoComplete="current-password"`, `required` | 仅检查非空 |（无）|
 
-#### 보조 요소
-- **로그인 유지 체크박스** (`Checkbox` + `Label`): MVP에서는 **placeholder** — 항상 체크된 것처럼 동작 (refresh token 30일이 기본). UI는 보이지만 onChange는 no-op이고 `data-placeholder="true"`. Tooltip "현재는 항상 로그인이 유지됩니다."
-- **"비밀번호 찾기"** 링크: Phase 2 placeholder. `<a>` 대신 `<button type="button">`로 두고 `onClick`은 toast.info("이메일 인증 후 지원될 예정입니다 — Phase 2"). `aria-disabled="true"`.
-- **Google로 로그인** 버튼: `Button variant="outline"` + Google G 아이콘 + 텍스트 "Google로 로그인". `disabled`. `Tooltip`: "곧 지원될 예정입니다 (Phase 2)". 버튼 자체에 `cursor-not-allowed` opacity 60%.
-  - 버튼 위 separator: `<div className="relative my-4"><div className="border-t border-border/60" /><span className="absolute inset-0 flex items-center justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">또는</span></span></div>`
+#### 辅助元素
+- **保持登录复选框**（`Checkbox` + `Label`）：MVP 中为 **placeholder** — 始终表现为已勾选（refresh token 默认 30 天）。UI 可见，但 onChange 为 no-op，并设置 `data-placeholder="true"`。Tooltip "当前始终保持登录状态。"
+- **"找回密码"** 链接：Phase 2 placeholder。不使用 `<a>`，改用 `<button type="button">`，`onClick` 为 toast.info("将在支持邮箱验证后提供 — Phase 2")。`aria-disabled="true"`。
+- **使用 Google 登录** 按钮：`Button variant="outline"` + Google G 图标 + 文本 "使用 Google 登录"。`disabled`。`Tooltip`："即将支持 (Phase 2)"。按钮本身 `cursor-not-allowed` opacity 60%。
+  - 按钮上方 separator：`<div className="relative my-4"><div className="border-t border-border/60" /><span className="absolute inset-0 flex items-center justify-center"><span className="bg-card px-2 text-xs text-muted-foreground">或</span></span></div>`
 
-#### 하단 링크
+#### 底部链接
 ```
-계정이 없으신가요?  회원가입 →
+还没有账户？  注册 →
 ```
 - `text-sm text-muted-foreground text-center`
-- "회원가입" 부분만 `text-primary-strong hover:underline`
+- 仅“注册”部分使用 `text-primary-strong hover:underline`
 
-### 2.2 `/register` — 회원가입
+### 2.2 `/register` — 注册
 
-#### 레이아웃
-- `/login`과 **동일한 2컬럼 구조** (좌측 인트로 동일, 우측 폼 카드)
-- 좌측 카피만 변경: "지금 시작하세요" + 가입 후 첫 단계 안내 (i18n: `auth.register.intro.*`)
+#### Layout
+- 与 `/login` **使用相同的 2 列结构**（左侧 intro 相同，右侧表单卡片）
+- 仅修改左侧文案："立即开始" + 注册后的第一步提示（i18n: `auth.register.intro.*`）
 
-#### 필드 (위에서 아래 순서)
+#### 字段（从上到下）
 
-| 필드 | type | 검증 (클라이언트) | placeholder |
+| 字段 | type | 验证（客户端）| placeholder |
 |------|------|------|-------------|
-| 이름 | `text`, `autoComplete="name"`, `required`, `maxLength=80` | 1자 이상 | `홍길동` |
-| 이메일 | `email`, `autoComplete="email"`, `required` | `@` 포함 | `you@example.com` |
-| 비밀번호 | `password`, `autoComplete="new-password"`, `required` | **8자 이상** (서버와 동일) | (없음) |
-| 비밀번호 확인 | `password`, `autoComplete="new-password"`, `required` | 위와 일치 | (없음) |
+| 姓名 | `text`, `autoComplete="name"`, `required`, `maxLength=80` | 至少 1 个字符 | `张三` |
+| 邮箱 | `email`, `autoComplete="email"`, `required` | 包含 `@` | `you@example.com` |
+| 密码 | `password`, `autoComplete="new-password"`, `required` | **至少 8 个字符**（与服务器一致）|（无）|
+| 确认密码 | `password`, `autoComplete="new-password"`, `required` | 与上方一致 |（无）|
 
-#### 비밀번호 강도 indicator
+#### 密码强度 indicator
 
-비밀번호 input 바로 아래 `mt-2`:
+紧接在密码 input 下方 `mt-2`：
 ```
-[━━━━━━─────────]  약함 / 보통 / 강함
+[━━━━━━─────────]  弱 / 一般 / 强
 ```
-- 막대: `flex h-1 gap-1` 4세그먼트(`flex-1 rounded-full`).
-- 점수 규칙(단순 길이 기반, 추후 zxcvbn으로 교체 가능):
-  - 0~7자: 0세그먼트 활성, 라벨 "비밀번호는 8자 이상이어야 합니다" `text-destructive`
-  - 8~9자: 1세그먼트 (`bg-status-warn`), 라벨 "약함" `text-status-warn`
-  - 10~13자: 2세그먼트 (`bg-status-warn`), 라벨 "보통"
-  - 14~17자: 3세그먼트 (`bg-status-success`), 라벨 "강함"
-  - 18자+ 또는 영숫자+기호 혼합: 4세그먼트 (`bg-status-success`), 라벨 "매우 강함"
-- 비활성 세그먼트: `bg-muted`
-- `aria-label="비밀번호 강도"`, `role="meter"`, `aria-valuenow={score}`, `aria-valuemin=0`, `aria-valuemax=4`.
+- 条形：`flex h-1 gap-1` 4 个 segment（`flex-1 rounded-full`）。
+- 评分规则（仅基于长度，后续可替换为 zxcvbn）：
+  - 0~7 个字符：0 个 segment 激活，label "密码至少需要 8 个字符" `text-destructive`
+  - 8~9 个字符：1 个 segment（`bg-status-warn`），label "弱" `text-status-warn`
+  - 10~13 个字符：2 个 segment（`bg-status-warn`），label "一般"
+  - 14~17 个字符：3 个 segment（`bg-status-success`），label "强"
+  - 18 个字符以上或字母数字+符号混合：4 个 segment（`bg-status-success`），label "非常强"
+- 未激活 segment：`bg-muted`
+- `aria-label="密码强度"`, `role="meter"`, `aria-valuenow={score}`, `aria-valuemin=0`, `aria-valuemax=4`。
 
-비밀번호 확인 mismatch 시: `aria-invalid="true"` + helper text "비밀번호가 일치하지 않습니다" `text-destructive`.
+确认密码 mismatch 时：`aria-invalid="true"` + helper text "两次输入的密码不一致" `text-destructive`。
 
-#### 약관 동의 체크박스 (placeholder)
+#### 条款同意复选框（placeholder）
 ```
-☐ 서비스 이용약관 및 개인정보처리방침에 동의합니다 (필수)
+☐ 我同意服务使用条款和隐私政策（必选）
 ```
-- MVP에서는 항상 true로 강제 (체크 해제 시 가입 버튼 disabled)
-- 약관/정책 링크는 `<a>` placeholder ("준비 중")
-- Phase 2에서 실제 약관 페이지 연결 — UI 자체는 변경 없음
+- MVP 中强制始终为 true（取消勾选时注册按钮 disabled）
+- 条款/政策链接使用 `<a>` placeholder（"准备中"）
+- Phase 2 连接实际条款页面 — UI 本身不变
 
-#### 가입 버튼
-- 텍스트: "가입하기"
-- 비활성 조건: 모든 필수 필드 미충족 OR 비밀번호 mismatch OR 약관 미동의
-- pending: `<Loader2 className="mr-2 size-4 animate-spin" />` + 텍스트 "가입 중...", 폼 전체 `pointer-events-none opacity-70` + input `disabled`
+#### 注册按钮
+- 文本："注册"
+- 禁用条件：任一必填字段不满足 OR 密码 mismatch OR 未同意条款
+- pending：`<Loader2 className="mr-2 size-4 animate-spin" />` + 文本 "注册中..."，整个表单 `pointer-events-none opacity-70` + input `disabled`
 
-#### 하단 링크
+#### 底部链接
 ```
-이미 계정이 있으신가요?  로그인 →
+已有账户？  登录 →
 ```
 
 ---
 
-## 3. UserMenu (사이드바 하단)
+## 3. UserMenu（侧边栏底部）
 
-### 3.1 위치 및 구조
+### 3.1 位置与结构
 
-기존 `app-sidebar.tsx:365-410`의 "User Profile" 섹션을 **그대로 대체**한다 (구조는 유지, 데이터 소스만 `useSession()`으로 변경).
+直接替换现有 `app-sidebar.tsx:365-410` 的 "User Profile" 区域（结构保持，数据源仅改为 `useSession()`）。
 
 ```
-┌─ Sidebar 하단 ────────────────────────┐
-│  ...메뉴들...                          │
+┌─ Sidebar 底部 ────────────────────────┐
+│  ...菜单项...                          │
 │  ─────────────────────────────────────│
 │  ┌──┐                              ▾  │
-│  │JD│  John Doe         [관리자]      │  ← super_user일 때 배지
+│  │JD│  John Doe         [管理员]      │  ← super_user 时显示 badge
 │  └──┘  john@example.com              │
 └──────────────────────────────────────┘
 ```
 
-### 3.2 아바타
+### 3.2 Avatar
 
-- 컴포넌트: shadcn `Avatar` (`size-8 rounded-lg`) — 기존 `bg-sidebar-accent`와 통일
-- 이미지: 사용자 `avatar_url` (MVP에는 없으므로 항상 fallback)
-- Fallback: 이름의 **첫 두 글자**를 대문자로. 한국어 이름이면 첫 글자만 (e.g. "홍").
+- 组件：shadcn `Avatar`（`size-8 rounded-lg`）— 与现有 `bg-sidebar-accent` 统一
+- 图片：用户 `avatar_url`（MVP 中没有，因此始终 fallback）
+- Fallback：取姓名**前两个字符**并大写。中文姓名则取第一个字符（e.g. "张"）。
   ```tsx
   function initials(name: string): string {
     const parts = name.trim().split(/\s+/)
     if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-    return parts[0].slice(0, 2).toUpperCase()  // ASCII는 2글자, 한글은 첫 1글자만 잘림 = OK
+    return parts[0].slice(0, 2).toUpperCase()  // ASCII取2个字符，中文取前1个字符 = OK
   }
   ```
-- Fallback 배경: `bg-primary/15 text-primary-strong` (브랜드 일관성)
+- Fallback 背景：`bg-primary/15 text-primary-strong`（品牌一致性）
 
-### 3.3 텍스트 영역
+### 3.3 文本区域
 
-- 이름: `truncate font-medium text-sm leading-tight`
-- 이메일: `truncate text-xs text-muted-foreground leading-tight`
-- 컨테이너: `grid flex-1 min-w-0` — `min-w-0`이 truncate의 핵심
+- 姓名：`truncate font-medium text-sm leading-tight`
+- 邮箱：`truncate text-xs text-muted-foreground leading-tight`
+- 容器：`grid flex-1 min-w-0` — `min-w-0` 是 truncate 的关键
 
-### 3.4 super_user 배지
+### 3.4 super_user badge
 
-이름 옆에 작은 배지 (조건부):
+姓名旁的小 badge（条件显示）：
 ```tsx
 {user.is_super_user && (
   <span className="inline-flex h-4 items-center rounded-full bg-status-accent/15 px-1.5 text-[10px] font-medium uppercase tracking-wider text-status-accent">
-    관리자
+    管理员
   </span>
 )}
 ```
-- ADR-010의 `--status-accent` 토큰 사용 (브랜드 primary와 색 충돌 회피)
-- 영어: "ADMIN"
+- 使用 ADR-010 的 `--status-accent` token（避免与品牌 primary 色冲突）
+- 英文："ADMIN"
 
-### 3.5 드롭다운 메뉴 (열린 상태)
+### 3.5 Dropdown menu（展开状态）
 
 ```
 ┌─────────────────────────┐
-│  ▸ 프로필 설정          │  ← /settings (Phase 2 활성화, MVP는 placeholder)
-│  ▸ API 키 관리          │  ← /credentials (바로 이동)
+│  ▸ 个人资料设置        │  ← /settings（Phase 2 启用，MVP 为 placeholder）
+│  ▸ API 密钥管理        │  ← /credentials（直接跳转）
 ├─────────────────────────┤
-│  ▸ 로그아웃             │  ← destructive 색상
+│  ▸ 退出登录            │  ← destructive 颜色
 └─────────────────────────┘
 ```
 
-shadcn `DropdownMenu` 사용 (이미 import됨). 항목:
-1. **프로필 설정** — `<UserIcon />` + "프로필 설정"
-   - MVP: `onClick={() => toast.info('프로필 설정은 곧 지원됩니다')}` (placeholder)
-   - Phase 2에서 `/settings/profile`로 변경
-2. **API 키 관리** — `<KeyIcon />` + "API 키 관리"
+使用 shadcn `DropdownMenu`（已 import）。项目：
+1. **个人资料设置** — `<UserIcon />` + "个人资料设置"
+   - MVP：`onClick={() => toast.info('个人资料设置即将支持')}`（placeholder）
+   - Phase 2 改为 `/settings/profile`
+2. **API 密钥管理** — `<KeyIcon />` + "API 密钥管理"
    - `onClick={() => router.push('/credentials')}`
 3. (Separator)
-4. **로그아웃** — `<LogOutIcon />` + "로그아웃"
+4. **退出登录** — `<LogOutIcon />` + "退出登录"
    - `className="text-destructive focus:text-destructive focus:bg-destructive/10"`
-   - `onClick={onLogout}` — `useAuth().logout()` mutation 호출
+   - `onClick={onLogout}` — 调用 `useAuth().logout()` mutation
 
-### 3.6 첫 가입 직후 super_user toast
+### 3.6 首位注册后 super_user toast
 
-가입 응답에서 `user.is_super_user === true`이면 redirect 직후 1회만:
+注册响应中若 `user.is_super_user === true`，redirect 后仅显示 1 次：
 ```tsx
-toast.success('🎉 Super User로 등록되었습니다', {
-  description: '시스템 credential을 관리할 수 있습니다.',
+toast.success('🎉 已注册为 Super User', {
+  description: '可以管理系统 credential。',
   duration: 6000,
 })
 ```
-중복 방지: `sessionStorage.setItem('moldy.super_user_welcomed', '1')` 확인 후 표시.
+防止重复：显示前检查 `sessionStorage.setItem('moldy.super_user_welcomed', '1')`。
 
 ---
 
-## 4. 상태 처리 명세
+## 4. 状态处理规范
 
-### 4.1 로딩 상태
+### 4.1 加载状态
 
-#### 폼 제출 중
-- 버튼: `disabled` + 좌측에 `<Loader2 className="mr-2 size-4 animate-spin" aria-hidden />` + 텍스트 "로그인 중..." / "가입 중..."
-- 폼 전체: `<fieldset disabled={isLoading} className="contents">` — input들 자동 disabled
-- `aria-busy="true"`를 `<form>`에 부여
+#### 表单提交中
+- 按钮：`disabled` + 左侧 `<Loader2 className="mr-2 size-4 animate-spin" aria-hidden />` + 文本 "登录中..." / "注册中..."
+- 整个表单：`<fieldset disabled={isLoading} className="contents">` — input 自动 disabled
+- 在 `<form>` 上添加 `aria-busy="true"`
 
-#### 세션 초기 로딩 (`useSession()` pending)
+#### session 初始加载（`useSession()` pending）
 - `AuthGuard` wrapper:
-  - 화면 전체 skeleton: `<div className="flex h-screen items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>`
-  - 또는 사이드바/헤더 영역만 `<Skeleton>` (UX 부드러움 우선)
+  - 全屏 skeleton：`<div className="flex h-screen items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>`
+  - 或仅侧边栏/header 区域使用 `<Skeleton>`（优先保证 UX 平滑）
 
-### 4.2 에러 상태
+### 4.2 错误状态
 
-#### 인라인 폼 에러 (필드 단위)
-- 필드 아래 `text-xs text-destructive mt-1`
-- 컨테이너에 `aria-invalid="true"` + `aria-describedby={errorId}`
-- 입력 시 즉시 클리어 (live validation)
+#### inline 表单错误（字段级）
+- 字段下方 `text-xs text-destructive mt-1`
+- 容器设置 `aria-invalid="true"` + `aria-describedby={errorId}`
+- 输入时立即清除（live validation）
 
-#### 폼 레벨 에러 (제출 후)
-- `Alert variant="destructive"` 폼 카드 헤더 바로 아래 (필드 위)
-- `role="alert"` + `aria-live="assertive"` (즉시 알림)
-- 닫기 버튼 없음 (다음 제출 시 자동 클리어)
+#### 表单级错误（提交后）
+- `Alert variant="destructive"` 紧接表单卡片 header 下方（字段上方）
+- `role="alert"` + `aria-live="assertive"`（立即通知）
+- 无关闭按钮（下次提交时自动清除）
 
-#### 에러 메시지 매핑
+#### 错误消息映射
 
-| HTTP | 시나리오 | 메시지 (한국어) | 표시 위치 |
+| HTTP | 场景 | 消息（简体中文）| 显示位置 |
 |------|---------|----------------|----------|
-| 401 | 로그인 실패 | "이메일 또는 비밀번호가 올바르지 않습니다" | 폼 레벨 Alert |
-| 409 | 이메일 중복 (가입) | "이미 사용 중인 이메일입니다" | 이메일 필드 인라인 |
-| 422 | 비밀번호 너무 짧음 | "비밀번호는 8자 이상이어야 합니다" | 비밀번호 필드 인라인 |
-| 422 | 이름 빈 값 | "이름을 입력해 주세요" | 이름 필드 인라인 |
-| 423 | 계정 잠김 | "계정이 일시적으로 잠겼습니다. 15분 후 다시 시도해 주세요." | 폼 레벨 Alert |
-| 429 | Rate limit | "잠시 후 다시 시도해 주세요" | 폼 레벨 Alert |
-| 5xx | 서버 에러 | "잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해 주세요." | 폼 레벨 Alert |
-| network | 연결 실패 | "네트워크 연결을 확인해 주세요" + [재시도] 버튼 | 폼 레벨 Alert |
+| 401 | 登录失败 | "邮箱或密码不正确" | 表单级 Alert |
+| 409 | 邮箱重复（注册）| "该邮箱已被使用" | 邮箱字段 inline |
+| 422 | 密码过短 | "密码至少需要 8 个字符" | 密码字段 inline |
+| 422 | 姓名为空 | "请输入姓名" | 姓名字段 inline |
+| 423 | 账户锁定 | "账户已暂时锁定。请在 15 分钟后重试。" | 表单级 Alert |
+| 429 | Rate limit | "请稍后重试" | 表单级 Alert |
+| 5xx | 服务器错误 | "请稍后重试。如果问题持续，请联系管理员。" | 表单级 Alert |
+| network | 连接失败 | "请检查网络连接" + [重试] 按钮 | 表单级 Alert |
 
-422의 detail 매핑은 백엔드 응답의 `loc` (e.g. `["body","password"]`)을 보고 분기. 알 수 없는 필드면 폼 레벨 Alert로 fallback.
+422 的 detail 映射根据后端响应的 `loc`（e.g. `["body","password"]`）分支。未知字段则 fallback 到表单级 Alert。
 
-### 4.3 글로벌 401 처리 (세션 만료)
+### 4.3 global 401 处理（session 过期）
 
-`apiFetch`가 401을 받고 `/refresh`도 실패한 경우:
-1. **Toast 표시**: `toast.error('세션이 만료되었습니다', { description: '다시 로그인해 주세요.' })`
-2. **TanStack Query 캐시 invalidate**: `queryClient.clear()`
-3. **Redirect**: 현재 path를 `callbackUrl` 쿼리에 보존하고 `/login`으로 이동
+`apiFetch` 收到 401 且 `/refresh` 也失败时：
+1. **显示 Toast**：`toast.error('会话已过期', { description: '请重新登录。' })`
+2. **TanStack Query 缓存 invalidate**：`queryClient.clear()`
+3. **Redirect**：将当前 path 保存到 `callbackUrl` query，并跳转 `/login`
    ```ts
    const callback = encodeURIComponent(window.location.pathname + window.location.search)
    router.push(`/login?callbackUrl=${callback}`)
    ```
-4. **callbackUrl 검증** (login 페이지 onSuccess에서): `startsWith('/')` && `!startsWith('//')` (open redirect 방어)
+4. **callbackUrl 验证**（login 页面 onSuccess）：`startsWith('/')` && `!startsWith('//')`（防止 open redirect）
 
-이 처리는 `lib/api/client.ts`의 인터셉터에서 단일 진입점으로 — 컴포넌트마다 처리하지 않음.
+此处理在 `lib/api/client.ts` interceptor 中作为单一入口 — 不在每个组件中分别处理。
 
-### 4.4 빈 상태 / 첫 진입
+### 4.4 空状态 / 首次进入
 
-- **`/login` 첫 진입**: 폼 깨끗한 상태 (autofocus on 이메일 input)
-- **`/login?callbackUrl=...` (만료 후 진입)**: 폼 위에 Alert (info, `bg-status-info/10 text-status-info`) "로그인이 필요합니다"
-- **이미 로그인 중인 사용자가 `/login` 직접 접근**: middleware가 `/`로 리다이렉트 (서버측)
+- **首次进入 `/login`**：表单为空状态（autofocus on 邮箱 input）
+- **`/login?callbackUrl=...`（过期后进入）**：表单上方显示 Alert（info, `bg-status-info/10 text-status-info`）"需要登录"
+- **已登录用户直接访问 `/login`**：middleware 在服务器端 redirect 到 `/`
 
-### 4.5 네트워크 오류
+### 4.5 网络错误
 
-- `Alert variant="destructive"` + 메시지 + `<Button variant="outline" size="sm" onClick={retry}>다시 시도</Button>`
-- 재시도는 마지막 mutation을 그대로 재호출
+- `Alert variant="destructive"` + 消息 + `<Button variant="outline" size="sm" onClick={retry}>重试</Button>`
+- 重试时原样重新调用最后一次 mutation
 
 ---
 
-## 5. Onboarding 플로우
+## 5. Onboarding 流程
 
-### 5.1 첫 로그인 후 환영 모달
+### 5.1 首次登录后的欢迎 modal
 
-#### 트리거 조건
-- 가입 직후 자동 로그인 → 대시보드(`/`) 진입 시 1회
-- 또는 `sessionStorage.getItem('moldy.onboarding_dismissed') !== '1'` && `useSession().data.user.created_at`이 5분 이내
-- `OnboardingDialog` 컴포넌트가 대시보드 root에 mount되어 자체 판단
+#### 触发条件
+- 注册后自动登录 → 进入 dashboard（`/`）时 1 次
+- 或 `sessionStorage.getItem('moldy.onboarding_dismissed') !== '1'` && `useSession().data.user.created_at` 在 5 分钟内
+- `OnboardingDialog` 组件 mount 在 dashboard root，自行判断
 
-#### 다이얼로그 (DialogShell 사용)
+#### Dialog（使用 DialogShell）
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  🎉  Moldy에 오신 것을 환영합니다              ✕  │
-│      AI 에이전트를 만들 준비가 거의 끝났어요      │
+│  🎉  欢迎来到 Moldy                              ✕  │
+│      创建 AI Agent 的准备工作即将完成              │
 ├──────────────────────────────────────────────────┤
 │                                                  │
-│  AI 에이전트를 만들려면 LLM API 키를            │
-│  등록해야 합니다.                                │
+│  要创建 AI Agent，需要注册 LLM API 密钥            │
+│  。                                                │
 │                                                  │
 │  ┌─────────────────────────────────────────┐    │
-│  │  📋 다음 중 하나를 등록해 주세요:        │    │
+│  │  📋 请注册以下任意一种：                  │    │
 │  │     · OpenAI API Key                    │    │
 │  │     · Anthropic API Key                 │    │
 │  │     · Google AI Studio API Key          │    │
 │  └─────────────────────────────────────────┘    │
 │                                                  │
-│  키는 암호화되어 저장되며 본인만 볼 수 있습니다. │
+│  密钥会加密保存，只有您本人可以查看。               │
 │                                                  │
 ├──────────────────────────────────────────────────┤
-│                       [나중에]   [지금 등록]     │
+│                       [稍后]   [立即注册]           │
 └──────────────────────────────────────────────────┘
 ```
 
 - `DialogShell` size=`md` height=`auto`
-- 헤더 icon slot: `<PartyPopperIcon />` (lucide) 또는 emoji `🎉` + `bg-status-accent/15 text-status-accent`
-- 본문은 ADR-010의 `space-y-6` / `space-y-3` 리듬 준수
-- 하이라이트 박스: `bg-muted/40 rounded-lg p-4 border border-border/60`
-- 푸터:
-  - "나중에" — `Button variant="ghost"` → `sessionStorage.setItem('moldy.onboarding_dismissed', '1')` + 닫기
-  - "지금 등록" — `Button` (primary) → `router.push('/credentials')` + 닫기 + dismissed 플래그 set
+- header icon slot：`<PartyPopperIcon />` (lucide) 或 emoji `🎉` + `bg-status-accent/15 text-status-accent`
+- 正文遵循 ADR-010 的 `space-y-6` / `space-y-3` 节奏
+- highlight box：`bg-muted/40 rounded-lg p-4 border border-border/60`
+- footer：
+  - "稍后" — `Button variant="ghost"` → `sessionStorage.setItem('moldy.onboarding_dismissed', '1')` + 关闭
+  - "立即注册" — `Button` (primary) → `router.push('/credentials')` + 关闭 + 设置 dismissed flag
 
-### 5.2 첫 에이전트 생성 가드
+### 5.2 首个 Agent 创建 guard
 
-`/agents/new` 또는 builder 진입 시:
-1. `useSession()`으로 user 확인
-2. `useQuery(['credentials','for-llm'])`로 LLM credential 보유 여부 체크
-3. 없으면 → `/credentials?redirect=/agents/new` 로 redirect
-4. `/credentials` 페이지 상단에 `Alert` (info):
+进入 `/agents/new` 或 builder 时：
+1. 通过 `useSession()` 确认 user
+2. 通过 `useQuery(['credentials','for-llm'])` 检查是否拥有 LLM credential
+3. 若无 → redirect 到 `/credentials?redirect=/agents/new`
+4. `/credentials` 页面顶部显示 `Alert` (info)：
    ```
-   ⓘ  AI 에이전트를 만들려면 먼저 LLM API 키를 등록해 주세요.
-       등록 후 자동으로 이전 화면으로 돌아갑니다.
-       [← 돌아가기]
+   ⓘ  要创建 AI Agent，请先注册 LLM API 密钥。
+       注册完成后会自动返回之前页面。
+       [← 返回]
    ```
-5. credential 등록 완료 시 mutation `onSuccess`에서 `redirect` 쿼리 파라미터로 자동 복귀
+5. credential 注册完成时，在 mutation `onSuccess` 中根据 `redirect` query param 自动返回
 
-이 동작은 `useRequireLlmCredential()` 훅으로 감싸서 재사용 (signature: `() => { hasCredential: boolean, isLoading: boolean }`).
+此行为封装为 `useRequireLlmCredential()` hook 复用（signature: `() => { hasCredential: boolean, isLoading: boolean }`）。
 
-### 5.3 super_user 전용 표시 (시스템 credential)
+### 5.3 super_user 专用显示（system credential）
 
-`/credentials` 페이지에서:
-- 일반 사용자: 본인 credential만 노출 (백엔드가 필터)
-- super_user: 본인 + 시스템 — 시스템 credential은 명확히 구분
-  - 카드 좌측 상단에 `Badge variant="outline"` "시스템" (`bg-status-accent/10 text-status-accent border-status-accent/30`)
-  - 일반 카드와 약간의 시각적 구분 (배경 `bg-muted/30`)
+在 `/credentials` 页面：
+- 普通用户：仅显示自己的 credential（后端过滤）
+- super_user：本人 + system — system credential 明确区分
+  - 卡片左上角显示 `Badge variant="outline"` "系统"（`bg-status-accent/10 text-status-accent border-status-accent/30`）
+  - 与普通卡片做轻微视觉区分（背景 `bg-muted/30`）
 
-이 부분은 본 스펙의 직접 범위 외이지만 onboarding과 연결되므로 명시.
+此部分不属于本 spec 直接范围，但因与 onboarding 相关而明确说明。
 
 ---
 
-## 6. 컴포넌트 목록
+## 6. 组件列表
 
-저커버그가 아래 표만 보고 한 줄도 추가 결정 없이 구현 가능하도록 작성했다.
+编写目标是让 Zuckerberg 只看下表即可实现，无需额外做任何决定。
 
-| 컴포넌트 | 파일 경로 | 핵심 props | 의존 | 비고 |
+| 组件 | 文件路径 | 核心 props | 依赖 | 备注 |
 |----------|-----------|-----------|------|------|
-| `LoginForm` | `frontend/src/components/auth/LoginForm.tsx` | `onSubmit(email, password): Promise<void>`, `isLoading: boolean`, `error: AuthError \| null`, `defaultEmail?: string` | shadcn Form, Input, Button, Checkbox, Alert | 비밀번호 보기 토글 내장. callbackUrl 파라미터는 페이지 컴포넌트가 처리 |
-| `RegisterForm` | `frontend/src/components/auth/RegisterForm.tsx` | `onSubmit({name, email, password}): Promise<void>`, `isLoading`, `error` | 위와 동일 + `Progress` 또는 자체 strength bar | 비밀번호 강도 indicator + 확인 필드 mismatch 검증 |
-| `UserMenu` | `frontend/src/components/auth/UserMenu.tsx` | `user: { id, name, email, is_super_user }`, `onLogout: () => void` | shadcn Avatar, DropdownMenu | 사이드바 하단의 기존 블록 대체 |
-| `AuthGuard` | `frontend/src/components/auth/AuthGuard.tsx` | `children: ReactNode`, `fallback?: ReactNode` | `useSession()` | session pending이면 fallback, error/없음이면 redirect /login |
-| `OnboardingDialog` | `frontend/src/components/auth/OnboardingDialog.tsx` | `open: boolean`, `onClose: () => void`, `onPrimary: () => void` | `DialogShell` | 자체 trigger 로직은 dashboard root에 |
-| `PasswordStrengthMeter` | `frontend/src/components/auth/PasswordStrengthMeter.tsx` | `password: string` | (없음) | 4세그먼트 막대 + 라벨, `role="meter"` |
-| `SessionExpiredToast` | (없음 — `lib/api/client.ts`에서 `toast.error` 직접 호출) | — | sonner | 별도 컴포넌트 만들지 않음, 함수 호출만 |
+| `LoginForm` | `frontend/src/components/auth/LoginForm.tsx` | `onSubmit(email, password): Promise<void>`, `isLoading: boolean`, `error: AuthError \| null`, `defaultEmail?: string` | shadcn Form, Input, Button, Checkbox, Alert | 内置密码显示 toggle。callbackUrl param 由页面组件处理 |
+| `RegisterForm` | `frontend/src/components/auth/RegisterForm.tsx` | `onSubmit({name, email, password}): Promise<void>`, `isLoading`, `error` | 同上 + `Progress` 或自定义 strength bar | 密码强度 indicator + 确认字段 mismatch 验证 |
+| `UserMenu` | `frontend/src/components/auth/UserMenu.tsx` | `user: { id, name, email, is_super_user }`, `onLogout: () => void` | shadcn Avatar, DropdownMenu | 替换侧边栏底部现有 block |
+| `AuthGuard` | `frontend/src/components/auth/AuthGuard.tsx` | `children: ReactNode`, `fallback?: ReactNode` | `useSession()` | session pending 时使用 fallback，error/无 session 时 redirect /login |
+| `OnboardingDialog` | `frontend/src/components/auth/OnboardingDialog.tsx` | `open: boolean`, `onClose: () => void`, `onPrimary: () => void` | `DialogShell` | 自身 trigger 逻辑位于 dashboard root |
+| `PasswordStrengthMeter` | `frontend/src/components/auth/PasswordStrengthMeter.tsx` | `password: string` |（无）| 4 segment 条形 + label，`role="meter"` |
+| `SessionExpiredToast` |（无 — 在 `lib/api/client.ts` 直接调用 `toast.error`）| — | sonner | 不创建单独组件，只调用函数 |
 
-### 6.1 페이지 컴포넌트
+### 6.1 页面组件
 
-| 파일 | 책임 |
+| 文件 | 职责 |
 |------|------|
-| `frontend/src/app/(auth)/layout.tsx` | 인증 전용 레이아웃 — 사이드바 없음, `<main>`에 2컬럼 그리드 |
-| `frontend/src/app/(auth)/login/page.tsx` | `LoginForm` 호스팅, `useAuth().login` mutation, callbackUrl 처리 |
-| `frontend/src/app/(auth)/register/page.tsx` | `RegisterForm` 호스팅, `useAuth().register` mutation, super_user welcome toast |
+| `frontend/src/app/(auth)/layout.tsx` | 认证专用 layout — 无侧边栏，在 `<main>` 中使用 2 列 grid |
+| `frontend/src/app/(auth)/login/page.tsx` | 托管 `LoginForm`，`useAuth().login` mutation，处理 callbackUrl |
+| `frontend/src/app/(auth)/register/page.tsx` | 托管 `RegisterForm`，`useAuth().register` mutation，super_user welcome toast |
 
-### 6.2 훅/유틸
+### 6.2 hook/util
 
-| 파일 | export |
+| 文件 | export |
 |------|--------|
 | `frontend/src/lib/auth/session.ts` | `useSession()` (TanStack Query) |
 | `frontend/src/lib/hooks/useAuth.ts` | `useAuth()` returning `{ login, register, logout, isPending }` |
 | `frontend/src/lib/auth/csrf.ts` | `getCsrfToken()`, `setCsrfToken(token)`, `clearCsrfToken()` (in-memory + sessionStorage backup) |
 
-### 6.3 진입점 — 저커버그가 가장 먼저 만질 파일
+### 6.3 入口 — Zuckerberg 最先应修改的文件
 
 ```
-frontend/src/lib/api/client.ts   ← 여기부터 시작
+frontend/src/lib/api/client.ts   ← 从这里开始
 ```
-이 파일에 `credentials: 'include'` + CSRF 헤더 + 401 자동 refresh + 만료 toast/redirect를 박으면, 나머지 컴포넌트는 그 위에 자연스럽게 얹어진다.
+在此文件加入 `credentials: 'include'` + CSRF header + 401 自动 refresh + 过期 toast/redirect 后，其余组件即可自然构建在其上。
 
 ---
 
-## 7. 접근성 (WCAG AA)
+## 7. 可访问性 (WCAG AA)
 
-### 7.1 폼 레이블
+### 7.1 表单 label
 
-- 모든 `<Input>`은 `<Label htmlFor={id}>`와 명시적 연결
-- 비밀번호 보기 토글: `<button type="button" aria-pressed={visible} aria-label="비밀번호 표시/숨김">`
-- 체크박스도 동일 — `<Label htmlFor>` 또는 wrapping `<Label>`로 클릭 영역 확장
+- 所有 `<Input>` 都与 `<Label htmlFor={id}>` 显式关联
+- 密码显示 toggle：`<button type="button" aria-pressed={visible} aria-label="显示/隐藏密码">`
+- Checkbox 同样处理 — 使用 `<Label htmlFor>` 或 wrapping `<Label>` 扩大点击区域
 
-### 7.2 Tab 순서
+### 7.2 Tab 顺序
 
-`/login` 데스크탑:
-1. 이메일 입력
-2. 비밀번호 입력
-3. 비밀번호 보기 토글
-4. "로그인 유지" 체크박스
-5. "비밀번호 찾기" 링크 (Phase 2 — `aria-disabled`이지만 tab은 가능)
-6. **"로그인" 버튼** (primary)
-7. "Google로 로그인" 버튼 (disabled — tab skip)
-8. "회원가입" 링크
+`/login` 桌面端：
+1. 邮箱输入
+2. 密码输入
+3. 密码显示 toggle
+4. "保持登录" checkbox
+5. "找回密码" 链接（Phase 2 — 虽为 `aria-disabled` 但仍可 tab）
+6. **"登录" 按钮** (primary)
+7. "使用 Google 登录" 按钮（disabled — tab skip）
+8. "注册" 链接
 
 `/register`:
-1. 이름 → 2. 이메일 → 3. 비밀번호 → 4. 비밀번호 보기 토글 → 5. 비밀번호 확인 → 6. 약관 체크박스 → 7. "가입하기" 버튼 → 8. "로그인" 링크
+1. 姓名 → 2. 邮箱 → 3. 密码 → 4. 密码显示 toggle → 5. 确认密码 → 6. 条款 checkbox → 7. "注册" 按钮 → 8. "登录" 链接
 
-UserMenu 드롭다운:
-1. trigger 버튼 (Tab 도달 시 Enter/Space로 열림)
-2. 첫 메뉴 아이템 (Arrow Down으로 이동)
-3. ESC로 닫기
+UserMenu dropdown：
+1. trigger 按钮（Tab 聚焦后按 Enter/Space 打开）
+2. 第一个 menu item（用 Arrow Down 移动）
+3. 按 ESC 关闭
 
-### 7.3 에러 알림
+### 7.3 错误通知
 
-- 폼 레벨 Alert: `role="alert"` + `aria-live="assertive"` (즉시 안내)
-- 인라인 helper text: `aria-live="polite"` + `id={`${field}-error`}` + 필드의 `aria-describedby`
-- 비밀번호 강도: `role="meter" aria-valuenow aria-valuemin aria-valuemax aria-label`
+- 表单级 Alert：`role="alert"` + `aria-live="assertive"`（立即提示）
+- inline helper text：`aria-live="polite"` + `id={`${field}-error`}` + 字段的 `aria-describedby`
+- 密码强度：`role="meter" aria-valuenow aria-valuemin aria-valuemax aria-label`
 
-### 7.4 포커스 가시성
+### 7.4 focus 可见性
 
-- ADR-010의 표준 포커스 링: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
-- 버튼만 추가: `focus-visible:ring-offset-2 focus-visible:ring-offset-background`
-- 다이얼로그 내부 포커스 트랩: Radix DialogPrimitive 기본 동작 (DialogShell이 사용)
+- ADR-010 标准 focus ring：`focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`
+- 按钮额外使用：`focus-visible:ring-offset-2 focus-visible:ring-offset-background`
+- Dialog 内 focus trap：Radix DialogPrimitive 默认行为（DialogShell 使用）
 
-### 7.5 키보드 단축키
+### 7.5 键盘快捷键
 
-- Enter: 폼 제출 (다른 단축키 필요 없음 — 단순함 우선)
-- Tab/Shift+Tab: 표준 이동
-- ESC: 다이얼로그 닫기 (Onboarding) — Radix 기본
-- 비밀번호 보기 토글: Space 또는 Enter
+- Enter：提交表单（无需其他快捷键 — 简单优先）
+- Tab/Shift+Tab：标准移动
+- ESC：关闭 Dialog（Onboarding）— Radix 默认
+- 密码显示 toggle：Space 或 Enter
 
-### 7.6 모션
+### 7.6 motion
 
-- `prefers-reduced-motion` 존중 — Tailwind v4의 motion-safe/motion-reduce 변형 사용
-- 다이얼로그 애니메이션은 ADR-010의 200ms zoom + fade
+- 尊重 `prefers-reduced-motion` — 使用 Tailwind v4 的 motion-safe/motion-reduce variant
+- Dialog 动画使用 ADR-010 的 200ms zoom + fade
 
 ---
 
-## 8. 디자인 토큰
+## 8. 设计 token
 
-**새 토큰을 만들지 않는다.** ADR-010 + shadcn 기본 토큰만 사용.
+**不创建新 token。** 仅使用 ADR-010 + shadcn 默认 token。
 
-### 8.1 사용하는 토큰 인벤토리
+### 8.1 使用的 token inventory
 
-| 토큰 | 용도 |
+| token | 用途 |
 |------|------|
-| `--background` / `--foreground` | 페이지 기본 |
-| `--card` / `--card-foreground` | 폼 카드 표면 |
-| `--popover` / `--popover-foreground` | 드롭다운, 다이얼로그 |
-| `--primary` / `--primary-foreground` | 메인 CTA 버튼 |
-| `--primary-strong` | 링크, 활성 텍스트, 아바타 fallback 텍스트 색 |
-| `--secondary` / `--secondary-foreground` | 보조 버튼 (덜 사용) |
-| `--muted` / `--muted-foreground` | 보조 텍스트, 배경 fill, 인트로 영역 |
-| `--accent` / `--accent-foreground` | hover 상태 |
-| `--destructive` / `--destructive-foreground` | 에러, 로그아웃 |
-| `--border` | 카드/구분선 |
+| `--background` / `--foreground` | 页面基础 |
+| `--card` / `--card-foreground` | 表单卡片表面 |
+| `--popover` / `--popover-foreground` | dropdown, dialog |
+| `--primary` / `--primary-foreground` | 主 CTA 按钮 |
+| `--primary-strong` | 链接、active 文本、avatar fallback 文本颜色 |
+| `--secondary` / `--secondary-foreground` | 辅助按钮（较少使用）|
+| `--muted` / `--muted-foreground` | 辅助文本、背景 fill、intro 区域 |
+| `--accent` / `--accent-foreground` | hover 状态 |
+| `--destructive` / `--destructive-foreground` | 错误、退出登录 |
+| `--border` | 卡片/分隔线 |
 | `--input` | input border |
-| `--ring` | 포커스 링 (ADR-010 알파 내장) |
-| `--status-success` | 비밀번호 강도 "강함" 이상 |
-| `--status-warn` | 비밀번호 강도 "약함/보통" |
-| `--status-info` | 콜백 안내, info Alert |
-| `--status-accent` | super_user 배지, onboarding 아이콘 |
-| `--status-danger` | (= destructive 별칭) |
+| `--ring` | focus ring（ADR-010 内置 alpha）|
+| `--status-success` | 密码强度“强”以上 |
+| `--status-warn` | 密码强度“弱/一般” |
+| `--status-info` | callback 提示、info Alert |
+| `--status-accent` | super_user badge、onboarding icon |
+| `--status-danger` |（= destructive alias）|
 
-### 8.2 금지
+### 8.2 禁止事项
 
-- ❌ raw `bg-emerald-*`, `text-blue-*`, `bg-zinc-*` 등 Tailwind 팔레트 직접 사용
-- ❌ 임의 hex (`#10b981`) 또는 oklch literal
-- ❌ DialogShell 우회 (`Dialog` 직접 사용)
-- ❌ `sm:max-w-2xl` 같은 임의 사이즈 — `DIALOG_SIZE` 토큰 사용
+- ❌ 禁止直接使用 raw `bg-emerald-*`, `text-blue-*`, `bg-zinc-*` 等 Tailwind palette
+- ❌ 禁止任意 hex（`#10b981`）或 oklch literal
+- ❌ 禁止绕过 DialogShell（直接使用 `Dialog`）
+- ❌ 禁止 `sm:max-w-2xl` 等任意尺寸 — 使用 `DIALOG_SIZE` token
 
-### 8.3 스페이싱 / 라운딩
+### 8.3 spacing / round
 
-- 카드 라운딩: `rounded-2xl` (DialogShell과 동일)
-- 카드 그림자: `shadow-sm` (로그인/가입은 다이얼로그가 아닌 페이지이므로 강한 shadow 불필요)
-- 폼 내부 간격: `space-y-4`
-- 라벨↔입력: `space-y-1.5`
-- 입력↔helper text: `mt-1`
+- 卡片 round：`rounded-2xl`（与 DialogShell 相同）
+- 卡片 shadow：`shadow-sm`（登录/注册是页面而非 dialog，无需强 shadow）
+- 表单内部间距：`space-y-4`
+- label↔input：`space-y-1.5`
+- input↔helper text：`mt-1`
 
-### 8.4 타이포그래피
+### 8.4 typography
 
-- 페이지 제목: `text-2xl font-semibold tracking-tight`
-- 설명: `text-sm text-muted-foreground`
-- 라벨: `text-sm font-medium` (shadcn Label 기본)
-- 인라인 에러/helper: `text-xs`
-- 배지: `text-[10px] uppercase tracking-wider`
+- 页面标题：`text-2xl font-semibold tracking-tight`
+- 描述：`text-sm text-muted-foreground`
+- label：`text-sm font-medium`（shadcn Label 默认）
+- inline error/helper：`text-xs`
+- badge：`text-[10px] uppercase tracking-wider`
 
 ---
 
-## 부록 A. i18n 키 인벤토리 (한국어 1차)
+## 附录 A. i18n key inventory（简体中文第 1 优先）
 
 ```yaml
 auth:
   login:
-    title: "로그인"
-    subtitle: "계정 정보를 입력해 주세요"
-    email: "이메일"
-    password: "비밀번호"
-    rememberMe: "로그인 유지"
-    forgotPassword: "비밀번호 찾기"
-    submit: "로그인"
-    submitting: "로그인 중..."
-    googleButton: "Google로 로그인"
-    googleComingSoon: "곧 지원될 예정입니다"
-    or: "또는"
-    noAccount: "계정이 없으신가요?"
-    registerLink: "회원가입"
+    title: "登录"
+    subtitle: "请输入账户信息"
+    email: "邮箱"
+    password: "密码"
+    rememberMe: "保持登录"
+    forgotPassword: "找回密码"
+    submit: "登录"
+    submitting: "登录中..."
+    googleButton: "使用 Google 登录"
+    googleComingSoon: "即将支持"
+    or: "或"
+    noAccount: "还没有账户？"
+    registerLink: "注册"
     benefits:
-      title: "AI 에이전트를 코드 한 줄 없이"
-      item1: "노코드 빌더"
-      item2: "LangGraph 런타임"
-      item3: "대화형 에이전트 생성"
-    expiredNotice: "로그인이 필요합니다"
+      title: "无需一行代码即可创建 AI Agent"
+      item1: "no-code builder"
+      item2: "LangGraph runtime"
+      item3: "创建对话式 Agent"
+    expiredNotice: "需要登录"
   register:
-    title: "회원가입"
-    subtitle: "Moldy 계정을 만들어보세요"
-    name: "이름"
-    email: "이메일"
-    password: "비밀번호"
-    passwordConfirm: "비밀번호 확인"
-    terms: "서비스 이용약관 및 개인정보처리방침에 동의합니다"
-    submit: "가입하기"
-    submitting: "가입 중..."
-    haveAccount: "이미 계정이 있으신가요?"
-    loginLink: "로그인"
+    title: "注册"
+    subtitle: "创建 Moldy 账户"
+    name: "姓名"
+    email: "邮箱"
+    password: "密码"
+    passwordConfirm: "确认密码"
+    terms: "我同意服务使用条款和隐私政策"
+    submit: "注册"
+    submitting: "注册中..."
+    haveAccount: "已有账户？"
+    loginLink: "登录"
     strength:
-      tooShort: "비밀번호는 8자 이상이어야 합니다"
-      weak: "약함"
-      medium: "보통"
-      strong: "강함"
-      veryStrong: "매우 강함"
-    mismatch: "비밀번호가 일치하지 않습니다"
+      tooShort: "密码至少需要 8 个字符"
+      weak: "弱"
+      medium: "一般"
+      strong: "强"
+      veryStrong: "非常强"
+    mismatch: "两次输入的密码不一致"
   errors:
-    invalidCredentials: "이메일 또는 비밀번호가 올바르지 않습니다"
-    emailTaken: "이미 사용 중인 이메일입니다"
-    accountLocked: "계정이 일시적으로 잠겼습니다. 15분 후 다시 시도해 주세요."
-    rateLimit: "잠시 후 다시 시도해 주세요"
-    network: "네트워크 연결을 확인해 주세요"
-    serverError: "잠시 후 다시 시도해 주세요. 문제가 계속되면 관리자에게 문의해 주세요."
-    sessionExpired: "세션이 만료되었습니다"
-    sessionExpiredDesc: "다시 로그인해 주세요."
+    invalidCredentials: "邮箱或密码不正确"
+    emailTaken: "该邮箱已被使用"
+    accountLocked: "账户已暂时锁定。请在 15 分钟后重试。"
+    rateLimit: "请稍后重试"
+    network: "请检查网络连接"
+    serverError: "请稍后重试。如果问题持续，请联系管理员。"
+    sessionExpired: "会话已过期"
+    sessionExpiredDesc: "请重新登录。"
   onboarding:
-    title: "Moldy에 오신 것을 환영합니다"
-    subtitle: "AI 에이전트를 만들 준비가 거의 끝났어요"
-    body: "AI 에이전트를 만들려면 LLM API 키를 등록해야 합니다."
-    providers: "다음 중 하나를 등록해 주세요"
-    encryptedNote: "키는 암호화되어 저장되며 본인만 볼 수 있습니다."
-    later: "나중에"
-    register: "지금 등록"
-    superUserToast: "🎉 Super User로 등록되었습니다"
-    superUserToastDesc: "시스템 credential을 관리할 수 있습니다."
+    title: "欢迎来到 Moldy"
+    subtitle: "创建 AI Agent 的准备工作即将完成"
+    body: "要创建 AI Agent，需要注册 LLM API 密钥。"
+    providers: "请注册以下任意一种"
+    encryptedNote: "密钥会加密保存，只有您本人可以查看。"
+    later: "稍后"
+    register: "立即注册"
+    superUserToast: "🎉 已注册为 Super User"
+    superUserToastDesc: "可以管理系统 credential。"
   userMenu:
-    profile: "프로필 설정"
-    credentials: "API 키 관리"
-    logout: "로그아웃"
-    adminBadge: "관리자"
-    profileComingSoon: "프로필 설정은 곧 지원됩니다"
+    profile: "个人资料设置"
+    credentials: "API 密钥管理"
+    logout: "退出登录"
+    adminBadge: "管理员"
+    profileComingSoon: "个人资料设置即将支持"
 ```
 
 ---
 
-## 부록 B. 변경되지 않는 것 (Out of Scope)
+## 附录 B. 不变内容（Out of Scope）
 
-본 스펙은 다음을 다루지 **않는다** — 명시적으로 향후 작업으로 미룸:
+本 spec **不处理**以下内容 — 明确推迟到后续工作：
 
-- 비밀번호 재설정 페이지 / 이메일 인증 페이지 (Phase 2)
-- Google OAuth 콜백 페이지 (Phase 2)
-- 프로필 편집 페이지 (Phase 2)
-- 워크스페이스 스위처 (Future Phase)
-- 사용자 검색 / 초대 (Future Phase)
+- 密码重置页面 / 邮箱验证页面（Phase 2）
+- Google OAuth callback 页面（Phase 2）
+- 个人资料编辑页面（Phase 2）
+- workspace switcher（Future Phase）
+- 用户搜索 / 邀请（Future Phase）
 
-이 모든 미래 화면들이 **현재 스펙과 일관**되도록 다음만 보장:
-- `(auth)` route group은 인증 전용 레이아웃을 공유 — Phase 2 추가 시 동일 레이아웃 재사용
-- UserMenu는 향후 항목 추가에 대비해 `DropdownMenu` 구조 유지 (Separator로 그룹 분리)
-- 모든 새 페이지가 shadcn 토큰만 사용하면 자동으로 정렬됨
+为确保所有这些未来页面与**当前 spec 保持一致**，仅保证以下内容：
+- `(auth)` route group 共用认证专用 layout — Phase 2 新增页面时复用相同 layout
+- UserMenu 保持 `DropdownMenu` 结构以便未来新增项目（用 Separator 分组）
+- 所有新页面只要使用 shadcn token 即可自动保持一致
 
 ---
 
-## 검증 체크리스트 (저커버그 구현 완료 시)
+## 验证清单（Zuckerberg 实现完成时）
 
-- [ ] `/login` 데스크탑/모바일 둘 다 시각 회귀 OK
-- [ ] `/register` 비밀번호 강도 미터 4단계 동작
-- [ ] 폼 레벨 Alert가 모든 에러 케이스에서 정확한 메시지 표시
-- [ ] callbackUrl 파라미터 보존 (예: `/agents/123` → 로그인 → 자동 복귀)
-- [ ] 401 → 자동 refresh → 실패 시 toast + redirect 동작
-- [ ] UserMenu 드롭다운에 super_user면 "관리자" 배지 노출
-- [ ] OnboardingDialog가 첫 가입 후 1회만 표시 (sessionStorage 체크)
-- [ ] 다크모드에서 모든 화면 정상 (자동 — 토큰만 사용했으므로)
-- [ ] 키보드만으로 로그인 → 가입 → 로그아웃 전 플로우 가능
-- [ ] axe-core devtools 위반 0건 (또는 모두 known false-positive)
-- [ ] `pnpm build` && `pnpm lint` 통과
+- [ ] `/login` 桌面端/移动端视觉回归均 OK
+- [ ] `/register` 密码强度 meter 4 级正常工作
+- [ ] 表单级 Alert 在所有错误 case 中显示正确消息
+- [ ] 保留 callbackUrl param（例如：`/agents/123` → 登录 → 自动返回）
+- [ ] 401 → 自动 refresh → 失败时 toast + redirect 正常工作
+- [ ] UserMenu dropdown 中，super_user 显示“管理员” badge
+- [ ] OnboardingDialog 在首次注册后仅显示 1 次（检查 sessionStorage）
+- [ ] dark mode 下所有页面正常（自动 — 因为只使用 token）
+- [ ] 仅用键盘即可完成登录 → 注册 → 退出登录全流程
+- [ ] axe-core devtools violation 0 个（或全部为 known false-positive）
+- [ ] `pnpm build` && `pnpm lint` 通过

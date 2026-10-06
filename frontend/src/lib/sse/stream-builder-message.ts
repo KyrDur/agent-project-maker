@@ -3,9 +3,9 @@ import type { SSEEvent, SSEEventType } from '@/lib/types'
 import { streamSSEPost } from './parse-sse'
 
 /**
- * Builder v3 — POST 메시지 + SSE 스트림.
- * 첫 메시지: 그래프를 처음부터 실행 (Phase 1).
- * 후속 메시지: messages만 추가 (그래프 진행 중일 때).
+ * Builder v3 — POST 消息 + SSE stream。
+ * 第一条消息：从头执行 graph（Phase 1）。
+ * 后续消息：仅追加 messages（graph 进行中时）。
  */
 export async function* streamBuilderMessage(
   sessionId: string,

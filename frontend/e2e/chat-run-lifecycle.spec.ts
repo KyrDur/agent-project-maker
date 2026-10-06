@@ -267,8 +267,8 @@ test.describe('Chat run lifecycle API contract', () => {
       const spinner = page.locator(`[data-moldy-run-spinner="${conversationId}"]`)
       await expect(spinner).toBeVisible({ timeout: 10_000 })
 
-      // F5 — durable run lifecycle 의 대표 시나리오: 새로고침 후에도 스피너가
-      // 복원되고, envelope 의 active_run 으로 스트림에 재attach 해 답변을 끝까지 받는다.
+      // F5 — durable run lifecycle 的代表场景：刷新后 spinner 仍会
+      // 恢复，并通过 envelope 的 active_run 重新 attach 到 stream，直到完整收到回答。
       await page.reload()
 
       await expect(spinner).toBeVisible({ timeout: 10_000 })
@@ -333,7 +333,7 @@ test.describe('Chat run lifecycle API contract', () => {
 
       await waitForRunStatus(request, conversationId, activeRun.id, 'canceled')
       await expect(spinner).toBeHidden({ timeout: 10_000 })
-      await expect(page.getByText(/중단됨|Canceled/)).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText(/已取消|Canceled/)).toBeVisible({ timeout: 10_000 })
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])
@@ -386,7 +386,7 @@ test.describe('Chat run lifecycle API contract', () => {
       expect(heartbeatRes.ok()).toBeTruthy()
 
       await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
-      await expect(page.locator('p').filter({ hasText: /응답이 끊어져 일부가 누락/ })).toBeVisible({
+      await expect(page.locator('p').filter({ hasText: /响应中断，部分内容缺失/ })).toBeVisible({
         timeout: 15_000,
       })
       await waitForRunStatus(request, conversationId, seededRun.id, 'stale')

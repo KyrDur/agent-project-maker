@@ -32,13 +32,13 @@ test.describe('Skills page', () => {
 
     await page.goto('/skills')
     await page
-      .getByRole('button', { name: /새 스킬|첫 스킬 만들기/ })
+      .getByRole('button', { name: /新技能|创建第一个技能/ })
       .first()
       .click()
 
     await page.getByRole('tab', { name: '文字' }).click()
-    await page.getByLabel(/이름/).fill('Greeting snippet')
-    await page.getByLabel(/내용 \(마크다운\)/).fill('# Hello\nThis is a snippet.')
+    await page.getByLabel(/名称/).fill('Greeting snippet')
+    await page.getByLabel(/内容 \(Markdown\)/).fill('# Hello\nThis is a snippet.')
 
     await page.getByRole('button', { name: '保存' }).click()
     await expect(page.getByText('已创建')).toBeVisible()
@@ -87,8 +87,8 @@ test.describe('Skills page', () => {
     await page.goto('/skills')
     await expect(page.getByText('Bulk Target A')).toBeVisible()
 
-    // 행 체크박스로 선택(전체선택 아님) — 체크 클릭이 행 내비게이션으로
-    // 새면 안 된다(리뷰 R에서 발견된 실버그의 회귀 가드).
+    // 通过 row checkbox 选择（不是全选）— 点击 checkbox 不应触发行导航
+    // 泄漏（review R 中发现的真实 bug 回归守卫）。
     for (const name of ['Bulk Target A', 'Bulk Target B']) {
       await page
         .getByRole('row')
@@ -97,19 +97,19 @@ test.describe('Skills page', () => {
         .check()
     }
     await expect(page).toHaveURL(/\/skills$/)
-    await expect(page.getByTestId('skill-bulk-bar')).toContainText('2개 선택됨')
+    await expect(page.getByTestId('skill-bulk-bar')).toContainText('已选择 2 个')
     await page.getByTestId('skill-bulk-bar').getByRole('button', { name: '删除' }).click()
 
     const dialog = page.getByRole('alertdialog')
-    await expect(dialog).toContainText('스킬 2개 삭제')
+    await expect(dialog).toContainText('删除 2 个 skill')
     await expect(dialog).toContainText('Bulk Target A')
-    await expect(dialog).toContainText('연결된 에이전트 1개')
+    await expect(dialog).toContainText('已连接 1 个 Agent')
     await dialog.getByRole('button', { name: '删除' }).click()
 
     await expect.poll(() => deleted.length, { timeout: 15_000 }).toBe(2)
-    await expect(page.getByText('스킬 2개를 삭제했습니다')).toBeVisible()
+    await expect(page.getByText('已删除 2 个 skill')).toBeVisible()
     await expect(page.getByText('Bulk Target A')).toBeHidden()
-    // 삭제 후 선택 상태가 리셋된다 (key remount 계약).
+    // 删除后选择状态会重置（key remount 契约）。
     await expect(page.getByTestId('skill-bulk-bar')).toBeHidden()
   })
 })

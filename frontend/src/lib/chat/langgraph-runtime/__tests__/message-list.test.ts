@@ -177,7 +177,7 @@ describe('useStableConvertedMessages', () => {
       new AIMessage({
         id: 'assistant-ask',
         content: [
-          { type: 'text', text: '네, 골라봐요!', index: 0 },
+          { type: 'text', text: '好，选一个吧！', index: 0 },
           {
             type: 'tool_call',
             id: 'call-ask',
@@ -185,8 +185,8 @@ describe('useStableConvertedMessages', () => {
             args: {
               mode: 'option_list',
               title: '需要输入',
-              question: '어떤 과일?',
-              options: [{ id: 'apple', label: '🍎 사과' }],
+              question: '什么水果？',
+              options: [{ id: 'apple', label: '🍎 苹果' }],
               approval_id: 'call-ask',
               hitl_interrupt_id: 'intr-ask',
               hitl_action_index: 0,
@@ -202,8 +202,8 @@ describe('useStableConvertedMessages', () => {
             args: {
               mode: 'option_list',
               title: '需要输入',
-              question: '어떤 과일?',
-              options: [{ id: 'apple', label: '🍎 사과' }],
+              question: '什么水果？',
+              options: [{ id: 'apple', label: '🍎 苹果' }],
               approval_id: 'call-ask',
               hitl_interrupt_id: 'intr-ask',
               hitl_action_index: 0,
@@ -228,7 +228,7 @@ describe('useStableConvertedMessages', () => {
         role: 'assistant',
         status: { type: 'requires-action', reason: 'tool-calls' },
         content: expect.arrayContaining([
-          expect.objectContaining({ type: 'text', text: '네, 골라봐요!' }),
+          expect.objectContaining({ type: 'text', text: '好，选一个吧！' }),
           expect.objectContaining({
             type: 'tool-call',
             toolCallId: 'call-ask',
@@ -249,30 +249,30 @@ describe('useStableConvertedMessages', () => {
     const toolCall = {
       id: 'call-ask',
       name: 'ask_user',
-      args: { question: '어느 과일?' },
+      args: { question: '哪种水果？' },
     }
     const readySource = new AIMessage({
       id: 'assistant-ask',
-      content: '골라봐요',
+      content: '选一个吧',
       tool_calls: [toolCall],
     })
     const pendingSource = Object.assign(
       new AIMessage({
         id: 'assistant-ask',
-        content: '골라봐요',
+        content: '选一个吧',
         tool_calls: [toolCall],
       }),
       { status: { type: 'requires-action' as const, reason: 'tool-calls' as const } },
     )
     const readyConverted = [
-      { id: 'assistant-ask', role: 'assistant', content: [{ type: 'text', text: '골라봐요' }] },
+      { id: 'assistant-ask', role: 'assistant', content: [{ type: 'text', text: '选一个吧' }] },
     ]
     const pendingConverted = [
       {
         id: 'assistant-ask',
         role: 'assistant',
         status: { type: 'requires-action' },
-        content: [{ type: 'text', text: '골라봐요' }],
+        content: [{ type: 'text', text: '选一个吧' }],
       },
     ]
 

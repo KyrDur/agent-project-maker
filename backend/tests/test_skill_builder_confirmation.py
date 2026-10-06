@@ -42,7 +42,7 @@ async def test_confirm_session_create_mode_creates_package_skill(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="스킬 만들어줘",
+            user_request="帮我创建技能",
         )
         await skill_builder_service.save_draft_package(
             db,
@@ -91,7 +91,7 @@ async def test_confirm_session_rejects_invalid_draft(db: AsyncSession) -> None:
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="스킬 만들어줘",
+        user_request="帮我创建技能",
     )
     await skill_builder_service.save_draft_package(
         db,
@@ -125,7 +125,7 @@ async def test_confirm_session_improve_mode_updates_existing_skill(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="불릿 중심으로 개선해줘",
+            user_request="帮我改进成以项目符号为主",
             mode=SkillBuilderMode.IMPROVE,
             source_skill_id=skill.id,
         )
@@ -196,7 +196,7 @@ async def test_confirm_session_improve_package_preserves_unchanged_files(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="출력 지침만 개선해줘",
+            user_request="只改进输出说明",
             mode=SkillBuilderMode.IMPROVE,
             source_skill_id=skill.id,
         )
@@ -248,7 +248,7 @@ async def test_confirm_session_improve_mode_rejects_stale_base_hash(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="개선해줘",
+            user_request="帮我改进一下",
             mode=SkillBuilderMode.IMPROVE,
             source_skill_id=skill.id,
         )

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '../../test-utils'
 import userEvent from '@testing-library/user-event'
 
-// useAuiState mock — 테스트별로 mockReturnValue로 교체.
+// useAuiState mock — 按测试用例用 mockReturnValue 替换。
 const mockUseAssistantState = vi.fn()
 
 vi.mock('@assistant-ui/react', () => ({
@@ -19,13 +19,13 @@ vi.mock('@assistant-ui/react', () => ({
 import { TokenUsagePopover } from '@/components/chat/token-usage-popover'
 
 describe('TokenUsagePopover', () => {
-  it('usage가 없으면 렌더하지 않는다', () => {
+  it('没有 usage 时不渲染', () => {
     mockUseAssistantState.mockReturnValue(undefined)
     const { container } = render(<TokenUsagePopover />)
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('총 토큰이 0이면 렌더하지 않는다', () => {
+  it('总 token 为 0 时不渲染', () => {
     mockUseAssistantState.mockReturnValue({
       prompt_tokens: 0,
       completion_tokens: 0,
@@ -36,7 +36,7 @@ describe('TokenUsagePopover', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('총 토큰을 버튼에 표시한다', () => {
+  it('在按钮上显示总 token 数', () => {
     mockUseAssistantState.mockReturnValue({
       prompt_tokens: 1200,
       completion_tokens: 300,
@@ -48,7 +48,7 @@ describe('TokenUsagePopover', () => {
     expect(screen.getByText('1,500')).toBeInTheDocument()
   })
 
-  it('hover 시 4종 분해를 모두 노출한다', async () => {
+  it('hover 时展示全部 4 类明细', async () => {
     mockUseAssistantState.mockReturnValue({
       prompt_tokens: 1200,
       completion_tokens: 300,
@@ -59,8 +59,8 @@ describe('TokenUsagePopover', () => {
     const user = userEvent.setup()
     render(<TokenUsagePopover />)
 
-    // hover로 popover 열기 — click은 onMouseEnter가 먼저 open(true)을 셋한 뒤
-    // button onClick이 다시 toggle해서 닫혀버린다. 실 사용에서도 hover가 주 진입.
+    // 通过 hover 打开 popover — click 会先由 onMouseEnter 设置 open(true)，然后
+    // button onClick 再次 toggle 导致关闭。实际使用中 hover 也是主要入口。
     await user.hover(screen.getByRole('button', { name: '切换咏叹调' }))
 
     expect(screen.getByText('Token 用量')).toBeInTheDocument()
@@ -71,7 +71,7 @@ describe('TokenUsagePopover', () => {
     expect(screen.getByText('$0.0123')).toBeInTheDocument()
   })
 
-  it('상세 팝오버는 부모 overflow에 잘리지 않도록 포털로 렌더한다', async () => {
+  it('详细 popover 通过 portal 渲染，避免被父级 overflow 裁切', async () => {
     mockUseAssistantState.mockReturnValue({
       prompt_tokens: 1200,
       completion_tokens: 300,
@@ -93,7 +93,7 @@ describe('TokenUsagePopover', () => {
     expect(container).not.toContainElement(tooltip)
   })
 
-  it('estimated_cost가 0이면 비용 행을 숨긴다', async () => {
+  it('estimated_cost 为 0 时隐藏费用行', async () => {
     mockUseAssistantState.mockReturnValue({
       prompt_tokens: 100,
       completion_tokens: 50,

@@ -24,13 +24,13 @@ const SharedMarkdownContent = dynamic(
   },
 )
 
-/** 공개 페이지에서 노출할 메시지 판정.
+/** 判断公开页面中应显示的消息。
  *
- * 제외:
- * - tool role 전체 (도구 결과 메시지는 chips로 합쳐 표시)
- * - 본문이 빈 assistant (도구 호출만 담은 placeholder AIMessage. 라이브
- *   채팅 UI는 chips로 합쳐서 보여주지만 공개 페이지에선 별도 블록으로 나가
- *   "사내 위치 안내 도우미" 같은 헤더가 반복되는 시각 노이즈 발생)
+ * 排除：
+ * - 所有 tool role（tool result 消息会合并到 chips 中显示）
+ * - 正文为空的 assistant（只包含 tool call 的 placeholder AIMessage。live
+ *   chat UI 会合并到 chips 中显示，但公开页面中会作为独立 block 出现，
+ *   造成类似 "公司内部位置引导助手" 的 header 重复出现的视觉噪声）
  */
 const isVisibleInPublic = (m: Message): boolean => {
   if (m.role === 'tool') return false
@@ -168,9 +168,9 @@ function ConversationBody({
   traces: TurnTrace[]
 }) {
   const t = useTranslations('sharedConversation')
-  // 라이브 채팅 UX와 동일하게: 연속된 assistant 메시지는 한 그룹으로 묶고
-  // 그룹의 첫 메시지에 chips를 붙인다 ("도우미"가 같은 turn에서 여러 번
-  // 말하더라도 헤더는 한 번만, 도구 칩도 그 위에 한 번만).
+  // 与 live chat UX 保持一致：连续的 assistant 消息合并为一个 group，
+  // 将 chips 挂到 group 的第一条消息上（即使 "助手" 在同一个 turn 中多次
+  // 发言，header 也只显示一次，tool chip 也只在其上方显示一次）。
   const turnGroups = useMemo(() => groupMessagesIntoTurns(messages, traces), [messages, traces])
 
   return (
@@ -194,29 +194,29 @@ function ConversationBody({
   )
 }
 
-/** 한 turn = (user message) | (assistant 메시지 그룹 + 그 turn의 chips). */
+/** 一个 turn = (user message) | (assistant 消息 group + 该 turn 的 chips)。 */
 type TurnGroup =
   | { kind: 'user'; message: Message }
   | { kind: 'assistant'; messages: Message[]; chips: ChipInfo[] }
 
 /**
- * 메시지를 user / assistant-group으로 평탄화하면서 trace를 1:1 매핑.
+ * 将消息展平为 user / assistant-group，同时与 trace 做 1:1 映射。
  *
- * 매칭 우선순위:
- *  1. ``trace.linked_message_ids``에 그룹의 첫 message.id 포함 → 직접 매칭 (W6 정확도, m33+)
- *  2. 폴백: chronological turn 순서 (linked_message_ids가 NULL인 m32 이전 row)
+ * 匹配优先级：
+ *  1. ``trace.linked_message_ids`` 包含 group 第一条 message.id → 直接匹配（W6 准确度，m33+）
+ *  2. fallback：chronological turn 顺序（linked_message_ids 为 NULL 的 m32 之前 row）
  *
- * branch가 있는 대화는 active 외 trace가 매핑되지 않을 수 있다 (graceful).
+ * 对于存在 branch 的对话，active 之外的 trace 可能无法映射（graceful）。
  */
 function groupMessagesIntoTurns(messages: Message[], traces: TurnTrace[]): TurnGroup[] {
   const groups: TurnGroup[] = []
-  // 직접 매칭용 인덱스 — assistant_msg_id가 아니라 linked_message_ids 펼침.
+  // 用于直接匹配的 index — 展开的是 linked_message_ids，而不是 assistant_msg_id。
   const traceByMsgId = new Map<string, TurnTrace>()
   for (const t of traces) {
     if (!t.linked_message_ids) continue
     for (const id of t.linked_message_ids) traceByMsgId.set(id, t)
   }
-  // 직접 매칭에 쓰인 trace는 폴백 큐에서 제외.
+  // 已用于直接匹配的 trace 从 fallback queue 中排除。
   const usedTraces = new Set<TurnTrace>()
   let turnIdx = 0
 
@@ -234,12 +234,12 @@ function groupMessagesIntoTurns(messages: Message[], traces: TurnTrace[]): TurnG
       continue
     }
 
-    // 우선 직접 매칭 시도
+    // 优先尝试直接匹配
     let trace = traceByMsgId.get(m.id)
     if (trace) {
       usedTraces.add(trace)
     } else {
-      // 폴백: 직접 매칭에 쓰이지 않은 trace 중에서 chronological 다음
+      // fallback：从未用于直接匹配的 trace 中取 chronological 下一个
       while (turnIdx < traces.length && usedTraces.has(traces[turnIdx])) {
         turnIdx += 1
       }

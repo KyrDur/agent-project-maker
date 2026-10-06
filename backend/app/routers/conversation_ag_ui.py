@@ -48,9 +48,9 @@ async def _broker_ag_ui_generator(
     seen_after = exact_ag_ui_after_id is None
 
     if gap_detected:
-        # after_id 의 source 이벤트가 ring buffer 에서 evict 됨 — Moldy SSE 의
-        # broker_gap degrade 와 대칭으로 stale 마커를 먼저 보내고, buffer 에
-        # 남아 있는 구간 전체를 replay 한다 (silent gap 방지).
+        # after_id 的 source event 已从 ring buffer 中 evict — 与 Moldy SSE 的
+        # broker_gap degrade 对称，先发送 stale marker，再 replay buffer 中
+        # replay 留在 buffer 中的整个区间（防止 silent gap）。
         for ag_ui_event in slice_ag_ui_events_after(
             [
                 stale_run_event(

@@ -89,7 +89,7 @@ async def require_evaluation_system_llm(
     evaluation_set_id: uuid.UUID,
 ) -> None:
     try:
-        await resolve_system_model(db, "text_primary")
+        await resolve_system_model(db, "builder", user.id)
     except SystemModelNotConfiguredError as exc:
         await record_evaluation_audit(
             db,

@@ -1,1 +1,1 @@
-"""Assistant 도구 — read, write, clarify 3개 모듈로 분류."""
+"""Assistant 工具 — 分为 read、write、clarify 3 个模块。"""

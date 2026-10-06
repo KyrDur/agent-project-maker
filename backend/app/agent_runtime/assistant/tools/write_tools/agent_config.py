@@ -1,4 +1,4 @@
-"""Assistant 쓰기 도구 — 에이전트 설정 그룹 (프롬프트/모델/메타데이터 등)."""
+"""Assistant 写入工具 — 智能体配置组（提示词/模型/元数据等）。"""
 
 from __future__ import annotations
 
@@ -18,19 +18,19 @@ from app.services.model_service import resolve_model
 
 
 def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
-    """에이전트 설정 도구 8개를 생성한다."""
+    """创建 8 个智能体配置工具。"""
 
     # ------ 7. edit_system_prompt ------
 
     async def edit_system_prompt(
         old_string: str, new_string: str, replace_all: bool = False
     ) -> str:
-        """시스템 프롬프트의 일부를 수정합니다 (부분 교체).
+        """修改系统提示词的一部分（局部替换）。
 
         Args:
-            old_string: 교체할 기존 텍스트
-            new_string: 새 텍스트 (빈 문자열이면 삭제)
-            replace_all: True면 모든 매치를 교체, False면 첫 번째만
+            old_string: 要替换的现有文本
+            new_string: 新文本（空字符串则删除）
+            replace_all: True 时替换全部匹配，False 时只替换第一个
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -57,10 +57,10 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 8. update_system_prompt ------
 
     async def update_system_prompt(new_system_prompt: str) -> str:
-        """시스템 프롬프트를 전체 교체합니다.
+        """整体替换系统提示词。
 
         Args:
-            new_system_prompt: 새 시스템 프롬프트 전체 내용
+            new_system_prompt: 新系统提示词的完整内容
         """
         if not new_system_prompt.strip():
             return tr("warning_you_are_attempting_to_cf1f71")
@@ -80,15 +80,15 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         max_tokens: int | None = None,
         top_p: float | None = None,
     ) -> str:
-        """모델 설정을 변경합니다.
+        """修改模型配置。
 
         Args:
-            model_name: 새 모델 (provider:model_id 또는 display_name)
-            temperature: 응답 창의성 (0.0~2.0)
-            max_tokens: 최대 응답 토큰
-            top_p: 누적 확률 샘플링
+            model_name: 新模型（provider:model_id 或 display_name）
+            temperature: 响应创造性（0.0~2.0）
+            max_tokens: 最大响应令牌数
+            top_p: 累积概率采样
         """
-        # W-8: 입력값 범위 검증
+        # W-8: 输入值范围校验
         if temperature is not None and not (0.0 <= temperature <= 2.0):
             return tr("temperature_must_be_in_the_ce44d6")
         if max_tokens is not None and max_tokens <= 0:
@@ -133,18 +133,18 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 11. update_middleware_config ------
 
     async def update_middleware_config(middleware_name: str, params: dict) -> str:
-        """미들웨어의 설정 파라미터를 변경합니다.
+        """修改中间件的配置参数。
 
         Args:
-            middleware_name: 미들웨어 type 키
-            params: 새 파라미터 딕셔너리
+            middleware_name: 中间件 type 键
+            params: 新参数字典
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
             if not agent:
                 return tr("agent_not_found_1a3985")
 
-            # W-7: deepcopy로 SQLAlchemy JSON mutation detection 보장
+            # W-7: 通过 deepcopy 确保 SQLAlchemy JSON mutation detection
             configs = copy.deepcopy(list(agent.middleware_configs or []))
             for mc in configs:
                 if mc.get("type", "").lower() == middleware_name.lower():
@@ -159,10 +159,10 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 12. update_chat_openers ------
 
     async def update_chat_openers(openers: list[str]) -> str:
-        """채팅 시작 질문(오프너)을 변경합니다.
+        """修改聊天开场问题（开场语）。
 
         Args:
-            openers: 새 오프너 질문 목록 (최대 12개, 각 1~200자)
+            openers: 新开场问题列表（最多 12 个，每个 1~200 字）
         """
         cleaned = [s.strip() for s in openers]
         if any(not s for s in cleaned):
@@ -185,13 +185,13 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
         name: str | None = None,
         description: str | None = None,
     ) -> str:
-        """에이전트의 이름과 설명을 변경합니다.
+        """修改智能体的名称和描述。
 
-        둘 중 하나만 지정해도 됩니다. 빈 description은 설명을 비웁니다.
+        可以只指定其中一个。空 description 会清空描述。
 
         Args:
-            name: 새 에이전트 이름 (생략하면 변경 안 함)
-            description: 새 에이전트 설명 (빈 문자열이면 설명 제거)
+            name: 新智能体名称（省略则不修改）
+            description: 新智能体描述（空字符串则移除描述）
         """
         if name is None and description is None:
             return tr("either_name_or_description_must_4404c3")
@@ -220,10 +220,10 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 13. update_agent_identity_mode ------
 
     async def update_agent_identity_mode(identity_mode: str) -> str:
-        """credential 사용 방식을 변경합니다.
+        """修改 credential 使用方式。
 
         Args:
-            identity_mode: "per_user" 또는 "fixed"
+            identity_mode: "per_user" 或 "fixed"
         """
         normalized = identity_mode.strip().lower()
         try:
@@ -258,10 +258,10 @@ def build_agent_config_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 14. update_recursion_limit ------
 
     async def update_recursion_limit(limit: int) -> str:
-        """재귀 한도를 변경합니다.
+        """修改递归上限。
 
         Args:
-            limit: 새 재귀 한도 (10~200)
+            limit: 新递归上限（10~200）
         """
         if not 10 <= limit <= 200:
             return tr("the_recursion_limit_should_be_dc34b0")

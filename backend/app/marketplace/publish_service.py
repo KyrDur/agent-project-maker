@@ -102,9 +102,7 @@ def _slugify(value: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def _snapshot_skill(
-    skill: Skill, *, dest: Path
-) -> tuple[Path, int, dict]:
+async def _snapshot_skill(skill: Skill, *, dest: Path) -> tuple[Path, int, dict]:
     """Copy the skill's on-disk state into ``dest``.
 
     Returns ``(snapshot_path, total_bytes, payload_metadata)``.
@@ -117,16 +115,12 @@ async def _snapshot_skill(
     """
 
     if not skill.storage_path:
-        raise marketplace_invalid_package(
-            f"skill {skill.id} has no on-disk storage to publish"
-        )
+        raise marketplace_invalid_package(f"skill {skill.id} has no on-disk storage to publish")
 
     src = resolve_data_path(skill.storage_path)
     exists, is_file = await asyncio.to_thread(_probe_path, src)
     if not exists:
-        raise marketplace_invalid_package(
-            f"skill storage missing on disk: {skill.storage_path}"
-        )
+        raise marketplace_invalid_package(f"skill storage missing on disk: {skill.storage_path}")
 
     await asyncio.to_thread(dest.parent.mkdir, parents=True, exist_ok=True)
     try:
@@ -177,14 +171,13 @@ def _dir_size(p: Path) -> int:
 # ---------------------------------------------------------------------------
 
 
-async def _next_version_number(
-    db: AsyncSession, item_id: uuid.UUID
-) -> int:
+async def _next_version_number(db: AsyncSession, item_id: uuid.UUID) -> int:
     """Item-scoped monotonic version counter (uq_marketplace_versions_item_number)."""
 
     result = await db.execute(
-        select(func.coalesce(func.max(MarketplaceVersion.version_number), 0))
-        .where(MarketplaceVersion.item_id == item_id)
+        select(func.coalesce(func.max(MarketplaceVersion.version_number), 0)).where(
+            MarketplaceVersion.item_id == item_id
+        )
     )
     current = int(result.scalar_one() or 0)
     return current + 1
@@ -194,9 +187,7 @@ async def _scan_or_raise(snapshot_path: Path) -> None:
     findings = await asyncio.to_thread(scan_package, snapshot_path)
     if findings:
         summary = ", ".join(f"{f.path} ({f.kind})" for f in findings[:5])
-        raise marketplace_secret_detected(
-            f"package contains potential secrets: {summary}"
-        )
+        raise marketplace_secret_detected(f"package contains potential secrets: {summary}")
 
 
 async def _create_acl(
@@ -210,18 +201,14 @@ async def _create_acl(
     publish and on ACL replace. CASCADE cleans up dropped recipients."""
 
     existing = (
-        await db.execute(
-            select(MarketplaceItemACL).where(MarketplaceItemACL.item_id == item.id)
-        )
-    ).scalars().all()
+        (await db.execute(select(MarketplaceItemACL).where(MarketplaceItemACL.item_id == item.id)))
+        .scalars()
+        .all()
+    )
     for row in existing:
         await db.delete(row)
     for user_id in user_ids:
-        db.add(
-            MarketplaceItemACL(
-                item_id=item.id, user_id=user_id, permission=permission
-            )
-        )
+        db.add(MarketplaceItemACL(item_id=item.id, user_id=user_id, permission=permission))
 
 
 async def _upsert_publication_link(
@@ -234,9 +221,7 @@ async def _upsert_publication_link(
     """Create or update the back-reference row used by
     ``ResourcePublicationSummaryOut`` derivation."""
 
-    stmt = select(MarketplacePublicationLink).where(
-        MarketplacePublicationLink.item_id == item.id
-    )
+    stmt = select(MarketplacePublicationLink).where(MarketplacePublicationLink.item_id == item.id)
     row = (await db.execute(stmt)).scalar_one_or_none()
     if row is None:
         db.add(
@@ -275,9 +260,7 @@ async def publish_skill(
         raise skill_not_found()
 
     if body.visibility not in ("private", "restricted", "public", "unlisted"):
-        raise marketplace_invalid_visibility(
-            f"unsupported publish visibility: {body.visibility}"
-        )
+        raise marketplace_invalid_visibility(f"unsupported publish visibility: {body.visibility}")
     if body.visibility == "restricted" and not body.acl_user_ids:
         # Defence-in-depth — the Pydantic validator already rejects
         # this shape, but a hand-crafted call site could bypass it.
@@ -294,13 +277,13 @@ async def publish_skill(
         if item.resource_type != "skill":
             raise marketplace_invalid_package("marketplace item is not a Skill item")
     else:
-        # ``body.item_id`` 없음 — 신규 publish 흐름이지만 ``(owner, slug)``
-        # UNIQUE constraint를 침해하지 않으려면 동일 owner+slug 기존 item을
-        # 먼저 검색해 재사용해야 한다. 사용자가 자기 skill을 publish→삭제→
-        # 재publish 할 때 publication_link 는 CASCADE 로 사라지지만
-        # marketplace_items 자체는 남기 때문에, naive insert 는 IntegrityError
-        # 로 500 을 던지고 CORS 헤더가 누락되어 브라우저는 "네트워크 오류"
-        # 처럼 표시한다.
+        # 没有 ``body.item_id`` — 虽然是新的 publish 流程，但为了不违反 ``(owner, slug)``
+        # UNIQUE constraint，必须先查找并复用同一 owner+slug 的现有 item。
+        # 用户将自己的 skill publish→delete→
+        # 再次 publish 时 publication_link 会因 CASCADE 消失，但
+        # marketplace_items 本身仍保留，因此 naive insert 会抛出 IntegrityError
+        # 并返回 500；由于缺少 CORS header，browser 会将其显示成“网络错误”
+        # 一样。
         item_slug = _slugify(body.name)
         existing = (
             await db.execute(
@@ -312,11 +295,11 @@ async def publish_skill(
             )
         ).scalar_one_or_none()
         if existing is not None:
-            # 기존 item 재사용 — 새 version 을 추가하는 흐름으로 자연스럽게
-            # 합류. metadata 갱신은 아래 ``if body.item_id is None`` 분기에서
-            # name/description/tags/categories 를 다시 채운다.
+            # 复用现有 item — 自然并入新增 version 的流程。
+            # metadata 更新会在下方 ``if body.item_id is None`` 分支中
+            # 重新填充 name/description/tags/categories。
             if not can_manage_item(existing, user):
-                # 동일 slug 가 시스템 item 등에 잡혔을 때의 방어선.
+                # 防御线：处理同一 slug 被 system item 等占用的情况。
                 raise marketplace_manage_forbidden()
             item = existing
         else:
@@ -349,9 +332,7 @@ async def publish_skill(
     if await asyncio.to_thread(tmp_target.exists):
         await asyncio.to_thread(shutil.rmtree, tmp_target, ignore_errors=True)
 
-    snapshot_path, total_bytes, payload = await _snapshot_skill(
-        skill, dest=tmp_target
-    )
+    snapshot_path, total_bytes, payload = await _snapshot_skill(skill, dest=tmp_target)
     # Compute the canonical content hash for dedup.
     hash_obj = hashlib.sha256()
     if snapshot_path.is_file():
@@ -401,9 +382,7 @@ async def publish_skill(
             resource_type="skill",
             payload_kind="skill_package",
             payload=payload,
-            storage_path=ensure_relative(
-                f"skills/_marketplace_versions/{version_id}"
-            ),
+            storage_path=ensure_relative(f"skills/_marketplace_versions/{version_id}"),
             content_hash=content_hash,
             size_bytes=total_bytes,
             credential_requirements=skill.credential_requirements,
@@ -416,9 +395,7 @@ async def publish_skill(
         await db.flush()
         # Atomic rename only after the row is committed-to (flushed).
         if await asyncio.to_thread(snapshot_target.exists):
-            await asyncio.to_thread(
-                shutil.rmtree, snapshot_target, ignore_errors=True
-            )
+            await asyncio.to_thread(shutil.rmtree, snapshot_target, ignore_errors=True)
         await asyncio.to_thread(tmp_target.rename, snapshot_target)
 
     # Update item metadata: visibility, name (if not bumping an existing item
@@ -450,24 +427,22 @@ async def publish_skill(
             item.categories = list(body.categories)
 
     if body.visibility == "restricted":
-        await _create_acl(
-            db, item=item, user_ids=list(body.acl_user_ids), permission="install"
-        )
+        await _create_acl(db, item=item, user_ids=list(body.acl_user_ids), permission="install")
     else:
         # Visibility transitioned away from restricted — drop the ACL.
         existing = (
-            await db.execute(
-                select(MarketplaceItemACL).where(
-                    MarketplaceItemACL.item_id == item.id
+            (
+                await db.execute(
+                    select(MarketplaceItemACL).where(MarketplaceItemACL.item_id == item.id)
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         for row in existing:
             await db.delete(row)
 
-    await _upsert_publication_link(
-        db, item=item, skill=skill, user_id=user.id
-    )
+    await _upsert_publication_link(db, item=item, skill=skill, user_id=user.id)
 
     await db.flush()
     logger.info(
@@ -556,10 +531,7 @@ def _assert_mcp_payload_visibility_allowed(
     *,
     next_visibility: str,
 ) -> None:
-    if (
-        next_visibility in PUBLIC_DISTRIBUTION_VISIBILITIES
-        and payload.get("transport") == "stdio"
-    ):
+    if next_visibility in PUBLIC_DISTRIBUTION_VISIBILITIES and payload.get("transport") == "stdio":
         raise marketplace_invalid_package(
             "stdio MCP servers can only be shared privately or with explicit ACL"
         )
@@ -628,11 +600,11 @@ async def _apply_visibility_change(
     item: MarketplaceItem,
     next_visibility: str,
 ) -> None:
-    """Owner-initiated visibility 전환 가드.
+    """Owner-initiated visibility 切换 guard。
 
-    - ``restricted`` 로 전환 시 ACL 1명 이상 필수 — 빈 ACL 은 의미 모순.
-    - ``public`` 에서 비공개로 떨굴 때 ``is_listed=False`` 도 같이 떨궈 카탈로그
-      검색 권한 회수 (PRD §11.7 — listing approve 권한은 super_user 책임).
+    - 切换到 ``restricted`` 时至少需要 1 名 ACL 用户 — 空 ACL 在语义上矛盾。
+    - 从 ``public`` 降为非公开时，同时将 ``is_listed=False``，回收 catalog
+      搜索权限 (PRD §11.7 — listing approve 权限由 super_user 负责)。
     """
 
     if next_visibility == "restricted":
@@ -701,12 +673,10 @@ async def remove_acl_entry(
         raise marketplace_manage_forbidden()
 
     rows = (
-        await db.execute(
-            select(MarketplaceItemACL).where(
-                MarketplaceItemACL.item_id == item.id
-            )
-        )
-    ).scalars().all()
+        (await db.execute(select(MarketplaceItemACL).where(MarketplaceItemACL.item_id == item.id)))
+        .scalars()
+        .all()
+    )
     remaining = [r for r in rows if r.user_id != user_id_to_remove]
     if item.visibility == "restricted" and not remaining:
         raise marketplace_acl_required()
@@ -743,11 +713,11 @@ async def enable_item(
     item_id: uuid.UUID,
     user: CurrentUser,
 ) -> MarketplaceItem:
-    """Disable 의 inverse — ``status: disabled → published``. ``is_listed`` 는
-    그대로 False 유지 (public 카탈로그 노출은 super_user approve 가 별도로
-    잡는다 — PRD §11.7).
+    """Disable 的 inverse — ``status: disabled → published``。``is_listed``
+    保持 False（public catalog 暴露由 super_user approve 单独处理
+    — PRD §11.7）。
 
-    disabled 가 아닌 상태에서 enable 호출은 idempotent no-op (반환 그대로).
+    在非 disabled 状态下调用 enable 是 idempotent no-op（原样返回）。
     """
 
     item = await db.get(MarketplaceItem, item_id)

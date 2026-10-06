@@ -83,7 +83,7 @@ test.describe('Chat interactions', () => {
     ).json()) as { id: string }
     await page.goto(`/agents/${agentId}/conversations/${conv.id}`)
     await fillComposer(page, text)
-    await page.getByRole('button', { name: /전송/ }).click()
+    await page.getByRole('button', { name: /发送/ }).click()
     await expect(page.getByText(text).first()).toBeVisible()
     await expect
       .poll(() => assistantCount(request, conv.id), { timeout: 60_000 })
@@ -146,7 +146,7 @@ test.describe('Chat interactions', () => {
 
     // Second turn into the same conversation.
     await fillComposer(page, 'Second turn message')
-    await page.getByRole('button', { name: /전송/ }).click()
+    await page.getByRole('button', { name: /发送/ }).click()
     await expect(page.getByText('Second turn message').first()).toBeVisible()
     await expect
       .poll(() => assistantCount(request, convId), { timeout: 60_000 })

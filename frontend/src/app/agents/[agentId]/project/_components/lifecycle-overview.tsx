@@ -137,10 +137,6 @@ function lifecycleSteps({
       state: hasSpec ? 'completed' : versions.length ? 'current' : 'pending',
     },
     {
-      key: 'focusCheckpoint',
-      state: hasSet ? 'completed' : hasSpec ? 'current' : 'pending',
-    },
-    {
       key: 'benchmarkGenerating',
       state: hasUsableSet ? 'completed' : hasSpec ? 'current' : 'pending',
     },
@@ -326,7 +322,7 @@ export function LifecycleOverview({
                 <span
                   className={
                     step.state === 'completed'
-                      ? 'size-2 rounded-full bg-emerald-500'
+                      ? 'size-2 rounded-full bg-status-success'
                       : step.state === 'current'
                         ? 'size-2 rounded-full bg-primary'
                         : 'size-2 rounded-full bg-muted-foreground/30'
@@ -352,8 +348,8 @@ export function LifecycleOverview({
             <span
               className={
                 platformReady
-                  ? 'rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700'
-                  : 'rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700'
+                  ? 'rounded-full bg-status-success/10 px-2 py-1 text-xs font-medium text-status-success'
+                  : 'rounded-full bg-status-warn/10 px-2 py-1 text-xs font-medium text-status-warn'
               }
             >
               {workspaceT(
@@ -384,8 +380,8 @@ export function LifecycleOverview({
             <span
               className={
                 runtimeReadiness.data?.ready
-                  ? 'rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700'
-                  : 'rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700'
+                  ? 'rounded-full bg-status-success/10 px-2 py-1 text-xs font-medium text-status-success'
+                  : 'rounded-full bg-status-warn/10 px-2 py-1 text-xs font-medium text-status-warn'
               }
             >
               {workspaceT(
@@ -419,7 +415,7 @@ export function LifecycleOverview({
         </SettingsSectionCard>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+      <div className="grid gap-4 xl:grid-cols-2">
         <SettingsSectionCard title={workspaceT('bestCard.title')}>
           {best && bestVersion ? (
             <div className="space-y-3">
@@ -507,7 +503,7 @@ export function LifecycleOverview({
         </SettingsSectionCard>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1fr]">
+      <div className="grid gap-4 xl:grid-cols-2">
         <SettingsSectionCard title={workspaceT('optimizationCard.title')}>
           {latestProposal ? (
             <div className="space-y-3 text-sm">

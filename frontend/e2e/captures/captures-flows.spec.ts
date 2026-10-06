@@ -23,9 +23,9 @@ async function createAgent(
   modelId: string,
 ): Promise<string> {
   const agent = await apiPostJson(request, `${API_BASE}/api/agents`, csrfHeaders, {
-    name: '지피 — 일상 비서',
-    description: '일정·정보·추천을 도와주는 개인 비서',
-    system_prompt: '당신은 친근한 개인 비서입니다. 사용자의 일상 질문에 간결하고 도움이 되게 답합니다.',
+    name: 'GPT — 日常助手',
+    description: '帮助处理日程、信息和推荐的个人助手',
+    system_prompt: '你是友好的个人助手。对用户的日常问题给出简洁且有帮助的回答。',
     model_id: modelId,
   })
   if (!isRecord(agent) || typeof agent.id !== 'string') throw new Error('agent create failed')
@@ -59,7 +59,7 @@ test.describe('Wave 1 — hero flow captures', () => {
         request,
         `${API_BASE}/api/agents/${agentId}/conversations`,
         csrfHeaders,
-        { title: '오늘의 비서 대화' },
+        { title: '今日助手对话' },
       )
       if (!isRecord(convo) || typeof convo.id !== 'string') throw new Error('conversation failed')
 
@@ -88,23 +88,23 @@ test.describe('Wave 1 — hero flow captures', () => {
 
       // Turn 0 — a warm natural greeting reply (marker-driven, so the opener reads
       // like a real daily assistant instead of the bare scripted sentinel).
-      await sendMessage(page, 'E2E_DAILY_GREETING 안녕하세요! 오늘 뭐부터 도와줄 수 있어요?')
+      await sendMessage(page, 'E2E_DAILY_GREETING 你好！ 今天先从什么开始帮你？')
       await settleStream()
       await capture(page, WAVE, '01b-greeting-reply.png')
 
       // Turn 1 — a rich, formatted answer (natural-language trigger).
       await sendMessage(
         page,
-        '이번 주 홈트 루틴을 체크리스트, 표, 코드, 수식, 이미지, 링크, 인용문, Mermaid 다이어그램으로 정리해줘',
+        '请用清单、表格、代码、公式、图片、链接、引用和 Mermaid 图表整理本周居家训练计划',
       )
       await settleStream()
       await page.locator('svg').first().waitFor({ state: 'visible', timeout: 12_000 }).catch(() => {})
       await capture(page, WAVE, '02-rich-answer.png')
 
       // Turn 2 — an interactive ask_user card (natural-language trigger).
-      await sendMessage(page, '운동 후 간식을 ask_user로 사과, 포도, 배 중에 골라줘')
+      await sendMessage(page, '请用 ask_user 让我从苹果、葡萄、梨中选择运动后的点心')
       await page
-        .getByText(/어떤 과일이 좋아요|🍎 사과|입력이 필요합니다/)
+        .getByText(/喜欢什么水果|🍎 苹果|需要输入/)
         .last()
         .waitFor({ state: 'visible', timeout: 30_000 })
         .catch(() => {})
@@ -123,7 +123,7 @@ test.describe('Wave 1 — hero flow captures', () => {
 
   test('agent creation — conversational builder flow', async ({ page }) => {
     test.setTimeout(180_000)
-    const prompt = '헬스장 멤버십 문의에 답하고 예약·취소를 돕는 고객지원 봇을 만들어줘'
+    const prompt = '帮我创建一个回答健身房会员咨询并协助预约、取消的客户支持机器人'
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
@@ -137,7 +137,7 @@ test.describe('Wave 1 — hero flow captures', () => {
         await page.waitForTimeout(2_000)
       }
     }
-    await page.getByText(/세션 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
+    await page.getByText(/会话 #/).waitFor({ state: 'visible', timeout: 40_000 }).catch(() => {})
     await capture(page, WAVE, '05-builder-welcome.png')
 
     // Let the builder stream its response (or surface a System LLM error state).

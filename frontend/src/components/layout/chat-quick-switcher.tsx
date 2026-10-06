@@ -30,7 +30,7 @@ export function ChatQuickSwitcher({ open, onOpenChange, agents }: ChatQuickSwitc
   const t = useTranslations('sidebar.agents.quickSwitcher')
   const [query, setQuery] = useState('')
   const trimmedQuery = query.trim()
-  // 서버 검색은 deferred 값으로 — 키스트로크마다 fetch가 나가지 않게 한다
+  // 服务器搜索使用 deferred 值 — 避免每次按键都发起 fetch
   const deferredQuery = useDeferredValue(trimmedQuery)
   const filteredAgents = useMemo(
     () =>

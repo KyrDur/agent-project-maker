@@ -20,16 +20,16 @@ function buildBranchMeta(message: Message): Record<string, unknown> | null {
 }
 
 /**
- * Message (backend) → ThreadMessageLike (assistant-ui) 변환 콜백.
- * useExternalMessageConverter에 전달하여 사용한다.
+ * Message（backend）→ ThreadMessageLike（assistant-ui）转换回调。
+ * 传给 useExternalMessageConverter 使用。
  *
- * - user/assistant → ThreadMessageLike (텍스트 + 도구 호출)
- * - tool → { role: 'tool', toolCallId, result } (자동으로 tool-call에 병합됨)
+ * - user/assistant → ThreadMessageLike（文本 + 工具调用）
+ * - tool → { role: 'tool', toolCallId, result }（自动合并到 tool-call）
  */
 export const convertMessage: useExternalMessageConverter.Callback<Message> = (
   message,
 ): ConvertedMessage => {
-  // tool 메시지 → 도구 결과 (assistant-ui가 tool-call에 자동 병합)
+  // tool 消息 → 工具结果（assistant-ui 自动合并到 tool-call）
   if (message.role === 'tool') {
     return {
       role: 'tool' as const,
@@ -38,7 +38,7 @@ export const convertMessage: useExternalMessageConverter.Callback<Message> = (
     }
   }
 
-  // user 메시지 → 텍스트 (+ 첨부)
+  // user 消息 → 文本（+ 附件）
   if (message.role === 'user') {
     const userMsg: ConvertedMessage = {
       role: 'user' as const,
@@ -62,7 +62,7 @@ export const convertMessage: useExternalMessageConverter.Callback<Message> = (
     return userMsg
   }
 
-  // assistant 메시지 → 텍스트 + tool-call 파트 배열
+  // assistant 消息 → 文本 + tool-call part 数组
   type ContentPart =
     | { type: 'text'; text: string }
     | { type: 'tool-call'; toolCallId: string; toolName: string; args: Record<string, unknown> }
@@ -90,8 +90,8 @@ export const convertMessage: useExternalMessageConverter.Callback<Message> = (
     createdAt: new Date(message.created_at),
   }
   // M-CHAT1b — branch info on assistant messages (sibling regenerations).
-  // ``message.usage`` (W7)도 같은 metadata.custom 슬롯에 함께 hoist하여 ActionBar
-  // 옆 TokenUsagePopover가 ``useAuiState``로 직접 읽는다.
+  // ``message.usage``（W7）也一起 hoist 到同一个 metadata.custom 槽位，使 ActionBar
+  // 旁边的 TokenUsagePopover 可通过 ``useAuiState`` 直接读取。
   const assistantBranchMeta = buildBranchMeta(message)
 
   const isStreamingMessage = message.id.startsWith('stream-')

@@ -1,99 +1,99 @@
-# CHECKPOINT — Service LLM Key from Credentials (UX 갭 해소)
+# CHECKPOINT — Service LLM Key from Credentials (解决 UX gap)
 
-> 마일스톤 게이트 — 사티아 소유. 팀원 완료 보고 시 검증 → done-when 충족 시 done 마킹.
-> 브랜치: `feat/service-llm-key-from-credentials` (main `4fee88c`에서 분기)
-> 사용자 결정 (2026-05-06): 옵션 B — credentials UI 등록 LLM 키를 builder/assistant sub-agent 도 사용 가능. UX 갭 해소.
+> milestone gate — Satya 所有。团队成员完成报告时验证 → 满足 done-when 后标记 done。
+> 分支: `feat/service-llm-key-from-credentials` (从 main `4fee88c` 分出)
+> 用户决定 (2026-05-06): 选项 B — credentials UI 中注册的 LLM key 也可供 builder/assistant sub-agent 使用。解决 UX gap。
 
 ---
 
-## 핵심 스코프
+## 核心 scope
 
-**문제**: Builder/Assistant sub-agent는 `settings.{provider}_api_key` (.env / OS env) 만 사용. 사용자가 `/credentials` UI 에 등록한 LLM provider 키는 일반 chat agent (`Agent.llm_credential`) 전용이라 builder 가 못 씀. 사용자 mental model("credentials = 단일 진실 공급원") 과 어긋남.
+**问题**: Builder/Assistant sub-agent 只使用 `settings.{provider}_api_key` (.env / OS env)。用户在 `/credentials` UI 注册的 LLM provider key 仅供普通 chat agent (`Agent.llm_credential`) 使用，builder 无法使用。与用户 mental model("credentials = 单一事实来源") 不一致。
 
-**해결**: lifespan startup 시점 + credential CRUD 변경 시 credentials 테이블의 LLM provider 키를 `_ENV_FALLBACK` dict 로 동기화. `.env` 키 있으면 우선 (backward compat).
+**解决**: 在 lifespan startup 时 + credential CRUD 变更时，将 credentials 表中的 LLM provider key 同步到 `_ENV_FALLBACK` dict。若有 `.env` key 则优先 (backward compat)。
 
-| 영역 | 결정 |
+| 区域 | 决策 |
 |------|------|
-| `model_factory.py:_ENV_FALLBACK` 동기화 | ✅ 신규 — credentials → dict 주입 |
-| `main.py` lifespan | ✅ startup hook 으로 1회 동기화 |
-| credential CRUD API | ✅ invalidate hook (재시작 없이 반영) |
-| `.env` 키 우선순위 | ✅ env 가 있으면 우선 (backward compat) |
-| Frontend 변경 | ❌ 0 (mental model에 맞추는 backend-only fix) |
-| `Agent.llm_credential` (end-user agent) 경로 | 🔒 보존 (이미 정상 동작) |
+| `model_factory.py:_ENV_FALLBACK` 同步 | ✅ 新增 — credentials → dict 注入 |
+| `main.py` lifespan | ✅ 通过 startup hook 同步 1 次 |
+| credential CRUD API | ✅ invalidate hook (无需重启即可生效) |
+| `.env` key 优先级 | ✅ env 存在时优先 (backward compat) |
+| Frontend 变更 | ❌ 0 (符合 mental model 的 backend-only fix) |
+| `Agent.llm_credential` (end-user agent) 路径 | 🔒 保留 (已正常工作) |
 
-회귀 위험 최소화: env-only fallback 동작은 유지. credentials 통합은 *추가* 경로.
+最小化回归风险: 保留 env-only fallback 行为。credentials 集成是*新增*路径。
 
 ---
 
-## M0: 거버넌스 초기화 (사티아 DRI)
-- [x] 브랜치 `feat/service-llm-key-from-credentials` 생성 (main `4fee88c`)
-- [x] CHECKPOINT.md 작성
-- [ ] AUDIT.log 진입 기록
-- 검증: `git branch --show-current`
-- done-when: 새 브랜치 + CHECKPOINT + AUDIT 항목
-- 상태: in-progress
+## M0: 治理初始化 (Satya DRI)
+- [x] 创建分支 `feat/service-llm-key-from-credentials` (main `4fee88c`)
+- [x] 编写 CHECKPOINT.md
+- [ ] AUDIT.log 入口记录
+- 验证: `git branch --show-current`
+- done-when: 新分支 + CHECKPOINT + AUDIT 条目
+- 状态: in-progress
 
-## M1: 의존성 분석 (베조스 DRI)
-- [ ] credentials 테이블 LLM provider 키 식별 패턴 (definition_key 매핑 — anthropic/openai/google/openrouter)
-- [ ] 기존 `Agent.llm_credential` 복호화 경로 추적 — 재사용 가능한 helper 식별
-- [ ] credential CRUD API 위치 (POST/PATCH/DELETE) + invalidate hook 삽입 지점
-- [ ] `_ENV_FALLBACK` 호출처 매핑 (helpers.py / model_factory.py 외)
-- [ ] 회귀 가드 후보 시나리오 명세
-- 검증: `tasks/credentials-llm-key-sync-analysis.md` 존재
-- done-when: 의존성 보고서 + invalidate hook 위치 + 회귀 가드 시나리오
-- 상태: pending
+## M1: 依赖分析 (Bezos DRI)
+- [ ] credentials 表 LLM provider key 识别模式 (definition_key 映射 — anthropic/openai/google/openrouter)
+- [ ] 追踪现有 `Agent.llm_credential` decrypt 路径 — 识别可复用 helper
+- [ ] credential CRUD API 位置 (POST/PATCH/DELETE) + invalidate hook 插入点
+- [ ] `_ENV_FALLBACK` 调用点映射 (除 helpers.py / model_factory.py 外)
+- [ ] 回归 guard 候选场景 spec
+- 验证: `tasks/credentials-llm-key-sync-analysis.md` 存在
+- done-when: 依赖报告 + invalidate hook 位置 + 回归 guard 场景
+- 状态: pending
 
-## M2: 아키텍처 + ADR (피차이 DRI, M1 이후)
-- [ ] 신규 ADR `docs/design-docs/adr-013-service-llm-key-from-credentials.md` 작성 — 결정 사유 (사용자 mental model + a7fc92d "런타임 키 격리"와 trade-off)
-- [ ] 키 우선순위 결정: env > credentials (또는 credentials > env). backward compat 측 권장 = env 우선
-- [ ] invalidate hook 메커니즘 결정 (mutable dict vs lock-protected reload vs callback registry)
-- [ ] credentials 의 anthropic/openai/google/openrouter definition_key 매핑 명세
-- 검증: `test -f docs/design-docs/adr-013-service-llm-key-from-credentials.md`
-- done-when: ADR 작성 + 우선순위 + hook 디자인 + provider 매핑
-- 상태: pending
+## M2: 架构 + ADR (Pichai DRI, M1 后)
+- [ ] 编写新 ADR `docs/design-docs/adr-013-service-llm-key-from-credentials.md` — 决策理由 (用户 mental model + a7fc92d "runtime key isolation" 的 trade-off)
+- [ ] 决定 key 优先级: env > credentials (或 credentials > env)。backward compat 侧推荐 = env 优先
+- [ ] 决定 invalidate hook 机制 (mutable dict vs lock-protected reload vs callback registry)
+- [ ] 明确 credentials 的 anthropic/openai/google/openrouter definition_key 映射
+- 验证: `test -f docs/design-docs/adr-013-service-llm-key-from-credentials.md`
+- done-when: ADR 编写 + 优先级 + hook 设计 + provider 映射
+- 状态: pending
 
-## M3: Backend 구현 (젠슨 DRI, M2 이후)
-- [ ] `app/services/credential_service.py` (또는 신규) `get_provider_keys() -> dict[str, str | None]` async helper — credentials 테이블 LLM provider 별 키 복호화
-- [ ] `model_factory.py` `_ENV_FALLBACK` 을 mutable dict 또는 resolver function 으로 변경 + thread-safe sync helper `sync_env_fallback_from_credentials(db)`
-- [ ] `main.py` lifespan startup — sync 호출 1회
-- [ ] credential CRUD (POST/PATCH/DELETE) 핸들러 — sync 재호출 (또는 callback registry)
-- [ ] 신규 가드 ≥3건:
+## M3: Backend 实现 (Jensen DRI, M2 后)
+- [ ] `app/services/credential_service.py` (或新增) async helper `get_provider_keys() -> dict[str, str | None]` — 按 credentials 表中的 LLM provider decrypt key
+- [ ] 将 `model_factory.py` `_ENV_FALLBACK` 改为 mutable dict 或 resolver function + thread-safe sync helper `sync_env_fallback_from_credentials(db)`
+- [ ] `main.py` lifespan startup — 调用 sync 1 次
+- [ ] credential CRUD (POST/PATCH/DELETE) handler — 重新调用 sync (或 callback registry)
+- [ ] 新增 guard ≥3 个:
   - `test_lifespan_syncs_credentials_to_env_fallback`
   - `test_credential_create_invalidates_env_fallback`
   - `test_env_key_takes_priority_over_credential` (backward compat)
-  - `test_get_provider_keys_decrypts_anthropic` (helper 단위)
-- 검증: `cd backend && uv run alembic upgrade head && uv run ruff check . && uv run pytest tests/ && uv run pyright app/ tests/`
-- done-when: ruff 0 / pyright 0/0 / pytest 회귀 0 + 신규 가드 ≥3건 PASS
-- 상태: pending
+  - `test_get_provider_keys_decrypts_anthropic` (helper 单元)
+- 验证: `cd backend && uv run alembic upgrade head && uv run ruff check . && uv run pytest tests/ && uv run pyright app/ tests/`
+- done-when: ruff 0 / pyright 0/0 / pytest 回归 0 + 新增 guard ≥3 个 PASS
+- 状态: pending
 
-## M4: 회귀 검증 + 통합 (베조스 DRI, M3 이후)
-- [ ] backend 게이트 4종 + 신규 가드 PASS
-- [ ] 사용자 시나리오 검증: credentials 에 anthropic 키 등록 → builder 정상 LLM 호출 (수동 또는 통합 테스트)
-- [ ] backward compat: `.env` ANTHROPIC_API_KEY 있으면 그것 우선 사용
-- [ ] credential 삭제 후 sync 재호출되어 키 누락 반영
-- 검증: 위 항목 모두 통과
-- done-when: 게이트 + 사용자 시나리오 + backward compat + invalidate 모두 PASS
-- 상태: pending
+## M4: 回归验证 + 集成 (Bezos DRI, M3 后)
+- [ ] backend gate 4 类 + 新增 guard PASS
+- [ ] 用户场景验证: 在 credentials 注册 anthropic key → builder 正常 LLM 调用 (手动或集成测试)
+- [ ] backward compat: `.env` ANTHROPIC_API_KEY 存在时优先使用它
+- [ ] 删除 credential 后重新调用 sync，反映 key 缺失
+- 验证: 上述项目全部通过
+- done-when: gate + 用户场景 + backward compat + invalidate 全部 PASS
+- 状态: pending
 
-## M5: HANDOFF (사티아 DRI, M4 이후)
-- [ ] HANDOFF.md 작성
-- [ ] progress.txt 학습 entry
+## M5: HANDOFF (Satya DRI, M4 后)
+- [ ] 编写 HANDOFF.md
+- [ ] progress.txt 学习 entry
 - [ ] AUDIT PROJECT_DONE
-- 상태: pending
+- 状态: pending
 
 ---
 
-## 보존 영역 (수정 금지)
+## 保留区域 (禁止修改)
 
-- `Agent.llm_credential` 복호화 경로 (chat_service / agent_runtime 의 end-user agent 흐름)
-- `credentials` 테이블 schema (변경 0)
-- `Cipher` / `key_provider` (M1 산출, 보존)
-- frontend `/credentials` 페이지 (UI 변경 0)
+- `Agent.llm_credential` decrypt 路径 (chat_service / agent_runtime 的 end-user agent flow)
+- `credentials` 表 schema (变更 0)
+- `Cipher` / `key_provider` (M1 产物，保留)
+- frontend `/credentials` 页面 (UI 变更 0)
 
-## 회귀 위험 최소화
+## 最小化回归风险
 
-1. **`.env` 우선** — backward compat. 기존 사용자 영향 0
-2. **mutable dict 동기화** — 기존 `PROVIDER_API_KEY_MAP = _ENV_FALLBACK` alias 그대로 유지, dict 내용만 갱신
-3. **lifespan startup 1회 + CRUD invalidate** — credential 변경 즉시 반영
-4. **신규 가드 ≥3건** + 사용자 시나리오 검증 (M4)
-5. **end-user agent 경로 보존** — `Agent.llm_credential` 흐름은 변경 0
+1. **`.env` 优先** — backward compat。现有用户影响 0
+2. **mutable dict 同步** — 保持现有 `PROVIDER_API_KEY_MAP = _ENV_FALLBACK` alias，只更新 dict 内容
+3. **lifespan startup 1 次 + CRUD invalidate** — credential 变更立即生效
+4. **新增 guard ≥3 个** + 用户场景验证 (M4)
+5. **保留 end-user agent 路径** — `Agent.llm_credential` flow 变更 0

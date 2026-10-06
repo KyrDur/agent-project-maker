@@ -1,61 +1,61 @@
 # Chat Transcript Stability QA
 
-채팅 런타임을 수정할 때 아래 묶음은 하나의 회귀 기준으로 취급한다. 한 항목을 고치면서
-다른 항목이 흔들리면 통과로 보지 않는다.
+修改聊天运行时时，下面这一组应视为一个回归基准。修复其中一项时如果
+其他项出现波动，就不视为通过。
 
-## 자동 실행
+## 自动执行
 
 ```bash
 cd frontend
 pnpm test:e2e:chat-transcript-stability
 ```
 
-이 스위트는 실제 backend/frontend Playwright 서버를 사용한다. 앱 기본 채팅 런타임은
-`langgraph_v3`이므로 `pnpm test:e2e` 전체 실행에도 포함된다. 단,
-`NEXT_PUBLIC_CHAT_RUNTIME=legacy`로 명시한 legacy 실행에서는 skip된다.
+该 suite 使用真实 backend/frontend Playwright 服务器。应用默认聊天运行时是
+`langgraph_v3`，因此也包含在完整 `pnpm test:e2e` 执行中。不过，
+在显式设置 `NEXT_PUBLIC_CHAT_RUNTIME=legacy` 的 legacy 执行中会 skip。
 
-## 고정 기준
+## 固定基准
 
-1. 새 대화 `/conversations/new`는 메시지를 보내기 전까지 실제 conversation row를
-   만들지 않고, 다른 화면으로 이동하면 빈 draft가 남지 않는다.
-2. 새 대화의 첫 메시지를 보내면 URL이 실제 `conversationId`로 전환되고, 사이드바의
-   `새 대화` 임시 row가 실제 대화 row로 승격된다. 같은 대화가 중복 row로 추가되면
-   실패다.
-3. 첫 메시지 이후 오프너/캐릭터 empty state가 다시 나타나면 실패다.
-4. 새 대화에서 3턴 이상 연속으로 보내도 기존 사용자 메시지와 assistant 메시지가
-   사라졌다가 다시 나타나면 실패다.
-5. 사용자 메시지를 수정하면 수정 대상 아래의 기존 assistant 답변은 즉시 제거되고,
-   같은 사용자 메시지가 임시 bubble로 중복 표시되면 실패다.
-6. 사용자 메시지를 여러 번 수정한 뒤 최신 branch가 선택되어야 한다. 재생성은 최신
-   사용자 branch 기준으로 실행되어야 하고, branch index가 과거 branch로 밀리면 실패다.
-7. LLM 답변 재생성은 새 assistant branch를 마지막 branch로 표시해야 한다. branch
-   picker는 hover 상태가 유지되는 동안 사라지면 실패다.
-8. `ask_user` interrupt는 같은 요청에 대해 카드가 정확히 1개만 표시되어야 한다.
-   카드가 나타나는 동안 사용자가 보낸 문장이 사라지거나 빈 bubble로 바뀌면 실패다.
-9. 스트리밍 중 run notice/tool status는 같은 상태가 여러 카드로 중복 표시되면 실패다.
-   표시할 거면 하나가 안정적으로 유지되고, 표시하지 않을 거면 잠깐 나타났다가 사라지면
-   안 된다.
-10. assistant rich output은 일반 텍스트와 같은 transcript 안정성 규칙을 따른다. 코드 블록,
-    인라인 코드, GFM 표/체크리스트, KaTeX 수식, 이미지, 링크, blockquote, Mermaid가
-    렌더링되고 reload 뒤에도 유지되어야 한다. 이 출력 중 하나라도 사라지거나 사용자의
-    prompt가 빈 bubble로 바뀌면 실패다. 이 경로는 내부 테스트 마커가 아니라 사용자가
-    실제로 입력할 법한 자연어 요청으로 출력 형식을 유도해야 한다.
+1. 新对话 `/conversations/new` 在发送消息之前不应创建实际 conversation row，
+   切换到其他页面后也不应留下空 draft。
+2. 在新对话发送第一条消息后，URL 应切换为实际 `conversationId`，侧边栏中的
+   `新对话` 临时 row 应升级为实际对话 row。如果同一对话被重复添加成多个 row，
+   则失败。
+3. 第一条消息之后如果 opener/character empty state 再次出现，则失败。
+4. 在新对话中连续发送 3 轮以上时，已有用户消息和 assistant 消息
+   若消失后又重新出现，则失败。
+5. 修改用户消息时，修改目标下方原有的 assistant 回复应立即移除，
+   如果同一用户消息以临时 bubble 重复显示，则失败。
+6. 多次修改用户消息后，应选择最新 branch。重新生成应基于最新
+   用户 branch 执行，如果 branch index 被推回到旧 branch，则失败。
+7. 重新生成 LLM 回复时，应把新的 assistant branch 显示为最后一个 branch。branch
+   picker 在 hover 状态持续期间如果消失，则失败。
+8. `ask_user` interrupt 对同一请求必须恰好只显示 1 张卡片。
+   卡片出现期间，如果用户发送的句子消失或变成空 bubble，则失败。
+9. 流式过程中，run notice/tool status 若把同一状态重复显示为多张卡片，则失败。
+   如果要显示，就应稳定保持一个；如果不显示，就不应短暂出现后又消失，
+   否则失败。
+10. assistant rich output 遵循与普通文本相同的 transcript 稳定性规则。代码块、
+    行内代码、GFM 表格/检查清单、KaTeX 公式、图片、链接、blockquote、Mermaid
+    都应渲染并在 reload 后保持。如果这些输出中的任意一种消失，或用户的
+    prompt 变成空 bubble，则失败。该路径应通过用户实际可能输入的
+    自然语言请求来引导输出格式，而不是内部测试 marker。
 
-## 테스트 매핑
+## 测试映射
 
 - `frontend/e2e/draft-conversation-langgraph-v3.spec.ts`
-  - draft 생성/폐기
-  - `/new` → 실제 conversation 전환
-  - empty state 재등장 방지
-  - 3턴 이상 메시지 안정성
-  - 사용자 메시지 수정과 branch 최신성
+  - draft 创建/丢弃
+  - `/new` → 实际 conversation 切换
+  - 防止 empty state 再次出现
+  - 3 轮以上消息稳定性
+  - 用户消息修改与 branch 最新性
 - `frontend/e2e/chat-langgraph-v3-regressions.spec.ts`
-  - 재생성 branch 복원
-  - slow stream reconnect 중복 방지
-  - interrupted/HITL 상태 복원
+  - 重新生成 branch 恢复
+  - 防止 slow stream reconnect 重复
+  - interrupted/HITL 状态恢复
 - `frontend/e2e/chat-transcript-stability.spec.ts`
-  - `ask_user` 카드 단일 표시
-  - `ask_user` 렌더링 중 사용자 prompt 유지
-  - `/new` draft promotion과 `ask_user` 동시 경로
-  - rich assistant output 렌더링: 코드, 표, 수식, 이미지, 링크, 인용, 체크리스트, Mermaid
-  - rich output 렌더링 중 사용자 prompt 유지와 reload persistence
+  - `ask_user` 卡片单次显示
+  - `ask_user` 渲染期间保留用户 prompt
+  - `/new` draft promotion 与 `ask_user` 同时路径
+  - rich assistant output 渲染：代码、表格、公式、图片、链接、引用、检查清单、Mermaid
+  - rich output 渲染期间保留用户 prompt 和 reload persistence

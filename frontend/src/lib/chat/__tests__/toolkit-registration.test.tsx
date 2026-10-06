@@ -13,11 +13,7 @@ import {
 import { render, screen, waitFor } from '../../../../tests/test-utils'
 import { AssistantMessageParts } from '@/components/chat/assistant-message-parts'
 import { chatRightRailAtom } from '@/lib/stores/chat-right-rail'
-import {
-  ALL_TOOLKIT,
-  BUILDER_TOOLKIT,
-  SETTINGS_TEST_TOOLKIT,
-} from '@/lib/chat/tool-ui-registry'
+import { ALL_TOOLKIT, BUILDER_TOOLKIT, SETTINGS_TEST_TOOLKIT } from '@/lib/chat/tool-ui-registry'
 
 interface SourceMessage {
   readonly id: string
@@ -72,7 +68,7 @@ describe('assistant-ui toolkit registration', () => {
   it('renders a registered Moldy tool through the real Tools resource', async () => {
     render(<Harness toolName="write_todos" toolkit={ALL_TOOLKIT} />)
 
-    await waitFor(() => expect(screen.getByText('Plan')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('计划')).toBeInTheDocument())
     expect(screen.queryByText('write_todos')).not.toBeInTheDocument()
   })
 
@@ -85,7 +81,7 @@ describe('assistant-ui toolkit registration', () => {
     )
 
     await waitFor(() => expect(screen.getByText('unknown_backend_tool')).toBeInTheDocument())
-    view.getByRole('button', { name: 'Expand to panel' }).click()
+    view.getByRole('button', { name: '展开至面板' }).click()
     expect(store.get(chatRightRailAtom)).toMatchObject({
       mode: 'tool-result',
       toolResult: {

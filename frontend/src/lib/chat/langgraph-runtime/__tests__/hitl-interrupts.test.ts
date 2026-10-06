@@ -29,9 +29,9 @@ describe('standardPayloadFromInterrupt', () => {
     })
   })
 
-  it('세션 동의 플래그(session_consent_eligible)를 review_config에 보존한다', () => {
-    // 스킬 빌더 AD-4 — 백엔드 wire가 주입한 플래그가 파서에서 유실되면
-    // 승인 카드의 "留出本次会议的剩余时间" 옵션이 렌더되지 않는다.
+  it('在 review_config 中保留会话同意标记（session_consent_eligible）', () => {
+    // Skill builder AD-4——如果 backend wire 注入的标记在 parser 中丢失，
+    // 批准卡片中的"留出本次会议的剩余时间"选项就不会渲染。
     const payload = standardPayloadFromInterrupt({
       id: 'intr-consent',
       value: {
@@ -59,14 +59,14 @@ describe('standardPayloadFromInterrupt', () => {
     const payload = standardPayloadFromInterrupt({
       id: 'intr-camel',
       value: {
-        actionRequests: [{ name: 'ask_user', args: { question: '계속할까요?' } }],
+        actionRequests: [{ name: 'ask_user', args: { question: '要继续吗？' } }],
         reviewConfigs: [{ actionName: 'ask_user', allowedDecisions: ['respond'] }],
       },
     })
 
     expect(payload).toEqual({
       interrupt_id: 'intr-camel',
-      action_requests: [{ name: 'ask_user', args: { question: '계속할까요?' } }],
+      action_requests: [{ name: 'ask_user', args: { question: '要继续吗？' } }],
       review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
     })
   })
@@ -92,7 +92,7 @@ describe('standardPayloadFromInterrupt', () => {
   it('adapts native ask_user interrupt values', () => {
     const payload = standardPayloadFromInterrupt({
       id: 'intr-ask',
-      value: { type: 'ask_user', question: '어느 쪽?', options: ['A', 'B'] },
+      value: { type: 'ask_user', question: '哪一边？', options: ['A', 'B'] },
     })
 
     expect(payload).toEqual({
@@ -100,7 +100,7 @@ describe('standardPayloadFromInterrupt', () => {
       action_requests: [
         {
           name: 'ask_user',
-          args: { question: '어느 쪽?', options: ['A', 'B'] },
+          args: { question: '哪一边？', options: ['A', 'B'] },
         },
       ],
       review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
@@ -194,8 +194,8 @@ describe('appendInterruptToolCallMessages', () => {
           name: 'ask_user',
           args: {
             mode: 'option_list',
-            question: '과일을 골라주세요',
-            options: ['사과', '포도', '배'],
+            question: '请选择水果',
+            options: ['苹果', '葡萄', '梨'],
           },
         },
       ],
@@ -205,14 +205,14 @@ describe('appendInterruptToolCallMessages', () => {
           name: 'ask_user',
           args: {
             mode: 'option_list',
-            question: '과일을 골라주세요',
-            options: ['사과', '포도', '배'],
+            question: '请选择水果',
+            options: ['苹果', '葡萄', '梨'],
           },
         },
       ],
     })
     const projected = appendInterruptToolCallMessages(
-      [new HumanMessage({ id: 'user-1', content: 'ask user 해줘' }), existing],
+      [new HumanMessage({ id: 'user-1', content: '请 ask user' }), existing],
       [
         {
           interrupt_id: 'intr-ask',
@@ -221,8 +221,8 @@ describe('appendInterruptToolCallMessages', () => {
               name: 'ask_user',
               args: {
                 mode: 'option_list',
-                question: '과일을 골라주세요',
-                options: ['사과', '포도', '배'],
+                question: '请选择水果',
+                options: ['苹果', '葡萄', '梨'],
               },
             },
           ],
@@ -254,7 +254,7 @@ describe('appendInterruptToolCallMessages', () => {
         {
           id: 'toolu-ask-text',
           name: 'ask_user',
-          args: { question: '추가 설명을 입력해 주세요' },
+          args: { question: '请输入补充说明' },
         },
       ],
     })
@@ -267,7 +267,7 @@ describe('appendInterruptToolCallMessages', () => {
           action_requests: [
             {
               name: 'ask_user',
-              args: { question: '추가 설명을 입력해 주세요', options: [] },
+              args: { question: '请输入补充说明', options: [] },
             },
           ],
           review_configs: [{ action_name: 'ask_user', allowed_decisions: ['respond'] }],
@@ -297,8 +297,8 @@ describe('appendInterruptToolCallMessages', () => {
           name: 'ask_user',
           args: {
             mode: 'option_list',
-            question: '과일을 골라주세요',
-            options: ['사과', '포도', '배'],
+            question: '请选择水果',
+            options: ['苹果', '葡萄', '梨'],
           },
         },
       ],
@@ -308,14 +308,14 @@ describe('appendInterruptToolCallMessages', () => {
           name: 'ask_user',
           args: {
             mode: 'option_list',
-            question: '과일을 골라주세요',
-            options: ['사과', '포도', '배'],
+            question: '请选择水果',
+            options: ['苹果', '葡萄', '梨'],
           },
         },
       ],
     })
     const projected = appendInterruptToolCallMessages(
-      [new HumanMessage({ id: 'user-1', content: 'ask user 해줘' }), existing],
+      [new HumanMessage({ id: 'user-1', content: '请 ask user' }), existing],
       [
         {
           interrupt_id: 'intr-ask',
@@ -324,8 +324,8 @@ describe('appendInterruptToolCallMessages', () => {
               name: 'ask_user',
               args: {
                 mode: 'option_list',
-                question: '과일을 골라주세요',
-                options: ['사과', '포도', '배'],
+                question: '请选择水果',
+                options: ['苹果', '葡萄', '梨'],
               },
             },
           ],
@@ -356,8 +356,8 @@ describe('appendInterruptToolCallMessages', () => {
   it('binds two arg-equivalent ask_user interrupts to distinct persisted slots', () => {
     const askArgs = {
       mode: 'option_list',
-      question: '과일을 골라주세요',
-      options: ['사과', '포도', '배'],
+      question: '请选择水果',
+      options: ['苹果', '葡萄', '梨'],
     }
     const first = new AIMessage({
       id: 'assistant-ask-1',
@@ -402,7 +402,7 @@ describe('appendInterruptToolCallMessages', () => {
     ])
   })
 
-  it('하이드레이션 시 입력 배열을 변형하지 않는다(immutability 계약)', () => {
+  it('hydration 时不修改输入数组（immutability contract）', () => {
     const existing = new AIMessage({
       id: 'assistant-ask',
       content: '',
@@ -427,7 +427,7 @@ describe('appendInterruptToolCallMessages', () => {
       },
     ])
 
-    // 원본 배열과 그 요소 참조는 그대로, 반환 배열만 새 메시지로 교체된다.
+    // 原数组及其元素引用保持不变，只在返回数组中替换为新消息。
     expect(input).toEqual(inputSnapshot)
     expect(input[1]).toBe(existing)
     expect(projected[1]).not.toBe(existing)
@@ -445,8 +445,8 @@ describe('appendResolvedInterruptToolCallMessages', () => {
           name: 'ask_user',
           args: {
             mode: 'option_list',
-            question: '과일을 골라주세요',
-            options: ['사과', '포도', '배'],
+            question: '请选择水果',
+            options: ['苹果', '葡萄', '梨'],
           },
         },
       ],
@@ -461,8 +461,8 @@ describe('appendResolvedInterruptToolCallMessages', () => {
             name: 'ask_user',
             args: {
               mode: 'option_list',
-              question: '과일을 골라주세요',
-              options: ['사과', '포도', '배'],
+              question: '请选择水果',
+              options: ['苹果', '葡萄', '梨'],
               hitl_interrupt_id: 'intr-ask',
             },
           },
@@ -622,7 +622,7 @@ describe('stripInterruptedRawToolCalls', () => {
     const messages = [
       new AIMessage({
         id: 'm1',
-        content: '수정을 적용합니다',
+        content: '应用修改',
         tool_calls: [
           { id: 'call_e', name: 'edit_file', args: { file_path: 'a.yaml', api_key: 'sk-real' } },
         ],
@@ -633,7 +633,7 @@ describe('stripInterruptedRawToolCalls', () => {
     const ai = out[0] as AIMessage
     expect(out).toHaveLength(1)
     expect(ai.tool_calls ?? []).toHaveLength(0)
-    expect(String(ai.content)).toContain('수정을 적용합니다')
+    expect(String(ai.content)).toContain('应用修改')
   })
 
   it('is a no-op when there are no interrupts', () => {
@@ -676,7 +676,7 @@ describe('stripInterruptedRawToolCalls', () => {
       { type: 'tool_use', id: 'call_x', name: 'execute_in_skill', input: {} },
     ] as unknown as AIMessage['content']
     const textAndTool = [
-      { type: 'text', text: '문서를 생성합니다' },
+      { type: 'text', text: '生成文档' },
       { type: 'tool_use', id: 'call_y', name: 'execute_in_skill', input: {} },
     ] as unknown as AIMessage['content']
     const rawArgs = { skill_directory: '/skills/docx', command: 'node x.cjs' }

@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * form-mode 미들웨어 추가 다이얼로그.
+ * form-mode middleware 添加 dialog。
  *
- * 통합 MiddlewaresDialog(SubAgents 2-column 패턴)를 그대로 재export.
- * 본체는 ``@/components/agent/visual-settings/dialogs/middlewares-dialog``.
+ * 原样 export 集成的 MiddlewaresDialog（SubAgents 2-column pattern）。
+ * 主体位于 ``@/components/agent/visual-settings/dialogs/middlewares-dialog``。
  */
 
 export { MiddlewaresDialog } from '@/components/agent/visual-settings/dialogs/middlewares-dialog'

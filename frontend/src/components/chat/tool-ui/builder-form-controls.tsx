@@ -13,11 +13,11 @@ interface BuilderFeedbackTextareaProps {
 }
 
 /**
- * Builder approval/edit 카드 공통 textarea.
+ * Builder approval/edit 卡共用 textarea。
  *
- * - mint focus ring (`primaryDim` border + 3px box-shadow)
- * - 한글 IME composition 가드 (composition 중 Enter 전파 차단)
- * - disabled 시 회색 처리 없이 비활성만 — 시각적으로는 frozen 상태에서 보통 unmount
+ * - mint focus ring（`primaryDim` border + 3px box-shadow）
+ * - 中文 IME composition guard（composition 中阻止 Enter 传播）
+ * - disabled 时不做灰色处理，仅禁用 —— 视觉上通常在 frozen 状态时 unmount
  */
 export function BuilderFeedbackTextarea({
   value,
@@ -58,7 +58,7 @@ interface ActionButtonProps {
   icon?: ReactNode
 }
 
-/** 민트 primary 버튼 — 승인/생성/확정 등 메인 액션. */
+/** 薄荷绿 primary 按钮 — 用于批准/生成/确认等主要操作。 */
 export function MintActionButton({ onClick, disabled, label, icon }: ActionButtonProps) {
   return (
     <BuilderButton tone="primary" onClick={onClick} disabled={disabled} className="px-4">
@@ -68,7 +68,7 @@ export function MintActionButton({ onClick, disabled, label, icon }: ActionButto
   )
 }
 
-/** 흰 outline 버튼 — 수정 요청/넘어가기/재생성 등 보조 액션. */
+/** 白色 outline 按钮 — 用于修改请求/跳过/重新生成等辅助操作。 */
 export function OutlineActionButton({ onClick, disabled, label, icon }: ActionButtonProps) {
   return (
     <BuilderButton tone="secondary" onClick={onClick} disabled={disabled}>

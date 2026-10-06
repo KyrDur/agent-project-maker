@@ -200,17 +200,21 @@ async def test_audit_hook_writes_row_only_when_credential_present(monkeypatch) -
 
     async with TestSession() as db:
         rows = (
-            await db.execute(
-                select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+            (
+                await db.execute(
+                    select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert rows == []
 
     # With credential → exactly one row, action=invoke, source=runtime.
     cred_ctx = _make_ctx(
         kind="tool_call",
         credential_id=cred_id,
-        metadata={"tool_name": "naver_blog"},
+        metadata={"tool_name": "google_web"},
     )
     await hook.async_post_call_hook(
         cred_ctx, HookResult(duration_ms=42, tokens_in=10, tokens_out=20)
@@ -218,10 +222,14 @@ async def test_audit_hook_writes_row_only_when_credential_present(monkeypatch) -
 
     async with TestSession() as db:
         rows = (
-            await db.execute(
-                select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+            (
+                await db.execute(
+                    select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         row = rows[0]
         assert row.credential_id == cred_id
@@ -232,7 +240,7 @@ async def test_audit_hook_writes_row_only_when_credential_present(monkeypatch) -
         assert row.log_metadata["kind"] == "tool_call"
         assert row.log_metadata["duration_ms"] == 42
         assert row.log_metadata["tokens_in"] == 10
-        assert row.log_metadata["meta_tool_name"] == "naver_blog"
+        assert row.log_metadata["meta_tool_name"] == "google_web"
 
 
 @pytest.mark.asyncio
@@ -260,10 +268,14 @@ async def test_audit_hook_records_failure_with_error_message(monkeypatch) -> Non
 
     async with TestSession() as db:
         rows = (
-            await db.execute(
-                select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+            (
+                await db.execute(
+                    select(CredentialAuditLog).where(CredentialAuditLog.action == "invoke")
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) == 1
         assert rows[0].error == "upstream 502"
         assert rows[0].log_metadata is not None

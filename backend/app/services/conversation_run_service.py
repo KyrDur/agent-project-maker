@@ -203,13 +203,13 @@ async def latest_run_for_conversation(
     *,
     conversation_id: uuid.UUID,
 ) -> ConversationRun | None:
-    """최신 run을 상태와 무관하게 1건 반환.
+    """无论状态如何，返回最新的 1 条 run。
 
-    ``active_run`` 은 active/미해결 interrupted 만 보고하므로 canceled 처럼
-    terminal 로 끝난 마지막 turn 의 상태를 알 수 없다. 메시지는 checkpointer
-    파생이라 run_id(uuid4) ↔ message id(uuid5) 매칭이 불가능해, "마지막 turn
-    이 취소되었다" 는 사실은 conversation 단위 최신 run 으로만 durable 하게
-    전달할 수 있다 (``ix_conversation_runs_conversation_created`` 인덱스 사용).
+    ``active_run`` 只报告 active/未解决的 interrupted，因此无法得知 canceled 等
+    terminal 状态结束的最后一个 turn 的状态。由于消息派生自 checkpointer，
+    run_id(uuid4) ↔ message id(uuid5) 无法匹配，所以"最后一个 turn
+    已被取消"这一事实只能通过 conversation 级别的最新 run 以 durable 方式
+    传递（使用 ``ix_conversation_runs_conversation_created`` 索引）。
     """
     result = await db.execute(
         select(ConversationRun)
@@ -228,10 +228,10 @@ async def get_run_for_user(
     user_id: uuid.UUID,
     for_update: bool = False,
 ) -> ConversationRun | None:
-    """``for_update=True`` 는 이후 ``transition_run`` 으로 상태를 바꿀 호출자용.
+    """``for_update=True`` 供后续通过 ``transition_run`` 更改状态的调用方使用。
 
-    Postgres 에서 row lock 으로 worker/heartbeat 와의 read-modify-write 경합을
-    직렬화한다 (SQLite dialect 는 FOR UPDATE 를 무시 — 테스트는 단일 루프라 안전).
+    在 Postgres 中通过 row lock 串行化与 worker/heartbeat 的 read-modify-write 竞争
+    （SQLite dialect 忽略 FOR UPDATE — 测试为单循环，因此安全）。
     """
     stmt = select(ConversationRun).where(
         ConversationRun.id == run_id,
@@ -344,13 +344,13 @@ async def transition_run(
     cancellation_ack_worker_id: str | None = None,
     allow_workerless_cancellation_ack: bool = False,
 ) -> ConversationRun:
-    """run 상태 전이의 단일 진입점.
+    """run 状态转换的唯一入口。
 
-    동시성 계약: 같은 row 를 갱신하는 경로(worker 전이, heartbeat, cancel API,
-    stale sweep)가 서로 다른 세션에서 read-modify-write 하므로, 상태를 바꾸는
-    호출자는 run 을 ``with_for_update`` 로 로드해 stale read 기반 lost update 를
-    막아야 한다. 단일 프로세스/단일 asyncio 워커(현 기본 배포)에서는 트랜잭션이
-    짧아 실질 경합이 드물지만, 멀티 워커 확장 시 이 계약이 필수가 된다.
+    并发契约：更新同一 row 的路径（worker 转换、heartbeat、cancel API、
+    stale sweep）会在不同会话中 read-modify-write，因此更改状态的调用方
+    必须用 ``with_for_update`` 加载 run，以防止基于 stale read 的 lost update。
+    在单进程/单 asyncio worker（当前默认部署）中事务较短，实际竞争很少，
+    但扩展为多 worker 后该契约是必需的。
     """
     if status not in ALLOWED_TRANSITIONS.get(run.status, set()):
         raise ValueError(f"Invalid run status transition: {run.status} -> {status}")
@@ -502,8 +502,8 @@ async def mark_stale_active_runs(
                 error_message="Run heartbeat exceeded the stale threshold.",
             )
         except ValueError:
-            # 다른 경로(worker finalize/cancel)가 먼저 terminal 전이를 끝낸 run.
-            # 한 run 의 경합이 같은 배치의 나머지 sweep 을 막지 않도록 skip.
+            # 其他路径（worker finalize/cancel）已经先完成 terminal 转换的 run。
+            # 为避免一个 run 的竞争阻塞同一批次中其余 sweep，执行 skip。
             logger.warning(
                 "skipping stale sweep for run %s: already transitioned to %s",
                 run.id,
@@ -578,7 +578,7 @@ async def sweep_stale_conversation_runs(
 ) -> None:
     """Mark active conversation runs stale after their heartbeat threshold.
 
-    BE-S9 — 본문은 ``app.scheduler``에서 이관. keep-cron-alive try/except 포함.
+    BE-S9 — 正文从 ``app.scheduler`` 迁移而来。包含 keep-cron-alive try/except。
     """
     # conversation_run_worker imports this module — keep the import call-local.
     from app.services.conversation_run_worker import get_run_task_registry

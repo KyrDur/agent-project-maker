@@ -49,12 +49,12 @@ test.describe('Wave 9 — background run status captures', () => {
     const modelId = await scriptedModelId(request)
     const created = await request.post(`${API_BASE}/api/agents`, {
       headers: csrf,
-      data: { name: '백그라운드 실행 데모', system_prompt: '천천히 응답.', model_id: modelId },
+      data: { name: '后台执行演示', system_prompt: '慢慢响应。', model_id: modelId },
     })
     const agent = (await created.json()) as { id: string }
     try {
-      const running = await createConversation(request, csrf, agent.id, '길게 도는 작업')
-      const other = await createConversation(request, csrf, agent.id, '다른 대화')
+      const running = await createConversation(request, csrf, agent.id, '长时间运行的任务')
+      const other = await createConversation(request, csrf, agent.id, '其他对话')
 
       await gotoCommit(page, `/agents/${agent.id}/conversations/${running}`)
       // A long (~22s) streaming run that keeps going after we navigate away.
@@ -95,7 +95,7 @@ test.describe('Wave 9 — background run status captures', () => {
     test.setTimeout(180_000)
     const setup = await setupLangGraphV3Agent(request)
     try {
-      const other = await createConversation(request, setup.csrfHeaders, setup.parentAgentId, '다른 대화')
+      const other = await createConversation(request, setup.csrfHeaders, setup.parentAgentId, '其他对话')
       await gotoCommit(page, `/agents/${setup.parentAgentId}/conversations/${setup.conversationId}`)
       await sendMessage(
         page,

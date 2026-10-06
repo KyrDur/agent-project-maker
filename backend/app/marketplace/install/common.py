@@ -62,9 +62,7 @@ def _derive_origin(item: MarketplaceItem, user: CurrentUser) -> tuple[str, uuid.
     the same as a foreign import).
     """
 
-    if item.is_system and item.source_kind == "k-skill":
-        return "built_in_k_skill", item.owner_user_id
-    if item.is_system and item.source_kind == "system_seed":
+    if item.is_system:
         return "system_seed", item.owner_user_id
     if not is_owner(item, user):
         if item.visibility == "restricted":

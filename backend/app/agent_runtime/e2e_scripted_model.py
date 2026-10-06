@@ -54,13 +54,6 @@ SCRIPTED_DOCUMENT_COMMANDS: dict[str, dict[str, str]] = {
             "--output moldy-pptx-demo.pptx"
         ),
     },
-    "E2E_HWPX": {
-        "skill_directory": "/skills/patent-hwpx-generator",
-        "command": (
-            "python scripts/generate_hwpx.py --input examples/e2e-patent.json "
-            "--output moldy-patent-demo.hwpx"
-        ),
-    },
 }
 LANGGRAPH_V3_ARTIFACT_COMMAND = {
     "skill_directory": "/skills/docx-document",
@@ -68,9 +61,9 @@ LANGGRAPH_V3_ARTIFACT_COMMAND = {
 }
 
 SLOW_STREAM_MARKER = "E2E_SLOW_STREAM"
-# G2 — 런을 강제로 실패시켜 채팅 에러 버블 + retry(fork 재실행) 경로를
-# E2E/capture로 검증한다. 예외는 LangGraph 스트림에서 잡혀 run.status="failed"로
-# 이어진다(streaming.py). scripted 모델 게이트라 프로덕션엔 존재하지 않는다.
+# G2 — 强制使运行失败，以验证聊天错误气泡 + retry（fork 重新执行）路径
+# 通过 E2E/capture 验证。异常会在 LangGraph 流中被捕获，并继续将 run.status="failed"
+# 传递下去(streaming.py)。这是 scripted 模型门控，因此生产环境中不存在。
 ERROR_MARKER = "E2E_ERROR"
 SLOW_STREAM_PARTS = (
     "E2E slow ",
@@ -139,14 +132,14 @@ TOKEN_USAGE_METADATA = {
 }
 CHAT_RICH_OUTPUT_MARKER = "E2E_CHAT_RICH_OUTPUTS"
 CHAT_RICH_OUTPUT_PROMPT = (
-    "체크리스트, 표, TypeScript 코드, 수식, 이미지, 링크, 인용문, "
-    "Mermaid 다이어그램을 모두 포함해서 채팅 출력 예시를 보여줘"
+    "清单、表格、TypeScript 代码、公式、图片、链接、引用， "
+    "把 Mermaid 图表也全部包含进去，展示一个聊天输出示例"
 )
 CHAT_RICH_OUTPUT_CONTENT = "\n".join(
     (
         "# E2E rich output contract",
         "",
-        "이 응답은 채팅 렌더러가 여러 출력 형식을 안정적으로 유지하는지 확인합니다.",
+        "此响应用于确认聊天渲染器能否稳定处理多种输出格式。",
         "",
         "- [x] E2E checklist item",
         "- Inline code: `e2e_inline_code`",
@@ -185,15 +178,15 @@ DAILY_GREETING_MARKER = "E2E_DAILY_GREETING"
 # byte-identical — many specs poll on that exact sentinel for the marker-less turn.
 DAILY_GREETING_CONTENT = "\n".join(
     (
-        "안녕하세요! 일상을 도와드리는 비서예요. 😊",
+        "你好！我是帮助你处理日常事务的助手。😊",
         "",
-        "오늘은 이런 걸 함께 할 수 있어요:",
+        "今天可以一起做这些事情：",
         "",
-        "- 📅 일정 정리와 리마인더",
-        "- 🍳 식단·운동 루틴 추천",
-        "- 🔎 궁금한 정보 검색 요약",
+        "- 📅 整理日程和提醒",
+        "- 🍳 推荐饮食·运动计划",
+        "- 🔎 搜索并总结你感兴趣的信息",
         "",
-        "무엇부터 시작해볼까요?",
+        "想先从什么开始？",
     )
 )
 HITL_APPROVAL_MARKER = "E2E_HITL_APPROVAL"
@@ -232,14 +225,12 @@ HITL_MULTI_TOOL_CALLS = (
 # (HumanInTheLoopMiddleware). The scripted model must acknowledge the cancellation
 # instead of reusing the generic "完成" completion line — otherwise a rejected
 # approval reads as if the tool had run.
-HITL_REJECTED_ACK_CONTENT = (
-    "알겠습니다. 요청하신 도구 실행은 취소했어요. 다른 도움이 필요하면 말씀해 주세요."
-)
+HITL_REJECTED_ACK_CONTENT = "好的。你请求的工具执行已取消。如需其他帮助，请告诉我。"
 HITL_EDIT_MARKER = "E2E_HITL_EDIT"
 # Single ``edit_file`` call. Unlike ``execute_in_skill`` (allowed_decisions
 # ``[approve, reject]``), ``edit_file`` carries the ``[approve, edit, reject]``
 # policy (``default_deepagents_interrupt_policy``), so its approval card shows the
-# 수정 button → the field-based editor. The args MIX editable fields with a
+# 修改 button → the field-based editor. The args MIX editable fields with a
 # sensitive key (``api_key``) so the editor demonstrates the read-only secret
 # lock (``<redacted>``, restored by the backend by index). Capture-only: the run
 # is meant to pause on the card; the tool itself never needs to execute cleanly.
@@ -253,20 +244,20 @@ HITL_EDIT_TOOL_CALL = {
         "api_key": "sk-live-9d8f7a6b5c4e3210fedcba98",
     },
 }
-# --- 스킬 빌더 챗 (skill-studio phase 1, M6 E2E) -----------------------------
-# 결정론 시퀀스: WRITE(드래프트 파일 2개 write_file — 빌더 분기는 파일 도구
-# 승인 카드를 제외하므로 즉시 실행) → VALIDATE(validate_skill) →
-# TEST(test_skill_draft, CODE_EXECUTION 승인 카드 + "留出本次会议的剩余时间") →
-# RETEST(동의 후 무카드 — args가 달라야 승인 카드 pill-strip 키와 충돌하지
-# 않는다, HITL_MULTI의 distinct-output 선례) → FINALIZE(finalize_skill, 항상
-# 승인 카드). WRITE 메시지는 마커 뒤에 워크스페이스 가상 경로를 실어 보낸다
-# (scripted model은 세션 id를 알 수 없다).
+# --- 技能构建器聊天（skill-studio phase 1, M6 E2E）-----------------------------
+# 确定性序列：WRITE（2 个草稿文件 write_file — 构建器分支中的文件工具
+# 不含审批卡片，因此立即执行）→ VALIDATE(validate_skill) →
+# TEST(test_skill_draft, CODE_EXECUTION 审批卡片 + "留出本次会议的剩余时间") →
+# RETEST（同意后无卡片 — args 必须不同，避免与审批卡片 pill-strip 键冲突，
+# 参考 HITL_MULTI 的 distinct-output 先例）→ FINALIZE(finalize_skill, 始终
+# 显示审批卡片）。WRITE 消息会在标记后附带工作区虚拟路径
+# （scripted model 无法知道会话 id）。
 SKILL_BUILDER_WRITE_MARKER = "E2E_SKILL_BUILDER_WRITE"
 SKILL_BUILDER_VALIDATE_MARKER = "E2E_SKILL_BUILDER_VALIDATE"
 SKILL_BUILDER_TEST_MARKER = "E2E_SKILL_BUILDER_TEST"
 SKILL_BUILDER_RETEST_MARKER = "E2E_SKILL_BUILDER_RETEST"
 SKILL_BUILDER_FINALIZE_MARKER = "E2E_SKILL_BUILDER_FINALIZE"
-# CONFLICT는 FINALIZE를 부분 문자열로 포함 — 매처에서 반드시 먼저 검사(RETEST 선례).
+# CONFLICT 包含 FINALIZE 作为子字符串 — 匹配器中必须优先检查（参考 RETEST 先例）。
 SKILL_BUILDER_FINALIZE_CONFLICT_MARKER = "E2E_SKILL_BUILDER_FINALIZE_CONFLICT"
 _SKILL_DRAFT_PATH_RE = re.compile(r"/skill-drafts/[0-9a-fA-F-]{36}")
 SKILL_BUILDER_SANDBOX_OUTPUT = "E2E_DRAFT_SANDBOX_OK"
@@ -280,13 +271,12 @@ SKILL_BUILDER_SKILL_MD = (
 SKILL_BUILDER_SCRIPT = f"print('{SKILL_BUILDER_SANDBOX_OUTPUT}')\n"
 SKILL_BUILDER_TEST_COMMAND = "python scripts/hello.py"
 SKILL_BUILDER_RETEST_COMMAND = "python scripts/hello.py --again"
-SKILL_BUILDER_WRITE_FINAL = "드래프트 파일을 작성했습니다. SKILL.md와 스크립트를 확인해 주세요."
-SKILL_BUILDER_VALIDATE_FINAL = "드래프트 검증을 실행했습니다. 오른쪽 레일에서 결과를 확인하세요."
-SKILL_BUILDER_TEST_FINAL = "드래프트 시험 실행이 끝났습니다."
-SKILL_BUILDER_FINALIZE_FINAL = "스킬을 저장했습니다. 스킬 목록에서 확인할 수 있어요."
+SKILL_BUILDER_WRITE_FINAL = "已写入草稿文件。请检查 SKILL.md 和脚本。"
+SKILL_BUILDER_VALIDATE_FINAL = "已执行草稿校验。请在右侧栏查看结果。"
+SKILL_BUILDER_TEST_FINAL = "草稿测试执行已结束。"
+SKILL_BUILDER_FINALIZE_FINAL = "已保存技能。可在技能列表中查看。"
 SKILL_BUILDER_FINALIZE_CONFLICT_FINAL = (
-    "원본 스킬이 세션 시작 후 변경되어 저장하지 못했습니다. "
-    "최신 버전에서 개선 세션을 다시 시작해 주세요."
+    "原始技能在会话开始后发生了变更，因此未能保存。 请基于最新版本重新开始改进会话。"
 )
 
 
@@ -302,16 +292,14 @@ SKILL_EVAL_AB_GRADER_PROMPT_HEAD = "You are Moldy's skill evaluation A/B grader.
 # Legacy llm-1 run-level grader — kept answerable so older paths don't hang.
 SKILL_EVAL_LEGACY_GRADER_PROMPT_HEAD = "You are Moldy's skill evaluation grader."
 SKILL_EVAL_WITH_ARM_ANSWER = (
-    "담당자/마감일 표\n| 담당자 | 마감일 |\n| --- | --- |\n| 김철수 | 7월 15일 |"
+    "负责人/截止日期表\n| 负责人 | 截止日期 |\n| --- | --- |\n| 金哲洙 | 7月15日 |"
 )
-SKILL_EVAL_WITHOUT_ARM_ANSWER = (
-    "회의록을 다시 확인해 보셔야 할 것 같습니다. 일반적인 요약만 가능해요."
-)
+SKILL_EVAL_WITHOUT_ARM_ANSWER = "看来需要重新核对会议记录。目前只能提供一般性总结。"
 SKILL_EVAL_AB_GRADER_JSON = (
     '{"case_index": 0, "status": "passed", "score": 0.95,'
     ' "baseline_status": "failed", "baseline_score": 0.3,'
-    ' "grader_feedback": "with-arm은 스킬 지시대로 표를 반환했고 baseline은 형식을 놓쳤습니다.",'
-    ' "evidence": "with_skill_answer가 expected의 담당자/마감일 표와 일치합니다."}'
+    ' "grader_feedback": "with-arm 按照技能指令返回了表格，而 baseline 遗漏了格式。",'
+    ' "evidence": "with_skill_answer 与 expected 的负责人/截止日期表一致。"}'
 )
 SKILL_EVAL_LEGACY_GRADER_JSON = (
     '{"case_results": [{"case_index": 0, "status": "passed", "score": 0.95,'
@@ -366,7 +354,7 @@ def _skill_builder_write_tool_calls(workspace: str) -> list[dict[str, Any]]:
 
 
 def _skill_builder_tool_calls(human_text: str) -> list[dict[str, Any]] | None:
-    """마커 → 이번 턴에 방출할 tool_calls (아니면 None)."""
+    """标记 → 本轮要发出的 tool_calls（否则为 None）。"""
 
     if SKILL_BUILDER_WRITE_MARKER in human_text:
         match = _SKILL_DRAFT_PATH_RE.search(human_text)
@@ -406,8 +394,8 @@ def _skill_builder_final_content(human_text: str) -> str | None:
     if SKILL_BUILDER_RETEST_MARKER in human_text or SKILL_BUILDER_TEST_MARKER in human_text:
         return SKILL_BUILDER_TEST_FINAL
     if SKILL_BUILDER_FINALIZE_CONFLICT_MARKER in human_text:
-        # 도구가 SOURCE_SKILL_CHANGED를 반환한 뒤 "에이전트가 사용자에게 설명"
-        # 하는 §2-3 계약의 결정론 재현.
+        # 工具返回 SOURCE_SKILL_CHANGED 后 "智能体向用户解释"
+        # 这一 §2-3 约定的确定性复现。
         return SKILL_BUILDER_FINALIZE_CONFLICT_FINAL
     if SKILL_BUILDER_FINALIZE_MARKER in human_text:
         return SKILL_BUILDER_FINALIZE_FINAL
@@ -419,7 +407,7 @@ TOOL_GROUP_MARKER = "E2E_TOOL_GROUP"
 # tool_calls of the SAME tool (``current_datetime`` ×3) plus ONE call of a
 # DIFFERENT tool (``resolve_relative_date`` ×1). The frontend
 # ``MessagePrimitive.GroupedParts`` must collapse the three identical calls into
-# a single group container ("current_datetime · 3회") while the single different
+# a single group container ("current_datetime · 3次") while the single different
 # call renders as its own pill.
 #
 # Both tools are the always-appended temporal builtins
@@ -448,7 +436,7 @@ def _tool_group_tool_calls() -> list[dict[str, Any]]:
         {
             "id": "call_e2e_tool_group_relative",
             "name": TOOL_GROUP_SEPARATE_TOOL,
-            "args": {"expression": "오늘"},
+            "args": {"expression": "今天"},
         }
     )
     return calls
@@ -461,8 +449,8 @@ SEARCH_GROUP_MARKER = "E2E_SEARCH_GROUP"
 # search builtin (``builtin:e2e_scripted_search`` in ``tool_factory``) that the
 # runtime appends only when ``e2e_scripted_model_enabled`` is set. Each query
 # returns a different multi-domain slice, so the frontend search-group aggregate
-# collapses the 3 calls into ONE container ("웹 검색 · 3회") whose header shows
-# domain badges + "출처 N개". ``tavily_search`` maps to label key ``webSearch``
+# collapses the 3 calls into ONE container ("网页搜索 · 3次") whose header shows
+# domain badges + "来源 N 个". ``tavily_search`` maps to label key ``webSearch``
 # and carries NO HITL interrupt, so the run streams to completion uninterrupted.
 #
 # Source math (see ``_E2E_SCRIPTED_SEARCH_RESULTS``): 3 calls × 3 results = 9
@@ -488,15 +476,15 @@ def _search_group_tool_calls() -> list[dict[str, Any]]:
 
 
 # W2-6 memory lifecycle fixtures. ONE memory-tool call per turn; the tool's
-# policy branch decides the outcome — write_policy=auto → memory_saved (직접
-# 저장 pill), write_policy=ask → memory_proposed (제안 카드: 승인/수정/거부).
+# policy branch decides the outcome — write_policy=auto → memory_saved (直接
+# 保存 pill), write_policy=ask → memory_proposed (提案卡片：批准/修改/拒绝).
 # The spec flips the policy via PATCH /api/me/memory-settings between scenes.
 MEMORY_SAVE_MARKER = "E2E_MEMORY_SAVE"
-MEMORY_SAVE_CONTENT = "사용자는 결론 먼저, 표 중심의 보고서를 선호한다."
-MEMORY_SAVE_REASON = "사용자가 보고서 형식을 명시적으로 지정함"
+MEMORY_SAVE_CONTENT = "用户偏好先给结论、以表格为主的报告。"
+MEMORY_SAVE_REASON = "用户明确指定了报告格式"
 MEMORY_PROPOSE_MARKER = "E2E_MEMORY_PROPOSE"
-MEMORY_PROPOSE_CONTENT = "매주 월요일 아침에 주간 계획 브리핑을 받고 싶어한다."
-MEMORY_PROPOSE_REASON = "반복 일정 선호로 보임 — 저장 여부는 사용자 확인 필요"
+MEMORY_PROPOSE_CONTENT = "希望每周一早上收到每周计划简报。"
+MEMORY_PROPOSE_REASON = "看起来偏好重复日程 — 是否保存需要用户确认"
 MEMORY_FINAL_CONTENT = "E2E memory tool run complete."
 
 
@@ -504,13 +492,13 @@ MEMORY_FINAL_CONTENT = "E2E memory tool run complete."
 # group — grouping needs N≥2 consecutive same-tool calls) so the pill renders
 # expanded with result cards. ``E2E_SEARCH_RICH``'s query is curated in
 # ``tool_factory`` to return an ``answer`` (summary box) + content snippets;
-# ``E2E_SEARCH_SHOP``'s ``shop:`` prefix returns the Naver shopping ``items``
-# shape (thumbnail/lprice/mallName → 썸네일+가격 카드).
+# ``E2E_SEARCH_SHOP``'s ``shop:`` prefix returns the simulated shopping ``items``
+# shape (thumbnail/price/merchant → 缩略图+价格卡片).
 SEARCH_RICH_MARKER = "E2E_SEARCH_RICH"
-SEARCH_RICH_QUERY = "agentic os 오버뷰"
+SEARCH_RICH_QUERY = "agentic os 概览"
 SEARCH_RICH_FINAL_CONTENT = "E2E rich search rendering complete."
 SEARCH_SHOP_MARKER = "E2E_SEARCH_SHOP"
-SEARCH_SHOP_QUERY = "shop:무선 키보드"
+SEARCH_SHOP_QUERY = "shop:无线键盘"
 SEARCH_SHOP_FINAL_CONTENT = "E2E shop search rendering complete."
 
 
@@ -555,16 +543,16 @@ def _ui_data_marker_kind(human_text: str) -> str | None:
 
 ASK_USER_FRUIT_MARKER = "E2E_ASK_USER_FRUIT"
 ASK_USER_FRUIT_TOOL_CALL_ID = "call_e2e_ask_user_fruit"
-ASK_USER_FRUIT_PREFACE_CONTENT = "네, 골라봐요!"
+ASK_USER_FRUIT_PREFACE_CONTENT = "好的，选一个吧！"
 ASK_USER_FRUIT_FINAL_CONTENT = "E2E ask_user fruit selection received."
 ASK_USER_FRUIT_TOOL_ARGS = {
     "mode": "option_list",
     "title": "需要输入",
-    "question": "어떤 과일이 좋아요?",
+    "question": "你喜欢哪种水果？",
     "options": [
-        {"id": "apple", "label": "🍎 사과"},
-        {"id": "grape", "label": "🍇 포도"},
-        {"id": "pear", "label": "🍐 배"},
+        {"id": "apple", "label": "🍎 苹果"},
+        {"id": "grape", "label": "🍇 葡萄"},
+        {"id": "pear", "label": "🍐 梨"},
     ],
     "minSelections": 1,
     "maxSelections": 1,
@@ -576,22 +564,22 @@ ASK_USER_FRUIT_TOOL_ARGS = {
 # exercised. The follow-up turn (after the ToolMessage) streams ``final``.
 ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
     "E2E_ASK_USER_TEXT": {
-        "preface": "어떤 톤으로 작성할까요?",
+        "preface": "要用什么语气来写？",
         # mode omitted + no options → free-text input card (user-input-ui).
-        "args": {"question": "원하시는 글의 톤을 자유롭게 적어주세요. (예: 친근하게, 전문적으로)"},
+        "args": {"question": "请自由填写你希望的文风。 (例如：亲切、专业)"},
         "final": "E2E ask_user text input received.",
     },
     "E2E_ASK_USER_MULTI": {
-        "preface": "관심 있는 운동을 모두 골라주세요!",
+        "preface": "请选择所有你感兴趣的运动！",
         "args": {
             "mode": "option_list",
             "title": "需要输入",
-            "question": "관심 있는 운동을 모두 선택하세요 (복수 선택 가능)",
+            "question": "请选择所有你感兴趣的运动 (可多选)",
             "options": [
-                {"id": "run", "label": "🏃 러닝"},
-                {"id": "swim", "label": "🏊 수영"},
-                {"id": "yoga", "label": "🧘 요가"},
-                {"id": "climb", "label": "🧗 클라이밍"},
+                {"id": "run", "label": "🏃 跑步"},
+                {"id": "swim", "label": "🏊 游泳"},
+                {"id": "yoga", "label": "🧘 瑜伽"},
+                {"id": "climb", "label": "🧗 攀岩"},
             ],
             "minSelections": 1,
             "maxSelections": 3,
@@ -599,30 +587,30 @@ ASK_USER_VARIANTS: dict[str, dict[str, Any]] = {
         "final": "E2E ask_user multi-select received.",
     },
     "E2E_ASK_USER_FLOW": {
-        "preface": "여행 취향을 몇 가지 여쭤볼게요.",
+        "preface": "我来问你几个关于旅行偏好的问题。",
         "args": {
             "mode": "question_flow",
-            "title": "여행 선호 조사",
+            "title": "旅行偏好调查",
             "questions": [
                 {
                     "id": "dest",
-                    "label": "목적지",
-                    "question": "어디로 떠나고 싶으세요?",
+                    "label": "目的地",
+                    "question": "你想去哪里旅行？",
                     "type": "single_select",
-                    "options": ["국내", "아시아", "유럽"],
+                    "options": ["国内", "亚洲", "欧洲"],
                     "required": True,
                 },
                 {
                     "id": "act",
-                    "label": "활동",
-                    "question": "하고 싶은 활동을 모두 고르세요",
+                    "label": "活动",
+                    "question": "请选择所有你想参加的活动",
                     "type": "multi_select",
-                    "options": ["맛집 투어", "휴양", "액티비티", "쇼핑"],
+                    "options": ["美食之旅", "休闲度假", "体验活动", "购物"],
                 },
                 {
                     "id": "note",
                     "label": "注释",
-                    "question": "추가로 원하는 점이 있다면 적어주세요",
+                    "question": "如果还有其他要求，请填写",
                     "type": "text",
                 },
             ],
@@ -645,18 +633,18 @@ def _is_rich_output_request(human_text: str) -> bool:
 
     lowered = human_text.lower()
     surface_groups = (
-        ("체크리스트", "清单", "checklist"),
-        ("표", "表格", "table"),
-        ("代码", "코드", "code"),
-        ("수식", "公式", "math"),
-        ("图片", "이미지", "image"),
-        ("링크", "链接", "link"),
+        ("检查清单", "清单", "checklist"),
+        ("表格", "表格", "table"),
+        ("代码", "代码", "code"),
+        ("公式", "公式", "math"),
+        ("图片", "图片", "image"),
+        ("链接", "链接", "link"),
     )
     mentions_required_surfaces = all(
         any(surface.lower() in lowered for surface in group) for group in surface_groups
     )
-    mentions_quote = "인용" in human_text or "blockquote" in lowered
-    mentions_mermaid = "mermaid" in lowered or "머메이드" in human_text
+    mentions_quote = "引用" in human_text or "引用" in human_text or "blockquote" in lowered
+    mentions_mermaid = "mermaid" in lowered or "Mermaid" in human_text
     return mentions_required_surfaces and mentions_quote and mentions_mermaid
 
 
@@ -666,13 +654,13 @@ def _is_ask_user_fruit_request(human_text: str) -> bool:
 
     lowered = human_text.lower()
     asks_user = "ask user" in lowered or "ask_user" in lowered
-    mentions_fruit_options = all(option in human_text for option in ("사과", "포도", "배"))
+    mentions_fruit_options = all(option in human_text for option in ("苹果", "葡萄", "梨"))
     return asks_user and mentions_fruit_options
 
 
 def _is_hitl_approval_request(human_text: str) -> bool:
-    # Explicit marker always wins so a generic prompt like "도구 승인 절차를
-    # 설명해줘" (explain the tool-approval flow) does not accidentally fire an
+    # Explicit marker always wins so a generic prompt like "工具审批流程
+    # 解释一下" (explain the tool-approval flow) does not accidentally fire an
     # ``execute_in_skill`` tool call.
     if HITL_APPROVAL_MARKER in human_text:
         return True
@@ -681,14 +669,14 @@ def _is_hitl_approval_request(human_text: str) -> bool:
     mentions_tool = "mcp" in lowered or "工具" in human_text or "tool" in lowered
     mentions_hitl = "hitl" in lowered or "批准" in human_text or "approval" in lowered
     # Require an explicit execution intent in addition to the tool/approval
-    # mention so descriptive prompts ("설명/알려줘") are not mistaken for an
+    # mention so descriptive prompts ("解释/告诉我") are not mistaken for an
     # approval-triggering request. Backward compatible with existing specs that
-    # phrase the prompt as "도구 사용 승인" / "tool ... HITL".
+    # phrase the prompt as "工具使用审批" / "tool ... HITL".
     mentions_execution = (
         "已启用" in human_text
         or "运行" in human_text
-        or "사용" in human_text
-        or "실행" in human_text
+        or "使用" in human_text
+        or "执行" in human_text
         or "use" in lowered
         or "run" in lowered
     )
@@ -788,6 +776,11 @@ class E2EScriptedChatModel(BaseChatModel):
         run_manager: CallbackManagerForLLMRun | None = None,
         **kwargs: Any,
     ) -> ChatResult:
+        from app.agent_runtime.e2e_project_practice_script import project_practice_response
+
+        practice_response = project_practice_response(messages)
+        if practice_response is not None:
+            return ChatResult(generations=[ChatGeneration(message=practice_response)])
         skill_eval_response = _skill_eval_arm_response(messages)
         if skill_eval_response is not None:
             return ChatResult(generations=[ChatGeneration(message=skill_eval_response)])
@@ -828,7 +821,7 @@ class E2EScriptedChatModel(BaseChatModel):
             # rejection notice. Distinguish it from a genuine tool EXECUTION error
             # (e.g. an approved edit that ran and failed) by the message text, not
             # just status="error" — otherwise an edit-approve whose tool errors
-            # would wrongly read as "취소했어요".
+            # would wrongly read as "已取消".
             if _is_rejected_tool_message(messages[-1]):
                 message = AIMessage(content=HITL_REJECTED_ACK_CONTENT)
                 return ChatResult(generations=[ChatGeneration(message=message)])
@@ -929,7 +922,7 @@ class E2EScriptedChatModel(BaseChatModel):
             return ChatResult(generations=[ChatGeneration(message=message)])
 
         if _is_hitl_edit_request(human_text):
-            # ONE edit_file call → an edit-capable approval card (수정 button +
+            # ONE edit_file call → an edit-capable approval card (修改 button +
             # field editor). Fresh args dict so the module constant can't be
             # mutated downstream.
             message = AIMessage(

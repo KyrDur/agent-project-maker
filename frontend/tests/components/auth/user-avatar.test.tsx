@@ -19,21 +19,21 @@ describe('UserAvatar', () => {
           ...baseUser,
           display_name: '用户',
           avatar_mode: 'initials',
-          avatar_initials: '췌',
+          avatar_initials: '萃',
           avatar_color: 'sky',
         }}
       />,
     )
 
-    const avatar = screen.getByLabelText('체스터 프로필 아이콘')
-    expect(avatar).toHaveTextContent('췌')
+    const avatar = screen.getByLabelText('用户 个人资料图标')
+    expect(avatar).toHaveTextContent('萃')
     expect(avatar).toHaveClass('moldy-user-avatar-sky')
   })
 
   it('falls back to the display name first character', () => {
     render(<UserAvatar user={{ ...baseUser, display_name: '用户' }} />)
 
-    expect(screen.getByLabelText('체스터 프로필 아이콘')).toHaveTextContent('체')
+    expect(screen.getByLabelText('用户 个人资料图标')).toHaveTextContent('用')
   })
 
   it('renders the uploaded image when avatar mode is image', () => {
@@ -48,7 +48,7 @@ describe('UserAvatar', () => {
       />,
     )
 
-    expect(screen.getByRole('img', { name: '체스터 프로필 아이콘' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: '用户 个人资料图标' })).toHaveAttribute(
       'src',
       expect.stringContaining('/api/auth/me/avatar-image?t=1'),
     )

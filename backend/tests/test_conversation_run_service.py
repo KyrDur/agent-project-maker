@@ -643,7 +643,7 @@ async def test_mark_stale_active_runs_scopes_to_conversation(db: AsyncSession) -
         "running",
         worker_instance_id="worker-a",
     )
-    # 같은 worker 의 동일하게 오래된 run 이라도 conversation 스코프 밖이면 건드리지 않는다.
+    # 即使是同一 worker 中同样过旧的 run，只要在 conversation scope 外也不要触碰。
     other.heartbeat_at = run_utc_now_naive() - timedelta(minutes=20)
 
     marked = await conversation_run_service.mark_stale_active_runs(

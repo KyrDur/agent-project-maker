@@ -13,7 +13,7 @@ interface AssistantMetadataCustom {
   usage?: TokenUsageBreakdown
 }
 
-/** ms → 짧은 표기 ("0.42s" / "5.2s" / "1m 5s"). locale 무관. */
+/** ms → 简短格式（"0.42s" / "5.2s" / "1m 5s"）。与 locale 无关。 */
 function formatDurationMs(ms: number): string {
   const seconds = ms / 1000
   if (seconds < 1) return `${seconds.toFixed(2)}s`
@@ -24,12 +24,12 @@ function formatDurationMs(ms: number): string {
 }
 
 /**
- * Assistant 메시지 푸터의 토큰 사용량 hover 팝오버.
+ * Assistant 消息 footer 的 token 使用量 hover popover。
  *
- * - 데이터 출처: ``message.metadata.custom.usage`` (W7에서 ``convertMessage``가
- *   백엔드 ``message_end``의 4종 usage를 그대로 전달).
- * - 클릭 / 호버 둘 다 토글되도록: keyboard accessible button + onMouseEnter/Leave.
- * - 빈 usage(0/0/0/0)이거나 user 메시지면 렌더하지 않음.
+ * - 数据来源：``message.metadata.custom.usage``（W7 中 ``convertMessage`` 将
+ *   backend ``message_end`` 的 4 类 usage 原样传递）。
+ * - 点击 / hover 都可 toggle：keyboard accessible button + onMouseEnter/Leave。
+ * - usage 为空(0/0/0/0)或为 user 消息时不渲染。
  */
 export function TokenUsagePopover() {
   const t = useTranslations('chat.tokenUsage')

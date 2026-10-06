@@ -1,93 +1,105 @@
-# CHECKPOINT — 스킬 스튜디오 Phase 3: 실측 A/B 벤치마크 · 비용 실회계 · 버전별 통과율 · 휴먼 피드백
+# 历史 CHECKPOINT — Skill Studio Phase 3：实测 A/B 基准、实际费用、分版本通过率与用户反馈
 
-> 이전 내용(Phase 2 6탭 스튜디오)은 완료·머지되어 교체함 (PR #293).
-> Phase 1.5/2 잔여 백로그는 문서 하단에 보존.
+> 原型历史记录（2026-07-12），不作为本轮项目验收结果。
+> 原 Phase 2 六页签 Studio 已完成并合并（PR #293），被本记录替换。
+> Phase 1.5/2 剩余待办保留在文末。
 
-스펙: `docs/design-docs/skill-studio-phase3-benchmark-cost-spec.md`
-브랜치: `feature/skill-studio-phase3` (worktree `.claude/worktrees/feature+skill-builder-chat`, origin/main 5c7a6c01 기준)
-원칙: 마일스톤 완료마다 커밋. push 검증 시 `SKILL_EVALUATION_ENABLED=true`.
-확정 결정: D1 A/B=싱글턴 2-arm(3콜/케이스) · D2 피드백=케이스별+스킬 단위 둘 다(표시 전용) · D3 usage 귀속=실측만.
+规格：`docs/design-docs/skill-studio-phase3-benchmark-cost-spec.md`
+分支：`feature/skill-studio-phase3`（worktree `.claude/worktrees/feature+skill-builder-chat`，基于 origin/main 5c7a6c01）
+原则：每个里程碑完成后提交，推送验证设置 `SKILL_EVALUATION_ENABLED=true`。
+已确认决策：D1 A/B 为单例双 arm（每用例 3 次调用）；D2 同时提供用例与 Skill 级反馈（仅展示）；D3 用量归属仅记录实测数据。
 
-## M0: 스펙 문서
-- [x] `skill-studio-phase3-benchmark-cost-spec.md` + CHECKPOINT 교체
-- 상태: done (2026-07-12)
+## M0：规格文档
 
-## M1: 마이그레이션 m70 + ORM 3종
-- [x] `skill_usage_events` / `skill_evaluation_runs.usage` JSON / `skill_feedbacks` / `skill_evaluation_case_feedbacks`
-- [x] ORM 모델 + `models/__init__.py` 등록, aiosqlite 호환
-- 검증: `cd backend && uv run pytest -q tests/test_migrations*.py -k m70; uv run alembic upgrade head`(로컬 PG)
-- done-when: 마이그레이션 왕복(upgrade/downgrade) + 모델 임포트 그린
-- 상태: done (2026-07-12)
+- [x] `skill-studio-phase3-benchmark-cost-spec.md` 与 CHECKPOINT 替换。
+- 状态：done（2026-07-12）。
 
-## M2: 스킬 축 usage 소스 (백엔드)
-- [x] `skill_usage_service.py`: record_evaluation_usage / record_chat_execution / get_skill_usage_summary
-- [x] execute_in_skill 성공 경로 chat_execution 기록(비파괴, 자체 세션, draft/eval 내부 skip)
-- [x] `GET /api/skills/{id}/usage` (ownership enumeration-safe)
-- [x] LLM usage_metadata 캡처 유틸 + Model 단가 lookup
-- 검증: `uv run pytest -q -k "skill_usage"`
-- done-when: 이벤트 기록/집계/API 테스트 그린
-- 상태: done (2026-07-12)
+## M1：m70 迁移与三类 ORM
 
-## M3: 비용 실회계
-- [x] estimate_run 실단가 계산 + pricing_available
-- [x] 워커: run.usage 저장 + skill_usage_events 기록
-- [x] 스키마: RunResponse.usage / RunEstimate 필드
-- 검증: `uv run pytest -q -k "estimate or skill_evaluation_worker"`
-- done-when: 실측 rollup 영속 + estimate 실계산 테스트 그린
-- 상태: done (2026-07-12)
+- [x] `skill_usage_events`、`skill_evaluation_runs.usage` JSON、`skill_feedbacks`、`skill_evaluation_case_feedbacks`。
+- [x] ORM 模型、`models/__init__.py` 注册与 aiosqlite 兼容。
+- 验证：`cd backend && uv run pytest -q tests/test_migrations*.py -k m70; uv run alembic upgrade head`（本地 PG）。
+- 完成条件：upgrade/downgrade 往返与模型导入通过。
+- 状态：done（2026-07-12）。
 
-## M4: 실측 A/B 벤치마크 (러너 llm-2)
-- [x] with-arm/without-arm/grader 3콜 실측, benchmark measured:true + token_delta/duration_delta_ms
-- [x] arm 단위 취소 체크포인트 + case timeout, run_config.baseline_comparison
-- [x] e2e_scripted_model grader/arm 시나리오
-- 검증: `uv run pytest -q -k "skill_evaluation_llm or ab_arm"`
-- done-when: 실측 벤치마크 단위 테스트 + scripted 결정론 그린
-- 상태: done (2026-07-12)
+## M2：Skill 维度的 usage 来源（后端）
 
-## M5: 버전별 통과율 API
-- [x] `GET /api/skills/{id}/evaluations/version-stats`
-- 검증: `uv run pytest -q -k "version_stats"`
-- 상태: done (2026-07-12)
+- [x] `skill_usage_service.py`：record_evaluation_usage / record_chat_execution / get_skill_usage_summary。
+- [x] execute_in_skill 成功后记录 chat_execution；不破坏现有流程，使用独立会话，跳过 draft/eval 内部调用。
+- [x] `GET /api/skills/{id}/usage`，安全检查所有权，避免资源枚举。
+- [x] LLM usage_metadata 捕获与 Model 单价查询。
+- 验证：`uv run pytest -q -k "skill_usage"`。
+- 完成条件：事件记录、聚合与 API 测试通过。
+- 状态：done（2026-07-12）。
 
-## M6: 휴먼 피드백 백엔드
-- [x] 케이스 피드백 PUT/DELETE + run 응답 동봉, 스킬 피드백 GET/PUT/DELETE + 집계
-- [x] CSRF + ownership + enumeration-safe
-- 검증: `uv run pytest -q -k "feedback"`
-- 상태: done (2026-07-12)
+## M3：实际费用核算
 
-## M7: 프론트 평가 탭 개편 + 버전 탭 배지
-- [x] A/B 차트(chart.js) + measured/추정 라벨 + 레거시 키 정합
-- [x] run detail 실비용, estimate 다이얼로그 실단가
-- [x] 버전별 통과율 추이 차트 + 히스토리 탭 배지
-- [x] usage 카드, 케이스/스킬 피드백 UI
-- [x] api/hooks/types + i18n ko/en
-- 검증: `pnpm vitest run` + tsc + lint + build + lint:i18n + lint:design-system
-- 상태: done (2026-07-12)
+- [x] estimate_run 使用实际单价计算与 pricing_available。
+- [x] Worker 保存 run.usage 并记录 skill_usage_events。
+- [x] Schema：RunResponse.usage / RunEstimate 字段。
+- 验证：`uv run pytest -q -k "estimate or skill_evaluation_worker"`。
+- 完成条件：实测 rollup 持久化与费用估算测试通过。
+- 状态：done（2026-07-12）。
 
-## M8: E2E + 캡처 spec
-- [x] mock `skill-studio-phase3.spec.ts`, live `skill-evaluation-actions` 확장
-- [x] `captures-skill-studio-phase3.spec.ts` 투어 7장
-- 검증: mock 모드 + throwaway 라이브 스택
-- 상태: done (2026-07-12)
+## M4：实测 A/B 基准（runner llm-2）
 
-## M9: 전체 검증 + 적대 리뷰
-- [x] backend pytest(SKILL_EVALUATION_ENABLED=true)+ruff / vitest/tsc/eslint/build/i18n/design-system / mock+live E2E
-- [x] /code-review 적대 리뷰 — 발견 0 수렴까지(최소 2라운드)
-- 상태: done (2026-07-12)
+- [x] with-arm / without-arm / grader 三次实测调用；benchmark measured:true、token_delta、duration_delta_ms。
+- [x] arm 级取消检查点、用例超时与 run_config.baseline_comparison。
+- [x] e2e_scripted_model grader/arm 场景。
+- 验证：`uv run pytest -q -k "skill_evaluation_llm or ab_arm"`。
+- 完成条件：实测基准单元测试与 scripted 确定性验证通过。
+- 状态：done（2026-07-12）。
 
-## M10: 실서버 캡처 투어 → 사용자 보고
-- [x] throwaway 스택 → 캡처 실행 → PNG 전송
-- 상태: done (2026-07-12)
+## M5：分版本通过率 API
 
-## 마일스톤 의존
-M0 → M1 → (M2, M3) → M4 → M5 → M6 → M7 → M8 → M9 → M10. 이후 PR.
+- [x] `GET /api/skills/{id}/evaluations/version-stats`。
+- 验证：`uv run pytest -q -k "version_stats"`。
+- 状态：done（2026-07-12）。
 
----
+## M6：用户反馈后端
 
-## (보존) Phase 1.5/2 잔여 백로그
-- 레일 소스 뷰 파일 목록에 바이너리 asset 미표시(표시 계층 fail-closed 유지 — 필요 시 목록만 노출+내용 404)
-- improve 충돌 re-seed, 리로드 동의 플래그, dead 세션 대화 재생성
-- 리로드-중-첫POST 극소 창의 2차 자동발화 시도(서버 unique active run 제약이 409로 거부해 실중복은 불가 — 서버측 first-message idempotency로 수렴 가능)
-- 일괄 패키지 내보내기(D3 드랍), 스킬 복제(목업 행 메뉴), used_by_count 컬럼 제거(마이그레이션 필요)
-- Phase 2 리뷰 리포트-온리: 파일 목록+뷰어 3중 사본 공용화, SettingsSectionCard 재사용, columns useMemo, serialize_skill 스칼라 서브쿼리화, 셸 useSelectedLayoutSegments, System LLM 미설정 안내 재작성, content path max_length 비대칭
-- 리비전 >100 절단 UI affordance, 텍스트 rollback 변이-후 실패 창 원자화, 탭 enabled/breadcrumb UUID/빌더 422-as-empty UX 엣지
+- [x] 用例反馈 PUT/DELETE 并随 run 响应返回；Skill 反馈 GET/PUT/DELETE 与聚合。
+- [x] CSRF、所有权与防枚举。
+- 验证：`uv run pytest -q -k "feedback"`。
+- 状态：done（2026-07-12）。
+
+## M7：前端评测页签与版本标记
+
+- [x] A/B 图表 (chart.js)、实测/估算标签、旧 key 对齐。
+- [x] run 详情实际费用、estimate 对话框实际单价。
+- [x] 分版本通过率趋势与历史页签标记。
+- [x] usage 卡片、用例/Skill 反馈 UI。
+- [x] api/hooks/types 与当时的 i18n 资源。
+- 验证：`pnpm vitest run`、tsc、lint、build、lint:i18n、lint:design-system。
+- 状态：done（2026-07-12）。
+
+## M8：E2E 与截图规格
+
+- [x] mock `skill-studio-phase3.spec.ts`，扩展 live `skill-evaluation-actions`。
+- [x] `captures-skill-studio-phase3.spec.ts` 七张导览截图。
+- 验证：mock 模式与隔离 live 环境。
+- 状态：done（2026-07-12）。
+
+## M9：完整验证与对抗性评审
+
+- [x] 后端 pytest（SKILL_EVALUATION_ENABLED=true）、Ruff；前端 Vitest、tsc、ESLint、build、i18n、design-system；mock/live E2E。
+- [x] `/code-review` 对抗性评审，直到发现问题归零，至少两轮。
+- 状态：done（2026-07-12）。
+
+## M10：实际服务截图导览与用户报告
+
+- [x] 启动隔离环境、执行截图、发送 PNG。
+- 状态：done（2026-07-12）。
+
+## 里程碑依赖
+
+M0 → M1 → (M2, M3) → M4 → M5 → M6 → M7 → M8 → M9 → M10，之后创建 PR。
+
+## 保留：Phase 1.5/2 剩余待办
+
+- 右侧源码文件列表不显示二进制 asset；保持展示层 fail-closed，必要时仅列文件名，内容请求返回 404。
+- improve 冲突时重新初始化；刷新后的同意标记；失效会话的对话重建。
+- 刷新与首次 POST 间极短窗口中的第二次自动发送尝试；服务端唯一活跃 run 约束返回 409，防止真实重复，可进一步收敛到服务端首条消息幂等。
+- 批量包导出（D3 暂缓）、Skill 复制（模拟行菜单）、移除 used_by_count 列（需要迁移）。
+- Phase 2 仅报告问题：文件列表/查看器三份实现共用、复用 SettingsSectionCard、columns useMemo、serialize_skill 标量子查询、shell useSelectedLayoutSegments、重写未配置 System LLM 提示、content path max_length 不对称。
+- 修订数超过 100 时的截断提示；文本 rollback 修改后失败窗口的原子化；页签 enabled、breadcrumb UUID 与 Builder 422-as-empty UX 边界。

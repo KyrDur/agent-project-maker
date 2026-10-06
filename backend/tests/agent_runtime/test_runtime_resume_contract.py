@@ -91,7 +91,7 @@ async def _collect_manifest(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
                     }
                 ],
             ),
-            AIMessage(content="문서 생성이 완료되었습니다.", id="assistant-final-1"),
+            AIMessage(content="文档生成已完成。", id="assistant-final-1"),
         ]
     )
     checkpointer = MemorySaver()
@@ -129,7 +129,7 @@ async def _collect_manifest(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         chunk
         async for chunk in langgraph_agent_stream_runner.execute_agent_stream_langgraph(
             _cfg(),
-            [{"role": "user", "content": "문서를 만들어줘"}],
+            [{"role": "user", "content": "帮我创建文档"}],
             run_id=_RUN_ID,
         )
     ]

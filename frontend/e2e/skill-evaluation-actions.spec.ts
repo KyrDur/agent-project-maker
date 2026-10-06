@@ -9,7 +9,7 @@ const skill = {
   id: 'skill-visual',
   name: 'Korea Weather',
   slug: 'korea-weather',
-  description: '한국 날씨 응답을 안정적으로 정리합니다.',
+  description: '稳定整理韩国天气响应。',
   kind: 'package',
   version: '0.1.0',
   storage_path: null,
@@ -43,10 +43,10 @@ const skill = {
 const activeEvaluationSet = {
   id: 'set-active',
   skill_id: 'skill-visual',
-  name: '핵심 평가',
-  description: '현재 실행 중인 응답 품질 평가입니다.',
+  name: '核心评估',
+  description: '这是当前正在运行的响应质量评估。',
   source_kind: 'generated',
-  evals: [{ input: '서울 날씨 요약', expected: '간결한 한국어 요약' }],
+  evals: [{ input: '首尔天气摘要', expected: '简洁的韩语摘要' }],
   expectations_schema_version: 1,
   latest_run: {
     id: 'run-active',
@@ -72,10 +72,10 @@ const activeEvaluationSet = {
 const completedEvaluationSet = {
   id: 'set-complete',
   skill_id: 'skill-visual',
-  name: '회귀 평가',
-  description: '완료된 평가를 다시 실행할 수 있어야 합니다.',
+  name: '回归评估',
+  description: '应能够重新运行已完成的评估。',
   source_kind: 'generated',
-  evals: [{ input: '부산 날씨 요약', expected: '간결한 한국어 요약' }],
+  evals: [{ input: '釜山天气摘要', expected: '简洁的韩语摘要' }],
   expectations_schema_version: 1,
   latest_run: {
     id: 'run-complete',
@@ -104,7 +104,7 @@ const credentialRequiredSkill = {
   health: {
     state: 'needs_credentials',
     label: '所需凭据',
-    reason: '필수 자격증명이 연결되지 않았습니다.',
+    reason: '必需凭据尚未连接。',
     severity: 'warning',
   },
   latest_evaluation_summary: {
@@ -122,7 +122,7 @@ const credentialRequiredSkill = {
       definition_key: 'weather_api',
       required: true,
       label: 'Weather API',
-      description: '날씨 API 키입니다.',
+      description: '这是天气 API key。',
       fields: ['api_key'],
       injection: 'env',
       scope: 'user',
@@ -199,12 +199,12 @@ test.describe('Skill evaluation actions', () => {
       return route.fulfill({ status: 404, json: { detail: pathName } })
     })
 
-    // Phase 2 스튜디오 — 레거시 딥링크가 평가 탭 라우트로 redirect되는 것까지 검증.
+    // Phase 2 studio — 验证 legacy deeplink 也会 redirect 到 evaluation tab route。
     await page.goto('/skills?detailId=skill-visual&tab=evaluation')
     await page.waitForURL(/\/skills\/skill-visual\/evaluation/)
     await expect(page.getByTestId('studio-context-bar')).toContainText('Korea Weather')
-    await expect(page.getByRole('button', { name: '핵심 평가 평가 취소' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '회귀 평가 평가 다시 실행' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '核心评估 取消评估' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '回归评估 重新运行评估' })).toBeVisible()
 
     const captureDir = path.resolve(
       process.cwd(),
@@ -216,7 +216,7 @@ test.describe('Skill evaluation actions', () => {
       fullPage: false,
     })
 
-    await page.getByRole('button', { name: '회귀 평가 평가 다시 실행' }).click()
+    await page.getByRole('button', { name: '回归评估 重新运行评估' }).click()
     await expect(page.getByRole('alertdialog', { name: '确认评估运行' })).toBeVisible()
     await page.screenshot({
       path: path.join(captureDir, 'evaluation-estimate-confirmation.png'),
@@ -226,7 +226,7 @@ test.describe('Skill evaluation actions', () => {
     await expect(page.getByRole('alertdialog', { name: '确认评估运行' })).toBeHidden()
     await expect.poll(() => rerunRequested).toBe(true)
 
-    await page.getByRole('button', { name: '핵심 평가 평가 취소' }).click()
+    await page.getByRole('button', { name: '核心评估 取消评估' }).click()
 
     await expect.poll(() => cancelRequested).toBe(true)
   })
@@ -275,14 +275,14 @@ test.describe('Skill evaluation actions', () => {
 
     await page.goto('/skills?detailId=skill-needs-credentials&tab=evaluation')
     await page.waitForURL(/\/skills\/skill-needs-credentials\/evaluation/)
-    await expect(page.getByRole('button', { name: '회귀 평가 자격증명 연결' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '回归评估 连接凭据' })).toBeVisible()
 
-    await page.getByRole('button', { name: '회귀 평가 자격증명 연결' }).click()
+    await page.getByRole('button', { name: '回归评估 连接凭据' }).click()
 
-    // 스튜디오에서 자격증명 연결은 설정 탭으로 이동한다 (D1).
+    // 在 studio 中连接凭据会跳转到 settings tab（D1）。
     await page.waitForURL(/\/skills\/skill-needs-credentials\/settings/)
     await expect(page.getByTestId('studio-tab-settings')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByText('필수 자격증명 1개 미연결')).toBeVisible()
+    await expect(page.getByText('1 个必需凭据未连接')).toBeVisible()
     await expect(page.getByText('weather_api')).toBeVisible()
     await expect.poll(() => estimateRequested).toBe(false)
 

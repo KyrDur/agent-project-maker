@@ -41,16 +41,9 @@ function backendRenderer<TArgs, TResult>(render: ToolCallMessagePartComponent<TA
 const SEARCH_TOOLKIT = {
   tavily_search: backendRenderer(SearchToolUI),
   web_search: backendRenderer(SearchToolUI),
-  naver_search_blog: backendRenderer(SearchToolUI),
-  naver_search_news: backendRenderer(SearchToolUI),
-  naver_search_image: backendRenderer(SearchToolUI),
-  naver_search_shop: backendRenderer(SearchToolUI),
-  naver_search_local: backendRenderer(SearchToolUI),
   google_search_web: backendRenderer(SearchToolUI),
   google_search_image: backendRenderer(SearchToolUI),
   google_search_news: backendRenderer(SearchToolUI),
-  naver_blog_search: backendRenderer(SearchToolUI),
-  naver_news_search: backendRenderer(SearchToolUI),
   google_search: backendRenderer(SearchToolUI),
   google_news_search: backendRenderer(SearchToolUI),
 }

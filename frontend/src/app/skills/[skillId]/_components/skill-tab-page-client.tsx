@@ -21,8 +21,8 @@ import { SkillRevisionSourceViewer } from './skill-revision-source-viewer'
 import { SkillSettingsSections } from './skill-settings-sections'
 
 /**
- * 스킬 스코프 탭 페이지 (평가/버전/소스/설정) — 기존 상세 다이얼로그의 탭
- * 컴포넌트를 4슬롯 렌더 프롭 계약 그대로 풀페이지 셸로 렌더한다 (스펙 AD-3).
+ * skill scope tab 页面（evaluation/versions/source/settings）— 将旧 detail dialog 的 tab
+ * component 按原 4-slot render prop 契约渲染到 full-page shell 中（规范 AD-3）。
  */
 export function SkillTabPageClient({
   skillId,
@@ -31,7 +31,7 @@ export function SkillTabPageClient({
 }: {
   readonly skillId: string
   readonly tab: SkillScopedStudioTab
-  /** 소스 탭 전용 — 리비전 read-only 모드 (`?revision=`). */
+  /** 仅用于 source tab — revision read-only 模式（`?revision=`）。 */
   readonly revisionId?: string | null
 }) {
   const t = useTranslations('skill.studio')
@@ -106,12 +106,12 @@ function SkillTabBody({
       footer: null,
     })
   }
-  // source + ?revision= — 리비전 스냅샷 read-only 뷰어 (M4).
+  // source + ?revision= — revision snapshot read-only viewer（M4）。
   if (revisionId) {
-    // key — 같은 위치에서 ?revision=만 바뀔 때(back/forward) selectedPath 상태 리셋.
+    // key — 在同一位置仅 ?revision= 变化时（back/forward）重置 selectedPath 状态。
     return <SkillRevisionSourceViewer key={revisionId} skillId={skill.id} revisionId={revisionId} />
   }
-  // source — 저장(=리비전 생성)은 유지, 삭제/내보내기/자격증명은 설정 탭 소유 (D1/D2).
+  // source — 保留保存（=创建 revision），delete/export/凭据由 settings tab 管理（D1/D2）。
   if (skill.kind === 'text') {
     return <TextSkillEditor skillId={skill.id}>{renderSkillStudioTabShell}</TextSkillEditor>
   }

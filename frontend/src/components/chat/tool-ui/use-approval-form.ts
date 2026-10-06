@@ -2,17 +2,18 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { toApprove, toReject } from '@/lib/chat/decision-mappers'
+import { toApprove, toReject, toRespond } from '@/lib/chat/decision-mappers'
 import { useHiTL } from '@/lib/chat/hitl-context'
 
 export type ApprovalDecision = 'approved' | 'revision' | null
 
 export interface UseApprovalFormOptions {
-  /** revision 입력이 비어있을 때 사용할 메시지 */
+  /** revision 输入为空时使用的消息 */
   revisionFallback?: string
-  /** 승인 시 디스플레이 텍스트 */
+  /** 批准时的显示文本 */
   approveDisplay?: string
-  /** status.type 'complete' 여부 */
+  /** status.type 是否为 'complete' */
+  approvePayload?: () => Record<string, unknown>
   isComplete: boolean
 }
 
@@ -26,7 +27,7 @@ export interface ApprovalFormState {
   handleRevision: () => Promise<void>
 }
 
-/** 공통 approval 폼 — revision 텍스트, submitted 결정, HiTL resume 송신. */
+/** 通用 approval 表单 — revision 文本、submitted 决策、发送 HiTL resume。 */
 export function useApprovalForm(options: UseApprovalFormOptions): ApprovalFormState {
   const t = useTranslations('chat.builderApproval')
   const {
@@ -44,7 +45,10 @@ export function useApprovalForm(options: UseApprovalFormOptions): ApprovalFormSt
   const handleApprove = async () => {
     if (submitted) return
     setSubmitted('approved')
-    await hitl?.onResumeDecisions([toApprove()], approveDisplay)
+    await hitl?.onResumeDecisions(
+      [options.approvePayload ? toRespond(JSON.stringify(options.approvePayload())) : toApprove()],
+      approveDisplay,
+    )
   }
 
   const handleRevision = async () => {

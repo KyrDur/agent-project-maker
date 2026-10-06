@@ -245,7 +245,7 @@ async def test_get_agent_settings_handles_concurrent_first_insert(
 async def test_create_memory_record_rejects_secret_like_reason(
     db: AsyncSession,
 ) -> None:
-    with pytest.raises(ValidationError, match="민감정보처럼 보이는 값"):
+    with pytest.raises(ValidationError, match="看起来像敏感信息的值"):
         await memory_service.create_memory_record(
             db,
             user_id=TEST_USER_ID,
@@ -272,7 +272,7 @@ async def test_update_memory_record_rejects_secret_like_reason(
     )
     assert record is not None
 
-    with pytest.raises(ValidationError, match="민감정보처럼 보이는 값"):
+    with pytest.raises(ValidationError, match="看起来像敏感信息的值"):
         await memory_service.update_memory_record(
             db,
             memory_id=record.id,
@@ -285,7 +285,7 @@ async def test_update_memory_record_rejects_secret_like_reason(
 async def test_create_memory_proposal_rejects_secret_like_reason(
     db: AsyncSession,
 ) -> None:
-    with pytest.raises(ValidationError, match="민감정보처럼 보이는 값"):
+    with pytest.raises(ValidationError, match="看起来像敏感信息的值"):
         await memory_service.create_memory_proposal(
             db,
             user_id=TEST_USER_ID,
@@ -312,7 +312,7 @@ async def test_approve_memory_proposal_rejects_secret_like_reason(
     )
     assert proposal is not None
 
-    with pytest.raises(ValidationError, match="민감정보처럼 보이는 값"):
+    with pytest.raises(ValidationError, match="看起来像敏感信息的值"):
         await memory_service.approve_memory_proposal(
             db,
             proposal_id=proposal.id,

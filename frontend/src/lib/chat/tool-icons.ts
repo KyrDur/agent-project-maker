@@ -20,12 +20,12 @@ import {
 } from 'lucide-react'
 
 // ──────────────────────────────────────────────
-// toolIcon — 채팅 도구 pill/그룹 헤더의 leading 아이콘 해석.
+// toolIcon——解析聊天工具 pill/group header 的 leading 图标。
 //
-// 런타임 주입 빌트인 + 알려진 registry 도구는 "미리 정해진 세트"라 이름 기준
-// 고정 매핑을 둔다. 매핑에 없는 도구(임의 MCP 등)는 generic 렌치로 폴백.
-// (도구가 가진 backend ``icon_id``를 채팅까지 노출하는 건 후속 — 현재 ToolBrief는
-// icon_id를 싣지 않는다.)
+// runtime 注入的内置工具 + 已知 registry 工具属于"预定义集合"，因此按名称使用
+// 固定映射。映射中没有的工具（任意 MCP 等）回退为 generic 扳手图标。
+// （工具拥有的 backend ``icon_id`` 暴露到聊天中是后续事项 — 当前 ToolBrief
+// 不携带 icon_id。）
 // ──────────────────────────────────────────────
 
 const EXACT_TOOL_ICONS: Readonly<Record<string, LucideIcon>> = {
@@ -62,16 +62,13 @@ const EXACT_TOOL_ICONS: Readonly<Record<string, LucideIcon>> = {
   save_agent_memory: BrainIcon,
 }
 
-/** 접두사 매핑 — 같은 계열의 변종(naver_blog_search 등)을 한 번에. */
-const PREFIX_TOOL_ICONS: ReadonlyArray<readonly [string, LucideIcon]> = [
-  ['naver_', SearchIcon],
-  ['google_', SearchIcon],
-]
+/** 前缀映射 — 同一系列的变体（google_search_web 等）一次性处理。 */
+const PREFIX_TOOL_ICONS: ReadonlyArray<readonly [string, LucideIcon]> = [['google_', SearchIcon]]
 
 /**
- * toolName → 빌트인 고정 맵 아이콘. 매핑에 없으면 null(호출 측이 도구 icon_id나
- * 렌치로 폴백). 런타임 주입 빌트인은 agent.tools에 없어 icon_id가 없으므로 이
- * 고정 맵이 1순위다.
+ * toolName → 内置固定映射图标。映射中没有则为 null（调用方回退到工具 icon_id 或
+ * 扳手图标）。运行时注入的内置工具不在 agent.tools 中，因此没有 icon_id，所以此
+ * 固定映射优先级最高。
  */
 export function builtinToolIcon(toolName: string): LucideIcon | null {
   // Defensive: a tool fallback can render before its name resolves (undefined),
@@ -85,8 +82,8 @@ export function builtinToolIcon(toolName: string): LucideIcon | null {
   return null
 }
 
-/** toolName → leading 아이콘. 알려진 빌트인이면 의미 아이콘, 아니면 렌치 폴백.
- * (icon_id까지 고려하려면 컴포넌트에서 ``useToolIcon`` 훅을 쓴다.) */
+/** toolName → leading 图标。已知内置工具使用语义图标，否则回退到扳手图标。
+ * （若还要考虑 icon_id，请在组件中使用 ``useToolIcon`` hook。） */
 export function toolIcon(toolName: string): LucideIcon {
   return builtinToolIcon(toolName) ?? WrenchIcon
 }

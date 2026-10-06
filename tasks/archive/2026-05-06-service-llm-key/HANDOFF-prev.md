@@ -1,75 +1,75 @@
-# 작업 인계 — 8 PR 머지 완료, 다음 세션 라이브 검증
+# 工作移交 — 8 个 PR 已合并，下一会话 live 验证
 
-> 새 세션 첫 행동: 본 파일 + (필요 시) `docs/design-docs/adr-014-chat-model-factory-strategy.md` 참조.
+> 新会话第一步: 阅读本文件 + (如有需要) 参考 `docs/design-docs/adr-014-chat-model-factory-strategy.md`。
 
-## 마지막 상태
+## 最后状态
 
-- 브랜치: `main` (모든 작업 머지 완료, 본 파일 갱신용 docs 브랜치만 남음)
-- 이번 세션 PR 8건 (#140~#147) **전부 main 머지** ✅
+- 分支: `main` (所有工作已合并，仅剩用于更新本文件的 docs 分支)
+- 本会话 8 个 PR (#140~#147) **全部已合并到 main** ✅
 - backend: pytest **908** / pyright 0/0 / ruff clean / alembic m35 OK
 - frontend: vitest **286** / lint clean / build PASS
 
-## 이번 세션 PR 8건 (전부 머지)
+## 本会话 8 个 PR (全部合并)
 
-| PR | 의미 |
+| PR | 含义 |
 |----|------|
 | #140 | credential_resolution env fallback WARNING→INFO |
-| #141 | chat model factory provider quirks 분리 (ADR-014) |
-| #142 | chat toast 한 stream 다중 에러 dedup id |
-| #143 | Model.default_credential dead eager-load 제거 |
-| #144 | builder confirm MCP 도구 silent drop 차단 |
-| #145 | builder skill 인지 + revision 한정 표현 ("이것만") |
-| #146 | prompt approval 카드 — 전체 보기 토글 → 내부 스크롤 |
-| #147 | agent 삭제 — builder_sessions FK ON DELETE SET NULL |
+| #141 | 分离 chat model factory provider quirks (ADR-014) |
+| #142 | chat toast 同一 stream 多个错误 dedup id |
+| #143 | 移除 Model.default_credential dead eager-load |
+| #144 | 阻止 builder confirm MCP 工具 silent drop |
+| #145 | builder 感知 skill + revision 限定表达 ("仅这个") |
+| #146 | prompt approval 卡片 — 全部查看 toggle → 内部滚动 |
+| #147 | agent 删除 — builder_sessions FK ON DELETE SET NULL |
 
-## PR #145 핵심 변경
+## PR #145 核心变更
 
-빌더 v3 가 Skill 자료를 인지 못하던 갭 + revision 한정 표현 무시 회귀 동시 해소.
-- 카탈로그 + 추천 + confirm 모두 Tool/McpTool/Skill 3-way 통합
-- `recommend_tools` 에 `revision_message`/`previous_recommendations` first-class 인자
-- `tool_recommender.md` 한정 표현 lookup table (이것만/X 빼고/X 대신 Y/카테고리 한정)
-- 회귀 가드 13건 — 자세한 내용은 PR #145 설명 참조
+同时解决 Builder v3 无法感知 Skill 资源的 gap + 忽略 revision 限定表达的回归。
+- catalog + 推荐 + confirm 全部统一为 Tool/McpTool/Skill 3-way
+- `recommend_tools` 添加 first-class 参数 `revision_message`/`previous_recommendations`
+- `tool_recommender.md` 限定表达 lookup table (仅这个/排除 X/用 Y 替代 X/限定 category)
+- 回归 guard 13 个 — 详情参考 PR #145 说明
 
-## 다음 세션 진입점
+## 下一会话入口
 
-1. **라이브 검증 시나리오** (이번 세션 fix 모두):
-   - #145: "직원 위치" 에이전트 → skill 카탈로그 노출 + "이것만" 수정 → 정확 반영 → `skill_links` 생성
-   - #146: phase5 프롬프트 카드 내부 스크롤
-   - #147: 빌더 에이전트 즉시 삭제 → 204 + `builder_sessions.agent_id` NULL 끊김
-2. 운영 DB 마이그레이션: `cd backend && uv run alembic upgrade head` (m35 적용)
-3. 신규 task 시작 (HANDOFF follow-up + 즉시 버그 모두 소진)
+1. **live 验证场景** (本会话所有 fix):
+   - #145: "员工位置" agent → 暴露 skill catalog + 修改为 "仅这个" → 准确反映 → 创建 `skill_links`
+   - #146: phase5 prompt 卡片内部滚动
+   - #147: builder agent 立即删除 → 204 + `builder_sessions.agent_id` NULL 断开
+2. 生产 DB migration: `cd backend && uv run alembic upgrade head` (应用 m35)
+3. 开始新 task (HANDOFF follow-up + 即时 bug 均已耗尽)
 
-## W3-out 잔여 (외부 트리거 대기 — 지금 손대지 말 것)
+## W3-out 剩余 (等待外部 trigger — 当前不要动)
 
-- 🟠 cross-tenant LRU sub-cap (인증 도입 PR과 함께)
+- 🟠 cross-tenant LRU sub-cap (与认证引入 PR 一起)
 - 🟡 multi-worker (Redis pub/sub)
-- 🟡 `evict_expired` dirty flag (multi-worker 후)
-- 🟡 `events_chunks` 별도 테이블 (turn 5000+ 시)
+- 🟡 `evict_expired` dirty flag (multi-worker 之后)
+- 🟡 `events_chunks` 独立表 (turn 5000+ 时)
 
-## 보존 영역 (수정 금지)
+## 保留区域 (禁止修改)
 
-- `agent_runtime/builder_v3/**` — ADR-012 native interrupt 패턴
+- `agent_runtime/builder_v3/**` — ADR-012 native interrupt pattern
 - `agent_runtime/middleware_registry.py:DEEPAGENT_AUTO_INJECTED_TYPES`
-- `agent_runtime/tools/ask_user.py` (옵션 A 최종)
+- `agent_runtime/tools/ask_user.py` (选项 A 最终)
 - `agent_runtime/credential_resolution.py:resolve_llm_api_key_for_agent` (tiered policy)
 - `agent_runtime/model_factory.py:_apply_*` helpers (ADR-014)
-- `services/builder_service.py:decisions_to_builder_response` (Phase 5 router 어댑터)
-- `services/chat_service.py:get_owned_conversation_with_agent` — `Model.default_credential` 추가 금지 (#143)
-- `services/builder_service.py:_resolve_tools` — 3-way 시그니처 유지 (#144 #145)
+- `services/builder_service.py:decisions_to_builder_response` (Phase 5 router adapter)
+- `services/chat_service.py:get_owned_conversation_with_agent` — 禁止添加 `Model.default_credential` (#143)
+- `services/builder_service.py:_resolve_tools` — 保持 3-way 签名 (#144 #145)
 
-## 검증 명령
+## 验证命令
 
 ```
 cd backend && uv run alembic upgrade head && uv run ruff check . && uv run pytest tests/ && uv run pyright app/ tests/
 cd frontend && pnpm lint && pnpm test --run && pnpm build
 ```
 
-## 환경 주의 (사용자 셸)
+## 环境注意 (用户 shell)
 
-`~/.zshrc:225` 에 `OPENAI_BASE_URL=https://*.proxy.runpod.net/v1` export. PR #139 + ADR-014 의 canonical endpoint pin 으로 backend 영향 차단 완료.
+`~/.zshrc:225` 中 export `OPENAI_BASE_URL=https://*.proxy.runpod.net/v1`。通过 PR #139 + ADR-014 的 canonical endpoint pin 已屏蔽对 backend 的影响。
 
-## 커밋 시 주의
+## commit 注意事项
 
-스코프 외 catalog 자동 갱신(6시간 cron) 항상 staging 제외:
+始终将 scope 外 catalog 自动更新(6 小时 cron)排除在 staging 外:
 - `backend/app/data/model_catalog/{catalog,fetch_metadata}.json`
 - `backend/app/data/model_catalog/sources/*.json`

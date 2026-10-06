@@ -8,18 +8,18 @@ describe('CountedTabs', () => {
 
     render(
       <CountedTabs
-        ariaLabel="리소스 상태"
+        ariaLabel="资源状态"
         value="all"
         onValueChange={(value) => values.push(value)}
         tabs={[
-          { value: 'all', label: '所有时间', count: 7 },
-          { value: 'active', label: '启用', countLabel: '2개' },
+          { value: 'all', label: '全部', count: 7 },
+          { value: 'active', label: '启用', countLabel: '2 个' },
         ]}
       />,
     )
 
-    const allTab = screen.getByRole('tab', { name: '전체 7' })
-    const activeTab = screen.getByRole('tab', { name: '활성 2개' })
+    const allTab = screen.getByRole('tab', { name: '全部 7' })
+    const activeTab = screen.getByRole('tab', { name: '启用 2 个' })
 
     expect(within(allTab).getByText('7')).toBeInTheDocument()
     await user.click(activeTab)
@@ -32,11 +32,11 @@ describe('CountedTabs', () => {
 
     render(
       <CountedTabs
-        ariaLabel="리소스 상태"
+        ariaLabel="资源状态"
         value="all"
         onValueChange={(value) => values.push(value)}
         tabs={[
-          { value: 'all', label: '所有时间' },
+          { value: 'all', label: '全部' },
           { value: 'disabled', label: '停用', disabled: true },
         ]}
       />,

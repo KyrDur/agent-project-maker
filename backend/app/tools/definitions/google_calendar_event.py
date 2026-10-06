@@ -10,7 +10,7 @@ from app.tools.domain import ToolDefinition, ToolRunContext
 from app.tools.parameters import FieldDef, FieldKind
 from app.tools.risk import ToolRiskLevel
 
-_TIMEZONE = "Asia/Seoul"
+_TIMEZONE = "Asia/Shanghai"
 
 
 def _events_url(calendar_id: str) -> str:
@@ -62,7 +62,7 @@ async def _runner(ctx: ToolRunContext) -> dict[str, Any]:
 
 definition = ToolDefinition(
     key="google_calendar_event",
-    display_name="Google 캘린더",
+    display_name="Google 日历",
     description="Create a Google Calendar event using a Workspace OAuth2 credential.",
     icon_id="calendar",
     category="calendar",

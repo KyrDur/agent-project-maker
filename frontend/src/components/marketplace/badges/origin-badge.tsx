@@ -1,7 +1,7 @@
 'use client'
 
 import type { LucideIcon } from 'lucide-react'
-import { CogIcon, DownloadIcon, GlobeIcon, PencilIcon, SparklesIcon, UsersIcon } from 'lucide-react'
+import { CogIcon, DownloadIcon, GlobeIcon, PencilIcon, UsersIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Badge } from '@/components/ui/badge'
@@ -24,11 +24,6 @@ const SPECS: Record<OriginKind, Spec> = {
     labelKey: 'origin.imported_by_me',
     icon: DownloadIcon,
     className: 'bg-muted text-foreground',
-  },
-  built_in_k_skill: {
-    labelKey: 'origin.built_in_k_skill',
-    icon: SparklesIcon,
-    className: 'bg-primary/15 text-primary-strong',
   },
   shared_with_me: {
     labelKey: 'origin.shared_with_me',

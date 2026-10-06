@@ -27,8 +27,6 @@ IGNORED_DIRECTORIES = {
 IGNORED_FILES = {"next-env.d.ts"}
 PREPARED_DIRECTORIES = (
     "backend/data/skills",
-    "backend/data/upstreams/k-skill",
-    "backend/data/marketplace/k-skill",
     "backend/data/conversations",
     "backend/data/uploads",
     "backend/data/artifacts",

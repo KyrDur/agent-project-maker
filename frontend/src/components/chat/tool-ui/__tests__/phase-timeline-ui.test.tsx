@@ -58,15 +58,15 @@ describe('PhaseTimelineRender', () => {
         toolCallId="phase-latest"
         args={{
           todos: [
-            { id: 1, name: '요구사항 정리', status: 'completed' },
-            { id: 2, name: '런타임 연결', status: 'pending' },
+            { id: 1, name: '整理需求', status: 'completed' },
+            { id: 2, name: '连接 runtime', status: 'pending' },
           ],
         }}
       />,
     )
 
-    expect(screen.getByText('요구사항 정리')).toBeInTheDocument()
-    expect(screen.getByText('런타임 연결')).toBeInTheDocument()
+    expect(screen.getByText('整理需求')).toBeInTheDocument()
+    expect(screen.getByText('连接 runtime')).toBeInTheDocument()
     expect(screen.getByText('进行中')).toBeInTheDocument()
   })
 
@@ -75,11 +75,11 @@ describe('PhaseTimelineRender', () => {
       <PhaseTimelineRender
         toolCallId="phase-old"
         args={{
-          todos: [{ id: 1, name: '이전 단계', status: 'completed' }],
+          todos: [{ id: 1, name: '上一步', status: 'completed' }],
         }}
       />,
     )
 
-    expect(screen.queryByText('이전 단계')).not.toBeInTheDocument()
+    expect(screen.queryByText('上一步')).not.toBeInTheDocument()
   })
 })

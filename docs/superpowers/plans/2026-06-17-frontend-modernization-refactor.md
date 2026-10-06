@@ -566,17 +566,17 @@ import { SettingsSectionCard } from '../settings-section-card'
 test('renders settings section title, description, and actions', () => {
   render(
     <SettingsSectionCard
-      title="모델 설정"
-      description="기본 모델과 자격증명을 관리합니다."
-      actions={<button type="button">저장</button>}
+      title="模型设置"
+      description="管理默认模型和凭据。"
+      actions={<button type="button">保存</button>}
     >
       <div>body</div>
     </SettingsSectionCard>,
   )
 
-  expect(screen.getByRole('heading', { name: '모델 설정' })).toBeInTheDocument()
-  expect(screen.getByText('기본 모델과 자격증명을 관리합니다.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: '저장' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: '模型设置' })).toBeInTheDocument()
+  expect(screen.getByText('管理默认模型和凭据。')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument()
   expect(screen.getByText('body')).toBeInTheDocument()
 })
 ```

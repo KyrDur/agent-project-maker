@@ -86,7 +86,7 @@ beforeEach(() =>
 )
 
 async function openEvaluationTab() {
-  await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /评测\s*评测证据/ }))
 }
 
 it('reads retained optimization outcomes and patch evidence after analysis', async () => {
@@ -144,7 +144,7 @@ it('reads retained optimization outcomes and patch evidence after analysis', asy
   if (!summary) throw new Error('Run summary missing')
   await userEvent.click(summary)
   await userEvent.click(screen.getByRole('button', { name: '分析失败用例' }))
-  expect(await screen.findByText(/Retrieve before answering/)).toBeInTheDocument()
+  expect((await screen.findAllByText(/Retrieve before answering/)).length).toBeGreaterThan(0)
   expect(await screen.findByText('最佳版本: V2')).toBeInTheDocument()
   expect(await screen.findByText('75% → 90%')).toBeInTheDocument()
   expect(await screen.findByText('已修复：4')).toBeInTheDocument()

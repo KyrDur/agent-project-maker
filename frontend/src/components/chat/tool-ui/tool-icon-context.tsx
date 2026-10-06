@@ -6,13 +6,13 @@ import { builtinToolIcon } from '@/lib/chat/tool-icons'
 import { getDomainIcon } from '@/components/shared/icon'
 
 // ──────────────────────────────────────────────
-// ToolIconContext — toolName → 도구 registry icon_id / MCP 서버명.
+// ToolIconContext — toolName → 工具 registry icon_id / MCP 服务器名。
 //
-// 채팅 루트(conversations 페이지)가 agent.tools/agent.mcp_tools에서 만든 map을
-// 주입한다. 도구 pill은 useToolIcon으로 아이콘을 정한다: 빌트인 고정 맵(런타임
-// 주입 도구) → agent.tools의 icon_id(사용자 registry 도구) → MCP 도구는 플러그
-// 아이콘 → 렌치 폴백. useMcpToolServer는 pill 메타의 서버 배지에 쓰인다.
-// map이 없는 표면(빈 컨텍스트)에서도 빌트인 맵 + 렌치로 graceful하게 동작한다.
+// 聊天根（conversations 页面）注入由 agent.tools/agent.mcp_tools 构建的 map。
+// 工具 pill 通过 useToolIcon 决定图标：内置固定映射（运行时
+// 注入工具）→ agent.tools 的 icon_id（用户 registry 工具）→ MCP 工具使用插件
+// 图标 → 扳手回退。useMcpToolServer 用于 pill 元信息的服务器徽标。
+// 即使在没有 map 的界面（空上下文）上，也能通过内置映射 + 扳手 graceful 工作。
 // ──────────────────────────────────────────────
 
 const ToolIconIdContext = createContext<Readonly<Record<string, string>>>({})
@@ -34,7 +34,7 @@ export function ToolIconProvider({
   )
 }
 
-/** toolName → leading 아이콘. 빌트인 맵 → 도구 icon_id → MCP 플러그 → 렌치 폴백. */
+/** toolName → leading 图标。内置映射 → 工具 icon_id → MCP 插件 → 扳手回退。 */
 export function useToolIcon(toolName: string): LucideIcon {
   const iconIds = useContext(ToolIconIdContext)
   const mcpServers = useContext(McpToolServerContext)
@@ -46,7 +46,7 @@ export function useToolIcon(toolName: string): LucideIcon {
   return WrenchIcon
 }
 
-/** toolName이 현재 에이전트의 MCP 도구면 그 서버 표시명, 아니면 null. */
+/** 若 toolName 是当前智能体的 MCP 工具，则返回其服务器显示名，否则为 null。 */
 export function useMcpToolServer(toolName: string): string | null {
   const mcpServers = useContext(McpToolServerContext)
   return mcpServers[toolName] ?? null

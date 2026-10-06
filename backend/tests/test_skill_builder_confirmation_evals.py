@@ -63,7 +63,7 @@ async def test_confirm_session_creates_evaluation_set_from_draft_evals(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="회의록 요약 스킬 만들어줘",
+            user_request="帮我创建会议纪要摘要技能",
         )
         await skill_builder_service.save_draft_package(db, session, draft=_draft_with_evals())
 
@@ -96,7 +96,7 @@ async def test_confirm_session_copies_builder_eval_result_to_completed_run(
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="회의록 요약 스킬 만들어줘",
+            user_request="帮我创建会议纪要摘要技能",
         )
         session.eval_result = {
             "runner_model": "gpt-5.1-mini",

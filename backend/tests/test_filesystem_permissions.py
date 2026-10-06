@@ -108,7 +108,7 @@ def test_scoped_filesystem_permissions_only_allow_current_runtime_surfaces() -> 
     assert _check_fs_permission(permissions, "write", "/conversations/thread-a/new.txt") == "allow"
     assert _check_fs_permission(permissions, "read", "/conversations/thread-b/output.txt") == "deny"
     assert _check_fs_permission(permissions, "write", "/tmp/invisible.txt") == "deny"
-    # data/uploads = 모든 사용자의 첨부 blob — 기본-allow 구멍 봉쇄 (스펙 §6-2).
+    # data/uploads = 所有用户的 attachment blob — 封堵默认-allow 漏洞（规格 §6-2）。
     assert _check_fs_permission(permissions, "read", "/uploads/deadbeef.png") == "deny"
     assert _check_fs_permission(permissions, "read", "/uploads") == "deny"
     assert _check_fs_permission(permissions, "write", "/uploads/deadbeef.png") == "deny"
@@ -310,7 +310,7 @@ def test_stored_child_permissions_fail_closed_for_invalid_trusted_child_name(
 
 
 def test_draft_workspace_mount_allows_session_and_denies_siblings() -> None:
-    """스킬 빌더 드래프트 마운트 (스펙 AD-2): 세션 allow → sibling deny 순서."""
+    """skill builder draft mount（规格 AD-2）：session allow → sibling deny 顺序。"""
 
     from deepagents.middleware.filesystem import _check_fs_permission
 
@@ -324,21 +324,21 @@ def test_draft_workspace_mount_allows_session_and_denies_siblings() -> None:
         draft_workspace_path="skill-drafts/session-1",
     )
 
-    # 자기 세션 워크스페이스는 read+write 가능 (write_file/edit_file 편집 표면).
+    # 自己 session workspace 可 read+write（write_file/edit_file 编辑表面）。
     assert _check_fs_permission(permissions, "read", "/skill-drafts/session-1/SKILL.md") == "allow"
     assert _check_fs_permission(permissions, "write", "/skill-drafts/session-1/SKILL.md") == "allow"
     assert (
         _check_fs_permission(permissions, "write", "/skill-drafts/session-1/references/a.md")
         == "allow"
     )
-    # 타 세션 워크스페이스는 완전 차단 (sibling deny).
+    # 其他 session workspace 完全阻断（sibling deny）。
     assert _check_fs_permission(permissions, "read", "/skill-drafts/session-2/SKILL.md") == "deny"
     assert _check_fs_permission(permissions, "write", "/skill-drafts/session-2/SKILL.md") == "deny"
     assert _check_fs_permission(permissions, "read", "/skill-drafts") == "deny"
 
 
 def test_no_draft_mount_denies_entire_skill_drafts_tree() -> None:
-    """드래프트 마운트가 없는 일반 런에서도 /skill-drafts 전체가 deny."""
+    """即使普通 run 没有 draft mount，/skill-drafts 整体也应 deny。"""
 
     from deepagents.middleware.filesystem import _check_fs_permission
 
@@ -627,9 +627,9 @@ def test_agent_scoped_filesystem_permissions_require_user_identity() -> None:
 
 
 def test_builder_run_denies_conversation_tree_writes() -> None:
-    """R2 회귀: 드래프트 마운트 런은 /conversations 쓰기 권한을 받지 않는다 —
-    부여하면 히든 빌더 에이전트의 산출물이 아티팩트로 인덱싱되어 라이브러리에
-    노출될 수 있다. 일반 런의 conversation allow는 그대로 유지."""
+    """R2 回归：draft mount run 不应获得 /conversations 写权限 —
+    若授予，hidden builder agent 的产物会作为 artifact 被索引并暴露到 library。
+    普通 run 的 conversation allow 保持不变。"""
 
     from deepagents.middleware.filesystem import _check_fs_permission
 
@@ -655,12 +655,12 @@ def test_builder_run_denies_conversation_tree_writes() -> None:
 
 
 def test_malformed_draft_workspace_path_fails_closed() -> None:
-    """R2 회귀: strip 후 빈 경로나 skill-drafts/ 밖 경로는 ValueError —
-    빈 문자열이 통과하면 `/**` allow가 전체 FS를 연다 (불변식 가드)."""
+    """R2 回归：strip 后为空的路径或 skill-drafts/ 外路径应 ValueError —
+    若空字符串通过，`/**` allow 会开放整个 FS（invariant guard）。"""
 
     from app.agent_runtime.filesystem_permissions import build_filesystem_permissions
 
-    # 빈 문자열은 falsy라 마운트 자체가 생략된다(안전) — raise 대상 아님.
+    # 空字符串为 falsy，因此 mount 本身会被跳过（安全）— 不属于 raise 对象。
     for bad in ("/", "uploads/evil", "skill-drafts"):
         with pytest.raises(ValueError, match="must live under skill-drafts/"):
             build_filesystem_permissions(

@@ -1,11 +1,11 @@
-"""스킬 빌더 챗 런타임 (M3) — 분기/도구/이벤트/redaction 계약.
+"""技能构建器聊天运行时 (M3) — 分支/工具/事件/redaction 契约。
 
-- ``resolve_agent_context``: runtime_profile 판독 → System LLM 재해석 + 세션
-  역참조 + ``moldy.skill_draft`` 페이로드 적재
-- ``_prepare_runtime_components``: skill_builder 분기(프롬프트/도구/마운트 교체)
-- ``validate_skill``/``generate_evals`` 도구
+- ``resolve_agent_context``: 读取 runtime_profile → 重新解析 System LLM + 会话
+  反向引用 + 装载 ``moldy.skill_draft`` 载荷
+- ``_prepare_runtime_components``: skill_builder 分支（替换提示词/工具/挂载）
+- ``validate_skill``/``generate_evals`` 工具
 - ``moldy.skill_draft``(stream-head stable-id) / ``moldy.skill_validation``
-  (도구 projection) + 영속 redaction pass-through 등록
+  （工具 projection）+ 注册持久化 redaction pass-through
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ _VALID_SKILL_MD = (
 async def _make_active_session(db: AsyncSession, *, seed_skill_md: bool = True):
     session = SkillBuilderSession(
         user_id=TEST_USER_ID,
-        user_request="회의록 액션 아이템 스킬",
+        user_request="会议纪要行动项技能",
         status="active",
     )
     db.add(session)
@@ -69,7 +69,7 @@ async def _make_active_session(db: AsyncSession, *, seed_skill_md: bool = True):
 
 
 # ---------------------------------------------------------------------------
-# 런타임 분기 (_prepare_runtime_components)
+# 运行时分支 (_prepare_runtime_components)
 # ---------------------------------------------------------------------------
 
 
@@ -104,17 +104,17 @@ async def test_prepare_branch_swaps_prompt_tools_and_mounts_draft() -> None:
 
     tool_names = {t.name for t in components.tools}
     assert {"validate_skill", "generate_evals", "ask_user"} <= tool_names
-    # 표준 경로 전용 표면은 전부 생략된다.
+    # 标准路径专用表面全部省略。
     assert "execute_in_skill" not in tool_names
     assert "propose_memory" not in tool_names
     assert components.skills_sources is None
     assert components.memory_sources is None
 
-    # 코드 정의 프롬프트로 교체 + 워크스페이스 가상 경로 주입.
+    # 替换为代码定义的提示词 + 注入工作区虚拟路径。
     assert "placeholder — must be replaced" not in components.system_prompt
     assert f"/skill-drafts/{session_id}" in components.system_prompt
 
-    # 드래프트 마운트: 자기 세션 write allow, sibling deny.
+    # 草稿挂载: 自己的会话 write allow，sibling deny。
     assert (
         _check_fs_permission(
             components.permissions, "write", f"/skill-drafts/{session_id}/SKILL.md"
@@ -128,7 +128,7 @@ async def test_prepare_branch_swaps_prompt_tools_and_mounts_draft() -> None:
 
 
 # ---------------------------------------------------------------------------
-# resolve_agent_context 분기
+# resolve_agent_context 分支
 # ---------------------------------------------------------------------------
 
 
@@ -140,7 +140,7 @@ async def test_resolve_agent_context_builder_branch(client, db: AsyncSession) ->
     await configure_system_llm(db)
     start = await client.post(
         "/api/skill-builder",
-        json={"mode": "create", "user_request": "회의록 스킬"},
+        json={"mode": "create", "user_request": "会议纪要技能"},
     )
     assert start.status_code == 201, start.text
     body = start.json()
@@ -152,7 +152,7 @@ async def test_resolve_agent_context_builder_branch(client, db: AsyncSession) ->
     assert cfg.runtime_policy is SKILL_BUILDER_RUNTIME_POLICY
 
     assert cfg.runtime_profile == "skill_builder"
-    # ADR-019 — 모델은 seed FK가 아니라 System LLM(text_primary) 재해석.
+    # ADR-019 — 模型不是通过 seed FK，而是重新解析 System LLM(text_primary)。
     assert cfg.provider == "openai"
     assert cfg.model_name == "gpt-5.4"
     assert cfg.api_key == "sk-test"
@@ -167,7 +167,7 @@ async def test_resolve_agent_context_builder_branch(client, db: AsyncSession) ->
 
 
 # ---------------------------------------------------------------------------
-# 도구: validate_skill / generate_evals
+# 工具: validate_skill / generate_evals
 # ---------------------------------------------------------------------------
 
 
@@ -208,7 +208,7 @@ async def test_generate_evals_writes_schema_valid_file(db: AsyncSession) -> None
 
     output = json.loads(
         await _tool(tools, "generate_evals").ainvoke(
-            {"intent": "회의록에서 액션 아이템을 표로 추출"}
+            {"intent": "从会议纪要中提取行动项并整理成表格"}
         )
     )
 
@@ -278,7 +278,7 @@ async def test_streaming_emits_skill_draft_at_head_with_stable_id() -> None:
     draft_event = payloads[1]["params"]["data"]
     assert draft_event["name"] == "moldy.skill_draft"
     assert draft_event["payload"] == brief
-    # replay/reload dedup — stable event id (memory_recalled와 동일 계약).
+    # replay/reload dedup — stable event id（与 memory_recalled 相同契约）。
     assert payloads[1]["event_id"] == "run-draft:skill_draft"
 
 
@@ -311,7 +311,7 @@ async def test_streaming_omits_skill_draft_when_absent() -> None:
 
 
 # ---------------------------------------------------------------------------
-# moldy.skill_validation — 도구 결과 projection
+# moldy.skill_validation — 工具结果 projection
 # ---------------------------------------------------------------------------
 
 
@@ -388,7 +388,7 @@ async def test_streaming_projects_validate_skill_result_to_custom_event() -> Non
 
 
 # ---------------------------------------------------------------------------
-# redaction 등록 (영속 경로 pass-through — CLAUDE.md 이름 기반 매처 규칙)
+# redaction 注册（持久化路径 pass-through — CLAUDE.md 基于名称的匹配器规则）
 # ---------------------------------------------------------------------------
 
 
@@ -406,7 +406,7 @@ async def test_persistence_keeps_skill_builder_event_payloads() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 첨부 → inputs/ 복사 (run.start 트리거용 DB 헬퍼)
+# 附件 → 复制到 inputs/（供 run.start 触发的 DB 辅助函数）
 # ---------------------------------------------------------------------------
 
 

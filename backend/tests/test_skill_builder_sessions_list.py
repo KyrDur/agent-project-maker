@@ -1,7 +1,7 @@
-"""빌더 세션 목록 API (Phase 2 — 스튜디오 빌더 탭/인덱스).
+"""构建器会话列表 API (Phase 2 — 工作室构建器选项卡/索引)。
 
-user 스코프, skill_id의 source/finalized 양방향 매칭, 상태 필터,
-updated_at 내림차순 정렬 계약을 검증한다.
+验证 user 范围、skill_id 对 source/finalized 的双向匹配、状态过滤器、
+updated_at 降序排序契约。
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def _session(
     source_skill_id: uuid.UUID | None = None,
     finalized_skill_id: uuid.UUID | None = None,
     updated_at: datetime | None = None,
-    user_request: str = "회의록 스킬 만들어줘",
+    user_request: str = "帮我创建会议纪要技能",
 ) -> SkillBuilderSession:
     session = SkillBuilderSession(
         user_id=user_id,
@@ -64,7 +64,7 @@ async def test_list_scopes_to_user_and_orders_desc(
     ids = [row["id"] for row in body]
     assert ids == [str(newer.id), str(older.id)]
     assert str(foreign.id) not in ids
-    # 경량 brief 계약 — 무거운 JSON 컬럼은 싣지 않는다.
+    # 轻量 brief 契约 — 不装载沉重的 JSON 列。
     assert set(body[0]) == {
         "id",
         "mode",
@@ -120,7 +120,7 @@ async def test_abandoned_sessions_hidden_by_default(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """GC 대상 abandoned 세션은 기본 목록에서 제외 — 명시 status로만 조회 (리뷰 R)."""
+    """GC 对象 abandoned 会话从默认列表排除 — 仅通过显式 status 查询（评审 R）。"""
 
     active = _session(status="active")
     abandoned = _session(status="abandoned")

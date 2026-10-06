@@ -34,16 +34,16 @@ export type SkillEvaluationRunEstimate = {
   readonly estimated_tokens_in?: number
   readonly estimated_tokens_out?: number
   readonly estimated_cost_usd: number
-  /** false → runner 모델 단가 미보유. cost 0은 "무료"가 아니라 "모름". */
+  /** false → runner 模型没有单价。cost 0 不是 "免费"，而是 "未知"。 */
   readonly pricing_available?: boolean
   readonly runner_model?: string | null
   readonly uses_baseline_comparison: boolean
 }
 
-/** llm-2 실측 usage rollup — 레거시/deterministic 런은 null. */
+/** llm-2 实测 usage rollup — legacy/deterministic run 为 null。 */
 export type SkillEvaluationRunUsage = {
   readonly measured?: boolean
-  /** false → 콜은 했지만 usage_metadata가 없어 토큰 수치가 "미측정"(0 아님). */
+  /** false → 已发起调用但没有 usage_metadata，token 数值为 "未测量"（不是 0）。 */
   readonly tokens_measured?: boolean
   readonly model_calls?: number
   readonly tokens_in?: number

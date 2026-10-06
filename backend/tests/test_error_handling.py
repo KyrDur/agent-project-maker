@@ -19,17 +19,17 @@ class TestExceptionHierarchy:
         assert str(err) == "Test message"
 
     def test_not_found_error(self):
-        err = NotFoundError("AGENT_NOT_FOUND", "에이전트를 찾을 수 없습니다")
+        err = NotFoundError("AGENT_NOT_FOUND", "找不到 agent")
         assert err.status == 404
         assert isinstance(err, AppError)
 
     def test_validation_error(self):
-        err = ValidationError("INVALID_INPUT", "잘못된 입력입니다")
+        err = ValidationError("INVALID_INPUT", "输入无效")
         assert err.status == 422
         assert isinstance(err, AppError)
 
     def test_external_service_error(self):
-        err = ExternalServiceError("MCP_ERROR", "MCP 서버 오류")
+        err = ExternalServiceError("MCP_ERROR", "MCP server 错误")
         assert err.status == 502
         assert isinstance(err, AppError)
 
@@ -56,7 +56,7 @@ class TestErrorHandlers:
         assert body == {
             "error": {
                 "code": "TOOL_NOT_FOUND",
-                "message": "도구를 찾을 수 없습니다",
+                "message": "找不到 tool",
             }
         }
 

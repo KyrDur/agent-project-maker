@@ -1,5 +1,5 @@
-"""Builder v3 그래프 노드.
+"""Builder v3 图节点。
 
-각 phase 노드는 ``async def phase_X(state: BuilderState) -> dict | Command``
-시그니처를 가지며, dict 반환 시 state에 머지, Command 반환 시 분기/self-loop.
+每个 phase 节点都具有 ``async def phase_X(state: BuilderState) -> dict | Command``
+签名，返回 dict 时合并到 state，返回 Command 时进行分支/self-loop。
 """

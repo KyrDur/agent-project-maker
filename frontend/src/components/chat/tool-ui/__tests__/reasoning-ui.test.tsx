@@ -8,13 +8,11 @@ describe('ReasoningDataUI', () => {
   })
 
   it('renders summary text as a labeled status panel', () => {
-    render(
-      <ReasoningDataView data={{ summary: '검토한 내용을 요약합니다.' }} statusType="complete" />,
-    )
+    render(<ReasoningDataView data={{ summary: '总结已审阅的内容。' }} statusType="complete" />)
 
     expect(screen.getByText('推理总结')).toBeInTheDocument()
-    expect(screen.getByText('검토한 내용을 요약합니다.')).toBeInTheDocument()
-    expect(screen.getByText('准备好了')).toBeInTheDocument()
+    expect(screen.getByText('总结已审阅的内容。')).toBeInTheDocument()
+    expect(screen.getByText('准备好')).toBeInTheDocument()
   })
 
   it('does not render raw reasoning fields', () => {

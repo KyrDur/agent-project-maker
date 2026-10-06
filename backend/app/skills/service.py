@@ -101,12 +101,21 @@ async def create_text_skill(
     description: str | None,
     content: str,
     version: str | None = None,
+    skill_id: uuid.UUID | None = None,
 ) -> Skill:
     """Create a text skill, persisting ``content`` as ``SKILL.md`` on disk."""
 
     parse_skill_md(content, require_metadata=True)
     final_slug = slugify(slug or name)
-    skill_id = uuid.uuid4()
+    skill_id = skill_id or uuid.uuid4()
+    existing = await db.get(Skill, skill_id)
+    if existing:
+        if (
+            existing.user_id != user_id
+            or existing.content_hash != hashlib.sha256(content.encode()).hexdigest()
+        ):
+            raise ValueError("generated_skill_request_conflict")
+        return existing
     root = _skill_root(skill_id)
     await asyncio.to_thread(root.mkdir, parents=True, exist_ok=True)
     file_path = root / "SKILL.md"

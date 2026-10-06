@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
 /**
- * 스킬 탭 컴포넌트의 4슬롯 렌더 프롭 계약 — 유일한 런타임 렌더러는 스튜디오의
- * `renderSkillStudioTabShell`(app/skills/[skillId]/_components)이다. 구
- * DialogShell 렌더러는 상세 다이얼로그와 함께 제거됐다 (Phase 2).
+ * 技能标签页组件的 4-插槽渲染属性契约 — 唯一的运行时渲染器是工作室的
+ * `renderSkillStudioTabShell`(app/skills/[skillId]/_components)。旧
+ * DialogShell 渲染器已随详情对话框一起移除 (Phase 2)。
  */
 export type SkillDetailTabSlots = {
   readonly body: ReactNode

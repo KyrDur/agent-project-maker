@@ -1,8 +1,8 @@
-"""finalize_skill 오케스트레이션 (M5, 스펙 AD-3).
+"""finalize_skill 编排 (M5, 规范 AD-3)。
 
-생성/개선/SOURCE_SKILL_CHANGED/secret scan 차단/slug 충돌/바이너리 asset 포함
-(Phase 1.5 디스크 zip)/멱등 + 감사 이벤트(confirm_create/apply_improvement/
-apply_conflict/secret_scan_blocked/skill_revision.create) + 완료 딥링크 페이로드.
+创建/改进/SOURCE_SKILL_CHANGED/secret scan 阻断/slug 冲突/包含二进制 asset
+(Phase 1.5 磁盘 zip)/幂等 + 审计事件(confirm_create/apply_improvement/
+apply_conflict/secret_scan_blocked/skill_revision.create) + 完成深链载荷。
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ async def _make_create_session(
 ) -> SkillBuilderSession:
     session = SkillBuilderSession(
         user_id=TEST_USER_ID,
-        user_request="회의록 스킬",
+        user_request="会议纪要技能",
         status="active",
     )
     db.add(session)
@@ -69,7 +69,7 @@ async def _audit_actions(db: AsyncSession) -> set[str]:
 
 
 # ---------------------------------------------------------------------------
-# 생성 (create)
+# 创建 (create)
 # ---------------------------------------------------------------------------
 
 
@@ -144,7 +144,7 @@ async def test_finalize_blocks_secret_bearing_draft(db: AsyncSession) -> None:
     codes = {issue["code"] for issue in result["validation_result"]["issues"]}
     assert "SECRET_DETECTED" in codes
     assert "skill_builder.secret_scan_blocked" in await _audit_actions(db)
-    # 확정 실패 — skills row가 생기지 않는다.
+    # 确认失败 — 不会生成 skills row。
     assert await db.scalar(select(Skill.id)) is None
 
 
@@ -152,7 +152,7 @@ PNG_BYTES = b"\x89PNG\x00\x00binary"
 
 
 async def test_finalize_create_includes_binary_asset(db: AsyncSession) -> None:
-    """Phase 1.5 — 디스크 기반 zip이 text 어댑터를 우회해 바이너리를 보존한다."""
+    """Phase 1.5 — 基于磁盘的 zip 绕过 text 适配器以保留二进制。"""
 
     from app.storage.paths import resolve_data_path
 
@@ -160,7 +160,7 @@ async def test_finalize_create_includes_binary_asset(db: AsyncSession) -> None:
     root = workspace.resolve_workspace_dir(session.draft_workspace_path or "")
     (root / "assets").mkdir()
     (root / "assets" / "logo.png").write_bytes(PNG_BYTES)
-    # inputs/(시험 입력)는 패키지 콘텐츠가 아니다 — export 제외 확인용.
+    # inputs/（测试输入）不是包内容 — 用于确认 export 排除。
     (root / "inputs").mkdir()
     (root / "inputs" / "example.csv").write_text("a,b\n", encoding="utf-8")
 
@@ -175,9 +175,9 @@ async def test_finalize_create_includes_binary_asset(db: AsyncSession) -> None:
 
 
 async def test_finalize_blocks_secret_smuggled_in_null_byte_file(db: AsyncSession) -> None:
-    """널바이트를 앞에 붙인 파일은 text 어댑터(검증 스캔 소스)에서 빠지지만
-    디스크 zip에는 실린다 — 워크스페이스 보조 스캔이 갭을 닫아야 한다
-    (Phase 1.5 리뷰)."""
+    """前置空字节的文件会被 text 适配器（验证扫描源）排除，
+    但会进入磁盘 zip — 工作区辅助扫描必须补上这个缺口
+    (Phase 1.5 评审)。"""
 
     session = await _make_create_session(db)
     root = workspace.resolve_workspace_dir(session.draft_workspace_path or "")
@@ -195,8 +195,8 @@ async def test_finalize_blocks_secret_smuggled_in_null_byte_file(db: AsyncSessio
 async def test_finalize_returns_package_invalid_and_releases_claim(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """zip 추출 가드(크기 상한) 실패는 PACKAGE_INVALID로 사유를 전하고 claim을
-    풀어 재시도가 self-heal되어야 한다 (SOURCE_SKILL_NOT_FOUND 경로와 대칭)."""
+    """zip 提取守卫（大小上限）失败时，以 PACKAGE_INVALID 传递原因并释放 claim，
+    使重试能够 self-heal（与 SOURCE_SKILL_NOT_FOUND 路径对称）。"""
 
     session = await _make_create_session(db)
     root = workspace.resolve_workspace_dir(session.draft_workspace_path or "")
@@ -208,15 +208,15 @@ async def test_finalize_returns_package_invalid_and_releases_claim(
 
     assert result["error_code"] == "PACKAGE_INVALID"
     await db.refresh(session)
-    assert session.status == "review"  # CONFIRMING 잠금이 풀려 있어야 한다.
+    assert session.status == "review"  # CONFIRMING 锁必须已释放。
 
-    # 재시도는 CONFIRMING 게이트에 막히지 않는다.
+    # 重试不会被 CONFIRMING 门槛阻断。
     second = await finalize_draft_session(db, session_id=session.id, user_id=TEST_USER_ID)
     assert second["error_code"] == "PACKAGE_INVALID"
 
 
 # ---------------------------------------------------------------------------
-# 개선 (improve) — start v2로 시드된 세션 사용
+# 改进 (improve) — 使用通过 start v2 初始化的会话
 # ---------------------------------------------------------------------------
 
 
@@ -241,7 +241,7 @@ async def _start_improve_session(
         json={
             "mode": "improve",
             "source_skill_id": str(source.id),
-            "user_request": "더 정확하게",
+            "user_request": "更准确一些",
         },
     )
     assert start.status_code == 201, start.text
@@ -282,10 +282,10 @@ async def test_finalize_improve_replaces_storage_and_creates_revision(
 async def test_finalize_improve_preserves_seeded_binary_asset(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    """improve 시드 원본의 바이너리 asset이 finalize 후에도 보존된다 (Phase 1.5).
+    """improve 初始化原始项中的二进制 asset 在 finalize 后仍保留 (Phase 1.5)。
 
-    브리핑 검증 시나리오 — asset(이미지) 있는 package 스킬을 시드한 뒤 텍스트만
-    고쳐 확정해도 디스크 기반 zip이 asset을 그대로 싣는다.
+    简报验证场景 — 初始化一个带 asset（图片）的 package 技能后只修改文本，
+    即使再确认，基于磁盘的 zip 也会原样带上 asset。
     """
 
     import io
@@ -309,14 +309,14 @@ async def test_finalize_improve_preserves_seeded_binary_asset(
         json={
             "mode": "improve",
             "source_skill_id": str(source.id),
-            "user_request": "더 정확하게",
+            "user_request": "更准确一些",
         },
     )
     assert start.status_code == 201, start.text
     session = await db.get(SkillBuilderSession, uuid.UUID(start.json()["id"]))
     assert session is not None
     root = workspace.resolve_workspace_dir(session.draft_workspace_path or "")
-    assert (root / "assets" / "logo.png").read_bytes() == PNG_BYTES  # 시드 확인
+    assert (root / "assets" / "logo.png").read_bytes() == PNG_BYTES  # 确认初始化
     (root / "SKILL.md").write_text(
         _skill_md(body="Use when summarizing meeting notes. Improved."),
         encoding="utf-8",
@@ -334,7 +334,7 @@ async def test_finalize_improve_conflicts_when_source_changed(
     client: AsyncClient, db: AsyncSession
 ) -> None:
     session, source = await _start_improve_session(client, db)
-    # 세션이 열린 사이 원본이 바뀐 상황 재현.
+    # 复现会话打开期间原始项被修改的情况。
     source.content_hash = "0" * 64
     await db.commit()
 
@@ -348,7 +348,7 @@ async def test_finalize_improve_conflicts_when_source_changed(
 
 
 # ---------------------------------------------------------------------------
-# 도구 노출 + HITL 정책 (항상 승인 카드, 세션 동의 불가)
+# 工具暴露 + HITL 策略（始终显示审批卡，不允许会话同意）
 # ---------------------------------------------------------------------------
 
 
@@ -373,7 +373,7 @@ async def test_finalize_tool_requires_approval_and_never_session_consent() -> No
         runtime_profile="skill_builder",
         skill_builder_session_id=str(session_id),
         draft_workspace_path=f"skill-drafts/{session_id}",
-        # test_skill_draft 동의가 있어도 finalize_skill 카드는 유지되어야 한다.
+        # 即使存在 test_skill_draft 同意，也必须保留 finalize_skill 卡片。
         skill_builder_consented_tools=["test_skill_draft"],
     )
 
@@ -397,10 +397,10 @@ async def test_finalize_tool_requires_approval_and_never_session_consent() -> No
 async def test_finalize_releases_claim_on_source_skill_not_found(
     client: AsyncClient, db: AsyncSession
 ) -> None:
-    """R 후속 회귀(재검 발견): claim이 CONFIRMING을 독립 커밋한 뒤
-    SOURCE_SKILL_NOT_FOUND로 실패하면 REVIEW로 복귀해야 한다 — 안 그러면
-    CONFIRMING 게이트가 재시도를 "다른 finalize 진행 중"이라는 거짓 메시지로
-    abandon 지평(14일)까지 영구 차단한다."""
+    """R 后续回归（复查发现）：claim 独立提交 CONFIRMING 后，
+    若因 SOURCE_SKILL_NOT_FOUND 失败，必须回到 REVIEW — 否则
+    CONFIRMING 门槛会以"另一个 finalize 正在进行"的错误消息
+    一直阻断重试直到 abandon 时限（14天）。"""
 
     from app.services.skill_builder_finalize import finalize_draft_session
     from app.skills import service as skill_service
@@ -408,7 +408,7 @@ async def test_finalize_releases_claim_on_source_skill_not_found(
     session, source = await _start_improve_session(client, db)
     assert session.draft_workspace_path is not None
 
-    # 세션이 참조하는 원본 스킬을 삭제해 post-claim 실패를 재현.
+    # 删除会话引用的原始技能，复现 post-claim 失败。
     await skill_service.delete_skill(db, source)
     await db.commit()
 
@@ -416,9 +416,9 @@ async def test_finalize_releases_claim_on_source_skill_not_found(
     assert first["error_code"] == "SOURCE_SKILL_NOT_FOUND"
 
     await db.refresh(session)
-    assert session.status == "review"  # CONFIRMING 잠금이 풀려 있어야 한다.
+    assert session.status == "review"  # CONFIRMING 锁必须已释放。
 
-    # 재시도는 CONFIRMING 게이트에 막히지 않고 같은 오류를 다시 보고한다(self-heal).
+    # 重试不会被 CONFIRMING 门槛阻断，并会再次报告同一错误(self-heal)。
     second = await finalize_draft_session(db, session_id=session.id, user_id=TEST_USER_ID)
     assert second["error_code"] == "SOURCE_SKILL_NOT_FOUND"
 
@@ -426,9 +426,9 @@ async def test_finalize_releases_claim_on_source_skill_not_found(
 async def test_finalize_releases_claim_when_cancelled(
     client: AsyncClient, db: AsyncSession, monkeypatch
 ) -> None:
-    """3차 리뷰 회귀: 런 취소(CancelledError)는 BaseException이라 도구/서비스의
-    Exception 캐치를 모두 통과한다 — claim 해제가 shield로 완료되지 않으면
-    CONFIRMING이 abandon 지평까지 잠긴다."""
+    """第 3 次评审回归：运行取消(CancelledError)属于 BaseException，因此会穿过工具/服务的
+    Exception 捕获 — 若 claim 释放未通过 shield 完成，
+    CONFIRMING 会一直锁到 abandon 时限。"""
 
     import asyncio as _asyncio
 
@@ -446,4 +446,4 @@ async def test_finalize_releases_claim_when_cancelled(
         await finalize_draft_session(db, session_id=session.id, user_id=TEST_USER_ID)
 
     await db.refresh(session)
-    assert session.status == "review"  # 잠금이 풀려 재시도 가능해야 한다.
+    assert session.status == "review"  # 必须释放锁，以便可以重试。

@@ -98,7 +98,7 @@ async def test_trigger_eval_endpoint_persists_result_and_updates_draft_descripti
     session = await skill_builder_service.create_session(
         db,
         user_id=TEST_USER_ID,
-        user_request="회의록에서 액션 아이템과 담당자를 표로 추출",
+        user_request="从会议纪要中提取行动项和负责人并整理成表格",
     )
     await skill_builder_service.save_draft_package(db, session, draft=_draft())
     await db.commit()

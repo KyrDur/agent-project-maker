@@ -31,7 +31,7 @@ export function useSkillRevisionFiles(
         requireQueryId(revisionId, 'revisionId'),
       ),
     enabled: !!skillId && !!revisionId,
-    // 스냅샷은 불변 — 재조회 불필요.
+    // snapshot 不可变 — 无需重新查询。
     staleTime: Infinity,
   })
 }
@@ -51,7 +51,7 @@ export function useSkillRevisionFileContent(
       ),
     enabled: !!skillId && !!revisionId && !!path,
     staleTime: Infinity,
-    // 바이너리/pruned/미존재는 404 계약(fail-closed) — 재시도 없이 placeholder.
+    // binary/pruned/不存在遵循 404 契约（fail-closed）— 不重试，显示 placeholder。
     retry: false,
   })
 }

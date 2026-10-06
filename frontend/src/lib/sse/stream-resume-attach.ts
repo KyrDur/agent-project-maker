@@ -9,9 +9,9 @@ export function getChatStreamProtocol(): ChatStreamProtocol {
 }
 
 /**
- * GET ``/api/conversations/{id}/runs/{runId}/stream`` 으로 끊긴 SSE stream 을
- * 재개한다. ``runId`` 는 primary stream 의 ``X-Run-Id`` 응답 헤더 또는
- * ``Conversation.active_run`` 에서 받은 durable run id다.
+ * 通过 GET ``/api/conversations/{id}/runs/{runId}/stream`` 恢复中断的 SSE stream。
+ * ``runId`` 是从 primary stream 的 ``X-Run-Id`` 响应头或
+ * ``Conversation.active_run`` 获取的 durable run id。
  */
 export async function* streamResumeAttach(
   conversationId: string,

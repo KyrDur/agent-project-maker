@@ -61,7 +61,7 @@ def test_stored_interrupt_filter_preserves_unrelated_hitl_entries() -> None:
 
 
 def _cfg(**overrides) -> AgentConfig:
-    """테스트용 AgentConfig 기본값 생성."""
+    """生成测试用 AgentConfig 默认值。"""
     defaults: dict[str, object] = {
         "provider": "openai",
         "model_name": "gpt-4o",
@@ -840,7 +840,7 @@ async def test_execute_stream_keeps_temporal_context_out_of_user_message(
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()
-    mock_convert.return_value = [HumanMessage(content="오늘 일정 알려줘")]
+    mock_convert.return_value = [HumanMessage(content="告诉我今天的日程")]
     mock_build.return_value = MagicMock()
     captured_stream_messages = {}
 
@@ -865,7 +865,7 @@ async def test_execute_stream_keeps_temporal_context_out_of_user_message(
 
     system_prompt = mock_build.call_args[0][2]
     assert system_prompt.startswith("Hello")
-    assert "현재 기준 날짜" in system_prompt
+    assert "当前基准日期" in system_prompt
     assert "Interactive Tool Rules" in system_prompt
     assert "ask_user" in system_prompt
     assert "MCP" in system_prompt
@@ -873,7 +873,7 @@ async def test_execute_stream_keeps_temporal_context_out_of_user_message(
     messages = captured_stream_messages["messages"]
     assert len(messages) == 1
     assert isinstance(messages[0], HumanMessage)
-    assert messages[0].content == "오늘 일정 알려줘"
+    assert messages[0].content == "告诉我今天的日程"
 
 
 @pytest.mark.asyncio
@@ -929,10 +929,10 @@ async def test_execute_stream_runtime_tool_called_per_entry(
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
     from app.config import settings
 
-    # builtin:e2e_scripted_search는 E2E 전용 도구(e2e_scripted_model_enabled로
-    # gating)인데 dev .env가 E2E_SCRIPTED_MODEL_ENABLED=true라 unit 빌드에 새어
-    # 든다. 이 테스트는 production-like runtime-tool 구성(개수)을 검증하므로
-    # 명시적으로 비활성화한다.
+    # builtin:e2e_scripted_search 是 E2E 专用 tool（由 e2e_scripted_model_enabled
+    # gating），但 dev .env 中 E2E_SCRIPTED_MODEL_ENABLED=true，会泄漏进 unit build。
+    # 该测试验证 production-like runtime-tool 配置（数量），因此
+    # 显式禁用。
     monkeypatch.setattr(settings, "e2e_scripted_model_enabled", False)
 
     mock_model_factory.return_value = MagicMock()
@@ -957,8 +957,8 @@ async def test_execute_stream_runtime_tool_called_per_entry(
         },
         {
             "tool_id": "2",
-            "definition_key": "naver_search_blog",
-            "name": "Naver Blog Search",
+            "definition_key": "google_search_web",
+            "name": "Google Web Search",
             "description": "blog",
             "parameters": {"query": "x"},
             "credentials": {"client_id": "a", "client_secret": "b"},
@@ -1876,7 +1876,7 @@ async def test_interrupt_on_with_write_tools(
     mock_stream: MagicMock,
     mock_checkpointer: MagicMock,
 ):
-    """HiTL middleware + write tool → interrupt_on에 해당 도구 포함."""
+    """HiTL middleware + write tool → interrupt_on 包含对应 tool。"""
     from app.agent_runtime.agent_stream_runner import execute_agent_stream
 
     mock_model_factory.return_value = MagicMock()

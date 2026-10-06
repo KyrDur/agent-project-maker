@@ -105,7 +105,7 @@ test.describe('Draft conversation lifecycle', () => {
     }
   })
 
-  test('clicking 새 대화 shows a draft row without creating a DB conversation', async ({
+  test('clicking 新对话 shows a draft row without creating a DB conversation', async ({
     page,
     request,
     errors,
@@ -205,7 +205,7 @@ test.describe('Draft conversation lifecycle', () => {
 
     const firstMessage = 'Draft E2E first message'
     await page.getByPlaceholder('占位符').fill(firstMessage)
-    await page.getByRole('button', { name: /전송/ }).click()
+    await page.getByRole('button', { name: /发送/ }).click()
     await page.waitForURL(new RegExp(`/agents/${agentId}/conversations/(?!new$)[0-9a-f-]+$`), {
       timeout: 90_000,
     })

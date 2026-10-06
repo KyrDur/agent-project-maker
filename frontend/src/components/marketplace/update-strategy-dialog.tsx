@@ -45,7 +45,7 @@ const STRATEGIES: StrategyOption[] = [
 ]
 
 export function UpdateStrategyDialog({ item, open, onOpenChange }: UpdateStrategyDialogProps) {
-  // remount-on-target swap pattern (AGENTS.md): key 로 state 자동 reset.
+  // remount-on-target swap pattern (AGENTS.md): 通过 key 让 state 自动 reset。
   return (
     <UpdateStrategyDialogInner
       key={item?.installation.installation_id ?? 'closed'}
@@ -58,9 +58,9 @@ export function UpdateStrategyDialog({ item, open, onOpenChange }: UpdateStrateg
 
 function UpdateStrategyDialogInner({ item, open, onOpenChange }: UpdateStrategyDialogProps) {
   const t = useTranslations('marketplace.updateStrategy')
-  // dirty 상태이면 destructive strategy를 1차 선택지로 띄우지 않는다 — 안전한
-  // install_new_copy 를 default 로. 사용자가 의식적으로 overwrite 를 선택해야
-  // 한다.
+  // dirty 状态下，不将 destructive strategy 作为第 1 选择 — 默认使用更安全的
+  // 将 install_new_copy 设为 default。用户必须有意识地选择 overwrite
+  // 才执行。
   const dirty = !!item?.installation.dirty
   const [strategy, setStrategy] = useState<UpdateStrategy>(dirty ? 'install_new_copy' : 'overwrite')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)

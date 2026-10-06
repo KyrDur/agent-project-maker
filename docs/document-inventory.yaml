@@ -54,9 +54,9 @@ documents:
   - path: README.md
     lifecycle: canonical-current
     status: current
-  - path: README_KO.md
-    lifecycle: canonical-current
-    status: current
+  - path: README_PROTOTYPE_ZH_CN.md
+    lifecycle: historical
+    status: archived
   - path: SECURITY.md
     lifecycle: canonical-current
     status: current
@@ -99,15 +99,6 @@ documents:
   - path: backend/app/seed/system_skill_packages/openwiki/SKILL.md
     lifecycle: reference/spec
     status: reference
-  - path: backend/app/seed/system_skill_packages/patent-hwpx-generator/SKILL.md
-    lifecycle: reference/spec
-    status: reference
-  - path: backend/app/seed/system_skill_packages/patent-hwpx-generator/references/hwpx-xml-guide.md
-    lifecycle: reference/spec
-    status: reference
-  - path: backend/app/seed/system_skill_packages/patent-hwpx-generator/references/patent-writing-guide.md
-    lifecycle: reference/spec
-    status: reference
   - path: backend/app/seed/system_skill_packages/pptx-presentation/SKILL.md
     lifecycle: reference/spec
     status: reference
@@ -134,12 +125,45 @@ documents:
   - path: docs/agent-project-demo.md
     lifecycle: reference/spec
     status: reference
+  - path: docs/agent-project-evaluation-report-mvp.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-lifecycle-mvp.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-phase2.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-phase3.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-phase4.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-phase5.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-practice-acceptance.md
+    lifecycle: generated-evidence
+    status: generated
+  - path: docs/agent-project-release.md
+    lifecycle: historical
+    status: archived
+  - path: docs/agent-project-setup.md
+    lifecycle: canonical-current
+    status: current
+  - path: docs/alibaba-2c2g-deployment.md
+    lifecycle: reference/spec
+    status: reference
   - path: docs/browser-e2e-porting-guide.md
     lifecycle: canonical-current
     status: current
   - path: docs/chat-ui-performance-triage-2026-06-01.md
     lifecycle: decision-record
     status: accepted
+  - path: docs/chinese-cleanup-validation.md
+    lifecycle: generated-evidence
+    status: generated
   - path: docs/deepagents-runtime-source-audit.md
     lifecycle: historical
     status: archived
@@ -353,6 +377,9 @@ documents:
   - path: docs/operator-setup.md
     lifecycle: canonical-current
     status: current
+  - path: docs/p0-stabilization.md
+    lifecycle: historical
+    status: archived
   - path: docs/prompt/1.md/1.md
     lifecycle: canonical-current
     status: current

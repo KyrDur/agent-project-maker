@@ -41,9 +41,9 @@ function marketplaceItem(overrides: Partial<MarketplaceItem> = {}): MarketplaceI
   return {
     id: 'item-1',
     resource_type: 'skill',
-    name: '이미지 생성',
+    name: '图像生成',
     slug: 'image-generation',
-    description: '이미지를 생성합니다.',
+    description: '生成图像。',
     visibility: 'public',
     status: 'published',
     is_system: false,
@@ -89,7 +89,7 @@ describe('MarketplaceCatalogPage', () => {
       data: {
         items: [
           marketplaceItem(),
-          marketplaceItem({ id: 'item-2', name: '문서 요약', slug: 'document-summary' }),
+          marketplaceItem({ id: 'item-2', name: '文档摘要', slug: 'document-summary' }),
         ],
         limit: 24,
         offset: 0,
@@ -104,13 +104,13 @@ describe('MarketplaceCatalogPage', () => {
   it('uses the shared resource layout with one active tab count surface', () => {
     render(<MarketplaceCatalogPage />)
 
-    const activeTab = screen.getByRole('tab', { name: '스킬 2개' })
+    const activeTab = screen.getByRole('tab', { name: '技能 2 项目' })
     expect(activeTab).toHaveAttribute('aria-selected', 'true')
-    expect(within(activeTab).getByText('2개')).toBeInTheDocument()
-    expect(screen.getAllByText('2개')).toHaveLength(1)
+    expect(within(activeTab).getByText('2 项目')).toBeInTheDocument()
+    expect(screen.getAllByText('2 项目')).toHaveLength(1)
 
     expect(screen.getByPlaceholderText('搜索市场...')).toBeInTheDocument()
-    expect(screen.getByText('이미지 생성')).toBeInTheDocument()
-    expect(screen.getByText('문서 요약')).toBeInTheDocument()
+    expect(screen.getByText('图像生成')).toBeInTheDocument()
+    expect(screen.getByText('文档摘要')).toBeInTheDocument()
   })
 })

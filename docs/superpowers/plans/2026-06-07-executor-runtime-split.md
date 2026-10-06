@@ -1184,7 +1184,7 @@ E2E_BACKEND_PORT=8010 \
 E2E_BASE_URL=http://localhost:3010 \
 E2E_API_BASE_URL=http://localhost:8010 \
 E2E_WORKERS=1 \
-pnpm test:e2e -- smoke.spec.ts draft-conversation.spec.ts -g "Dynamic Pages|clicking 새 대화|draft route"
+pnpm test:e2e -- smoke.spec.ts draft-conversation.spec.ts -g "Dynamic Pages|clicking 新对话|draft route"
 ```
 
 Expected: PASS or known skipped cases only.

@@ -1,8 +1,4 @@
-"""Phase 3 — 도구 추천 서브에이전트.
-
-AgentCreationIntent를 분석하여 에이전트에 필요한 도구를 추천한다.
-사용 가능한 도구 카탈로그를 동적으로 주입한다 (AD-7).
-"""
+"""阶段 3：生成模拟工具和文本指南的能力方案。"""
 
 from __future__ import annotations
 
@@ -17,19 +13,17 @@ from app.schemas.builder import AgentCreationIntent, ToolRecommendation
 logger = logging.getLogger(__name__)
 
 _FALLBACK_PROMPT = (
-    "AgentCreationIntent를 분석하여 에이전트에 적합한 도구를 추천한다. "
-    "카탈로그에 있는 도구 또는 mock 환경에서 먼저 사용할 planned 도구를 추천하고, "
-    "JSON 배열로만 응답한다."
+    "分析确认需求，仅推荐模拟接口、文本指南或生成文本指南。仅返回 JSON 数组，简单任务允许空数组。"
 )
 
 SYSTEM_PROMPT = load_prompt("tool_recommender.md") or _FALLBACK_PROMPT
 
 
 def _format_catalog(tools_catalog: list[dict[str, Any]]) -> str:
-    """카탈로그를 텍스트로 포맷한다 — ``Tool`` / ``McpTool`` / ``Skill`` 모두 포함.
+    """将目录格式化为文本 — 包含 ``Tool`` / ``McpTool`` / ``Skill`` 全部类型。
 
-    LLM 이 종류를 인지해 적절한 ``kind`` 를 응답에 포함할 수 있도록 ``[kind]``
-    prefix 를 붙인다.
+    为使 LLM 识别类型并在响应中包含适当的 ``kind``，添加 ``[kind]``
+    prefix。
     """
     if not tools_catalog:
         return tr("no_items_available_9943cb")
@@ -65,8 +59,8 @@ def _build_task_description(
             tr("previous_recommendation_subject_to_modification_b22780", v0=f"{prev_text}")
         )
     if revision_message:
-        # 수정 메시지는 LLM 추론을 override 하는 절대 지시. 원래 intent 보다
-        # 우선하며, 수치/한정 표현 (e.g. "이것만", "X 빼고") 은 정확히 반영.
+        # 修改消息是 override LLM 推理的绝对指令。优先于原始 intent
+        # ，并准确反映数值/限定表达（e.g. "只要这个", "排除 X"）。
         sections.append(
             tr("user_modification_request_absolute_priority_0863f2", v0=f"{revision_message}")
         )
@@ -81,15 +75,15 @@ async def recommend_tools(
     previous_recommendations: list[dict[str, Any]] | None = None,
     revision_message: str | None = None,
 ) -> list[ToolRecommendation]:
-    """Intent 기반으로 항목 (Tool / McpTool / Skill / planned) 을 추천한다.
+    """基于 Intent 推荐条目（Tool / McpTool / Skill / planned）。
 
-    파싱 실패 시 빈 리스트. 카탈로그에 없는 이름이거나 (이름, kind) 조합이
-    카탈로그와 다르면 silent drop 한다. 단, ``planned`` 는 아직 연결되지 않은
-    mock-ready 인터페이스이므로 안전한 이름을 가진 항목을 허용한다.
+    解析失败或能力不可用时抛出错误。目录仅允许文本 Skill；
+    ``planned`` 为模拟接口，``generated_skill`` 为生成的文本指南，
+    两者必须通过名称与内容校验。
 
-    ``previous_recommendations`` + ``revision_message`` 가 함께 주어지면
-    수정 컨텍스트를 LLM 에 전달 — 사용자가 "이것만 / X 빼고" 같은 한정
-    표현을 쓸 때 정확히 반영하도록 프롬프트에 절대 우선 섹션 삽입.
+    同时提供 ``previous_recommendations`` + ``revision_message`` 时，
+    将修改上下文传递给 LLM — 当用户使用 "只要这个 / 排除 X" 等限定
+    表达时，在提示词中插入绝对优先章节以准确反映。
     """
     description = _build_task_description(
         intent,
@@ -98,8 +92,8 @@ async def recommend_tools(
         revision_message=revision_message,
     )
 
-    # 카탈로그 (이름 → 정규 kind) 인덱스. LLM 이 kind 를 누락하거나 잘못 답하면
-    # 카탈로그 값으로 정정해 confirm 단계가 올바른 테이블을 매칭하도록 한다.
+    # 目录（名称 → 规范 kind）索引。如果 LLM 遗漏 kind 或回答错误
+    # ，则用目录值纠正，使 confirm 阶段匹配正确的表。
     name_to_kind: dict[str, str] = {
         t.get("name", "").lower(): t.get("kind", "tool") for t in tools_catalog
     }
@@ -116,23 +110,27 @@ async def recommend_tools(
         recommendations: list[ToolRecommendation] = []
         for item in raw_list:
             if not isinstance(item, dict):
-                continue
+                raise ValueError("Invalid recommendation item")
             name = item.get("tool_name", "")
             canonical_kind = name_to_kind.get(name.lower())
             requested_kind = item.get("kind")
-            if canonical_kind is None and requested_kind == "planned":
+            if canonical_kind is None and requested_kind in {"planned", "generated_skill"}:
                 if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", name):
-                    logger.warning("Filtered out invalid planned item: %s", name)
-                    continue
-                item["kind"] = "planned"
+                    raise ValueError("Invalid simulation tool name")
+                item["kind"] = requested_kind
+                if requested_kind == "generated_skill":
+                    from app.skills.inspector import parse_skill_md
+
+                    parse_skill_md(str(item.get("content") or ""), require_metadata=True)
             elif canonical_kind is None:
-                logger.warning("Filtered out non-existent item: %s", name)
-                continue
+                raise ValueError("Unavailable capability")
             else:
-                # LLM 이 답한 kind 보다 카탈로그 정답 우선 — 환각 방지
+                # 目录正确答案优先于 LLM 回答的 kind — 防止幻觉
+                if canonical_kind != "skill":
+                    raise ValueError("Only simulated tools and text skills are supported")
                 item["kind"] = canonical_kind
             recommendations.append(ToolRecommendation(**item))
         return recommendations
     except (ValueError, TypeError) as exc:
         logger.error("Tool recommendation failed after retries: %s", exc)
-        return []
+        raise ValueError("builder_capability_generation_invalid") from exc

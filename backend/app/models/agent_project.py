@@ -40,6 +40,8 @@ class AgentProject(Base):
     requirements_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     eval_spec_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     report_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    decisions_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    completion_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 

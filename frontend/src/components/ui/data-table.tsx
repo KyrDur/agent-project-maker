@@ -164,11 +164,11 @@ export function DataTable<T>({
     ] as ColumnDef<T, unknown>[]
   }, [columns, enableRowSelection, t])
 
-  // 행 id 파생의 단일 소스 — table(getRowId)·prune·notify가 같은 규칙을 써야
-  // id 공간이 갈리지 않는다. index 폴백은 filtered/data에서 서로 다른 행을
-  // 가리키므로, **data 기준으로 배정한 id를 객체 참조 Map으로 고정**해 table이
-  // filtered의 같은 객체를 받아도 동일 id를 얻게 한다(진짜 단일 id 공간, R7).
-  // index 폴백 자체는 데이터 재정렬에 여전히 불안정 — dev 경고 유지.
+  // 行 id 推导的单一来源 — table(getRowId)·prune·notify 必须使用相同规则，
+  // 否则 id 空间会分裂。index 回退在 filtered/data 中可能指向不同的行，
+  // 因此将**基于 data 分配的 id 固定到对象引用 Map**，即使 table
+  // 接收 filtered 中的同一对象也能得到相同 id（真正的单一 id 空间，R7）。
+  // index 回退本身对数据重排仍不稳定 — 保留 dev 警告。
   const resolveRowId = useMemo(() => {
     if (getRowId) return getRowId
     return (row: T, index: number) => {
@@ -202,31 +202,31 @@ export function DataTable<T>({
     onColumnFiltersChange: setColumnFilters,
     onRowSelectionChange: setRowSelection,
     enableRowSelection,
-    // filtered의 행은 data와 같은 객체 참조 — Map 조회로 data-기준 id를 반환.
+    // filtered 的行与 data 使用相同对象引用 — 通过 Map 查询返回基于 data 的 id。
     getRowId: rowIdOf,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    // 데이터 갱신(refetch/삭제)마다 1페이지로 튕기지 않는다 — controlled
-    // selection을 도입한 사유("정렬·페이지 유지")와 동일 계약. 범위 밖으로
-    // 밀려난 pageIndex는 아래 effect가 마지막 페이지로 클램프한다.
+    // 每次数据更新(refetch/删除)时不要都跳回第 1 页 — 与引入 controlled
+    // selection 的理由("保持排序·分页")采用同一契约。超出范围的
+    // pageIndex 由下面的 effect 限制到最后一页。
     autoResetPageIndex: false,
     initialState: { pagination: { pageSize } },
   })
 
   useEffect(() => {
-    // 로딩 플리커(쿼리 키 변경 → data가 잠시 []) 중에 클램프하면 0페이지로
-    // 리셋돼 autoResetPageIndex:false의 목적(페이지 유지)이 자기모순이 된다 (R5).
+    // 加载中闪烁（查询键变更 → data 短暂为 []）期间若执行限制，会重置到第 0 页，
+    // 与 autoResetPageIndex:false 的目的（保持分页）自相矛盾 (R5)。
     if (loading) return
     const pageCount = table.getPageCount()
     const pageIndex = table.getState().pagination.pageIndex
     if (pageIndex > 0 && pageIndex >= pageCount) {
       table.setPageIndex(Math.max(0, pageCount - 1))
     }
-    // filtered·columnFilters가 pagination 입력의 전부 — table 인스턴스는
-    // 안정적이다. columnFilters 누락 시 FilterDef 셀렉트로 줄어든 표가
-    // 범위 밖 페이지에 좌초한다(빈 바디 + 페이지네이션 숨김, R5).
+    // filtered·columnFilters 是 pagination 输入的全部 — table 实例
+    // 稳定。若缺少 columnFilters，因 FilterDef select 缩小后的表会
+    // 卡在越界页面（空 body + 隐藏 pagination，R5）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, pageSize, columnFilters, loading])
 
@@ -242,7 +242,7 @@ export function DataTable<T>({
   // is id-based: same ids with refreshed row objects do NOT re-notify — treat
   // the callback payload as "which rows", and derive fresh objects from your
   // current data at action time (store ids, not object snapshots).
-  // 반쪽 controlled 결합은 조용히 죽는다 — 개발 모드에서 즉시 경고.
+  // 半受控的 controlled 组合会悄悄失效 — 开发模式下立即警告。
   if (
     process.env.NODE_ENV !== 'production' &&
     (rowSelectionState === undefined) !== (onRowSelectionStateChange === undefined)
@@ -253,13 +253,13 @@ export function DataTable<T>({
     )
   }
 
-  // 데이터에서 빠진 행(외부 필터/삭제)의 선택 키를 정리한다 — 남겨두면
-  // 사용자가 "모두 해제"한 뒤 필터를 풀 때 유령 선택이 부활해 벌크 대상으로
-  // 재등장한다. 정리 후 아래 통지 effect가 시그니처 변화로 부모에 반영한다.
-  // 두 가드(R5): ① loading 중 스킵 — 쿼리 키 변경으로 data가 잠시 []가 되는
-  // 플리커에서 전체 선택이 전멸한다. ② 유효성 기준은 **data prop 전체**다 —
-  // 내부 검색으로 가려진 행(filtered 밖)까지 지우면 검색을 오가며 쌓은 선택
-  // (models 벌크 테스트)과 "숨은 선택 행 이름 열거" 계약이 죽는다.
+  // 清理已从数据中消失的行（外部筛选/删除）的选择键 — 若保留，
+  // 用户"全部取消选择"后再解除筛选时，幽灵选择会复活并重新成为批量对象。
+  // 清理后，下面的通知 effect 会通过签名变化同步给父级。
+  // 两个防护(R5)：① loading 中跳过 — 查询键变化导致 data 短暂 [] 的
+  // 闪烁中，所有选择会被清空。② 有效性基准是**完整 data prop** —
+  // 如果把内部搜索隐藏的行（filtered 外）也删掉，会破坏用户在切换搜索时累积的选择
+  // （models 批量测试）以及"列举隐藏选中行名称"的契约。
   useEffect(() => {
     if (!enableRowSelection || loading) return
     const validIds = new Set(data.map((row, index) => rowIdOf(row, index)))
@@ -270,19 +270,19 @@ export function DataTable<T>({
       for (const key of staleKeys) delete next[key]
       return next
     })
-    // rowSelection/data/loading이 유효성 입력의 전부 — setter·rowIdOf는 렌더 클로저.
+    // rowSelection/data/loading 是有效性输入的全部 — setter·rowIdOf 为 render closure。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, data, loading, enableRowSelection])
 
   const lastSelectionSignature = useRef('')
   useEffect(() => {
-    // loading 중 스킵 — 플리커의 빈 data로 부모에 []를 통지하면 벌크 바가
-    // 깜빡이며 사라졌다 재등장한다 (R5). 로딩이 끝나면 data 변화로 재실행.
+    // loading 中跳过 — 若用闪烁的空 data 向父级通知 []，批量条形会
+    // 闪烁消失后又出现 (R5)。加载中结束后会因 data 变化再次执行。
     if (!enableRowSelection || !onRowSelectionChange || loading) return
-    // payload는 검색-스코프 row model이 아니라 **data prop 전체**에서 도출한다 —
-    // row model 기준이면 내부 검색으로 가린 선택이 부모 상태에서 조용히 빠져,
-    // prune이 보존한 선택과 부모가 실행하는 대상이 발산한다(models "Test
-    // Selected" 과소보고 + AD-5 숨은 이름 열거 불가, R6).
+    // payload 不是从搜索范围内 row model，而是从**完整 data prop**推导 —
+    // 若基于 row model，内部搜索隐藏的选择会悄悄从父级状态中消失，
+    // 导致 prune 保留的选择与父级实际执行对象分叉（models "Test
+    // Selected" 少报 + AD-5 无法列举隐藏名称，R6）。
     const selectedIds: string[] = []
     const selectedRows: T[] = []
     data.forEach((row, index) => {
@@ -296,7 +296,7 @@ export function DataTable<T>({
     if (signature === lastSelectionSignature.current) return
     lastSelectionSignature.current = signature
     onRowSelectionChange(selectedRows)
-    // rowSelection/data/loading이 payload 입력의 전부 — rowIdOf는 렌더 클로저.
+    // rowSelection/data/loading 是 payload 输入的全部 — rowIdOf 为 render closure。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, data, loading, enableRowSelection])
 
@@ -386,10 +386,10 @@ export function DataTable<T>({
                   onClick={
                     onRowClick
                       ? (event) => {
-                          // 셀 안의 인터랙티브 요소(체크박스/버튼/메뉴/링크)
-                          // 클릭은 행 내비게이션으로 승격하지 않는다 — 일부
-                          // 프리미티브는 자식에서 클릭이 시작돼 셀 단위
-                          // stopPropagation만으로는 새지 않는다고 보장 못 한다.
+                          // 单元格中的交互元素（复选框/按钮/菜单/链接）
+                          // 点击不应升级为行导航 — 某些
+                          // 原语的点击始于子项，仅靠单元格级
+                          // stopPropagation 无法保证不会泄漏。
                           const target = event.target as HTMLElement
                           if (
                             target.closest(

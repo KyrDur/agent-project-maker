@@ -1,24 +1,24 @@
-"""Runtime component builder — 에이전트 실행 컴포넌트 조립 오케스트레이터.
+"""Runtime component builder — Agent 执行组件组装编排器。
 
 This module is intentionally a narrow legacy compatibility facade. Its import
 and monkeypatch surface is larger than the leaf-module size target, while new
 implementation belongs in the extracted factory and preparation modules.
 
-BE-S10: 모델 후보/폴백(``runtime.models``), 신뢰성 미들웨어
-(``runtime.reliability``), HiTL 인터럽트 정책(``runtime.interrupts``),
-프롬프트 블록(``runtime.prompts``), 장기 기억 컨텍스트
-(``runtime.memory_context``) 클러스터는 ``app.agent_runtime.runtime``
-패키지로 분리됐고, 이 모듈이 기존 표면을 그대로 재-export 한다.
+BE-S10: 模型候选/回退(``runtime.models``)、可靠性中间件
+(``runtime.reliability``)、HiTL 中断策略(``runtime.interrupts``)、
+提示词块(``runtime.prompts``)、长期记忆上下文
+(``runtime.memory_context``) cluster 已拆分到 ``app.agent_runtime.runtime``
+包中，本模块继续原样 re-export 现有表面。
 
 Patch-contract notes (tests/test_executor.py, tests/test_model_fallback.py,
 tests/test_hitl_middleware.py, tests/test_skill_builder_*.py):
 
-- ``create_chat_model`` 은 이 모듈 attribute 로 남아야 한다 — 테스트가
-  ``runtime_component_builder.create_chat_model`` 을 patch 하고,
-  ``runtime.models`` 의 함수들이 call-time 에 이 모듈을 경유해 조회한다.
+- ``create_chat_model`` 必须保留为本模块 attribute — 测试会
+  patch ``runtime_component_builder.create_chat_model``，并且
+  ``runtime.models`` 的函数会在 call-time 经由本模块查找。
 - ``_build_model_candidates`` / ``_load_memory_context`` /
-  ``_memory_write_policy_for_run`` 은 이 모듈 binding 을 patch 하는 테스트가
-  있으므로, 잔류 함수들은 모듈 global(재-export binding)로 호출한다.
+  ``_memory_write_policy_for_run`` 存在 patch 本模块 binding 的测试，
+  因此残留函数应通过模块 global（re-export binding）调用。
 """
 
 from __future__ import annotations
@@ -754,11 +754,11 @@ async def _prepare_agent(
     is_trigger_mode: bool = False,
     run_id: str | None = None,
 ) -> tuple[Any, list, dict]:
-    """에이전트 빌드 + 설정. stream/invoke 공용.
+    """Agent 构建 + 设置。stream/invoke 共用。
 
-    ``is_trigger_mode=True`` 는 트리거(invoke) 모드 indicator — 사용자가 없으므로
-    (a) ``ask_user`` 도구 미주입(호출 시 영원히 hang), (b) HiTL ``interrupt_on``
-    을 None 으로 강제 override 하여 위험 도구 승인 게이트도 자동 통과.
+    ``is_trigger_mode=True`` 是 trigger(invoke) 模式 indicator — 因为没有用户，
+    (a) 不注入 ``ask_user`` 工具（调用时会永久 hang），(b) 强制将 HiTL ``interrupt_on``
+    override 为 None，使危险工具的审批门控也自动通过。
     """
     prepare_started = time.perf_counter()
     last_mark = prepare_started
@@ -781,7 +781,7 @@ async def _prepare_agent(
     )
     last_mark = time.perf_counter()
 
-    # 5. 에이전트 빌드 — create_deep_agent + checkpointer
+    # 5. Agent 构建 — create_deep_agent + checkpointer
     from app.agent_runtime.checkpointer import get_checkpointer
 
     build_started = time.perf_counter()

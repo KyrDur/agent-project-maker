@@ -40,15 +40,15 @@ def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
 
-_SRT_REQUIREMENT = {
+_HTTP_BASIC_REQUIREMENT = {
     "key": "srt_login",
-    "definition_key": "srt_account",
+    "definition_key": "http_basic",
     "required": True,
-    "label": "SRT账户",
+    "label": "HTTP Basic账户",
     "fields": ["username", "password"],
     "injection": "env",
     "scope": "user",
-    "env_map": {"SRT_USERNAME": "username", "SRT_PASSWORD": "password"},
+    "env_map": {"HTTP Basic_USERNAME": "username", "HTTP Basic_PASSWORD": "password"},
 }
 
 
@@ -74,7 +74,10 @@ def _seed_snapshot(storage_path: Path) -> None:
 
     storage_path.mkdir(parents=True, exist_ok=True)
     (storage_path / "SKILL.md").write_text(
-        ("---\nname: srt-booker\ndescription: SRT auto-book\nversion: '0.1.0'\n---\n\nbody\n"),
+        (
+            "---\nname: basic-workflow\ndescription: HTTP Basic workflow\n"
+            "version: '0.1.0'\n---\n\nbody\n"
+        ),
         encoding="utf-8",
     )
 
@@ -99,9 +102,9 @@ async def _make_published_skill_item(
         owner_user_id=owner_id,
         is_system=False,
         is_listed=True,
-        name="SRT Booker",
+        name="HTTP Basic Booker",
         slug=f"srt-booker-{uuid.uuid4().hex[:8]}",
-        description="SRT auto-book",
+        description="HTTP Basic auto-book",
         visibility="public",
         status="published",
         moderation_status="approved",
@@ -197,7 +200,7 @@ async def test_install_with_missing_required_binding_marks_needs_setup(
         item, _ = await _make_published_skill_item(
             db,
             storage_path=version_dir,
-            requirements=[_SRT_REQUIREMENT],
+            requirements=[_HTTP_BASIC_REQUIREMENT],
         )
         await db.commit()
 
@@ -218,7 +221,7 @@ async def test_install_with_binding_supplied_is_active(
     cred = Credential(
         id=uuid.uuid4(),
         user_id=TEST_USER_ID,
-        definition_key="srt_account",
+        definition_key="http_basic",
         name="my-srt",
         data_encrypted="opaque",
         key_id="kv1",
@@ -235,7 +238,7 @@ async def test_install_with_binding_supplied_is_active(
         item, _ = await _make_published_skill_item(
             db,
             storage_path=version_dir,
-            requirements=[_SRT_REQUIREMENT],
+            requirements=[_HTTP_BASIC_REQUIREMENT],
         )
         await db.commit()
 
@@ -285,7 +288,7 @@ async def test_install_reuse_applies_missing_credential_binding(
     credential = Credential(
         id=uuid.uuid4(),
         user_id=TEST_USER_ID,
-        definition_key="srt_account",
+        definition_key="http_basic",
         name="setup-srt",
         data_encrypted="opaque",
         key_id="kv1",
@@ -301,7 +304,7 @@ async def test_install_reuse_applies_missing_credential_binding(
         item, _ = await _make_published_skill_item(
             db,
             storage_path=tmp_path / "setup-v1",
-            requirements=[_SRT_REQUIREMENT],
+            requirements=[_HTTP_BASIC_REQUIREMENT],
         )
         await db.commit()
 

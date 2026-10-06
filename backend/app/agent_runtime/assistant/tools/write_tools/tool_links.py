@@ -1,4 +1,4 @@
-"""Assistant 쓰기 도구 — 도구/MCP 도구 연결 그룹 (add/remove)."""
+"""Assistant 写入工具 — 工具/MCP 工具连接组（add/remove）。"""
 
 from __future__ import annotations
 
@@ -16,15 +16,15 @@ from app.models.tool import AgentToolLink, Tool
 
 
 def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
-    """도구/MCP 도구 연결 도구 4개를 생성한다."""
+    """创建 4 个工具/MCP 工具连接工具。"""
 
     # ------ 1. add_tool_to_agent ------
 
     async def add_tool_to_agent(tool_names: list[str]) -> str:
-        """에이전트에 도구를 추가합니다 (배치 지원).
+        """向智能体添加工具（支持批量）。
 
         Args:
-            tool_names: 추가할 도구 이름 목록
+            tool_names: 要添加的工具名称列表
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -56,10 +56,10 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 2. remove_tool_from_agent ------
 
     async def remove_tool_from_agent(tool_names: list[str]) -> str:
-        """에이전트에서 도구를 제거합니다 (배치 지원).
+        """从智能体移除工具（支持批量）。
 
         Args:
-            tool_names: 제거할 도구 이름 목록
+            tool_names: 要移除的工具名称列表
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -81,10 +81,10 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 2-1. add_mcp_tool_to_agent ------
 
     async def add_mcp_tool_to_agent(mcp_tool_names: list[str]) -> str:
-        """에이전트에 MCP 도구를 추가합니다 (배치 지원).
+        """向智能体添加 MCP 工具（支持批量）。
 
         Args:
-            mcp_tool_names: 추가할 MCP 도구 이름 목록 (서버명 아님 — 도구명).
+            mcp_tool_names: 要添加的 MCP 工具名称列表（不是服务器名 — 而是工具名）。
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)
@@ -96,7 +96,7 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             if not lower_names:
                 return tr("all_mcp_tools_are_already_c6de94")
 
-            # MCP 도구는 사용자 소유 server에 묶여 있음 → server.user_id 필터.
+            # MCP 工具绑定到用户所有的 server → 按 server.user_id 过滤。
             result = await session.execute(
                 select(McpTool)
                 .join(McpServer, McpServer.id == McpTool.server_id)
@@ -119,10 +119,10 @@ def build_tool_link_tools(ctx: WriteToolContext) -> list[StructuredTool]:
     # ------ 2-2. remove_mcp_tool_from_agent ------
 
     async def remove_mcp_tool_from_agent(mcp_tool_names: list[str]) -> str:
-        """에이전트에서 MCP 도구를 제거합니다 (배치 지원).
+        """从智能体移除 MCP 工具（支持批量）。
 
         Args:
-            mcp_tool_names: 제거할 MCP 도구 이름 목록.
+            mcp_tool_names: 要移除的 MCP 工具名称列表。
         """
         async with ctx.session_factory() as session:
             agent = await get_agent_with_session(ctx, session)

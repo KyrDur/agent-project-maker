@@ -68,7 +68,7 @@ function Harness({
           {
             kind: 'file',
             id: '8f65c7bb-7092-43f4-a215-8e603101d114',
-            label: '회의록',
+            label: '会议记录',
           },
         ]}
         selectedResourceCount={0}
@@ -108,13 +108,13 @@ describe('ChatComposerTriggers official trigger integration', () => {
     expect(execute).toHaveBeenCalledOnce()
   })
 
-  it('closes with Escape and does not execute Enter while Korean IME is composing', async () => {
+  it('closes with Escape and does not execute Enter while Chinese IME is composing', async () => {
     const execute = vi.fn()
     render(<Harness commands={[enabledCommand(execute)]} />)
     const input = screen.getByRole('textbox', { name: 'Message' })
 
     fireEvent.compositionStart(input)
-    fireEvent.change(input, { target: { value: '/search 한', selectionStart: 9, selectionEnd: 9 } })
+    fireEvent.change(input, { target: { value: '/search 中', selectionStart: 9, selectionEnd: 9 } })
     fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
     expect(execute).not.toHaveBeenCalled()
     fireEvent.compositionEnd(input)
@@ -145,7 +145,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     render(<Harness commands={[]} onResourceSelect={onResourceSelect} />)
     const input = screen.getByRole('textbox', { name: 'Message' })
 
-    fireEvent.change(input, { target: { value: '@회', selectionStart: 2, selectionEnd: 2 } })
+    fireEvent.change(input, { target: { value: '@会', selectionStart: 2, selectionEnd: 2 } })
     await waitFor(() => expect(screen.getByRole('listbox', { name: 'Resources' })).toBeVisible())
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -153,7 +153,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     expect(onResourceSelect).toHaveBeenCalledWith({
       kind: 'file',
       id: '8f65c7bb-7092-43f4-a215-8e603101d114',
-      label: '회의록',
+      label: '会议记录',
     })
     expect(input).toHaveValue(' ')
   })

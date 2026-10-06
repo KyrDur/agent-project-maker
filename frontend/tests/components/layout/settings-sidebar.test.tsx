@@ -105,7 +105,7 @@ describe('SettingsSidebar collapsed rail behavior', () => {
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('collapsed')
 
-    await user.click(screen.getByRole('link', { name: '公司简介' }))
+    await user.click(screen.getByRole('link', { name: '个人资料' }))
 
     expect(screen.getByTestId('settings-sidebar-state')).toHaveTextContent('expanded')
   })

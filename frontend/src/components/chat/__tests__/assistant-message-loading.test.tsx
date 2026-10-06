@@ -182,7 +182,7 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(screen.getByTestId('run-activity-strip')).toBeInTheDocument()
-    expect(screen.getByText('web_search 실행 중')).toBeInTheDocument()
+    expect(screen.getByText('运行web_search')).toBeInTheDocument()
     expect(screen.queryByTestId('witty-loading')).not.toBeInTheDocument()
   })
 
@@ -229,7 +229,7 @@ describe('StreamingMessageLoadingIndicator', () => {
     expect(screen.getByText('文件')).toBeInTheDocument()
     // ...but the todos are not duplicated here — the assistant message's
     // persistent "Plan" card (write_todos tool-ui) is their single source.
-    expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
+    expect(screen.queryByText('任务列表')).not.toBeInTheDocument()
     expect(screen.queryByText('Plan work')).not.toBeInTheDocument()
     expect(screen.queryByTestId('witty-loading')).not.toBeInTheDocument()
   })
@@ -245,14 +245,14 @@ describe('StreamingMessageLoadingIndicator', () => {
       />,
     )
 
-    expect(screen.queryByText('작업 목록')).not.toBeInTheDocument()
+    expect(screen.queryByText('任务列表')).not.toBeInTheDocument()
     expect(screen.getByTestId('witty-loading')).toBeInTheDocument()
   })
 
   it('renders nothing outside the active streaming message', () => {
-    // 완료된 메시지의 실제 형태: convert-message는 streaming일 때만
-    // isStreamingMessage=true를 심고 완료 시엔 필드를 아예 비운다(false를 쓰지 않음).
-    // status도 running이 아니므로 두 신호 모두 꺼져 있다.
+    // 已完成消息的真实形态：convert-message 只在 streaming 时
+    // 设置 isStreamingMessage=true，完成后会直接省略该字段（不会写 false）。
+    // status 也不是 running，因此两个信号都处于关闭状态。
     mocks.state.message.metadata = { custom: { isStreamingMessage: undefined } }
     mocks.state.message.status = { type: 'complete' }
 
@@ -262,10 +262,10 @@ describe('StreamingMessageLoadingIndicator', () => {
   })
 
   it('M6 — a completed message with neither metadata flag nor running status is not streaming', () => {
-    // sticky/converted 재사용으로 완료된 메시지에 stale running이 남을 수 있다는
-    // 우려에 대한 회귀 테스트. production 경로는 완료 메시지에 isStreamingMessage:false를
-    // 쓰지 않고 metadata.custom 자체가 없을 수 있으므로, 실제 발생 가능한 형태(필드 부재 +
-    // running 아님)에서 streaming으로 오탐하지 않음을 고정한다.
+    // 回归测试用于覆盖担忧：sticky/converted 复用可能在已完成消息中残留 stale running。
+    // production 路径不会在已完成消息中写 isStreamingMessage:false，
+    // metadata.custom 本身也可能不存在，因此固定验证在真实可发生的形态（字段缺失 +
+    // 非 running）下不会误判为 streaming。
     mocks.state.message.metadata = undefined
     mocks.state.message.status = { type: 'complete' }
 
@@ -303,8 +303,8 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(mocks.useSubagentProgressSummary).toHaveBeenCalledWith(['tc-current'])
-    expect(screen.getByText('서브 에이전트 1/1 완료')).toBeInTheDocument()
-    expect(screen.queryByText('서브 에이전트 2/2 완료')).not.toBeInTheDocument()
+    expect(screen.getByText('子智能体 1/1 完成')).toBeInTheDocument()
+    expect(screen.queryByText('2/2 子 智能体 完成')).not.toBeInTheDocument()
   })
 
   it('renders background subagent tasks as activity rows distinct from inline progress cards', () => {
@@ -322,13 +322,11 @@ describe('StreamingMessageLoadingIndicator', () => {
     )
 
     expect(screen.getByTestId('run-activity-strip')).toBeInTheDocument()
-    expect(screen.getByText('Background writer 작업 중')).toBeInTheDocument()
-    expect(screen.getByText('Background writer 작업 중').closest('[data-kind]')).toHaveAttribute(
+    expect(screen.getByText('Background writer 正在工作')).toBeInTheDocument()
+    expect(screen.getByText('Background writer 正在工作').closest('[data-kind]')).toHaveAttribute(
       'data-kind',
       'background_subagent',
     )
-    expect(
-      screen.queryByRole('progressbar', { name: '子智能体进度' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar', { name: '子智能体进度' })).not.toBeInTheDocument()
   })
 })

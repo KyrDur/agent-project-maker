@@ -61,7 +61,7 @@ async def _seed_full_setup(
             user_id=user.id,
             trigger_type="interval",
             schedule_config={"interval_minutes": 10},
-            input_message="뉴스 검색해줘",
+            input_message="帮我搜索新闻",
             status=trigger_status,
             run_count=0,
         )
@@ -83,7 +83,7 @@ async def test_execute_trigger_success():
     with (
         patch(
             "app.agent_runtime.trigger_executor.execute_agent_invoke",
-            return_value="뉴스 결과입니다",
+            return_value="这是新闻结果",
         ),
         patch(
             "app.agent_runtime.trigger_executor.async_session",
@@ -114,7 +114,7 @@ async def test_execute_trigger_success():
         assert run.duration_ms is not None
         assert run.duration_ms >= 0
         assert run.thread_id == str(run.conversation_id)
-        assert run.output_preview == "뉴스 결과입니다"
+        assert run.output_preview == "这是新闻结果"
 
 
 @pytest.mark.asyncio
@@ -409,7 +409,7 @@ async def test_execute_trigger_passes_messages():
     # args: (cfg: AgentConfig, messages_history: list)
     assert captured_args[0].provider_api_keys == {"openai": "test-api-key"}
     assert captured_args[0].runtime_policy.source == "legacy_compat"
-    assert captured_args[1] == [{"role": "user", "content": "뉴스 검색해줘"}]
+    assert captured_args[1] == [{"role": "user", "content": "帮我搜索新闻"}]
     assert captured_kwargs["moldy_source"] == "trigger"
     assert captured_kwargs["run_id"]
 
@@ -438,7 +438,7 @@ async def test_execute_trigger_creates_conversation():
         convs = result.scalars().all()
         assert len(convs) == 1
         assert convs[0].title is not None
-        assert "스케줄:" in convs[0].title
+        assert "计划:" in convs[0].title
         assert convs[0].unread_count == 1
         assert convs[0].last_activity_source == "schedule"
 
@@ -480,7 +480,7 @@ async def test_execute_trigger_selected_conversation_uses_target_conversation():
     """selected_conversation policy should write into the configured conversation."""
     trigger_id, agent_id = await _seed_full_setup()
     async with TestSession() as db:
-        target = Conversation(agent_id=agent_id, title="기존 대화")
+        target = Conversation(agent_id=agent_id, title="现有对话")
         db.add(target)
         await db.flush()
         trigger = await db.get(AgentTrigger, trigger_id)
@@ -614,7 +614,7 @@ async def test_execute_trigger_passes_user_message():
         await execute_trigger(str(trigger_id))
 
     # args: (cfg: AgentConfig, messages_history: list)
-    assert captured_args[1] == [{"role": "user", "content": "뉴스 검색해줘"}]
+    assert captured_args[1] == [{"role": "user", "content": "帮我搜索新闻"}]
 
 
 # ---------------------------------------------------------------------------

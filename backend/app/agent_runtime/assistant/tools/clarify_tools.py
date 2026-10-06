@@ -1,6 +1,6 @@
-"""Assistant 명확화 도구 — ask_clarifying_question (LangGraph interrupt 패턴).
+"""Assistant 澄清工具 — ask_clarifying_question（LangGraph interrupt 模式）。
 
-사용자에게 옵션 3개 + 직접입력으로 질문을 보낸다.
+向用户发送 3 个选项 + 直接输入的问题。
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from app.agent_runtime.builder_i18n import tr
 
 
 def build_clarify_tools() -> list[StructuredTool]:
-    """Assistant 명확화 도구 1개를 생성한다."""
+    """创建 1 个 Assistant 澄清工具。"""
 
     async def ask_clarifying_question(
         question: str,
@@ -21,16 +21,16 @@ def build_clarify_tools() -> list[StructuredTool]:
         option_2: str,
         option_3: str,
     ) -> str:
-        """사용자에게 명확화 질문을 합니다 (옵션 3개 + 직접 입력).
+        """向用户提出澄清问题（3 个选项 + 直接输入）。
 
-        모호한 요청에는 추측 대신 이 도구를 사용하세요.
-        한 응답에 정확히 1개 질문만 허용됩니다.
+        对模糊请求请使用此工具，而不是自行猜测。
+        每次响应只允许提出恰好 1 个问题。
 
         Args:
-            question: 사용자에게 물어볼 질문
-            option_1: 첫 번째 선택지
-            option_2: 두 번째 선택지
-            option_3: 세 번째 선택지
+            question: 要向用户询问的问题
+            option_1: 第一个选项
+            option_2: 第二个选项
+            option_3: 第三个选项
         """
         return json.dumps(
             {

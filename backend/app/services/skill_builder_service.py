@@ -66,7 +66,7 @@ async def attach_chat_runtime(
     conversation_id: uuid.UUID,
     draft_workspace_path: str,
 ) -> SkillBuilderSession:
-    """v2 시작 플로우 — 빌더 대화/워크스페이스를 붙이고 상태를 ACTIVE로 올린다."""
+    """v2 启动流程 — 连接 builder 对话/工作区，并将状态提升为 ACTIVE。"""
 
     session.conversation_id = conversation_id
     session.draft_workspace_path = ensure_relative(draft_workspace_path)
@@ -82,7 +82,7 @@ async def record_tool_consents(
     *,
     tool_names: list[str],
 ) -> SkillBuilderSession:
-    """AD-4 스코프드 동의 기록 — 도구명 → 동의 메타데이터 (세션 단위)."""
+    """AD-4 scoped consent 记录 — 工具名 → 同意元数据（会话级）。"""
 
     consents = dict(session.tool_consents or {})
     granted_at = datetime.now(UTC).isoformat()
@@ -98,7 +98,7 @@ async def resolve_session_agent_id(
     db: AsyncSession,
     session: SkillBuilderSession,
 ) -> uuid.UUID | None:
-    """빌더 대화의 히든 에이전트 id (대화 미연결/삭제 시 None)."""
+    """builder 对话的隐藏 Agent id（对话未连接/已删除时为 None）。"""
 
     if session.conversation_id is None:
         return None
@@ -130,20 +130,20 @@ async def list_sessions(
     status: str | None = None,
     limit: int = 20,
 ) -> list[SkillBuilderSession]:
-    """사용자의 빌더 세션 목록 (스튜디오 빌더 탭/인덱스, Phase 2).
+    """用户的 builder 会话列表（Studio builder tab/index，Phase 2）。
 
-    ``skill_id``는 improve 원본(``source_skill_id``)과 create 산출물
-    (``finalized_skill_id``) 양쪽에 매칭한다 — "이 스킬의 빌더 이력"을
-    한 질의로 잡기 위함(인덱스 양쪽 존재). 상태 필터가 없으면 GC 대상인
-    ``abandoned``를 기본 제외한다 — 대화가 SET NULL로 끊겨 재개 불가한
-    세션을 클릭 가능한 행으로 노출하지 않기 위함(명시 status로는 조회 가능).
+    ``skill_id`` 同时匹配 improve 源（``source_skill_id``）与 create 产物
+    （``finalized_skill_id``）— 为了用一次查询获取"该 skill 的 builder 历史"
+    （两侧都有索引）。若没有状态过滤器，默认排除 GC 对象
+    ``abandoned`` — 对话通过 SET NULL 断开后无法恢复，不应把这类
+    会话显示为可点击行（显式指定 status 时仍可查询）。
     """
 
     stmt = (
         select(SkillBuilderSession)
         .where(SkillBuilderSession.user_id == user_id)
-        # updated_at은 트랜잭션/초 단위로 동률이 나므로 id 보조 정렬로 절단
-        # 경계 행의 플랩을 막는다 (R5).
+        # updated_at 在事务/秒粒度可能相同，因此用 id 辅助排序截断
+        # 防止边界行 flap（R5）。
         .order_by(desc(SkillBuilderSession.updated_at), desc(SkillBuilderSession.id))
         .limit(limit)
     )
@@ -305,8 +305,8 @@ async def _get_owned_skill(
 
 
 def _role_for_path(path: str) -> str:
-    # 정본은 skill_draft_workspace.role_for_path — 드래프트 어댑터와 스냅샷
-    # 로더가 같은 role 규칙을 쓰도록 위임한다 (지연 import: 모듈 로드 순환 방지).
+    # 正本是 skill_draft_workspace.role_for_path — 草稿适配器与 snapshot
+    # loader 委托它使用同一套 role 规则（延迟 import：避免模块加载循环）。
     from app.services.skill_draft_workspace import role_for_path
 
     return role_for_path(path)

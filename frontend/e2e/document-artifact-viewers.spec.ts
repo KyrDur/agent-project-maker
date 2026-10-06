@@ -21,7 +21,6 @@ const SKILL_SLUGS = [
   'docx-document',
   'xlsx-spreadsheet',
   'pptx-presentation',
-  'patent-hwpx-generator',
 ] as const
 
 interface MarketplaceItem {
@@ -201,10 +200,10 @@ async function sendMessage(page: Page, text: string): Promise<void> {
 }
 
 async function approveExecuteInSkill(page: Page): Promise<void> {
-  await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+  await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
     timeout: 30_000,
   })
-  const approveButton = page.getByRole('button', { name: /승인|Approve/ }).last()
+  const approveButton = page.getByRole('button', { name: /批准|Approve/ }).last()
   await expect(approveButton).toBeVisible({ timeout: UI_TIMEOUT_MS })
   await approveButton.click()
   await expect(approveButton).toBeHidden({ timeout: 30_000 })
@@ -279,7 +278,7 @@ async function waitForRunStatus(
 }
 
 async function openArtifactViewer(page: Page, filename: string): Promise<void> {
-  await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+  await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   const artifactButton = page.getByRole('button', { name: new RegExp(filename) }).last()
   await expect(artifactButton).toBeVisible({ timeout: 20_000 })
   await artifactButton.click()
@@ -344,7 +343,7 @@ async function verifyRightRailResize(page: Page, filename: string): Promise<void
   const rail = page.locator('[data-slot="chat-right-rail"]').first()
   const chatPanel = page.locator('section.moldy-panel').first()
   const handle = page.getByRole('separator', {
-    name: /파일 패널 크기 조절|Resize files panel/,
+    name: /调整文件面板大小|Resize files panel/,
   })
 
   await expect(artifactViewerPanel(page, filename)).toBeVisible()
@@ -361,7 +360,7 @@ async function verifyRightRailResize(page: Page, filename: string): Promise<void
   await dragHorizontally(page, handle, 420)
   await expect.poll(() => locatorWidth(rail)).toBeLessThan(20)
 
-  await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+  await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   await expect.poll(() => locatorWidth(rail)).toBeGreaterThan(stableExpandedWidth - 8)
 }
 
@@ -404,7 +403,7 @@ test.describe('Document artifact viewers', () => {
         verify: async (viewerPage) => {
           await expect(
             artifactViewerPanel(viewerPage, 'moldy-docx-demo.docx')
-              .getByText('Moldy 문서 생성 검증 보고서')
+              .getByText('Moldy 文档生成验证报告')
               .first(),
           ).toBeVisible({ timeout: 30_000 })
         },
@@ -415,7 +414,7 @@ test.describe('Document artifact viewers', () => {
         extension: 'xlsx',
         verify: async (viewerPage) => {
           const panel = artifactViewerPanel(viewerPage, 'moldy-xlsx-demo.xlsx')
-          await expect(panel.getByText('검증요약').first()).toBeVisible({
+          await expect(panel.getByText('验证摘要').first()).toBeVisible({
             timeout: 30_000,
           })
           await expect(panel.getByText('JS runner').first()).toBeVisible()
@@ -438,32 +437,6 @@ test.describe('Document artifact viewers', () => {
             .toBeGreaterThan(100)
         },
       },
-      {
-        marker: 'E2E_HWPX',
-        filename: 'moldy-patent-demo.hwpx',
-        extension: 'hwpx',
-        verify: async (viewerPage) => {
-          const image = artifactViewerPanel(viewerPage, 'moldy-patent-demo.hwpx').getByRole('img', {
-            name: 'moldy-patent-demo.hwpx',
-          })
-          await expect(image).toBeVisible({ timeout: 30_000 })
-          await expect
-            .poll(
-              () =>
-                image.evaluate((element) => {
-                  const img = element as HTMLImageElement
-                  return { width: img.naturalWidth, height: img.naturalHeight }
-                }),
-              { timeout: 30_000, intervals: [500, 1000, 2000] },
-            )
-            .toEqual(expect.objectContaining({ width: expect.any(Number) }))
-          const size = await image.evaluate((element) => {
-            const img = element as HTMLImageElement
-            return img.naturalWidth * img.naturalHeight
-          })
-          expect(size).toBeGreaterThan(10_000)
-        },
-      },
     ]
 
     await page.goto(`/agents/${setup.agentId}/conversations/${setup.conversationId}`)
@@ -474,7 +447,7 @@ test.describe('Document artifact viewers', () => {
     await expect(page.getByText('Document Artifact Viewer E2E').first()).toBeVisible()
 
     for (const item of cases) {
-      await sendMessage(page, `${item.marker} 문서를 생성해서 artifact viewer로 확인해줘.`)
+      await sendMessage(page, `${item.marker} 生成文档后用 artifact viewer 确认一下。`)
       await approveExecuteInSkill(page)
       const artifact = await waitForArtifactByName(api, setup.conversationId, item.filename)
       expect(artifact.extension).toBe(item.extension)
@@ -506,7 +479,7 @@ test.describe('Document artifact viewers', () => {
       await page.waitForLoadState('domcontentloaded')
       await sendMessage(
         page,
-        'E2E_DOCX E2E_ARTIFACT_SLOW_FINAL 문서를 생성한 뒤 최종 답변 중 취소할게.',
+        'E2E_DOCX E2E_ARTIFACT_SLOW_FINAL 生成文档后，我会在最终回答过程中取消。',
       )
       await approveExecuteInSkill(page)
 

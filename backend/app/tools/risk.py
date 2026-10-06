@@ -52,11 +52,11 @@ _READ_ONLY_MCP_NAME_PREFIXES = (
     "select_",
 )
 _READ_ONLY_MCP_DESCRIPTION_HINTS = (
-    "조회",
+    "查询",
     "列表",
     "搜索",
     "打开详情",
-    "현황",
+    "现状",
     "read",
     "list",
     "search",

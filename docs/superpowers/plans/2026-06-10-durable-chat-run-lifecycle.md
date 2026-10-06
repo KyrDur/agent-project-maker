@@ -781,7 +781,7 @@ Cancel scenario:
 4. Assert cancel request is sent.
 5. Assert spinner shows canceling briefly or the Stop button disables.
 6. Assert spinner disappears.
-7. Assert partial answer remains with "중단됨" / "Canceled" status.
+7. Assert partial answer remains with "已中断" / "Canceled" status.
 8. Assert `GET /runs/{run_id}` returns `status="canceled"`.
 
 HITL scenario:
@@ -1200,46 +1200,46 @@ Recommended commit order:
 
 ## Implementation Status and Deviations (2026-06-11)
 
-P1~P6 구현이 `codex/chat-run-lifecycle` 브랜치에 반영되었다. 코드 리뷰 3라운드
-(major 4건·minor 5건 수정, 적대적 재검증 통과)를 거쳤으며, 아래 편차와 후속
-항목이 확정되었다.
+P1~P6 实现已反映到 `codex/chat-run-lifecycle` 分支。经过 3 轮 code review
+（修复 major 4 项·minor 5 项，并通过对抗性复验），以下偏差与后续
+事项已确认。
 
-계획 대비 의도된 편차:
+相较计划的有意偏差：
 
-- `message_end(status=canceled)` 는 AG-UI `RUN_CANCELLED` 대신
-  `TEXT_MESSAGE_END` + `RUN_FINISHED(result.status="canceled")` 로 매핑.
-  공식 AG-UI core event 에 `RUN_CANCELLED` 가 없어 P6.0 검증 단계에서 조정
-  (ADR-020 매핑 표가 기준).
-- `frontend/src/lib/stores/chat-runs.ts`(Jotai overlay) 대신 순수 헬퍼
-  `frontend/src/lib/chat-runs/status.ts` + 기존 `chat-store.ts` 의
-  `chatCancelInFlightAtom` 으로 구현. 서버 `conversation_runs` 가 유일한
-  source of truth 라는 원칙은 동일하게 유지.
-- `reconnect-indicator.tsx` 의 4-상태(reconnecting/detached/canceling/stale)
-  세분화는 미적용. reconnecting/idle + stale toast + Stop 비활성 + canceled
-  notice 조합으로 제품 요구사항을 충족 — UX 필요가 관찰되면 후속 진행.
-- 테스트 위치 편차: `tests/integration/test_conversation_ag_ui_stream.py` 의
-  커버리지는 `tests/test_conversation_runs_router.py` 에,
-  `use-chat-runtime-cancel.test.tsx` 는 `use-chat-runtime-commit.test.tsx` 에 포함.
+- `message_end(status=canceled)` 不映射为 AG-UI `RUN_CANCELLED`，而是
+  `TEXT_MESSAGE_END` + `RUN_FINISHED(result.status="canceled")`。
+  官方 AG-UI core event 中没有 `RUN_CANCELLED`，因此在 P6.0 验证阶段调整
+  （以 ADR-020 映射表为准）。
+- 不使用 `frontend/src/lib/stores/chat-runs.ts`（Jotai overlay），改用纯 helper
+  `frontend/src/lib/chat-runs/status.ts` + 现有 `chat-store.ts` 的
+  `chatCancelInFlightAtom` 实现。服务器 `conversation_runs` 是唯一
+  source of truth 的原则保持不变。
+- 未应用 `reconnect-indicator.tsx` 的 4 状态（reconnecting/detached/canceling/stale）
+  细分。通过 reconnecting/idle + stale toast + 禁用 Stop + canceled
+  notice 的组合满足产品要求 — 如果观察到 UX 需求再后续推进。
+- 测试位置偏差：`tests/integration/test_conversation_ag_ui_stream.py` 的
+  覆盖位于 `tests/test_conversation_runs_router.py`，
+  `use-chat-runtime-cancel.test.tsx` 则包含在 `use-chat-runtime-commit.test.tsx` 中。
 
-계획 외 보강(리뷰 라운드에서 추가):
+计划外加强（review 轮次中追加）：
 
-- 프론트 attach/send race 가드(`streamInFlightRef`, `consumedRunIdRef`),
-  unmount 시 stream guard 토큰 무효화.
-- broker ring buffer 에서 `last_event_id` evict 시 silent gap 대신
-  `stale(reason="broker_gap")` 마커 + buffer 잔여분 replay
-  (Moldy `/runs/{id}/stream` 과 `/ag-ui-stream` 공통).
-- run cancel 시 skill subprocess 가 고아로 남지 않도록 `skill_executor.py` 에
-  CancelledError kill 경로 추가 (P3.2 cancel propagation 충족).
-- F5 refresh 복원 E2E 시나리오 추가 (P4 게이트).
-- `streamSSEPost`(parse-sse.ts) abort deadlock 수정: fetch-event-source 는 input
-  signal abort 시 promise 를 reject 가 아니라 resolve 하므로 bridge 의 catch 만으로는
-  closed 가 세워지지 않아 소비 루프가 영원히 대기 — Stop 후 isRunning 미해제/취소
-  notice 미표시의 근본 원인. abort 를 AbortError 로 변환하는 finally 추가
-  (P3 cancel E2E 게이트가 이 수정으로 처음 통과).
+- 前端 attach/send race guard（`streamInFlightRef`, `consumedRunIdRef`），
+  unmount 时使 stream guard token 失效。
+- broker ring buffer 中 `last_event_id` 被 evict 时，不再 silent gap，而是
+  `stale(reason="broker_gap")` marker + replay buffer 剩余部分
+  （Moldy `/runs/{id}/stream` 与 `/ag-ui-stream` 共用）。
+- run cancel 时为避免 skill subprocess 成为孤儿，在 `skill_executor.py` 中
+  添加 CancelledError kill 路径（满足 P3.2 cancel propagation）。
+- 添加 F5 refresh 恢复 E2E 场景（P4 gate）。
+- 修复 `streamSSEPost`（parse-sse.ts）abort deadlock：fetch-event-source 在 input
+  signal abort 时 promise 不是 reject 而是 resolve，因此仅靠 bridge 的 catch
+  不会设置 closed，消费循环会永久等待 — 这是 Stop 后 isRunning 未释放/取消
+  notice 不显示的根本原因。添加 finally，将 abort 转换为 AbortError
+  （P3 cancel E2E gate 因此修复后首次通过）。
 
-남은 후속 항목 (ag_ui 플래그 활성화 전 필수):
+剩余后续事项（启用 ag_ui flag 前必须完成）：
 
-- [ ] P6 E2E 이중 프로토콜 게이트 — `NEXT_PUBLIC_CHAT_STREAM_PROTOCOL=ag_ui` 로
-      lifecycle spec 을 한 번 더 통과시키는 것을 플래그 활성화 PR 의 게이트로 한다.
-- [ ] AG-UI gap degrade 시 합성 `TEXT_MESSAGE_START` 주입 검토
-      (ADR-020 Tradeoffs 의 한계 항목).
+- [ ] P6 E2E 双协议 gate — 使用 `NEXT_PUBLIC_CHAT_STREAM_PROTOCOL=ag_ui`
+      再跑一次 lifecycle spec，作为启用 flag 的 PR gate。
+- [ ] AG-UI gap degrade 时研究注入合成 `TEXT_MESSAGE_START`
+      （ADR-020 Tradeoffs 的限制项）。

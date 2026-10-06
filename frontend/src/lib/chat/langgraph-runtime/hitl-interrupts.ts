@@ -88,7 +88,7 @@ function parseReviewConfig(value: unknown): ReviewConfig | null {
     .map((item) => decisionType(item))
     .filter((item): item is DecisionType => item !== null)
   if (allowed.length === 0) return null
-  // 스킬 빌더 AD-4 — 백엔드 wire가 주입한 세션 동의 플래그를 보존한다.
+  // Skill builder AD-4——保留 backend wire 注入的会话同意标记。
   const sessionConsent = value.session_consent_eligible === true
   return sessionConsent
     ? { action_name: actionName, allowed_decisions: allowed, session_consent_eligible: true }
@@ -301,12 +301,12 @@ function hydratedRequiresActionMessage(
 }
 
 /**
- * IN-PLACE MUTATION 계약: `draft`는 **호출자 소유의 shallow copy**여야 한다.
- * 이 함수는 매칭되는 메시지 슬롯을 새 메시지 객체로 교체(slot 단위 immutable
- * replace)하지만 배열 자체는 in place로 수정한다. 유일한 호출자
- * (`appendInterruptToolCallMessages`)가 `[...messages]`로 만든 사본을 넘기므로
- * 원본 인자 배열은 변형되지 않는다. 다른 위치에서 호출할 때도 반드시 사본을
- * 넘길 것 — 원본 배열을 그대로 넘기면 호출자의 배열이 변형된다.
+ * IN-PLACE MUTATION contract：`draft` 必须是**调用方拥有的 shallow copy**。
+ * 该函数会把匹配的消息槽位替换为新消息对象（slot 级 immutable
+ * replace），但数组本身会 in place 修改。唯一调用方
+ * （`appendInterruptToolCallMessages`）会传入用 `[...messages]` 创建的副本，
+ * 因此原始参数数组不会被修改。在其他位置调用时也必须传副本——
+ * 如果直接传原数组，就会修改调用方的数组。
  */
 function hydrateExistingAskUserToolCallMetadata(
   draft: BaseMessage[],
@@ -547,7 +547,7 @@ function withToolCalls(message: BaseMessage, toolCalls: readonly MutableToolCall
  * Drop the raw model tool calls that an approval card already represents (and
  * their now-orphaned tool results), so the approval card is the single element
  * for that call instead of sitting next to a redundant, confusingly-statused
- * ``execute_in_skill … 완료`` pill. Non-interrupt tool calls are untouched; with
+ * ``execute_in_skill … 完成`` pill. Non-interrupt tool calls are untouched; with
  * no interrupts (e.g. after reload) this is a no-op.
  */
 export function stripInterruptedRawToolCalls(

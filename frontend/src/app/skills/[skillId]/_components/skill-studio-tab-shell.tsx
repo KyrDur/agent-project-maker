@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils'
 import type { SkillDetailTabSlots } from '@/components/skill/skill-detail-tab-shell'
 
 /**
- * 스킬 탭 컴포넌트(4슬롯 렌더 프롭 계약)를 풀페이지 스튜디오 레이아웃으로
- * 렌더한다 — 유일한 런타임 렌더러(구 DialogShell 매핑은 다이얼로그와 함께 제거). overlay 슬롯은 롤백 확인 다이얼로그 등이 실리므로
- * 반드시 렌더한다 (Phase 2 스펙 AD-3).
+ * 将 skill tab component（4-slot render prop 契约）渲染为 full-page studio layout
+ * — 唯一的 runtime renderer（旧 DialogShell mapping 已随 dialog 一并删除）。overlay slot 会承载 rollback 确认 dialog 等，
+ * 因此必须渲染（Phase 2 规范 AD-3）。
  */
 export function renderSkillStudioTabShell(slots: SkillDetailTabSlots): ReactNode {
   return <SkillStudioTabShell slots={slots} />

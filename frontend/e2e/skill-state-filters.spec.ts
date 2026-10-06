@@ -20,7 +20,7 @@ const baseSkill = {
   id: 'skill-base',
   name: 'Base Weather',
   slug: 'base-weather',
-  description: '한국 날씨 응답을 안정적으로 정리합니다.',
+  description: '稳定整理韩国天气响应。',
   kind: 'package',
   version: '0.1.0',
   storage_path: null,
@@ -59,7 +59,7 @@ const skills = [
     health: {
       state: 'needs_credentials',
       label: '所需凭据',
-      reason: '필수 자격증명이 없습니다.',
+      reason: '没有必需凭据。',
       severity: 'warning',
     },
   },
@@ -70,7 +70,7 @@ const skills = [
     health: {
       state: 'needs_rerun',
       label: '需要重新运行',
-      reason: '콘텐츠가 바뀌었습니다.',
+      reason: '内容已更改。',
       severity: 'warning',
     },
   },
@@ -81,7 +81,7 @@ const skills = [
     health: {
       state: 'evaluation_failed',
       label: '评估失败',
-      reason: '마지막 평가가 실패했습니다.',
+      reason: '上次评估失败。',
       severity: 'error',
     },
   },
@@ -113,20 +113,20 @@ test.describe('Skill state filters', () => {
     await page.goto('/skills')
 
     await expect(page.getByRole('group', { name: '技能状态过滤器' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '자격증명 필요 1개' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '재평가 필요 1개' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '평가 실패 1개' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '공개됨 3개' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '로컬/초안 1개' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '需要凭据 1 个' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '需要重新评估 1 个' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '评估失败 1 个' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '已公开 3 个' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '本地/草稿 1 个' })).toBeVisible()
 
-    await page.getByRole('button', { name: '자격증명 필요 1개' }).click()
+    await page.getByRole('button', { name: '需要凭据 1 个' }).click()
 
     await expect(page.getByText('Credential Setup')).toBeVisible()
     await expect(page.getByText('Rerun Needed')).toBeHidden()
     await expect(page.getByText('Failed Eval')).toBeHidden()
     await expect(page.getByText('Local Draft')).toBeHidden()
 
-    await page.getByRole('button', { name: '로컬/초안 1개' }).click()
+    await page.getByRole('button', { name: '本地/草稿 1 个' }).click()
 
     await expect(page.getByText('Local Draft')).toBeVisible()
     await expect(page.getByText('Credential Setup')).toBeHidden()

@@ -12,12 +12,12 @@ import { useMiddlewares } from '@/lib/hooks/use-middlewares'
 import type { MiddlewareRegistryItem } from '@/lib/types'
 
 /**
- * 통합 미들웨어 추가 다이얼로그.
+ * 集成 middleware 添加 dialog。
  *
- * SubAgents/ToolsSkills 다이얼로그와 같은 2-column (Current | Available) 패턴.
- * visual-settings의 MiddlewaresNode와 form-mode의 MiddlewaresBox 양쪽에서 사용.
+ * 与 SubAgents/ToolsSkills dialog 相同的 2-column（Current | Available）pattern。
+ * 同时用于 visual-settings 的 MiddlewaresNode 和 form-mode 的 MiddlewaresBox。
  *
- * 카테고리 필터(chip)는 우측 컬럼 위에 노출.
+ * category filter（chip）显示在右侧 column 上方。
  */
 
 type CategoryFilter = 'all' | 'context' | 'planning' | 'safety' | 'reliability' | 'provider'
@@ -37,8 +37,8 @@ interface MiddlewaresDialogProps {
   selectedTypes: Set<string>
   onToggleMiddleware: (type: string) => void
   /**
-   * 미리 로드된 카탈로그를 외부에서 주입할 수 있음 (visual-settings는 부모가 들고 있음).
-   * 미제공 시 useMiddlewares()로 직접 조회.
+   * 可以从外部注入预加载的 catalog（visual-settings 由父级持有）。
+   * 未提供时通过 useMiddlewares() 直接查询。
    */
   allMiddlewares?: MiddlewareRegistryItem[]
 }

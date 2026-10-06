@@ -2,12 +2,12 @@ import type { SkillDraftBrief } from '@/lib/stores/chat-skill-builder'
 import type { SkillBuilderFileEntry } from '@/lib/types/skill-builder'
 
 /**
- * 상태 카드 파생 로직 (M7 — skill-studio 목업 차용).
+ * 状态卡片派生逻辑（M7 — 借用 skill-studio mock）。
  *
- * 목업의 검증 행(Portable frontmatter / 트리거 명확성 / Moldy 메타 분리 /
- * 런타임 호환 / Credential / 샌드박스 / 평가)을 **실제 검증기 이슈 코드**로
- * 매핑한다. 목업의 "5/5 통과" 고정 카운트는 실데이터(이슈 리스트)와 맞지 않아
- * 통과/주의/오류 3상태로 각색 (CHECKPOINT M7 감사 노트).
+ * 将 mock 的验证 row（Portable frontmatter / trigger 明确性 / Moldy metadata 分离 /
+ * runtime compatibility / Credential / sandbox / evaluation）映射到 **真实 validator issue code**。
+ * mock 固定的 "5/5 通过" 计数与真实数据（issue list）不符，因此调整为
+ * pass/warn/error 三种状态（CHECKPOINT M7 audit note）。
  */
 
 export type StatusTone = 'pass' | 'good' | 'warn' | 'error' | 'pending' | 'none'
@@ -15,9 +15,9 @@ export type StatusTone = 'pass' | 'good' | 'warn' | 'error' | 'pending' | 'none'
 export interface StatusRow {
   readonly key: 'frontmatter' | 'moldyMetadata' | 'trigger' | 'secrets' | 'other'
   readonly tone: StatusTone
-  /** 이슈에서 온 부가 설명 (첫 이슈 메시지). */
+  /** 来自 issue 的附加说明（第一条 issue message）。 */
   readonly detail: string | null
-  /** 'other' 행 전용 — 미분류 이슈 개수 (라벨 보간). */
+  /** 仅用于 'other' row — 未分类 issue 数量（用于 label interpolation）。 */
   readonly count?: number
 }
 
@@ -79,7 +79,7 @@ function firstMessage(matched: ValidationIssue[]): string | null {
   return significant?.message ?? null
 }
 
-/** 검증 이슈 코드 → 목업의 체크 행. 검증 전(validation null)은 전부 pending. */
+/** validator issue code → mock check row。验证前（validation null）全部为 pending。 */
 export function deriveStatusRows(validation: unknown): StatusRow[] {
   if (!isRecord(validation)) {
     return [
@@ -104,9 +104,9 @@ export function deriveStatusRows(validation: unknown): StatusRow[] {
   ])
   const trigger = byPrefix(['WEAK_TRIGGER_DESCRIPTION', 'SCAFFOLDING_MARKER'])
   const secrets = byPrefix(['SECRET_DETECTED'])
-  // 폴백 행(R3): 헤드 pill은 전체 error/warning 카운트를 쓰는데 상세 행이
-  // 부분집합만 매핑하면 "오류 1 / 상세 전부 통과" 모순이 생긴다 — 위 버킷에
-  // 안 잡힌 유의미(비-info) 이슈는 "기타 검사 N건"으로 노출한다.
+  // fallback row（R3）：header pill 使用整体 error/warning count，但如果 detail row
+  // 只映射其中子集，就会出现 "错误 1 / 详情全部通过" 的矛盾 — 上述 bucket 中
+  // 未捕获的有效（非 info）issue 统一显示为 "其他检查 N 项"。
   const bucketed = new Set([...frontmatter, ...moldyMetadata, ...trigger, ...secrets])
   const other = issues.filter((issue) => !bucketed.has(issue) && issue.severity !== 'info')
 
@@ -117,7 +117,7 @@ export function deriveStatusRows(validation: unknown): StatusRow[] {
       tone: rowTone(moldyMetadata, 'pass'),
       detail: firstMessage(moldyMetadata),
     },
-    // 목업의 "好"(good) — 트리거 문구는 통과여도 품질 신호라 별도 톤.
+    // mock 中的 "好"(good) — 即使 trigger 文案通过，也属于质量信号，因此使用单独 tone。
     { key: 'trigger', tone: rowTone(trigger, 'good'), detail: firstMessage(trigger) },
     { key: 'secrets', tone: rowTone(secrets, 'pass'), detail: firstMessage(secrets) },
   ]
@@ -138,8 +138,8 @@ export interface RailFileEntry {
 }
 
 /**
- * 레일 파일 목록 — 라이브 brief(런마다 갱신)가 있으면 우선, 없으면 파일 API
- * (진입 직후·improve 시드 표시용). 캡처 13에서 발견한 "진입 직후 빈 레일" 해소.
+ * rail 文件列表 — 有 live brief（每次 run 更新）时优先，否则使用文件 API
+ * （用于刚进入·显示 improve seed）。解决截图 13 中发现的 "刚进入时 rail 为空"。
  */
 export function mergeRailFiles(
   brief: SkillDraftBrief | undefined,

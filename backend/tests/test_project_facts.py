@@ -91,10 +91,10 @@ down_revision: str | None = \"m70_current\"
             "ruff=0.16.5; refreshed=2026-09-05 -->\n"
             "AI runtime: `deepagents` 0.7.11; Ruff 0.16.5; Current migration: `m71_current`\n"
         ),
-        "README_KO.md": (
+        "README_PROTOTYPE_ZH_CN.md": (
             "<!-- project-current-source: migration=m71_current; deepagents=0.7.11; "
             "ruff=0.16.5; refreshed=2026-09-05 -->\n"
-            "AI runtime: `deepagents` 0.7.11; Ruff 0.16.5; 현재 migration: `m71_current`\n"
+            "AI runtime: `deepagents` 0.7.11; Ruff 0.16.5; 当前 migration: `m71_current`\n"
         ),
         "AGENTS.md": (
             "<!-- project-current-source: migration=m71_current; deepagents=0.7.11; "
@@ -166,7 +166,12 @@ def test_inspect_project_facts_returns_derived_canonical_values_when_complete(
     ("path", "old", "new", "expected_error"),
     [
         ("README.md", "`deepagents` 0.7.11", "`deepagents` 0.7.10", "locked Deep Agents"),
-        ("README_KO.md", "`deepagents` 0.7.11", "`deepagents` 0.7.10", "locked Deep Agents"),
+        (
+            "README_PROTOTYPE_ZH_CN.md",
+            "`deepagents` 0.7.11",
+            "`deepagents` 0.7.10",
+            "locked Deep Agents",
+        ),
         ("AGENTS.md", "**deepagents** 0.7.11", "**deepagents** 0.7.10", "locked Deep Agents"),
         (
             "docs/ARCHITECTURE.md",
@@ -175,7 +180,7 @@ def test_inspect_project_facts_returns_derived_canonical_values_when_complete(
             "locked Deep Agents",
         ),
         ("README.md", "Ruff 0.16.5", "Ruff 0.16.4", "locked Ruff"),
-        ("README_KO.md", "Ruff 0.16.5", "Ruff 0.16.4", "locked Ruff"),
+        ("README_PROTOTYPE_ZH_CN.md", "Ruff 0.16.5", "Ruff 0.16.4", "locked Ruff"),
         ("AGENTS.md", "(lock: 0.16.5)", "(lock: 0.16.4)", "locked Ruff"),
     ],
 )
@@ -212,8 +217,8 @@ def test_inspect_project_facts_rejects_wrong_displayed_locked_versions(
             "stale marker",
         ),
         (
-            "README_KO.md",
-            "현재 migration head: M59 / M63; derived head `m71_current`\n",
+            "README_PROTOTYPE_ZH_CN.md",
+            "当前 migration head: M59 / M63; derived head `m71_current`\n",
             "stale marker",
         ),
         (

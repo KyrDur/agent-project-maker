@@ -25,7 +25,7 @@ class AgentTrigger(Base):
     )  # "interval" | "cron" | "one_time"
     schedule_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     input_message: Mapped[str] = mapped_column(Text, nullable=False)
-    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Seoul")
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Shanghai")
     conversation_policy: Mapped[str] = mapped_column(
         String(40), nullable=False, default="schedule_thread"
     )

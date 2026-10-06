@@ -131,8 +131,8 @@ export function agUiEventToMoldyEvents(event: AgUiEvent, id?: string): SSEEvent[
         {
           id,
           event: 'error',
-          // code 보존 — Moldy 경로의 actionable error(예: llm_credential_required)
-          // 분기가 ag_ui 경로에서도 동일하게 동작하도록 한다.
+          // 保留 code — 让 Moldy 路径的 actionable error（例如 llm_credential_required）
+          // 分支在 ag_ui 路径中也能相同工作。
           data: {
             message: stringValue(event.message) ?? 'Run failed.',
             code: stringValue(event.code),
@@ -172,8 +172,8 @@ export function agUiEventToMoldyEvents(event: AgUiEvent, id?: string): SSEEvent[
       return []
     }
     default:
-      // 백엔드가 새 AG-UI 이벤트 타입을 먼저 도입해도 런타임 값이 union 밖일 수
-      // 있다 — undefined 반환으로 for...of 가 throw 하지 않도록 방어.
+      // 即使后端先引入新的 AG-UI 事件类型，运行时值也可能超出 union，
+      // 因此通过返回 undefined 做防御，避免 for...of throw。
       return []
   }
 }

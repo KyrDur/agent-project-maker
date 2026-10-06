@@ -1,5 +1,5 @@
 import { render, screen, userEvent, within } from '../test-utils'
-// Phase 2: page.tsx는 async 서버 redirect 래퍼 — UI는 클라이언트 컴포넌트를 직접 렌더.
+// Phase 2: page.tsx 是 async server redirect wrapper — UI 直接渲染 client component。
 import { SkillsPageClient } from '@/app/skills/_components/skills-page-client'
 import type { Skill } from '@/lib/types/skill'
 
@@ -28,7 +28,7 @@ vi.mock('@/lib/hooks/use-agents', () => ({
     data: [
       {
         id: 'agent-1',
-        name: '회의 비서',
+        name: '会议助手',
         skills: [{ id: 'skill-1', name: 'Korea Weather' }],
       },
     ],
@@ -52,7 +52,7 @@ const skill: Skill = {
   id: 'skill-1',
   name: 'Korea Weather',
   slug: 'korea-weather',
-  description: '한국 날씨를 조회합니다.',
+  description: '查询韩国天气。',
   kind: 'package',
   version: '0.1.0',
   storage_path: null,
@@ -109,35 +109,35 @@ describe('SkillsPage', () => {
     mockUseSkills.mockReturnValue({ data: [skill], isLoading: false })
   })
 
-  it('스튜디오 목록을 표(DataTable)로 렌더한다 — Phase 2', () => {
+  it('将 studio 列表渲染为表格(DataTable) — Phase 2', () => {
     render(<SkillsPageClient />)
 
-    expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全部 1' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('搜索技巧')).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: /스킬/ })).toBeInTheDocument()
-    expect(screen.getByRole('columnheader', { name: /에이전트/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /技能/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /智能体/ })).toBeInTheDocument()
     expect(screen.getByText('Korea Weather')).toBeInTheDocument()
     expect(screen.getByText(/korea-weather · v0\.1\.0/)).toBeInTheDocument()
-    // 연결 카운트 실데이터 (M1)
-    expect(screen.getByText('2개 에이전트')).toBeInTheDocument()
+    // 连接计数真实数据 (M1)
+    expect(screen.getByText('2 个智能体')).toBeInTheDocument()
   })
 
-  it('표 행에 상태·평가 요약 배지를 보여준다', () => {
+  it('在表格行中显示状态·评估摘要 badge', () => {
     render(<SkillsPageClient />)
 
     expect(screen.getByText('已验证')).toBeInTheDocument()
-    expect(screen.getByText('평가 92%')).toBeInTheDocument()
+    expect(screen.getByText('评估92%')).toBeInTheDocument()
   })
 
-  it("'清除选择'가 controlled 선택(rowSelection+selected)을 함께 리셋한다", async () => {
+  it("'清除选择' 会同时重置 controlled 选择(rowSelection+selected)", async () => {
     const user = userEvent.setup()
     render(<SkillsPageClient />)
 
-    // 행 단위 체크박스 경로(프로젝트 규칙 — 헤더 전체선택만 쓰면 행 클릭
-    // 전파 클래스를 못 잡는다).
+    // 行级 checkbox 路径（项目规则 — 如果只用 header 全选，就无法捕获行点击
+    // 传播类别）。
     await user.click(screen.getByRole('checkbox', { name: '选择行' }))
-    expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1개 선택됨')
+    expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1 已选择')
 
     await user.click(screen.getByRole('button', { name: '清除选择' }))
 
@@ -145,7 +145,7 @@ describe('SkillsPage', () => {
     expect(screen.getByRole('checkbox', { name: '选择行' })).not.toBeChecked()
   })
 
-  it('행 선택 시 벌크 바가 뜨고 일괄 삭제 확인에 이름을 열거한다', async () => {
+  it('选择行时显示 bulk bar，并在批量删除确认中列出名称', async () => {
     const user = userEvent.setup()
     mockDeleteSkill.mockResolvedValue(undefined)
     render(<SkillsPageClient />)
@@ -153,30 +153,30 @@ describe('SkillsPage', () => {
     expect(screen.queryByTestId('skill-bulk-bar')).not.toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: '选择所有行' }))
 
-    expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1개 선택됨')
+    expect(screen.getByTestId('skill-bulk-bar')).toHaveTextContent('1 已选择')
 
     await user.click(
       within(screen.getByTestId('skill-bulk-bar')).getByRole('button', { name: '删除' }),
     )
 
-    // 확인 다이얼로그 — 검색으로 숨은 선택 행 방어를 위해 대상 이름을 명시한다.
+    // 确认 dialog — 为防止搜索隐藏的已选行，明确显示目标名称。
     const dialog = screen.getByRole('alertdialog')
     expect(dialog).toHaveTextContent('Korea Weather')
-    expect(dialog).toHaveTextContent('연결된 에이전트 2개')
-    // AD-4.1 — 영향받는 에이전트 이름 역도출 표시.
-    expect(dialog).toHaveTextContent('영향받는 에이전트: 회의 비서')
+    expect(dialog).toHaveTextContent('2 个关联智能体')
+    // AD-4.1 — 反向推导显示受影响的 智能体 名称。
+    expect(dialog).toHaveTextContent('受影响的智能体：会议助手')
 
     await user.click(within(dialog).getByRole('button', { name: '删除' }))
 
     expect(mockDeleteSkill).toHaveBeenCalledWith('skill-1')
   })
 
-  it('벌크 삭제의 404는 멱등 성공 — 실패 토스트를 오발하지 않는다 (R5 규칙 ④)', async () => {
+  it('批量删除中的 404 视为幂等成功 — 不误发失败 toast（R5 规则 ④）', async () => {
     const { ApiError } = await import('@/lib/api/errors')
     const user = userEvent.setup()
     mockToastSuccess.mockClear()
     mockToastError.mockClear()
-    // 다른 탭에서 이미 삭제된 대상 — 백엔드는 404를 돌려준다.
+    // 已在其他标签页删除的目标 — backend 返回 404。
     mockDeleteSkill.mockRejectedValue(new ApiError(404, 'SKILL_NOT_FOUND', 'not found'))
     render(<SkillsPageClient />)
 
@@ -194,10 +194,10 @@ describe('SkillsPage', () => {
     const user = userEvent.setup()
     render(<SkillsPageClient />)
 
-    await user.click(screen.getByRole('tab', { name: /패키지/ }))
+    await user.click(screen.getByRole('tab', { name: /套餐/ }))
 
     expect(mockUseSkills).toHaveBeenLastCalledWith({ kind: 'package' })
-    expect(screen.getByRole('tab', { name: '패키지 1개' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '套餐 1' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('filters skills from compact state chips', async () => {
@@ -210,7 +210,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'needs_credentials',
             label: '所需凭据',
-            reason: '필수 자격증명이 없습니다.',
+            reason: '没有必需凭据。',
             severity: 'warning',
           },
           publication_summary: publishedSummary('item-credentials'),
@@ -221,7 +221,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'needs_rerun',
             label: '需要重新运行',
-            reason: '콘텐츠가 바뀌었습니다.',
+            reason: '内容已更改。',
             severity: 'warning',
           },
           publication_summary: publishedSummary('item-rerun'),
@@ -232,7 +232,7 @@ describe('SkillsPage', () => {
           health: {
             state: 'evaluation_failed',
             label: '评估失败',
-            reason: '마지막 평가가 실패했습니다.',
+            reason: '上次评估失败。',
             severity: 'error',
           },
           publication_summary: publishedSummary('item-failed'),
@@ -252,20 +252,20 @@ describe('SkillsPage', () => {
 
     render(<SkillsPageClient />)
 
-    expect(screen.getByRole('button', { name: '자격증명 필요 1개' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '재평가 필요 1개' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '평가 실패 1개' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '공개됨 3개' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '로컬/초안 1개' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '所需凭据 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '需要重新运行 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '评估失败 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '已发表 3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '本地/草稿 1' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '자격증명 필요 1개' }))
+    await user.click(screen.getByRole('button', { name: '所需凭据 1' }))
 
     expect(screen.getByText('Credential Setup')).toBeInTheDocument()
     expect(screen.queryByText('Rerun Needed')).not.toBeInTheDocument()
     expect(screen.queryByText('Failed Eval')).not.toBeInTheDocument()
     expect(screen.queryByText('Local Draft')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '로컬/초안 1개' }))
+    await user.click(screen.getByRole('button', { name: '本地/草稿 1' }))
 
     expect(screen.getByText('Local Draft')).toBeInTheDocument()
     expect(screen.queryByText('Credential Setup')).not.toBeInTheDocument()

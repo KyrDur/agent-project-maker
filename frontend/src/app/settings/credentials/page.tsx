@@ -47,24 +47,16 @@ const CREDENTIAL_STATUS_TABS: CredentialStatusTab[] = [
 const CREDENTIAL_PROVIDER_LABEL_KEYS: Record<string, string> = {
   anthropic: 'providerLabels.anthropic',
   azure_openai: 'providerLabels.azure_openai',
-  coupang_partners: 'providerLabels.coupang_partners',
-  dart_api: 'providerLabels.dart_api',
-  foresttrip_account: 'providerLabels.foresttrip_account',
   google_genai: 'providerLabels.google_genai',
   google_search: 'providerLabels.google_search',
   google_workspace_oauth2: 'providerLabels.google_workspace_oauth2',
   http_api_key: 'providerLabels.http_api_key',
   http_basic: 'providerLabels.http_basic',
   http_bearer: 'providerLabels.http_bearer',
-  kipris_plus_api: 'providerLabels.kipris_plus_api',
-  ktx_account: 'providerLabels.ktx_account',
   mcp_oauth2: 'providerLabels.mcp_oauth2',
-  naver_search: 'providerLabels.naver_search',
-  odsay_api: 'providerLabels.odsay_api',
   openai: 'providerLabels.openai',
   openai_compatible: 'providerLabels.openai_compatible',
   openrouter: 'providerLabels.openrouter',
-  srt_account: 'providerLabels.srt_account',
 }
 
 const CREDENTIAL_CATEGORY_LABEL_KEYS: Record<string, string> = {

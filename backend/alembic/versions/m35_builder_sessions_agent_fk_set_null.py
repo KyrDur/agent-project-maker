@@ -1,8 +1,8 @@
 """builder_sessions.agent_id FK ON DELETE SET NULL
 
-기존 FK 는 ondelete 정책 없음 → agent 삭제 시 ForeignKeyViolationError.
-세션은 빌드 흐름 감사 트레일이라 agent 와 함께 cascade delete 하지 않고
-reference 만 끊는다.
+现有 FK 没有 ondelete 策略 → 删除 agent 时会产生 ForeignKeyViolationError。
+会话是构建流程的审计轨迹，因此不会与 agent 一起 cascade delete，
+只断开 reference。
 
 Revision ID: m35_builder_session_fk_setnull
 Revises: m34_message_events_status

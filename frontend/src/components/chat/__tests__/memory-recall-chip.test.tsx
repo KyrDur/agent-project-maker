@@ -32,24 +32,24 @@ function renderChip(store = createStore(), conversationId: string | null = 'conv
 }
 
 describe('MemoryRecallChip', () => {
-  it('회상이 없으면 렌더하지 않는다', () => {
+  it('没有回忆时不渲染', () => {
     const { container } = renderChip()
     expect(container.querySelector('[data-moldy-memory-recall]')).toBeNull()
   })
 
-  it('다른 대화의 회상은 렌더하지 않는다 (대화 스코프)', () => {
+  it('不渲染其他对话的回忆（对话 scope）', () => {
     const store = createStore()
     store.set(chatMemoryRecallAtom, {
-      'conv-OTHER': [{ id: 'm1', scope: 'user', content: '다른 대화 기억' }],
+      'conv-OTHER': [{ id: 'm1', scope: 'user', content: '其他对话的记忆' }],
     })
     const { container } = renderChip(store)
     expect(container.querySelector('[data-moldy-memory-recall]')).toBeNull()
   })
 
-  it('리로드(redacted) brief는 메모리 API 조인으로 내용을 복원한다', async () => {
+  it('reload(redacted) brief 会通过 Memory API join 恢复内容', async () => {
     const user = userEvent.setup()
     memoriesQueryMock.current = {
-      data: [{ id: 'm1', scope: 'user', content: '한국어로 답변 선호' }],
+      data: [{ id: 'm1', scope: 'user', content: '偏好使用中文回答' }],
     }
     const store = createStore()
     store.set(chatMemoryRecallAtom, {
@@ -60,27 +60,27 @@ describe('MemoryRecallChip', () => {
     })
     renderChip(store)
     await user.click(screen.getByText('title'))
-    // 조인 성공 → 원문 복원. 삭제된 기억은 hiddenContent 폴백.
-    expect(screen.getByText('한국어로 답변 선호')).toBeInTheDocument()
+    // join 成功 → 恢复原文。已删除的记忆 fallback 到 hiddenContent。
+    expect(screen.getByText('偏好使用中文回答')).toBeInTheDocument()
     expect(screen.getByText('hiddenContent')).toBeInTheDocument()
     expect(screen.queryByText('<redacted>')).not.toBeInTheDocument()
   })
 
-  it('회상 개수 메타를 보여주고 펼치면 scope 배지 + 내용을 보여준다', async () => {
+  it('显示回忆数量 meta，展开后显示 scope badge + 内容', async () => {
     const user = userEvent.setup()
     const store = createStore()
     store.set(chatMemoryRecallAtom, {
       'conv-1': [
-        { id: 'm1', scope: 'user', content: '한국어로 답변 선호' },
-        { id: 'm2', scope: 'agent', content: '보고서는 표로 정리' },
+        { id: 'm1', scope: 'user', content: '偏好使用中文回答' },
+        { id: 'm2', scope: 'agent', content: '报告整理成表格' },
       ],
     })
     renderChip(store)
     expect(screen.getByText('count(2)')).toBeInTheDocument()
-    // 접힌 기본 상태.
-    expect(screen.queryByText('한국어로 답변 선호')).not.toBeInTheDocument()
+    // 默认折叠状态。
+    expect(screen.queryByText('偏好使用中文回答')).not.toBeInTheDocument()
     await user.click(screen.getByText('title'))
-    expect(screen.getByText('한국어로 답변 선호')).toBeInTheDocument()
+    expect(screen.getByText('偏好使用中文回答')).toBeInTheDocument()
     expect(screen.getByText('scopeUser')).toBeInTheDocument()
     expect(screen.getByText('scopeAgent')).toBeInTheDocument()
   })

@@ -11,7 +11,7 @@ const sizeMap = {
   sm: { container: 'size-8', icon: 'size-4', px: 32 },
   md: { container: 'size-10', icon: 'size-5', px: 40 },
   lg: { container: 'size-14', icon: 'size-7', px: 56 },
-  // FixHero와 동일한 크기 (size-44 = 176px, sm:size-52 = 208px). px는 가장 큰 값 기준.
+  // 与 FixHero 相同大小（size-44 = 176px, sm:size-52 = 208px）。px 以最大值为准。
   xl: { container: 'size-44 sm:size-52', icon: 'size-16', px: 208 },
 } as const
 
@@ -25,7 +25,7 @@ interface AgentAvatarProps {
   name: string
   size?: keyof typeof sizeMap
   className?: string
-  /** true이면 imageUrl을 그대로 사용 (frontend public/* 자산). 기본 false: backend API_BASE prepend */
+  /** 为 true 时直接使用 imageUrl（frontend public/* 资源）。默认 false：prepend backend API_BASE */
   publicAsset?: boolean
 }
 
@@ -38,8 +38,8 @@ export function AgentAvatar({
 }: AgentAvatarProps) {
   const { container, icon, px } = sizeMap[size]
   const [hasError, setHasError] = useState(false)
-  // imageUrl이 바뀌면 이전 에러 상태 리셋 (React 공식 "rendering 중 비교" 패턴).
-  // useEffect + setState는 react-hooks/set-state-in-effect lint를 위반.
+  // imageUrl 变化时重置之前的 error 状态（React 官方 "rendering 中比较" pattern）。
+  // useEffect + setState 违反 react-hooks/set-state-in-effect lint。
   const [prevImageUrl, setPrevImageUrl] = useState(imageUrl)
   if (prevImageUrl !== imageUrl) {
     setPrevImageUrl(imageUrl)

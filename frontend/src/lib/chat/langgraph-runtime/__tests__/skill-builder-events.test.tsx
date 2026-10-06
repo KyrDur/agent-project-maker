@@ -63,7 +63,7 @@ function validationEvent() {
 }
 
 describe('protocolSkillDraftBrief', () => {
-  it('moldy.skill_draft 이벤트에서 드래프트 요약을 파싱한다', () => {
+  it('从 moldy.skill_draft 事件中解析草稿摘要', () => {
     const brief = protocolSkillDraftBrief(draftEvent())
     expect(brief).toEqual({
       session_id: 's1',
@@ -79,19 +79,19 @@ describe('protocolSkillDraftBrief', () => {
     })
   })
 
-  it('다른 custom 이벤트는 무시한다', () => {
+  it('忽略其他 custom 事件', () => {
     const event = draftEvent()
     ;(event.params.data as { name: string }).name = 'moldy.memory_recalled'
     expect(protocolSkillDraftBrief(event)).toBeNull()
   })
 
-  it('session_id 없는 페이로드는 무시한다', () => {
+  it('忽略没有 session_id 的 payload', () => {
     expect(protocolSkillDraftBrief(draftEvent({ session_id: undefined }))).toBeNull()
   })
 })
 
 describe('protocolSkillValidation', () => {
-  it('moldy.skill_validation 이벤트에서 검증 결과를 파싱한다', () => {
+  it('从 moldy.skill_validation 事件中解析验证结果', () => {
     const snapshot = protocolSkillValidation(validationEvent())
     expect(snapshot).toEqual({
       tool_name: 'validate_skill',
@@ -100,7 +100,7 @@ describe('protocolSkillValidation', () => {
     })
   })
 
-  it('validation_result 없는 페이로드는 무시한다', () => {
+  it('忽略没有 validation_result 的 payload', () => {
     const event = validationEvent()
     delete (event.params.data.payload as Record<string, unknown>).validation_result
     expect(protocolSkillValidation(event)).toBeNull()
@@ -129,7 +129,7 @@ describe('useLangGraphSkillBuilderEffects', () => {
     return { store, onEvent }
   }
 
-  it('드래프트/검증 이벤트를 대화 스코프 스토어에 반영한다', () => {
+  it('将草稿/验证事件写入对话 scope store', () => {
     const { store, onEvent } = setup()
 
     onEvent(draftEvent())
@@ -143,7 +143,7 @@ describe('useLangGraphSkillBuilderEffects', () => {
     })
   })
 
-  it('같은 event_id의 replay 재전달은 dedup한다', () => {
+  it('对相同 event_id 的 replay 重复传递进行 dedup', () => {
     const { store, onEvent } = setup()
 
     onEvent(draftEvent())
@@ -153,7 +153,7 @@ describe('useLangGraphSkillBuilderEffects', () => {
     expect(store.get(chatSkillDraftBriefAtom)['conv-1']).toBe(first)
   })
 
-  it('새 run의 이벤트(새 event_id)는 최신값으로 교체한다', () => {
+  it('新 run 的事件（新 event_id）替换为最新值', () => {
     const { store, onEvent } = setup()
 
     onEvent(draftEvent())

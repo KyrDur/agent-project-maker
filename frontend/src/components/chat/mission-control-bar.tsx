@@ -7,13 +7,13 @@ import { CollapsiblePill } from '@/components/chat/tool-ui/collapsible-pill'
 import type { DeepAgentTodo } from '@/lib/chat/langgraph-runtime/deepagents-state'
 
 /**
- * MissionControlBar — 에이전트 계획(write_todos)의 상시 노출 체크리스트.
+ * MissionControlBar —— Agent 计划(write_todos)的常驻 checklist。
  *
- * 스트리밍 로딩 인디케이터(런 종료 시 unmount)와 달리 스레드 최상단에 붙어
- * 스트리밍 중·종료 후·리로드 후 모두 같은 자리에서 진행 상황을 보여준다.
- * 데이터는 `stream.values.todos`(deepagents 계획 채널) — 리로드 시 thread state
- * hydrate로 복원된다. 인라인 write_todos Plan 카드는 "그 시점의 스냅샷"으로
- * 히스토리에 남고, 이 바는 "현재 계획"의 canonical 표면이다.
+ * 与流式加载指示器（run 结束时 unmount）不同，它固定在线程最上方，
+ * 在流式中、结束后、reload 后都在同一位置显示进度。
+ * 数据来自 `stream.values.todos`（deepagents 计划 channel）—— reload 时通过 thread state
+ * hydrate 恢复。inline write_todos Plan 卡作为"当时的快照"
+ * 保留在 history 中，而此栏是"当前计划"的 canonical 界面。
  */
 export function MissionControlBar({ todos }: { readonly todos: readonly DeepAgentTodo[] }) {
   const t = useTranslations('chat.deepAgentsState')

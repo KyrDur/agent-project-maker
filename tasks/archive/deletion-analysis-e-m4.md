@@ -1,166 +1,166 @@
-# 삭제 분석 보고서 — 백로그 E M4 · CUSTOM Connection 통합
+# 删除分析报告 — Backlog E M4 · CUSTOM Connection 整合
 
-**담당**: 베조스 (QA/DRI)
-**스코프**: exec-plan §4 M4 — `tool.credential_id` → `tool.connection_id` 경로 이관 (CUSTOM만)
-**원칙**: drive-by 금지. M6까지 legacy fallback 유지. M5 범위(custom-auth-dialog / mcp-server-auth-dialog / `/connections` 페이지 CUSTOM 섹션)는 건드리지 않음.
-**선례**: M3 베조스 분석서(`tasks/archive/progress-backlog-e-m3.txt`의 `[2026-04-18T08:45]` 항목) — PREBUILT는 같은 3분류(즉시삭제 1 / 단순화 6 / 보류 12). M4는 범위가 더 좁다.
+**负责人**：贝索斯（QA/DRI）
+**Scope**：exec-plan §4 M4 — `tool.credential_id` → `tool.connection_id` 路径迁移（仅 CUSTOM）
+**原则**：禁止 drive-by。到 M6 为止保留 legacy fallback。不触碰 M5 范围（custom-auth-dialog / mcp-server-auth-dialog / `/connections` 页面 CUSTOM section）。
+**先例**：M3 贝索斯分析文档（`tasks/archive/progress-backlog-e-m3.txt` 的 `[2026-04-18T08:45]` 项）— PREBUILT 同样分为 3 类（立即删除 1 / 简化 6 / 暂缓 12）。M4 范围更窄。
 
 ---
 
 ## TL;DR
 
-- **즉시 삭제 가능: 0건.** M4는 추가 경로(connection)를 기존 경로(credential_id) 위에 얹는 확장 이관 단계다. Legacy fallback(`tool.connection_id IS NULL AND tool.credential_id IS NOT NULL`)을 M6까지 유지하는 게 스코프 합의이므로 CUSTOM에서 떼낼 코드는 없다.
-- **단순화: 3건** — S3/S4 구현 시 자연 흡수되는 구조적 제안. 별도 PR로 빼지 않음.
-- **보류 (M6 이월): 5건** — `_resolve_legacy_tool_auth`의 CUSTOM 경로, `tool.credential_id`/`tool.auth_config` 컬럼 drop, `PATCH /tools/{id}/auth-config`의 `credential_id` 처리, `ToolCustomCreate.credential_id` 필드, `useUpdateToolAuthConfig` 훅.
-- **M5 이월 (현황 기록만): 3건** — `custom-auth-dialog.tsx`, `mcp-server-auth-dialog.tsx`, `/connections` 페이지 CUSTOM 섹션.
+- **可立即删除：0 项。** M4 是在现有路径（credential_id）之上增加新路径（connection）的扩展迁移阶段。因为 scope 协议要求 legacy fallback（`tool.connection_id IS NULL AND tool.credential_id IS NOT NULL`）保留到 M6，所以 CUSTOM 中没有可拆除代码。
+- **简化：3 项** — S3/S4 实现时自然吸收的结构性建议。不拆成单独 PR。
+- **暂缓（移交 M6）：5 项** — `_resolve_legacy_tool_auth` 的 CUSTOM 路径、drop `tool.credential_id`/`tool.auth_config` 列、`PATCH /tools/{id}/auth-config` 的 `credential_id` 处理、`ToolCustomCreate.credential_id` 字段、`useUpdateToolAuthConfig` hook。
+- **移交 M5（仅记录现状）：3 项** — `custom-auth-dialog.tsx`、`mcp-server-auth-dialog.tsx`、`/connections` 页面 CUSTOM section。
 
 ---
 
-## 1. 즉시 삭제 가능
+## 1. 可立即删除
 
-**없음.**
+**无。**
 
-**이유**:
-- ADR-008 §11 + 스코프 합의(2026-04-18) — `tool.connection_id IS NULL AND tool.credential_id IS NOT NULL` 경로는 M6 cleanup까지 유효해야 한다. M3 진입 이전에 생성된 CUSTOM tool이 이 상태로 남아 있고, m11 backfill이 실패하거나 롤백된 row도 이 경로로 런타임에서 복구된다.
-- `tool.auth_config`(inline secret) 경로 역시 CUSTOM 이외의 legacy 데이터를 위해 유지. M4에서 제거 시 기존 유저의 tool 실행이 깨짐.
+**原因**：
+- ADR-008 §11 + scope 协议（2026-04-18）— `tool.connection_id IS NULL AND tool.credential_id IS NOT NULL` 路径必须在 M6 cleanup 前有效。M3 进入前创建的 CUSTOM tool 会处于该状态，m11 backfill 失败或 rollback 的 row 也通过此路径在 runtime 恢复。
+- `tool.auth_config`（inline secret）路径也为 CUSTOM 以外的 legacy 数据保留。M4 删除会破坏现有用户的 tool 执行。
 
-**함의**:
-> M4는 "삭제"가 아니라 **신규 경로 추가 + 우선순위 지정**이다. 실제 제거 작업은 M6에서 일괄 집행.
+**含义**：
+> M4 不是 "删除"，而是**新增路径 + 指定优先级**。实际删除工作在 M6 中统一执行。
 
 ---
 
-## 2. 단순화 제안
+## 2. 简化建议
 
-### [S-1] chat_service.py — CUSTOM 분기 대칭 헬퍼 (젠슨 S3에서 구현)
+### [S-1] chat_service.py — CUSTOM 分支对称 helper（Jensen S3 中实现）
 
-**현재** (`chat_service.py:393-396`):
+**当前**（`chat_service.py:393-396`）：
 ```python
 else:
-    # CUSTOM / BUILTIN 등 나머지. M4에서 CUSTOM이 connection 경유로 이관될
-    # 때까지 기존 시맨틱 유지 (credential → auth_config → {}).
+    # CUSTOM / BUILTIN 等其余项。在 M4 将 CUSTOM 迁移为经由 connection 之前
+    # 保持现有 semantic（credential → auth_config → {}）。
     cred_auth = _resolve_legacy_tool_auth(tool)
 ```
 
-**제안**:
-- `_resolve_custom_auth(tool) -> dict[str, Any]` 모듈-private 헬퍼 신설 — `_resolve_prebuilt_auth`(M3)와 **대칭 구조**.
-- 분기 순서:
-  1. `tool.connection_id IS NOT NULL AND tool.connection IS NOT NULL` → ownership 가드 → `conn.status != 'active'` 또는 `conn.credential IS NULL` → `ToolConfigError` (fail-closed) → credential 복호화
-  2. `tool.connection_id IS NULL` → `_resolve_legacy_tool_auth(tool)` (M6까지 tolerance)
-- PREBUILT와 달리 "connection 없음 = env fallback" 경로가 **없다** — CUSTOM은 env를 안 가짐. 이 시맨틱 차이를 헬퍼 docstring에 반드시 명시.
-- `build_tools_config` `elif tool.type == ToolType.CUSTOM:` 분기는 `_resolve_custom_auth(tool)` 1줄로 축약 → CUSTOM/BUILTIN 혼합 `else` 분기에서 CUSTOM을 꺼내 명시적 elif로 승격.
+**建议**：
+- 新建 module-private helper `_resolve_custom_auth(tool) -> dict[str, Any]` — 与 `_resolve_prebuilt_auth`（M3）**结构对称**。
+- 分支顺序：
+  1. `tool.connection_id IS NOT NULL AND tool.connection IS NOT NULL` → ownership guard → `conn.status != 'active'` 或 `conn.credential IS NULL` → `ToolConfigError`（fail-closed）→ credential 解密
+  2. `tool.connection_id IS NULL` → `_resolve_legacy_tool_auth(tool)`（tolerance 到 M6）
+- 与 PREBUILT 不同，**不存在** "connection 无 = env fallback" 路径 — CUSTOM 没有 env。必须在 helper docstring 中明确这一 semantic 差异。
+- `build_tools_config` 的 `elif tool.type == ToolType.CUSTOM:` 分支缩成 `_resolve_custom_auth(tool)` 1 行 → 从 CUSTOM/BUILTIN 混合 `else` 分支中取出 CUSTOM，提升为明确 elif。
 
-**효과**: `_resolve_legacy_tool_auth`는 M6까지 살아남되 **CUSTOM의 "정상 경로"가 아니라 "이행 tolerance"로 자리가 명확해진다**. M6에서 `_resolve_custom_auth` 내 legacy 분기와 `_resolve_legacy_tool_auth` 자체를 함께 삭제하기 쉽다.
+**效果**：`_resolve_legacy_tool_auth` 保留到 M6，但其定位从 CUSTOM 的 "正常路径" 明确变成 "迁移 tolerance"。M6 中可同时删除 `_resolve_custom_auth` 内 legacy 分支和 `_resolve_legacy_tool_auth` 本身。
 
-### [S-2] frontend add-tool-dialog.tsx — find-or-create는 dialog 내부에 가두기 (저커버그 S4에서 구현)
+### [S-2] frontend add-tool-dialog.tsx — 将 find-or-create 封装在 dialog 内（Zuckerberg S4 中实现）
 
-**현재** (`add-tool-dialog.tsx:50, 97`):
+**当前**（`add-tool-dialog.tsx:50, 97`）：
 ```tsx
 const [customCredentialId, setCustomCredentialId] = useState<string>(CREDENTIAL_NONE)
 // ...
 ...(customCredentialId !== CREDENTIAL_NONE ? { credential_id: customCredentialId } : {}),
 ```
 
-**제안**:
-- `customCredentialId` state는 dialog **내부 상태**로 유지 (UX는 변경 없음 — user는 credential을 고르거나 새로 만든다).
-- Submit 시점에 `useConnections({ type: 'custom', provider_name: 'custom_api_key' })`로 해당 credential에 바인딩된 connection을 찾고 없으면 POST — 그 `connection_id`만 tool POST body에 실어 보냄.
-- `credential_id`는 body에 **실지 않음** — tool 신규 생성 row는 처음부터 connection-only로 통일. Legacy 경로는 **기존 row만** 커버하도록 격리.
-- find-or-create 실패 시 tool 생성도 중단 (orphan connection 방지는 M5 이월 — 스코프 합의).
+**建议**：
+- `customCredentialId` state 保持为 dialog **内部状态**（UX 不变 — user 选择 credential 或新建）。
+- Submit 时通过 `useConnections({ type: 'custom', provider_name: 'custom_api_key' })` 查找绑定到该 credential 的 connection，若没有则 POST — 只将该 `connection_id` 放入 tool POST body。
+- **不把** `credential_id` 放入 body — 新创建 tool row 从一开始就统一为 connection-only。Legacy 路径被隔离为**只覆盖现有 row**。
+- find-or-create 失败时 tool 创建也中断（防 orphan connection 移交 M5 — scope 协议）。
 
-**효과**: 신규 CUSTOM tool은 m11 backfill 경로를 타지 않고도 처음부터 connection을 갖는다. `_resolve_custom_auth`의 legacy 분기가 진짜 "이행 잔여물"로만 유지됨.
+**效果**：新的 CUSTOM tool 无需走 m11 backfill，从一开始就拥有 connection。`_resolve_custom_auth` 的 legacy 分支真正只保留为 "迁移残留"。
 
-### [S-3] Legacy 경로 로그 / 경고 (선택 — S3/S5에서 구현 여부 판단)
+### [S-3] Legacy 路径 log / warning（可选 — S3/S5 判断是否实现）
 
-**현재**: `_resolve_legacy_tool_auth`는 조용히 동작. M3에서도 동일.
+**当前**：`_resolve_legacy_tool_auth` 静默工作。M3 中也是如此。
 
-**제안**:
-- `_resolve_custom_auth`의 legacy 분기 진입 시 `logger.debug`로 1회 tool_id 기록 (DEBUG 레벨이라 prod 소음 없음).
-- M6 cleanup 전에 "실제로 얼마나 많은 CUSTOM tool이 legacy 경로를 타는지" 계측 가능 → drop 시점 판단 근거.
+**建议**：
+- 进入 `_resolve_custom_auth` 的 legacy 分支时，用 `logger.debug` 记录 1 次 tool_id（DEBUG level，因此 prod 无噪音）。
+- 在 M6 cleanup 前可度量 "实际有多少 CUSTOM tool 走 legacy 路径" → 作为判断 drop 时点的依据。
 
-**효과**: 옵션. 젠슨 S3 진행 시 과부담이면 생략 가능. M5/M6에서 추가해도 늦지 않다.
-
----
-
-## 3. 보류 (M6 cleanup 이월)
-
-제거 대상이지만 M4 PR에서는 **건드리지 않는다**. 근거 + 제거 시점 기록만.
-
-### [H-1] `chat_service._resolve_legacy_tool_auth`의 CUSTOM 경로
-
-- **위치**: `backend/app/services/chat_service.py:302-315`
-- **현 역할**: `tool.connection_id IS NULL AND tool.credential_id IS NOT NULL` CUSTOM tool의 credential 복호화.
-- **제거 시점**: M6 — m11 backfill이 모든 CUSTOM row를 이관한 후 + 운영 계측으로 legacy 경로 trigger가 0임을 확인한 후.
-- **제거 방법**: `_resolve_custom_auth`에서 legacy 분기 제거 + `_resolve_legacy_tool_auth`는 PREBUILT `provider_name IS NULL` 커버리지가 사라지면 파일 자체 삭제.
-
-### [H-2] `tools.credential_id` 컬럼 + `Tool.credential` ORM 관계
-
-- **위치**: `backend/app/models/tool.py` (line 조회 생략 — 수정 금지 파일)
-- **현 역할**: CUSTOM + PREBUILT legacy bind. M3 기준 PREBUILT는 이미 connection으로 완전 이관. M4에서 CUSTOM도 이관.
-- **제거 시점**: M6 — connection-only 운영 확정 후 drop + legacy_tool_auth helper 동시 제거.
-
-### [H-3] `tools.auth_config` 컬럼 (inline secret)
-
-- **위치**: `backend/app/models/tool.py`, `ToolCustomCreate.auth_config` (`schemas/tool.py:45`), `ToolAuthConfigUpdate.auth_config` (`schemas/tool.py:50`)
-- **현 역할**: "credential 없이 tool 생성 직후 inline auth" 레거시. M3 이전 유저 시나리오.
-- **제거 시점**: M6. 다만 ORM 컬럼 drop 전에 데이터 감사 필요 — prod에 `auth_config IS NOT NULL AND credential_id IS NULL` row가 있는지 확인.
-
-### [H-4] `PATCH /api/tools/{tool_id}/auth-config` 엔드포인트의 `credential_id` 처리
-
-- **위치**: `backend/app/routers/tools.py:115-128` + `backend/app/services/tool_service.py:249+` `update_tool_auth_config`
-- **현 역할**: 3개 auth dialog(prebuilt/custom/MCP server)가 **공통으로** 쓰는 credential rebind 엔드포인트.
-- **현 상태**: M3에서 PREBUILT dialog는 이미 `useConnections` POST/PATCH로 우회 — 이 엔드포인트의 PREBUILT 호출은 M3에서 이미 0에 가까움 (M3 저커버그 작업 참조).
-- **M4 영향**: S4에서 `add-tool-dialog` Custom 탭을 find-or-create connection으로 바꾸면 **신규 생성 경로는 이 엔드포인트를 통과하지 않는다**. 기존 tool의 credential 재바인딩은 여전히 `custom-auth-dialog`(M5 이월) 경로로 이 엔드포인트를 호출.
-- **제거 시점**: M5(custom-auth-dialog 교체) + M6(MCP dialog 교체) 완료 후 — 3 dialog 모두 connection 경유로 이관되면 이 엔드포인트 자체가 dead code. 엔드포인트 DELETE는 M6.
-
-### [H-5] `ToolCustomCreate.credential_id` 필드 (`schemas/tool.py:46`)
-
-- **현 역할**: POST /tools/custom 시 credential 직접 바인딩.
-- **S4에서**: body에서 **보내지 않도록** 클라이언트 변경. 서버 스키마는 M6까지 유지 (하위호환).
-- **제거 시점**: M6 — `Tool.credential_id` 컬럼 drop과 동시.
+**效果**：可选。Jensen S3 推进时若负担过大可省略。M5/M6 再加也不迟。
 
 ---
 
-## 4. M5 이월 (현황만 기록)
+## 3. 暂缓（移交 M6 cleanup）
 
-**M4 스코프 밖**. 건드리지 않는다. 아래는 M5 진입 시 참조용 현황 스냅샷.
+虽是删除对象，但 M4 PR 中**不触碰**。只记录依据 + 删除时点。
 
-### [L-1] `frontend/src/components/tool/custom-auth-dialog.tsx` (109줄)
+### [H-1] `chat_service._resolve_legacy_tool_auth` 的 CUSTOM 路径
 
-- **현 역할**: 기존 CUSTOM tool의 credential rebind. `useUpdateToolAuthConfig` → `PATCH /tools/{id}/auth-config`.
-- **라인 16, 33**: `useUpdateToolAuthConfig` import + call.
-- **라인 36**: `useState<string>(tool.credential_id ?? CREDENTIAL_NONE)` — `tool.credential_id`에 직접 의존.
-- **라인 40-45**: save 시 `{ authConfig: {}, credentialId }` 전달 (inline auth 항상 초기화 + credential_id 갱신).
-- **M5 교체 방향**: `ConnectionBindingDialog`(M3 신설) shell 재사용. credential → connection find-or-create → `tool.connection_id` PATCH 또는 `Connection.credential_id` PATCH.
-- **주의**: M5까지 이 dialog는 **legacy 경로로 계속 동작**. M4의 백엔드 변경은 이 dialog를 **깨뜨리지 않아야** 한다 (젠슨 S3의 `_resolve_custom_auth`가 legacy 분기 tolerance 유지로 커버).
+- **位置**：`backend/app/services/chat_service.py:302-315`
+- **当前角色**：对 `tool.connection_id IS NULL AND tool.credential_id IS NOT NULL` 的 CUSTOM tool 进行 credential 解密。
+- **删除时点**：M6 — m11 backfill 迁移所有 CUSTOM row 后 + 通过运营计量确认 legacy 路径 trigger 为 0 后。
+- **删除方法**：从 `_resolve_custom_auth` 删除 legacy 分支 + `_resolve_legacy_tool_auth` 在 PREBUILT `provider_name IS NULL` coverage 消失后删除文件本身。
+
+### [H-2] `tools.credential_id` 列 + `Tool.credential` ORM relationship
+
+- **位置**：`backend/app/models/tool.py`（省略 line 查询 — 禁止修改文件）
+- **当前角色**：CUSTOM + PREBUILT legacy bind。以 M3 为基准，PREBUILT 已完全迁移到 connection。M4 中 CUSTOM 也迁移。
+- **删除时点**：M6 — 确认 connection-only 运营后 drop + 同时删除 legacy_tool_auth helper。
+
+### [H-3] `tools.auth_config` 列（inline secret）
+
+- **位置**：`backend/app/models/tool.py`, `ToolCustomCreate.auth_config`（`schemas/tool.py:45`）, `ToolAuthConfigUpdate.auth_config`（`schemas/tool.py:50`）
+- **当前角色**："无 credential 时 tool 创建后立即 inline auth" legacy。M3 前用户 scenario。
+- **删除时点**：M6。但在 ORM column drop 前需要数据 audit — 确认 prod 中是否存在 `auth_config IS NOT NULL AND credential_id IS NULL` row。
+
+### [H-4] `PATCH /api/tools/{tool_id}/auth-config` endpoint 的 `credential_id` 处理
+
+- **位置**：`backend/app/routers/tools.py:115-128` + `backend/app/services/tool_service.py:249+` `update_tool_auth_config`
+- **当前角色**：3 个 auth dialog（prebuilt/custom/MCP server）**共同使用**的 credential rebind endpoint。
+- **当前状态**：M3 中 PREBUILT dialog 已通过 `useConnections` POST/PATCH 绕开 — 此 endpoint 的 PREBUILT 调用在 M3 中已接近 0（参见 M3 Zuckerberg 工作）。
+- **M4 影响**：S4 中将 `add-tool-dialog` Custom tab 改为 find-or-create connection 后，**新建路径不再经过此 endpoint**。现有 tool 的 credential rebind 仍通过 `custom-auth-dialog`（移交 M5）路径调用此 endpoint。
+- **删除时点**：M5（替换 custom-auth-dialog）+ M6（替换 MCP dialog）完成后 — 3 个 dialog 全部迁移为经由 connection 后，此 endpoint 本身变成 dead code。Endpoint DELETE 在 M6。
+
+### [H-5] `ToolCustomCreate.credential_id` 字段（`schemas/tool.py:46`）
+
+- **当前角色**：POST /tools/custom 时直接绑定 credential。
+- **S4 中**：客户端改为 body 中**不发送**。Server schema 保留到 M6（向后兼容）。
+- **删除时点**：M6 — 与 `Tool.credential_id` 列 drop 同步。
+
+---
+
+## 4. 移交 M5（仅记录现状）
+
+**超出 M4 scope**。不触碰。以下是进入 M5 时参考用的现状 snapshot。
+
+### [L-1] `frontend/src/components/tool/custom-auth-dialog.tsx`（109 行）
+
+- **当前角色**：对现有 CUSTOM tool 进行 credential rebind。`useUpdateToolAuthConfig` → `PATCH /tools/{id}/auth-config`。
+- **第 16、33 行**：`useUpdateToolAuthConfig` import + call。
+- **第 36 行**：`useState<string>(tool.credential_id ?? CREDENTIAL_NONE)` — 直接依赖 `tool.credential_id`。
+- **第 40-45 行**：save 时传 `{ authConfig: {}, credentialId }`（始终清空 inline auth + 更新 credential_id）。
+- **M5 替换方向**：复用 `ConnectionBindingDialog`（M3 新建）shell。credential → connection find-or-create → `tool.connection_id` PATCH 或 `Connection.credential_id` PATCH。
+- **注意**：到 M5 为止，该 dialog 继续通过 **legacy 路径工作**。M4 的 backend 变更**不得破坏**该 dialog（由 Jensen S3 的 `_resolve_custom_auth` 保持 legacy 分支 tolerance 来覆盖）。
 
 ### [L-2] `frontend/src/components/tool/mcp-server-auth-dialog.tsx`
 
-- **현 역할**: MCP server credential rebind. 동일한 `PATCH /tools/{id}/auth-config` 엔드포인트 경유 (추정 — 파일 미검증, M5에서 확인).
-- **M4 영향**: 전혀 없음. MCP는 M2에서 이미 connection 경유로 런타임 동작. Dialog만 legacy API를 쓰는 상태.
-- **M5 교체 방향**: `ConnectionBindingDialog` shell 재사용.
+- **当前角色**：MCP server credential rebind。经由相同的 `PATCH /tools/{id}/auth-config` endpoint（推测 — 文件未验证，M5 中确认）。
+- **M4 影响**：完全没有。MCP 在 M2 中 runtime 已经经由 connection 工作。只有 Dialog 仍使用 legacy API。
+- **M5 替换方向**：复用 `ConnectionBindingDialog` shell。
 
-### [L-3] `/connections` 페이지 CUSTOM 섹션
+### [L-3] `/connections` 页面 CUSTOM section
 
-- **현 상태**: `CredentialCard` 리스트 유지(M5까지 보존 — M3 zuckerberg 결정). PREBUILT 섹션만 M3에서 신규 추가.
-- **M4 영향**: CUSTOM tool이 connection을 갖게 되지만 `/connections` 페이지의 CUSTOM 섹션은 여전히 credential 중심 뷰. UX 일관성 이슈는 M5에서 PrebuiltConnectionSection 패턴으로 `CustomConnectionSection` 추가로 해소.
-
----
-
-## 5. 분석서 검증 체크리스트 (사티아 S6 게이트 참고)
-
-- [x] 분석 대상 4개 파일 모두 읽음: `chat_service.py`, `routers/tools.py`, `add-tool-dialog.tsx`, `custom-auth-dialog.tsx`
-- [x] 보조 확인: `services/tool_service.py` CUSTOM 경로, `schemas/tool.py` credential_id/auth_config 필드
-- [x] 3분류(즉시/단순화/보류) + M5 이월 현황 구분
-- [x] drive-by 금지 준수 — 실제 수정 0건, 분석서만 신규 생성
-- [x] M6 precedent 기록 — H-1~H-5 각각 제거 시점 + 방법 명시
-- [x] 스코프 합의 준수 — custom-auth-dialog, mcp-server-auth-dialog, `/connections` CUSTOM 섹션 미변경
+- **当前状态**：保留 `CredentialCard` 列表（保留到 M5 — M3 Zuckerberg 决定）。M3 只新增 PREBUILT section。
+- **M4 影响**：CUSTOM tool 会拥有 connection，但 `/connections` 页面的 CUSTOM section 仍是 credential 中心视图。UX 一致性问题在 M5 中通过沿用 PrebuiltConnectionSection 模式新增 `CustomConnectionSection` 解决。
 
 ---
 
-## 6. 팀원에게 전달할 사전 사실 (S2~S5 진입 전 공유)
+## 5. 分析文档验证 checklist（供 Satya S6 gate 参考）
 
-> 젠슨 S3 / 저커버그 S4 / 피차이 S2에 해당하는 정보만 아래 요약. 실제 파일 경계는 `progress.txt`의 표를 따른다.
+- [x] 已读取全部 4 个分析对象文件：`chat_service.py`, `routers/tools.py`, `add-tool-dialog.tsx`, `custom-auth-dialog.tsx`
+- [x] 辅助确认：`services/tool_service.py` CUSTOM 路径、`schemas/tool.py` credential_id/auth_config 字段
+- [x] 区分 3 类（立即/简化/暂缓）+ M5 移交现状
+- [x] 遵守禁止 drive-by — 实际修改 0 项，仅新建分析文档
+- [x] 记录 M6 precedent — H-1~H-5 各自明确删除时点 + 方法
+- [x] 遵守 scope 协议 — custom-auth-dialog、mcp-server-auth-dialog、`/connections` CUSTOM section 未修改
 
-1. **피차이 S2 (Alembic m11)** — `progress.txt` "Alembic m11 상세 설계" 그대로 충분. 분석서가 추가로 지시할 사항 없음. `(user_id, credential_id)` dedup + `M11_SEED_MARKER = "[m11-auto-seed]"` + `m11_custom_connection` 22자 revision ID 모두 합의대로.
-2. **젠슨 S3 (`_resolve_custom_auth` 신설)** — [S-1] 권고: PREBUILT 대칭 구조. PREBUILT의 "connection 없음 = env fallback" vs CUSTOM의 "connection 없음 = legacy fallback" 시맨틱 차이 docstring 필수. `build_tools_config`의 `else:` 혼합 분기를 `elif tool.type == CUSTOM:` + `else: _resolve_legacy_tool_auth(tool)`(BUILTIN 전용)로 분리하면 M6 cleanup이 직관적.
-3. **저커버그 S4 (add-tool-dialog Custom 탭)** — [S-2] 권고: Submit 시점 find-or-create connection → body에 `credential_id` 금지, `connection_id`만 전달. `ToolCreateRequest.connection_id?` 필드가 `frontend/src/lib/types/index.ts`에 이미 있는지 확인(M2에서 Tool에 추가됐지만 Create 요청 스키마에는 누락됐을 수 있음 — 누락 시 저커버그가 S4에서 추가). `useConnections` 훅은 M3 저커버그 산출.
-4. **베조스 S5 (본인)** — 테스트 시나리오는 CHECKPOINT.md S5 체크리스트 그대로. 분석서 [S-3] 로그 계측은 선택 사항이므로 테스트에서도 생략 가능. `_resolve_custom_auth` 헬퍼가 실제로 만들어져 있어야 `inspect.getsource` 소스 계약 가드를 적용할 수 있으므로 S3 완료 후 진입. Alembic m11 왕복은 M9/M10 precedent대로 aiosqlite에서는 `inspect.getsource` 가드로, PG 실제 왕복은 S6 integration 게이트에서.
+---
+
+## 6. 需要传达给团队成员的事前事实（进入 S2~S5 前共享）
+
+> 下方只摘要与 Jensen S3 / Zuckerberg S4 / Pichai S2 相关的信息。实际文件边界遵循 `progress.txt` 表格。
+
+1. **Pichai S2（Alembic m11）** — 按 `progress.txt` "Alembic m11 详细设计" 已足够。分析文档无额外指示。`(user_id, credential_id)` dedup + `M11_SEED_MARKER = "[m11-auto-seed]"` + `m11_custom_connection` 22 字符 revision ID 全部按约定执行。
+2. **Jensen S3（新建 `_resolve_custom_auth`）** — [S-1] 建议：PREBUILT 对称结构。PREBUILT 的 "无 connection = env fallback" vs CUSTOM 的 "无 connection = legacy fallback" semantic 差异必须写入 docstring。将 `build_tools_config` 的混合 `else:` 分支拆为 `elif tool.type == CUSTOM:` + `else: _resolve_legacy_tool_auth(tool)`（BUILTIN 专用），可让 M6 cleanup 更直观。
+3. **Zuckerberg S4（add-tool-dialog Custom tab）** — [S-2] 建议：Submit 时 find-or-create connection → body 禁止 `credential_id`，只传 `connection_id`。确认 `ToolCreateRequest.connection_id?` 字段是否已存在于 `frontend/src/lib/types/index.ts`（M2 已加到 Tool，但 Create request schema 可能遗漏 — 若缺失由 Zuckerberg 在 S4 增加）。`useConnections` hook 是 M3 Zuckerberg 产物。
+4. **贝索斯 S5（本人）** — 测试 scenario 按 CHECKPOINT.md S5 checklist 原样。分析文档 [S-3] log 计量是可选项，因此测试中也可省略。只有 `_resolve_custom_auth` helper 实际创建后，才能应用 `inspect.getsource` 源码 contract guard，因此在 S3 完成后进入。Alembic m11 往返按 M9/M10 precedent，在 aiosqlite 中用 `inspect.getsource` guard，PG 实际往返放到 S6 integration gate。

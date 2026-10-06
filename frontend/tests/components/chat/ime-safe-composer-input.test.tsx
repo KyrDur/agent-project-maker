@@ -72,48 +72,48 @@ describe('ImeSafeComposerInput', () => {
     const textarea = screen.getByPlaceholderText('占位符')
 
     fireEvent.compositionStart(textarea)
-    fireEvent.change(textarea, { target: { value: 'ㅎ' } })
-    fireEvent.change(textarea, { target: { value: '한' } })
+    fireEvent.change(textarea, { target: { value: 'z' } })
+    fireEvent.change(textarea, { target: { value: '中' } })
 
     expect(mocks.setText).not.toHaveBeenCalled()
 
     fireEvent.compositionEnd(textarea)
 
-    expect(mocks.setText).toHaveBeenCalledWith('한')
+    expect(mocks.setText).toHaveBeenCalledWith('中')
   })
 
   it('inserts an IME syllable before a final dictated transcript that arrives during composition', () => {
-    mocks.composerText = '吃水'
+    mocks.composerText = '草稿'
     const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
     const textarea = screen.getByPlaceholderText('占位符')
 
     textarea.setSelectionRange(2, 2)
     fireEvent.compositionStart(textarea)
-    fireEvent.change(textarea, { target: { value: '초안한' } })
+    fireEvent.change(textarea, { target: { value: '草稿中' } })
 
-    mocks.composerText = '초안 음성'
+    mocks.composerText = '草稿语音'
     rerender(<ImeSafeComposerInput placeholder="占位符" />)
 
     fireEvent.compositionEnd(textarea)
 
-    expect(mocks.setText).toHaveBeenLastCalledWith('초안한 음성')
+    expect(mocks.setText).toHaveBeenLastCalledWith('草稿中语音')
   })
 
   it('preserves a selected-text IME replacement when dictation updates during composition', () => {
-    mocks.composerText = '첫 초안 문장'
+    mocks.composerText = '首句草稿'
     const { rerender } = render(<ImeSafeComposerInput placeholder="占位符" />)
     const textarea = screen.getByPlaceholderText('占位符')
 
     textarea.setSelectionRange(2, 4)
     fireEvent.compositionStart(textarea)
-    fireEvent.change(textarea, { target: { value: '첫 대체 문장' } })
+    fireEvent.change(textarea, { target: { value: '首句替代文本' } })
 
-    mocks.composerText = '첫 초안 문장 음성'
+    mocks.composerText = '首句草稿语音'
     rerender(<ImeSafeComposerInput placeholder="占位符" />)
 
     fireEvent.compositionEnd(textarea)
 
-    expect(mocks.setText).toHaveBeenLastCalledWith('첫 대체 문장 음성')
+    expect(mocks.setText).toHaveBeenLastCalledWith('首句替代文本语音')
   })
 
   it('syncs ordinary changes immediately', () => {

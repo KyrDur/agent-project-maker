@@ -1,15 +1,15 @@
-# 삭제 분석 보고서: 채팅 UI — assistant-ui 통합
+# 删除分析报告：聊天 UI — assistant-ui 整合
 
-**분석자**: bezos (QA Engineer)
-**날짜**: 2026-04-09
-**브랜치**: feature/chat-ui-assistant-ui
-**스코프**: assistant-ui 도입 후 삭제/수정/유지 대상 분류
+**分析者**：bezos（QA Engineer）
+**日期**：2026-04-09
+**Branch**：feature/chat-ui-assistant-ui
+**Scope**：引入 assistant-ui 后删除/修改/保留对象分类
 
 ---
 
-## 분석 대상 요약
+## 分析对象摘要
 
-| 디렉토리 | 파일 수 | 총 라인 |
+| 目录 | 文件数 | 总行数 |
 |----------|---------|---------|
 | components/chat/ | 6 + CSS 1 | ~1,069 + CSS |
 | lib/stores/chat-store.ts | 1 | ~40 |
@@ -19,184 +19,184 @@
 
 ---
 
-## 1. 즉시 삭제 가능 (assistant-ui 대체 완료 후)
+## 1. 可立即删除（assistant-ui 替代完成后）
 
-### 1.1 components/chat/ — 삭제 대상 5개 + CSS 1개
+### 1.1 components/chat/ — 删除对象 5 个 + CSS 1 个
 
-| 파일 | 라인 | 대체 수단 | import 지점 | 비고 |
+| 文件 | 行 | 替代方式 | import 位置 | 备注 |
 |------|------|-----------|------------|------|
-| `streaming-message.tsx` | 78 | assistant-ui Thread streaming 렌더링 | conversation page (1곳) | 내부 ThinkingDots → 위트 로딩으로 대체 |
-| `message-bubble.tsx` | 221 | assistant-ui Thread 메시지 렌더링 | conversation page (1곳) | **parseToolContent, normalizeContent 유틸 이동 필요** (아래 §3 참조) |
-| `chat-input.tsx` | 140 | assistant-ui Composer | conversation page (1곳) | sessionTokenUsageAtom 읽기 → Composer에 토큰 표시 통합 |
-| `tool-call-display.tsx` | 190 | makeAssistantToolUI | message-bubble (1곳), streaming-message (1곳) | 내부 전용. 부모 삭제 시 함께 삭제 |
-| `markdown-content.tsx` | 190 | react-streamdown + Shiki + KaTeX | 4곳 (아래 상세) | **가장 많은 의존성 — 순서 주의** |
-| `markdown-styles.css` | - | react-streamdown 자체 스타일 | markdown-content.tsx (1곳) | markdown-content와 함께 삭제 |
+| `streaming-message.tsx` | 78 | assistant-ui Thread streaming 渲染 | conversation page（1 处） | 内部 ThinkingDots → 替换为 Wit loading |
+| `message-bubble.tsx` | 221 | assistant-ui Thread 消息渲染 | conversation page（1 处） | **需要移动 parseToolContent, normalizeContent util**（参见下方 §3） |
+| `chat-input.tsx` | 140 | assistant-ui Composer | conversation page（1 处） | 读取 sessionTokenUsageAtom → 在 Composer 中整合 token 显示 |
+| `tool-call-display.tsx` | 190 | makeAssistantToolUI | message-bubble（1 处）, streaming-message（1 处） | 内部专用。父级删除时一起删除 |
+| `markdown-content.tsx` | 190 | react-streamdown + Shiki + KaTeX | 4 处（下方详述） | **依赖最多 — 注意顺序** |
+| `markdown-styles.css` | - | react-streamdown 自身样式 | markdown-content.tsx（1 处） | 与 markdown-content 一起删除 |
 
-#### markdown-content.tsx 의존성 체인 (삭제 전 해소 필요)
+#### markdown-content.tsx 依赖链（删除前需要解除）
 
 ```
 markdown-content.tsx
-├── message-bubble.tsx         → 삭제 대상 (동시 삭제 OK)
-├── streaming-message.tsx      → 삭제 대상 (동시 삭제 OK)
-├── assistant-panel.tsx        → S6에서 교체 (그때까지 유지 or 동시 교체)
-└── draft-config-card.tsx      → S7에서 마크다운 렌더러 교체 필요
+├── message-bubble.tsx         → 删除对象（同时删除 OK）
+├── streaming-message.tsx      → 删除对象（同时删除 OK）
+├── assistant-panel.tsx        → 在 S6 替换（之前保持或同时替换）
+└── draft-config-card.tsx      → S7 中需要替换 Markdown renderer
 ```
 
-**삭제 순서**: S5(대화 페이지) → S6(AssistantPanel) → S7(Builder) 순으로 교체 후, 마지막에 markdown-content.tsx 삭제. 또는 S5에서 react-streamdown 기반 신규 마크다운 컴포넌트 생성 후, S6/S7에서 import 경로만 변경하고 기존 삭제.
+**删除顺序**：按 S5（对话页面）→ S6（AssistantPanel）→ S7（Builder）顺序替换后，最后删除 markdown-content.tsx。或者在 S5 中创建基于 react-streamdown 的新 Markdown component，然后在 S6/S7 中只修改 import 路径并删除旧实现。
 
-### 1.2 chat-store.ts — 부분 삭제 (atoms 5개 중 3~4개)
+### 1.2 chat-store.ts — 部分删除（5 个 atoms 中的 3~4 个）
 
-| Atom | 카테고리 | Reader | Writer | 판정 |
+| Atom | 类别 | Reader | Writer | 判定 |
 |------|---------|--------|--------|------|
-| `streamingMessageAtom` | 스트리밍 상태 | streaming-message.tsx | conversation page | **삭제** — assistant-ui 런타임이 대체 |
-| `streamingToolCallsAtom` | 스트리밍 상태 | streaming-message.tsx | conversation page | **삭제** — assistant-ui 런타임이 대체 |
-| `isStreamingAtom` | UI 상태 | streaming-message.tsx | conversation page | **삭제** — assistant-ui 런타임이 대체 |
-| `sessionTokenUsageAtom` | 토큰 추적 | chat-input.tsx | conversation page | **유지** — 토큰 추적은 assistant-ui 외부 관심사 |
-| `lastMessageTokensAtom` | 토큰 추적 | **없음 (dead code)** | conversation page | **삭제** — 쓰기만, 읽기 없음 |
-| `StreamingToolCall` 타입 | 타입 | conversation page | - | **삭제** — assistant-ui 자체 타입으로 대체 |
-| `TokenUsage` 타입 | 타입 | chat-input, conversation page | - | **유지** — sessionTokenUsageAtom과 함께 |
+| `streamingMessageAtom` | streaming 状态 | streaming-message.tsx | conversation page | **删除** — 由 assistant-ui runtime 替代 |
+| `streamingToolCallsAtom` | streaming 状态 | streaming-message.tsx | conversation page | **删除** — 由 assistant-ui runtime 替代 |
+| `isStreamingAtom` | UI 状态 | streaming-message.tsx | conversation page | **删除** — 由 assistant-ui runtime 替代 |
+| `sessionTokenUsageAtom` | token 追踪 | chat-input.tsx | conversation page | **保留** — token 追踪是 assistant-ui 外部关注点 |
+| `lastMessageTokensAtom` | token 追踪 | **无（dead code）** | conversation page | **删除** — 只写不读 |
+| `StreamingToolCall` 类型 | 类型 | conversation page | - | **删除** — 替换为 assistant-ui 自身类型 |
+| `TokenUsage` 类型 | 类型 | chat-input, conversation page | - | **保留** — 与 sessionTokenUsageAtom 一起 |
 
-**결과**: chat-store.ts는 삭제하지 않고 `sessionTokenUsageAtom` + `TokenUsage`만 남긴다. 파일이 2개 export만 남으면 다른 store로 이동 검토.
+**结果**：不删除 chat-store.ts，仅保留 `sessionTokenUsageAtom` + `TokenUsage`。如果文件只剩 2 个 export，则评估迁移到其他 store。
 
-### 1.3 assistant-panel.tsx — 전체 교체 (S6)
+### 1.3 assistant-panel.tsx — 整体替换（S6）
 
-| 내부 컴포넌트 | 라인 | 대체 수단 | 중복 대상 |
+| 内部组件 | 行 | 替代方式 | 重复对象 |
 |--------------|------|-----------|----------|
-| `MessageBubble` (내부) | 81-131 | assistant-ui Thread 메시지 | chat/message-bubble.tsx와 **중복** (단순화 버전) |
-| `ToolCallBadge` (내부) | 43-79 | makeAssistantToolUI | chat/tool-call-display.tsx와 **중복** (경량 버전) |
+| `MessageBubble`（内部） | 81-131 | assistant-ui Thread 消息 | 与 chat/message-bubble.tsx **重复**（简化版本） |
+| `ToolCallBadge`（内部） | 43-79 | makeAssistantToolUI | 与 chat/tool-call-display.tsx **重复**（轻量版本） |
 
-**이동 필요 로직**:
-- SSE 이벤트 핸들링 (5종: content_delta, tool_call_start, tool_call_result, message_end, error) → useExternalStoreRuntime 어댑터로 이동
-- `isComposingRef` (IME 조합 방지) → Composer에서 처리 or 커스텀 Composer에 통합
-- `crypto.randomUUID()` 세션 관리 → 런타임 어댑터 레벨로 이동
-- AbortController 관리 → 런타임 어댑터로 이동
-- TanStack Query invalidation (`['agents']`) → 도구 실행 콜백으로 이동
+**需要迁移的逻辑**：
+- SSE 事件处理（5 种：content_delta, tool_call_start, tool_call_result, message_end, error）→ 移到 useExternalStoreRuntime 适配器
+- `isComposingRef`（防止 IME 组合）→ 在 Composer 中处理 or 整合到自定义 Composer
+- `crypto.randomUUID()` session 管理 → 移到 runtime 适配器层
+- AbortController 管理 → 移到 runtime 适配器
+- TanStack Query invalidation（`['agents']`）→ 移到工具执行回调
 
 ---
 
-## 2. 유지 항목
+## 2. 保留项目
 
-### 2.1 components/chat/ — 유지 1개
+### 2.1 components/chat/ — 保留 1 个
 
-| 파일 | 라인 | 이유 |
+| 文件 | 行 | 原因 |
 |------|------|------|
-| `conversation-list.tsx` | 250 | 사이드바 대화 목록. assistant-ui와 무관. TanStack Query + Next.js Router 기반. |
+| `conversation-list.tsx` | 250 | Sidebar 对话列表。与 assistant-ui 无关。基于 TanStack Query + Next.js Router。 |
 
-### 2.2 lib/sse/ — 전체 유지
+### 2.2 lib/sse/ — 全部保留
 
-| 파일 | 라인 | 이유 |
+| 文件 | 行 | 原因 |
 |------|------|------|
-| `parse-sse.ts` | 70 | 공용 SSE 파서. 3개 스트림 모듈이 의존. |
-| `stream-chat.ts` | 16 | useExternalStoreRuntime 어댑터에서 계속 사용 (백엔드 API 불변) |
-| `stream-assistant.ts` | 21 | AssistantPanel 런타임 어댑터에서 계속 사용 |
-| `stream-builder.ts` | 27 | Builder 페이지에서 계속 사용 |
+| `parse-sse.ts` | 70 | 公共 SSE 解析器。3 个 stream module 依赖。 |
+| `stream-chat.ts` | 16 | 继续在 useExternalStoreRuntime 适配器中使用（backend API 不变） |
+| `stream-assistant.ts` | 21 | 继续在 AssistantPanel runtime 适配器中使用 |
+| `stream-builder.ts` | 27 | 继续在 Builder 页面中使用 |
 
-### 2.3 lib/hooks/ — 유지
+### 2.3 lib/hooks/ — 保留
 
-| 파일 | 이유 |
+| 文件 | 原因 |
 |------|------|
-| `use-conversations.ts` | TanStack Query 훅. conversation-list + 대화 페이지에서 사용. |
+| `use-conversations.ts` | TanStack Query hook。在 conversation-list + 对话页面中使用。 |
 
-### 2.4 conversational/_components/ — 유지 (이번 PR 스코프 외)
+### 2.4 conversational/_components/ — 保留（超出本 PR scope）
 
-| 파일 | 라인 | 이유 |
+| 文件 | 行 | 原因 |
 |------|------|------|
-| `phase-timeline.tsx` | 157 | Builder 전용. S7에서 Thread 래핑만 하고 내부 컴포넌트는 유지. |
-| `intent-card.tsx` | 53 | Builder 전용. 유지. |
-| `recommendation-card.tsx` | 50 | 범용 카드. 유지. |
-| `draft-config-card.tsx` | 132 | Builder 전용. **markdown-content import → S7에서 신규 마크다운 렌더러로 교체 필요.** |
+| `phase-timeline.tsx` | 157 | Builder 专用。S7 中仅用 Thread 包裹，保留内部组件。 |
+| `intent-card.tsx` | 53 | Builder 专用。保留。 |
+| `recommendation-card.tsx` | 50 | 通用卡片。保留。 |
+| `draft-config-card.tsx` | 132 | Builder 专用。**markdown-content import → S7 中需要替换为新的 Markdown renderer。** |
 
-### 2.5 chat-store.ts — 부분 유지
+### 2.5 chat-store.ts — 部分保留
 
-- `sessionTokenUsageAtom` + `TokenUsage` 타입 유지
+- 保留 `sessionTokenUsageAtom` + `TokenUsage` 类型
 
 ---
 
-## 3. 이동 필요 유틸리티
+## 3. 需要迁移的工具函数
 
-### message-bubble.tsx 내부 유틸 함수 (삭제 전 추출)
+### message-bubble.tsx 内部工具函数（删除前提取）
 
-| 함수 | 기능 | 이동 대상 |
+| 函数 | 功能 | 迁移目标 |
 |------|------|----------|
-| `parseToolContent(content)` | Python dict + JSON 도구 결과 파싱 | `lib/utils/convert-message.ts` (신규) |
-| `extractTextFromParsed(parsed)` | 파싱된 도구 결과에서 텍스트 추출 | `lib/utils/convert-message.ts` (신규) |
-| `normalizeContent(content)` | 제어 문자 정규화 | `lib/utils/convert-message.ts` (신규) |
+| `parseToolContent(content)` | 解析 Python dict + JSON 工具结果 | `lib/utils/convert-message.ts`（新增） |
+| `extractTextFromParsed(parsed)` | 从解析后的工具结果中提取文本 | `lib/utils/convert-message.ts`（新增） |
+| `normalizeContent(content)` | 规范化控制字符 | `lib/utils/convert-message.ts`（新增） |
 
-**이유**: 이 유틸들은 백엔드 메시지 → assistant-ui 메시지 변환 시 재사용될 가능성 높음. 특히 `parseToolContent`는 LangGraph 도구 결과 형식 파싱에 필수.
+**原因**：这些 util 很可能在 backend 消息 → assistant-ui 消息转换时复用。尤其 `parseToolContent` 是解析 LangGraph 工具结果格式的必需项。
 
-### streaming-message.tsx 내부 컴포넌트
+### streaming-message.tsx 内部组件
 
-| 컴포넌트 | 기능 | 판정 |
+| 组件 | 功能 | 判定 |
 |---------|------|------|
-| `ThinkingDots()` | 로딩 애니메이션 | **삭제** — 위트 로딩(3초 간격 랜덤 메시지)으로 대체 예정 |
+| `ThinkingDots()` | loading 动画 | **删除** — 计划替换为 Wit loading（每 3 秒随机消息） |
 
 ---
 
-## 4. 의존성 그래프
+## 4. 依赖关系图
 
 ```
-[삭제 대상]                      [유지 대상]
+[删除对象]                      [保留对象]
                                 
-streaming-message.tsx ──┐        conversation-list.tsx (독립)
+streaming-message.tsx ──┐        conversation-list.tsx（独立）
                        │        
 message-bubble.tsx ────┤        lib/sse/parse-sse.ts
-  └─ parseToolContent  │          ├── stream-chat.ts (유지)
-  └─ normalizeContent  │          ├── stream-assistant.ts (유지)
-                       │          └── stream-builder.ts (유지)
+  └─ parseToolContent  │          ├── stream-chat.ts（保留）
+  └─ normalizeContent  │          ├── stream-assistant.ts（保留）
+                       │          └── stream-builder.ts（保留）
 chat-input.tsx ────────┤        
                        │        chat-store.ts
-tool-call-display.tsx ─┤          └── sessionTokenUsageAtom (유지)
-                       │          └── TokenUsage 타입 (유지)
+tool-call-display.tsx ─┤          └── sessionTokenUsageAtom（保留）
+                       │          └── TokenUsage 类型（保留）
 markdown-content.tsx ──┤        
-  └─ markdown-styles.css│       conversational/_components/ (전체 유지)
+  └─ markdown-styles.css│       conversational/_components/（全部保留）
                        │          └── draft-config-card.tsx
-assistant-panel.tsx ───┘              (markdown-content → 신규 렌더러로 교체)
-  └─ MessageBubble (내부)
-  └─ ToolCallBadge (내부)
+assistant-panel.tsx ───┘              （markdown-content → 替换为新 renderer）
+  └─ MessageBubble（内部）
+  └─ ToolCallBadge（内部）
 
-chat-store.ts (부분 삭제)
-  ├── streamingMessageAtom (삭제)
-  ├── streamingToolCallsAtom (삭제)
-  ├── isStreamingAtom (삭제)
-  ├── lastMessageTokensAtom (삭제, dead code)
-  └── StreamingToolCall 타입 (삭제)
+chat-store.ts（部分删除）
+  ├── streamingMessageAtom（删除）
+  ├── streamingToolCallsAtom（删除）
+  ├── isStreamingAtom（删除）
+  ├── lastMessageTokensAtom（删除，dead code）
+  └── StreamingToolCall 类型（删除）
 ```
 
 ---
 
-## 5. 삭제 실행 순서 (권장)
+## 5. 删除执行顺序（推荐）
 
-| 순서 | 스토리 | 삭제/수정 대상 | 선행 조건 |
+| 顺序 | Story | 删除/修改对象 | 前置条件 |
 |------|--------|--------------|----------|
-| 1 | S2 | message-bubble.tsx에서 parseToolContent 등 추출 → convert-message.ts | 없음 |
-| 2 | S3-S4 | 신규 마크다운 렌더러 + 도구 UI 생성 | S2 완료 |
-| 3 | S5 | streaming-message, message-bubble, chat-input, tool-call-display 삭제. chat-store.ts에서 스트리밍 atoms 삭제 | S3, S4 완료 |
-| 4 | S6 | assistant-panel.tsx 전체 교체 | S3, S4 완료 |
-| 5 | S7 | draft-config-card.tsx의 markdown-content import 교체 | S3 완료 |
-| 6 | S5 이후 | markdown-content.tsx + markdown-styles.css 삭제 | S5, S6, S7 모두 완료 |
-| 7 | S8 | lastMessageTokensAtom 삭제 확인, 미사용 import 정리, 빌드/린트 검증 | 전체 완료 |
+| 1 | S2 | 从 message-bubble.tsx 提取 parseToolContent 等 → convert-message.ts | 无 |
+| 2 | S3-S4 | 创建新的 Markdown renderer + Tool UI | S2 完成 |
+| 3 | S5 | 删除 streaming-message, message-bubble, chat-input, tool-call-display。在 chat-store.ts 中删除 streaming atoms | S3, S4 完成 |
+| 4 | S6 | 整体替换 assistant-panel.tsx | S3, S4 完成 |
+| 5 | S7 | 替换 draft-config-card.tsx 的 markdown-content import | S3 完成 |
+| 6 | S5 之后 | 删除 markdown-content.tsx + markdown-styles.css | S5, S6, S7 全部完成 |
+| 7 | S8 | 确认删除 lastMessageTokensAtom，清理未使用 import，验证 build/lint | 全部完成 |
 
 ---
 
-## 6. 리스크 & 주의사항
+## 6. 风险 & 注意事项
 
-| 리스크 | 심각도 | 설명 |
+| 风险 | 严重度 | 说明 |
 |--------|--------|------|
-| markdown-content.tsx 조기 삭제 | HIGH | 4곳에서 import. S5/S6/S7 모두 완료 전에 삭제하면 빌드 실패 |
-| parseToolContent 유실 | MEDIUM | message-bubble.tsx 삭제 시 유틸 함수도 함께 사라짐. 반드시 사전 추출 |
-| sessionTokenUsageAtom 오삭제 | MEDIUM | chat-store.ts 정리 시 토큰 관련 atom까지 삭제하면 토큰 추적 깨짐 |
-| draft-config-card.tsx 깨짐 | MEDIUM | markdown-content 삭제 후 Builder 페이지에서 마크다운 렌더링 불가 |
-| lastMessageTokensAtom dead code | LOW | 현재 아무도 읽지 않음. 향후 사용 계획 없으면 삭제 |
-| IME 조합 방지 로직 유실 | LOW | assistant-panel.tsx의 isComposingRef. CJK 입력 시 필요 |
+| 过早删除 markdown-content.tsx | HIGH | 4 处 import。在 S5/S6/S7 全部完成前删除会导致 build 失败 |
+| 丢失 parseToolContent | MEDIUM | 删除 message-bubble.tsx 时 util 函数也会一起消失。必须事先提取 |
+| 误删 sessionTokenUsageAtom | MEDIUM | 清理 chat-store.ts 时如果连 token 相关 atom 一起删除，会破坏 token 追踪 |
+| draft-config-card.tsx 损坏 | MEDIUM | 删除 markdown-content 后 Builder 页面无法渲染 Markdown |
+| lastMessageTokensAtom dead code | LOW | 当前无人读取。如无未来使用计划则删除 |
+| 丢失 IME 组合防护逻辑 | LOW | assistant-panel.tsx 的 isComposingRef。CJK 输入时需要 |
 
 ---
 
-## 7. 정량 요약
+## 7. 定量摘要
 
-| 구분 | 파일 수 | 라인 수 (추정) |
+| 分类 | 文件数 | 行数（估算） |
 |------|---------|---------------|
-| 즉시 삭제 가능 | 7 (chat 5 + CSS 1 + assistant-panel 1) | ~1,189 |
-| 부분 삭제 (atoms) | 1 (chat-store.ts 내 4 atoms + 1 타입) | ~20 |
-| 유지 | 10 (conversation-list + sse 4 + hooks 1 + _components 4) | ~723 |
-| 이동 필요 유틸 | 3 함수 (→ convert-message.ts) | ~30 |
-| **총 삭제 라인** | | **~1,209** |
+| 可立即删除 | 7（chat 5 + CSS 1 + assistant-panel 1） | ~1,189 |
+| 部分删除（atoms） | 1（chat-store.ts 内 4 atoms + 1 类型） | ~20 |
+| 保留 | 10（conversation-list + sse 4 + hooks 1 + _components 4） | ~723 |
+| 需要迁移的 util | 3 个函数（→ convert-message.ts） | ~30 |
+| **总删除行数** | | **~1,209** |

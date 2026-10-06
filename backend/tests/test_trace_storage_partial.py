@@ -1,10 +1,10 @@
 """Tests for W3-out M2 partial flush — ``trace_storage.append_events`` /
 ``finalize_turn`` lifecycle.
 
-CHECKPOINT.md M2 done-when 일부:
+CHECKPOINT.md M2 done-when 的一部分：
 - append_events: insert / merge / dedup-by-id
-- finalize_turn: status 갱신, completed_at, linked_message_ids 부착
-- record_turn 호환 유지 (test_trace_storage.py가 별도로 검증)
+- finalize_turn: 更新 status、completed_at、挂接 linked_message_ids
+- 保持 record_turn 兼容（test_trace_storage.py 单独验证）
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ async def test_append_events_creates_new_row() -> None:
         assert record.assistant_msg_id == msg_id
         assert record.status == "streaming"
         assert record.last_event_id == f"{msg_id}-3"
-        assert record.completed_at is None  # finalize_turn이 아직 안 불림
+        assert record.completed_at is None  # finalize_turn 尚未调用
         assert len(await trace_storage.load_events(db, record)) == 3
 
 
@@ -169,7 +169,7 @@ async def test_append_events_stores_payload_in_append_only_chunks() -> None:
 
 @pytest.mark.asyncio
 async def test_append_events_dedups_by_id() -> None:
-    """같은 chunk를 두 번 append해도 events에 중복이 생기지 않는다."""
+    """即使同一个 chunk append 两次，events 中也不会出现重复。"""
     conv_id = await _seed_conversation()
     msg_id = "msg-partial-3"
     chunk = _chunk(msg_id, 1, 3)
@@ -201,7 +201,7 @@ async def test_append_events_dedups_by_id() -> None:
 
 @pytest.mark.asyncio
 async def test_append_events_partial_overlap_keeps_only_new() -> None:
-    """Boundary 중복 — chunk가 기존 마지막 event를 포함하는 경우."""
+    """Boundary 重复 — chunk 包含现有最后一个 event 的情况。"""
     conv_id = await _seed_conversation()
     msg_id = "msg-partial-overlap"
 
@@ -215,7 +215,7 @@ async def test_append_events_partial_overlap_keeps_only_new() -> None:
         await db.commit()
 
     async with TestSession() as db:
-        # ids 3,4,5 — 3은 기존, 4/5만 새로 추가되어야 함.
+        # ids 3,4,5 — 3 已存在，只有 4/5 应新增。
         await trace_storage.append_events(
             db,
             conversation_id=conv_id,
@@ -334,7 +334,7 @@ async def test_finalize_turn_attaches_linked_message_ids() -> None:
 
 @pytest.mark.asyncio
 async def test_finalize_turn_returns_none_when_row_missing() -> None:
-    """append_events가 한 번도 안 불린 경우 (events 0건). caller가 fallback 결정."""
+    """append_events 一次都未调用的情况（events 0 条）。caller 决定 fallback。"""
     async with TestSession() as db:
         result = await trace_storage.finalize_turn(
             db,
@@ -346,13 +346,13 @@ async def test_finalize_turn_returns_none_when_row_missing() -> None:
 
 
 # --------------------------------------------------------------------------
-# record_turn backward-compat — 새로 도입한 status 컬럼 기본값 확인.
+# record_turn backward-compat — 确认新引入的 status 列默认值。
 # --------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_record_turn_sets_status_completed() -> None:
-    """기존 ``record_turn`` 경로는 status='completed' 로 기록되어야 한다."""
+    """现有 ``record_turn`` 路径必须记录为 status='completed'。"""
     conv_id = await _seed_conversation()
     events = [
         {"id": "msg-rec-1", "event": "message_start", "data": {"id": "msg-rec"}},
@@ -365,7 +365,7 @@ async def test_record_turn_sets_status_completed() -> None:
         assert record is not None
         assert record.status == "completed"
         assert record.completed_at is not None
-        # m34 — updated_at 컬럼이 server_default(now)로 채워져야 함.
+        # m34 — updated_at 列必须由 server_default(now) 填充。
         assert record.updated_at is not None
 
 
@@ -398,11 +398,11 @@ async def test_record_turn_can_set_status_failed() -> None:
 
 @pytest.mark.asyncio
 async def test_append_events_sets_updated_at_on_insert_and_update() -> None:
-    """append_events insert + 후속 update 모두 updated_at 이 채워진다.
+    """append_events insert + 后续 update 都会填充 updated_at。
 
-    SQLite 는 server_default=CURRENT_TIMESTAMP 가 second-precision이라 두 번
-    호출 사이의 차이가 작을 수 있다. 정확한 monotonic 비교 대신 not-None +
-    second comparison 으로 회귀 신호를 잡는다.
+    SQLite 的 server_default=CURRENT_TIMESTAMP 为 second-precision，因此两次
+    调用之间的差异可能很小。与其做精确 monotonic 比较，不如用 not-None +
+    second comparison 捕获回归信号。
     """
     conv_id = await _seed_conversation()
     msg_id = "msg-touch"
@@ -432,7 +432,7 @@ async def test_append_events_sets_updated_at_on_insert_and_update() -> None:
 
 
 # --------------------------------------------------------------------------
-# BE-P5(d) — known_event_ids 캐시 경로 + load_persisted_event_ids 시드
+# BE-P5(d) — known_event_ids 缓存路径 + load_persisted_event_ids 初始化
 # --------------------------------------------------------------------------
 
 
@@ -440,7 +440,7 @@ async def test_append_events_sets_updated_at_on_insert_and_update() -> None:
 async def test_append_events_known_ids_dedups_without_db_reload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """known_event_ids 가 주어지면 누적 chunk 재 SELECT 없이 dedup 한다."""
+    """提供 known_event_ids 时，无需对累积 chunk 重新 SELECT 即可 dedup。"""
     conv_id = await _seed_conversation()
     msg_id = "msg-known-ids"
 
@@ -454,12 +454,12 @@ async def test_append_events_known_ids_dedups_without_db_reload(
         await db.commit()
 
     async def _explode(*_args: object, **_kwargs: object) -> set[str]:
-        raise AssertionError("known_event_ids 경로는 DB 재로드를 하면 안 된다")
+        raise AssertionError("known_event_ids 路径不应重新加载 DB")
 
     monkeypatch.setattr(trace_storage, "_load_existing_event_ids", _explode)
 
     async with TestSession() as db:
-        # id 3 은 중복(캐시 기준 필터), 4-5 만 신규로 insert 되어야 한다.
+        # id 3 是重复项（按缓存过滤），只有 4-5 应 insert 为新项。
         await trace_storage.append_events(
             db,
             conversation_id=conv_id,

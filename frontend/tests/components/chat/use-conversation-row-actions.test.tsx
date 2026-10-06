@@ -53,7 +53,7 @@ function createWrapperWithClient() {
   return { Wrapper, queryClient }
 }
 
-/** 내비게이터가 쓰는 세 가지 캐시 모양(목록 배열, agent infinite, global infinite)을 시드한다. */
+/** 为 navigator 使用的三种缓存形态（列表数组、agent infinite、global infinite）写入初始数据。 */
 function seedNavigatorCaches(queryClient: QueryClient) {
   queryClient.setQueryData<Conversation[]>(listKey, mockConversationList)
   queryClient.setQueryData<InfiniteData<ConversationListEnvelope>>(pageKey, {
@@ -95,17 +95,17 @@ describe('useConversationRowActions', () => {
 
     const agentPages = queryClient.getQueryData<InfiniteData<ConversationListEnvelope>>(pageKey)
     expect(agentPages?.pages[0]?.items.find((item) => item.id === 'conv-1')?.is_pinned).toBe(true)
-    // infinite 캐시를 통째로 갈아끼우면 pageParams가 사라져 다음 fetchNextPage가 깨진다
+    // 如果整体替换 infinite 缓存，pageParams 会丢失，下一次 fetchNextPage 会出错
     expect(agentPages?.pageParams).toEqual([undefined])
     expect(agentPages?.pages[0]?.next_cursor).toBe('cursor-next')
 
     const globalPages =
       queryClient.getQueryData<InfiniteData<ConversationWithAgentListEnvelope>>(globalKey)
     expect(globalPages?.pages[0]?.items.find((item) => item.id === 'conv-1')?.is_pinned).toBe(true)
-    // 같은 페이지의 다른 대화는 건드리지 않는다
+    // 不修改同一页面中的其他会话
     expect(globalPages?.pages[0]?.items.find((item) => item.id === 'conv-2')?.is_pinned).toBe(false)
 
-    // settle 후 내비게이터 캐시는 invalidate되어 서버 정렬 순서와 다시 동기화된다
+    // settle 后 navigator 缓存会被 invalidate，并再次与服务器排序顺序同步
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
     expect(queryClient.getQueryState(globalKey)?.isInvalidated).toBe(true)
   })
@@ -128,7 +128,7 @@ describe('useConversationRowActions', () => {
 
     act(() => result.current.togglePin(mockConversation))
 
-    // 낙관 패치가 먼저 적용된 것을 확인한 뒤 실패시킨다
+    // 先确认乐观补丁已应用，再触发失败
     await waitFor(() => expect(pinnedInList(queryClient, 'conv-1')).toBe(true))
     act(() => rejectUpdate(new Error('network down')))
 

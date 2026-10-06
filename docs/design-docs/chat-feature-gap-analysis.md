@@ -1,149 +1,149 @@
-# 메인 채팅(v3 에이전트 런) 기능 갭 분석
+# 主聊天（v3 Agent run）功能缺口分析
 
-- **작성일**: 2026-06-30
-- **상태**: 발견(discovery) — 우선순위 합의 전. 구현/일정 미확정.
-- **대상**: v3 메인 채팅(`langgraph_v3`, `use-moldy-langgraph-stream.ts` + `useExternalStoreRuntime`). 빌더/어시스턴트 패널은 범위 밖.
-- **목적**: "에이전트가 도는 채팅"에서 **부족한 필수 기능 / 있으면 좋을 기능**을 근거(코드·문서)와 함께 정리하고 우선순위를 제안한다.
-- **방법**: 프론트 UI/컴포저, 백엔드 런 엔진, 문서/PRD/계획을 각각 인벤토리(병렬 탐색)한 뒤 "현재 있는 것 vs 없는 것"을 교차 대조.
+- **编写日期**：2026-06-30
+- **状态**：发现(discovery) — 优先级尚未达成一致。实现/日程未确定。
+- **对象**：v3 主聊天（`langgraph_v3`, `use-moldy-langgraph-stream.ts` + `useExternalStoreRuntime`）。Builder/Assistant 面板不在范围内。
+- **目的**：整理“Agent 运行的聊天”中**缺失的必需功能 / 有则更好的功能**，附上依据（代码·文档）并提出优先级建议。
+- **方法**：分别盘点前端 UI/composer、后端 run 引擎、文档/PRD/计划（并行探索），再交叉对照“已有 vs 缺失”。
 
-> **2026-09-07 현재 상태 부록.** 아래 G1–G16과 우선순위는 2026-06-30 discovery 기록이다. 이 부록은 그 기록을 삭제하거나 나머지 gap을 새로 감사하지 않고, 이번 modernized-chat 범위에서 확인된 상태만 표시한다.
+> **截至 2026-09-07 的状态附录。** 下方 G1–G16 与优先级是 2026-06-30 的 discovery 记录。本附录不删除该记录，也不重新审计其余 gap，仅标注本次 modernized-chat 范围内确认的状态。
 
-## 현재 상태 부록 (2026-09-07)
+## 当前状态附录（2026-09-07）
 
-| 영역 | 현재 상태 | 남은 한계 |
+| 范围 | 当前状态 | 剩余限制 |
 | --- | --- | --- |
-| G2 retry/recovery | 정확한 failed durable input을 fresh request ID로 다시 접수하고 accepted-pending reconciliation을 한다. | 매칭되는 durable input이 없으면 retry를 제공하지 않는다. |
-| G3 Steer | cancel acknowledgement 뒤 committed state에서 priority correction의 **새 run**을 시작한다. | same-run Steer(현재 run을 보존하고 다음 agent step에서 새 지시를 소비)는 구현하지 않았다. 이는 in-flight provider request의 token 수정과도 별개다. |
-| G5/G6 export/search | export는 로드된 envelope의 Markdown/JSON, search는 rendered transcript 검색이다. | backend full-history/PDF export는 제공하지 않는다. |
-| G9 command/context | 실제 capability command와 authorized frozen text reference를 제공한다. | `/compact`는 수동 인증 endpoint가 없어 disabled이며 reference는 multimodal input이 아니다. |
-| run summary | terminal nullable metrics, root/descendant detail, bounded activity history를 표시한다. | missing capture는 0이 아닌 unknown이며 activity truncation을 표시한다. |
-| MCP Apps | provenance-bound sandbox/proxy와 ordinary tool fallback을 제공한다. | open-link/message-append는 명시적으로 deny되고 browser credential은 없다. |
-| side chat/pin | side chat은 app-shell 수명만, pin은 user-selected display snapshot만 가진다. | reload/cross-device side persistence, automatic summary, memory/prompt injection은 제공하지 않는다. |
-| G12 dictation | production은 browser `SpeechRecognition` adapter 결과를 editable composer에 넣고 auto-send하지 않는다. QA는 speech double을 사용한다. | 실제 microphone end-to-end는 검증하지 않았다. |
+| G2 retry/recovery | 将准确的 failed durable input 以 fresh request ID 重新接收，并执行 accepted-pending reconciliation。 | 若没有匹配的 durable input，则不提供 retry。 |
+| G3 Steer | 在 cancel acknowledgement 后，从 committed state 启动 priority correction 的**新 run**。 | 未实现 same-run Steer（保留当前 run，并在下一个 agent step 消费新指令）。这也与修改 in-flight provider request 的 token 不同。 |
+| G5/G6 export/search | export 为已加载 envelope 的 Markdown/JSON，search 为 rendered transcript 搜索。 | 不提供 backend full-history/PDF export。 |
+| G9 command/context | 提供实际 capability command 和 authorized frozen text reference。 | `/compact` 因没有手动认证 endpoint 而 disabled，reference 也不是 multimodal input。 |
+| run summary | 显示 terminal nullable metrics、root/descendant detail、bounded activity history。 | missing capture 表示 unknown 而非 0，并显示 activity truncation。 |
+| MCP Apps | 提供 provenance-bound sandbox/proxy 和 ordinary tool fallback。 | open-link/message-append 被显式 deny，browser credential 不存在。 |
+| side chat/pin | side chat 仅在 app-shell 生命周期内，pin 仅保存 user-selected display snapshot。 | 不提供 reload/cross-device side persistence、automatic summary、memory/prompt injection。 |
+| G12 dictation | production 将 browser `SpeechRecognition` adapter 结果放入 editable composer，且不 auto-send。QA 使用 speech double。 | 未验证真实 microphone end-to-end。 |
 
-현재 구현의 source anchors는 `use-moldy-langgraph-stream.ts`, `conversation_run_worker.py`, `chat_resource_context.py`, `mcp-apps/renderer.tsx`, `assistant-side-chat-provider.tsx`, `pinned-conversation-summary.tsx`, `use-browser-dictation.ts`이다. scripted-capture의 named catalog와 단일-spec 실행 계약은 ADR-006의 2026-09-07 부록을 따른다. 이 부록은 G1 multimodal, G4 structured output, G7 per-turn model, G8 manual compaction endpoint, G13 HITL 표준화 등 나머지 discovery 항목의 새로운 완료 주장이 아니다.
+当前实现的 source anchors 为 `use-moldy-langgraph-stream.ts`, `conversation_run_worker.py`, `chat_resource_context.py`, `mcp-apps/renderer.tsx`, `assistant-side-chat-provider.tsx`, `pinned-conversation-summary.tsx`, `use-browser-dictation.ts`。scripted-capture 的 named catalog 和 single-spec 执行契约遵循 ADR-006 的 2026-09-07 附录。本附录并不对 G1 multimodal、G4 structured output、G7 per-turn model、G8 manual compaction endpoint、G13 HITL 标准化等其余 discovery 项提出新的完成声明。
 
 ---
 
 ## 0. TL;DR
 
-현재 v3 채팅은 **완성도가 높다** — 스트리밍·리치 마크다운(코드/표/수식/mermaid/이미지)·도구 그룹핑·검색 출처집계·HITL 승인/ask_user·아티팩트 프리뷰(20+ 타입)·첨부 표시·컨텍스트 게이지·토큰/비용 팝오버·자동 compaction·서브에이전트·메모리(propose/save)·브랜치/재생성·공유·네비게이터·Generative UI(DataTable/Chart/Stats/Terminal). 메시지 피드백(👍👎)도 배선됨.
+当前 v3 聊天**完成度很高** — 流式传输·rich Markdown（代码/表格/公式/mermaid/图片）·工具分组·搜索来源聚合·HITL 审批/ask_user·artifact 预览（20+ 类型）·附件显示·上下文 gauge·token/费用 popover·自动 compaction·子 Agent·memory（propose/save）·分支/重新生成·分享·navigator·Generative UI（DataTable/Chart/Stats/Terminal）。消息 feedback（👍👎）也已接线。
 
-따라서 갭은 대부분 **에이전트 능력 / 런 제어 / 마무리(export·검색)** 쪽에 몰려 있다. 가장 임팩트 큰 단일 갭은 **멀티모달 모델 입력**(첨부 이미지/문서를 에이전트가 실제로 못 봄).
+因此缺口主要集中在**Agent 能力 / run 控制 / 收尾（export·search）**。影响最大的单一缺口是**multimodal 模型输入**（Agent 实际看不到附件图片/文档）。
 
 ---
 
-## 1. 현재 강점 (이미 있는 것 — 갭 아님)
+## 1. 当前优势（已有 — 非 gap）
 
-갭을 맥락 안에서 보기 위한 요약. (상세 파일 앵커는 §5)
+为在上下文中理解 gap 的摘要。（详细文件 anchor 见 §5）
 
-| 영역 | 있는 기능 |
+| 范围 | 已有功能 |
 |---|---|
-| 메시지 액션 | copy / edit / regenerate / branch picker(`<n/m>`) / **피드백 👍👎** / 토큰·비용 팝오버 / 타임스탬프 |
-| 컴포저 | 멀티라인+Enter 전송 / 파일 첨부(붙여넣기·드래그) / IME 안전 / opener questions / 컨텍스트 게이지 / queue(steer) 모드(Ctrl+Shift+Enter) |
-| 스트리밍 UX | witty 로딩 / activity strip / stop / reconnect 배지 / SSE resume / 컨텍스트 게이지(80% amber·95% red) / TTFT·tok-s·비용 팝오버 / 자동 compaction 마커 |
-| 도구/에이전트 | 도구 pill·그룹핑 / 검색 6종+출처집계 / 승인 카드(approve/edit/reject·멀티액션 인덱스) / ask_user(option list·question flow) / reasoning·phase timeline / 서브에이전트 카드 / deepagents state 패널 / 메모리 카드 / 코드·diff 프리뷰 / **Generative UI 데이터 카드** |
-| 아티팩트 | 인라인 카드 + 우측 레일 프리뷰(PDF/DOCX/HWP/XLSX/PPTX/Mermaid/이미지/코드/표/data) + 라이브러리 |
-| 대화 | 네비게이터(pin/rename/delete/검색/무한스크롤/⌘1-9) / 공유 링크(생성·복사·취소) / jump-to-message / 우측 레일 리사이즈 |
-| 백엔드 런 | start/stream/stop·cancel / SSE resume(replay) / regenerate / branch·checkpoint fork / edit-and-rerun / 모델 fallback 체인 / 메모리(propose·save·proposal) / 서브에이전트 / 트리거(스케줄) / 토큰·비용·Langfuse·audit |
+| 消息操作 | copy / edit / regenerate / branch picker(`<n/m>`) / **feedback 👍👎** / token·费用 popover / 时间戳 |
+| composer | 多行+Enter 发送 / 文件附件（粘贴·拖拽）/ IME 安全 / opener questions / 上下文 gauge / queue(steer) 模式(Ctrl+Shift+Enter) |
+| 流式 UX | witty 加载 / activity strip / stop / reconnect 徽章 / SSE resume / 上下文 gauge（80% amber·95% red）/ TTFT·tok-s·费用 popover / 自动 compaction marker |
+| 工具/Agent | 工具 pill·分组 / 6种搜索+来源聚合 / 审批卡（approve/edit/reject·多动作索引）/ ask_user（option list·question flow）/ reasoning·phase timeline / 子 Agent 卡片 / deepagents state 面板 / memory 卡片 / code·diff 预览 / **Generative UI 数据卡片** |
+| artifact | 内联卡片 + 右侧栏预览（PDF/DOCX/HWP/XLSX/PPTX/Mermaid/图片/代码/表格/data）+ Library |
+| 对话 | navigator（pin/rename/delete/search/infinite scroll/⌘1-9）/ 分享链接（创建·复制·取消）/ jump-to-message / 右侧栏 resize |
+| 后端 run | start/stream/stop·cancel / SSE resume(replay) / regenerate / branch·checkpoint fork / edit-and-rerun / 模型 fallback chain / memory(propose·save·proposal) / 子 Agent / trigger（计划任务）/ token·费用·Langfuse·audit |
 
 ---
 
-## 2. 갭 분석
+## 2. Gap 分析
 
-각 항목: **설명 · 현재 상태(근거) · 가치 · 노력 · 비고(문서상 deferred 여부)**.
+每项：**说明 · 当前状态（依据）· 价值 · 工作量 · 备注（文档是否 deferred）**。
 
-### 🥇 Tier 1 — 가장 큰 기능 갭 (에이전트 능력에 직접 영향)
+### 🥇 Tier 1 — 最大功能 gap（直接影响 Agent 能力）
 
-#### G1. 멀티모달 모델 입력 — 첨부 이미지/문서를 에이전트가 실제로 못 봄 ⭐ 최우선
-- **설명**: 첨부 **표시**(P1)는 됐으나, 붙인 이미지가 vision 블록으로, 문서가 텍스트 추출/RAG로 **모델 메시지에 전달되지 않는다**. 사용자는 이미지를 붙일 수 있는데 에이전트는 보지 못한다.
-- **근거**: 백엔드 — "image_url 메시지 스키마는 지원하나 frontend 첨부→메시지 변환 없음"(`conversation_files.py`, `model_factory.py`). 이미지 생성은 빌더 전용(`builder_v3/image_gen.py`). 문서: `docs/design-docs/chat-attachments-dev-plan.md` §3 D2/D4가 "P2(다음 phase)"로 명시 deferred.
-- **가치**: ↑↑ (요즘 에이전트의 사실상 필수). **노력**: 중 (표시 파이프라인이 이미 있어 "첨부→모델 메시지 변환" + provider capability 게이팅 위주).
-- **비고**: 문서상 의도적 deferred(P2). provider별 multimodal 지원 분기 필요.
+#### G1. multimodal 模型输入 — Agent 实际看不到附件图片/文档 ⭐ 最高优先
+- **说明**：附件**显示**（P1）已完成，但附加图片没有作为 vision block、文档没有通过文本提取/RAG **传入模型消息**。用户可以附图，但 Agent 看不到。
+- **依据**：后端 — “支持 image_url 消息 schema，但 frontend 附件→消息转换不存在”（`conversation_files.py`, `model_factory.py`）。图片生成仅限 Builder（`builder_v3/image_gen.py`）。文档：`docs/design-docs/chat-attachments-dev-plan.md` §3 D2/D4 明确 deferred 为 “P2（下一 phase）”。
+- **价值**：↑↑（现代 Agent 几乎必需）。**工作量**：中（显示流水线已存在，主要是“附件→模型消息转换” + provider capability 门控）。
+- **备注**：文档中有意 deferred（P2）。需要按 provider 分支 multimodal 支持。
 
-#### G2. 에러 후 재시도(Retry) — 낮은 노력·높은 가치
-- **설명**: 도구/모델 실패 시 메시지 액션에 **retry 버튼이 없다**. regenerate는 성공한 턴 재생성용이라 에러 복구와 다르다. 런이 깨지면 사용자가 다시 입력해야 함.
-- **근거**: 프론트 — 액션바에 `ActionBarPrimitive.Reload`(regenerate)만, 에러 후 retry 미배선. 백엔드 — `tool_retry` 미들웨어는 있으나 자동 도구 재시도용이고 사용자 트리거 런-레벨 retry는 별개.
-- **가치**: 중~상(신뢰성 UX). **노력**: 소.
+#### G2. 错误后重试(Retry) — 低工作量·高价值
+- **说明**：工具/模型失败时消息操作中**没有 retry 按钮**。regenerate 用于成功 turn 的重新生成，与错误恢复不同。run 失败后用户必须重新输入。
+- **依据**：前端 — 操作栏只有 `ActionBarPrimitive.Reload`（regenerate），错误后 retry 未接线。后端 — 有 `tool_retry` middleware，但那是自动工具重试，与用户触发的 run-level retry 不同。
+- **价值**：中~高（可靠性 UX）。**工作量**：小。
 
-#### G3. 런 도중 개입/스티어링(mid-run inject) — 부분만 존재
-- **설명**: 실행 중 런에 **컨텍스트/정정을 주입**하는 경로가 없다(중단만 가능). Ctrl+Shift+Enter "queue(steer)"는 *다음* 메시지 큐잉일 뿐 현재 런에 끼어들지 않는다.
-- **근거**: 백엔드 — "mid-graph Command 전송 없음 / live prompt·context steering 없음"(`conversation_agent_protocol_commands.py`).
-- **가치**: 중~상(에이전트 제어). **노력**: 중~대(런 라이프사이클 + 그래프 Command 경로).
+#### G3. run 途中介入/Steering（mid-run inject）— 仅部分存在
+- **说明**：没有向执行中 run **注入上下文/纠正**的路径（只能中止）。Ctrl+Shift+Enter 的 "queue(steer)" 只是排队*下一条*消息，并不会插入当前 run。
+- **依据**：后端 — “没有发送 mid-graph Command / 没有 live prompt·context steering”（`conversation_agent_protocol_commands.py`）。
+- **价值**：中~高（Agent 可控性）。**工作量**：中~大（run lifecycle + graph Command 路径）。
 
-#### G4. 구조화 출력 / tool_choice 강제 — 미노출
-- **설명**: LangChain 모델은 JSON mode·structured output·`tool_choice="required"`를 지원하나 **에이전트 설정에 노출 안 됨**. 신뢰성 있는 구조화 응답이 필요한 에이전트에 제약.
-- **근거**: 백엔드 — "structured output / JSON mode: 모델은 지원하나 config로 미노출"(`model_factory.py`).
-- **가치**: 중(빌더·자동화 에이전트). **노력**: 중.
+#### G4. structured output / 强制 tool_choice — 未暴露
+- **说明**：LangChain 模型支持 JSON mode·structured output·`tool_choice="required"`，但**未暴露到 Agent 设置**。限制了需要可靠结构化响应的 Agent。
+- **依据**：后端 — “structured output / JSON mode：模型支持，但未作为 config 暴露”（`model_factory.py`）。
+- **价值**：中（Builder·自动化 Agent）。**工作量**：中。
 
-### 🥈 Tier 2 — 있으면 좋을 기능
+### 🥈 Tier 2 — 有则更好的功能
 
-#### G5. 대화 export / 다운로드 (markdown · JSON · PDF)
-- 전혀 없음. 흔하고 실용적(공유·기록·디버깅). **가치 중 / 노력 소~중**. (공유 링크는 있으나 정적 파일 export는 별개.)
+#### G5. 对话 export / 下载（markdown · JSON · PDF）
+- 完全没有。常见且实用（分享·记录·调试）。**价值中 / 工作量小~中**。（已有分享链接，但静态文件 export 是另一回事。）
 
-#### G6. 대화 내(in-conversation) 전문 검색
-- 네비게이터(대화 **간**) 검색만 있고, **한 대화 안의 메시지/도구결과 전문 검색**은 없다. 긴 에이전트 런에서 과거 결과 찾기 불편. jump-to-message는 아티팩트에서만. **가치 중 / 노력 중**.
+#### G6. 对话内(in-conversation)全文搜索
+- 只有 navigator（对话**之间**）搜索，**没有单个对话内的消息/工具结果全文搜索**。长 Agent run 中寻找历史结果不方便。jump-to-message 仅用于 artifact。**价值中 / 工作量中**。
 
-#### G7. 컴포저 모델 선택 / 턴별 모델 전환
-- 모델이 런 시작 시 고정, 중간 전환 불가(에러 시 fallback 체인만). 싼↔강한 모델 토글 등 유용. **가치 중 / 노력 중**. (`model_factory`: model bound at run init.)
+#### G7. composer 模型选择 / 每 turn 切换模型
+- 模型在 run 开始时固定，中途无法切换（仅错误时有 fallback chain）。例如在便宜↔强模型间切换会很有用。**价值中 / 工作量中**。（`model_factory`：model bound at run init。）
 
-#### G8. 수동 compaction 버튼 (사용자 주도 "지금 압축")
-- 자동 compaction만 있고 수동은 deferred(Optional). Claude-Code식. **가치 중 / 노력 소~중**. 문서: `dev-plan-context-compaction-marker.md` — "후속(Optional) 수동 compact 도구+버튼".
+#### G8. 手动 compaction 按钮（用户主动“现在压缩”）
+- 只有自动 compaction，手动为 deferred（Optional）。类似 Claude-Code。**价值中 / 工作量小~中**。文档：`dev-plan-context-compaction-marker.md` — “后续(Optional) 手动 compact 工具+按钮”。
 
-#### G9. 슬래시 커맨드 / @멘션
-- assistant-ui 프리미티브는 있으나 **미사용**(i18n 키도 없음). `/clear`·`/model`·`/summarize`, 파일·에이전트·도구 멘션. **가치 중 / 노력 중**.
+#### G9. Slash command / @mention
+- assistant-ui primitive 已有但**未使用**（也无 i18n Key）。`/clear`·`/model`·`/summarize`，以及文件·Agent·工具 mention。**价值中 / 工作量中**。
 
-#### G10. 서브에이전트 스트리밍 가시성
-- 부모가 **최종 결과만** 보고 내부 진행/사고는 안 보임("subagent progress visibility: 최종 결과만"). 관찰성↑. **가치 중 / 노력 중**.
+#### G10. 子 Agent 流式可见性
+- 父 Agent **只看到最终结果**，内部进度/思考不可见（“subagent progress visibility：仅最终结果”）。可提升可观测性。**价值中 / 工作量中**。
 
-#### G11. Generative UI 데이터 카드 확장
-- 방금 추가한 DataTable/Chart/Stats/Terminal에 **CSV export · 컬럼 토글 · 차트 인터랙션(드릴다운/필터)**. 차트는 현재 plain SVG 정적 렌더. **가치 소~중 / 노력 소(증분)**.
+#### G11. Generative UI 数据卡扩展
+- 为刚添加的 DataTable/Chart/Stats/Terminal 增加 **CSV export · 列切换 · 图表交互（drilldown/filter）**。图表目前是 plain SVG 静态渲染。**价值小~中 / 工作量小（增量）**。
 
-#### G12. 음성 입력 / draft 자동저장
-- dictation 훅(assistant-ui)만 있고 **UI 미배선**. 컴포저 텍스트 세션 간 미보존. **가치 소~중 / 노력 소**.
+#### G12. 语音输入 / draft 自动保存
+- 只有 dictation hook（assistant-ui），**UI 未接线**。composer 文本不会跨会话保留。**价值小~中 / 工作量小**。
 
-### 🥉 Tier 3 — 더 큰/운영성 (문서상 의도적 deferred 또는 ops)
+### 🥉 Tier 3 — 更大/运维性（文档中有意 deferred 或 ops）
 
-#### G13. HITL 표준화 (드래프트, 미머지)
-- "edit"가 일급 enum이 아니라 payload shape일 뿐 / 멀티액션이 카드 N개로 흩어짐(통합 "N건 대기" UX 없음) / 서브에이전트 interrupt 상속 버그 / 표준 interrupt가 UI에 완전 미배선. 문서: `docs/design-docs/hitl-ask-user-standardization-plan.md`(설계만). **가치 중 / 노력 대**.
+#### G13. HITL 标准化（草稿，未合并）
+- "edit" 只是 payload shape 而非一等 enum / 多动作被分散成 N 张卡（没有统一“N项待处理”UX）/ 子 Agent interrupt 继承 Bug / 标准 interrupt 尚未完整接入 UI。文档：`docs/design-docs/hitl-ask-user-standardization-plan.md`（仅设计）。**价值中 / 工作量大**。
 
-#### G14. 비용 알림 / 사용량 쿼터
-- 임계 경고·쿼터 강제 없음(추적·집계만, `daily_spend_*`). **가치 중(ops) / 노력 중**.
+#### G14. 成本提醒 / 使用量 quota
+- 没有阈值警告·quota 强制（仅追踪·聚合，`daily_spend_*`）。**价值中(ops) / 工作量中**。
 
-#### G15. 트리거 입력 파라미터화 / 출력 액션
-- 스케줄 런이 **매번 같은 프롬프트**, 동적 입력·웹훅/알림 출력·dry-run 없음(`trigger_executor.py`). **가치 중 / 노력 중**.
+#### G15. trigger 输入参数化 / 输出 action
+- schedule run **每次都是同一提示词**，没有动态输入·webhook/通知输出·dry-run（`trigger_executor.py`）。**价值中 / 工作量中**。
 
-#### G16. 기타 아키텍처
-- 채팅 내 이미지 **생성**(현재 빌더 전용) / **LangSmith**(현재 Langfuse만) / **AG-UI 어댑터**(ADR-020, Phase P6 deferred) / 크로스-대화·RAG 메모리 자동 주입(현재 도구 수동).
+#### G16. 其他架构
+- 聊天内图片**生成**（当前仅 Builder）/ **LangSmith**（当前仅 Langfuse）/ **AG-UI adapter**（ADR-020, Phase P6 deferred）/ 跨对话·RAG memory 自动注入（当前工具手动）。
 
 ---
 
-## 3. 우선순위 + 추천
+## 3. 优先级 + 推荐
 
-| 순위 | 항목 | 가치 | 노력 | 비고 |
+| 排名 | 项目 | 价值 | 工作量 | 备注 |
 |---|---|---|---|---|
-| **1** | **G1 멀티모달 입력**(이미지 vision + 문서 추출) | ↑↑ | 중 | 표시 P1 위에 "첨부→모델 메시지" 연결 |
-| **2** | **G2 에러 retry** | 중~상 | 소 | 빠른 신뢰성 win |
-| **3** | **G5 대화 export**(md/json) | 중 | 소~중 | 실용·독립적 |
-| 4 | G3 mid-run 스티어링 | 중~상 | 중~대 | 런 라이프사이클 손댐 |
-| 5 | G4 구조화 출력 노출 | 중 | 중 | 빌더 신뢰성 |
-| 6 | G6 대화 내 검색 / G8 수동 compaction / G9 슬래시 커맨드 | 중 | 중 | UX |
+| **1** | **G1 multimodal 输入**（图片 vision + 文档提取） | ↑↑ | 中 | 在显示 P1 之上连接“附件→模型消息” |
+| **2** | **G2 错误 retry** | 中~高 | 小 | 快速可靠性 win |
+| **3** | **G5 对话 export**（md/json） | 中 | 小~中 | 实用·独立 |
+| 4 | G3 mid-run steering | 中~高 | 中~大 | 涉及 run lifecycle |
+| 5 | G4 暴露 structured output | 中 | 中 | Builder 可靠性 |
+| 6 | G6 对话内搜索 / G8 手动 compaction / G9 Slash command | 中 | 中 | UX |
 
-**추천: G1(멀티모달 입력)을 먼저.** 표시 파이프라인(P1)이 이미 깔려 있어 "첨부 → 모델 메시지 변환 + provider capability 게이팅"만 이으면 되고, 에이전트가 이미지를 보고 문서를 읽는 건 체감이 가장 크다. 빠른 win을 원하면 G2(retry)·G5(export)를 곁들이는 조합.
+**推荐：先做 G1（multimodal 输入）。** 显示流水线（P1）已经铺好，只需连接“附件 → 模型消息转换 + provider capability 门控”，而且让 Agent 看图片、读文档的体感提升最大。如果想要快速 win，可以搭配 G2（retry）·G5（export）。
 
-진행 방식 제안: 선택 항목을 (Generative UI처럼) **Phase 0 스파이크 → 설계 문서 → 단계별 구현 + 회귀 게이트**로.
+建议的推进方式：将选定项目（类似 Generative UI）按 **Phase 0 spike → 设计文档 → 分阶段实现 + 回归 gate** 推进。
 
 ---
 
-## 4. 주의 / 한계
+## 4. 注意 / 限制
 
-- 본 분석은 코드/문서 인벤토리 기반의 **발견**이며, 각 갭의 정확한 구현 난이도/리스크는 해당 항목 착수 시 스파이크로 확정해야 한다.
-- 일부 항목(G1·G8·G13·G15·G16)은 문서에 **의도적 deferred**로 기록돼 있어 "누락"이 아니라 "후속 phase". 우선순위는 deferred 여부와 무관하게 가치·노력으로 매겼다.
-- "강점"으로 분류한 기능도 세부 폴리시(예: 멀티액션 HITL 통합, 차트 인터랙션)는 미완일 수 있다.
+- 本分析是基于代码/文档 inventory 的**发现**，各 gap 的准确实现难度/风险需在启动对应项目时通过 spike 确认。
+- 部分项目（G1·G8·G13·G15·G16）在文档中被记录为**有意 deferred**，因此属于“后续 phase”而非“遗漏”。优先级按价值·工作量评定，与是否 deferred 无关。
+- 即使被归类为“优势”的功能，其细节 policy（例如多动作 HITL 统一、图表交互）也可能尚未完成。
 
-## 5. 참조 (인벤토리 출처)
+## 5. 参考（inventory 来源）
 
-- 프론트 UI/컴포저: `frontend/src/components/chat/`(assistant-thread.tsx, composer, tool-ui/, right-rail/, navigator), `frontend/src/lib/chat/`.
-- 백엔드 런 엔진: `backend/app/agent_runtime/`(langgraph_streaming, runtime_component_builder, model_factory, subagents, trigger_executor, middleware_registry), `backend/app/routers/conversation_agent_protocol_*`, `backend/app/services/`.
-- 계획/문서: `docs/PRD.md`, `docs/design-docs/`(ADR-012/016/019/020, chat-attachments-dev-plan, chat-generative-ui-dev-plan, dev-plan-context-compaction[-marker], generic-tool-call-grouping-plan, hitl-ask-user-standardization-plan), `TASKS.md`.
+- 前端 UI/composer：`frontend/src/components/chat/`（assistant-thread.tsx, composer, tool-ui/, right-rail/, navigator），`frontend/src/lib/chat/`。
+- 后端 run 引擎：`backend/app/agent_runtime/`（langgraph_streaming, runtime_component_builder, model_factory, subagents, trigger_executor, middleware_registry），`backend/app/routers/conversation_agent_protocol_*`，`backend/app/services/`。
+- 计划/文档：`docs/PRD.md`, `docs/design-docs/`（ADR-012/016/019/020, chat-attachments-dev-plan, chat-generative-ui-dev-plan, dev-plan-context-compaction[-marker], generic-tool-call-grouping-plan, hitl-ask-user-standardization-plan），`TASKS.md`。
 </content>

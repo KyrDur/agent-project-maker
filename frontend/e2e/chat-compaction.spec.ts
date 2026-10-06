@@ -34,11 +34,11 @@ const COMPACTION_CONTEXT_WINDOW = 50
 // (≈4.5s total), keeping the run activity strip mounted long enough to observe the
 // transient compaction pill before the run finishes.
 const SLOW_STREAM_MARKER = 'E2E_SLOW_STREAM'
-const CONTEXT_PADDING = '이것은 컨텍스트를 채우기 위한 아주 긴 질문입니다 '.repeat(30)
+const CONTEXT_PADDING = '这是一个用于填充 context 的非常长的问题 '.repeat(30)
 // Same i18n strings the components render (frontend/messages/ko.json):
 //  - chat.activity.compaction  → run activity strip pill (running + complete)
 //  - chat.compaction.summary   → permanent marker on the compacted turn
-const COMPACTION_RUNNING_TEXT = '이전 대화를 압축하는 중'
+const COMPACTION_RUNNING_TEXT = '正在压缩之前的对话'
 const COMPACTION_SUMMARY_TEXT = '对较旧的消息进行了总结以释放上下文'
 // The scripted model's generic reply (app/agent_runtime/e2e_scripted_model.py).
 const SCRIPTED_GENERIC_REPLY = 'E2E scripted document model is ready.'

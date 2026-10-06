@@ -109,7 +109,7 @@ describe('memory tool UI result bridge', () => {
       memory_event: 'memory_proposed',
       id: 'proposal-1',
       scope: 'user',
-      content: 'User prefers concise Korean answers.',
+      content: 'User prefers concise Chinese answers.',
       reason: 'User said this preference.',
     })
 
@@ -129,13 +129,13 @@ describe('memory tool UI result bridge', () => {
       }),
     )
 
-    expect(screen.getAllByText('User prefers concise Korean answers.').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('User prefers concise Chinese answers.').length).toBeGreaterThan(0)
     expect(screen.getByTestId('memory-proposal-approve')).toBeEnabled()
 
     fireEvent.click(screen.getByTestId('memory-proposal-edit'))
 
     expect(screen.getByLabelText('contentLabel')).toHaveValue(
-      'User prefers concise Korean answers.',
+      'User prefers concise Chinese answers.',
     )
   })
 })

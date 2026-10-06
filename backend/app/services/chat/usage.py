@@ -23,11 +23,11 @@ from app.models.token_usage import TokenUsage
 async def _resolve_agent_model_pricing(
     db: AsyncSession, conversation: Conversation
 ) -> tuple[float | None, float | None]:
-    """W7-4 — conversation.agent.model의 ``cost_per_*_token`` 단가를 조회.
+    """W7-4 — 查询 conversation.agent.model 的 ``cost_per_*_token`` 单价。
 
-    Decimal → float 변환. Agent/Model row가 사라졌거나 단가가 NULL이면
-    ``(None, None)``. 호출자(``langchain_messages_to_response``)는 None을
-    받으면 ``estimated_cost``를 채우지 않는다.
+    Decimal → float 转换。若 Agent/Model row 已消失或单价为 NULL，
+    返回 ``(None, None)``。调用方（``langchain_messages_to_response``）收到 None
+    时不填充 ``estimated_cost``。
     """
     result = await db.execute(
         _select(Model.cost_per_input_token, Model.cost_per_output_token)

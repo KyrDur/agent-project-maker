@@ -862,10 +862,10 @@ async def test_input_respond_waits_for_parent_run_interrupt_transition(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """M8-2 regression: 인터럽트 승인 카드는 스트림 도중 이미 렌더되지만 부모
-    run의 "interrupted" 전이 커밋은 워커 finalize 단계라, 전이 전에 도착한
-    resume은 즉시 RESUME_NOT_FOUND로 튕겼다. 핸들러는 활성 run이 전이를 마칠
-    때까지 짧게 기다렸다가 성공해야 한다."""
+    """M8-2 regression: interrupt approval card 已在 stream 中渲染，但父
+    run 的 "interrupted" transition commit 发生在 worker finalize 阶段，因此在 transition 前到达的
+    resume 会立即被 RESUME_NOT_FOUND 拒绝。handler 应短暂等待 active run 完成 transition
+    后再成功。"""
 
     conversation = await _seed_protocol_conversation(db)
     parent_run = ConversationRun(
@@ -880,8 +880,8 @@ async def test_input_respond_waits_for_parent_run_interrupt_transition(
     await db.commit()
     run_id = parent_run.id
 
-    # 핸들러의 대기 루프 3번째 조회 직전에 워커 전이를 시뮬레이트 — 핸들러가
-    # 받은 세션(db_)으로 실제 행을 갱신해 이후 real 조회가 그 행을 찾게 한다.
+    # 在 handler wait loop 第3次查询前模拟 worker transition — handler 使用
+    # 接收到的 session(db_) 更新真实 row，使后续 real 查询能找到该 row。
     real_latest = conversation_run_service.get_latest_interrupted_run
     calls = {"n": 0}
 
@@ -937,8 +937,8 @@ async def test_input_respond_fails_fast_without_any_run(
     client: AsyncClient,
     db: AsyncSession,
 ) -> None:
-    """대조군: 활성 run도 인터럽트 run도 없으면(진짜 not-found) 대기 없이 즉시
-    RESUME_NOT_FOUND — bounded wait가 사용자 오류 경로에 지연을 더하면 안 된다."""
+    """对照组：既无 active run 也无 interrupt run（真正 not-found）时，应无需等待立即
+    RESUME_NOT_FOUND — bounded wait 不应给用户错误路径增加延迟。"""
 
     conversation = await _seed_protocol_conversation(db)
 

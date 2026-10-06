@@ -2,15 +2,8 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import Image from 'next/image'
-import {
-  SendIcon,
-  PenLineIcon,
-  LayoutTemplateIcon,
-  SparklesIcon,
-  ChevronRightIcon,
-} from 'lucide-react'
+import { SendIcon, SparklesIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
@@ -53,14 +46,6 @@ export default function AgentNewPage() {
         />
 
         <ExamplePrompts heading={t('examples.heading')} items={examples} onPick={setInput} />
-
-        <AltMethods
-          dividerLabel={t('altDivider')}
-          manualTitle={t('manual.title')}
-          manualDescription={t('manual.description')}
-          templateTitle={t('template.title')}
-          templateDescription={t('template.description')}
-        />
       </div>
     </div>
   )
@@ -129,6 +114,7 @@ function ChatInput({
         }}
         onCompositionStart={onCompositionStart}
         onCompositionEnd={onCompositionEnd}
+        aria-label={placeholder}
         placeholder={placeholder}
         rows={4}
         className="moldy-composer-input min-h-28 w-full resize-none bg-transparent px-5 pb-2 pt-4 text-sm leading-relaxed text-foreground outline-hidden placeholder:text-muted-foreground"
@@ -189,84 +175,5 @@ function ExamplePrompts({
         ))}
       </div>
     </div>
-  )
-}
-
-// ───────────────────────────────────────────────────────── Alt methods
-
-function AltMethods({
-  dividerLabel,
-  manualTitle,
-  manualDescription,
-  templateTitle,
-  templateDescription,
-}: {
-  dividerLabel: string
-  manualTitle: string
-  manualDescription: string
-  templateTitle: string
-  templateDescription: string
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-xs font-medium tracking-wide text-muted-foreground">
-          {dividerLabel}
-        </span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <AltMethodCard
-          href="/agents/new/manual"
-          title={manualTitle}
-          description={manualDescription}
-          icon={<PenLineIcon className="size-4" />}
-          iconClassName="moldy-dashboard-action-icon moldy-status-accent"
-        />
-        <AltMethodCard
-          href="/agents/new/template"
-          title={templateTitle}
-          description={templateDescription}
-          icon={<LayoutTemplateIcon className="size-4" />}
-          iconClassName="moldy-dashboard-action-icon moldy-status-info"
-        />
-      </div>
-    </div>
-  )
-}
-
-function AltMethodCard({
-  href,
-  title,
-  description,
-  icon,
-  iconClassName,
-}: {
-  href: string
-  title: string
-  description: string
-  icon: React.ReactNode
-  iconClassName: string
-}) {
-  return (
-    <Link
-      href={href}
-      className={['moldy-create-alt-card group flex items-center gap-3 p-3'].join(' ')}
-    >
-      <span
-        className={[
-          'inline-flex size-8 shrink-0 items-center justify-center rounded-lg',
-          iconClassName,
-        ].join(' ')}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold leading-tight">{title}</div>
-        <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
-      </div>
-      <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-    </Link>
   )
 }

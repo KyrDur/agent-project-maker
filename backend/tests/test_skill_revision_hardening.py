@@ -105,9 +105,9 @@ async def test_package_rollback_rehydrates_moldy_credentials_and_execution_profi
         requires_network=True,
     )
     changed_metadata = _moldy_metadata(
-        key="naver",
-        definition_key="naver_search",
-        env_name="NAVER_CLIENT_SECRET",
+        key="google_search",
+        definition_key="google_search",
+        env_name="GOOGLE_API_KEY",
         timeout_seconds=30,
         requires_network=False,
     )
@@ -136,12 +136,12 @@ async def test_package_rollback_rehydrates_moldy_credentials_and_execution_profi
         )
         skill.credential_requirements = [
             {
-                "key": "naver",
-                "definition_key": "naver_search",
+                "key": "google_search",
+                "definition_key": "google_search",
                 "required": True,
-                "label": "Naver",
+                "label": "Google Search",
                 "fields": ["api_key"],
-                "env_map": {"api_key": "NAVER_CLIENT_SECRET"},
+                "env_map": {"api_key": "GOOGLE_API_KEY"},
             }
         ]
         skill.execution_profile = {"requires_network": False, "timeout_seconds": 30}

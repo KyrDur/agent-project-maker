@@ -40,7 +40,7 @@ const researcherSnapshot = {
   parentId: null,
   depth: 0,
   status: 'running',
-  taskInput: '시장 자료를 조사해줘',
+  taskInput: '帮我调研市场资料',
   output: undefined,
   error: undefined,
   startedAt: new Date('2026-06-13T00:00:00Z'),
@@ -86,7 +86,7 @@ describe('SubAgentToolCard', () => {
     renderCard()
 
     expect(screen.getByText('researcher')).toBeInTheDocument()
-    expect(screen.getByText('시장 자료를 조사해줘')).toBeInTheDocument()
+    expect(screen.getByText('帮我调研市场资料')).toBeInTheDocument()
     expect(screen.getByText('tools:exec-1')).toBeInTheDocument()
     expect(mocks.useMessages).not.toHaveBeenCalled()
     expect(mocks.useToolCalls).not.toHaveBeenCalled()
@@ -114,7 +114,7 @@ describe('SubAgentToolCard', () => {
   })
 
   it('subscribes to scoped messages and tools only after expansion', async () => {
-    mocks.useMessages.mockReturnValue([new AIMessage('조사를 시작했어요')])
+    mocks.useMessages.mockReturnValue([new AIMessage('已开始调研')])
     mocks.useToolCalls.mockReturnValue([
       {
         name: 'web_search',
@@ -137,7 +137,7 @@ describe('SubAgentToolCard', () => {
 
     expect(mocks.useMessages).toHaveBeenCalledWith(streamToken, researcherSnapshot)
     expect(mocks.useToolCalls).toHaveBeenCalledWith(streamToken, researcherSnapshot)
-    expect(screen.getByText('조사를 시작했어요')).toBeInTheDocument()
+    expect(screen.getByText('已开始调研')).toBeInTheDocument()
     expect(screen.getByText('web_search')).toBeInTheDocument()
   })
 
@@ -155,7 +155,7 @@ describe('SubAgentToolCard', () => {
     mocks.useSubagentSnapshot.mockReturnValue({
       ...researcherSnapshot,
       status: 'error',
-      error: '검색 도구 실패',
+      error: '搜索工具失败',
       completedAt: new Date('2026-06-13T00:01:00Z'),
     })
 
@@ -163,7 +163,7 @@ describe('SubAgentToolCard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /researcher/ }))
 
-    expect(screen.getByText('검색 도구 실패')).toBeInTheDocument()
+    expect(screen.getByText('搜索工具失败')).toBeInTheDocument()
     expect(screen.queryByText('出了点问题')).not.toBeInTheDocument()
   })
 })

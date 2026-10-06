@@ -21,7 +21,7 @@ BASE = "/api/skill-builder"
 
 @pytest.fixture(autouse=True)
 def _tmp_data_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """start v2가 드래프트 워크스페이스를 디스크에 만들므로 data_root 격리."""
+    """start v2 会在磁盘创建草稿工作区，因此隔离 data_root。"""
 
     monkeypatch.setattr(settings, "data_root", str(tmp_path))
 
@@ -70,7 +70,7 @@ async def test_confirm_create_writes_sanitized_audit_and_revision_create(
             BASE,
             json={
                 "mode": "create",
-                "user_request": "PROMPT_MARKER_CREATE: 회의록 스킬 만들어줘",
+                "user_request": "PROMPT_MARKER_CREATE: 帮我创建会议纪要技能",
             },
         )
         session_id = start.json()["id"]
@@ -132,7 +132,7 @@ async def test_improve_confirm_audit_includes_counts_and_hashes_without_content(
             json={
                 "mode": "improve",
                 "source_skill_id": str(skill.id),
-                "user_request": "PROMPT_MARKER_IMPROVE: 개선해줘",
+                "user_request": "PROMPT_MARKER_IMPROVE: 帮我改进一下",
             },
         )
         session_id = start.json()["id"]
@@ -177,7 +177,7 @@ async def test_secret_scan_blocked_audit_uses_sanitized_metadata(
     secret_value = "sk-123456789012345678901234"
     start = await client.post(
         BASE,
-        json={"mode": "create", "user_request": "PROMPT_SECRET_MARKER: 스킬 만들어줘"},
+        json={"mode": "create", "user_request": "PROMPT_SECRET_MARKER: 帮我创建技能"},
     )
     session_id = start.json()["id"]
     draft = _draft_payload(body=f"SECRET_BODY_MARKER {secret_value}")

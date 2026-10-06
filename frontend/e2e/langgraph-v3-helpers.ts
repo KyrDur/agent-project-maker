@@ -144,7 +144,7 @@ export async function sendMessage(page: Page, text: string): Promise<void> {
   const remainingText = await composer.inputValue().catch(() => '')
   if (remainingText.trim().length === 0) return
 
-  const sendButton = page.getByRole('button', { name: /전송|Send Button|Send/ }).last()
+  const sendButton = page.getByRole('button', { name: /发送|Send Button|Send/ }).last()
   await expect(sendButton).toBeEnabled({ timeout: CHAT_COMPOSER_TIMEOUT_MS })
   await sendButton.click()
 }
@@ -249,10 +249,10 @@ export async function normalizeArtifactList(page: Page, reportFile: string, note
   const artifactPreviewIsVisible = async (): Promise<boolean> =>
     (await Promise.all(artifactPreviewHeadings.map((heading) => heading.isVisible()))).some(Boolean)
 
-  // 파일 이벤트는 마지막 파일을 자동 미리보기로 열 수 있다. 이벤트가 UI에 반영된 뒤
-  // 목록 패널을 선택해야 이후의 파일 선택 계약을 결정적으로 검증할 수 있다.
+  // 文件事件可以自动将最后一个文件打开为预览。事件反映到 UI 后
+  // 必须选择列表面板，才能确定性验证后续的文件选择契约。
   if (!(await artifactRail.isVisible())) {
-    await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+    await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   }
   await expect
     .poll(async () => (await artifactListIsVisible()) || (await artifactPreviewIsVisible()), {
@@ -261,7 +261,7 @@ export async function normalizeArtifactList(page: Page, reportFile: string, note
     })
     .toBe(true)
   if (!(await artifactListIsVisible())) {
-    await page.getByRole('button', { name: /파일 패널|Artifacts/ }).click()
+    await page.getByRole('button', { name: /文件面板|Artifacts/ }).click()
   }
   await expect(reportArtifactButton).toBeVisible({ timeout: 20_000 })
   await expect(notesArtifactButton).toBeVisible({ timeout: 20_000 })
@@ -270,7 +270,7 @@ export async function normalizeArtifactList(page: Page, reportFile: string, note
 }
 
 export async function approveExecuteInSkill(page: Page): Promise<string> {
-  await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+  await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
     timeout: 30_000,
   })
   await expect
@@ -308,7 +308,7 @@ export async function approveExecuteInSkill(page: Page): Promise<string> {
     responsePromise,
     page
       .getByText(
-        /승인 응답을 전송하지 못했습니다\. 다시 시도하세요\.|Could not send the approval response\. Try again\./,
+        /无法发送批准响应\. 请重试\.|Could not send the approval response\. Try again\./,
       )
       .last()
       .waitFor({ state: 'visible', timeout: 15_000 })

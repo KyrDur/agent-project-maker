@@ -1,7 +1,7 @@
 """Follow-up suggestion endpoint (composer ghost text).
 
-POST-per-run (프론트의 런 종료 훅이 1회 호출) — 폴링 경로가 아니므로
-checkpointer tail 조회 비용은 run당 1회로 제한된다.
+POST-per-run（前端的 run 结束 hook 调用 1 次）— 由于不是 polling 路径，
+checkpointer tail 查询成本限制为每个 run 1 次。
 """
 
 from __future__ import annotations

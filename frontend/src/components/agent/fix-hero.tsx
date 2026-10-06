@@ -8,7 +8,7 @@ interface FixHeroProps {
   subtitle: string
   suggestions: string[]
   onSuggestionClick?: (suggestion: string) => void
-  /** 있으면 이미지로 hero 표시. 없으면 보라 점선원 + 렌치 (Fix 편집 모드 default) */
+  /** 存在时以图片显示 hero。不存在时显示紫色虚线圆 + 扳手（Fix 编辑模式 default） */
   imageSrc?: string
 }
 

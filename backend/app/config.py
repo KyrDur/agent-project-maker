@@ -34,10 +34,6 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     google_api_key: str = ""
 
-    # Naver Open API
-    naver_client_id: str = ""
-    naver_client_secret: str = ""
-
     # Google Custom Search
     google_cse_id: str = ""
 
@@ -95,8 +91,8 @@ class Settings(BaseSettings):
     # session row (crashed start flows) fall back to mtime.
     skill_draft_gc_cron: str = "45 * * * *"
     skill_draft_gc_retention_hours: int = 24
-    # 비완료 v2 빌더 세션(워크스페이스 보유)이 이 일수 동안 미활동이면 abandoned로
-    # 전이해 워크스페이스를 회수한다 — 없으면 이탈 세션이 영구 누수한다 (R2).
+    # 未完成的 v2 Builder Session（持有 Workspace）若在这些天内无活动，则转为 abandoned，
+    # 并回收 Workspace；否则离开的 Session 会永久泄漏 (R2)。
     skill_draft_abandon_days: int = 14
     # Orphan attachment GC (APScheduler crontab; default: hourly :30).
     # ``POST /api/uploads`` creates ``message_attachments`` rows with
@@ -147,17 +143,6 @@ class Settings(BaseSettings):
     skill_evaluation_run_timeout_max_seconds: int = 1800
     skill_evaluation_case_timeout_seconds: int = 60
 
-    # ADR-017 Slice F — k-skill upstream import (super_user CLI only).
-    # ``k_skill_sync_dir`` is the local git working tree the importer
-    # ``git clone`` / ``git fetch`` mirrors into; ``k_skill_builtin_storage_dir``
-    # is where successfully imported package directories land (used as
-    # ``MarketplaceVersion.storage_path`` for ``is_system=True`` items).
-    # Both paths are local-only — no remote write back to upstream.
-    k_skill_upstream_url: str = "https://github.com/NomaDamas/k-skill.git"
-    k_skill_upstream_ref: str = "main"
-    k_skill_sync_dir: str = "./data/upstreams/k-skill"
-    k_skill_builtin_storage_dir: str = "./data/marketplace/k-skill"
-
     # Conversation outputs
     conversation_output_dir: str = "./data/conversations"
 
@@ -179,7 +164,7 @@ class Settings(BaseSettings):
     artifact_s3_access_key_id: str = ""
     artifact_s3_secret_access_key: str = ""
 
-    # Builder / Assistant sub-agent model defaults (서비스 내부용)
+    # Builder / Assistant sub-agent model defaults（服务内部使用）
     builder_model_provider: str = "anthropic"
     builder_model_name: str = "claude-sonnet-4-6"
     builder_fallback_provider: str = "openai"
@@ -187,8 +172,8 @@ class Settings(BaseSettings):
     assistant_model_provider: str = "anthropic"
     assistant_model_name: str = "claude-sonnet-4-6"
 
-    # 에이전트 생성 시 기본 모델 (사용자 에이전트용, DB Model.display_name 또는 provider:model_name)
-    # 비어있으면 DB의 is_default 모델 → 첫 번째 모델 순서로 fallback
+    # 创建 Agent 时的默认模型（用户 Agent 使用，DB Model.display_name 或 provider:model_name）
+    # 若为空，则按 DB 的 is_default 模型 → 第一个模型的顺序 fallback
     default_agent_model: str = ""
 
     # Agent image generation (OpenRouter + Gemini Flash Image)
@@ -274,7 +259,7 @@ class Settings(BaseSettings):
     # Auto-compaction marker (dev-plan-context-compaction-marker.md). When on, the
     # v3 stream suppresses deepagents summarization tokens (leak guard) and emits a
     # ``moldy.compaction`` side-channel event (running/done) so the chat UI can show
-    # a transient "압축 중…" indicator + a permanent "이전 대화를 요약했어요" marker.
+    # a transient "压缩中…" indicator + a permanent "已总结之前的对话" marker.
     # Off = legacy behavior (summarization tokens flow through, no marker).
     compaction_marker_enabled: bool = True
 
@@ -292,8 +277,6 @@ class Settings(BaseSettings):
 _LANE_PATH_DEFAULTS: Final[dict[str, str]] = {
     "data_root": "backend/data",
     "skill_storage_dir": "backend/data/skills",
-    "k_skill_sync_dir": "backend/data/upstreams/k-skill",
-    "k_skill_builtin_storage_dir": "backend/data/marketplace/k-skill",
     "conversation_output_dir": "backend/data/conversations",
     "upload_dir": "backend/data/uploads",
     "artifact_storage_dir": "backend/data/artifacts",

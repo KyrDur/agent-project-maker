@@ -1,225 +1,225 @@
 # Deletion Analysis — Multi-User Auth (Musk Step 2)
 
-> Goal: 멀티유저 전환 전, 제거/단순화 가능한 모든 코드를 식별. 분석/문서만, 코드 수정 없음.
+> Goal：在多用户转换前，识别所有可删除/简化代码。仅分析/文档，不修改代码。
 >
-> 분석 대상 브랜치: `feature/multiuser-auth` · 참조 plan: `~/.claude/plans/replicated-crunching-lark.md`
+> 分析对象 branch：`feature/multiuser-auth` · 参考 plan：`~/.claude/plans/replicated-crunching-lark.md`
 >
-> ⚠️ `tasks/deletion-analysis.md`는 다른 세션 산출물 — 손대지 않음.
+> ⚠️ `tasks/deletion-analysis.md` 是其他 session 产出物 — 不要改动。
 
 ---
 
-## 1. Mock User 흔적 전수조사
+## 1. Mock User 痕迹全量调查
 
-검색 명령:
+搜索命令：
 ```bash
 grep -rn "mock_user" backend/app/
 grep -rn "00000000-0000-0000-0000-000000000001" backend/
 grep -rni "mock\|MOCK_USER\|DEMO_USER" backend/.env.example backend/app/
 ```
 
-| # | 위치 | 코드 요약 | 처리 방안 |
+| # | 位置 | 代码摘要 | 处理方案 |
 |---|------|-----------|-----------|
-| 1 | `backend/app/config.py:31-34` | `mock_user_id`, `mock_user_email`, `mock_user_name` 3개 Settings 필드 | **제거** — 멀티유저 전환과 동시에 의미 없음. JWT 설정으로 대체. |
-| 2 | `backend/app/dependencies.py:11-29` | `CurrentUser` dataclass + `get_current_user()`가 settings에서 mock 반환 | **재작성** — `CurrentUser`에 `is_super_user: bool=False` 필드 추가. `get_current_user`는 cookie/Authorization → JWT decode → DB lookup으로 전면 교체. `get_current_user_optional`, `require_super_user` 신규 추가 (plan 2.4). |
-| 3 | `backend/app/main.py:96-141` (lifespan seed 블록) | `mock_user_id = uuid.UUID(settings.mock_user_id)` → User row upsert → `bootstrap_credentials_from_env(db, mock_user_id)` | **제거** — Mock user upsert 블록(96-108) 삭제. `bootstrap_credentials_from_env(db, mock_user_id)` 호출은 **`bootstrap_system_credentials(db)` (`is_system=True`, `user_id=NULL`)**로 변경 (plan 4.1/4.2). 다른 시드(default models, templates, env_fallback sync)는 글로벌이라 보존. |
-| 4 | `backend/.env.example` | (검증 결과) **이미 mock 섹션 없음** — `MOCK_USER_*` 환경변수 노출 안 됨 (config.py 기본값으로만 존재) | **변경 없음** (env.example 측). 단, plan 10.1 신규 키들(`JWT_SECRET`, `COOKIE_*`, `ALLOW_FIRST_USER_AS_ADMIN`) 추가는 별개 작업. |
-| 5 | `backend/app/seed/bootstrap_from_env.py:1-159` | 모듈 docstring부터 mock_user 전제. 시그니처 `bootstrap_credentials_from_env(db, user_id: uuid.UUID)` 사용. 라인 105-156이 user-bound credential 생성. | **재작성** — 함수명 `bootstrap_system_credentials(db)`로 변경, `user_id` 파라미터 제거. `credential_service.create(db, user_id=None, is_system=True, ...)`로 변경. 기존 `Credential.user_id NOT NULL` 제약(model line 26-28, m18 line 146-148)을 nullable로 마이그레이션 필요. docstring/SEED_NAME_PREFIX(`"[env]"`)는 유지 가능. |
-| 6 | `backend/app/routers/credentials.py:248` | docstring `"All operator system credentials. PoC: no role gate (mock user)."` | **재작성** — docstring 갱신 + 라우터에 `Depends(require_super_user)` 추가 (`list_system_credentials`, `create_system_credential`, `get_system_credential`, `update_system_credential`, `delete_system_credential` 5개 모두). |
-| 7 | `backend/tests/conftest.py:36` | `TEST_USER_ID = uuid.UUID("00000000-...0001")` | **보존(이유)** — 테스트 픽스처. Mock user UUID와 우연히 같지만 의미는 다름(`TEST_USER_ID`). 멀티유저 테스트 신설 시 `TEST_USER_A_ID`/`TEST_USER_B_ID`로 확장. 기존 단일 유저 테스트는 그대로. |
-| 8 | `backend/tests/test_credentials_llm_sync.py:430` | `assert TEST_USER_ID == uuid.UUID("00000000-...0001")` | **보존(이유)** — 위 #7과 같은 테스트 상수. 변경 불필요. |
-| 9 | `backend/tests/test_seed.py:1` | docstring `"bootstrap_credentials_from_env — env → mock_user Credential seed."` | **재작성** — `bootstrap_system_credentials`로 함수가 바뀌면 테스트 자체도 `is_system=True` 검증으로 교체. |
+| 1 | `backend/app/config.py:31-34` | `mock_user_id`, `mock_user_email`, `mock_user_name` 3 个 Settings 字段 | **删除** — 多用户转换后无意义。替换为 JWT 设置。 |
+| 2 | `backend/app/dependencies.py:11-29` | `CurrentUser` dataclass + `get_current_user()` 从 settings 返回 mock | **重写** — 向 `CurrentUser` 增加 `is_super_user: bool=False` 字段。`get_current_user` 全面替换为 cookie/Authorization → JWT decode → DB lookup。新增 `get_current_user_optional`, `require_super_user`（plan 2.4）。 |
+| 3 | `backend/app/main.py:96-141`（lifespan seed block） | `mock_user_id = uuid.UUID(settings.mock_user_id)` → User row upsert → `bootstrap_credentials_from_env(db, mock_user_id)` | **删除** — 删除 Mock user upsert block（96-108）。`bootstrap_credentials_from_env(db, mock_user_id)` 调用改为 **`bootstrap_system_credentials(db)`（`is_system=True`, `user_id=NULL`）**（plan 4.1/4.2）。其他 seed（default models, templates, env_fallback sync）是 global，保留。 |
+| 4 | `backend/.env.example` | （验证结果）**已经没有 mock section** — 未暴露 `MOCK_USER_*` 环境变量（仅存在 config.py default） | **无变更**（env.example 侧）。但 plan 10.1 新增 key（`JWT_SECRET`, `COOKIE_*`, `ALLOW_FIRST_USER_AS_ADMIN`）是另一个工作项。 |
+| 5 | `backend/app/seed/bootstrap_from_env.py:1-159` | 从 module docstring 起就基于 mock_user 前提。signature 使用 `bootstrap_credentials_from_env(db, user_id: uuid.UUID)`。line 105-156 创建 user-bound credential。 | **重写** — 函数名改为 `bootstrap_system_credentials(db)`，移除 `user_id` parameter。改为 `credential_service.create(db, user_id=None, is_system=True, ...)`。现有 `Credential.user_id NOT NULL` constraint（model line 26-28, m18 line 146-148）需 migration 改为 nullable。docstring/SEED_NAME_PREFIX（`"[env]"`）可保留。 |
+| 6 | `backend/app/routers/credentials.py:248` | docstring `"All operator system credentials. PoC: no role gate (mock user)."` | **重写** — 更新 docstring + router 新增 `Depends(require_super_user)`（`list_system_credentials`, `create_system_credential`, `get_system_credential`, `update_system_credential`, `delete_system_credential` 5 个全部）。 |
+| 7 | `backend/tests/conftest.py:36` | `TEST_USER_ID = uuid.UUID("00000000-...0001")` | **保留（原因）** — 测试 fixture。与 Mock user UUID 偶然相同但含义不同（`TEST_USER_ID`）。新增 multi-user test 时扩展为 `TEST_USER_A_ID`/`TEST_USER_B_ID`。现有单用户测试原样保留。 |
+| 8 | `backend/tests/test_credentials_llm_sync.py:430` | `assert TEST_USER_ID == uuid.UUID("00000000-...0001")` | **保留（原因）** — 与上面 #7 相同的测试常量。无需修改。 |
+| 9 | `backend/tests/test_seed.py:1` | docstring `"bootstrap_credentials_from_env — env → mock_user Credential seed."` | **重写** — 函数改为 `bootstrap_system_credentials` 后，测试本身也替换为验证 `is_system=True`。 |
 
-**제거 후 LOC 추정**: config.py -4, dependencies.py +25/-7, main.py -10, bootstrap_from_env.py +5/-15, credentials.py +5 (super_user 가드). 순 **약 -30 LOC + 의미 단순화**.
+**删除后 LOC 估算**：config.py -4，dependencies.py +25/-7，main.py -10，bootstrap_from_env.py +5/-15，credentials.py +5（super_user guard）。净 **约 -30 LOC + 语义简化**。
 
 ---
 
-## 2. FK ON DELETE 정책 매트릭스
+## 2. FK ON DELETE 政策矩阵
 
-검색 명령:
+搜索命令：
 ```bash
 grep -rn "user_id" backend/app/models/ | grep -v "__pycache__"
 grep -n "ondelete" backend/alembic/versions/aa5b4cc59ddb_initial_tables.py backend/alembic/versions/m18_greenfield_credentials.py
 ```
 
-| 테이블 | 컬럼 | 모델 위치 | 현재 ondelete | 변경 후 | 마이그레이션 필요 |
+| table | column | model 位置 | 当前 ondelete | 变更后 | 是否需要 migration |
 |--------|------|-----------|---------------|---------|-------------------|
-| `agents` | `user_id` | `agent.py:23` | **미명시** (initial m1, line 96-99) | **CASCADE** | 예 — drop+recreate FK |
-| `builder_sessions` | `user_id` | `builder_session.py:19` | **미명시** | **CASCADE** | 예 — drop+recreate FK (m35는 `agent_id`만 처리) |
-| `agent_triggers` | `user_id` | `agent_trigger.py:19` | **미명시** | **CASCADE** | 예 — drop+recreate FK |
-| `agent_creation_sessions` | `user_id` | (legacy?) | **미명시** (initial line 70-73) | **CASCADE** 또는 테이블 자체 검토 — `builder_sessions`로 대체된 듯 | 예 (legacy 잔존 테이블이면 drop도 검토) |
-| `tools` | `user_id` | `tool.py:51-52` | **CASCADE** (m18 line 245-248, nullable) | 유지 — `is_system` 컬럼 추가 시 정합성 검토 | 아니오 |
-| `credentials` | `user_id` | `credential.py:26-28` | **CASCADE** (m18 line 146-148, NOT NULL) | **NULL 허용 + CASCADE** — `is_system=True` row가 user_id NULL이어야 함 | 예 — nullable 변경 + (선택) CHECK constraint `(is_system=true AND user_id IS NULL) OR (is_system=false AND user_id IS NOT NULL)` |
-| `credential_audit_logs` | `actor_user_id` | (m18 line 180-182) | **SET NULL** | 유지 | 아니오 |
-| `daily_spend_users` | `user_id` | `daily_spend_user.py:34-35` | **CASCADE** | 유지 | 아니오 |
-| `share_links` | `created_by` | `share_link.py:32` | **CASCADE** | 유지 | 아니오 |
-| `mcp_servers` | `user_id` | `mcp_server.py:44-45` | **CASCADE** | 유지 — `is_system` 컬럼 이미 존재 (m26, model line 84) | 아니오 |
-| `skills` | `user_id` | (m18 line 320-322) | **CASCADE** | 유지 | 아니오 |
-| `message_feedback` | `user_id` | (별도 m27) | (확인 필요) | CASCADE 권장 | (확인) |
-| `message_attachments` | `user_id` | (m28) | (확인 필요) | CASCADE 권장 | (확인) |
-| **신규** `refresh_tokens` | `user_id` | (plan 1.3) | — | **CASCADE** (생성 시점부터) | 예 — m22 신설 |
+| `agents` | `user_id` | `agent.py:23` | **未指定**（initial m1, line 96-99） | **CASCADE** | 是 — drop+recreate FK |
+| `builder_sessions` | `user_id` | `builder_session.py:19` | **未指定** | **CASCADE** | 是 — drop+recreate FK（m35 仅处理 `agent_id`） |
+| `agent_triggers` | `user_id` | `agent_trigger.py:19` | **未指定** | **CASCADE** | 是 — drop+recreate FK |
+| `agent_creation_sessions` | `user_id` | （legacy?） | **未指定**（initial line 70-73） | **CASCADE** 或检查 table 本身 — 看起来已被 `builder_sessions` 替代 | 是（若 legacy table 仍残留，也检查 drop） |
+| `tools` | `user_id` | `tool.py:51-52` | **CASCADE**（m18 line 245-248, nullable） | 保留 — 新增 `is_system` column 时检查一致性 | 否 |
+| `credentials` | `user_id` | `credential.py:26-28` | **CASCADE**（m18 line 146-148, NOT NULL） | **允许 NULL + CASCADE** — `is_system=True` row 必须 user_id NULL | 是 — nullable 变更 +（可选）CHECK constraint `(is_system=true AND user_id IS NULL) OR (is_system=false AND user_id IS NOT NULL)` |
+| `credential_audit_logs` | `actor_user_id` | （m18 line 180-182） | **SET NULL** | 保留 | 否 |
+| `daily_spend_users` | `user_id` | `daily_spend_user.py:34-35` | **CASCADE** | 保留 | 否 |
+| `share_links` | `created_by` | `share_link.py:32` | **CASCADE** | 保留 | 否 |
+| `mcp_servers` | `user_id` | `mcp_server.py:44-45` | **CASCADE** | 保留 — 已存在 `is_system` column（m26, model line 84） | 否 |
+| `skills` | `user_id` | （m18 line 320-322） | **CASCADE** | 保留 | 否 |
+| `message_feedback` | `user_id` | （单独 m27） | （需确认） | 建议 CASCADE | （确认） |
+| `message_attachments` | `user_id` | （m28） | （需确认） | 建议 CASCADE | （确认） |
+| **新增** `refresh_tokens` | `user_id` | （plan 1.3） | — | **CASCADE**（创建时即设置） | 是 — 新建 m22 |
 | **Phase 2** `oauth_accounts` | `user_id` | — | — | CASCADE | (Phase 2) |
 
-**핵심 마이그레이션 작업** (Alembic m22 또는 후속 m36):
+**核心 migration 工作**（Alembic m22 或后续 m36）：
 1. `agents.user_id`, `builder_sessions.user_id`, `agent_triggers.user_id` → CASCADE
-2. `credentials.user_id` → nullable로 변경 (CASCADE는 유지)
-3. `refresh_tokens` 테이블 신설
-4. (선택) `agent_creation_sessions` 테이블 미사용 여부 확인 후 drop
+2. `credentials.user_id` → 改为 nullable（保持 CASCADE）
+3. 新建 `refresh_tokens` table
+4. （可选）确认 `agent_creation_sessions` table 是否未使用后 drop
 
 ---
 
-## 3. 라우터별 인가 audit
+## 3. 各 router 授权 audit
 
-검색 명령:
+搜索命令：
 ```bash
 grep -n "^@router\|user.id\|require_super\|get_current_user" backend/app/routers/*.py
 ```
 
-| 라우터 | GET 엔드포인트 user 필터 | mutation user 필터 | 누락된 검증 | 우선순위 |
+| router | GET endpoint user filter | mutation user filter | 缺失验证 | 优先级 |
 |--------|---------------------------|---------------------|-------------|----------|
-| `agents.py` | OK (`agent_service.list_agents(db, user.id)`, `get_agent(db, id, user.id)`) | OK (전 엔드포인트가 `agent_service.get_agent(..., user.id)`로 owner 검증) | 없음 | — |
-| `conversations.py` | OK (`get_owned_conversation` enumeration-oracle 안전) | OK | 없음 — chat_service join 패턴 우수 | — |
-| `tools.py` | OK (`_load_owned`) | OK | 없음 | — |
-| `credentials.py` (owner CRUD) | OK (`_load_owned` per row) | OK | 없음 — audit log 포함 | — |
-| `credentials.py` (system CRUD `/api/system-credentials/*`) | **누락** — `list_system_credentials`(line 244)는 모든 인증 사용자에게 시스템 credential 노출, `_load_system`(line 232)이 super_user 가드 없음 | **누락** — `create/update/delete_system_credential`(255/294/320)이 일반 user에게 허용 | **`Depends(require_super_user)` 5개 엔드포인트 모두 추가**. 비용 폭주 + 키 누출 위험 | 🔴 **HIGH** |
-| `builder.py` | OK (`builder_service.get_session(db, id, user.id)`) | OK | 없음 | — |
-| `triggers.py` | OK (`trigger_service.get_trigger`) | OK | 없음 | — |
-| `usage.py` | OK (`DailySpendUser.user_id` 직접 필터 + Agent join) | — (read-only) | 없음 | — |
-| `feedback.py` | OK (`MessageFeedback.user_id == user.id`) | OK | 없음 | — |
-| `mcp.py` | OK (`McpServer.user_id == user.id`) | OK | `is_system` MCP server fallback 정책 검토 필요 (super_user만 변경 가능?) | 🟡 MEDIUM |
-| `skills.py` | OK (`skill_service.get_skill(db, id, user.id)`) | OK | 없음 | — |
-| `uploads.py` | OK (`user_id=user.id`) | OK | 없음 | — |
-| `assistant.py` | OK (`agent_service.get_agent(db, agent_id, user.id)`) | OK | 없음 | — |
-| `health.py` | OK (`McpServer.user_id == user.id`) | OK | 없음 | — |
-| `templates.py` | 글로벌 OK (read-only — line 16-29) | **N/A** — create/update/delete 엔드포인트 자체가 **존재하지 않음** | plan 5.1은 super_user-only POST를 추가할 것을 가정하지만 현재 라우터에는 없음. 신설 시점에 가드 추가하면 됨 | 🟢 LOW (작업 시 add) |
-| `models.py` | 글로벌 OK (line 52-70) — 모든 사용자에게 동일 catalog | **누락** — `create_model`(72), `update_model`(121), `delete_model`(150)이 일반 user에게 허용. catalog는 글로벌 자원 | **`Depends(require_super_user)` 추가** (POST/PATCH/DELETE 3개) | 🔴 **HIGH** |
-| `shares.py` | owner: `_require_owned_conversation`로 OK / public(`/api/shares/{token}`): 인증 없음 OK | `create_share`(78)/`revoke_share`(93) — owner 검증 OK | 없음 — 잘 구현됨 | — |
+| `agents.py` | OK（`agent_service.list_agents(db, user.id)`, `get_agent(db, id, user.id)`） | OK（所有 endpoint 都通过 `agent_service.get_agent(..., user.id)` 验证 owner） | 无 | — |
+| `conversations.py` | OK（`get_owned_conversation` 对 enumeration-oracle 安全） | OK | 无 — chat_service join 模式优秀 | — |
+| `tools.py` | OK（`_load_owned`） | OK | 无 | — |
+| `credentials.py`（owner CRUD） | OK（每 row `_load_owned`） | OK | 无 — 包含 audit log | — |
+| `credentials.py`（system CRUD `/api/system-credentials/*`） | **缺失** — `list_system_credentials`（line 244）向所有认证用户暴露 system credential，`_load_system`（line 232）无 super_user guard | **缺失** — `create/update/delete_system_credential`（255/294/320）允许普通 user | **5 个 endpoint 全部新增 `Depends(require_super_user)`**。存在成本暴涨 + key 泄漏风险 | 🔴 **HIGH** |
+| `builder.py` | OK（`builder_service.get_session(db, id, user.id)`） | OK | 无 | — |
+| `triggers.py` | OK（`trigger_service.get_trigger`） | OK | 无 | — |
+| `usage.py` | OK（直接 filter `DailySpendUser.user_id` + Agent join） | —（read-only） | 无 | — |
+| `feedback.py` | OK（`MessageFeedback.user_id == user.id`） | OK | 无 | — |
+| `mcp.py` | OK（`McpServer.user_id == user.id`） | OK | 需检查 `is_system` MCP server fallback 政策（是否只有 super_user 可修改？） | 🟡 MEDIUM |
+| `skills.py` | OK（`skill_service.get_skill(db, id, user.id)`） | OK | 无 | — |
+| `uploads.py` | OK（`user_id=user.id`） | OK | 无 | — |
+| `assistant.py` | OK（`agent_service.get_agent(db, agent_id, user.id)`） | OK | 无 | — |
+| `health.py` | OK（`McpServer.user_id == user.id`） | OK | 无 | — |
+| `templates.py` | global OK（read-only — line 16-29） | **N/A** — create/update/delete endpoint 本身**不存在** | plan 5.1 假定新增 super_user-only POST，但当前 router 没有。新增时加 guard 即可 | 🟢 LOW（实现时 add） |
+| `models.py` | global OK（line 52-70）— 所有用户使用同一 catalog | **缺失** — `create_model`（72）, `update_model`（121）, `delete_model`（150）允许普通 user。catalog 是 global resource | **新增 `Depends(require_super_user)`**（POST/PATCH/DELETE 3 个） | 🔴 **HIGH** |
+| `shares.py` | owner：通过 `_require_owned_conversation` OK / public（`/api/shares/{token}`）：无需认证 OK | `create_share`（78）/`revoke_share`（93）— owner 验证 OK | 无 — 实现良好 | — |
 
-**즉시 조치 후보 (HIGH)**:
-1. `credentials.py` 시스템 credential 라우터 5개 → `require_super_user` 추가
-2. `models.py` 카탈로그 mutation 3개 → `require_super_user` 추가
-3. **모든 mutation에 `Depends(verify_csrf)` 일괄 적용** (라우터 prefix 또는 미들웨어)
+**立即处理候选（HIGH）**：
+1. `credentials.py` system credential router 5 个 → 新增 `require_super_user`
+2. `models.py` catalog mutation 3 个 → 新增 `require_super_user`
+3. **所有 mutation 统一应用 `Depends(verify_csrf)`**（router prefix 或 middleware）
 
 ---
 
-## 4. 시드 데이터 user 종속성
+## 4. 种子数据的 user 依赖性
 
-검색 명령:
+搜索命令：
 ```bash
 ls backend/app/seed/
 grep -n "user_id\|mock_user_id" backend/app/seed/*.py
 ```
 
-| 시드 위치 | user 종속성 | 변경 필요 |
+| 种子位置 | user 依赖性 | 是否需要变更 |
 |-----------|-------------|-----------|
-| `backend/app/seed/default_models.py` (DEFAULT_MODELS) | **없음** — 글로벌 catalog (`models` 테이블, user_id 없음) | 변경 없음 |
-| `backend/app/seed/default_templates.py` (DEFAULT_TEMPLATES) | **없음** — 글로벌 (`templates` 테이블, user_id 없음) | 변경 없음 |
-| `backend/app/seed/bootstrap_from_env.py` | **mock_user_id 종속**: 시그니처 `bootstrap_credentials_from_env(db, user_id)` 라인 105-149. 호출자(`main.py:134`)가 mock_user_id 전달. 함수 내부에서 user 존재 검증 후 user-owned credential 생성 | **변경 필요** — `bootstrap_system_credentials(db)`로 시그니처 변경, `is_system=True, user_id=None`. user 검증 블록 제거. plan 4.2/4.3에 정확히 매핑됨 |
-| `backend/app/main.py:131-141` (lifespan에서 호출) | mock_user_id 전달 | `bootstrap_system_credentials(db)`로 호출 변경 |
-| `backend/app/main.py:146-155` (`sync_env_fallback_from_credentials`) | user 비종속 | 변경 없음 |
-| 시스템 도구(`is_system=True` Tool rows) | 자동 시드 — `tool_factory` 빌트인 레지스트리에서 `user_id IS NULL`로 처리 | 변경 없음 (이미 글로벌) |
+| `backend/app/seed/default_models.py` (DEFAULT_MODELS) | **无** — 全局 catalog（`models` 表，无 user_id） | 无需变更 |
+| `backend/app/seed/default_templates.py` (DEFAULT_TEMPLATES) | **无** — 全局（`templates` 表，无 user_id） | 无需变更 |
+| `backend/app/seed/bootstrap_from_env.py` | **依赖 mock_user_id**：签名 `bootstrap_credentials_from_env(db, user_id)` 第 105-149 行。调用方（`main.py:134`）传入 mock_user_id。函数内部验证 user 存在后创建 user-owned credential | **需要变更** — 将签名改为 `bootstrap_system_credentials(db)`，`is_system=True, user_id=None`。移除 user 验证块。与 plan 4.2/4.3 精确对应 |
+| `backend/app/main.py:131-141`（在 lifespan 中调用） | 传入 mock_user_id | 改为调用 `bootstrap_system_credentials(db)` |
+| `backend/app/main.py:146-155` (`sync_env_fallback_from_credentials`) | 不依赖 user | 无需变更 |
+| 系统工具（`is_system=True` Tool rows） | 自动 种子 — 在 `tool_factory` 内置 注册表 中按 `user_id IS NULL` 处理 | 无需变更（已经是全局） |
 
-**핵심**: 모든 시드는 **이미 글로벌**이거나 **bootstrap_from_env 한 곳만 user 종속**. 그 한 곳을 system credential로 바꾸면 시드 영역의 mock-user 종속성은 0이 된다.
+**核心**：所有 种子 **要么已经是全局**，要么**只有 bootstrap_from_env 一处依赖 user**。只要把这一处改为 system credential，种子 领域对 mock-user 的依赖就会变为 0。
 
 ---
 
-## 5. 격리 위반 가능성 (보안 분석)
+## 5. 隔离违规可能性（安全分析）
 
-### 5.1 LangGraph Checkpoint thread_id 격리
+### 5.1 LangGraph Checkpoint thread_id 隔离
 
-- `backend/app/agent_runtime/checkpointer.py:51-58` — `delete_thread(thread_id)` 함수 존재.
-- `executor.py:579` — `config = {"configurable": {"thread_id": cfg.thread_id}}` (= `conversation_id` 그대로).
-- **위험**: `thread_id`가 **UUID v4**라 brute-force는 사실상 불가능하나, 라우터 외에서 thread를 직접 호출하는 경로 (e.g. trigger 실행 — `trigger_executor.py`)에서 user owner 검증을 빠뜨리면 cross-user 누출 가능.
-- **현재 안전장치**: 라우터의 `chat_service.get_owned_conversation` join이 강력하다. 단, **user 삭제 시 LangGraph checkpoint cascade가 없음** — orphan thread 누적 우려 (plan 6.1에서 `cleanup_user_resources` 신설로 해결).
+- `backend/app/agent_runtime/checkpointer.py:51-58` — 存在 `delete_thread(thread_id)` 函数。
+- `executor.py:579` — `config = {"configurable": {"thread_id": cfg.thread_id}}`（原样使用 `conversation_id`）。
+- **风险**：`thread_id` 是 **UUID v4**，因此实际上几乎无法 brute-force，但如果在路由器之外直接调用 thread 的路径（e.g. trigger 执行 — `trigger_executor.py`）漏掉 user owner 验证，就可能发生 cross-user 泄漏。
+- **当前安全措施**：路由器中的 `chat_service.get_owned_conversation` join 很强。但 **user 删除时没有 LangGraph checkpoint cascade** — 存在 orphan thread 累积风险（plan 6.1 中通过新增 `cleanup_user_resources` 解决）。
 
 ### 5.2 Tool factory cross-user credential leak
 
-- `tool_factory.py:217` — `user_uuid = _safe_uuid(tool_config.get("user_id"))` (caller가 주입). chat_service `build_tools_config`에서 `user_id=str(agent.user_id)` 전달(`chat_service.py:586`).
-- **누출 경로**: 만약 어떤 caller가 `user_id`를 주입하지 않으면 `_build_tool_hook_context`가 `None` 반환 → spend tracking 누락 + audit hole. **누출은 아니지만 격리 시그널 손실**.
-- **잠재적 위반**: `system_credential_resolver.py`(`is_system=True` credential lookup)가 일반 user의 도구 호출에서도 동작 가능. plan 4.2가 정의한 "super_user 전용" 정책이 코드에는 아직 박혀 있지 않음 → **별도 가드 함수 신설 필요** (`assert_can_use_system_credential(user)`).
+- `tool_factory.py:217` — `user_uuid = _safe_uuid(tool_config.get("user_id"))`（由 caller 注入）。chat_service 的 `build_tools_config` 中传入 `user_id=str(agent.user_id)`（`chat_service.py:586`）。
+- **泄漏路径**：如果某个 caller 没有注入 `user_id`，`_build_tool_hook_context` 会返回 `None` → spend tracking 缺失 + audit hole。**这本身不是泄漏，但会丢失隔离信号**。
+- **潜在违规**：`system_credential_resolver.py`（`is_system=True` credential lookup）也可能在普通 user 的工具调用中工作。plan 4.2 定义的"仅限 super_user"策略尚未写死在代码里 → **需要新增独立 防护 函数**（`assert_can_use_system_credential(user)`）。
 
-### 5.3 Conversation join 패턴
+### 5.3 Conversation join 模式
 
-- `chat_service.get_owned_conversation`(line 91-105) — `Conversation` ⨝ `Agent` on `Agent.user_id == user_id` 단일 SELECT. 최적화 우수.
-- **검증 결과**: `Conversation` 테이블 자체에는 `user_id` 없음 (`conversation.py`). 격리는 **Agent 경유 1-hop**. Agent 삭제 시 Conversation도 cascade되어야 — 현재 `agents.id` FK에 ondelete CASCADE 명시 안 된 듯 (initial migration line 125-128). **확인 필요**.
+- `chat_service.get_owned_conversation`（line 91-105）— `Conversation` ⨝ `Agent` on `Agent.user_id == user_id` 单次 SELECT。优化很好。
+- **验证结果**：`Conversation` 表本身没有 `user_id`（`conversation.py`）。隔离通过 **Agent 1-hop** 完成。删除 Agent 时 Conversation 也应 cascade — 当前 `agents.id` FK 似乎没有显式指定 ondelete CASCADE（initial migration line 125-128）。**需要确认**。
 
-### 5.4 Daily spend aggregation 격리
+### 5.4 Daily spend aggregation 隔离
 
-- `usage_aggregate.py:104-179` — user axis는 직접 column 필터, agent/model axis는 Agent.user_id join. 패턴 깨끗함. 격리 위반 없음.
+- `usage_aggregate.py:104-179` — user axis 直接做 column 过滤，agent/model axis 通过 Agent.user_id join。模式很干净，没有隔离违规。
 
-### 5.5 Builder session FK 일관성
+### 5.5 Builder session FK 一致性
 
-- `builder_session.py:19` — `user_id ForeignKey("users.id")` ondelete 미명시. `agent_id`는 m35로 SET NULL 처리됨. **user 탈퇴 시 builder_session row 고아 우려** → CASCADE로 통일.
+- `builder_session.py:19` — `user_id ForeignKey("users.id")` 未显式指定 ondelete。`agent_id` 已在 m35 中按 SET NULL 处理。**user 注销时 builder_session row 可能变成孤儿** → 统一为 CASCADE。
 
 ---
 
-## 6. 제거 후보 (Musk Step 2 — 명시적 단순화)
+## 6. 删除候选（Musk Step 2 — 显式简化）
 
-명시적으로 **삭제하면 단순해지는** 코드:
+明确**删除后可以简化**的代码：
 
-| # | 대상 | 위치 | LOC 추정 | 단순화 효과 |
+| # | 对象 | 位置 | LOC 估算 | 简化效果 |
 |---|------|------|----------|-------------|
-| 1 | `mock_user_id`/`mock_user_email`/`mock_user_name` Settings 필드 | `config.py:31-34` | -4 | "Mock user (PoC: no auth)" 개념 자체 제거 |
-| 2 | `get_current_user` mock 반환부 | `dependencies.py:23-29` | -7 | JWT 기반으로 전면 교체. mock 분기 사라짐 |
-| 3 | `main.py` lifespan의 mock user upsert 블록 | `main.py:96-108` | -13 | startup 코드 13줄 + import 1줄 (`User`) 제거 가능 (import는 다른 사용처 확인 후) |
-| 4 | `bootstrap_credentials_from_env`의 user 검증 블록 | `bootstrap_from_env.py:120-126` | -7 | system credential 전환 후 불필요 |
-| 5 | `bootstrap_credentials_from_env`의 `user_id` 파라미터 + `Credential.user_id == user_id` 필터 | `bootstrap_from_env.py:105-156` | -3 | 시그니처 단순화 |
-| 6 | `routers/credentials.py:248` docstring `"PoC: no role gate (mock user)."` | line 248 | -1 | 의미 명확화 |
-| 7 | `agent_creation_sessions` 테이블 (legacy, **dead**) | initial migration line 61-75 | -15 (마이그레이션 drop) | **확인 완료**: `grep -rn "agent_creation_sessions\|AgentCreationSession" backend/app/`가 0건. `builder_sessions`로 완전 대체됨. **drop 가능** — m22 또는 후속 마이그레이션에 `op.drop_table("agent_creation_sessions")` 추가. |
-| 8 | `Settings.google_oauth_refresh_token`(`config.py:29`) 글로벌 사용처 | `agent_runtime/google_workspace_tools.py` (확인 필요) | -? | 글로벌 토큰 → 사용자별 credential로 전환 시 settings 필드 제거 가능 |
+| 1 | `mock_user_id`/`mock_user_email`/`mock_user_name` Settings 字段 | `config.py:31-34` | -4 | 彻底移除"Mock user (PoC: no auth)"概念 |
+| 2 | `get_current_user` mock 返回部分 | `dependencies.py:23-29` | -7 | 全面替换为基于 JWT。mock 分支消失 |
+| 3 | `main.py` lifespan 中的 mock user upsert 块 | `main.py:96-108` | -13 | 可移除 startup 代码 13 行 + import 1 行（`User`）（需确认 import 的其他使用处） |
+| 4 | `bootstrap_credentials_from_env` 的 user 验证块 | `bootstrap_from_env.py:120-126` | -7 | 转为 system credential 后不再需要 |
+| 5 | `bootstrap_credentials_from_env` 的 `user_id` 参数 + `Credential.user_id == user_id` 过滤 | `bootstrap_from_env.py:105-156` | -3 | 简化签名 |
+| 6 | `routers/credentials.py:248` docstring `"PoC: no role gate (mock user)."` | line 248 | -1 | 语义更明确 |
+| 7 | `agent_creation_sessions` 表（legacy，**dead**） | initial migration line 61-75 | -15（迁移 drop） | **已确认**：`grep -rn "agent_creation_sessions\|AgentCreationSession" backend/app/` 为 0 项。已被 `builder_sessions` 完全替代。**可以 drop** — 在 m22 或后续迁移中添加 `op.drop_table("agent_creation_sessions")`。 |
+| 8 | `Settings.google_oauth_refresh_token`（`config.py:29`）全局使用处 | `agent_runtime/google_workspace_tools.py`（需确认） | -? | 若将全局 令牌 转为按用户 credential，可移除 settings 字段 |
 
-**총 LOC 감소 예상**: 단순 Mock 흔적 제거 = **약 35 LOC**. `agent_creation_sessions` legacy 테이블 drop 시 +50~100 LOC. 의미적 단순화 효과는 LOC보다 큼 — "Mock User"라는 단일 사용자 가정 자체가 사라지면 라우터 인가 audit, 시드 정책, 도구 credential 우선순위가 일관된 모델로 정리된다.
+**预计 LOC 总减少量**：仅移除 Mock 痕迹 = **约 35 LOC**。若 drop `agent_creation_sessions` legacy 表则再减少 +50~100 LOC。语义上的简化效果大于 LOC — 一旦"Mock User"这一单用户假设消失，路由授权 audit、种子 策略、工具 credential 优先级都会整理成一致模型。
 
 ---
 
-## 7. 검증 명령어 모음
+## 7. 验证命令汇总
 
-다음 세션에서 이 분석을 재현/확장할 때 사용:
+下一会话复现/扩展本分析时使用：
 
 ```bash
-# 1. Mock user 흔적 — 모두 0건이 되어야 멀티유저 전환 완료
+# 1. Mock user 痕迹 — 全部应为 0 项，才算完成多用户转换
 grep -rn "mock_user" backend/app/
 grep -rn "00000000-0000-0000-0000-000000000001" backend/
 grep -rni "mock\|MOCK_USER\|DEMO_USER" backend/.env.example backend/app/
 
-# 2. FK ondelete 정책 매트릭스
+# 2. FK ondelete 策略矩阵
 grep -rn "user_id" backend/app/models/ | grep -v "__pycache__"
 grep -n "ondelete" backend/alembic/versions/aa5b4cc59ddb_initial_tables.py
 grep -n "ondelete" backend/alembic/versions/m18_greenfield_credentials.py
 grep -n "ForeignKey.*users" backend/app/models/*.py
 
-# 3. 라우터 인가 audit
+# 3. 路由授权 audit
 grep -n "^@router\|user.id\|require_super\|get_current_user" backend/app/routers/*.py
-grep -rn "require_super\|is_super_user" backend/app/  # 신설 후 검증
+grep -rn "require_super\|is_super_user" backend/app/  # 新增后验证
 
-# 4. 시드 데이터 user 종속성
+# 4. 种子数据 user 依赖性
 grep -n "user_id\|mock_user_id" backend/app/seed/*.py
 grep -rn "bootstrap_credentials_from_env\|bootstrap_system_credentials" backend/
 
-# 5. 격리 위반 가능성
+# 5. 隔离违规可能性
 grep -n "thread_id\|user_id" backend/app/agent_runtime/checkpointer.py
 grep -n "user_id\|owner\|is_system\|require_super" backend/app/agent_runtime/tool_factory.py
 grep -n "get_owned_conversation\|Agent.user_id" backend/app/services/chat_service.py
 grep -n "user_id\|is_system" backend/app/services/system_credential_resolver.py
 
-# 6. 제거 후보 — legacy table 사용처 확인
+# 6. 删除候选 — 检查 legacy table 使用处
 grep -rn "agent_creation_sessions\|AgentCreationSession" backend/app/
 grep -rn "google_oauth_refresh_token\|GOOGLE_OAUTH_REFRESH_TOKEN" backend/
 
-# 7. is_super_user / 인증 신규 인프라 (도입 후 검증용)
+# 7. is_super_user / 认证新基础设施（引入后验证）
 grep -rn "is_super_user\|hashed_password\|RefreshToken" backend/app/
 grep -rn "verify_csrf\|require_super_user\|get_current_user_optional" backend/app/
 
-# 8. CSRF 누락 mutation 식별 (도입 후)
+# 8. 识别缺少 CSRF 的 mutation（引入后）
 grep -n "@router\.\(post\|put\|patch\|delete\)" backend/app/routers/*.py | grep -v "auth\|verify_csrf"
 ```
 
 ---
 
-## 부록 A — 우선순위 요약 (젠슨이 가장 먼저 처리할 것)
+## 附录 A — 优先级摘要（詹森最先处理）
 
-1. 🔴 **시스템 credential super_user 가드** (`routers/credentials.py:243-336`) — 비용 폭주/키 누출 위험. plan 4.2/5.1.
-2. 🔴 **모델 카탈로그 mutation super_user 가드** (`routers/models.py:72/121/150`) — 글로벌 자원 보호.
-3. 🔴 **`Credential.user_id`를 nullable로 마이그레이션** — `is_system=True` row를 user 비종속으로 만들기 위한 전제. 이거 없이는 plan 4.1의 `bootstrap_system_credentials` 동작 불가.
-4. 🟡 **`agents/builder_sessions/agent_triggers` user_id FK ondelete=CASCADE** — user 탈퇴 시 고아 row 정리.
-5. 🟡 **`get_current_user` 전면 재작성** + `dependencies.py`에 `require_super_user`/`get_current_user_optional`/`verify_csrf` 추가.
-6. 🟢 **`main.py` mock user 블록 제거 + `bootstrap_credentials_from_env` 재작성** — 위 1~5가 끝나야 안전하게 가능.
+1. 🔴 **系统 credential super_user 防护**（`routers/credentials.py:243-336`）— 成本失控/密钥泄漏风险。plan 4.2/5.1。
+2. 🔴 **模型 目录 mutation super_user 防护**（`routers/models.py:72/121/150`）— 保护全局资源。
+3. 🔴 **将 `Credential.user_id` 迁移 为 nullable** — 是让 `is_system=True` row 不依赖 user 的前提。没有这个，plan 4.1 的 `bootstrap_system_credentials` 无法工作。
+4. 🟡 **`agents/builder_sessions/agent_triggers` user_id FK ondelete=CASCADE** — user 注销时清理 孤儿 row。
+5. 🟡 **全面重写 `get_current_user`** + 在 `dependencies.py` 中新增 `require_super_user`/`get_current_user_optional`/`verify_csrf`。
+6. 🟢 **移除 `main.py` mock user 块 + 重写 `bootstrap_credentials_from_env`** — 必须等上面 1~5 完成后才能安全进行。

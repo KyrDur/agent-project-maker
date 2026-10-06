@@ -6,12 +6,12 @@ from app.agent_runtime.skill_builder.eval_templates import select_eval_template
 
 def test_generate_eval_cases_for_structured_extraction() -> None:
     template = select_eval_template(
-        intent="회의록에서 액션 아이템과 담당자를 표로 추출",
+        intent="从会议纪要提取行动项和负责人并整理为表格",
         draft_package=None,
     )
 
     cases = generate_eval_cases(
-        intent="회의록에서 액션 아이템과 담당자를 표로 추출",
+        intent="从会议纪要提取行动项和负责人并整理为表格",
         template=template,
     )
 
@@ -25,12 +25,12 @@ def test_generate_eval_cases_for_structured_extraction() -> None:
 
 def test_generate_eval_cases_for_research() -> None:
     template = select_eval_template(
-        intent="출처가 있는 시장 조사 요약",
+        intent="带来源的市场调研摘要",
         draft_package=None,
     )
 
     cases = generate_eval_cases(
-        intent="출처가 있는 시장 조사 요약",
+        intent="带来源的市场调研摘要",
         template=template,
     )
 
@@ -44,15 +44,15 @@ def test_generate_eval_cases_for_research() -> None:
 
 def test_generate_eval_cases_for_general_task() -> None:
     template = select_eval_template(
-        intent="이메일 초안을 자연스럽게 다듬기",
+        intent="自然地润色邮件草稿",
         draft_package=None,
     )
 
     cases = generate_eval_cases(
-        intent="이메일 초안을 자연스럽게 다듬기",
+        intent="自然地润色邮件草稿",
         template=template,
     )
 
     assert len(cases) == 2
     assert cases[0].expected == {"format": "useful_answer"}
-    assert cases[0].metadata["intent"] == "이메일 초안을 자연스럽게 다듬기"
+    assert cases[0].metadata["intent"] == "自然地润色邮件草稿"

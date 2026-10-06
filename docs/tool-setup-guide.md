@@ -1,267 +1,267 @@
-# Pre-built 도구 API 키 설정 가이드
+# Pre-built 工具 API key 设置指南
 
-Moldy에서 Pre-built 도구를 사용하려면 각 서비스의 API 키를 발급받아 설정해야 합니다.
-이 문서는 처음 사용하는 분을 위한 단계별 가이드입니다.
-
----
-
-## 목차
-
-1. [Naver Search 도구](#1-naver-search-도구)
-2. [Google Search 도구](#2-google-search-도구)
-3. [Google Chat Send 도구](#3-google-chat-send-도구)
-4. [Gmail / Calendar 도구](#4-gmail--calendar-도구)
-5. [Moldy에서 키 입력하기](#5-moldy에서-키-입력하기)
-6. [문제 해결](#6-문제-해결)
+要在 Moldy 中使用 Pre-built 工具，需要获取并设置各服务的 API key。
+本文档是面向首次使用者的分步指南。
 
 ---
 
-## 1. Naver Search 도구
+## 目录
 
-**대상 도구**: Naver Blog Search, Naver News Search, Naver Image Search, Naver Shopping Search, Naver Local Search (총 5개)
-
-**필요한 키**: Client ID, Client Secret
-
-### 발급 절차
-
-1. [네이버 개발자센터](https://developers.naver.com)에 로그인합니다.
-
-2. 상단 메뉴에서 **Application** > **애플리케이션 등록**을 클릭합니다.
-
-3. 애플리케이션 정보를 입력합니다:
-   - **애플리케이션 이름**: `Moldy` (원하는 이름)
-   - **사용 API**: `검색` 선택
-
-4. **비로그인 오픈 API 서비스 환경**에서:
-   - 환경 추가: `WEB 설정` 선택
-   - 웹 서비스 URL: Moldy가 실행되는 URL 입력 (예: `http://localhost:3000`)
-
-5. **등록하기**를 클릭합니다.
-
-6. 등록 완료 후 **애플리케이션 정보** 페이지에서 확인:
-   - **Client ID** — `NAVER_CLIENT_ID`로 사용
-   - **Client Secret** — `NAVER_CLIENT_SECRET`으로 사용
-
-### 참고 사항
-
-- 하루 25,000건 호출 가능 (무료)
-- 5개 Naver 도구는 동일한 Client ID / Secret을 공유합니다. 한 번만 설정하면 됩니다.
+1. [Naver Search 工具](#1-naver-search-工具)
+2. [Google Search 工具](#2-google-search-工具)
+3. [Google Chat Send 工具](#3-google-chat-send-工具)
+4. [Gmail / Calendar 工具](#4-gmail--calendar-工具)
+5. [在 Moldy 中输入密钥](#5-在-moldy-中输入密钥)
+6. [问题排查](#6-问题排查)
 
 ---
 
-## 2. Google Search 도구
+## 1. Naver Search 工具
 
-**대상 도구**: Google Search, Google News Search, Google Image Search (총 3개)
+**目标工具**：Naver Blog Search, Naver News Search, Naver Image Search, Naver Shopping Search, Naver Local Search（共 5 个）
 
-**필요한 키**: API Key, Search Engine ID (CSE ID)
+**所需密钥**：Client ID, Client Secret
 
-### Step 1: API Key 발급
+### 获取步骤
 
-1. [Google Cloud Console](https://console.cloud.google.com)에 로그인합니다.
+1. 登录 [Naver 开发者中心](https://developers.naver.com)。
 
-2. 프로젝트를 선택하거나 새 프로젝트를 생성합니다.
+2. 在顶部菜单点击 **Application** > **注册应用**。
 
-3. **API 및 서비스** > **라이브러리**로 이동합니다.
+3. 输入应用信息：
+   - **应用名称**：`Moldy`（任意名称）
+   - **使用 API**：选择 `搜索`
 
-4. `Custom Search JSON API`를 검색하여 **사용 설정**합니다.
+4. 在**非登录开放 API 服务环境**中：
+   - 添加环境：选择 `WEB 设置`
+   - Web 服务 URL：输入 Moldy 运行的 URL（例：`http://localhost:3000`）
 
-5. **API 및 서비스** > **사용자 인증 정보**로 이동합니다.
+5. 点击**注册**。
 
-6. **+ 사용자 인증 정보 만들기** > **API 키**를 클릭합니다.
+6. 注册完成后，在**应用信息**页面确认：
+   - **Client ID** — 用作 `NAVER_CLIENT_ID`
+   - **Client Secret** — 用作 `NAVER_CLIENT_SECRET`
 
-7. 생성된 API 키를 복사합니다 — `GOOGLE_API_KEY`로 사용
+### 注意事项
 
-> **보안 팁**: API 키 제한 설정에서 "API 제한사항"을 `Custom Search JSON API`로 한정하면 안전합니다.
-
-### Step 2: Search Engine ID (CSE ID) 발급
-
-1. [Programmable Search Engine](https://programmablesearchengine.google.com)에 접속합니다.
-
-2. **추가** 버튼을 클릭합니다.
-
-3. 검색 엔진 설정:
-   - **검색할 사이트**: `전체 웹 검색`을 선택
-   - **검색 엔진 이름**: `Moldy Search` (원하는 이름)
-
-4. **만들기**를 클릭합니다.
-
-5. 생성된 검색 엔진의 **검색 엔진 ID**를 복사합니다 — `GOOGLE_CSE_ID`로 사용
-
-### 참고 사항
-
-- 하루 100건 무료, 초과 시 1,000건당 $5
-- 3개 Google Search 도구는 동일한 API Key / CSE ID를 공유합니다.
+- 每天可调用 25,000 次（免费）
+- 5 个 Naver 工具共享同一个 Client ID / Secret。只需设置一次。
 
 ---
 
-## 3. Google Chat Send 도구
+## 2. Google Search 工具
 
-**대상 도구**: Google Chat Send (1개)
+**目标工具**：Google Search, Google News Search, Google Image Search（共 3 个）
 
-**필요한 키**: Webhook URL
+**所需密钥**：API Key, Search Engine ID (CSE ID)
 
-### 발급 절차
+### Step 1: 获取 API Key
 
-1. [Google Chat](https://chat.google.com)을 엽니다.
+1. 登录 [Google Cloud Console](https://console.cloud.google.com)。
 
-2. 메시지를 보낼 **스페이스**를 선택합니다 (또는 새 스페이스 생성).
+2. 选择项目或创建新项目。
 
-3. 스페이스 이름 옆 **드롭다운 화살표** > **앱 및 통합**을 클릭합니다.
+3. 前往 **API 和服务** > **库**。
 
-4. **+ 웹훅 추가**를 클릭합니다.
+4. 搜索 `Custom Search JSON API` 并**启用**。
 
-5. 웹훅 정보를 입력합니다:
-   - **이름**: `Moldy Bot` (원하는 이름)
-   - **아바타 URL**: (선택사항, 비워둬도 됩니다)
+5. 前往 **API 和服务** > **凭据**。
 
-6. **저장**을 클릭합니다.
+6. 点击 **+ 创建凭据** > **API 密钥**。
 
-7. 생성된 **Webhook URL**을 복사합니다.
-   - 형식: `https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=...&token=...`
+7. 复制生成的 API key — 用作 `GOOGLE_API_KEY`
 
-### 참고 사항
+> **安全提示**：在 API key 限制设置中，将“API 限制”限定为 `Custom Search JSON API` 更安全。
 
-- Webhook은 Google Workspace (유료 계정)에서만 사용 가능합니다.
-- 메시지 전송만 가능하며, 수신/읽기는 지원하지 않습니다.
+### Step 2: 获取 Search Engine ID (CSE ID)
+
+1. 访问 [Programmable Search Engine](https://programmablesearchengine.google.com)。
+
+2. 点击**添加**按钮。
+
+3. 搜索引擎设置：
+   - **要搜索的网站**：选择`搜索整个 Web`
+   - **搜索引擎名称**：`Moldy Search`（任意名称）
+
+4. 点击**创建**。
+
+5. 复制生成的搜索引擎的**搜索引擎 ID** — 用作 `GOOGLE_CSE_ID`
+
+### 注意事项
+
+- 每天 100 次免费，超出后每 1,000 次 $5
+- 3 个 Google Search 工具共享同一个 API Key / CSE ID。
 
 ---
 
-## 4. Gmail / Calendar 도구
+## 3. Google Chat Send 工具
 
-**대상 도구**: Gmail Read, Gmail Send, Calendar List Events, Calendar Create Event, Calendar Update Event (총 5개)
+**目标工具**：Google Chat Send（1 个）
 
-**필요한 키**: OAuth Client ID, OAuth Client Secret, Refresh Token
+**所需密钥**：Webhook URL
 
-이 도구들은 Google OAuth2 인증을 사용합니다. 설정이 다소 복잡하지만, 아래 단계를 따라하면 됩니다.
+### 获取步骤
 
-### Step 1: Google Cloud 프로젝트 설정
+1. 打开 [Google Chat](https://chat.google.com)。
 
-1. [Google Cloud Console](https://console.cloud.google.com)에 로그인합니다.
+2. 选择要发送消息的**空间**（或创建新空间）。
 
-2. 프로젝트를 선택하거나 새 프로젝트를 생성합니다.
+3. 点击空间名称旁的**下拉箭头** > **应用和集成**。
 
-3. **API 및 서비스** > **라이브러리**에서 다음 API를 각각 **사용 설정**합니다:
+4. 点击 **+ 添加 Webhook**。
+
+5. 输入 Webhook 信息：
+   - **名称**：`Moldy Bot`（任意名称）
+   - **头像 URL**：（可选，可以留空）
+
+6. 点击**保存**。
+
+7. 复制生成的 **Webhook URL**。
+   - 格式：`https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=...&token=...`
+
+### 注意事项
+
+- Webhook 仅可用于 Google Workspace（付费账户）。
+- 只能发送消息，不支持接收/读取。
+
+---
+
+## 4. Gmail / Calendar 工具
+
+**目标工具**：Gmail Read, Gmail Send, Calendar List Events, Calendar Create Event, Calendar Update Event（共 5 个）
+
+**所需密钥**：OAuth Client ID, OAuth Client Secret, Refresh Token
+
+这些工具使用 Google OAuth2 认证。设置稍微复杂，但按以下步骤操作即可。
+
+### Step 1: Google Cloud 项目设置
+
+1. 登录 [Google Cloud Console](https://console.cloud.google.com)。
+
+2. 选择项目或创建新项目。
+
+3. 在 **API 和服务** > **库**中分别**启用**以下 API：
    - `Gmail API`
    - `Google Calendar API`
 
-### Step 2: OAuth 동의 화면 설정
+### Step 2: OAuth 同意屏幕设置
 
-1. **API 및 서비스** > **OAuth 동의 화면**으로 이동합니다.
+1. 前往 **API 和服务** > **OAuth 同意屏幕**。
 
-2. **외부** 사용자 유형을 선택하고 **만들기**를 클릭합니다.
+2. 选择**外部**用户类型并点击**创建**。
 
-3. 필수 정보를 입력합니다:
-   - **앱 이름**: `Moldy`
-   - **사용자 지원 이메일**: 본인 이메일
-   - **개발자 연락처 이메일**: 본인 이메일
+3. 输入必填信息：
+   - **应用名称**：`Moldy`
+   - **用户支持邮箱**：你的邮箱
+   - **开发者联系邮箱**：你的邮箱
 
-4. **범위 추가** 화면에서 다음 범위를 추가합니다:
+4. 在**添加范围**页面添加以下范围：
    - `https://www.googleapis.com/auth/gmail.readonly`
    - `https://www.googleapis.com/auth/gmail.send`
    - `https://www.googleapis.com/auth/calendar`
 
-5. **테스트 사용자**에 본인 Google 계정 이메일을 추가합니다.
+5. 在**测试用户**中添加你的 Google 账户邮箱。
 
-6. 요약을 확인하고 **대시보드로 돌아가기**를 클릭합니다.
+6. 确认摘要并点击**返回仪表盘**。
 
-### Step 3: OAuth 클라이언트 ID 생성
+### Step 3: 创建 OAuth Client ID
 
-1. **API 및 서비스** > **사용자 인증 정보**로 이동합니다.
+1. 前往 **API 和服务** > **凭据**。
 
-2. **+ 사용자 인증 정보 만들기** > **OAuth 클라이언트 ID**를 클릭합니다.
+2. 点击 **+ 创建凭据** > **OAuth 客户端 ID**。
 
-3. 설정:
-   - **애플리케이션 유형**: `웹 애플리케이션`
-   - **이름**: `Moldy OAuth`
-   - **승인된 리디렉션 URI**: `https://developers.google.com/oauthplayground`
+3. 设置：
+   - **应用类型**：`Web 应用`
+   - **名称**：`Moldy OAuth`
+   - **已获授权的重定向 URI**：`https://developers.google.com/oauthplayground`
 
-4. **만들기**를 클릭합니다.
+4. 点击**创建**。
 
-5. 표시된 정보를 복사합니다:
-   - **클라이언트 ID** — `OAuth Client ID`로 사용
-   - **클라이언트 보안 비밀번호** — `OAuth Client Secret`으로 사용
+5. 复制显示的信息：
+   - **客户端 ID** — 用作 `OAuth Client ID`
+   - **客户端密钥** — 用作 `OAuth Client Secret`
 
-### Step 4: Refresh Token 획득
+### Step 4: 获取 Refresh Token
 
-1. [OAuth 2.0 Playground](https://developers.google.com/oauthplayground)에 접속합니다.
+1. 访问 [OAuth 2.0 Playground](https://developers.google.com/oauthplayground)。
 
-2. 오른쪽 상단 **톱니바퀴 아이콘** (OAuth 2.0 configuration)을 클릭합니다.
+2. 点击右上角**齿轮图标**（OAuth 2.0 configuration）。
 
-3. 설정:
-   - **Use your own OAuth credentials** 체크
-   - **OAuth Client ID**: Step 3에서 복사한 Client ID 입력
-   - **OAuth Client Secret**: Step 3에서 복사한 Client Secret 입력
+3. 设置：
+   - 勾选 **Use your own OAuth credentials**
+   - **OAuth Client ID**：输入 Step 3 中复制的 Client ID
+   - **OAuth Client Secret**：输入 Step 3 中复制的 Client Secret
 
-4. 왼쪽 패널에서 API 범위를 선택합니다:
-   - **Gmail API v1** 펼치기 → `https://www.googleapis.com/auth/gmail.readonly`와 `https://www.googleapis.com/auth/gmail.send` 체크
-   - **Google Calendar API v3** 펼치기 → `https://www.googleapis.com/auth/calendar` 체크
+4. 在左侧面板选择 API scope：
+   - 展开 **Gmail API v1** → 勾选 `https://www.googleapis.com/auth/gmail.readonly` 和 `https://www.googleapis.com/auth/gmail.send`
+   - 展开 **Google Calendar API v3** → 勾选 `https://www.googleapis.com/auth/calendar`
 
-5. **Authorize APIs** 버튼을 클릭합니다.
+5. 点击 **Authorize APIs** 按钮。
 
-6. Google 계정 선택 → 권한 허용 (테스트 사용자로 추가한 계정이어야 합니다).
+6. 选择 Google 账户 → 允许权限（必须是已添加为测试用户的账户）。
 
-7. **Step 2** 화면에서 **Exchange authorization code for tokens** 버튼을 클릭합니다.
+7. 在 **Step 2** 页面点击 **Exchange authorization code for tokens** 按钮。
 
-8. 응답에서 **Refresh token** 값을 복사합니다 — `Refresh Token`으로 사용
+8. 复制响应中的 **Refresh token** 值 — 用作 `Refresh Token`
 
-### 참고 사항
+### 注意事项
 
-- OAuth 동의 화면이 "테스트" 상태이면 테스트 사용자로 등록된 계정만 사용 가능합니다.
-- Refresh Token은 만료되지 않지만, OAuth 동의 화면을 "프로덕션"으로 전환하지 않으면 7일마다 만료될 수 있습니다.
-- 5개 Gmail/Calendar 도구는 동일한 OAuth 인증 정보를 공유합니다.
+- 如果 OAuth 同意屏幕处于 "测试" 状态，则只能使用已注册为测试用户的账号。
+- Refresh Token 不会过期，但如果不将 OAuth 同意屏幕切换为 "生产"，则可能每 7 天过期一次。
+- 5 个 Gmail/Calendar 工具共享相同的 OAuth 认证信息。
 
 ---
 
-## 5. Moldy에서 키 입력하기
+## 5. 在 Moldy 中输入密钥
 
-모든 API 키 발급이 완료되면 Moldy UI에서 설정합니다.
+所有 API 密钥签发完成后，在 Moldy UI 中进行设置。
 
-1. Moldy 앱에 로그인합니다.
+1. 登录 Moldy 应用。
 
-2. 사이드바에서 **도구 관리** 페이지로 이동합니다.
+2. 从侧边栏进入 **工具管理** 页面。
 
-3. 설정하려는 도구 카드를 찾습니다.
-   - Pre-built 도구는 파란색 `Pre-built` 배지가 표시됩니다.
-   - 키가 미설정이면 노란색 경고가 표시됩니다.
+3. 找到要设置的工具卡片。
+   - Pre-built 工具会显示蓝色 `Pre-built` 徽标。
+   - 如果尚未设置密钥，则会显示黄色警告。
 
-4. **키 설정** 버튼을 클릭합니다.
+4. 点击 **密钥设置** 按钮。
 
-5. 발급받은 키 값을 입력합니다:
+5. 输入已签发的密钥值:
 
-   | 도구 그룹 | 입력 필드 |
+   | 工具组 | 输入字段 |
    |-----------|-----------|
-   | Naver Search (5개) | Client ID, Client Secret |
-   | Google Search (3개) | API Key, Search Engine ID |
+   | Naver Search (5个) | Client ID, Client Secret |
+   | Google Search (3个) | API Key, Search Engine ID |
    | Google Chat Send | Webhook URL |
-   | Gmail / Calendar (5개) | OAuth Client ID, OAuth Client Secret, Refresh Token |
+   | Gmail / Calendar (5个) | OAuth Client ID, OAuth Client Secret, Refresh Token |
 
-6. **저장**을 클릭합니다.
+6. 点击**保存**。
 
-7. 저장 완료 후 초록색 체크 아이콘으로 상태가 변경됩니다.
+7. 保存完成后，状态会变为绿色勾选图标。
 
-> **참고**: 같은 그룹의 도구는 인증 정보를 공유합니다. 예를 들어 Naver Blog Search에 키를 설정하면 다른 Naver 도구에서도 같은 키가 사용됩니다 — 단, 각 도구별로 개별 설정도 가능합니다.
+> **参考**: 同一组的工具共享认证信息。例如，如果为 Naver Blog Search 设置了密钥，其他 Naver 工具也会使用相同的密钥 — 但也可以为每个工具分别设置。
 
 ---
 
-## 6. 문제 해결
+## 6. 问题排查
 
-### "API 키가 유효하지 않습니다"
+### "API 密钥无效"
 
-- 키 값을 다시 확인하세요. 복사 시 앞뒤 공백이 포함되지 않았는지 확인합니다.
-- Google API Key의 경우, 해당 API(Custom Search JSON API, Gmail API 등)가 활성화되어 있는지 확인합니다.
+- 请再次检查密钥值。确认复制时前后没有包含空格。
+- 对于 Google API Key，请确认相应 API(Custom Search JSON API, Gmail API 等)已启用。
 
-### "권한이 없습니다" (403 에러)
+### "没有权限" (403 错误)
 
-- Naver: 애플리케이션의 "사용 API"에 `검색`이 포함되어 있는지 확인합니다.
-- Google: API Key에 API 제한이 걸려 있다면 필요한 API가 허용 목록에 있는지 확인합니다.
-- Gmail/Calendar: OAuth 동의 화면의 테스트 사용자에 해당 계정이 등록되어 있는지 확인합니다.
+- Naver: 请确认应用的 "使用 API" 中包含 `搜索`。
+- Google: 如果 API Key 设置了 API 限制，请确认所需 API 位于允许列表中。
+- Gmail/Calendar: 请确认该账号已注册到 OAuth 同意屏幕的测试用户中。
 
-### "Refresh Token이 만료되었습니다"
+### "Refresh Token 已过期"
 
-- OAuth Playground에서 새 Refresh Token을 발급받아 Moldy에 다시 입력하세요.
-- 장기 사용 시 Google Cloud Console에서 OAuth 동의 화면을 "프로덕션"으로 전환하면 만료가 방지됩니다.
+- 请在 OAuth Playground 中签发新的 Refresh Token，并重新输入到 Moldy。
+- 长期使用时，在 Google Cloud Console 中将 OAuth 同意屏幕切换为 "生产" 可避免过期。
 
-### Google Chat Webhook이 작동하지 않습니다
+### Google Chat Webhook 无法工作
 
-- Webhook URL이 정확한지 확인합니다 (전체 URL 복사 필요).
-- Google Workspace (유료) 계정인지 확인합니다. 무료 Gmail 계정에서는 Webhook을 사용할 수 없습니다.
+- 请确认 Webhook URL 是否准确 (需要复制完整 URL)。
+- 请确认是否为 Google Workspace (付费) 账号。免费 Gmail 账号无法使用 Webhook。

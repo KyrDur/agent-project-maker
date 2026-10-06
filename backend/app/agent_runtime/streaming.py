@@ -29,20 +29,20 @@ from app.marketplace.redaction import redact_keys
 logger = logging.getLogger(__name__)
 
 
-# W3-out M2 — partial flush thresholds. 32 events 또는 2초 도래 시
-# persist_callback을 fire-and-forget으로 호출. plan 결정 #4 참조.
+# W3-out M2 — partial flush thresholds。达到 32 events 或 2 秒时
+# 以 fire-and-forget 方式调用 persist_callback。参见 plan 决策 #4。
 _FLUSH_BATCH_SIZE = 32
 _FLUSH_INTERVAL_SECONDS = 2.0
-# Backpressure cap on in-flight partial flushes. DB가 느려져도 task /
-# connection 폭주 방지. 4 = async DB pool(보통 10~20)의 보수적 1/3로
-# 다른 라우트의 DB 작업과 풀 공유 여지 확보. 한도 도달 시 새 chunk는
-# flush_buffer 에 그대로 보관되고 다음 임계치에서 재검사 → in-flight
-# 가 비면 flush 재개. 최악의 경우 finally 의 final flush 가 잔여 처리.
+# Backpressure cap on in-flight partial flushes。即使 DB 变慢，也要防止 task /
+# connection 激增。4 = async DB pool（通常 10~20）的保守 1/3，
+# 为其他 route 的 DB 工作保留共享 pool 空间。达到上限时，新 chunk
+# 原样保留在 flush_buffer 中，并在下一次阈值检查时重新检查 → in-flight
+# 清空后恢复 flush。最坏情况下，由 finally 的 final flush 处理剩余内容。
 _MAX_INFLIGHT_FLUSHES = 4
-# retry_buffer 메모리 한도 (events 수). 평균 200B × 5000 = ~1MB.
-# DB 영속 장애로 한 turn 동안 모든 partial flush 가 실패하더라도 OOM
-# 보호. 초과 시 oldest chunk부터 drop + log (정상 turn 길이 0~수백
-# events 가정 시 한도 도달은 이상 신호).
+# retry_buffer 内存上限（events 数量）。平均 200B × 5000 = ~1MB。
+# 即使因 DB 持久化故障导致一个 turn 内所有 partial flush 都失败，也可提供 OOM
+# 保护。超出后从 oldest chunk 开始 drop + log（正常 turn 长度假设为 0~数百
+# events，达到上限即视为异常信号）。
 _MAX_RETRY_BUFFER_EVENTS = 5000
 
 
@@ -69,11 +69,11 @@ class StreamErrorRecord:
 
 
 def format_sse(event: str, data: dict[str, Any], *, event_id: str | None = None) -> str:
-    # orjson은 stdlib json 대비 3~5x 빠르고 ensure_ascii 비활성이 기본 (UTF-8
-    # bytes 그대로). SSE는 매 토큰 chunk마다 호출되는 hot path.
+    # orjson 比 stdlib json 快 3~5x，且默认禁用 ensure_ascii（直接输出 UTF-8
+    # bytes）。SSE 是每个 token chunk 都会调用的 hot path。
     #
-    # ``event_id`` (선택): SSE 표준 ``id:`` 필드. 클라이언트가 동일 stream 재시도
-    # 시 중복 이벤트를 dedup하거나 stale 이벤트를 폐기할 수 있게 한다.
+    # ``event_id``（可选）：SSE 标准 ``id:`` 字段。使 client 在重试同一 stream
+    # 时可以 dedup 重复事件或丢弃 stale 事件。
     payload = orjson.dumps(data).decode()
     if event_id:
         return f"event: {event}\nid: {event_id}\ndata: {payload}\n\n"
@@ -120,7 +120,7 @@ def _debug_input_for_message_start(actual_input: Any) -> Any:
     return redact_keys(_trace_input_payload(actual_input))
 
 
-# Middleware-internal schema names (LLMToolSelectorMiddleware 등) — UI 노출 X.
+# Middleware-internal schema names（LLMToolSelectorMiddleware 等）— 不向 UI 暴露（X）。
 _INTERNAL_TOOL_NAMES: frozenset[str] = frozenset({"ToolSelectionResponse"})
 _REDACTED_MEMORY_FIELD = "<redacted>"
 
@@ -160,8 +160,8 @@ def enrich_subagent_tool_call_parameters(
 def _is_tool_selector_json(text: str) -> bool:
     """Check if text is LLMToolSelectorMiddleware output like {"tools":[...]}.
 
-    ADR-004: PatchToolCallsMiddleware는 before_agent() 훅만 구현.
-    스트림 이벤트를 필터링하지 않으므로 이 필터가 여전히 필요.
+    ADR-004: PatchToolCallsMiddleware 只实现 before_agent() hook。
+    因为不会过滤 stream 事件，所以仍然需要此过滤器。
 
     Strict: only matches when "tools" is the sole key to avoid
     false positives on legitimate agent JSON output.
@@ -180,13 +180,13 @@ def _is_tool_selector_json(text: str) -> bool:
 def _interrupt_to_standard_chunk(
     intr_id: str, intr_value: dict[str, Any] | None
 ) -> dict[str, Any] | None:
-    """LangGraph interrupt value를 표준 wire chunk로 정규화.
+    """将 LangGraph interrupt value 规范化为标准 wire chunk。
 
-    - 표준 미들웨어 ``HITLRequest`` (action_requests/review_configs): 그대로 사용.
-    - 자체 ``ask_user.py`` native interrupt (``{"type":"ask_user","question",
-      "options"}``): 표준 ``respond`` 단일 액션으로 어댑트. 표준 미들웨어가
-      ask_user 도구를 wrap하면 자연스럽게 도달 X — fallback 안전망.
-    - 그 외 dict: skip (None 반환).
+    - 标准中间件 ``HITLRequest`` (action_requests/review_configs)：原样使用。
+    - 自有 ``ask_user.py`` native interrupt (``{"type":"ask_user","question",
+      "options"}``)：适配为标准 ``respond`` 单一 action。若标准中间件 wrap
+      ask_user 工具，则自然不会到达这里（X） — 作为 fallback 安全网。
+    - 其他 dict：skip（返回 None）。
     """
     if intr_value is None:
         return None
@@ -251,41 +251,41 @@ async def stream_agent_response(
     SSE event ``{"id", "event", "data"}`` so callers can persist the full
     trace at end-of-turn without re-parsing SSE strings.
 
-    ``broker`` (optional, W3-out M2): 라이브 stream의 dual-write 채널. 모든
-    emit이 ``broker.publish_nowait`` 로 전파되어 끊긴 클라이언트가 GET resume
-    으로 attach하면 즉시 라이브 토큰을 이어 받는다. finally에서 ``close()``.
+    ``broker`` (optional, W3-out M2): live stream 的 dual-write 通道。所有
+    emit 都通过 ``broker.publish_nowait`` 传播，使断开的 client 通过 GET resume
+    attach 后可立即继续接收 live token。finally 中执行 ``close()``。
 
-    ``persist_callback`` (optional, W3-out M2): partial flush 콜백. 32 events
-    또는 2초 도래 시 ``asyncio.create_task`` 로 fire-and-forget 호출 (emit의
-    latency 0). caller(router)는 fresh DB session으로 ``append_events`` 를
-    호출하는 콜백을 바인딩한다.
+    ``persist_callback`` (optional, W3-out M2): partial flush callback。达到 32 events
+    或 2 秒时，通过 ``asyncio.create_task`` 以 fire-and-forget 方式调用（emit 的
+    latency 0）。caller(router) 绑定使用 fresh DB session 调用 ``append_events`` 的
+    callback。
 
-    ``run_id`` (optional, W3-out M2): assistant_msg_id로 사용할 외부 주입 UUID
-    문자열. router가 broker key + X-Run-Id 헤더와 일관되게 맞추기 위해 미리
-    생성. None이면 기존처럼 자체 생성 (legacy / 단위 테스트 호환).
+    ``run_id`` (optional, W3-out M2): 作为 assistant_msg_id 使用的外部注入 UUID
+    字符串。router 为了与 broker key + X-Run-Id header 保持一致而预先
+    生成。None 时像以前一样自行生成（兼容 legacy / 单元测试）。
     """
     msg_id = run_id or str(uuid.uuid4())
 
-    # 시퀀스 카운터 — SSE id 필드를 ``{msg_id}-{seq}``로 발행해서 같은 stream
-    # 내 dedup이 가능하게 한다. seq는 closure로 주입되어 emit 헬퍼 안에서만
-    # mutate된다.
+    # 序列计数器 — 将 SSE id 字段按 ``{msg_id}-{seq}`` 发出，使同一 stream
+    # 内可进行 dedup。seq 通过 closure 注入，仅在 emit helper 内
+    # mutate。
     seq = 0
     flush_buffer: list[dict[str, Any]] = []
     last_flush_at = time.monotonic()
     background_persist_tasks: set[asyncio.Task[None]] = set()
-    # Failed-chunk retry buffer — partial flush가 실패하면 final flush에서
-    # 한 번 더 시도. DB 일시 장애로 chunk가 silently 사라지는 것을 막는
-    # safety net. final flush도 실패하면 그때만 영구 손실 (log).
+    # Failed-chunk retry buffer — partial flush 失败后，在 final flush 中
+    # 再尝试一次。作为 safety net，防止 DB 短暂故障导致 chunk silently 丢失。
+    # safety net. 如果 final flush 也失败，才会发生永久丢失（log）。
     retry_buffer: list[dict[str, Any]] = []
 
     async def _safe_persist(chunk: list[dict[str, Any]]) -> None:
         """Background task wrapper — swallow exceptions so a DB hiccup
-        doesn't kill the live stream. 실패한 chunk는 retry_buffer에 보관
-        해서 finally의 final flush에서 한 번 더 시도한다.
+        doesn't kill the live stream. 失败的 chunk 保存在 retry_buffer 中，
+        并在 finally 的 final flush 中再尝试一次。
 
-        retry_buffer 가 한도(``_MAX_RETRY_BUFFER_EVENTS``) 를 초과하면
-        oldest 부터 drop + log (event 한 개 수준의 손실은 stream 유지
-        보다 낮은 우선순위)."""
+        如果 retry_buffer 超过上限（``_MAX_RETRY_BUFFER_EVENTS``），
+        从 oldest 开始 drop + log（丢失单个 event 的优先级
+        低于维持 stream）。"""
         if persist_callback is None:
             return
         try:
@@ -311,11 +311,11 @@ async def stream_agent_response(
         nonlocal seq, last_flush_at
         seq += 1
         event_id = f"{msg_id}-{seq}"
-        # 단일 dict 인스턴스를 trace_sink/broker/flush_buffer 가 공유. 구조가
-        # ``BrokeredEvent`` TypedDict(id/event/data 3 키)와 동일해 broker 측
-        # 에서 추가 변환 불필요. emit 이후 누구도 mutate하지 않으므로 공유
-        # 안전 (리뷰: dict 1개만 allocate해서 메모리 절반). pyright invariant
-        # 한계로 BrokeredEvent → dict[str, Any] cast 명시.
+        # 单个 dict 实例由 trace_sink/broker/flush_buffer 共享。其结构
+        # 与 ``BrokeredEvent`` TypedDict(id/event/data 3 个键)相同，因此 broker 侧
+        # 无需额外转换。emit 后不会再有人 mutate，因此可安全共享
+        # （review：只 allocate 1 个 dict，内存减半）。由于 pyright invariant
+        # 限制，显式 cast BrokeredEvent → dict[str, Any]。
         live_data = project_and_redact_protocol_data(event, data, redact_memory=False)
         shared_data = project_and_redact_protocol_data(event, live_data)
         evt_dict: dict[str, Any] = {"id": event_id, "event": event, "data": shared_data}
@@ -326,10 +326,10 @@ async def stream_agent_response(
         if persist_callback is not None:
             flush_buffer.append(evt_dict)
             now = time.monotonic()
-            # Backpressure: in-flight task 한도 초과 시 새 chunk를 flush 하지
-            # 않고 buffer에 그대로 둔다. 다음 emit에서 다시 임계치 검사 →
-            # in-flight가 비면 flush 재개. 최악의 경우 finally의 final flush가
-            # 모든 잔여를 한꺼번에 처리.
+            # Backpressure：超过 in-flight task 上限时，不 flush 新 chunk，
+            # 而是原样保留在 buffer 中。下一次 emit 时再次检查阈值 →
+            # in-flight 清空后恢复 flush。最坏情况下，由 finally 的 final flush
+            # 一次性处理所有剩余内容。
             should_flush = (
                 len(flush_buffer) >= _FLUSH_BATCH_SIZE
                 or (now - last_flush_at) >= _FLUSH_INTERVAL_SECONDS
@@ -347,9 +347,9 @@ async def stream_agent_response(
     #   the configured checkpoint state). Used by regenerate to produce a
     #   sibling assistant turn from the same user message without duplicating
     #   that user message into the thread history.
-    # Command(resume=...) → 직접 전달
-    # dict → 그대로 (Builder v3 초기 state inject용)
-    # list → {"messages": ...} 래핑
+    # Command(resume=...) → 直接传递
+    # dict → 原样传递（用于 Builder v3 初始 state inject）
+    # list → 包装为 {"messages": ...}
     actual_input: Any
     if input_ is None:
         actual_input = None
@@ -362,18 +362,18 @@ async def stream_agent_response(
     was_interrupted = False
     stream_failed = False
     usage_data: dict[str, int | float] = {}
-    # 스트리밍 timing — message_start 직전부터 첫 content 토큰까지(TTFT) + 총 생성시간.
+    # streaming timing — 从 message_start 前一刻到首个 content token（TTFT）+ 总生成时间。
     first_token_at: float | None = None
-    # AIMessageChunk가 같은 tool_call을 partial state로 반복 emit하므로 dedupe.
+    # AIMessageChunk 会以 partial state 重复 emit 同一个 tool_call，因此进行 dedupe。
     emitted_tool_call_keys: set[tuple[str, str]] = set()
-    # ADR-004: PatchToolCallsMiddleware가 스트림 필터링을 하지 않으므로
-    # 문자 단위 버퍼링으로 미들웨어 JSON 감지/제거.
-    # yield는 LLM 청크 단위로 배칭하여 SSE 이벤트 수를 줄임.
+    # ADR-004：由于 PatchToolCallsMiddleware 不会过滤 stream，
+    # 使用字符级 buffering 检测/移除中间件 JSON。
+    # yield 按 LLM chunk 批处理，以减少 SSE 事件数量。
     _buf = ""
     _brace_depth = 0
 
-    # W6 정확도 — 이 turn에 노출된 AI 메시지의 raw langchain id를 수집.
-    # streaming 동안 같은 메시지가 chunk 여러 개로 쪼개져 들어오므로 dedup.
+    # W6 准确性 — 收集本 turn 中向外暴露的 AI 消息 raw langchain id。
+    # streaming 期间同一消息会被拆成多个 chunk，因此 dedup。
     _seen_ai_msg_ids: set[str] = set()
 
     if artifact_recorder is not None:
@@ -383,10 +383,10 @@ async def stream_agent_response(
             logger.exception("artifact recorder prepare failed (run_id=%s)", msg_id)
             artifact_recorder = None
 
-    # W3-out M2 — broker close + final flush + background flush join이 무조건
-    # 실행되도록 message_start emit 직후부터 message_end 도달까지 outer
-    # try/finally 로 감싼다. 클라이언트 disconnect 시(generator aclose)에도
-    # finally 가 동작해 broker.close 가 보장된다.
+    # W3-out M2 — 为确保 broker close + final flush + background flush join 一定
+    # 执行，从 message_start emit 后立即开始，到 message_end 到达为止用 outer
+    # try/finally 包裹。client disconnect 时（generator aclose）也会
+    # 执行 finally，从而保证 broker.close。
     start_data: dict[str, Any] = {"id": msg_id, "role": "assistant"}
     debug_input = _debug_input_for_message_start(actual_input)
     if debug_input is not None:
@@ -401,7 +401,7 @@ async def stream_agent_response(
                 stream_mode="messages",
             ):
                 msg, metadata = chunk
-                # Builder v3 sub-LLM 호출은 화면 스트림에서 제외 (helpers.py에서 tag 부여)
+                # Builder v3 sub-LLM 调用从界面 stream 中排除（在 helpers.py 中添加 tag）
                 chunk_tags = (metadata or {}).get("tags") or []
                 if "builder:internal" in chunk_tags:
                     continue
@@ -415,11 +415,11 @@ async def stream_agent_response(
                     and (metadata or {}).get("lc_source") == "summarization"
                 ):
                     continue
-                # LangChain ``usage_metadata``는 input/output 외에
-                # ``input_token_details``로 cache_creation/cache_read를 분리해 전달
-                # (Anthropic / OpenAI prompt caching). content/tool 이벤트를
-                # yield하기 전에 sink를 갱신해야 user cancel/stream detach가
-                # 즉시 들어와도 이미 도착한 usage가 hook 경로에 남는다.
+                # LangChain ``usage_metadata`` 除了 input/output 外，还会
+                # 通过 ``input_token_details`` 分别传递 cache_creation/cache_read
+                # （Anthropic / OpenAI prompt caching）。在 yield content/tool 事件前
+                # 在 yield 之前必须更新 sink，这样即使 user cancel/stream detach
+                # 立即发生，已经到达的 usage 也会保留在 hook 路径中。
                 extracted = extract_usage_breakdown(msg)
                 if extracted is not None:
                     usage_data = {
@@ -437,15 +437,15 @@ async def stream_agent_response(
                         usage_data["estimated_cost"] = round(cost, 8)
                     if usage_sink is not None:
                         usage_sink.update(usage_data)
-                # W6: AI 메시지의 raw id 수집 (caller가 sink 제공 시).
+                # W6：收集 AI 消息的 raw id（caller 提供 sink 时）。
                 if msg_id_sink is not None and msg.type in ("ai", "AIMessageChunk"):
                     raw_id = getattr(msg, "id", None)
                     if isinstance(raw_id, str) and raw_id and raw_id not in _seen_ai_msg_ids:
                         _seen_ai_msg_ids.add(raw_id)
                         msg_id_sink.append(raw_id)
                 if hasattr(msg, "content") and msg.content and msg.type in ("ai", "AIMessageChunk"):
-                    # Anthropic은 multi-block content (text + tool_use 등)를 list[dict]로
-                    # 보내므로 text 블록만 평탄화. message_utils의 공유 헬퍼 사용.
+                    # Anthropic 会以 list[dict] 形式发送 multi-block content（text + tool_use 等），
+                    # 因此仅展平 text block。使用 message_utils 的共享 helper。
                     delta = content_to_text(msg.content)
                     if delta:
                         if first_token_at is None:
@@ -484,12 +484,12 @@ async def stream_agent_response(
                 if hasattr(msg, "tool_calls") and msg.tool_calls:
                     for tc in msg.tool_calls:
                         tc_name = tc.get("name", "")
-                        # 빈 이름(아직 partial state) / 미들웨어 internal schema는 UI 노출 X
+                        # 空名称（仍是 partial state）/ 中间件 internal schema 不向 UI 暴露（X）
                         if not tc_name or tc_name in _INTERNAL_TOOL_NAMES:
                             continue
                         tc_id = tc.get("id") or ""
-                        # id가 비어 있으면 dedupe 키로 쓰지 않는다 — 같은 이름의 서로
-                        # 다른 tool_call이 collision되어 silently 누락되는 것을 방지.
+                        # id 为空时，不将其作为 dedupe key — 防止同名但彼此不同的
+                        # tool_call 因 collision 而 silently 丢失。
                         if tc_id:
                             key = (tc_name, tc_id)
                             if key in emitted_tool_call_keys:
@@ -522,7 +522,7 @@ async def stream_agent_response(
 
                 if msg.type == "tool":
                     tool_name = msg.name if hasattr(msg, "name") else ""
-                    # Internal middleware tool result도 UI 노출 X (start와 대칭)
+                    # Internal middleware tool result 也不向 UI 暴露（X，与 start 对称）
                     if tool_name not in _INTERNAL_TOOL_NAMES:
                         result = msg.content if isinstance(msg.content, str) else str(msg.content)
                         result_payload = {"tool_name": tool_name, "result": result}
@@ -557,8 +557,8 @@ async def stream_agent_response(
                             yield emit(event, payload)
 
         except GraphInterrupt:
-            # interrupt()에 의한 정상적인 그래프 일시정지 — 에러가 아님
-            # 아래 aget_state에서 interrupt 이벤트를 emit
+            # interrupt() 导致的正常图暂停 — 不是错误
+            # 在下面的 aget_state 中 emit interrupt 事件
             was_interrupted = True
         except Exception as e:
             stream_failed = True
@@ -576,9 +576,9 @@ async def stream_agent_response(
         if _buf:
             full_content += _buf
 
-        # HiTL: 그래프 상태에서 interrupt 감지 후 표준 wire로 emit.
-        # 변환은 ``_interrupt_to_standard_chunk`` 단일 진입점이 담당
-        # (자체 ask_user.py 어댑터 포함). fallback은 빈 표준 chunk로 발행.
+        # HiTL：检测图 state 中的 interrupt 后，以标准 wire 形式 emit。
+        # 转换由 ``_interrupt_to_standard_chunk`` 这一单一入口负责
+        # （包括自有 ask_user.py adapter）。fallback 发送空的标准 chunk。
         try:
             state = await agent.aget_state(config)
             if state.tasks:
@@ -593,8 +593,8 @@ async def stream_agent_response(
         except Exception:
             logger.warning("aget_state failed (interrupt check)", exc_info=True)
             if was_interrupted:
-                # fallback: state 조회 실패라 정확한 action을 알 수 없다. 빈 표준
-                # chunk를 emit — frontend는 빈 action_requests로 fallback UI 표시.
+                # fallback：state 查询失败，因此无法得知准确 action。发送空的标准
+                # emit chunk — frontend 会以空 action_requests 显示 fallback UI。
                 yield emit(
                     event_names.INTERRUPT,
                     {
@@ -617,12 +617,12 @@ async def stream_agent_response(
             usage_data["estimated_cost"] = round(cost, 8)
 
         # Surface captured usage to the caller (executor → hook framework).
-        # timing은 hook이 쓰지 않으므로 sink 갱신 이후, SSE emit 직전에만 병합한다.
+        # timing 不供 hook 使用，因此仅在 sink 更新之后、SSE emit 之前合并。
         if usage_sink is not None and usage_data:
             usage_sink.update(usage_data)
 
-        # 스트리밍 timing(TTFT/총시간/tok-s)을 usage payload에 같이 실어 보낸다.
-        # 토큰이 있을 때만(=팝오버가 렌더되는 경우만) 의미가 있어 그 경우에 병합.
+        # 将 streaming timing（TTFT/总时间/tok-s）与 usage payload 一起发送。
+        # 仅在存在 token 时（=会渲染 popover 时）才有意义，因此只在该情况下合并。
         if usage_data:
             usage_data.update(
                 compute_usage_timing(
@@ -642,18 +642,18 @@ async def stream_agent_response(
         )
     finally:
         # W3-out M2 — final flush + background flush join + broker close.
-        # 무조건 실행되어야 함 (정상 종료 / GraphInterrupt / Exception / 클라이언트
-        # disconnect 시 generator aclose() 모두). 실패는 swallow + log.
-        # 순서가 중요: (1) background tasks join → 진행 중 partial flush가
-        # 끝나서 retry_buffer가 확정. (2) retry_buffer + flush_buffer 합쳐서
-        # 한 번에 final flush → DB 일시 장애로 누락된 chunk 회복 마지막 기회.
+        # 必须始终执行（正常结束 / GraphInterrupt / Exception / client
+        # disconnect 时的 generator aclose() 均包括）。失败时 swallow + log。
+        # 顺序很重要：(1) background tasks join → 让正在进行的 partial flush
+        # 完成，从而确定 retry_buffer。(2) 合并 retry_buffer + flush_buffer，
+        # 一次性 final flush → 这是从 DB 临时故障导致遗漏 chunk 中恢复的最后机会。
         if background_persist_tasks:
-            # 진행 중 fire-and-forget 태스크들 회수. 이 시점 이후로
-            # retry_buffer에 새로 추가될 일은 없다.
+            # 回收正在运行的 fire-and-forget tasks。此后
+            # 不会再向 retry_buffer 新增内容。
             await asyncio.gather(*background_persist_tasks, return_exceptions=True)
         if persist_callback is not None and (retry_buffer or flush_buffer):
-            # retry 우선 → 그 후 마지막으로 buffer에 남은 신규 chunk.
-            # 두 번 호출하면 dedup-by-id가 idempotency를 보장.
+            # 先 retry → 然后处理最后仍留在 buffer 中的新 chunk。
+            # 调用两次时，dedup-by-id 保证 idempotency。
             final_chunks: list[list[dict[str, Any]]] = []
             if retry_buffer:
                 final_chunks.append(retry_buffer.copy())

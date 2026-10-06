@@ -62,14 +62,14 @@ export function ChatNavigatorSessionRow({
   const tRunStatus = useTranslations('sidebar.agents.session.status')
   const runtimeStatuses = useAtomValue(conversationRuntimeStatusAtom)
   const shortcutPreviewActive = useAtomValue(shortcutPreviewActiveAtom)
-  // 서버 진실(active_run, 1초 폴링) + 같은 탭 스트리밍의 즉시 오버레이(atom)
+  // 服务器真实状态(active_run, 1秒轮询) + 同标签页流式传输的即时覆盖层(atom)
   const runStatus = conversation.active_run?.status
   const isRunning = isActiveRunStatus(runStatus) || runtimeStatuses[conversation.id] === 'running'
   const needsAttention = !isRunning && isInterruptedRunStatus(runStatus)
   const href = `/agents/${conversation.agent_id}/conversations/${conversation.id}`
   const unreadCount = conversation.unread_count ?? 0
-  // 스케줄 트리거가 마지막으로 활동한 대화 — "밤샘 다이제스트" 배지.
-  // 주의: 목록 필터용 origin 컬럼(source, 항상 "ui")과 다른 필드다.
+  // 日程触发器最后活动的对话 — "通宵摘要" 徽标。
+  // 注意：这是不同于列表筛选用 origin 列(source, 始终为 "ui") 的字段。
   const isScheduleActivity = conversation.last_activity_source === 'schedule'
 
   function handleSessionClick() {
@@ -119,7 +119,7 @@ export function ChatNavigatorSessionRow({
               }
             >
               <AgentAvatar imageUrl={agent.image_url} name={agent.name} size="xs" />
-              {/* 툴팁은 hover 전용이라 스크린리더용 이름을 DOM에 남긴다 */}
+              {/* tooltip 仅用于 hover，因此在 DOM 中保留供 screen reader 使用的名称 */}
               <span className="sr-only">{agent.name}</span>
             </TooltipTrigger>
             <TooltipContent side="top">{agent.name}</TooltipContent>

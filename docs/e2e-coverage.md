@@ -1,6 +1,6 @@
 # E2E Coverage Matrix
 
-<!-- e2e-current-source: profile-personalization=covered; refreshed=2026-09-08 -->
+<!-- e2e-current-source: profile-personalization=covered; refreshed=2026-10-06 -->
 
 Living record of Playwright E2E coverage across Moldy's feature surface.
 Update this whenever you add/change a spec or ship a user-facing feature.
@@ -266,8 +266,8 @@ after each individual edit.
   audit log (action filter is **exact match**) surfaces the row by its unique
   target-name snapshot. 1 test.
 - Added `operator-screens` spec (2, super_user): System LLM renders the
-  seed-configured LiteLLM slots (operator banner + `텍스트 기본 모델` +
-  `설정됨` + `[e2e] LiteLLM`, cross-checked via `/api/system-llm-settings`); and
+  seed-configured LiteLLM slots (operator banner + `默认文本模型` +
+  `已设置` + `[e2e] LiteLLM`, cross-checked via `/api/system-llm-settings`); and
   a real system-credential create (OpenAI via the shared catalog modal, posts to
   `/api/system-credentials`) + delete (native `confirm()` → `dialog.accept()`).
 - Added `message-attachments` spec: the composer paperclip opens a native file
@@ -276,7 +276,7 @@ after each individual edit.
   Gotcha: attachments link to the conversation, not the message (`message_id`
   stays null), so the messages API never echoes them — assert the upload write.
 - Added `hitl-approval` spec: `execute_in_skill` interrupts by default; rejecting
-  the approval card (`거부` → `거부 확인` → `거부됨`) skips the tool, so no
+  the approval card (`拒绝` → `确认拒绝` → `已拒绝`) skips the tool, so no
   document artifact is produced. Complements the approve path in
   `document-artifact-viewers`. Setup mirrors the document spec (install the
   seeded `docx-document` skill, attach it, drive the scripted model via E2E_DOCX).
@@ -292,12 +292,12 @@ after each individual edit.
   creates a session and runs the multi-phase pipeline against the real System LLM
   (LiteLLM). Asserts the template-driven progress tracker (stable), not LLM prose.
 - Extended `agent-settings` with skill attach (3 tests total). The tools/skills
-  dialog attaches existing items via a per-row "{name} 추가" button; text skills
+  dialog attaches existing items via a per-row "{name} 添加" button; text skills
   need SKILL.md frontmatter (`name:`) in their content to create via the API.
 - Added `share-link` spec: send a message, publish, open `/shared/{token}` in a
   logged-out context (read-only), then revoke -> public GET 404s.
 - Added `marketplace` spec: catalog renders seeded skills; installing one creates
-  an independent copy (`installed_skill_id`); the "설치됨" tab reflects it.
+  an independent copy (`installed_skill_id`); the "已安装" tab reflects it.
 - Added `chat-interactions` spec (4): regenerate forks a sibling branch +
   BranchPicker `<n/2>` navigation; editing a user message forks a branch; thumbs
   feedback POSTs; multi-turn keeps both exchanges. Gotchas: regenerate/edit need
@@ -307,16 +307,16 @@ after each individual edit.
   placeholder; action-bar buttons are opacity-0-on-hover but still clickable.
 - Extended `agent-settings` with tool attach (4 tests): `tavily_search` needs no
   per-tool credential, so it's the easiest attachable tool; My Tools tab uses the
-  same per-row "{name} 추가" button as Skills.
+  same per-row "{name} 添加" button as Skills.
 - Added `agent-triggers` spec: create an interval trigger via the API, verify it
-  renders in the settings → 스케줄 tab ("매 N분"). Gotcha: triggers require the
+  renders in the settings → 计划 tab ("每 N 分钟"). Gotcha: triggers require the
   agent to be `identity_mode: 'fixed'` (AGENT_IDENTITY_REQUIRES_FIXED); the
   credential is then resolved from the model's default. AgentCreate has no
   `llm_credential_id` field — bind via the model default or a separate call.
 
 - Stood up runnable throwaway stack; baseline 41✅ / 4✗ / 8 skipped.
-- Fixed `draft-conversation` (×3): navigator control is now `button "새 채팅"`
-  (was `button "새 대화"`); switched the agent to the keyless scripted model so
+- Fixed `draft-conversation` (×3): navigator control is now `button "新聊天"`
+  (was `button "新对话"`); switched the agent to the keyless scripted model so
   the first-message flow is deterministic.
 - Fixed `chat-token-usage` (×1): added the missing `GET /api/conversations/{id}`
   mock (the page fetched conversation detail → 422 with the live backend).

@@ -45,10 +45,10 @@ async def _broker_run_generator(
 ) -> AsyncGenerator[str, None]:
     effective_after_id = after_id
     if after_id and not broker.has_event_id(after_id):
-        # last_event_id 가 ring buffer 에서 이미 evict 됨 — 이대로 subscribe 하면
-        # replay 단계가 통째로 건너뛰어져 silent gap 이 된다. 누락 구간을 stale
-        # 마커로 알리고, buffer 에 남아 있는 구간 전체를 replay 한다 (중복 이벤트는
-        # 클라이언트 stream guard 가 id 기준으로 dedup).
+        # last_event_id 已从 ring buffer 中被 evict — 如果直接这样 subscribe，
+        # replay 阶段会整体跳过，形成 silent gap。将缺失区间用 stale
+        # marker 告知客户端，并 replay buffer 中剩余的全部区间（重复事件由
+        # 客户端 stream guard 按 id dedup）。
         yield format_sse(
             event_names.STALE,
             {

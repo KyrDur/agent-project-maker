@@ -61,13 +61,13 @@ def _run_metadata(run: object | None) -> dict[str, object] | None:
         error_code = getattr(run, "error_code", None)
         if isinstance(error_code, str) and error_code:
             metadata["error_code"] = error_code
-        # error_message는 stream_error(모델/provider 실패)일 때만 채팅 에러 버블에
-        # 노출한다. 이 값은 worker가 public_stream_error_message(블록리스트) + run
-        # credential 값 기반 마스킹을 거친다(_redact_run_error_message). runtime_error
-        # (스트림 바깥 인프라 예외)는 파일경로/DB호스트 등 내부 토폴로지가 섞일 수
-        # 있고 위 2단 마스킹으로도 안 가려지므로, 채팅 UI엔 프론트 폴백 문구만 보이게
-        # 하고 마스킹된 상세는 저장값(GET /runs/{id}, 운영/디버그)에만 둔다.
-        # stale/canceled의 내부 사유도 프론트가 자체 문구로 표시하므로 노출하지 않는다.
+        # error_message 仅在 stream_error（模型/provider 失败）时暴露在聊天错误气泡中
+        # 中。该值由 worker 经过 public_stream_error_message（blocklist）+ run
+        # credential 值基础的 masking（_redact_run_error_message）。runtime_error
+        # （stream 外部基础设施异常）可能混入文件路径/DB host 等内部拓扑，
+        # 且上述两层 masking 也可能无法遮住，因此 Chat UI 只显示 frontend fallback 文案，
+        # masking 后的详情只保存在存储值中（GET /runs/{id}，运营/debug）。
+        # stale/canceled 的内部原因也由 frontend 使用自身文案显示，因此不暴露。
         error_message = getattr(run, "error_message", None)
         if error_code == "stream_error" and isinstance(error_message, str) and error_message:
             metadata["error_message"] = error_message

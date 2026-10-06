@@ -119,12 +119,12 @@ def _base_catalog_query(user: CurrentUser, *, public_listed_only: bool):
 
 
 def _installed_for_user_exists(user_id: uuid.UUID):
-    """User 의 active installation 이 있는 item id 를 EXISTS 로 잡는다.
+    """User 存在 active installation 的 item id 通过 EXISTS 获取。
 
-    SQL 단계에서 적용해야 ``installed=true`` filter + pagination 이 정확하다.
-    post-load 후처리로 두면 ``limit`` 가 base catalog 결과에 먼저 적용되어
-    user installation 이 있는 item 이 첫 페이지 밖으로 밀려나면 결과에서
-    누락된다.
+    必须在 SQL 阶段应用，``installed=true`` filter + pagination 才准确。
+    若放到 post-load 后处理，``limit`` 会先作用于 base catalog 结果，
+    当存在 user installation 的 item 被挤出第一页时，就会从结果中
+    遗漏。
     """
 
     from app.models.marketplace import MarketplaceInstallation
@@ -215,10 +215,10 @@ async def _apply_post_load_filters(
 ) -> list[MarketplaceItem]:
     filtered = list(rows)
 
-    # ``installed`` 는 위에서 이미 SQL 로 처리됨. ``install_state`` (active /
-    # needs_setup / disabled) 는 derive_installation_summary 가 결정하는
-    # 동적 상태(예: credential gap 으로 active → needs_setup 승급) 이므로
-    # 여전히 post-load 단계에서만 정확히 적용 가능.
+    # ``installed`` 已在上方通过 SQL 处理。``install_state`` (active /
+    # needs_setup / disabled) 是由 derive_installation_summary 决定的
+    # 动态状态（例如因 credential gap 从 active → needs_setup 升级），因此
+    # 仍然只能在 post-load 阶段准确应用。
     if filters.install_state:
         installation_summaries = await bulk_derive_installation_summaries(
             db, items=filtered, user_id=user.id
@@ -281,12 +281,12 @@ async def _project_item(
         await derive_installation_summary(db, item=item, user_id=user.id)
     )
 
-    # publication_summary는 viewer 본인이 publish한 자기 리소스인지 보여주는 정보.
-    # owner 일치만으로 published 상태를 그리면 — 사용자가 source skill을 삭제한
-    # 직후에도 marketplace_item.owner_user_id는 남아있어 카탈로그가 "Manage"
-    # CTA를 노출. 그 결과 자기 publish 백업본을 다시 install 불가능. PRD §6
-    # 정신상 source resource를 잃은 owner는 marketplace 원본에서 재install이
-    # 합리적이므로, publication_link 존재 여부까지 함께 확인해야 한다.
+    # publication_summary 用于显示 viewer 本人是否 publish 了自己的资源。
+    # 如果只依据 owner 一致就绘制 published 状态 — 用户删除 source skill
+    # 后，marketplace_item.owner_user_id 仍然保留，catalog 会显示 "Manage"
+    # 显示 CTA。结果自己的 publish 备份副本无法再次 install。PRD §6
+    # 的精神，失去 source resource 的 owner 从 marketplace 原件重新 install
+    # 是合理的，因此还必须同时检查 publication_link 是否存在。
     owner_view = is_owner(item, user)
     if has_publication_link is None:
         has_publication_link = False
@@ -345,10 +345,10 @@ async def _project_item(
         origin_summary=None,
         publication_summary=publication,
         installation=installation,
-        # owner / super_user 만 ACL user_id 목록을 본다. ResourcePublicationSummaryOut.
-        # shared_user_count 는 모든 viewer 에게 노출되지만 user id 자체는 leak
-        # 하지 않는다 — 다른 user 가 본인이 ACL 에 있는지 알 수 있게 되어
-        # information leak 발생.
+        # 只有 owner / super_user 能看到 ACL user_id 列表。ResourcePublicationSummaryOut.
+        # shared_user_count 会向所有 viewer 暴露，但 user id 本身不会 leak
+        # — 否则其他 user 将能判断自己是否在 ACL 中，造成
+        # information leak。
         acl_user_ids=(
             [a.user_id for a in (item.acl_entries or [])]
             if (is_owner(item, user) or user.is_super_user)

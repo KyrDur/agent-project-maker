@@ -79,7 +79,7 @@ class ConversationPageCursor:
 
 
 def _escape_like(term: str) -> str:
-    """LIKE 메타문자(``\\``, ``%``, ``_``)를 리터럴로 이스케이프한다 (escape="\\\\"와 짝)."""
+    """将 LIKE 元字符（``\\``、``%``、``_``）按字面量转义（与 escape="\\\\" 配套）。"""
     return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
@@ -137,7 +137,7 @@ def _decode_conversation_cursor(
         is_pinned = bool(payload["is_pinned"]) if scope == "agent" else None
         timestamp = datetime.fromisoformat(str(payload["timestamp"]))
         if timestamp.tzinfo is not None:
-            # DB 컬럼은 naive UTC — aware 커서는 UTC로 환산 후 naive로 정규화
+            # DB 列为 naive UTC — aware cursor 先换算为 UTC，再规范化为 naive
             timestamp = timestamp.astimezone(UTC).replace(tzinfo=None)
         return ConversationPageCursor(
             scope=expected_scope,
@@ -226,8 +226,8 @@ async def list_global_conversations_page(
         .join(Agent, Conversation.agent_id == Agent.id)
         .where(
             Agent.user_id == user_id,
-            # 히든 런타임 에이전트(스킬 빌더 등)의 대화는 네비게이터/최근 대화에
-            # 노출하지 않는다 — 빌더 라우트가 전용 진입점이다.
+            # 隐藏运行时 Agent（skill builder 等）的对话不会显示在导航器/最近对话中
+            # — builder 路由是专用入口。
             Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
             Conversation.source == "ui",
         )

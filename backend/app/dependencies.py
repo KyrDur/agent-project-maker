@@ -121,6 +121,9 @@ async def get_current_user(
     if user is None:
         raise AppError(code="not_authenticated", message="需要登录后继续。", status=401)
     request.state.current_user = user
+    from app.services.llm_user_context import llm_user_id
+
+    llm_user_id.set(user.id)
     return user
 
 
@@ -136,6 +139,9 @@ async def get_current_user_optional(
     user = await _resolve_user(token, db)
     if user is not None:
         request.state.current_user = user
+        from app.services.llm_user_context import llm_user_id
+
+        llm_user_id.set(user.id)
     return user
 
 

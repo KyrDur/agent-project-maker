@@ -16,7 +16,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # 1. token_usages에 conversation_id 컬럼 추가 (nullable)
+    # 1. 向 token_usages 添加 conversation_id 列（nullable）
     op.add_column("token_usages", sa.Column("conversation_id", sa.Uuid(), nullable=True))
     op.create_foreign_key(
         "fk_token_usages_conversation_id",
@@ -27,7 +27,7 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
 
-    # 2. 기존 데이터 마이그레이션: message_id → conversation_id (JOIN으로 채움)
+    # 2. 迁移现有数据：message_id → conversation_id（通过 JOIN 填充）
     op.execute(
         """
         UPDATE token_usages
@@ -37,19 +37,19 @@ def upgrade() -> None:
         """
     )
 
-    # 3. message_id FK 제거 + 컬럼 삭제
+    # 3. 删除 message_id FK + 删除列
     op.drop_constraint("token_usages_message_id_fkey", "token_usages", type_="foreignkey")
     op.drop_column("token_usages", "message_id")
 
-    # 4. messages 테이블 DROP
+    # 4. DROP messages 表
     op.drop_table("messages")
 
-    # 5. conversation_id를 NOT NULL로 변경
+    # 5. 将 conversation_id 改为 NOT NULL
     op.alter_column("token_usages", "conversation_id", nullable=False)
 
 
 def downgrade() -> None:
-    # messages 테이블 재생성 (데이터는 복원 불가)
+    # 重新创建 messages 表（数据无法恢复）
     op.create_table(
         "messages",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -63,7 +63,7 @@ def downgrade() -> None:
         sa.ForeignKeyConstraint(["conversation_id"], ["conversations.id"]),
     )
 
-    # token_usages: conversation_id → message_id 복원
+    # token_usages：conversation_id → message_id 恢复
     op.add_column("token_usages", sa.Column("message_id", sa.Uuid(), nullable=True))
     op.create_foreign_key(
         "token_usages_message_id_fkey",

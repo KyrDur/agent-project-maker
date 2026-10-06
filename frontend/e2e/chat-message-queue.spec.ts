@@ -44,15 +44,15 @@ test.describe('Server-backed chat message queue', () => {
 
       await page
         .locator(`[data-moldy-queue-item="${firstId}"]`)
-        .getByRole('button', { name: /더보기|More/ })
+        .getByRole('button', { name: /更多|More/ })
         .click()
       await page.locator(`[data-moldy-queue-edit="${firstId}"]`).click()
-      const editor = page.getByRole('textbox', { name: /대기 메시지 수정|Edit queued message/ })
+      const editor = page.getByRole('textbox', { name: /编辑排队消息|Edit queued message/ })
       await editor.fill('edited queued message')
-      await page.getByRole('button', { name: /저장|Save/ }).click()
+      await page.getByRole('button', { name: /保存|Save/ }).click()
       await page
         .locator(`[data-moldy-queue-item="${firstId}"]`)
-        .getByRole('button', { name: /더보기|More/ })
+        .getByRole('button', { name: /更多|More/ })
         .click()
       await page.locator(`[data-moldy-queue-move-down="${firstId}"]`).click()
 
@@ -64,7 +64,7 @@ test.describe('Server-backed chat message queue', () => {
 
       await page
         .locator(`[data-moldy-queue-item="${secondId}"]`)
-        .getByRole('button', { name: /더보기|More/ })
+        .getByRole('button', { name: /更多|More/ })
         .click()
       await page.locator(`[data-moldy-queue-remove="${secondId}"]`).click()
       await expect

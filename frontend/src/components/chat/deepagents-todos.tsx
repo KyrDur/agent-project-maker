@@ -8,8 +8,8 @@ import type {
   DeepAgentTodoStatus,
 } from '@/lib/chat/langgraph-runtime/deepagents-state'
 
-// deepagents 계획(todos) 렌더 공유 모듈 — 스트리밍 로딩 패널(DeepAgentsStatePanel)과
-// 상시 노출 미션 컨트롤 바(MissionControlBar)가 같은 행/그룹 렌더를 쓴다.
+// deepagents 计划(todos)渲染共享模块 —— 流式加载面板(DeepAgentsStatePanel)与
+// 常驻显示的任务控制栏(MissionControlBar)使用相同的行/组渲染。
 
 export const TODO_STATUS_META: Record<
   DeepAgentTodoStatus,

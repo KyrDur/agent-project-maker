@@ -1,252 +1,252 @@
-# Deep Agent 엔진 전면 교체 명세서
+# Deep Agent 引擎全面替换规格书
 
-## 개요
+## 概览
 
-natural-mold(Moldy) 프로젝트의 AI 에이전트 실행 엔진을 `langchain.agents.create_agent`에서 `deepagents.create_deep_agent`로 교체한다. 동시에 MCP 직접 구현을 `langchain-mcp-adapters`로 대체하고, 대화 관리를 LangGraph checkpointer로 전환한다.
+将 natural-mold(Moldy) 项目的 AI 智能体执行引擎从 `langchain.agents.create_agent` 替换为 `deepagents.create_deep_agent`。同时用 `langchain-mcp-adapters` 替代 MCP 直接实现，并将对话管理迁移到 LangGraph checkpointer。
 
-## 목표
+## 目标
 
-- [ ] create_agent → create_deep_agent 교체
-- [ ] MCP 직접 구현 → langchain-mcp-adapters 교체
-- [ ] DB 메시지 관리 → LangGraph PostgresSaver checkpointer 교체
-- [ ] 스킬 수동 로딩 → deep agent skills 파라미터로 자동 로딩
-- [ ] 자체 구현 코드 최대한 제거 (표준 프레임워크 활용)
-- [ ] 기존 DB 데이터 전체 초기화 (깨끗한 시작)
+- [ ] create_agent → create_deep_agent 替换
+- [ ] MCP 直接实现 → langchain-mcp-adapters 替换
+- [ ] DB 消息管理 → LangGraph PostgresSaver checkpointer 替换
+- [ ] skill 手动加载 → 通过 deep agent skills 参数自动加载
+- [ ] 尽可能移除自研代码（利用标准 framework）
+- [ ] 现有 DB 数据全部初始化（干净开始）
 
-## 기술 스택 변경
+## 技术 stack 变更
 
-| 항목 | Before | After |
+| 项目 | Before | After |
 |------|--------|-------|
-| 에이전트 엔진 | `langchain.agents.create_agent` | `deepagents.create_deep_agent` |
-| MCP 클라이언트 | httpx 직접 구현 (`mcp_client.py`) | `langchain-mcp-adapters` |
-| MCP→도구 변환 | `create_mcp_tool()` 수동 래핑 | `load_mcp_tools()` 자동 변환 |
-| 대화 상태 | DB messages 테이블 | LangGraph `PostgresSaver` |
-| 스킬 로딩 | `skill_tool_factory.py` 수동 | `create_deep_agent(skills=[...])` 자동 |
-| 스킬 실행 | `skill_executor.py` 수동 | deep agent `FilesystemMiddleware` |
-| 메모리 | 없음 | deep agent memory (AGENTS.md 파일 기반) |
-| 자동 요약 | 없음 (미들웨어로 선택) | deep agent 내장 `SummarizationMiddleware` |
+| 智能体引擎 | `langchain.agents.create_agent` | `deepagents.create_deep_agent` |
+| MCP client | httpx 直接实现 (`mcp_client.py`) | `langchain-mcp-adapters` |
+| MCP→工具转换 | 手动包装 `create_mcp_tool()` | 自动转换 `load_mcp_tools()` |
+| 对话状态 | DB messages 表 | LangGraph `PostgresSaver` |
+| skill 加载 | 手动 `skill_tool_factory.py` | 自动 `create_deep_agent(skills=[...])` |
+| skill 执行 | 手动 `skill_executor.py` | deep agent `FilesystemMiddleware` |
+| memory | 无 | deep agent memory（基于 AGENTS.md 文件） |
+| 自动摘要 | 无（可通过 middleware 选择） | deep agent 内置 `SummarizationMiddleware` |
 
-## 결정 사항 (인터뷰 결과)
+## 决策事项（访谈结果）
 
-| 항목 | 결정 |
+| 项目 | 决策 |
 |------|------|
-| 대화 저장 | Checkpointer 전면 사용. conversations 테이블은 메타데이터(title, pinned)만 유지. messages 테이블 제거 |
-| 자동 추가 도구 | 기본 활성화 + 시스템 프롬프트로 불필요한 호출 제어 |
-| 토큰 추적 | 대화(thread) 단위로 변경. message_id FK 제거 |
-| 트리거/스케줄러 | APScheduler 유지. trigger_executor.py만 deep agent invoke()로 수정 |
-| 메모리 저장 | 파일 기반 (data/agents/{agent_id}/AGENTS.md). deep agent 기본 방식 |
-| UI 설정 | 최소한. deep agent 기능은 백엔드 자동 처리. 기존 미들웨어 설정 UI 유지 |
-| Creation agent | deep agent로 교체 |
-| Checkpointer DB | 현재 PostgreSQL과 같은 인스턴스 |
-| Builtin/prebuilt 도구 | tool_factory.py 유지. MCP 코드만 제거 |
-| 구현 순서 | 단계별 검증 (M1→M2→M3→M4) |
+| 对话存储 | 全面使用 Checkpointer。conversations 表仅保留 metadata(title, pinned)。移除 messages 表 |
+| 自动追加工具 | 默认启用 + 通过 system prompt 控制不必要调用 |
+| token 追踪 | 改为按 conversation(thread) 单位。移除 message_id FK |
+| trigger/scheduler | 保留 APScheduler。仅将 trigger_executor.py 改为 deep agent invoke() |
+| memory 存储 | 文件基础 (data/agents/{agent_id}/AGENTS.md)。deep agent 默认方式 |
+| UI 设置 | 最少化。deep agent 功能由 backend 自动处理。保留现有 middleware 设置 UI |
+| Creation agent | 替换为 deep agent |
+| Checkpointer DB | 与当前 PostgreSQL 同一实例 |
+| Builtin/prebuilt 工具 | 保留 tool_factory.py。仅移除 MCP 代码 |
+| 实现顺序 | 分阶段验证 (M1→M2→M3→M4) |
 
-## 상세 요구사항
+## 详细要求
 
-### 기능적 요구사항
+### 功能性要求
 
-#### FR-1: create_deep_agent 엔진 교체
-- `executor.py`의 `build_agent()` 함수를 `create_deep_agent()`로 교체
-- 반환 타입 동일 (CompiledStateGraph) → `astream()` 호출 변경 불필요
-- 기존 middleware 파라미터 그대로 전달 (langchain 공식 22종 호환)
-- `create_react_agent` 폴백 로직 제거
+#### FR-1: 替换 create_deep_agent 引擎
+- 将 `executor.py` 的 `build_agent()` 函数替换为 `create_deep_agent()`
+- 返回类型相同 (CompiledStateGraph) → 无需修改 `astream()` 调用
+- 原有 middleware 参数原样传递（兼容 langchain 官方22种）
+- 移除 `create_react_agent` fallback 逻辑
 
-#### FR-2: langchain-mcp-adapters 도입
-- MCP 도구 생성을 `load_mcp_tools()` 또는 `MultiServerMCPClient`로 교체
-- 도구 이름, description, parameters_schema가 MCP 서버 원본 그대로 전달
-- auth_config → HTTP headers로 변환하여 전달
-- 에이전트에 연결된 특정 도구만 필터링 (tool_name 기준)
+#### FR-2: 引入 langchain-mcp-adapters
+- 将 MCP 工具创建替换为 `load_mcp_tools()` 或 `MultiServerMCPClient`
+- 工具名称、description、parameters_schema 按 MCP 服务器原始值传递
+- 将 auth_config 转换为 HTTP headers 后传递
+- 仅筛选连接到智能体的特定工具（按 tool_name）
 
-#### FR-3: Checkpointer 기반 대화 관리
-- `PostgresSaver`를 checkpointer로 사용 (현재 PostgreSQL 인스턴스)
-- conversation_id를 thread_id로 사용
-- 프론트엔드가 메시지를 가져오는 API 변경:
-  - 현재: `GET /api/conversations/{id}/messages` → DB 쿼리
-  - 변경: checkpointer에서 state를 가져와 messages 추출
-- conversations 테이블: title, is_pinned, agent_id 등 메타데이터만 유지
-- messages 테이블: 제거
+#### FR-3: 基于 Checkpointer 的对话管理
+- 使用 `PostgresSaver` 作为 checkpointer（当前 PostgreSQL 实例）
+- 使用 conversation_id 作为 thread_id
+- 修改 frontend 获取消息的 API:
+  - 当前: `GET /api/conversations/{id}/messages` → DB query
+  - 修改后: 从 checkpointer 获取 state 并提取 messages
+- conversations 表: 仅保留 title, is_pinned, agent_id 等 metadata
+- messages 表: 移除
 
-#### FR-4: 스킬 자동 로딩
-- `create_deep_agent(skills=[skill_dir1, skill_dir2, ...])` 파라미터로 전달
-- DB의 agent_skills에서 skill.storage_path 목록을 수집하여 전달
-- skill_tool_factory.py, skill_executor.py 제거
-- SKILL.md의 progressive disclosure가 deep agent에 의해 자동 처리
+#### FR-4: skill 自动加载
+- 通过 `create_deep_agent(skills=[skill_dir1, skill_dir2, ...])` 参数传递
+- 从 DB 的 agent_skills 收集 skill.storage_path 列表后传递
+- 移除 skill_tool_factory.py, skill_executor.py
+- SKILL.md 的 progressive disclosure 由 deep agent 自动处理
 
-#### FR-5: 메모리 (장기 기억)
-- 에이전트별 `data/agents/{agent_id}/AGENTS.md` 파일 기반
-- deep agent의 memory 파라미터로 전달
-- 에이전트가 대화 간 학습 내용을 자동 기억
+#### FR-5: memory（长期记忆）
+- 每个智能体基于 `data/agents/{agent_id}/AGENTS.md` 文件
+- 通过 deep agent 的 memory 参数传递
+- 智能体自动记住跨对话学习内容
 
-#### FR-6: 자동 추가 도구 관리
-- deep agent가 자동 추가하는 도구: ls, read_file, write_file, edit_file, glob, grep, write_todos
-- 모든 에이전트에 기본 활성화
-- 시스템 프롬프트에 도구 가이드를 포함하여 불필요한 호출 방지
-- LLMToolSelectorMiddleware가 도구 선택 필터링 지원
+#### FR-6: 自动添加工具管理
+- deep agent 自动添加的工具: ls, read_file, write_file, edit_file, glob, grep, write_todos
+- 所有智能体默认启用
+- 在 system prompt 中包含工具指南，防止不必要调用
+- LLMToolSelectorMiddleware 支持工具选择筛选
 
-#### FR-7: 토큰 사용량 추적
-- token_usages 테이블 유지
-- message_id FK → conversation_id + 타임스탬프 기반으로 변경
-- astream()의 usage_metadata에서 실시간 추출
+#### FR-7: token 使用量追踪
+- 保留 token_usages 表
+- message_id FK → 改为 conversation_id + 基于 timestamp
+- 从 astream() 的 usage_metadata 实时提取
 
-#### FR-8: 트리거 연동
-- APScheduler 유지
-- trigger_executor.py에서 `create_deep_agent` → `invoke()` 호출로 변경
-- 트리거 실행 결과도 checkpointer에 자동 저장
+#### FR-8: trigger 联动
+- 保留 APScheduler
+- 在 trigger_executor.py 中改为调用 `create_deep_agent` → `invoke()`
+- trigger 执行结果也自动保存到 checkpointer
 
-#### FR-9: Creation Agent 교체
-- creation_agent.py를 create_deep_agent 기반으로 교체
-- 통일된 엔진
+#### FR-9: 替换 Creation Agent
+- 将 creation_agent.py 改为基于 create_deep_agent
+- 统一引擎
 
-### 비기능적 요구사항
+### 非功能性要求
 
-#### NFR-1: 성능
-- MCP 도구 로딩: 세션 재사용으로 연결 오버헤드 최소화
-- checkpointer: PostgreSQL async 연결 사용
-- 자동 요약: 컨텍스트 윈도우 85% 도달 시 자동 압축
+#### NFR-1: 性能
+- MCP 工具加载: 通过 session 复用最小化连接开销
+- checkpointer: 使用 PostgreSQL async 连接
+- 自动摘要: context window 达到85%时自动压缩
 
-#### NFR-2: 호환성
-- 프론트엔드: SSE 이벤트 포맷(message_start, content_delta, tool_call_start, tool_call_result, message_end) 유지
-- REST API: 엔드포인트 구조 유지 (/api/agents/*, /api/conversations/*)
-- 미들웨어: langchain 공식 22종 그대로 사용
+#### NFR-2: 兼容性
+- frontend: 保持 SSE event 格式(message_start, content_delta, tool_call_start, tool_call_result, message_end)
+- REST API: 保持 endpoint 结构 (/api/agents/*, /api/conversations/*)
+- middleware: 原样使用 langchain 官方22种
 
-#### NFR-3: 보안
-- MCP auth_config 암호화 유지 (기존 ENCRYPTION_KEY)
-- deep agent FilesystemMiddleware: 스킬 디렉토리만 접근 가능하도록 제한
-- execute 도구: 스킬 스크립트만 실행 가능 (샌드박스 제한)
+#### NFR-3: 安全
+- 保持 MCP auth_config 加密（现有 ENCRYPTION_KEY）
+- deep agent FilesystemMiddleware: 限制只能访问 skill 目录
+- execute 工具: 仅允许执行 skill script（sandbox 限制）
 
-## DB 스키마 변경
+## DB schema 变更
 
-### 유지하는 테이블
+### 保留的表
 - users
 - models
 - templates
 - mcp_servers
 - tools
-- agents (middleware_configs, model_params 구조 유지)
-- agent_tools (config JSON 포함)
+- agents（保持 middleware_configs, model_params 结构）
+- agent_tools（包含 config JSON）
 - skills
 - agent_skills
 - agent_triggers
 - agent_creation_sessions
 
-### 변경하는 테이블
+### 修改的表
 
-#### token_usages — FK 변경
+#### token_usages — FK 变更
 ```sql
 -- Before
 message_id UUID FK → messages.id
 
 -- After
-conversation_id UUID FK → conversations.id  (message_id 제거)
+conversation_id UUID FK → conversations.id  (移除 message_id)
 ```
 
-### 제거하는 테이블
-- messages (checkpointer가 대체)
+### 移除的表
+- messages（由 checkpointer 替代）
 
-### 자동 생성 테이블 (PostgresSaver)
-- checkpoint (LangGraph가 자동 생성)
+### 自动创建的表 (PostgresSaver)
+- checkpoint（由 LangGraph 自动创建）
 - checkpoint_blobs
 - checkpoint_writes
 
-## 제거하는 코드
+## 移除的代码
 
-| 파일 | 제거 대상 | 이유 |
+| 文件 | 移除对象 | 原因 |
 |------|---------|------|
-| `tool_factory.py` | `create_mcp_tool()`, `_build_args_schema()` | langchain-mcp-adapters가 대체 |
-| `mcp_client.py` | `call_mcp_tool()` | 어댑터가 도구 실행 처리 |
-| `skill_tool_factory.py` | 전체 파일 | create_deep_agent가 스킬 로딩 처리 |
-| `skill_executor.py` | 전체 파일 | deep agent FilesystemMiddleware가 대체 |
-| `chat_service.py` | `build_effective_prompt()` 스킬 주입 부분, MCP 이름 가공, 중복 감지 | deep agent/어댑터가 처리 |
-| `chat_service.py` | `save_message()`, `list_messages()` | checkpointer가 대체 |
-| `streaming.py` | 미들웨어 JSON 필터 (선택적) | deep agent 전환 후 테스트하여 판단 |
-| `middleware_registry.py` | `PatchedLLMToolSelectorMiddleware` (선택적) | deep agent 전환 후 테스트하여 판단 |
-| `executor.py` | `create_react_agent` 폴백 로직 | 항상 create_deep_agent 사용 |
+| `tool_factory.py` | `create_mcp_tool()`, `_build_args_schema()` | 由 langchain-mcp-adapters 替代 |
+| `mcp_client.py` | `call_mcp_tool()` | adapter 负责工具执行 |
+| `skill_tool_factory.py` | 整个文件 | create_deep_agent 负责 skill 加载 |
+| `skill_executor.py` | 整个文件 | 由 deep agent FilesystemMiddleware 替代 |
+| `chat_service.py` | `build_effective_prompt()` skill 注入部分, MCP 名称处理, 重复检测 | 由 deep agent/adapter 处理 |
+| `chat_service.py` | `save_message()`, `list_messages()` | 由 checkpointer 替代 |
+| `streaming.py` | middleware JSON filter（可选） | 切换到 deep agent 后测试再判断 |
+| `middleware_registry.py` | `PatchedLLMToolSelectorMiddleware`（可选） | 切换到 deep agent 后测试再判断 |
+| `executor.py` | `create_react_agent` fallback 逻辑 | 始终使用 create_deep_agent |
 
-## 유지하는 코드
+## 保留的代码
 
-| 파일 | 유지 대상 | 이유 |
+| 文件 | 保留对象 | 原因 |
 |------|---------|------|
-| `mcp_client.py` | `test_mcp_connection()`, `list_mcp_tools()` | MCP 서버 등록 UI에서 사용 |
-| `tool_factory.py` | builtin/prebuilt/custom 도구 생성 | Python 코드 기반이라 MCP 교체 불가 |
-| `model_factory.py` | 전체 | 모델 생성 방식 동일 |
-| `message_utils.py` | 전체 | checkpointer에서 가져온 메시지 변환에 사용 |
-| `streaming.py` | SSE 변환 로직 | astream() API 동일, SSE 포맷 유지 |
-| `middleware_registry.py` | 미들웨어 레지스트리, build_middleware_instances | deep agent middleware 파라미터로 전달 |
+| `mcp_client.py` | `test_mcp_connection()`, `list_mcp_tools()` | MCP 服务器注册 UI 使用 |
+| `tool_factory.py` | builtin/prebuilt/custom 工具创建 | 基于 Python 代码，无法由 MCP 替代 |
+| `model_factory.py` | 全部 | 模型创建方式相同 |
+| `message_utils.py` | 全部 | 用于转换从 checkpointer 获取的消息 |
+| `streaming.py` | SSE 转换逻辑 | astream() API 相同，保持 SSE 格式 |
+| `middleware_registry.py` | middleware registry, build_middleware_instances | 作为 deep agent middleware 参数传递 |
 
-## API 변경
+## API 变更
 
-### 변경 없음
-- `GET /api/agents` — 에이전트 목록
-- `POST /api/agents` — 에이전트 생성
-- `GET /api/agents/{id}` — 에이전트 상세
-- `PUT /api/agents/{id}` — 에이전트 수정
-- `GET /api/agents/{id}/conversations` — 대화 목록
-- `POST /api/agents/{id}/conversations` — 대화 생성
-- `POST /api/conversations/{id}/messages` — 메시지 전송 (SSE 스트리밍)
-- `PATCH /api/conversations/{id}` — 대화 수정
-- `DELETE /api/conversations/{id}` — 대화 삭제
-- 도구 관련 API 전체
+### 无变更
+- `GET /api/agents` — 智能体列表
+- `POST /api/agents` — 创建智能体
+- `GET /api/agents/{id}` — 智能体详情
+- `PUT /api/agents/{id}` — 修改智能体
+- `GET /api/agents/{id}/conversations` — 对话列表
+- `POST /api/agents/{id}/conversations` — 创建对话
+- `POST /api/conversations/{id}/messages` — 发送消息 (SSE streaming)
+- `PATCH /api/conversations/{id}` — 修改对话
+- `DELETE /api/conversations/{id}` — 删除对话
+- 全部工具相关 API
 
-### 내부 구현만 변경
-- `GET /api/conversations/{id}/messages` — DB 쿼리 → checkpointer에서 state 추출
+### 仅修改内部实现
+- `GET /api/conversations/{id}/messages` — DB query → 从 checkpointer 提取 state
 - `POST /api/conversations/{id}/messages` — execute_agent_stream() → deep agent astream()
 
-## 마일스톤
+## Milestone
 
-### M1: 의존성 + 엔진 교체 (기본)
+### M1: 依赖 + 引擎替换（基础）
 - [ ] `uv add deepagents langchain-mcp-adapters`
-- [ ] `executor.py`: `build_agent()` → `create_deep_agent()` 교체
-- [ ] `executor.py`: MCP 도구 생성을 `langchain-mcp-adapters`로 교체
-- [ ] `tool_factory.py`: `create_mcp_tool()`, `_build_args_schema()` 제거
-- [ ] `mcp_client.py`: `call_mcp_tool()` 제거
-- [ ] `chat_service.py`: MCP 이름 가공/중복 감지 로직 제거
-- [ ] 검증: 기존 에이전트가 MCP 도구를 정상 호출하는지 테스트
-- [ ] 검증: builtin/prebuilt 도구가 정상 동작하는지 테스트
+- [ ] `executor.py`: `build_agent()` → 替换为 `create_deep_agent()`
+- [ ] `executor.py`: 将 MCP 工具创建替换为 `langchain-mcp-adapters`
+- [ ] `tool_factory.py`: 移除 `create_mcp_tool()`, `_build_args_schema()`
+- [ ] `mcp_client.py`: 移除 `call_mcp_tool()`
+- [ ] `chat_service.py`: 移除 MCP 名称加工/重复检测逻辑
+- [ ] 验证: 测试现有智能体能否正常调用 MCP 工具
+- [ ] 验证: 测试 builtin/prebuilt 工具是否正常运行
 
-### M2: Checkpointer 전환
-- [ ] `PostgresSaver` 설정 (현재 PostgreSQL 연결 재사용)
-- [ ] `create_deep_agent(checkpointer=saver)` 전달
-- [ ] `conversations.py`: 메시지 조회 API를 checkpointer에서 state 추출로 변경
-- [ ] `conversations.py`: 메시지 전송 API에서 수동 save_message() 제거
-- [ ] `chat_service.py`: `save_message()`, `list_messages()` 제거 또는 checkpointer 래퍼로 교체
-- [ ] DB 마이그레이션: messages 테이블 제거, token_usages FK 변경
-- [ ] 검증: 대화 생성 → 메시지 전송 → 히스토리 조회 전체 흐름 테스트
+### M2: Checkpointer 迁移
+- [ ] 设置 `PostgresSaver`（复用当前 PostgreSQL 连接）
+- [ ] 传递 `create_deep_agent(checkpointer=saver)`
+- [ ] `conversations.py`: 将消息查询 API 改为从 checkpointer 提取 state
+- [ ] `conversations.py`: 从消息发送 API 移除手动 save_message()
+- [ ] `chat_service.py`: 移除 `save_message()`, `list_messages()` 或替换为 checkpointer wrapper
+- [ ] DB 迁移: 移除 messages 表, 修改 token_usages FK
+- [ ] 验证: 测试创建对话 → 发送消息 → 查询 history 全流程
 
-### M3: 스킬 + 메모리 전환
-- [ ] `create_deep_agent(skills=[...])` 파라미터로 스킬 디렉토리 전달
-- [ ] `skill_tool_factory.py`, `skill_executor.py` 제거
-- [ ] `chat_service.py`: `build_effective_prompt()`에서 스킬 주입 로직 제거
-- [ ] `create_deep_agent(memory=[...])` 파라미터로 메모리 경로 전달
-- [ ] `data/agents/{agent_id}/` 디렉토리 구조 설정
-- [ ] 검증: "이상윤 자리 어디야?" → 스킬 자동 로딩 → mark_seat.py 실행 + 이미지
+### M3: skill + memory 迁移
+- [ ] 通过 `create_deep_agent(skills=[...])` 参数传递 skill 目录
+- [ ] 移除 `skill_tool_factory.py`, `skill_executor.py`
+- [ ] `chat_service.py`: 从 `build_effective_prompt()` 移除 skill 注入逻辑
+- [ ] 通过 `create_deep_agent(memory=[...])` 参数传递 memory 路径
+- [ ] 设置 `data/agents/{agent_id}/` 目录结构
+- [ ] 验证: "李尚允的座位在哪里？" → 自动加载 skill → 执行 mark_seat.py + 图像
 
-### M4: 정리 + Creation Agent
-- [ ] `creation_agent.py`를 create_deep_agent 기반으로 교체
-- [ ] `trigger_executor.py`를 deep agent invoke()로 교체
-- [ ] 불필요한 코드/파일 최종 정리
-- [ ] streaming.py 미들웨어 필터가 여전히 필요한지 테스트 후 판단
-- [ ] middleware_registry.py 패치가 여전히 필요한지 테스트 후 판단
-- [ ] 전체 E2E 테스트
-- [ ] DB 시드 데이터 정리
+### M4: 整理 + Creation Agent
+- [ ] 将 `creation_agent.py` 替换为基于 create_deep_agent
+- [ ] 将 `trigger_executor.py` 替换为 deep agent invoke()
+- [ ] 最终整理不必要的代码/文件
+- [ ] 测试后判断 streaming.py middleware filter 是否仍需要
+- [ ] 测试后判断 middleware_registry.py patch 是否仍需要
+- [ ] 全量 E2E 测试
+- [ ] 整理 DB seed 数据
 
-## 열린 질문 / 결정 필요
+## 开放问题 / 需要决策
 
-1. **deep agent의 FilesystemMiddleware가 스킬 디렉토리를 어떻게 제한하는지** — 보안상 전체 파일시스템 접근을 막아야 함. backend 설정으로 제어 가능한지 실제 코드 확인 필요.
+1. **deep agent 的 FilesystemMiddleware 如何限制 skill 目录** — 出于安全必须阻止访问整个文件系统。需要查看实际代码确认是否可通过 backend 设置控制。
 
-2. **streaming.py의 미들웨어 JSON 필터가 deep agent에서도 필요한지** — create_deep_agent가 내장 PatchToolCallsMiddleware를 포함하므로, 기존 content leak 문제가 해결됐을 수 있음. M4에서 테스트.
+2. **streaming.py 的 middleware JSON filter 在 deep agent 中是否仍需要** — create_deep_agent 包含内置 PatchToolCallsMiddleware，因此现有 content leak 问题可能已解决。M4 测试。
 
-3. **auto-added SummarizationMiddleware와 사용자 설정 summarization 중복** — 사용자가 에이전트 설정에서 summarization 미들웨어를 별도로 켜면 deep agent 내장 + 사용자 설정이 이중 적용됨. 중복 방지 로직 필요.
+3. **auto-added SummarizationMiddleware 与用户设置 summarization 重复** — 如果用户在智能体设置中单独启用 summarization middleware，则会与 deep agent 内置功能双重应用。需要防重复逻辑。
 
-4. **checkpointer에서 메시지를 가져오는 정확한 API** — `PostgresSaver.aget_tuple(config)` 등으로 state를 가져와 `state["messages"]`를 추출하는 방식의 정확한 구현 확인 필요.
+4. **从 checkpointer 获取消息的准确 API** — 需要确认通过 `PostgresSaver.aget_tuple(config)` 等获取 state 并提取 `state["messages"]` 的准确实现。
 
 ---
 
-> 명세서가 완성되었습니다. 새 세션에서 다음 명령어로 구현을 시작하세요:
+> 规格书已完成。请在新 session 中使用以下命令开始实现:
 > ```
-> SPEC.md 읽고 구현 시작해줘
+> 读取 SPEC.md 并开始实现
 > ```
 >
-> 구현 완료 후 검증:
+> 实现完成后验证:
 > ```
 > /spec-verify
 > ```

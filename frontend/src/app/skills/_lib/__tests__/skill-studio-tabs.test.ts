@@ -10,7 +10,7 @@ const SKILL_ID = '11111111-2222-3333-4444-555555555555'
 const SESSION_ID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 
 describe('deriveSkillStudioContext', () => {
-  it('목록 라우트는 list 탭', () => {
+  it('列表 route 是 list tab', () => {
     expect(deriveSkillStudioContext('/skills')).toEqual({
       activeTab: 'list',
       skillId: null,
@@ -18,7 +18,7 @@ describe('deriveSkillStudioContext', () => {
     })
   })
 
-  it('빌더 인덱스/세션 라우트는 builder 탭 + sessionId', () => {
+  it('builder index/session route 是 builder tab + sessionId', () => {
     expect(deriveSkillStudioContext('/skills/builder')).toEqual({
       activeTab: 'builder',
       skillId: null,
@@ -31,7 +31,7 @@ describe('deriveSkillStudioContext', () => {
     })
   })
 
-  it('스킬 스코프 탭 세그먼트를 그대로 활성화한다', () => {
+  it('原样激活 skill scope tab segment', () => {
     for (const tab of ['evaluation', 'versions', 'source', 'settings'] as const) {
       expect(deriveSkillStudioContext(`/skills/${SKILL_ID}/${tab}`)).toEqual({
         activeTab: tab,
@@ -41,35 +41,35 @@ describe('deriveSkillStudioContext', () => {
     }
   })
 
-  it('탭 세그먼트가 없거나 미지의 값이면 source로 해석 (서버 redirect와 동일)', () => {
+  it('没有 tab segment 或值未知时按 source 解释（与 server redirect 相同）', () => {
     expect(deriveSkillStudioContext(`/skills/${SKILL_ID}`).activeTab).toBe('source')
     expect(deriveSkillStudioContext(`/skills/${SKILL_ID}/unknown`).activeTab).toBe('source')
   })
 
-  it('null/무관 경로는 list로 폴백', () => {
+  it('null/无关 route fallback 到 list', () => {
     expect(deriveSkillStudioContext(null).activeTab).toBe('list')
     expect(deriveSkillStudioContext('/agents').activeTab).toBe('list')
   })
 })
 
 describe('skillStudioTabHref', () => {
-  it('스킬 스코프 탭은 컨텍스트 스킬이 없으면 null(비활성)', () => {
+  it('skill scope tab 在没有 context skill 时为 null（disabled）', () => {
     expect(skillStudioTabHref('evaluation', null)).toBeNull()
     expect(skillStudioTabHref('evaluation', SKILL_ID)).toBe(`/skills/${SKILL_ID}/evaluation`)
   })
 
-  it('빌더 탭은 컨텍스트 스킬을 인덱스 쿼리로 넘긴다', () => {
+  it('builder tab 将 context skill 传给 index query', () => {
     expect(skillStudioTabHref('builder', null)).toBe('/skills/builder')
     expect(skillStudioTabHref('builder', SKILL_ID)).toBe(`/skills/builder?skillId=${SKILL_ID}`)
   })
 
-  it('목록 탭은 항상 /skills', () => {
+  it('list tab 始终是 /skills', () => {
     expect(skillStudioTabHref('list', SKILL_ID)).toBe('/skills')
   })
 })
 
 describe('legacyDetailTabToStudioTab', () => {
-  it('레거시 다이얼로그 탭 → 스튜디오 세그먼트 매핑 (M2b redirect 계약)', () => {
+  it('legacy dialog tab → studio segment 映射（M2b redirect 契约）', () => {
     expect(legacyDetailTabToStudioTab('content')).toBe('source')
     expect(legacyDetailTabToStudioTab('credentials')).toBe('settings')
     expect(legacyDetailTabToStudioTab('metadata')).toBe('settings')

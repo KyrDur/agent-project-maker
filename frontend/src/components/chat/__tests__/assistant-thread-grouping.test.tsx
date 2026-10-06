@@ -3,9 +3,9 @@ import type { PartState } from '@assistant-ui/react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '../../../../tests/test-utils'
 
-// ToolGroupContainer가 검색 그룹 출처 집계를 위해 useAuiState로 message.parts를
-// 읽으므로, aui provider 없는 단위 테스트에서도 동작하도록 useAuiState만 mock한다.
-// (나머지 assistant-thread import는 실제 모듈을 그대로 쓴다.)
+// ToolGroupContainer 为了汇总搜索组来源，通过 useAuiState 读取 message.parts
+// 因此只 mock useAuiState，使其在没有 aui provider 的单元测试中也能工作。
+// （其余 assistant-thread import 仍直接使用实际模块。）
 const auiMocks = vi.hoisted(() => ({
   state: { message: { parts: [] as readonly { readonly result?: unknown }[] } },
 }))
@@ -34,8 +34,8 @@ function textPart(): PartState {
   return { type: 'text', text: 'hi', status: { type: 'complete' } } as unknown as PartState
 }
 
-/** 한 메시지의 parts 시퀀스를 groupBy로 돌려, 인접 같은 key를 합쳐 그룹 경계를
- * 만든다 — 공식 buildGroupTree와 동일한 인접 합치기 규칙을 작게 재현한 테스트 헬퍼. */
+/** 将一条消息的 parts 序列传给 groupBy，把相邻且 key 相同的项合并形成分组边界
+ * —— 用一个精简的测试 helper 复现与官方 buildGroupTree 相同的相邻合并规则。 */
 function groupKeysFor(parts: PartState[]): (string | null)[] {
   return parts.map((p) => {
     const path = groupAssistantParts(p)
@@ -43,7 +43,7 @@ function groupKeysFor(parts: PartState[]): (string | null)[] {
   })
 }
 
-/** group-tool 노드 합성 — count(=indices 길이)와 running 상태를 받아 render fn에 넘긴다. */
+/** 合成 group-tool 节点 —— 接收 count（=indices 长度）和 running 状态并传给 render fn。 */
 function renderGroupNode(toolName: string, count: number, running: boolean, children: ReactNode) {
   const node = {
     type: `group-tool:${toolName}` as `group-${string}`,
@@ -54,25 +54,25 @@ function renderGroupNode(toolName: string, count: number, running: boolean, chil
 }
 
 describe('groupAssistantParts (groupBy)', () => {
-  it('tool-call은 group-tool:<toolName> 경로, 비-tool part는 null', () => {
+  it('tool-call 走 group-tool:<toolName> 路径，非 tool part 为 null', () => {
     expect(groupAssistantParts(toolCallPart('tavily_search'))).toEqual(['group-tool:tavily_search'])
     expect(groupAssistantParts(textPart())).toBeNull()
   })
 
-  it('그룹 제외 도구(ask_user 등)는 null이라 그룹되지 않는다', () => {
+  it('排除分组的工具（ask_user 等）为 null，因此不会被分组', () => {
     expect(groupAssistantParts(toolCallPart('ask_user'))).toBeNull()
     expect(groupAssistantParts(toolCallPart('ask_clarifying_question'))).toBeNull()
   })
 
-  it('request_approval은 예외로 그룹 대상 — 승인 그룹 컨테이너로 묶기 위함', () => {
+  it('request_approval 作为例外属于分组对象 —— 用于归入审批组容器', () => {
     expect(groupAssistantParts(toolCallPart('request_approval'))).toEqual([
       'group-tool:request_approval',
     ])
   })
 
-  it('request_approval은 인터럽트 경계로 분리 — 다른 hitl_interrupt_id는 다른 key (M8-3)', () => {
-    // 직전 인터럽트(resolved)와 새 인터럽트(pending)가 인접해도 coalesce되어
-    // "승인 대기 2건" 허수 카운트가 뜨지 않도록 key에 interrupt id를 넣는다.
+  it('request_approval 按中断边界拆分 —— 不同 hitl_interrupt_id 使用不同 key (M8-3)', () => {
+    // 即使上一条中断（resolved）与新中断（pending）相邻，也不会 coalesce 后
+    // "待审批 2 项" 的虚假计数不会出现，因此把 interrupt id 放进 key。
     const resolvedA = toolCallPart('request_approval', { hitl_interrupt_id: 'int-a' })
     const pendingB = toolCallPart('request_approval', { hitl_interrupt_id: 'int-b' })
     expect(groupAssistantParts(resolvedA)).toEqual(['group-tool:request_approval:int-a'])
@@ -80,14 +80,14 @@ describe('groupAssistantParts (groupBy)', () => {
     expect(groupAssistantParts(resolvedA)?.[0]).not.toBe(groupAssistantParts(pendingB)?.[0])
   })
 
-  it('같은 hitl_interrupt_id의 멀티액션 request_approval은 같은 key로 묶인다', () => {
+  it('同一 hitl_interrupt_id 的多 action request_approval 会归为同一个 key', () => {
     const first = toolCallPart('request_approval', { hitl_interrupt_id: 'int-a' })
     const second = toolCallPart('request_approval', { hitl_interrupt_id: 'int-a' })
     expect(groupAssistantParts(first)).toEqual(groupAssistantParts(second))
   })
 
-  it('intra-message: 같은 도구는 같은 key, 다른 도구는 다른 key로 분리된다', () => {
-    // tavily ×3 + read_file ×1 (실측 데이터 패턴) → 2개의 서로 다른 그룹 key
+  it('intra-message: 相同工具使用相同 key，不同工具拆成不同 key', () => {
+    // tavily ×3 + read_file ×1（实测数据模式）→ 2 个不同的分组 key
     const parts = [
       toolCallPart('tavily_search'),
       toolCallPart('tavily_search'),
@@ -107,60 +107,60 @@ describe('groupAssistantParts (groupBy)', () => {
 })
 
 describe('renderGroupedAssistantPart (group-tool node)', () => {
-  it('N≥2: 컨테이너로 묶고 라벨 + 개수를 보여준다', () => {
+  it('N≥2: 用容器分组，并显示标签 + 数量', () => {
     renderGroupNode('tavily_search', 2, false, <div data-testid="leaf">leaf</div>)
-    expect(screen.getByText('默认标题')).toBeInTheDocument()
-    expect(screen.getByText('2회')).toBeInTheDocument()
+    expect(screen.getByText('网页搜索')).toBeInTheDocument()
+    expect(screen.getByText('2次')).toBeInTheDocument()
   })
 
-  it('N=1: 컨테이너 없이 children만 패스스루(라벨/개수 없음)', () => {
+  it('N=1: 不使用容器，仅 passthrough children（无标签/数量）', () => {
     renderGroupNode('tavily_search', 1, false, <div data-testid="leaf">leaf</div>)
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
-    expect(screen.queryByText('默认标题')).not.toBeInTheDocument()
+    expect(screen.queryByText('网页搜索')).not.toBeInTheDocument()
     expect(screen.queryByText('一次')).not.toBeInTheDocument()
   })
 
-  it('running=true: 펼침 상태라 그룹 내부 children이 보인다', () => {
+  it('running=true: 处于展开状态，可看到组内 children', () => {
     renderGroupNode('read_file', 3, true, <div data-testid="leaf">leaf</div>)
     expect(screen.getByText('读取文件')).toBeInTheDocument()
-    expect(screen.getByText('3회')).toBeInTheDocument()
+    expect(screen.getByText('3次')).toBeInTheDocument()
     expect(screen.getByTestId('leaf')).toBeInTheDocument()
   })
 
-  it('done(running=false): 접힘 상태라 그룹 내부 children이 숨겨진다', () => {
+  it('done(running=false): 处于折叠状态，组内 children 被隐藏', () => {
     renderGroupNode('read_file', 3, false, <div data-testid="leaf">leaf</div>)
     expect(screen.getByText('读取文件')).toBeInTheDocument()
     expect(screen.queryByTestId('leaf')).not.toBeInTheDocument()
   })
 
-  it('indicator part는 null (별도 로딩 인디케이터가 따로 렌더됨)', () => {
+  it('indicator part 为 null（另有独立的加载指示器渲染）', () => {
     const { container } = render(
       <>{renderGroupedAssistantPart({ part: { type: 'indicator' }, children: null })}</>,
     )
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('승인 그룹 N≥2: generic 컨테이너 대신 "승인 대기 N건" + "批准全部"으로 묶고 카드는 항상 보인다', () => {
+  it('审批组 N≥2: 不用 generic 容器，而以 "待审批 N 项" + "批准全部" 分组，卡片始终可见', () => {
     renderGroupNode('request_approval', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByText('批准全部')).toBeInTheDocument()
-    // 승인 카드는 접히지 않고 항상 렌더된다(사용자가 결정해야 하므로).
+    // 审批卡不会折叠，始终渲染（因为需要用户作出决定）。
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
-    // generic 그룹 라벨/개수 배지는 뜨지 않는다.
-    expect(screen.queryByText('2회')).not.toBeInTheDocument()
+    // 不显示 generic 分组标签/数量 badge。
+    expect(screen.queryByText('2次')).not.toBeInTheDocument()
   })
 
-  it('승인 그룹 N=1: 컨테이너 없이 단일 승인 카드 패스스루', () => {
+  it('审批组 N=1: 不使用容器，直接 passthrough 单个审批卡', () => {
     renderGroupNode('request_approval', 1, false, <div data-testid="approval-leaf">card</div>)
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
-    expect(screen.queryByText(/승인 대기/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/待批准/)).not.toBeInTheDocument()
   })
 
-  it('인터럽트-suffix 그룹 노드도 승인 컨테이너로 렌더된다 (M8-3 키 인코딩)', () => {
-    // groupBy가 `request_approval:<interruptId>`로 키를 세분화해도 render 경로는
-    // groupToolName으로 도구명을 복원해 전용 승인 컨테이너를 유지해야 한다.
+  it('中断-suffix 组节点也会渲染为审批容器（M8-3 key 编码）', () => {
+    // 即使 groupBy 将 key 细分为 `request_approval:<interruptId>`，render 路径也必须
+    // 通过 groupToolName 还原工具名，以维持专用审批容器。
     renderGroupNode('request_approval:int-b', 2, false, <div data-testid="approval-leaf">card</div>)
-    expect(screen.getByText('승인 대기 2건')).toBeInTheDocument()
+    expect(screen.getByText('待批准 2 项')).toBeInTheDocument()
     expect(screen.getByTestId('approval-leaf')).toBeInTheDocument()
   })
 })

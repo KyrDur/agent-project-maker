@@ -1,7 +1,7 @@
-"""skill_draft_workspace 서비스 계약 (스펙 AD-2).
+"""skill_draft_workspace 服务契约 (规范 AD-2)。
 
-생성/시드(improve 복사)/첨부→inputs 복사/디렉토리→SkillDraftFile 어댑터/
-GC(세션 상태 기준 — active 보존)를 검증한다.
+验证创建/初始化（improve 复制）/附件→inputs 复制/目录→SkillDraftFile 适配器/
+GC（按会话状态 — 保留 active）。
 """
 
 from __future__ import annotations
@@ -43,8 +43,8 @@ async def _make_session(
         user_id=TEST_USER_ID,
         user_request="test",
         status=status,
-        # 실제 v2 플로우는 start에서 대화를 attach한다 — conversation 없는 오래된
-        # 세션은 dead로 간주되어 abandoned 전이 대상 (R2). aiosqlite는 FK 미강제.
+        # 实际 v2 流程会在 start 时将对话 attach — 没有 conversation 的旧
+        # 会话，视为 dead 并作为 abandoned 转移对象 (R2)。aiosqlite 不强制 FK。
         conversation_id=uuid.uuid4() if with_conversation else None,
     )
     db.add(session)
@@ -53,14 +53,14 @@ async def _make_session(
         path = workspace.create_workspace(session.id)
         (workspace.resolve_workspace_dir(path) / "SKILL.md").write_text("# draft\n")
         session.draft_workspace_path = path
-    # onupdate가 updated_at을 now로 되돌리므로, 마지막 flush에서 명시 설정.
+    # onupdate 会把 updated_at 恢复为 now，因此在最后 flush 时显式设置。
     session.updated_at = _now() - timedelta(hours=age_hours)
     await db.commit()
     return session
 
 
 # ---------------------------------------------------------------------------
-# 생성 / 시드
+# 创建 / 初始化
 # ---------------------------------------------------------------------------
 
 
@@ -79,7 +79,7 @@ async def test_seed_from_text_skill_creates_skill_md(tmp_path: Path) -> None:
     src = tmp_path / "skills" / "notes"
     src.mkdir(parents=True)
     (src / "SKILL.md").write_text("# original\n")
-    # text-kind: storage_path가 단일 파일을 가리키는 형태.
+    # text-kind: storage_path 指向单个文件的形式。
     skill = SimpleNamespace(slug="notes", storage_path="skills/notes/SKILL.md")
     session_id = uuid.uuid4()
 
@@ -99,7 +99,7 @@ async def test_seed_from_package_skill_copies_tree_and_wipes_existing(
     skill = SimpleNamespace(slug="pack", storage_path="skills/pack")
     session_id = uuid.uuid4()
 
-    # 기존 워크스페이스 내용은 시드 시 wipe (멱등 재시드).
+    # 现有工作区内容在初始化时 wipe（幂等重新初始化）。
     stale = workspace.create_workspace(session_id)
     (workspace.resolve_workspace_dir(stale) / "stale.txt").write_text("stale")
 
@@ -110,7 +110,7 @@ async def test_seed_from_package_skill_copies_tree_and_wipes_existing(
     assert (seeded / "references" / "guide.md").read_text() == "guide\n"
     assert not (seeded / "stale.txt").exists()
 
-    # 드래프트 편집이 원본으로 역류하지 않는다 (복사 — symlink 금지).
+    # 草稿编辑不会反向流入原始项（复制 — 禁止 symlink）。
     (seeded / "SKILL.md").write_text("# edited\n")
     assert (src / "SKILL.md").read_text() == "# pack\n"
 
@@ -129,7 +129,7 @@ async def test_seed_with_missing_source_yields_empty_workspace(
 
 
 # ---------------------------------------------------------------------------
-# 첨부 → inputs/ 복사
+# 附件 → 复制到 inputs/
 # ---------------------------------------------------------------------------
 
 
@@ -149,9 +149,9 @@ async def test_copy_attachments_sanitizes_and_deduplicates(tmp_path: Path) -> No
     path = workspace.create_workspace(session_id)
     attachments = [
         _attachment(tmp_path, filename="example.csv", body=b"a,b\n"),
-        # 경로 성분은 제거되어야 한다 (traversal 차단).
+        # 必须移除路径成分（阻断 traversal）。
         _attachment(tmp_path, filename="../../evil.txt", body=b"evil"),
-        # 동일 이름 충돌 → 순번 부여.
+        # 同名冲突 → 添加序号。
         _attachment(tmp_path, filename="example.csv", body=b"c,d\n"),
     ]
 
@@ -177,7 +177,7 @@ async def test_copy_attachments_skips_missing_blob(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 디렉토리 → SkillDraftFile 어댑터
+# 目录 → SkillDraftFile 适配器
 # ---------------------------------------------------------------------------
 
 
@@ -189,8 +189,8 @@ async def test_load_draft_files_roles_and_exclusions(tmp_path: Path) -> None:
     (root / "inputs").mkdir()
     (root / "SKILL.md").write_text("# draft\n")
     (root / "references" / "guide.md").write_text("guide\n")
-    (root / "inputs" / "sample.csv").write_text("a,b\n")  # 시험 입력 — 제외
-    (root / "logo.png").write_bytes(b"\x89PNG\x00\x00binary")  # 바이너리 — skip
+    (root / "inputs" / "sample.csv").write_text("a,b\n")  # 测试输入 — 排除
+    (root / "logo.png").write_bytes(b"\x89PNG\x00\x00binary")  # 二进制 — skip
 
     files = workspace.load_draft_files(path)
 
@@ -205,13 +205,13 @@ async def test_load_draft_files_missing_dir_returns_empty() -> None:
 
 
 # ---------------------------------------------------------------------------
-# GC — 세션 상태 기준
+# GC — 按会话状态
 # ---------------------------------------------------------------------------
 
 
 async def test_gc_preserves_active_and_recent_sessions(db: AsyncSession, tmp_path: Path) -> None:
-    # 리텐션(24h)은 지났지만 abandon 지평(14d) 안쪽 + 대화가 살아 있는 세션 —
-    # 재개 가능하므로 보존된다 (AD-2, R2 이후 보존은 abandon 지평까지).
+    # 已超过保留期(24h)，但仍在 abandon 时限(14d)内 + 对话仍存活的会话 —
+    # 因可恢复而保留（AD-2，R2 后保留到 abandon 时限）。
     active_old = await _make_session(db, status="active", age_hours=48, with_conversation=True)
     confirming_old = await _make_session(
         db, status="confirming", age_hours=48, with_conversation=True
@@ -268,9 +268,9 @@ async def test_gc_rejects_non_positive_retention(db: AsyncSession) -> None:
 
 
 async def test_gc_marks_dead_sessions_abandoned(db: AsyncSession, tmp_path: Path) -> None:
-    """R2 회귀: 대화가 소실된(conversation_id NULL) 비완료 세션은 리텐션 경과 시
-    abandoned로 전이된다 — 전이 경로가 없으면 GC_DELETABLE_STATUSES의 abandoned가
-    죽은 규칙이 되어 이탈 세션 워크스페이스가 영구 누수한다."""
+    """R2 回归：对话已丢失(conversation_id NULL)的未完成会话在超过保留期后
+    转为 abandoned — 若没有转移路径，GC_DELETABLE_STATUSES 中的 abandoned
+    就会成为死规则，导致离开会话的工作区永久泄漏。"""
 
     dead = await _make_session(db, status="active", age_hours=48, with_conversation=False)
     fresh = await _make_session(db, status="active", age_hours=1, with_conversation=False)
@@ -280,16 +280,16 @@ async def test_gc_marks_dead_sessions_abandoned(db: AsyncSession, tmp_path: Path
     await db.refresh(dead)
     await db.refresh(fresh)
     assert dead.status == "abandoned"
-    # 방금 만든(attach 전 창) 세션은 보존.
+    # 刚创建的（attach 前窗口）会话保留。
     assert fresh.status == "active"
-    # 전이 시 updated_at이 갱신되므로 이번 패스에선 워크스페이스가 남고,
-    # 다음 리텐션 경과 후 회수된다 (2단계 회수).
+    # 转移时 updated_at 会更新，因此本轮处理中的工作区仍保留，
+    # 下一次超过保留期后回收（两阶段回收）。
     assert dead.draft_workspace_path is not None
 
 
 async def test_gc_marks_long_idle_sessions_abandoned(db: AsyncSession, tmp_path: Path) -> None:
-    """R2 회귀: 대화가 살아 있어도 skill_draft_abandon_days(기본 14일) 미활동이면
-    abandoned로 전이해 무기한 누수를 막는다."""
+    """R2 回归：即使对话仍存活，若 skill_draft_abandon_days（默认 14 天）无活动，
+    也转为 abandoned，防止无限期泄漏。"""
 
     idle = await _make_session(db, status="active", age_hours=15 * 24, with_conversation=True)
     within = await _make_session(db, status="active", age_hours=13 * 24, with_conversation=True)
@@ -305,8 +305,8 @@ async def test_gc_marks_long_idle_sessions_abandoned(db: AsyncSession, tmp_path:
 async def test_gc_abandon_days_zero_disables_idle_rule(
     db: AsyncSession, tmp_path: Path, monkeypatch
 ) -> None:
-    """R 후속: skill_draft_abandon_days<=0은 idle 규칙 비활성(무기한 보존) —
-    max(1)로 강제하면 운영자의 '끄기'(0)가 1일로 둔갑한다."""
+    """R 后续：skill_draft_abandon_days<=0 表示禁用 idle 规则（无限期保留）—
+    若强制 max(1)，运营者意图'关闭'(0)会被变成 1 天。"""
 
     from app.config import settings as app_settings
 

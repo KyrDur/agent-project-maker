@@ -9,18 +9,18 @@ vi.mock('next-intl', () => ({
 }))
 
 describe('ComposerGhostSuggestion', () => {
-  it('제안 텍스트와 → 키캡 힌트를 연하게 렌더한다', () => {
+  it('以浅色显示建议文本和 → 键帽提示', () => {
     render(<ComposerGhostSuggestion text="把刚才的回答整理成表格" onAccept={() => {}} />)
     expect(screen.getByText('把刚才的回答整理成表格')).toBeInTheDocument()
     expect(screen.getByText('hint')).toBeInTheDocument()
     expect(document.querySelector('[data-moldy-followup-ghost]')).not.toBeNull()
   })
 
-  it('텍스트 클릭 시 수락 콜백을 호출한다 (터치 폴백)', async () => {
+  it('点击文本时调用接受回调（触屏 fallback）', async () => {
     const user = userEvent.setup()
     const onAccept = vi.fn()
-    render(<ComposerGhostSuggestion text="표로 정리해줘" onAccept={onAccept} />)
-    await user.click(screen.getByText('표로 정리해줘'))
+    render(<ComposerGhostSuggestion text="帮我整理成表格" onAccept={onAccept} />)
+    await user.click(screen.getByText('帮我整理成表格'))
     expect(onAccept).toHaveBeenCalledTimes(1)
   })
 })

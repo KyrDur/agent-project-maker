@@ -19,7 +19,7 @@ export function parseChatRoute(pathname: string): ChatRouteContext {
 export function agentSortTime(agent: AgentSummary, sort: AgentSort): number {
   const value = sort === 'recent' ? (agent.last_used_at ?? agent.created_at) : agent.created_at
   const time = new Date(value).getTime()
-  // 잘못된 날짜 문자열이 섞이면 NaN 비교가 정렬 전체를 불안정하게 만든다
+  // 混入无效日期字符串时，NaN 比较会让整个排序变得不稳定
   return Number.isNaN(time) ? 0 : time
 }
 

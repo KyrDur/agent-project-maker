@@ -1,168 +1,168 @@
-# 린트·정적분석 하드닝 계획
+# Lint·静态分析 Hardening 计划
 
-> 작성 2026-07-08. 리팩토링 마스터 플랜(`docs/refactoring-plan-2026-07.md`)의 DevX 후속 트랙.
-> 목적: "이렇게 개발했는데 lint가 잡아줬으면" 싶은 것들을 자동 게이트로 만든다. 바이브코딩으로 빠르게 쌓인 컨벤션 드리프트를 사람의 기억이 아니라 도구로 막는다.
-> 모든 수치는 2026-07-08 main 기준 실측(`ruff check --select <RULE> --output-format concise app/`, grep 카운트). ruff 버전은 uv.lock 고정이라 결정론적.
+> 编写于 2026-07-08。重构 master plan(`docs/refactoring-plan-2026-07.md`)的 DevX 后续 track。
+> 目的：把"这样开发了，如果 lint 能抓出来就好了"的问题做成自动 gate。对 vibe coding 快速堆积产生的 convention drift，不依赖人的记忆，而是用工具阻止。
+> 所有数值均为 2026-07-08 main 基准实测(`ruff check --select <RULE> --output-format concise app/`, grep count)。ruff 版本固定于 uv.lock，因此 deterministic。
 
-## 0. 핵심 진단
+## 0. 核心诊断
 
-이 코드베이스의 린팅은 **프론트엔드는 성숙, 백엔드는 빈약**한 비대칭 구조이고, 결정적으로 **프론트의 성숙한 커스텀 가드가 자동 파이프라인에 연결돼 있지 않다**.
+该 codebase 的 linting 呈现**frontend 成熟、backend 薄弱**的不对称结构，而关键问题是**frontend 成熟的 custom guard 没有接入自动 pipeline**。
 
-| | 프론트엔드 | 백엔드 |
+| | frontend | backend |
 |--|-----------|--------|
-| 규모 | ~100k 줄 | ~84k 줄 |
-| 기본 린터 | eslint (flat config) | ruff (E/F/W/I/UP/B/SIM/ASYNC) |
-| 커스텀 가드 | **6개**(design-system, static-i18n, frontend-architecture, jsx-a11y, type-safety, e2e-hygiene) | **0개** |
-| 보안 민감도 | 중 | **높음**(JWT 인증·크리덴셜 암복호·소유권) |
+| 规模 | ~100k 行 | ~84k 行 |
+| 基础 linter | eslint (flat config) | ruff (E/F/W/I/UP/B/SIM/ASYNC) |
+| custom guard | **6 个**(design-system, static-i18n, frontend-architecture, jsx-a11y, type-safety, e2e-hygiene) | **0 个** |
+| 安全敏感度 | 中 | **高**(JWT 认证·credential 加解密·ownership) |
 
-가장 큰 문제는 **B(커스텀 가드 미연결)**와 **C(보안 룰 off)**다. 나머지는 저비용 개선.
+最大的问题是 **B(custom guard 未接入)** 和 **C(security rule off)**。其余是低成本改进。
 
 ---
 
-## A. 커스텀 가드가 CI·pre-commit 어디에도 연결 안 됨 — 🔴 P0
+## A. custom guard 未接入 CI·pre-commit 任何一处 — 🔴 P0
 
-> **A-1 ✅ 완료 (2026-07-10, PR #287)**: 재측정 후 정당한 예외 3건 등록(i18n `global-error.tsx` SKIP / type-safety 테스트 한정 이유-주석 `@ts-expect-error` 허용 / e2e-hygiene `e2e/captures/` fixed-timeout만 면제) + 예외별 네거티브 회귀 테스트(`tests/unit/lint/guard-exemptions.test.ts`, i18n 테스트에 형제 파일 단언) → **그린 가드 4개(lint·i18n·type-safety·e2e-hygiene)**를 CI 개별 스텝 + lint-staged(`frontend/**/*.{ts,tsx}`)에 연결.
-> **⚠️ 재분류 (PR #287 2차 리뷰)**: `lint:frontend-architecture`는 아래 실측 표의 ✅가 **거짓 그린** — 비-strict 모드는 위반 48건에도 **항상 exit 0**(게이트 값 없음)이고, 강제인 `--strict`는 **blocking 3건으로 레드**. 따라서 A-2로 이동: strict blocking 해소(또는 strictBaseline 검토 등록) 후 `lint:frontend-architecture:strict`를 CI에 연결. 재현: `node scripts/check-frontend-architecture.mjs --strict; echo $?`.
-> **A-2 잔여**: a11y(신규 4 + baseline 해소 2)·design-system(12 + 카드 경고 19)은 실제 컴포넌트 수정(FE-D2·FE-D4 연동), frontend-architecture는 strict blocking 3건 수정 후 연결. 전부 그린이 되면 CI를 `lint:all` 호출로 교체(단, lint:all의 frontend-architecture도 strict로 교체 필요).
-> **lint-staged 주의**: 가드는 staged 파일 인자를 무시하고 트리 전체를 스캔한다 — untracked 위반 파일이 있으면 무관한 커밋도 막힐 수 있다(CI가 백스톱이므로 fail-open은 아님). 기존 `frontend/src/**` 엔트리(prettier/eslint --fix)와 병렬 실행되므로 드문 read-write race로 flaky 실패가 가능 — 반복되면 `.husky/pre-commit`을 `npx lint-staged --concurrent false`로.
+> **A-1 ✅ 完成 (2026-07-10, PR #287)**: 重新测量后登记 3 个合理例外(i18n `global-error.tsx` SKIP / type-safety 仅测试场景允许带理由注释的 `@ts-expect-error` / e2e-hygiene 仅豁免 `e2e/captures/` fixed-timeout) + 为各例外添加 negative 回归测试(`tests/unit/lint/guard-exemptions.test.ts`, i18n 测试中对 sibling file 断言) → 将**4 个 green guard(lint·i18n·type-safety·e2e-hygiene)**接入 CI 独立 step + lint-staged(`frontend/**/*.{ts,tsx}`)。
+> **⚠️ 重新分类 (PR #287 第 2 次 review)**: `lint:frontend-architecture` 在下方实测表中的 ✅ 是**假 green** — 非 strict 模式即使有 48 项违规也**始终 exit 0**(无 gate 价值)，而强制的 `--strict` 因**3 个 blocking 项为 red**。因此移至 A-2: 解决 strict blocking(或登记 strictBaseline 评估)后，将 `lint:frontend-architecture:strict` 接入 CI。复现: `node scripts/check-frontend-architecture.mjs --strict; echo $?`。
+> **A-2 剩余**: a11y(新增 4 + 解决 baseline 2)·design-system(12 + card warning 19)需要实际修改 component(FE-D2·FE-D4 联动)，frontend-architecture 修复 strict blocking 3 项后接入。全部 green 后将 CI 改为调用 `lint:all`(但 lint:all 的 frontend-architecture 也需替换为 strict)。
+> **lint-staged 注意**: guard 会忽略 staged 文件参数并扫描整个 tree — 若有 untracked 违规文件，可能连无关 commit 也会被阻止(CI 是 backstop，因此不做 fail-open)。由于与现有 `frontend/src/**` entry(prettier/eslint --fix)并行执行，罕见 read-write race 可能导致 flaky 失败 — 若重复发生，将 `.husky/pre-commit` 改为 `npx lint-staged --concurrent false`。
 
-- **증거**:
-  - `frontend/scripts/`에 커스텀 가드 6개 존재(`check-static-i18n.mjs`가 한국어/영어 메시지 정합을 검사하는 바로 그 스크립트).
-  - `.github/workflows/ci.yml` frontend 잡: `pnpm lint`(=`eslint`) + `vitest run` + `build`. 커스텀 가드 호출 **0회**.
-  - `package.json` lint-staged: `prettier --write` + `eslint --fix`. 커스텀 가드 호출 **0회**.
-  - 즉 `pnpm lint:i18n`, `pnpm lint:design-system` 등은 **개발자가 손으로 기억해서** 돌려야만 실행됨. AGENTS.md에 "새 화면 작업 후 돌려라"는 안내는 있으나 강제 아님.
-- **문제**: "i18n 한국어/영어 정합이 안 맞으면 lint 오류"라는 기대가 스크립트로 구현돼 있는데도, 자동으로 걸리지 않는다. 실제로 이번 세션의 FE-D1 작업 때 `pnpm lint`(eslint)만 돌렸고, i18n 정합을 깼더라도 CI가 못 잡았을 것.
-- **조치**:
-  1. `frontend/package.json`에 집계 스크립트 추가:
+- **证据**:
+  - `frontend/scripts/` 中存在 6 个 custom guard(`check-static-i18n.mjs` 就是检查韩文/英文消息一致性的那个 script)。
+  - `.github/workflows/ci.yml` frontend job: `pnpm lint`(=`eslint`) + `vitest run` + `build`。调用 custom guard **0 次**。
+  - `package.json` lint-staged: `prettier --write` + `eslint --fix`。调用 custom guard **0 次**。
+  - 即 `pnpm lint:i18n`, `pnpm lint:design-system` 等**必须由开发者手动记得**运行才会执行。AGENTS.md 虽有"新增页面工作后运行"的说明，但不是强制。
+- **问题**: "i18n 韩文/英文不一致时 lint 报错"的期待已经通过 script 实现，却不会自动触发。实际上本次 session 的 FE-D1 工作只运行了 `pnpm lint`(eslint)，即使破坏了 i18n 一致性 CI 也抓不到。
+- **措施**:
+  1. 在 `frontend/package.json` 添加汇总 script:
      ```json
      "lint:all": "pnpm lint && pnpm lint:i18n && pnpm lint:design-system && pnpm lint:frontend-architecture && pnpm lint:a11y && pnpm lint:type-safety && pnpm lint:e2e-hygiene"
      ```
-  2. CI frontend 잡의 `pnpm lint`를 `pnpm lint:all`로 교체(또는 각 가드를 개별 스텝으로 — 실패 지점이 명확).
-  3. lint-staged에 변경 파일 대상 가드 추가(전체 스캔이 무거우면 `check-static-i18n.mjs`처럼 빠른 것만 staged, 나머지는 CI 전담).
-  4. **주의**: 6개 가드가 현재 그린인지 먼저 확인(`pnpm lint:*` 각각). baseline 경고가 있는 가드(jsx-a11y는 `jsx-a11y-baseline.json`)는 baseline 초과만 실패하도록 이미 설계됨 — 그대로 CI에 넣으면 됨.
-- **검증**: 의도적으로 i18n 키를 한쪽만 추가한 커밋이 CI에서 빨간불이 되는지.
-- **공수**: ~~S~~ → **M** (아래 실측으로 상향)
+  2. 将 CI frontend job 的 `pnpm lint` 替换为 `pnpm lint:all`(或将各 guard 作为独立 step — 失败点更明确)。
+  3. 在 lint-staged 添加针对变更文件的 guard(若全量扫描较重，可只将 `check-static-i18n.mjs` 这类快速 guard 放 staged，其余交给 CI)。
+  4. **注意**: 先确认 6 个 guard 当前是否 green(`pnpm lint:*` 分别执行)。有 baseline warning 的 guard(jsx-a11y 使用 `jsx-a11y-baseline.json`)已设计为仅 baseline 超出时失败 — 可直接接入 CI。
+- **验证**: 故意只在一侧添加 i18n key 的 commit 是否会在 CI 中变 red。
+- **工时**: ~~S~~ → **M** (根据下方实测上调)
 
-### A 실측 (2026-07-08) — 연결 전 트리아지가 선행 필요
+### A 实测 (2026-07-08) — 接入前需要先 triage
 
-각 가드를 개별 실행한 결과, **6개 중 4개가 이미 위반 상태**다(강제 안 한 결과 위반이 축적됨 — A가 필요한 이유의 실증). 주의: `pnpm run <g> | tail`의 종료코드는 tail의 것이라 항상 0으로 보인다(pyright 백로그 때와 동일 함정) — 반드시 `pnpm run <g> >/dev/null 2>&1; echo $?`로 확인.
+分别执行各 guard 后，**6 个中已有 4 个处于违规状态**(未强制导致违规累积 — 这是 A 必要性的实证)。注意: `pnpm run <g> | tail` 的 exit code 是 tail 的，因此总会看成 0(与 pyright backlog 时相同陷阱) — 必须用 `pnpm run <g> >/dev/null 2>&1; echo $?` 确认。
 
-| 가드 | 상태 | 위반 | 트리아지 판단 |
+| guard | 状态 | 违规 | triage 判断 |
 |------|------|:---:|---------------|
 | `lint` (eslint) | ✅ | — | — |
-| `lint:frontend-architecture` | ⚠️ 거짓 그린 | strict 3 | 비-strict는 항상 exit 0(게이트 아님), 강제 모드는 `--strict`뿐 → strict blocking 3건 해소 후 strict를 연결 (위 재분류 노트) |
-| `lint:i18n` | ❌ | 3 | 전부 `global-error.tsx`(FE-D1에서 신규) — i18n 프로바이더 밖이라 정적 영문 불가피 → **가드 SKIP_FILE_PATTERNS에 예외 등록** |
-| `lint:type-safety` | ❌ | 2 | `chat-route-replacement.test.ts`의 `@ts-expect-error`(SSR window 제거 시뮬) — 정당 → **테스트 예외 또는 이유-주석 허용** |
-| `lint:e2e-hygiene` | ❌ | 12 | 전부 `e2e/captures/`의 `waitForTimeout`(스크린샷 투어라 고정 대기 실용적) → **captures 디렉토리 예외 또는 대기 조건화** |
-| `lint:a11y` | ❌ | 신규 3 + baseline 해소 2 | approval-card/artifact-panel 컨트롤 라벨 — **실제 수정**(FE-D2와 연동) + baseline 갱신 |
-| `lint:design-system` | ❌ | 팔레트/svg/arbitrary 다수 + card 경고 18 | data-ui(chart/stats/terminal-card)의 `text-emerald-*`·inline-svg(FE-D4), message-attachments/approval-card arbitrary-layout — **실제 토큰화 수정 또는 문서화된 예외 등록** |
+| `lint:frontend-architecture` | ⚠️ 假 green | strict 3 | 非 strict 始终 exit 0(不是 gate)，强制模式只有 `--strict` → 解决 strict blocking 3 项后接入 strict (见上方重新分类 note) |
+| `lint:i18n` | ❌ | 3 | 全部为 `global-error.tsx`(FE-D1 新增) — 因位于 i18n provider 外，静态英文不可避免 → **在 guard SKIP_FILE_PATTERNS 登记例外** |
+| `lint:type-safety` | ❌ | 2 | `chat-route-replacement.test.ts` 的 `@ts-expect-error`(模拟 SSR window 移除) — 合理 → **允许测试例外或理由注释** |
+| `lint:e2e-hygiene` | ❌ | 12 | 全部为 `e2e/captures/` 的 `waitForTimeout`(截图 tour 中固定等待较实用) → **对 captures 目录设例外或改为条件等待** |
+| `lint:a11y` | ❌ | 新增 3 + 解决 baseline 2 | approval-card/artifact-panel control label — **实际修改**(与 FE-D2 联动) + 更新 baseline |
+| `lint:design-system` | ❌ | palette/svg/arbitrary 多项 + card warning 18 | data-ui(chart/stats/terminal-card) 的 `text-emerald-*`·inline-svg(FE-D4)，message-attachments/approval-card arbitrary-layout — **实际 token 化修改或登记有文档说明的例外** |
 
-**착수 방식**: (1) 정당한 예외 3개(i18n/type-safety/e2e-hygiene)를 각 가드에 등록해 그린화 → 그 3개를 먼저 CI 연결. (2) a11y·design-system은 실제 컴포넌트 수정(FE-D2·FE-D4와 연동)이라 별도 커밋/PR로 그린화 후 연결. **한 번에 6개를 CI에 넣지 말 것** — 빨간 가드를 CI에 넣으면 이후 모든 PR이 막힌다. `frontend/package.json`에 `lint:all` 집계 스크립트는 미리 추가해 뒀다(가드가 다 그린이 된 뒤 CI가 이걸 호출).
-
----
-
-## B. 백엔드 커스텀 가드 부재 — 🟠 P1
-
-프론트의 `check-*.mjs` 패턴을 백엔드에도 도입한다. grep 기반 경량 스크립트(`backend/scripts/check_*.py`) + CI 스텝.
-
-### B-1. raw HTTPException 금지 (error_codes 팩토리 강제)
-- **증거**: `app/routers/`에 `raise HTTPException` **38곳**. BE-D2(#281)에서 404/403 21곳을 손으로 error_codes 팩토리로 바꿨는데, 규칙이 있었으면 애초에 리뷰에서 자동 검출.
-- **규칙**: 라우터에서 `raise HTTPException(` 직접 사용 금지 → `app/error_codes.py` 팩토리 사용. 예외(파일별 allowlist)는 명시.
-- **효과**: 응답 스키마(`{error:{code,message}}`) 일관성, enumeration-oracle 계약 준수.
-
-### B-2. 함수-로컬 `app.*` import 감지 (순환 결합 냄새)
-- **증거**: 함수 본문 안에서 `from app.` / `import app.` **155곳**. 대부분 services↔agent_runtime 양방향 결합(BE-S4)을 피하려는 지연 import — "숨은 런타임 의존"이라 정적 분석·IDE 탐색을 무력화.
-- **규칙**: 신규 함수-로컬 import 증가를 baseline 카운트로 막는다(줄이는 건 OK, 늘리는 건 실패). 근본 해결은 BE-S4.
-
-### B-3. `print()` 금지 (ruff `T20`으로 충분)
-- **증거**: `app/`에 `print(` **8곳**. 프로덕션은 `logging` 사용.
-- **규칙**: ruff `select`에 `T20` 추가(커스텀 불필요).
-
-### B-4. 라우터 직접 `db.commit()` — 관찰용(경고)
-- **증거**: `app/routers/`에 `await db.commit()` **152곳**. 트랜잭션 경계가 라우터에 흩어져 있음. 전면 금지는 과함(현 아키텍처가 라우터 commit 관례) → 카운트 추적만.
-- **공수**: B-1/B-2 = M(스크립트+baseline), B-3 = S, B-4 = S(관찰).
+**启动方式**: (1) 将 3 个合理例外(i18n/type-safety/e2e-hygiene)登记到各 guard 中使其 green → 先将这 3 个接入 CI。(2) a11y·design-system 需要实际 component 修改(与 FE-D2·FE-D4 联动)，因此另行 commit/PR 使其 green 后再接入。**不要一次把 6 个都接入 CI** — 将 red guard 放进 CI 会阻塞之后所有 PR。`frontend/package.json` 中已预先添加 `lint:all` 汇总 script(所有 guard 都 green 后 CI 调用它)。
 
 ---
 
-## C. ruff 보안 룰(S) off — SSRF를 자동 검출 가능 — 🟠 P1
+## B. Backend 缺少 custom guard — 🟠 P1
 
-> **C ✅ 완료 (2026-07-11, PR #288)**: `S` select 추가 + 51건(app 43 + scripts/alembic 8) 전수 트리아지. 실수정 2건 — openwiki `sync_repo.py`(LLM 제공 `--repo-url`/`--ref` 검증: http(s)-only·옵션 주입 거부·`git clone --` 구분자, 테스트 24케이스) / `generate_image.py`(`IMAGE_API_BASE_URL` scheme 가드 후 S310 억제). 오탐은 inline noqa+이유, `tests/*`(S101·S105-108·S603)·`alembic/versions/*`(S608·S112) per-file-ignores. 게이트 회귀 테스트 `tests/test_lint_security_rules.py`(위반 주입 빨간불 + 예외 non-blanket 네거티브, `--stdin-filename`으로 픽스처 자기-검출 회피). 2에이전트 리뷰 2라운드 통과(Critical/High/Medium 0).
+将 frontend 的 `check-*.mjs` pattern 也引入 backend。基于 grep 的轻量 script(`backend/scripts/check_*.py`) + CI step。
 
-- **증거**: `--select S`로 **43건**. 내역:
+### B-1. 禁止 raw HTTPException (强制使用 error_codes factory)
+- **证据**: `app/routers/` 中有 `raise HTTPException` **38 处**。BE-D2(#281) 中手动把 404/403 的 21 处改成 error_codes factory，如果已有规则，本可在 review 中自动发现。
+- **规则**: router 中禁止直接使用 `raise HTTPException(` → 使用 `app/error_codes.py` factory。例外(按文件 allowlist)需明确。
+- **效果**: response schema(`{error:{code,message}}`)一致性，遵守 enumeration-oracle contract。
 
-  | 룰 | 건수 | 의미 |
+### B-2. 检测函数局部 `app.*` import (循环耦合异味)
+- **证据**: 函数体内部 `from app.` / `import app.` **155 处**。大多是为了规避 services↔agent_runtime 双向耦合(BE-S4)而做的 delayed import — 属于"隐藏 runtime dependency"，削弱 static analysis·IDE navigation。
+- **规则**: 以 baseline count 阻止新增函数局部 import(减少可以，增加则失败)。根本解决方案是 BE-S4。
+
+### B-3. 禁止 `print()` (ruff `T20` 足够)
+- **证据**: `app/` 中 `print(` **8 处**。production 使用 `logging`。
+- **规则**: 在 ruff `select` 中添加 `T20`(无需 custom)。
+
+### B-4. router 直接 `db.commit()` — 仅观测(警告)
+- **证据**: `app/routers/` 中 `await db.commit()` **152 处**。transaction boundary 分散在 router 中。全面禁止过度(现架构惯例是 router commit) → 只追踪 count。
+- **工时**: B-1/B-2 = M(script+baseline), B-3 = S, B-4 = S(观测)。
+
+---
+
+## C. ruff security rule(S) off — 可自动发现 SSRF — 🟠 P1
+
+> **C ✅ 完成 (2026-07-11, PR #288)**: 添加 `S` select + 全量 triage 51 项(app 43 + scripts/alembic 8)。实际修复 2 项 — openwiki `sync_repo.py`(验证 LLM 提供的 `--repo-url`/`--ref`: 仅 http(s)·拒绝 option injection·`git clone --` separator，测试 24 case) / `generate_image.py`(`IMAGE_API_BASE_URL` scheme guard 后抑制 S310)。false positive 使用 inline noqa+理由，`tests/*`(S101·S105-108·S603)·`alembic/versions/*`(S608·S112) per-file-ignores。gate 回归测试 `tests/test_lint_security_rules.py`(注入违规变 red + 例外 non-blanket negative，使用 `--stdin-filename` 避免 fixture 自我检测)。2-agent review 2 轮通过(Critical/High/Medium 0)。
+
+- **证据**: `--select S` 共 **43 项**。明细:
+
+  | rule | 数量 | 含义 |
   |----|:---:|------|
-  | **S310** | 2 | **URL open (SSRF)** — SEC-1에서 손으로 찾은 web_scraper 취약점을 ruff가 자동 검출 |
-  | S603/S607 | 14 | subprocess 실행(skill_executor — 보안 민감 경로) |
-  | S105/S106 | 13 | 하드코딩 비밀번호/시크릿(상당수 상수명 오탐 — 검토 후 ignore) |
-  | S101 | 10 | 프로덕션 `assert`(최적화 빌드에서 제거 → 검증 우회) |
-  | S110 | 2 | try-except-pass(조용한 예외 삼킴) |
-  | S311 | 1 | 약한 random |
-  | S104 | 1 | 0.0.0.0 바인딩 |
+  | **S310** | 2 | **URL open (SSRF)** — ruff 自动发现了 SEC-1 中手动找到的 web_scraper 漏洞 |
+  | S603/S607 | 14 | subprocess 执行(skill_executor — 安全敏感路径) |
+  | S105/S106 | 13 | 硬编码 password/secret(不少是常量名 false positive — review 后 ignore) |
+  | S101 | 10 | production `assert`(优化 build 中会被移除 → 绕过验证) |
+  | S110 | 2 | try-except-pass(静默吞掉异常) |
+  | S311 | 1 | 弱 random |
+  | S104 | 1 | 绑定 0.0.0.0 |
 
-- **문제**: JWT 인증·크리덴셜 암복호를 다루는 프로젝트에서 보안 린터가 꺼져 있음. SEC-1 SSRF는 S310으로 조기 발견됐을 것.
-- **조치**:
-  1. `[tool.ruff.lint] select`에 `"S"` 추가.
-  2. 43건 중 진짜 위험(S310, S603/607의 미검증 입력, S101 프로덕션 assert)은 수정, 오탐(테스트의 assert=S101, 상수명 오탐=S105)은 `per-file-ignores` 또는 인라인 `# noqa: S105 — 상수명, 시크릿 아님`으로 이유와 함께 정리.
-  3. 테스트 디렉토리는 `"tests/*" = ["S101"]`로 assert 허용.
-- **공수**: M (43건 트리아지)
-
----
-
-## D. 타입 안전성 게이트 — ✅ basic 완료 / standard 검토 잔여
-
-- **완료 증거(2026-09-07)**: pyright `basic` 전체 0 errors. CI `backend-typecheck`의
-  `|| true`를 제거해 blocking 게이트로 승격했다.
-- **조치**(순서):
-  1. ✅ `docs/pyright-burndown-plan.md`의 B/C/D 단계 완료 → 최신 기준 1,258→0.
-  2. ✅ CI `|| true` 제거(하드 게이트).
-  3. `typeCheckingMode = "standard"` 승격은 별도 작업으로 검토.
-  4. `ANN`은 신규 코드부터 점진(`per-file-ignores`로 기존 파일 baseline, 신규 파일만 강제)하거나, 함수 시그니처 위주(`ANN001`/`ANN201`)만 우선.
-- **잔여 공수**: standard/ANN 범위 결정 후 재산정
+- **问题**: 在处理 JWT 认证·credential 加解密的项目中 security linter 处于关闭状态。SEC-1 SSRF 本可通过 S310 提前发现。
+- **措施**:
+  1. 在 `[tool.ruff.lint] select` 添加 `"S"`。
+  2. 43 项中真正危险的(S310, S603/607 的未验证输入, S101 production assert)修复，false positive(测试中的 assert=S101, 常量名 false positive=S105)用 `per-file-ignores` 或 inline `# noqa: S105 — 常量名，不是 secret` 带理由整理。
+  3. test 目录用 `"tests/*" = ["S101"]` 允许 assert。
+- **工时**: M (43 项 triage)
 
 ---
 
-## E. 저노이즈 ruff 룰 배치 추가 — 🟡 P2
+## D. 类型安全 gate — ✅ basic 完成 / standard 评估剩余
 
-> **E ✅ 완료 (2026-07-11, PR #291)**: 7룰 전부 활성. 아래 실측 66건은 `app/` 한정이었고 전체는 **373건**(tests/ 308 — SLF001 178·PT 77·DTZ 19가 대부분). 트리아지: 실수정 ~48 + 전역 ignore `N818`(도메인 스타일 예외명) + per-file `app/**`=PT(FastAPI `test_*` 엔드포인트 오탐), `tests/*`+=`SLF001,DTZ,PT017,PT018,N801,N815` + inline noqa 14(이유 포함). 게이트 회귀 테스트 `tests/test_lint_low_noise_rules.py`(§C 패턴 — 빨간불 주입 + 예외 rule-scoped 네거티브). DTZ의 "예외는 ignore"는 tests/ per-file + `usage_aggregate.date.today()` noqa로 반영.
+- **完成证据(2026-09-07)**: pyright `basic` 全量 0 errors。CI `backend-typecheck` 的
+  `|| true` 已移除并升级为 blocking gate。
+- **措施**(顺序):
+  1. ✅ `docs/pyright-burndown-plan.md` 的 B/C/D 阶段完成 → 最新基准 1,258→0。
+  2. ✅ 移除 CI `|| true`(hard gate)。
+  3. 将 `typeCheckingMode = "standard"` 升级另作单独工作评估。
+  4. `ANN` 可从新增代码开始渐进引入(`per-file-ignores` 给现有文件做 baseline，仅对新增文件强制)，或先只启用函数 signature 相关(`ANN001`/`ANN201`)。
+- **剩余工时**: 确定 standard/ANN 范围后重新估算
 
-지금 켜도 부담 적은 것들(합계 ~66건). 한 PR에 묶어 트리아지.
+---
 
-| 룰 | 건수 | 효과 |
+## E. 批量添加低噪声 ruff rule — 🟡 P2
+
+> **E ✅ 完成 (2026-07-11, PR #291)**: 7 个 rule 全部启用。下方实测 66 项仅限 `app/`，全量为 **373 项**(tests/ 308 — SLF001 178·PT 77·DTZ 19 占多数)。triage: 实际修复 ~48 + 全局 ignore `N818`(domain-style exception name) + per-file `app/**`=PT(FastAPI `test_*` endpoint false positive), `tests/*`+=`SLF001,DTZ,PT017,PT018,N801,N815` + inline noqa 14(含理由)。gate 回归测试 `tests/test_lint_low_noise_rules.py`(§C pattern — 注入违规变 red + 例外 rule-scoped negative)。DTZ 的"例外使用 ignore"通过 tests/ per-file + `usage_aggregate.date.today()` noqa 反映。
+
+现在启用负担较小的项目(合计 ~66 项)。打包到一个 PR 中 triage。
+
+| rule | 数量 | 效果 |
 |----|:---:|------|
-| `DTZ` | 1 | naive datetime 규약 명시(프로젝트 UTC-naive 정책과 정합 — 예외는 ignore) |
-| `C4` | 3 | 불필요한 comprehension |
-| `SLF` | 5 | private 멤버 외부 접근(`obj._x`) |
-| `RET` | 9 | return 안티패턴(불필요한 else 등) |
+| `DTZ` | 1 | 明确 naive datetime 规范(与项目 UTC-naive policy 一致 — 例外使用 ignore) |
+| `C4` | 3 | 不必要的 comprehension |
+| `SLF` | 5 | 外部访问 private member(`obj._x`) |
+| `RET` | 9 | return anti-pattern(不必要的 else 等) |
 | `PTH` | 10 | `os.path` → `pathlib` |
-| `PT` | 19 | pytest 스타일(fixture/parametrize 일관성) |
-| `N` | 19 | PEP8 네이밍 |
+| `PT` | 19 | pytest style(fixture/parametrize 一致性) |
+| `N` | 19 | PEP8 naming |
 
-점진 도입(양 많음): `TRY`(372), `EM`(388), `PLR`(274), `RUF`(155) — 유용하나 별도 트랙.
+渐进引入(数量较多): `TRY`(372), `EM`(388), `PLR`(274), `RUF`(155) — 有用但另开 track。
 
-- **공수**: S~M
-
----
-
-## F. 억제(suppression) 부채 가시화 — 🟡 P2
-
-> **F ✅ 완료 (2026-07-11, PR #290)**: `PGH` select 추가. 실측 위반 0(기존 109/76건은 총 개수 — bare 억제는 이미 없음)이라 순수 예방 게이트. PGH004 주입 빨간불 확인 + 게이트 회귀 테스트(`tests/test_lint_security_rules.py` — tests/의 S 예외가 PGH를 안 덮음 고정). type-ignore 이유 주석(조치 2)·개수 상한(조치 3)은 미채택(pyright 번다운 트랙과 중복).
-
-- **증거**: `# noqa` **109건**, `# type: ignore` **76건**. 억제 자체는 정상이나 이유 없이 늘어남.
-- **조치**:
-  1. ruff `PGH` 룰(`PGH004` bare-noqa 금지 등) 추가 → 모든 noqa에 코드+이유 강제.
-  2. pyright: `# type: ignore`에 이유 주석 컨벤션(도구 강제는 어려움 — 리뷰 체크리스트).
-  3. (선택) noqa/type:ignore 개수 상한 스크립트(baseline 초과 실패).
-- **공수**: S
+- **工时**: S~M
 
 ---
 
-## G. integration 테스트 마커 미강제 — 🟡 P2 (이번 CI 실패의 근본)
+## F. 抑制(suppression)债务可视化 — 🟡 P2
 
-> **G ✅ 완료 (2026-07-11, PR #290, 리뷰에서 exit code 정정)**: `tests/integration/conftest.py` 자동 마커 훅(경로 기반, `item.path.is_relative_to`). 마커 부여 후 plain `pytest tests/integration`은 전량 deselect → **exit 5**(NO_TESTS_COLLECTED, dir-scoped CI 스텝은 시끄럽게 red) — 최초 "exit 0" 실측은 `cmd | tail; echo $?` 파이프가 exit code를 삼킨 착시(§A의 pyright 오판과 동일 함정). **조용한** 거짓 그린은 full-suite `pytest tests/`에서 형제 테스트 통과가 deselection을 exit 0으로 가리는 변종. CI 직렬 스텝을 `-m integration` 명시 선택으로 수정(후행 `-m`이 addopts override — argparse last-wins), m9는 `INTEGRATION_DATABASE_URL` self-skip이라 선택돼도 안전(29 passed + 1 skipped). 회귀 테스트 `tests/test_integration_marker_hook.py`(마커 커버리지 + exit 5 deselection 계약 고정). **알려진 사각지대(pre-existing, 후속)**: `tests/test_trace_storage.py::test_message_event_cascade_delete_with_conversation`은 integration 마커인데 디렉토리 밖 — 병렬 스텝(마커 deselect)·직렬 스텝(경로 제한) 어디서도 안 돌며, aiosqlite에선 fail·live PG 주입 인프라 없음 → m9 패턴으로 tests/integration/ 이관 필요.
+> **F ✅ 完成 (2026-07-11, PR #290)**: 添加 `PGH` select。实测违规 0(现有 109/76 项是总数量 — 已不存在 bare suppression)，因此是纯预防 gate。确认 PGH004 注入变 red + gate 回归测试(`tests/test_lint_security_rules.py` — 固定 tests/ 的 S 例外不会覆盖 PGH)。未采纳 type-ignore 理由注释(措施 2)·数量上限(措施 3)(与 pyright burndown track 重复)。
 
-- **증거**: PR #280·#282 CI가 `test_conversation_run_lifecycle`·`test_stream_resume`의 xdist 스타베이션으로 실패. 원인은 이 파일들에 `@pytest.mark.integration`이 **없어서**(`test_m9_pg_roundtrip`만 마커 보유) 병렬 스위트에 섞인 것. CI 스텝 분리(`--ignore=tests/integration` + 직렬)로 급한 불은 껐음.
-- **조치**: `tests/integration/conftest.py`에 자동 마커 훅으로 원천 차단 (실구현은 deprecated `item.fspath` 대신 `item.path.is_relative_to(디렉토리)` 사용 — substring 오탐 없음):
+- **证据**: `# noqa` **109 项**, `# type: ignore` **76 项**。suppression 本身正常，但会在无理由情况下不断增加。
+- **措施**:
+  1. 添加 ruff `PGH` rule(`PGH004` 禁止 bare-noqa 等) → 强制所有 noqa 带 code+理由。
+  2. pyright: 对 `# type: ignore` 采用理由注释 convention(工具强制较难 — review checklist)。
+  3. (可选) noqa/type:ignore 数量上限 script(超过 baseline 失败)。
+- **工时**: S
+
+---
+
+## G. integration test marker 未强制 — 🟡 P2 (本次 CI 失败的根因)
+
+> **G ✅ 完成 (2026-07-11, PR #290, review 中修正 exit code)**: `tests/integration/conftest.py` 自动 marker hook(基于路径, `item.path.is_relative_to`)。赋予 marker 后 plain `pytest tests/integration` 全部 deselect → **exit 5**(NO_TESTS_COLLECTED，dir-scoped CI step 会明确 red) — 最初"exit 0"实测是 `cmd | tail; echo $?` pipeline 吞掉 exit code 的错觉(与 §A 的 pyright 误判相同陷阱)。**静默** false green 是 full-suite `pytest tests/` 中 sibling test 通过将 deselection 的 exit 0 掩盖的变体。CI 串行 step 修改为显式选择 `-m integration`(后置 `-m` override addopts — argparse last-wins)，m9 因 `INTEGRATION_DATABASE_URL` self-skip，即使被选中也安全(29 passed + 1 skipped)。回归测试 `tests/test_integration_marker_hook.py`(固定 marker coverage + exit 5 deselection contract)。**已知盲点(pre-existing, 后续)**: `tests/test_trace_storage.py::test_message_event_cascade_delete_with_conversation` 虽有 integration marker 但位于目录外 — parallel step(marker deselect)·serial step(path restricted)都不会运行，而且在 aiosqlite 下 fail·没有 live PG 注入基础设施 → 需要按 m9 pattern 迁移到 tests/integration/。
+
+- **证据**: PR #280·#282 CI 因 `test_conversation_run_lifecycle`·`test_stream_resume` 的 xdist starvation 失败。原因是这些文件**没有** `@pytest.mark.integration`(`test_m9_pg_roundtrip` 是唯一带 marker 的)，因此混入 parallel suite。通过拆分 CI step(`--ignore=tests/integration` + 串行)已先救火。
+- **措施**: 在 `tests/integration/conftest.py` 中用自动 marker hook 从源头阻断 (实际实现不使用 deprecated `item.fspath`，而使用 `item.path.is_relative_to(目录)` — 无 substring false positive):
   ```python
   _INTEGRATION_DIR = Path(__file__).resolve().parent
 
@@ -171,32 +171,32 @@
           if item.path.is_relative_to(_INTEGRATION_DIR):
               item.add_marker(pytest.mark.integration)
   ```
-  단, 현재 CI는 `--ignore=tests/integration`로 통합을 통째 제외하고 직렬 스텝에서 별도 실행 중이므로, 마커 자동부여 시 직렬 스텝의 `addopts '-m not integration'`과 상호작용 확인 필요(직렬 스텝은 `-m ''` 또는 `-m 'integration or not integration'`로 실행하도록 조정).
-- **공수**: S
+  但当前 CI 使用 `--ignore=tests/integration` 整体排除 integration 并在 serial step 单独运行，因此自动赋 marker 时需要确认与 serial step 的 `addopts '-m not integration'` 交互(将 serial step 调整为 `-m ''` 或 `-m 'integration or not integration'` 运行)。
+- **工时**: S
 
 ---
 
-## H. 기타 관찰 (참고)
+## H. 其他观察 (参考)
 
-- **DTO/스키마 검증**: Pydantic이 런타임 검증하나, 응답 스키마와 ORM 필드 드리프트를 잡는 정적 도구 없음(프론트 FE-S10의 openapi-typescript와 대칭 문제).
-- **frontend `no-console`/`no-explicit-any`**: eslint flat config에 `no-console` 룰 없음(0건 매치). `check-type-safety.mjs`가 any를 커스텀 검사 중이나 이 역시 A의 미연결 대상.
-- **커밋 메시지 규약**: CLAUDE.md에 `<type>(<scope>): <subject>` 규약 있으나 commitlint 등 강제 없음(선택).
+- **DTO/schema 验证**: Pydantic 做 runtime 验证，但没有 static tool 可发现 response schema 与 ORM 字段 drift(与 frontend FE-S10 的 openapi-typescript 是对称问题)。
+- **frontend `no-console`/`no-explicit-any`**: eslint flat config 中没有 `no-console` rule(匹配 0 项)。`check-type-safety.mjs` 正在 custom 检查 any，但它也属于 A 的未接入对象。
+- **commit message 规范**: CLAUDE.md 中有 `<type>(<scope>): <subject>` 规范，但没有 commitlint 等强制(可选)。
 
 ---
 
-## 권장 실행 순서
+## 推荐执行顺序
 
-1. **A** — 커스텀 가드 CI·pre-commit 연결 (자산 존재, 비용 0, 즉효). 사용자가 원한 "i18n 자동 체크"가 바로 켜짐.
-2. **C** — ruff `S`(보안) 켜기 + 43건 트리아지. 보안 프로젝트 필수.
-3. **E** — 저노이즈 룰 배치(`DTZ,C4,SLF,RET,PTH,PT,N`) + `T20`(B-3).
-4. **B-1** — 백엔드 `check_router_errors.py`(raw HTTPException 금지).
-5. **G** — integration 마커 자동부여.
-6. **F** — 억제 부채 가시화(`PGH`).
-7. ✅ **D** — 2026-09-07 Pyright basic 1,258→0 및 CI 하드 게이트 전환 완료.
+1. **A** — 接入 custom guard 到 CI·pre-commit (资产已存在，成本 0，立即见效)。用户想要的"i18n 自动检查"会直接开启。
+2. **C** — 开启 ruff `S`(security) + triage 43 项。security 项目必需。
+3. **E** — 批量启用低噪声 rule(`DTZ,C4,SLF,RET,PTH,PT,N`) + `T20`(B-3)。
+4. **B-1** — Backend `check_router_errors.py`(禁止 raw HTTPException)。
+5. **G** — 自动赋予 integration marker。
+6. **F** — 可视化 suppression 债务(`PGH`)。
+7. ✅ **D** — 2026-09-07 已完成 Pyright basic 1,258→0 并切换 CI hard gate。
 
-각 항목은 독립 PR. 룰 추가 PR은 "룰 켜기 + 위반 트리아지"를 한 커밋에 담아 CI가 그린이 되게 한다(빨간 룰을 남기지 않는다).
+每项为独立 PR。rule 添加 PR 要把"开启 rule + triage 违规"放在同一个 commit 中，确保 CI 为 green(不留下 red rule)。
 
-## 검증 커맨드 (근거 재현)
+## 验证命令 (依据复现)
 
 ```bash
 cd backend

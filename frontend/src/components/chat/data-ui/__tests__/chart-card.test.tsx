@@ -11,11 +11,11 @@ const SERIES = [
 describe('ChartCard', () => {
   it('renders a bar chart with title, axis labels, and a rect per point', () => {
     const { container } = render(
-      <ChartCard chartType="bar" series={SERIES} title="주간" xLabel="天数" yLabel="건수" />,
+      <ChartCard chartType="bar" series={SERIES} title="每周" xLabel="天数" yLabel="数量" />,
     )
     const card = screen.getByTestId('data-ui-chart')
     expect(card).toHaveAttribute('data-chart-type', 'bar')
-    expect(screen.getByText('주간')).toBeInTheDocument()
+    expect(screen.getByText('每周')).toBeInTheDocument()
     expect(screen.getByText('天数')).toBeInTheDocument()
     expect(screen.getByText('Mon')).toBeInTheDocument()
     expect(container.querySelectorAll('rect')).toHaveLength(SERIES.length)

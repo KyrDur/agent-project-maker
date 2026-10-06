@@ -200,8 +200,8 @@ test.describe('Chat navigator live integration', () => {
     )
     await activeRow.hover()
     await activeRow.getByRole('button', { name: '对话菜单' }).click()
-    await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /重命名/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /分享/ })).toBeVisible()
     await page.keyboard.press('Escape')
 
     await page.getByRole('button', { name: '搜索智能体' }).click()
@@ -417,7 +417,7 @@ test.describe('Chat navigator live integration', () => {
       )
       await expect(row).toBeVisible({ timeout: 20_000 })
 
-      // Open the row menu → 공유 → ShareDialog.
+      // Open the row menu → 分享 → ShareDialog.
       await row.hover()
       await row.getByRole('button', { name: '对话菜单' }).click()
       await page.getByRole('menuitem', { name: '分享', exact: true }).click()

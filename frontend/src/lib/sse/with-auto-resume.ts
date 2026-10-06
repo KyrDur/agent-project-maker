@@ -1,44 +1,44 @@
 import { StreamApiError, StreamHttpError } from './parse-sse'
 
-/** withAutoResume 가 lastEventId 추적에 사용하는 최소 인터페이스. parse-sse 의
- *  ``SSEEvent<TEvent>`` 와 lib/types 의 discriminated-union ``SSEEvent`` 양쪽이
- *  ``id?: string`` 을 노출하므로 둘 다 그대로 받을 수 있다. */
+/** withAutoResume 用于追踪 lastEventId 的最小接口。parse-sse 的
+ *  ``SSEEvent<TEvent>`` 与 lib/types 的 discriminated-union ``SSEEvent`` 都
+ *  暴露 ``id?: string``，因此两者都可以原样接收。 */
 export interface IdentifiedEvent {
   id?: string
 }
 
 /**
- * W3-out M5 — primary SSE stream 이 비정상 종료(네트워크 끊김 등) 했을 때
- * ``resumeFactory`` 로 GET ``/stream`` 을 다시 attach 해 누락된 event 부터
- * 이어 받는 generator decorator.
+ * W3-out M5 — primary SSE stream 异常结束（网络断开等）时，
+ * 通过 ``resumeFactory`` 重新 attach GET ``/stream``，从缺失的 event 开始
+ * 继续接收的 generator decorator。
  *
- * - lastEventId 추적: primary 가 yield 하는 매 event 의 ``id`` 를 기억해 두었다가
- *   재시도 시 ``resumeFactory(lastEventId, attempt)`` 호출.
- * - retryable 판정:
- *   - ``AbortError`` / ``signal.aborted`` → 재시도 X (사용자 cancel)
- *   - ``StreamHttpError`` 4xx (404 RESUME_NOT_FOUND, 409 INTERRUPT_PENDING 등)
- *     → 재시도 X. caller 에 throw 그대로 전파.
- *   - 그 외 (network error, ``StreamHttpError`` 5xx) → backoff 후 재시도.
- * - boundary dedup: 서버는 ``after_id`` *이후* 만 보내지만 timing race 로 같은
- *   event 가 1개 겹칠 수 있다 (primary 가 publish 직후 끊겼고 broker buffer
- *   에 그대로 남은 케이스). 이 경우 caller 의 ``streamGuard.isDuplicate`` 가
- *   처리하므로 여기서는 별도 dedup 안 함 — id 만 정확히 추적.
- * - 콜백 호출 순서:
- *   - 끊김 감지 → backoff 시작 직전 ``onReconnecting(attempt)``
- *   - 재시도 stream 의 첫 event 수신 → ``onReconnected()``
- *   - maxAttempts 초과 → ``onFailed(error)`` 후 throw
+ * - lastEventId 追踪：记住 primary yield 的每个 event 的 ``id``，
+ *   retry 时调用 ``resumeFactory(lastEventId, attempt)``。
+ * - retryable 判断：
+ *   - ``AbortError`` / ``signal.aborted`` → 不 retry（用户 cancel）
+ *   - ``StreamHttpError`` 4xx（404 RESUME_NOT_FOUND、409 INTERRUPT_PENDING 等）
+ *     → 不 retry。原样 throw 给 caller。
+ *   - 其他（network error、``StreamHttpError`` 5xx）→ backoff 后 retry。
+ * - boundary dedup：服务器只发送 ``after_id`` *之后* 的事件，但 timing race 可能导致
+ *   1 个相同 event 重叠（primary publish 后立即断开，且仍留在 broker buffer
+ *   中的情况）。此时由 caller 的 ``streamGuard.isDuplicate`` 处理，
+ *   因此这里不额外 dedup — 只需准确追踪 id。
+ * - 回调调用顺序：
+ *   - 检测到断开 → backoff 开始前 ``onReconnecting(attempt)``
+ *   - 收到 retry stream 的第一个 event → ``onReconnected()``
+ *   - 超过 maxAttempts → ``onFailed(error)`` 后 throw
  */
 export interface WithAutoResumeOptions {
   signal?: AbortSignal
-  /** 재시도 횟수 상한 (primary 1회 + 재시도 maxAttempts 회). 기본 3. */
+  /** retry 次数上限（primary 1 次 + retry maxAttempts 次）。默认 3。 */
   maxAttempts?: number
-  /** 각 재시도 직전 대기 시간(ms). attempt 가 길이를 초과하면 마지막 값 사용. */
+  /** 每次 retry 前的等待时间（ms）。attempt 超出长度时使用最后一个值。 */
   backoffMs?: number[]
-  /** 재시도 직전 1회 호출 (attempt: 1, 2, ...). UI 인디케이터 ON. */
+  /** retry 前调用 1 次（attempt: 1, 2, ...）。UI indicator ON。 */
   onReconnecting?: (attempt: number) => void
-  /** 재시도 stream 에서 첫 event 도착 시 1회 호출. UI 인디케이터 OFF. */
+  /** retry stream 的第一个 event 到达时调用 1 次。UI indicator OFF。 */
   onReconnected?: () => void
-  /** 모든 재시도 실패 또는 비-retryable 에러 시 1회 호출. */
+  /** 所有 retry 失败或遇到非 retryable 错误时调用 1 次。 */
   onFailed?: (error: Error) => void
 }
 
@@ -113,7 +113,7 @@ export async function* withAutoResume<E extends IdentifiedEvent>(
       }
       return
     } catch (err) {
-      // 비-retryable (4xx, AbortError, 이미 abort 된 signal) → 즉시 종료.
+      // 非 retryable（4xx、AbortError、已经 abort 的 signal）→ 立即结束。
       if (!isRetryableError(err, signal)) {
         options.onFailed?.(toError(err))
         throw err
@@ -127,9 +127,9 @@ export async function* withAutoResume<E extends IdentifiedEvent>(
       try {
         await sleepWithAbort(backoffFor(attempt, backoff), signal)
       } catch (abortErr) {
-        // backoff 도중 abort — 원본 err 를 onFailed 에 전달해 caller 가
-        // "왜 끊겼는지" 알 수 있게 하고, 실제 throw 는 abortErr (caller 가
-        // AbortController 로 식별 가능).
+        // backoff 过程中 abort — 将原始 err 传给 onFailed，让 caller
+        // 能知道 "为什么中断"，实际 throw 的是 abortErr（caller 可通过
+        // AbortController 识别）。
         options.onFailed?.(toError(err))
         throw abortErr
       }

@@ -18,6 +18,10 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+vi.mock('@/lib/hooks/use-system-llm-settings', () => ({
+  useSystemLlmReadiness: () => ({ data: [] }),
+}))
+
 const mockUseAgentSummaries = vi.fn()
 const mockUseSession = vi.fn()
 const mockToggleFavorite = vi.fn()
@@ -74,13 +78,11 @@ describe('DashboardPage', () => {
   it('shows quick action cards linking to creation pages', () => {
     render(<DashboardPage />)
     expect(screen.getByText('通过聊天构建')).toBeInTheDocument()
-    expect(screen.getByText('使用模板')).toBeInTheDocument()
+    expect(screen.queryByText('使用模板')).not.toBeInTheDocument()
+    expect(screen.queryByText('手动构建')).not.toBeInTheDocument()
 
     const conversationalLink = screen.getByText('通过聊天构建').closest('a')
     expect(conversationalLink).toHaveAttribute('href', '/agents/new')
-
-    const templateLink = screen.getByText('使用模板').closest('a')
-    expect(templateLink).toHaveAttribute('href', '/agents/new/template')
   })
 
   it.each(greetingCases)(
@@ -92,9 +94,9 @@ describe('DashboardPage', () => {
       mockUseSession.mockReturnValue({ data: { id: 'u1', name: '用户', email: 'a@b.c' } })
       render(<DashboardPage />)
       expect(screen.getByText(`${expectedGreeting},`, { exact: true })).toBeInTheDocument()
-      expect(screen.getByText(/수화님/)).toBeInTheDocument()
+      expect(screen.getByText('你好，用户 👋')).toBeInTheDocument()
       expect(
-        screen.getByText(new RegExp(`현재 ${mockAgentSummaryList.length}개의 에이전트가 있어요`)),
+        screen.getByText(new RegExp(`你目前有 ${mockAgentSummaryList.length} 个智能体`)),
       ).toBeInTheDocument()
     },
   )
@@ -104,28 +106,28 @@ describe('DashboardPage', () => {
     mockUseSession.mockReturnValue({
       data: {
         id: 'u1',
-        name: '가입이름',
-        display_name: '표시이름',
+        name: '注册名称',
+        display_name: '显示名称',
         email: 'a@b.c',
       },
     })
     render(<DashboardPage />)
-    expect(screen.getByText(/표시이름님/)).toBeInTheDocument()
-    expect(screen.queryByText(/가입이름님/)).not.toBeInTheDocument()
+    expect(screen.getByText('你好，显示名称 👋')).toBeInTheDocument()
+    expect(screen.queryByText('你好，注册名称 👋')).not.toBeInTheDocument()
   })
 
   it('falls back to "用户" when session is null', () => {
     mockUseSession.mockReturnValue({ data: null })
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
-    expect(screen.getByText(/사용자님/)).toBeInTheDocument()
+    expect(screen.getByText('你好，用户 👋')).toBeInTheDocument()
   })
 
   it('does not render usage summary or tip line (removed in redesign)', () => {
     mockUseAgentSummaries.mockReturnValue({ data: [], isLoading: false })
     render(<DashboardPage />)
     expect(screen.queryByText('本月使用情况')).not.toBeInTheDocument()
-    expect(screen.queryByText(/💡 팁/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/💡 提示/)).not.toBeInTheDocument()
   })
 
   it('shows agent count in header section', () => {

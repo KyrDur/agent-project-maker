@@ -1,592 +1,592 @@
-# Moldy DeepAgents 런타임 소스 기반 개선 감사
+# 基于 Moldy DeepAgents 运行时源码的改进审计
 
-작성일: 2026-05-30
-대상: `natural-mold` 현재 소스 코드, 설치된 `deepagents==0.6.1`, 첨부 문서 4개
+编写日期：2026-05-30
+对象：`natural-mold` 当前源码、已安装的 `deepagents==0.6.1`、4 份附件文档
 
-> 2026-06-07 문서 동기화 메모: 이 감사 문서는 당시 runtime/doc gap을 기록한
-> historical audit이다. P2-4의 `AGENTS.md`, `docs/PRD.md`,
-> `docs/ARCHITECTURE.md`, `docs/marketplace-resources-prd.md` 불일치 지적은
-> 2026-06-07 문서 갱신으로 해소되었다. 최신 기준은 `docs/ARCHITECTURE.md`와
-> `docs/PRD.md`를 우선한다.
+> 2026-06-07 文档同步备注：该审计文档记录了当时的 runtime/doc gap，
+> 属于 historical audit。P2-4 中对 `AGENTS.md`、`docs/PRD.md`、
+> `docs/ARCHITECTURE.md`、`docs/marketplace-resources-prd.md` 不一致问题的指出，
+> 已通过 2026-06-07 的文档更新解决。最新标准优先以 `docs/ARCHITECTURE.md` 和
+> `docs/PRD.md` 为准。
 
-검토한 첨부 문서:
+审查的附件文档：
 
 - `/Users/chester/Downloads/deepagents-runtime-audit.md`
 - `/Users/chester/Downloads/fleet-vs-moldy-analysis.md`
 - `docs/design-docs/hitl-ask-user-standardization-plan.md`
 - `docs/design-docs/langfuse-trace-debugger-plan.md`
 
-검토 기준:
+审查标准：
 
-- 로컬 LangChain/Deep Agents 스킬 문서
+- 本地 LangChain/Deep Agents skill 文档
   - `framework-selection`
   - `deep-agents-core`
   - `deep-agents-memory`
   - `deep-agents-orchestration`
   - `langgraph-human-in-the-loop`
-- 현재 설치된 DeepAgents API
-  - `create_deep_agent()` 시그니처: `subagents`, `skills`, `memory`, `permissions`, `backend`, `interrupt_on`, `store`, `checkpointer` 지원 확인
-  - `FilesystemBackend`는 `SandboxBackendProtocol`이 아님 확인
-  - `FilesystemPermission`: `operations`, `paths`, `mode` 구조 확인
+- 当前已安装的 DeepAgents API
+  - 已确认 `create_deep_agent()` 签名支持：`subagents`、`skills`、`memory`、`permissions`、`backend`、`interrupt_on`、`store`、`checkpointer`
+  - 已确认 `FilesystemBackend` 不是 `SandboxBackendProtocol`
+  - 已确认 `FilesystemPermission` 的结构：`operations`、`paths`、`mode`
 
-## 1. 결론 요약
+## 1. 结论摘要
 
-Moldy가 DeepAgents를 선택한 방향 자체는 맞다. 제품은 no-code agent builder이고, 장기 작업, 스킬, 파일, 스케줄, MCP, HITL, subagent delegation이 모두 필요하다. 이는 LangChain 단일 `create_agent`보다 DeepAgents 레이어에 더 잘 맞는다.
+Moldy 选择 DeepAgents 这一方向本身是正确的。产品是 no-code agent builder，并且需要长周期任务、skill、文件、调度、MCP、HITL、subagent delegation。相比 LangChain 单一的 `create_agent`，这些需求更适合 DeepAgents 层。
 
-문제는 DeepAgents를 "호출"하고는 있지만, 제품 설정 모델과 DeepAgents harness가 아직 완전히 연결되지 않은 부분이 많다는 점이다. 특히 DB/UI에는 있는 sub-agent가 실제 `create_deep_agent(subagents=...)`로 들어가지 않고, 파일 권한은 `permissions` 없이 전역 `backend/data`를 열고 있으며, skill script 실행은 DeepAgents sandbox 모델을 우회해 서버 프로세스 권한으로 실행된다.
+问题在于，虽然已经“调用”了 DeepAgents，但产品配置模型与 DeepAgents harness 仍有很多部分没有完全打通。尤其是 DB/UI 中已有的 sub-agent 并未真正传入 `create_deep_agent(subagents=...)`，文件权限在没有 `permissions` 的情况下开放了全局 `backend/data`，而 skill script 执行则绕过 DeepAgents sandbox 模型，以服务器进程权限运行。
 
-첨부 문서 중 일부 주장은 이미 현재 코드에서 개선되었다. 대표적으로 broad `/skills/` mount와 schedule run history 없음은 현재 소스 기준으로 상당 부분 해소되어 있다. 하지만 core runtime 쪽의 중요한 문제는 여전히 남아 있고, 몇 가지는 첨부 문서보다 더 명확하게 위험해졌다.
+附件文档中的部分判断已经在当前代码中得到改善。典型例子是 broad `/skills/` mount 和缺少 schedule run history，按当前源码已基本解决。但 core runtime 仍存在重要问题，其中一些风险甚至比附件文档描述得更明确。
 
-가장 먼저 고칠 항목은 "새 기능을 켜는 것"보다 "권한/credential/승인 경계를 먼저 세우는 것"이다. sub-agent runtime 연결은 핵심 기능이지만, 현재 file permission과 HITL이 약한 상태에서 먼저 켜면 위험한 tool surface가 child agent까지 넓어진다.
+最先要修的事项，相比“开启新功能”，更应是“先建立权限/credential/审批边界”。sub-agent runtime 打通虽然是核心功能，但如果在当前 file permission 和 HITL 都较弱的状态下先开启，会把高风险 tool surface 扩展到 child agent。
 
-재정렬된 최우선 순서:
+重新排序后的最高优先级：
 
-1. 기존 `/api/conversations/{conversation_id}/traces`에 auth/ownership guard를 추가한다.
-2. user agent middleware model이 system/env credential을 쓰지 못하게 막는다.
-3. `ask_user`와 승인 HiTL을 DeepAgents top-level `interrupt_on` 표준 경로로 통일한다.
-4. tool risk policy를 만들고 trigger mode에서 위험 도구를 기본 차단한다.
-5. `FilesystemBackend(root_dir=data)`에 DeepAgents `permissions`를 붙이거나 `CompositeBackend`로 격리한다.
-6. `execute_in_skill`을 우선 HITL/deny-by-default로 묶고, 이어 sandbox/worker 기반으로 바꾼다.
-7. MCP runtime에서 discovery와 동일한 credential interpolation/transport 지원을 보장한다.
-8. 위 안전 경계가 선 뒤 저장된 sub-agent를 실제 DeepAgents `subagents` 구성으로 전달한다.
-9. `stream_mode="messages"` 기반 SSE를 DeepAgents event stream/tool_call_id 중심으로 확장한다.
-10. streaming error가 hook/trace/message_events에서 성공처럼 기록되지 않도록 실패 상태를 전파한다.
-11. 그 다음 Langfuse trace debugger POC를 붙여 내부 trace를 외부 span waterfall로 보강한다.
+1. 为现有 `/api/conversations/{conversation_id}/traces` 添加 auth/ownership guard。
+2. 阻止 user agent middleware model 使用 system/env credential。
+3. 将 `ask_user` 与审批 HITL 统一到 DeepAgents top-level `interrupt_on` 标准路径。
+4. 建立 tool risk policy，并在 trigger mode 下默认阻止高风险工具。
+5. 为 `FilesystemBackend(root_dir=data)` 加上 DeepAgents `permissions`，或通过 `CompositeBackend` 进行隔离。
+6. 先将 `execute_in_skill` 设为 HITL/deny-by-default，再迁移为基于 sandbox/worker 的实现。
+7. 确保 MCP runtime 支持与 discovery 相同的 credential interpolation/transport。
+8. 在上述安全边界建立后，再把已保存的 sub-agent 真正传入 DeepAgents `subagents` 配置。
+9. 将基于 `stream_mode="messages"` 的 SSE 扩展为以 DeepAgents event stream/tool_call_id 为中心。
+10. 传播失败状态，避免 streaming error 在 hook/trace/message_events 中被记录成成功。
+11. 之后接入 Langfuse trace debugger POC，用外部 span waterfall 补强内部 trace。
 
-## 2. 첨부 문서 주장 검증
+## 2. 附件文档判断验证
 
-### 2.1 `deepagents-runtime-audit.md` 검증
+### 2.1 `deepagents-runtime-audit.md` 验证
 
-| 첨부 ID | 현재 판단 | 근거 |
+| 附件 ID | 当前判断 | 依据 |
 |---|---|---|
-| DA-01/02: 저장된 sub-agent가 runtime에 전달되지 않음 | 유효 | `Agent.sub_agent_links`와 API 저장 경로는 있으나 `AgentConfig`/`build_agent()`/`create_deep_agent()` 호출에 `subagents`가 없다. |
-| DA-03: skill slug/UUID path mismatch | 대부분 해소 | 현재는 per-thread `/runtime/{thread_id}/skills/{slug}` copytree와 prompt prefix rewrite가 있다. 다만 canonical `/skills/<uuid>`는 여전히 전역 backend 아래에 존재한다. |
-| DA-04: selected skill이 아니라 `/skills/` 전체 mount | 부분 해소 | `skills_sources = ["/runtime/{thread_id}/skills/"]`로 바뀌었다. 그러나 Filesystem tool 권한이 없어서 모델이 `/skills/<uuid>` 등 data root 내 다른 경로를 시도할 수 있다. |
-| DA-05: `execute_in_skill`이 sandbox가 아니라 host subprocess | 유효, 더 심각 | 현재 Python뿐 아니라 `curl`도 허용하고, credential env를 주입한다. OS sandbox/chroot/network 제한이 없다. |
-| DA-06: 전역 `FilesystemBackend`, `permissions` 미사용 | 유효 | `FilesystemBackend(root_dir=str(_DATA_DIR), virtual_mode=True)`만 사용하고 `permissions` 파라미터는 wrapper에 없다. |
-| DA-07: memory가 Store/CompositeBackend 기반이 아님 | 부분 유효 | `/agents/{agent_id}/AGENTS.md` file memory는 사용하지만 StoreBackend/namespace/approval/UI는 없다. |
-| DA-08: HITL이 built-in file tools를 놓침 | 유효, 더 심각 | auto `interrupt_on` 계산이 skill tool/ask_user 추가보다 먼저 실행되고, DeepAgents built-in `write_file`/`edit_file`은 계산 대상에 없다. |
-| DA-09: trigger mode에서 HITL 강제 off | 유효 | hang 방지 목적은 맞지만 schedule/channel용 risk policy/approval queue가 없다. |
-| DA-10/11: streaming 구조와 tool result 매칭 취약 | 유효 | `stream_mode="messages"`만 사용하며 SSE에 `tool_call_id`가 없다. frontend는 일반 result를 마지막 tool call에 붙인다. |
-| DA-12: assistant fixer도 DeepAgents built-in tools를 받음 | 유효 | assistant도 `build_agent()`를 사용하므로 DeepAgents built-in tool suite가 additive로 들어간다. |
-| DA-13: middleware catalog와 runtime filtering 불일치 | 유효 | public API는 auto-injected를 숨기지만 assistant read tool은 전체 registry를 보여준다. |
-| DA-14: provider middleware 중복 가능성 | 유효 | DeepAgents 0.6.1은 AnthropicPromptCachingMiddleware를 tail stack에 무조건 추가한다. Moldy도 anthropic provider에 직접 추가한다. |
+| DA-01/02：已保存的 sub-agent 未传入 runtime | 有效 | 存在 `Agent.sub_agent_links` 和 API 保存路径，但 `AgentConfig`/`build_agent()`/`create_deep_agent()` 调用中没有 `subagents`。 |
+| DA-03：skill slug/UUID path mismatch | 基本解决 | 当前已有 per-thread `/runtime/{thread_id}/skills/{slug}` copytree 和 prompt prefix rewrite。但 canonical `/skills/<uuid>` 仍位于全局 backend 下。 |
+| DA-04：挂载整个 `/skills/` 而非 selected skill | 部分解决 | 已改为 `skills_sources = ["/runtime/{thread_id}/skills/"]`。但由于 Filesystem tool 没有权限控制，模型仍可尝试访问 `/skills/<uuid>` 等 data root 下的其他路径。 |
+| DA-05：`execute_in_skill` 不是 sandbox，而是 host subprocess | 有效，且更严重 | 当前不仅允许 Python，也允许 `curl`，并注入 credential env。没有 OS sandbox/chroot/network 限制。 |
+| DA-06：全局 `FilesystemBackend`，未使用 `permissions` | 有效 | 仅使用 `FilesystemBackend(root_dir=str(_DATA_DIR), virtual_mode=True)`，wrapper 中没有 `permissions` 参数。 |
+| DA-07：memory 并非基于 Store/CompositeBackend | 部分有效 | 虽然使用 `/agents/{agent_id}/AGENTS.md` file memory，但没有 StoreBackend/namespace/approval/UI。 |
+| DA-08：HITL 漏掉 built-in file tools | 有效，且更严重 | auto `interrupt_on` 的计算发生在添加 skill tool/ask_user 之前，DeepAgents built-in `write_file`/`edit_file` 不在计算范围内。 |
+| DA-09：在 trigger mode 下强制关闭 HITL | 有效 | 为避免 hang 的目的合理，但没有用于 schedule/channel 的 risk policy/approval queue。 |
+| DA-10/11：streaming 结构和 tool result 匹配脆弱 | 有效 | 仅使用 `stream_mode="messages"`，SSE 中没有 `tool_call_id`。frontend 会把普通 result 绑定到最后一个 tool call。 |
+| DA-12：assistant fixer 也会获得 DeepAgents built-in tools | 有效 | assistant 也使用 `build_agent()`，因此 DeepAgents built-in tool suite 会以 additive 方式加入。 |
+| DA-13：middleware catalog 与 runtime filtering 不一致 | 有效 | public API 会隐藏 auto-injected，但 assistant read tool 会展示完整 registry。 |
+| DA-14：provider middleware 可能重复 | 有效 | DeepAgents 0.6.1 会无条件在 tail stack 添加 AnthropicPromptCachingMiddleware。Moldy 也会针对 anthropic provider 直接添加。 |
 
-### 2.2 `fleet-vs-moldy-analysis.md` 검증
+### 2.2 `fleet-vs-moldy-analysis.md` 验证
 
-첨부 Fleet 비교 문서는 방향성은 좋지만, schedule 관련 일부 내용은 현재 코드보다 오래되었다.
+附件中的 Fleet 对比文档方向是对的，但其中部分 schedule 内容已经落后于当前代码。
 
-이미 보완된 부분:
+已经补齐的部分：
 
-- `agent_trigger_runs` 모델이 있고 run history API가 있다.
+- 已有 `agent_trigger_runs` 模型和 run history API。
   - `backend/app/models/agent_trigger_run.py`
   - `backend/app/services/trigger_service.py:368-493`
   - `backend/app/routers/triggers.py:98-107`
-- schedule conversation policy가 있다.
+- 已有 schedule conversation policy。
   - `schedule_thread`, `new_per_run`, `selected_conversation`
   - `backend/app/services/trigger_service.py:18-22`, `388-424`
-- `one_time` trigger가 scheduler까지 연결되어 있다.
+- `one_time` trigger 已连接到 scheduler。
   - `backend/app/scheduler.py:100-119`
-- frontend `/schedules`에 history dialog가 있다.
+- frontend `/schedules` 中已有 history dialog。
   - `frontend/src/app/schedules/page.tsx:411-469`
 
-여전히 유효한 Fleet gap:
+仍然有效的 Fleet gap：
 
-- Channels는 placeholder다.
+- Channels 仍是 placeholder。
   - `frontend/src/components/agent/visual-settings/nodes/channels-node.tsx:7-23`
-- Agent identity, fixed/user credential policy, channel delivery target, async approval inbox는 없다.
-- MCP는 discovery와 runtime의 credential/transport 처리 차이가 남아 있다.
-- LangSmith Fleet 수준의 run/trace/eval/replay는 아직 부분 구현이다.
+- 尚无 Agent identity、fixed/user credential policy、channel delivery target、async approval inbox。
+- MCP 的 discovery 与 runtime 在 credential/transport 处理上仍有差异。
+- LangSmith Fleet 水平的 run/trace/eval/replay 目前仍只实现了一部分。
 
-문서 자체도 갱신 필요했으며, 2026-06-07 문서 동기화에서 해소됨:
+文档本身此前也需要更新，并已在 2026-06-07 的文档同步中解决：
 
-- `AGENTS.md`/`CLAUDE.md`는 M59, executor split, marketplace/memory/artifact 상태로 갱신됨.
-- `docs/PRD.md`는 PoC/mock auth 서술을 제거하고 ADR-016 이후 제품 상태로 재작성됨.
-- `docs/ARCHITECTURE.md`는 M1/M2 계획 문서에서 현재 runtime/source map으로 교체됨.
-- `docs/marketplace-resources-prd.md`는 v0.3 current implementation status를 추가했고, spec은 historical baseline으로 표시됨.
+- `AGENTS.md`/`CLAUDE.md` 已更新为 M59、executor split、marketplace/memory/artifact 状态。
+- `docs/PRD.md` 已移除 PoC/mock auth 描述，并按 ADR-016 之后的产品状态重写。
+- `docs/ARCHITECTURE.md` 已从 M1/M2 规划文档替换为当前 runtime/source map。
+- `docs/marketplace-resources-prd.md` 已加入 v0.3 current implementation status，并将 spec 标记为 historical baseline。
 
-### 2.3 `hitl-ask-user-standardization-plan.md` 검증
+### 2.3 `hitl-ask-user-standardization-plan.md` 验证
 
-이 문서는 현재 소스와 잘 맞는다. 특히 P0-4의 root cause를 더 정확하게 설명한다.
+该文档与当前源码高度一致。尤其是对 P0-4 root cause 的说明更准确。
 
-유효한 주장:
+有效的判断：
 
-- `ask_user` tool이 `interrupt_on` 계산 이후에 추가된다.
-  - wrap 시도: `backend/app/agent_runtime/executor.py:703-706`
-  - 실제 tool 추가: `backend/app/agent_runtime/executor.py:773-776`
-- `ask_user` 표준 정책은 `interrupt_on is not None`일 때만 merge된다. 즉 explicit HITL 설정이 없으면 `ask_user`가 표준 `respond` decision으로 감싸지지 않는다.
+- `ask_user` tool 会在 `interrupt_on` 计算之后才添加。
+  - wrap 尝试：`backend/app/agent_runtime/executor.py:703-706`
+  - 实际添加 tool：`backend/app/agent_runtime/executor.py:773-776`
+- `ask_user` 标准策略仅在 `interrupt_on is not None` 时 merge。也就是说，如果没有 explicit HITL 设置，`ask_user` 不会被标准 `respond` decision 包裹。
   - `backend/app/agent_runtime/executor.py:703-706`
-- `HumanInTheLoopMiddleware`를 직접 middleware list에 넣고 `create_deep_agent(interrupt_on=None)`으로 호출한다.
-  - 직접 주입: `backend/app/agent_runtime/executor.py:715-716`
-  - DeepAgents top-level path 비활성화: `backend/app/agent_runtime/executor.py:786-789`
-- DeepAgents 0.6.1은 top-level `interrupt_on`을 declarative subagent와 기본 `general-purpose` subagent에 상속한다.
+- 直接把 `HumanInTheLoopMiddleware` 放进 middleware list，并以 `create_deep_agent(interrupt_on=None)` 调用。
+  - 直接注入：`backend/app/agent_runtime/executor.py:715-716`
+  - 禁用 DeepAgents top-level path：`backend/app/agent_runtime/executor.py:786-789`
+- DeepAgents 0.6.1 会把 top-level `interrupt_on` 继承给 declarative subagent 和默认 `general-purpose` subagent。
   - `deepagents/graph.py:591-609`
   - `deepagents/graph.py:665-666`
-- native `ask_user.py`는 `interrupt()` resume 값을 그대로 `str(response)`로 반환한다.
+- native `ask_user.py` 会将 `interrupt()` 的 resume 值直接以 `str(response)` 返回。
   - `backend/app/agent_runtime/tools/ask_user.py:29-36`
-  - resume router는 항상 `{"decisions": [...]}` 형태를 보낸다.
+  - resume router 总是发送 `{"decisions": [...]}` 形式。
   - `backend/app/routers/conversations.py:843-856`
-- native ask_user fallback adapter는 `review_configs[].action_name`이 아니라 `tool_name`을 사용한다.
+- native ask_user fallback adapter 使用 `tool_name`，而不是 `review_configs[].action_name`。
   - `backend/app/agent_runtime/streaming.py:111-116`
-- frontend `useChatRuntime`은 `onStandardInterrupt` callback을 지원하지만 일반 대화 페이지는 이를 넘기지 않는다.
-  - callback 호출: `frontend/src/lib/chat/use-chat-runtime.ts:446-458`
-  - 일반 대화 페이지: `frontend/src/app/agents/[agentId]/conversations/[conversationId]/page.tsx:120-128`
+- frontend `useChatRuntime` 支持 `onStandardInterrupt` callback，但普通对话页面没有传入它。
+  - callback 调用：`frontend/src/lib/chat/use-chat-runtime.ts:446-458`
+  - 普通对话页面：`frontend/src/app/agents/[agentId]/conversations/[conversationId]/page.tsx:120-128`
 
-추가 판단:
+补充判断：
 
-- 이 plan은 구현 계획으로 바로 사용해도 된다.
-- 다만 P0-2/P0-3과 함께 묶어야 한다. `ask_user` 표준화만 해도 file write/edit, skill execution, MCP mutation tool이 정책에 빠지면 안전성은 여전히 부족하다.
-- frontend 작업은 단순히 `onStandardInterrupt`를 연결하는 수준이 아니라 standard interrupt payload를 assistant-ui synthetic tool call로 변환하는 coordinator가 필요하다. 현재 `UserInputUI`와 `ApprovalCard`는 단일 decision 즉시 resume 구조라 multi-action interrupt에 취약하다.
+- 这份 plan 可以直接作为实施计划使用。
+- 但需要与 P0-2/P0-3 一起处理。即使完成 `ask_user` 标准化，如果 file write/edit、skill execution、MCP mutation tool 仍未纳入策略，安全性依然不足。
+- frontend 工作不能只停留在连接 `onStandardInterrupt`，还需要一个 coordinator，把 standard interrupt payload 转换为 assistant-ui synthetic tool call。当前 `UserInputUI` 和 `ApprovalCard` 是单 decision 立即 resume 的结构，对 multi-action interrupt 较脆弱。
 
-### 2.4 현재 plan과 memory 동작 상태
+### 2.4 当前 plan 与 memory 的运行状态
 
 #### Plan / TodoList
 
-현재 "plan"은 DeepAgents `TodoListMiddleware` 기준으로 부분적으로 동작한다.
+当前的“plan”基于 DeepAgents `TodoListMiddleware`，只实现了部分能力。
 
-동작하는 부분:
+已生效的部分：
 
-- Moldy는 모든 main agent를 `create_deep_agent()`로 만든다.
+- Moldy 会通过 `create_deep_agent()` 创建所有 main agent。
   - `backend/app/agent_runtime/executor.py:781-794`
-- DeepAgents 0.6.1은 `TodoListMiddleware`를 main agent, custom subagent, 기본 `general-purpose` subagent stack에 자동 추가한다.
+- DeepAgents 0.6.1 会自动把 `TodoListMiddleware` 添加到 main agent、custom subagent 和默认 `general-purpose` subagent stack。
   - `deepagents/graph.py:547-548`
   - `deepagents/graph.py:619-620`
   - `deepagents/graph.py:670-673`
-- `TodoListMiddleware`는 `write_todos` tool을 추가하고 graph state의 `todos`를 갱신한다.
+- `TodoListMiddleware` 会添加 `write_todos` tool，并更新 graph state 中的 `todos`。
   - installed `langchain/agents/middleware/todo.py`
-- Moldy frontend에는 `write_todos` 전용 UI가 있다.
+- Moldy frontend 中有专门用于 `write_todos` 的 UI。
   - `frontend/src/components/chat/tool-ui/plan-tool-ui.tsx:52-55`
   - `frontend/src/lib/chat/tool-ui-registry.ts:31-47`
-- main chat은 `thread_id = conversation_id`와 Postgres checkpointer를 사용하므로 같은 conversation 안에서는 todo state가 checkpoint에 보존될 수 있다.
+- main chat 使用 `thread_id = conversation_id` 和 Postgres checkpointer，因此在同一个 conversation 内，todo state 可以保存在 checkpoint 中。
   - `backend/app/agent_runtime/executor.py:789-797`
 
-부족한 부분:
+不足之处：
 
-- plan은 제품 설정으로 켜고 끄는 기능이 아니다. DeepAgents built-in으로 항상 붙고, `todo_list` middleware 설정은 runtime에서 필터링된다.
+- plan 不是可以通过产品设置开关的功能。它作为 DeepAgents built-in 始终存在，而 `todo_list` middleware 设置会在 runtime 中被过滤。
   - `backend/app/agent_runtime/executor.py:667-673`
-- UI는 `write_todos` tool call을 보여줄 뿐, 현재 todo state를 별도 API/side panel로 읽어오는 구조는 없다.
-- SSE에는 `tool_call_id`가 없어 반복 plan update와 result 매칭이 취약하다.
-- subagent 연결이 runtime에 전달되지 않으므로, 사용자가 만든 child agent의 plan이 parent/child 구조로 분리되어 동작하는 단계는 아니다.
+- UI 只展示 `write_todos` tool call，没有通过单独 API/side panel 读取当前 todo state 的结构。
+- SSE 中没有 `tool_call_id`，因此重复 plan update 与 result 的匹配较脆弱。
+- 由于 subagent 连接没有传入 runtime，用户创建的 child agent 的 plan 还没有达到按 parent/child 结构拆分运行的阶段。
 
-결론:
+结论：
 
-- "DeepAgents plan 도구가 있나?"라는 의미라면 있다.
-- "Moldy 제품 기능으로 계획 상태를 안정적으로 관리/조회/재개하나?"라는 의미라면 아직 아니다.
+- 如果问“有没有 DeepAgents plan 工具？”，答案是有。
+- 如果问“是否已经把计划状态作为 Moldy 产品功能稳定地管理/查询/恢复？”，答案还是否定的。
 
 #### Memory
 
-현재 "memory"는 DeepAgents `MemoryMiddleware` 기준으로 매우 얇게 동작한다.
+当前的“memory”基于 DeepAgents `MemoryMiddleware`，只实现了非常薄的一层能力。
 
-동작하는 부분:
+已生效的部分：
 
-- `agent_id`가 있으면 `/agents/{agent_id}/AGENTS.md`가 memory source로 전달된다.
+- 存在 `agent_id` 时，会将 `/agents/{agent_id}/AGENTS.md` 作为 memory source 传入。
   - `backend/app/agent_runtime/executor.py:768-772`
-- DeepAgents는 `memory` 인자가 있으면 `MemoryMiddleware`를 추가한다.
+- DeepAgents 在有 `memory` 参数时会添加 `MemoryMiddleware`。
   - `deepagents/graph.py:718-727`
-- `MemoryMiddleware`는 source file을 backend에서 읽고 system prompt에 `<agent_memory>` 블록으로 주입한다.
+- `MemoryMiddleware` 会从 backend 读取 source file，并以 `<agent_memory>` block 注入 system prompt。
   - installed `deepagents/middleware/memory.py:290-349`
-- Moldy는 agent memory directory를 만든다.
+- Moldy 会创建 agent memory directory。
   - `backend/app/agent_runtime/executor.py:769-771`
 
-부족한 부분:
+不足之处：
 
-- `AGENTS.md` 파일 자체를 생성하지 않는다. 파일이 없으면 DeepAgents는 오류 없이 skip하고 `(No memory loaded)` prompt가 들어간다.
-- memory write는 `edit_file`을 통해 모델이 직접 파일을 수정하는 방식에 의존한다. 그런데 file permission/HITL 정책이 아직 정리되지 않았다.
-- `StoreBackend`/`CompositeBackend`를 쓰지 않고 전역 `FilesystemBackend(root_dir=data)`를 쓴다.
-- memory UI, audit, user approval, schedule mode memory write policy가 없다.
-- MemoryMiddleware는 state에 `memory_contents`가 이미 있으면 다시 로드하지 않는다. 같은 checkpoint thread에서 memory file이 외부에서 바뀌어도 turn마다 최신 파일을 재로드한다는 보장이 약하다.
+- 不会创建 `AGENTS.md` 文件本身。如果文件不存在，DeepAgents 会无报错地 skip，并在 prompt 中加入 `(No memory loaded)`。
+- memory write 依赖模型通过 `edit_file` 直接修改文件。但 file permission/HITL 策略尚未整理完成。
+- 不使用 `StoreBackend`/`CompositeBackend`，而是使用全局 `FilesystemBackend(root_dir=data)`。
+- 没有 memory UI、audit、user approval、schedule mode memory write policy。
+- 如果 state 中已经有 `memory_contents`，MemoryMiddleware 不会重新加载。即使同一 checkpoint thread 中的 memory file 被外部修改，也难以保证每个 turn 都重新加载最新文件。
 
-결론:
+结论：
 
-- "AGENTS.md를 읽어 prompt에 넣는 최소 연결"은 있다.
-- "장기 메모리 제품 기능"은 아직 구현되지 않았다고 보는 편이 맞다.
+- 已具备“读取 AGENTS.md 并放入 prompt 的最小连接”。
+- 更准确的判断是，“长期记忆产品功能”尚未实现。
 
-### 2.5 `langfuse-trace-debugger-plan.md` 검증
+### 2.5 `langfuse-trace-debugger-plan.md` 验证
 
-이 plan은 현재 `message_events` 기반 SSE trace와 상호보완 관계가 명확하다. Moldy 내부 trace는 stream resume/share chip 렌더링에 좋고, Langfuse는 LangChain/LangGraph/DeepAgents 내부 span, LLM call, tool call, latency waterfall 디버깅에 더 적합하다.
+这份 plan 与当前基于 `message_events` 的 SSE trace 有明确的互补关系。Moldy 内部 trace 适合 stream resume/share chip 渲染，而 Langfuse 更适合调试 LangChain/LangGraph/DeepAgents 内部 span、LLM call、tool call、latency waterfall。
 
-유효한 주장:
+有效的判断：
 
-- 현재 `message_events`는 assistant turn 단위 SSE event trace를 저장한다.
+- 当前 `message_events` 会按 assistant turn 保存 SSE event trace。
   - `backend/app/models/message_event.py:18-72`
   - `backend/app/services/trace_storage.py:60-181`
-- stream run id는 이미 turn correlation key로 쓰인다.
-  - 생성: `backend/app/routers/conversations.py:319-330`
+- stream run id 已经被用作 turn correlation key。
+  - 生成：`backend/app/routers/conversations.py:319-330`
   - partial flush: `backend/app/routers/conversations.py:334-357`
   - finalize: `backend/app/routers/conversations.py:360-398`
-- Langfuse runtime integration dependency는 아직 없다. 다만 실제 `backend/.env`에는 사용자가 아래 키를 추가했고, repo 기준 `backend/.env.example`/`Settings`도 같은 이름으로 맞췄다.
+- 目前还没有 Langfuse runtime integration dependency。不过用户已在实际 `backend/.env` 中加入下列 key，repo 中的 `backend/.env.example`/`Settings` 也已统一为同名。
   - `LANGFUSE_SECRET_KEY`
   - `LANGFUSE_PUBLIC_KEY`
   - `LANGFUSE_BASE_URL`
   - `backend/pyproject.toml`
   - `backend/.env.example`
   - `backend/app/config.py`
-- Langfuse SDK v3 + LangChain callback 방향은 공식 문서와 맞다.
-  - 공식 문서도 `from langfuse.langchain import CallbackHandler`와 `config={"callbacks": [handler]}` 형태를 안내한다.
-  - SDK v3 self-hosted 요구 버전도 plan의 `>=3.125.0` 설명과 맞다.
-- trace 단위를 "Langfuse trace = assistant turn 1회", "Langfuse session = conversation 1개"로 잡는 것은 현재 Moldy run_id/conversation_id 구조와 잘 맞다.
+- Langfuse SDK v3 + LangChain callback 的方向与官方文档一致。
+  - 官方文档也给出 `from langfuse.langchain import CallbackHandler` 与 `config={"callbacks": [handler]}` 的用法。
+  - SDK v3 self-hosted 的版本要求也与 plan 中 `>=3.125.0` 的说明一致。
+- 将 trace 单位定义为“Langfuse trace = 1 次 assistant turn”、“Langfuse session = 1 个 conversation”，与当前 Moldy run_id/conversation_id 结构高度匹配。
 
-추가로 발견한 문제:
+额外发现的问题：
 
-- 기존 `/api/conversations/{conversation_id}/traces` endpoint는 `get_current_user`와 ownership 검증이 없다.
+- 现有 `/api/conversations/{conversation_id}/traces` endpoint 没有 `get_current_user` 和 ownership 校验。
   - `backend/app/routers/conversations.py:486-502`
-  - 현재는 `chat_service.get_conversation()`만 호출한다.
-  - trace event에는 tool args/results, user content, file/skill output이 들어갈 수 있으므로 Langfuse debugger 이전에 먼저 고쳐야 한다.
-- Langfuse callback을 그대로 켜면 prompt, user input, tool args/result가 외부 trace backend로 나갈 수 있다. 현재 SSE event redaction과 별도의 external trace redaction/capture policy가 필요하다.
-- `message_events` correlation 컬럼 추가는 좋은 방향이지만, `external_trace_id`를 SDK 생성 id로 받을지 deterministic `run_id`로 강제할지 먼저 검증해야 한다.
-- Agent Prism은 alpha 성격이므로 core chat UI에 직접 강결합하지 않고 adapter/debug module로 격리해야 한다.
+  - 当前只调用 `chat_service.get_conversation()`。
+  - trace event 可能包含 tool args/results、user content、file/skill output，因此应在接入 Langfuse debugger 之前优先修复。
+- 如果直接开启 Langfuse callback，prompt、user input、tool args/result 可能被发送到外部 trace backend。除当前 SSE event redaction 外，还需要独立的 external trace redaction/capture policy。
+- 给 `message_events` 增加 correlation 列是正确方向，但要先验证 `external_trace_id` 应采用 SDK 生成的 id，还是强制使用 deterministic `run_id`。
+- Agent Prism 具有 alpha 属性，因此不应直接强耦合到 core chat UI，而应隔离到 adapter/debug module。
 
-개선안:
+改进方案：
 
-- 단기 P0:
-  - 기존 `/api/conversations/{conversation_id}/traces`에 `CurrentUser` dependency와 `get_owned_conversation()` guard 추가
-  - share page용 trace 노출과 authenticated debug trace API를 명확히 분리
+- 短期 P0：
+  - 为现有 `/api/conversations/{conversation_id}/traces` 添加 `CurrentUser` dependency 与 `get_owned_conversation()` guard
+  - 明确区分 share page 的 trace 暴露与 authenticated debug trace API
 - P1:
-  - `LANGFUSE_ENABLED`, key/base URL env와 `langfuse>=3.8,<4.0` dependency 추가
-  - callback factory를 `executor.py`에 직접 흩뿌리지 말고 `observability/langfuse.py` 같은 작은 adapter로 격리
-  - LangGraph config에 callback/metadata/tags 주입
-  - `message_events`에 `external_trace_provider`, `external_trace_id`, `external_trace_url` 추가
-  - backend proxy API에서 conversation ownership과 trace-session membership 검증
+  - 添加 `LANGFUSE_ENABLED`、key/base URL env 和 `langfuse>=3.8,<4.0` dependency
+  - 不要把 callback factory 直接散布在 `executor.py` 中，而是隔离到 `observability/langfuse.py` 这类小型 adapter
+  - 向 LangGraph config 注入 callback/metadata/tags
+  - 在 `message_events` 中添加 `external_trace_provider`、`external_trace_id`、`external_trace_url`
+  - 在 backend proxy API 中验证 conversation ownership 和 trace-session membership
 - P1/P2:
-  - Agent Prism POC는 debug route/module로 격리
-  - Langfuse 장애 시 `message_events` fallback UI 제공
-  - input/output capture, redaction, sample rate를 env로 제어
+  - 将 Agent Prism POC 隔离到 debug route/module
+  - Langfuse 故障时提供 `message_events` fallback UI
+  - 通过 env 控制 input/output capture、redaction、sample rate
 
-## 3. 최종 우선순위별 상세 백로그
+## 3. 按最终优先级整理的详细 backlog
 
-이 섹션이 실행 순서의 source of truth다. 뒤의 "영역별 상세 근거"는 각 항목의 소스 증거와 배경을 보존하기 위한 reference bank다.
+本节是执行顺序的 source of truth。后面的“各领域详细依据”是用于保留各项源码证据与背景的 reference bank。
 
 ### 1. existing trace endpoint access control
 
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- 현재 `/api/conversations/{conversation_id}/traces`는 `get_current_user` 없이 `chat_service.get_conversation()`만 호출한다.
-- `message_events`에는 user content, tool args/result, skill output, file content 일부가 들어갈 수 있다.
-- Langfuse debugger를 붙이면 trace 표면적이 더 넓어지므로, 기존 trace endpoint 권한부터 닫아야 한다.
+- 当前 `/api/conversations/{conversation_id}/traces` 在没有 `get_current_user` 的情况下只调用 `chat_service.get_conversation()`。
+- `message_events` 中可能包含 user content、tool args/result、skill output、部分 file content。
+- 接入 Langfuse debugger 后 trace 表面积会进一步扩大，因此应先关闭现有 trace endpoint 的权限缺口。
 
-바로 할 일:
+立即要做：
 
-- `backend/app/routers/conversations.py`의 trace endpoint에 `CurrentUser = Depends(get_current_user)` 추가
-- `chat_service.get_conversation()`을 `get_owned_conversation()` 또는 동일한 ownership guard로 교체
-- public share page용 trace shape와 authenticated debug trace shape 분리
-- cross-user/unauthenticated trace access regression test 추가
+- 在 `backend/app/routers/conversations.py` 的 trace endpoint 中添加 `CurrentUser = Depends(get_current_user)`
+- 将 `chat_service.get_conversation()` 替换为 `get_owned_conversation()` 或等价的 ownership guard
+- 分离用于 public share page 的 trace shape 与 authenticated debug trace shape
+- 添加 cross-user/unauthenticated trace access regression test
 
-완료 기준:
+完成标准：
 
-- 다른 사용자의 `conversation_id`로 trace event를 조회할 수 없다.
-- 인증 없는 요청은 trace를 받지 못한다.
-- share page는 chip 렌더링에 필요한 최소 trace만 받는다.
+- 无法通过其他用户的 `conversation_id` 查询 trace event。
+- 未认证请求无法获得 trace。
+- share page 只接收 chip 渲染所需的最小 trace。
 
 ### 2. middleware model credential boundary
 
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- user-facing agent runtime에서 middleware model이 system/env credential로 생성될 수 있다.
-- main model credential 정책은 비교적 엄격하지만, middleware model resolution이 우회 경로가 될 수 있다.
-- 비용/보안/tenant isolation 문제가 동시에 걸려 있다.
+- 在 user-facing agent runtime 中，middleware model 目前可能使用 system/env credential 创建。
+- main model credential 策略相对严格，但 middleware model resolution 可能成为绕过路径。
+- 这里同时涉及成本/安全/tenant isolation 问题。
 
-바로 할 일:
+立即要做：
 
-- user conversation/trigger runtime에서 `provider_api_keys=env_provider_keys()` 전달 제거 또는 system flow 전용으로 분리
-- `create_chat_model(..., allow_env_fallback=False)` 옵션 추가
-- `_resolve_middleware_model_params()`에서 user-owned credential 없는 middleware model을 거절
-- builder/assistant/system flow만 explicit env/system fallback 허용
+- 从 user conversation/trigger runtime 中移除 `provider_api_keys=env_provider_keys()` 的传递，或拆分为 system flow 专用
+- 添加 `create_chat_model(..., allow_env_fallback=False)` 选项
+- 在 `_resolve_middleware_model_params()` 中拒绝没有 user-owned credential 的 middleware model
+- 只允许 builder/assistant/system flow 使用 explicit env/system fallback
 
-완료 기준:
+完成标准：
 
-- user agent middleware model이 env/system credential로 생성되지 않는다.
-- credential 누락은 조용한 fallback이 아니라 명확한 user-actionable error가 된다.
+- user agent middleware model 不再通过 env/system credential 创建。
+- credential 缺失时不会静默 fallback，而是返回明确且 user-actionable 的 error。
 
-### 3. HITL/ask_user 표준 interrupt 연결
+### 3. HITL/ask_user 标准 interrupt 接线
 
-우선순위:
-
-- P0
-
-왜 먼저인가:
-
-- 승인, 자연어 되묻기, subagent HITL 상속의 공통 wire다.
-- 현재는 `ask_user`가 `interrupt_on` 계산 이후 추가되고, manual `HumanInTheLoopMiddleware` 주입으로 DeepAgents top-level 상속 경로를 잃는다.
-- 이걸 먼저 정리해야 tool risk policy와 trigger guard가 같은 기준 위에 선다.
-
-바로 할 일:
-
-- `ask_user_tool`을 interrupt policy 계산 전에 추가
-- manual `HumanInTheLoopMiddleware` instance append 제거
-- `build_agent(..., interrupt_on=interrupt_on ...)`으로 DeepAgents top-level path 사용
-- native `ask_user.py` fallback에서 standard resume payload의 `respond.message`만 추출
-- `streaming.py` native adapter를 `review_configs[].action_name` 표준 shape로 고정
-- frontend standard interrupt mapper/coordinator 추가
-
-완료 기준:
-
-- HITL 설정이 없어도 대화형 모드의 `ask_user`는 `respond` decision으로 resume된다.
-- 기본 `general-purpose` subagent에도 top-level HITL policy가 상속된다.
-- multi-action interrupt는 decision 배열 길이와 순서를 보존해 한 번에 resume된다.
-
-### 4. tool risk policy와 trigger guard
-
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- trigger/invoke mode는 사용자가 보고 있지 않아서 HITL을 끄지만, 현재 위험 도구의 대체 정책이 없다.
-- Gmail/Calendar/webhook/skill execution 같은 외부 mutation이 예약 실행에서 무승인으로 나갈 수 있다.
+- 这是审批、自然语言追问、subagent HITL 继承的共同 wire。
+- 当前 `ask_user` 在 `interrupt_on` 计算之后添加，并且通过 manual `HumanInTheLoopMiddleware` 注入，导致失去 DeepAgents top-level 继承路径。
+- 必须先把这一点理顺，tool risk policy 与 trigger guard 才能建立在同一套标准上。
 
-바로 할 일:
+立即要做：
 
-- registry/builtin/MCP/skill tool에 `risk_level` 또는 `requires_approval` metadata 추가
-- default HITL policy를 tool name heuristic이 아니라 risk metadata 기반으로 생성
-- trigger/invoke mode에서 `external_mutation`, `code_execution` 기본 차단
-- trigger run에 blocked reason 저장 및 UI 표시
+- 在计算 interrupt policy 之前添加 `ask_user_tool`
+- 移除 manual `HumanInTheLoopMiddleware` instance append
+- 通过 `build_agent(..., interrupt_on=interrupt_on ...)` 使用 DeepAgents top-level path
+- 在 native `ask_user.py` fallback 中，只提取 standard resume payload 的 `respond.message`
+- 将 `streaming.py` native adapter 固定为 `review_configs[].action_name` 标准 shape
+- 添加 frontend standard interrupt mapper/coordinator
 
-완료 기준:
+完成标准：
 
-- 대화형 모드에서 mutation/code execution은 승인 없이 실행되지 않는다.
-- trigger mode에서 위험 도구는 자동 실행되지 않는다.
-- read-only tool은 불필요한 승인 없이 계속 실행된다.
+- 即使没有 HITL 设置，对话模式下的 `ask_user` 也会以 `respond` decision resume。
+- 默认 `general-purpose` subagent 也会继承 top-level HITL policy。
+- multi-action interrupt 会保留 decision 数组的长度和顺序，并一次性 resume。
+
+### 4. tool risk policy 与 trigger guard
+
+优先级：
+
+- P0
+
+为什么要先做：
+
+- trigger/invoke mode 因用户不在场而关闭 HITL，但当前没有针对高风险工具的替代策略。
+- Gmail/Calendar/webhook/skill execution 等外部 mutation 可能在定时执行中未经审批直接发出。
+
+立即要做：
+
+- 为 registry/builtin/MCP/skill tool 添加 `risk_level` 或 `requires_approval` metadata
+- 根据 risk metadata，而不是 tool name heuristic，生成 default HITL policy
+- 在 trigger/invoke mode 下默认阻止 `external_mutation`、`code_execution`
+- 在 trigger run 中保存 blocked reason 并在 UI 展示
+
+完成标准：
+
+- 对话模式中的 mutation/code execution 不会在未经审批时执行。
+- trigger mode 下不会自动执行高风险工具。
+- read-only tool 会继续执行，不需要不必要的审批。
 
 ### 5. filesystem permissions/CompositeBackend
 
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- 현재 DeepAgents file tools가 같은 `backend/data` root를 본다.
-- `virtual_mode=True`는 path escape 완화이지 user/agent/conversation ownership boundary가 아니다.
-- memory, skill, conversation outputs 격리의 기반이다.
+- 当前 DeepAgents file tools 都指向同一个 `backend/data` root。
+- `virtual_mode=True` 只是缓解 path escape，并不是 user/agent/conversation ownership boundary。
+- 这是隔离 memory、skill、conversation outputs 的基础。
 
-바로 할 일:
+立即要做：
 
-- `build_agent(..., permissions=...)` 추가
-- agent/thread/user scoped permission builder 추가
-- 최소 정책: current thread skill runtime read, current conversation output read/write, own agent memory policy-bound read/write, 나머지 `/skills/**`, `/agents/**`, `/runtime/**` deny
-- 중기적으로 `CompositeBackend`로 temporary workspace, skills, outputs, memory route 분리
+- 添加 `build_agent(..., permissions=...)`
+- 添加 agent/thread/user scoped permission builder
+- 最小策略：允许 current thread skill runtime read、current conversation output read/write、own agent memory policy-bound read/write，其余 `/skills/**`、`/agents/**`、`/runtime/**` deny
+- 中期通过 `CompositeBackend` 拆分 temporary workspace、skills、outputs、memory route
 
-완료 기준:
+完成标准：
 
-- agent A가 agent B memory/conversation/skill을 읽거나 수정하지 못한다.
-- selected skill만 read 가능하다.
-- built-in `write_file`/`edit_file`이 permission과 HITL 정책을 모두 따른다.
+- agent A 无法读取或修改 agent B 的 memory/conversation/skill。
+- 只能 read selected skill。
+- built-in `write_file`/`edit_file` 同时遵循 permission 与 HITL 策略。
 
 ### 6. execute_in_skill containment/sandbox
 
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- 현재 `execute_in_skill`은 DeepAgents sandbox model을 우회해 host subprocess를 실행한다.
-- `curl`과 credential env injection이 같이 있어 egress/secret exfiltration 리스크가 크다.
+- 当前 `execute_in_skill` 绕过 DeepAgents sandbox model，执行 host subprocess。
+- `curl` 与 credential env injection 同时存在，因此 egress/secret exfiltration 风险较高。
 
-바로 할 일:
+立即要做：
 
-- 단기: `execute_in_skill`을 HITL 필수 또는 deny-by-default로 전환
-- `curl` 허용 제거 또는 allowlist proxy tool로 대체
-- stdout/stderr size limit, process group kill, concurrency limit 추가
-- 중기: Docker/firecracker/isolated worker 등 sandbox로 이동
-- 장기: sandbox backend 기반 DeepAgents built-in `execute`로 통합 검토
+- 短期：将 `execute_in_skill` 改为必须 HITL 或 deny-by-default
+- 移除对 `curl` 的允许，或替换为 allowlist proxy tool
+- 添加 stdout/stderr size limit、process group kill、concurrency limit
+- 中期：迁移到 Docker/firecracker/isolated worker 等 sandbox
+- 长期：评估整合为基于 sandbox backend 的 DeepAgents built-in `execute`
 
-완료 기준:
+完成标准：
 
-- skill script는 selected skill root와 output mount 외부를 읽거나 쓰지 못한다.
-- network egress는 policy에 따라 차단된다.
-- credential env가 있더라도 stdout/stderr와 external egress로 새지 않는다.
+- skill script 无法读取或写入 selected skill root 与 output mount 之外的位置。
+- network egress 按 policy 阻止。
+- 即使存在 credential env，也不会通过 stdout/stderr 与 external egress 泄漏。
 
 ### 7. MCP runtime credential/transport parity
 
-우선순위:
+优先级：
 
 - P0
 
-왜 먼저인가:
+为什么要先做：
 
-- discovery에서 성공한 MCP가 runtime에서 raw headers/no interpolation/forced transport 때문에 실패할 수 있다.
-- stdio는 discovery에는 있으나 runtime에서 빠질 수 있어 제품 신뢰도가 떨어진다.
+- 在 discovery 中成功的 MCP，到了 runtime 可能因为 raw headers/no interpolation/forced transport 而失败。
+- stdio 在 discovery 中存在，但可能在 runtime 缺失，降低产品可信度。
 
-바로 할 일:
+立即要做：
 
-- discovery/runtime 공통 connection builder 추가
-- runtime에서 `build_headers()`/`build_env_vars()` 또는 공통 helper 사용
-- `transport`, `url`, `command`, `args`, `env_vars`, `headers`, decrypted credentials를 runtime config에 전달
-- stdio runtime 지원 또는 UI에서 runtime unsupported로 명확히 표시
+- 添加 discovery/runtime 共用 connection builder
+- 在 runtime 使用 `build_headers()`/`build_env_vars()` 或共用 helper
+- 将 `transport`、`url`、`command`、`args`、`env_vars`、`headers`、decrypted credentials 传入 runtime config
+- 支持 stdio runtime，或在 UI 中明确显示 runtime unsupported
 
-완료 기준:
+完成标准：
 
-- discovery에서 성공한 credential-bound header/env가 runtime call에도 동일하게 적용된다.
-- runtime transport가 discovery와 다르지 않다.
-- unhealthy MCP server는 빠르게 설명 가능한 error로 실패한다.
+- discovery 中成功的 credential-bound header/env 会以相同方式应用到 runtime call。
+- runtime transport 与 discovery 保持一致。
+- unhealthy MCP server 会快速以可解释的 error 失败。
 
-### 8. sub-agent runtime 연결
+### 8. sub-agent runtime 接入
 
-우선순위:
+优先级：
 
 - P0
 
-왜 여덟 번째인가:
+为什么排在第八：
 
-- 핵심 기능이지만 안전 경계 이전에 켜면 child agent가 file/tool/credential surface를 증폭할 수 있다.
-- HITL top-level inheritance와 permission boundary가 먼저 있어야 안전하게 활성화할 수 있다.
+- 虽然是核心功能，但如果在建立安全边界之前开启，child agent 可能放大 file/tool/credential surface。
+- 需要先建立 HITL top-level inheritance 与 permission boundary，才能安全启用。
 
-바로 할 일:
+立即要做：
 
-- `AgentConfig.subagents` 추가
-- child agent runtime assembly helper 추가
-- `build_agent(..., subagents=...)` 추가
-- child agent별 tools/skills/model/permissions/HITL inheritance 정책 구현
-- depth 1부터 시작하고 multi-hop cycle 방지
+- 添加 `AgentConfig.subagents`
+- 添加 child agent runtime assembly helper
+- 添加 `build_agent(..., subagents=...)`
+- 实现每个 child agent 的 tools/skills/model/permissions/HITL inheritance 策略
+- 从 depth 1 开始，并阻止 multi-hop cycle
 
-완료 기준:
+完成标准：
 
-- parent에 연결한 child agent name이 `task` tool의 available subagent로 보인다.
-- child prompt/tool/model이 실제로 사용된다.
-- child agent도 top-level HITL/permission boundary를 벗어나지 못한다.
+- 连接到 parent 的 child agent name 会显示为 `task` tool 的 available subagent。
+- child prompt/tool/model 会实际被使用。
+- child agent 也无法越过 top-level HITL/permission boundary。
 
 ### 9. event stream/tool_call_id
 
-우선순위:
+优先级：
 
 - P1
 
-왜 여기인가:
+为什么放在这里：
 
-- tool result, plan update, subagent trace, Langfuse correlation이 안정적으로 맞물리려면 id 기반 event가 필요하다.
-- 현재 frontend는 일반 tool result를 마지막 tool call에 붙인다.
+- 要让 tool result、plan update、subagent trace、Langfuse correlation 稳定对应，需要基于 id 的 event。
+- 当前 frontend 会把普通 tool result 绑定到最后一个 tool call。
 
-바로 할 일:
+立即要做：
 
-- SSE `tool_call_start`/`tool_call_result`에 `tool_call_id` 추가
-- backend에서 `tc.get("id")`와 ToolMessage `tool_call_id` 보존
-- frontend result matching을 last call heuristic에서 id 기반으로 변경
-- subagent event projection을 `agent_path`, `parent_tool_call_id`, `subagent_name`까지 확장 검토
+- 在 SSE `tool_call_start`/`tool_call_result` 中添加 `tool_call_id`
+- 在 backend 保留 `tc.get("id")` 与 ToolMessage `tool_call_id`
+- 将 frontend result matching 从 last call heuristic 改为基于 id
+- 评估将 subagent event projection 扩展到 `agent_path`、`parent_tool_call_id`、`subagent_name`
 
-완료 기준:
+完成标准：
 
-- 같은 tool을 연속 호출해도 result가 올바른 card에 붙는다.
-- subagent tool calls가 parent tool calls와 구분된다.
-- share trace chip/right rail/debug trace가 같은 id 체계를 쓴다.
+- 即使连续调用同一个 tool，result 也会绑定到正确的 card。
+- subagent tool calls 会与 parent tool calls 区分。
+- share trace chip/right rail/debug trace 使用同一套 id 体系。
 
 ### 10. streaming error observability
 
-우선순위:
+优先级：
 
 - P1
 
-왜 여기인가:
+为什么放在这里：
 
-- 현재 streaming path에서 error SSE를 emit하고도 hook/trace에서는 성공처럼 보일 수 있다.
-- Langfuse debugger와 내부 trace 신뢰도를 위해 error status propagation이 먼저 필요하다.
+- 当前 streaming path 即使 emit 了 error SSE，也可能在 hook/trace 中看起来像成功。
+- 为保证 Langfuse debugger 和内部 trace 的可信度，需要先做好 error status propagation。
 
-바로 할 일:
+立即要做：
 
-- `stream_agent_response()`가 error 발생 여부를 typed result 또는 `error_sink`로 전달
-- `_run_agent_stream()`이 hook failure/post success를 정확히 나누도록 변경
-- `message_events.status`, trace sink, external trace metadata에 실패 상태 반영
+- 让 `stream_agent_response()` 通过 typed result 或 `error_sink` 传递是否发生 error
+- 修改 `_run_agent_stream()`，准确区分 hook failure/post success
+- 在 `message_events.status`、trace sink、external trace metadata 中反映失败状态
 
-완료 기준:
+完成标准：
 
-- 사용자에게 보인 streaming error가 backend observability에서도 failed로 기록된다.
-- schedule/invoke/streaming path의 실패 의미가 일관된다.
+- 用户看到的 streaming error 在 backend observability 中也会记录为 failed。
+- schedule/invoke/streaming path 对失败的语义保持一致。
 
 ### 11. Langfuse trace debugger POC
 
-우선순위:
+优先级：
 
 - P1
 
-왜 열한 번째인가:
+为什么排在第十一：
 
-- 필요하지만 기존 trace endpoint access control, event id, streaming error status가 먼저 잡혀야 안전하고 정확한 debugger가 된다.
-- `message_events`는 유지하고 Langfuse는 LangGraph/LLM/tool span waterfall을 보강하는 용도로 붙인다.
+- 虽然需要，但必须先处理现有 trace endpoint access control、event id、streaming error status，debugger 才能既安全又准确。
+- 保留 `message_events`，Langfuse 用于补强 LangGraph/LLM/tool span waterfall。
 
-바로 할 일:
+立即要做：
 
-- `langfuse>=3.8,<4.0` dependency 추가
-- `observability/langfuse.py` adapter 추가
-- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`, `LANGFUSE_ENABLED` settings 사용
-- LangGraph config에 `CallbackHandler`, metadata, tags 주입
-- `message_events`에 external trace correlation 컬럼 추가
-- backend debug proxy API와 Agent Prism POC를 debug module로 격리
+- 添加 `langfuse>=3.8,<4.0` dependency
+- 添加 `observability/langfuse.py` adapter
+- 使用 `LANGFUSE_PUBLIC_KEY`、`LANGFUSE_SECRET_KEY`、`LANGFUSE_BASE_URL`、`LANGFUSE_ENABLED` settings
+- 向 LangGraph config 注入 `CallbackHandler`、metadata、tags
+- 在 `message_events` 中添加 external trace correlation 列
+- 将 backend debug proxy API 与 Agent Prism POC 隔离到 debug module
 
-완료 기준:
+完成标准：
 
-- Langfuse trace가 assistant turn 단위로 생성된다.
-- `conversation_id`가 Langfuse session으로 묶인다.
-- Moldy run id와 Langfuse trace id가 1:1로 연결된다.
-- Langfuse 장애 시 Moldy chat 실행은 실패하지 않고 `message_events` fallback이 표시된다.
+- Langfuse trace 按 assistant turn 单位生成。
+- `conversation_id` 会归入 Langfuse session。
+- Moldy run id 与 Langfuse trace id 建立 1:1 关联。
+- Langfuse 故障时 Moldy chat 执行不会失败，并显示 `message_events` fallback。
 
-## 4. 영역별 상세 근거
+## 4. 各领域详细依据
 
-아래 항목은 원인과 소스 근거를 주제별로 모아 둔 reference bank다. 실행 순서는 위 3장, 8장, 10장의 우선순위를 따른다.
+以下内容是按主题汇总原因与源码依据的 reference bank。执行顺序遵循上文第 3、8、10 章的优先级。
 
-### P0-1. existing trace endpoint access control이 없다
+### P0-1. existing trace endpoint 没有 access control
 
-현재 상태(2026-05-30 감사 당시):
+当前状态（截至 2026-05-30 审计时）：
 
-- `/api/conversations/{conversation_id}/traces` endpoint는 `get_current_user` dependency가 없다.
+- `/api/conversations/{conversation_id}/traces` endpoint 没有 `get_current_user` dependency。
   - `backend/app/routers/conversations.py:486-502`
-- ownership 검증도 `get_owned_conversation()`이 아니라 `chat_service.get_conversation()`만 호출한다.
+- ownership 校验也没有使用 `get_owned_conversation()`，只调用 `chat_service.get_conversation()`。
   - `backend/app/routers/conversations.py:499-502`
-- `MessageEvent.events`에는 SSE event sequence가 들어가며, tool args/result와 user/assistant content가 포함될 수 있다.
+- `MessageEvent.events` 中包含 SSE event sequence，可能包括 tool args/result 和 user/assistant content。
   - `backend/app/models/message_event.py:38-40`
 
-왜 중요한가:
+为什么重要：
 
-trace는 디버깅 데이터이지만 실제로는 대화 본문, tool input/output, skill 실행 결과가 섞이는 민감 데이터다. Langfuse debugger가 추가되면 debug surface가 더 커지므로, 기존 internal trace endpoint부터 auth/ownership 경계를 닫아야 한다.
+trace 虽然是调试数据，但实际上混有对话正文、tool input/output、skill 执行结果等敏感数据。接入 Langfuse debugger 后 debug surface 会进一步扩大，因此必须先关闭现有 internal trace endpoint 的 auth/ownership 缺口。
 
-개선안:
+改进方案：
 
-- endpoint에 `user: CurrentUser = Depends(get_current_user)` 추가
-- `chat_service.get_owned_conversation(db, conversation_id, user.id)` 또는 동일한 ownership guard 사용
-- public share page의 chip 렌더용 trace와 authenticated debug trace API를 분리
-- cross-user/anonymous access regression test 추가
+- 为 endpoint 添加 `user: CurrentUser = Depends(get_current_user)`
+- 使用 `chat_service.get_owned_conversation(db, conversation_id, user.id)` 或等价 ownership guard
+- 分离 public share page 的 chip 渲染 trace 与 authenticated debug trace API
+- 添加 cross-user/anonymous access regression test
 
-우선도:
+优先级：
 
 - P0
 
-### P0-8. UI/DB의 sub-agent가 실제 DeepAgents subagent로 동작하지 않는다
+### P0-8. UI/DB 中的 sub-agent 并未真正作为 DeepAgents subagent 运行
 
-현재 상태:
+当前状态：
 
-- `Agent` 모델은 `sub_agent_links`를 가진다.
+- `Agent` 模型拥有 `sub_agent_links`。
   - `backend/app/models/agent.py:80-86`
-- 생성/수정 API는 `sub_agent_ids`를 저장한다.
+- 创建/修改 API 会保存 `sub_agent_ids`。
   - `backend/app/services/agent_service.py:273-278`
   - `backend/app/services/agent_service.py:331-342`
-- frontend도 payload에 `sub_agent_ids`를 넣는다.
+- frontend 的 payload 也会放入 `sub_agent_ids`。
   - `frontend/src/components/agent/visual-settings/visual-settings-flow.tsx:306-321`
-- 응답 DTO에도 `sub_agents`가 표시된다.
+- 响应 DTO 中也显示 `sub_agents`。
   - `backend/app/routers/agents.py:80-88`
-- 하지만 런타임 `AgentConfig`에는 subagent 필드가 없다.
+- 但 runtime `AgentConfig` 中没有 subagent 字段。
   - `backend/app/agent_runtime/executor.py:157-199`
-- `build_agent()`는 `create_deep_agent()`에 `subagents`를 전달하지 않는다.
+- `build_agent()` 没有向 `create_deep_agent()` 传入 `subagents`。
   - `backend/app/agent_runtime/executor.py:360-387`
-- `create_deep_agent()` 호출부도 `subagents` 없이 실행된다.
+- `create_deep_agent()` 的调用处也在没有 `subagents` 的情况下执行。
   - `backend/app/agent_runtime/executor.py:781-794`
 
-왜 중요한가:
+为什么重要：
 
-사용자가 UI에서 "이 agent는 저 agent에게 위임할 수 있다"고 설정하지만, 실제 DeepAgents `task` tool에는 기본 `general-purpose` subagent만 보인다. 제품의 핵심 기능이 저장만 되고 실행되지 않는 상태다.
+用户在 UI 中设置“这个 agent 可以委托给那个 agent”，但实际 DeepAgents `task` tool 中只会看到默认 `general-purpose` subagent。也就是说，产品核心功能目前只被保存，并没有真正执行。
 
-개선안:
+改进方案：
 
-- `AgentConfig`에 `subagents: list[dict] | None` 추가
-- `chat_service.get_owned_conversation_with_agent()`와 `get_agent_with_tools()`에서 child agent runtime 구성까지 로드
-- child agent별로 다음을 DeepAgents `SubAgent` dict로 변환
+- 在 `AgentConfig` 中添加 `subagents: list[dict] | None`
+- 在 `chat_service.get_owned_conversation_with_agent()` 和 `get_agent_with_tools()` 中连同 child agent runtime 配置一起加载
+- 将每个 child agent 的下列内容转换为 DeepAgents `SubAgent` dict
   - `name`
   - `description`
   - `system_prompt`
@@ -596,58 +596,58 @@ trace는 디버깅 데이터이지만 실제로는 대화 본문, tool input/out
   - `middleware`
   - `interrupt_on`
   - `permissions`
-- 순환 참조 방지
-  - parent == child 차단은 이미 있지만 multi-hop cycle은 별도 차단 필요
-  - 우선 depth 1만 허용하는 것이 안전
-- subagent name은 provider-safe canonical name으로 생성
-  - 예: `agent_<slug>_<8chars>`
-- 테스트 추가
-  - `create_deep_agent` mock으로 `subagents` 전달 여부 확인
-  - parent/child tool set이 분리되는지 확인
-  - child prompt가 task 실행에 반영되는지 확인
+- 阻止循环引用
+  - 已经阻止 parent == child，但还需要单独阻止 multi-hop cycle
+  - 优先只允许 depth 1 更安全
+- subagent name 生成 provider-safe canonical name
+  - 例如：`agent_<slug>_<8chars>`
+- 添加测试
+  - 用 `create_deep_agent` mock 验证是否传入 `subagents`
+  - 验证 parent/child tool set 是否分离
+  - 验证 child prompt 是否反映到 task 执行中
 
-우선도:
+优先级：
 
 - P0
 
-### P0-5. DeepAgents `permissions` 없이 `backend/data` 전체가 file tool에 노출된다
+### P0-5. 在没有 DeepAgents `permissions` 的情况下，整个 `backend/data` 都暴露给 file tool
 
-현재 상태:
+当前状态：
 
-- 모든 agent는 같은 data root를 backend로 사용한다.
+- 所有 agent 都把同一个 data root 用作 backend。
   - `backend/app/agent_runtime/executor.py:719`
-- `build_agent()` wrapper가 `permissions` 파라미터를 받지 않는다.
+- `build_agent()` wrapper 不接收 `permissions` 参数。
   - `backend/app/agent_runtime/executor.py:360-387`
-- 설치된 DeepAgents 0.6.1의 `create_deep_agent()`는 `permissions`를 지원한다.
-- DeepAgents 문서/소스 기준에서 permission rule이 없으면 file call은 허용된다.
-- Memory path는 `/agents/{agent_id}/AGENTS.md`로 열린다.
+- 已安装的 DeepAgents 0.6.1 中，`create_deep_agent()` 支持 `permissions`。
+- 按 DeepAgents 文档/源码，没有 permission rule 时允许 file call。
+- Memory path 会开放为 `/agents/{agent_id}/AGENTS.md`。
   - `backend/app/agent_runtime/executor.py:768-772`
-- Skill runtime은 per-thread로 mount되지만 canonical skill storage도 같은 data root 아래 있다.
+- Skill runtime 虽按 per-thread mount，但 canonical skill storage 也位于同一个 data root 下。
   - canonical: `data/skills/<uuid>`
   - runtime: `data/runtime/<thread_id>/skills/<slug>`
 
-왜 중요한가:
+为什么重要：
 
-`virtual_mode=True`는 `../` escape를 막는 장치이지, app-level ownership 정책이 아니다. 현재 구조에서는 모델이 `ls("/")`, `read_file("/agents/...")`, `read_file("/skills/...")`, `write_file("/agents/...")` 같은 시도를 할 수 있다. UUID를 모르면 난이도는 올라가지만 보안 경계로 볼 수 없다.
+`virtual_mode=True` 是防止 `../` escape 的机制，并不是 app-level ownership 策略。按当前结构，模型可以尝试 `ls("/")`、`read_file("/agents/...")`、`read_file("/skills/...")`、`write_file("/agents/...")` 等操作。即使不知道 UUID 会提高难度，也不能把它视为安全边界。
 
-LangChain/DeepAgents 기준:
+按 LangChain/DeepAgents 标准：
 
-- DeepAgents는 `permissions`로 built-in filesystem tools를 제어한다.
-- persistent memory와 작업 파일은 `CompositeBackend`로 분리하는 패턴이 권장된다.
-- Store 기반 장기 메모리를 쓰려면 `store`를 명시해야 한다.
+- DeepAgents 通过 `permissions` 控制 built-in filesystem tools。
+- 推荐使用 `CompositeBackend` 分离 persistent memory 与工作文件。
+- 如果要使用基于 Store 的长期记忆，必须明确指定 `store`。
 
-개선안:
+改进方案：
 
-- `build_agent(..., permissions=...)` 파라미터 추가
-- `_prepare_agent()`에서 agent/thread/user 기준 permission rule 생성
-- 최소 기본 정책 예:
+- 添加 `build_agent(..., permissions=...)` 参数
+- 在 `_prepare_agent()` 中按 agent/thread/user 生成 permission rule
+- 最小默认策略示例：
   - allow read: `/runtime/{thread_id}/skills/**`
   - allow read/write: `/conversations/{thread_id}/**`
   - allow read/write: `/agents/{agent_id}/AGENTS.md` only if memory write policy allows
   - deny read/write: `/skills/**`
   - deny read/write: `/agents/**`
   - deny read/write: `/runtime/**` except current thread
-- `CompositeBackend` 재설계
+- 重构 `CompositeBackend`
   - default: `StateBackend` for temporary workspace
   - skills route: read-only filesystem copy
   - conversation outputs route: conversation-scoped filesystem
@@ -655,97 +655,97 @@ LangChain/DeepAgents 기준:
 - permission regression tests
   - agent A cannot read agent B memory
   - conversation A cannot read conversation B outputs
-  - selected skill만 read 가능
+  - 只允许 read selected skill
 
-우선도:
+优先级：
 
 - P0
 
-### P0-6. `execute_in_skill`이 DeepAgents sandbox 모델을 우회해 host에서 실행된다
+### P0-6. `execute_in_skill` 绕过 DeepAgents sandbox 模型，在 host 上执行
 
-현재 상태:
+当前状态：
 
-- DeepAgents 0.6.1의 built-in `execute`는 sandbox backend가 아니면 실행되지 않는다.
-- 현재 `FilesystemBackend`는 `SandboxBackendProtocol`이 아니다.
-- Moldy는 별도 `execute_in_skill` tool을 만들어 `asyncio.create_subprocess_exec()`로 host process를 실행한다.
+- DeepAgents 0.6.1 的 built-in `execute` 在不是 sandbox backend 时不会执行。
+- 当前 `FilesystemBackend` 不是 `SandboxBackendProtocol`。
+- Moldy 另建 `execute_in_skill` tool，通过 `asyncio.create_subprocess_exec()` 执行 host process。
   - `backend/app/agent_runtime/executor.py:236-357`
-- 허용 executable:
+- 允许的 executable：
   - `python`
   - `curl`
   - `backend/app/agent_runtime/executor.py:126-140`
-- credential env injection도 이미 들어간다.
+- credential env injection 也已加入。
   - `backend/app/agent_runtime/executor.py:281-294`
-- stdout/stderr redaction은 하지만 OS-level filesystem/network sandbox는 없다.
+- 虽然做了 stdout/stderr redaction，但没有 OS-level filesystem/network sandbox。
   - `backend/app/agent_runtime/executor.py:337-345`
 
-왜 중요한가:
+为什么重要：
 
-스크립트 path가 skill runtime root 하위인지 검사하는 것은 충분하지 않다. Python script는 서버 권한으로 실행되므로 절대경로 파일 읽기, 네트워크 요청, 장시간 CPU/메모리 사용, 내부 서비스 호출을 OS 차원에서 막지 못한다. `curl` 허용은 credential env가 들어간 상황에서 egress 리스크를 더 키운다.
+仅检查 script path 是否位于 skill runtime root 下并不够。Python script 以服务器权限运行，因此无法在 OS 层面阻止读取绝对路径文件、发起网络请求、长时间占用 CPU/内存、调用内部服务。允许 `curl` 又会在存在 credential env 的情况下进一步增大 egress 风险。
 
-개선안:
+改进方案：
 
-- 단기:
-  - `execute_in_skill` 자동 실행을 기본 off 또는 HITL 필수로 전환
-  - `curl` 허용 제거 또는 allowlist된 proxy tool로 대체
-  - timeout 외에 stdout/stderr size limit, process group kill, concurrency limit 추가
-  - 실행 전 `execution_profile.support_level`이 `ready_python`인 skill만 허용
-- 중기:
-  - sandbox backend 도입
-  - Docker/firecracker/isolated worker 중 하나 선택
-  - read-only skill mount + writable output mount만 제공
-  - network default deny, egress allowlist 정책
-- 장기:
-  - DeepAgents built-in `execute`를 sandbox backend와 함께 사용하고 custom runner 제거
+- 短期：
+  - 将 `execute_in_skill` 自动执行默认设为 off，或强制 HITL
+  - 移除对 `curl` 的允许，或替换为 allowlist 的 proxy tool
+  - 除 timeout 外，增加 stdout/stderr size limit、process group kill、concurrency limit
+  - 执行前只允许 `execution_profile.support_level` 为 `ready_python` 的 skill
+- 中期：
+  - 引入 sandbox backend
+  - 在 Docker/firecracker/isolated worker 中选择一种
+  - 只提供 read-only skill mount + writable output mount
+  - 采用 network default deny、egress allowlist 策略
+- 长期：
+  - 与 sandbox backend 一起使用 DeepAgents built-in `execute`，并移除 custom runner
 
-우선도:
+优先级：
 
 - P0
 
-### P0-3. HITL/ask_user 표준 interrupt wire가 잘못 연결되어 중요한 도구와 사용자 응답이 빠진다
+### P0-3. HITL/ask_user 标准 interrupt wire 接线错误，导致重要工具与用户响应遗漏
 
-현재 상태:
+当前状态：
 
-- auto `interrupt_on`은 `langchain_tools` 이름 중 write/send/delete/update/execute 등을 포함한 것만 대상으로 만든다.
+- auto `interrupt_on` 只会针对 `langchain_tools` 名称中包含 write/send/delete/update/execute 等词的项生成。
   - `backend/app/agent_runtime/executor.py:675-696`
-- 이 계산은 skill tool 추가보다 먼저 실행된다.
-  - auto 계산: `backend/app/agent_runtime/executor.py:680-696`
-  - `execute_in_skill` 추가: `backend/app/agent_runtime/executor.py:721-739`
-- ask_user도 auto wrap 계산 이후 추가된다.
-  - wrap 시도: `backend/app/agent_runtime/executor.py:703-706`
-  - ask_user 추가: `backend/app/agent_runtime/executor.py:773-776`
-- `ask_user`는 `interrupt_on`이 이미 있을 때만 표준 `respond` 정책에 추가된다.
+- 这项计算发生在添加 skill tool 之前。
+  - auto 计算：`backend/app/agent_runtime/executor.py:680-696`
+  - 添加 `execute_in_skill`：`backend/app/agent_runtime/executor.py:721-739`
+- ask_user 也在 auto wrap 计算之后添加。
+  - wrap 尝试：`backend/app/agent_runtime/executor.py:703-706`
+  - 添加 ask_user：`backend/app/agent_runtime/executor.py:773-776`
+- `ask_user` 只会在已有 `interrupt_on` 时加入标准 `respond` 策略。
   - `backend/app/agent_runtime/executor.py:703-706`
-- DeepAgents built-in `write_file`, `edit_file`은 `langchain_tools`에 없으므로 auto 계산 대상이 아니다.
-- `build_agent()`는 `interrupt_on=None`으로 DeepAgents 자동 HITL 주입을 끈다.
+- DeepAgents built-in `write_file`、`edit_file` 不在 `langchain_tools` 中，因此不属于 auto 计算对象。
+- `build_agent()` 通过 `interrupt_on=None` 关闭 DeepAgents 自动 HITL 注入。
   - `backend/app/agent_runtime/executor.py:786-789`
-- `HumanInTheLoopMiddleware`를 직접 넣는 방식이라 DeepAgents top-level `interrupt_on`의 subagent 상속 경로를 쓰지 못한다.
-- native `ask_user` fallback은 resume payload에서 `respond.message`를 추출하지 않고 전체 dict를 문자열화한다.
+- 由于直接放入 `HumanInTheLoopMiddleware`，无法使用 DeepAgents top-level `interrupt_on` 的 subagent 继承路径。
+- native `ask_user` fallback 不会从 resume payload 提取 `respond.message`，而是把整个 dict 字符串化。
   - `backend/app/agent_runtime/tools/ask_user.py:29-36`
-- native ask_user interrupt adapter는 표준 `review_configs[].action_name` 대신 `tool_name`을 쓴다.
+- native ask_user interrupt adapter 使用 `tool_name`，而不是标准 `review_configs[].action_name`。
   - `backend/app/agent_runtime/streaming.py:111-116`
-- 일반 대화 페이지는 `onStandardInterrupt`를 넘기지 않아 표준 interrupt payload가 실제 카드로 합성되지 않는다.
+- 普通对话页面没有传入 `onStandardInterrupt`，因此 standard interrupt payload 不会真正合成为 card。
   - `frontend/src/app/agents/[agentId]/conversations/[conversationId]/page.tsx:120-128`
 
-왜 중요한가:
+为什么重要：
 
-가장 위험한 도구인 file write/edit, skill execution, mutation tools가 기본 HITL에서 빠질 수 있다. 특히 P0-2처럼 file permissions가 없는 상태에서는 file write/edit이 더 중요하다. 또한 `ask_user`가 표준 `respond` decision으로 처리되지 않으면 사용자의 답변 대신 `{"decisions": [...]}` dict 문자열이 모델에 돌아갈 수 있고, 표준 승인/응답 카드가 UI에 나타나지 않을 수 있다.
+风险最高的 file write/edit、skill execution、mutation tools 可能被默认 HITL 漏掉。尤其像 P0-2 那样缺少 file permissions 时，file write/edit 更加关键。此外，如果 `ask_user` 未按标准 `respond` decision 处理，模型可能收到的不是用户回答，而是 `{"decisions": [...]}` dict 字符串，标准审批/响应 card 也可能不会出现在 UI 中。
 
-개선안:
+改进方案：
 
-- 모든 tool assembly 이후에 `interrupt_on`을 계산한다.
-- `ask_user_tool`을 대화형 모드에서 먼저 추가한 뒤, HITL middleware 설정 유무와 무관하게 `ask_user: {"allowed_decisions": ["respond"]}`를 merge한다.
-- DeepAgents built-in tool names를 명시적으로 포함한다.
+- 在所有 tool assembly 完成后再计算 `interrupt_on`。
+- 对话模式下先添加 `ask_user_tool`，随后无论是否配置 HITL middleware，都 merge `ask_user: {"allowed_decisions": ["respond"]}`。
+- 明确包含 DeepAgents built-in tool names。
   - `write_file`
   - `edit_file`
   - `execute`
-  - 필요하면 `task`
-- `execute_in_skill`은 기본 approve/reject 대상이어야 한다.
-- Gmail send, Calendar create/update/delete, Google Chat webhook 등 mutation registry tools에는 risk metadata를 추가하고 그 metadata로 HITL을 결정한다.
-- `HumanInTheLoopMiddleware`를 직접 만들지 말고 `build_agent(... interrupt_on=interrupt_on ...)`으로 넘긴다. 이 경로가 DeepAgents 기본 `general-purpose` subagent와 declarative subagent 상속까지 처리한다.
-- `ask_user.py` fallback은 `{"decisions": [{"type": "respond", "message": "..."}]}`에서 message만 추출한다.
-- `streaming.py` native adapter는 `review_configs[].action_name = "ask_user"`만 사용한다.
-- frontend는 `standardInterruptToToolCalls()` 같은 순수 mapping과 multi-action decision coordinator를 추가한다.
-- explicit config가 없을 때의 default:
+  - 如有需要包含 `task`
+- `execute_in_skill` 默认应属于 approve/reject 对象。
+- 为 Gmail send、Calendar create/update/delete、Google Chat webhook 等 mutation registry tools 添加 risk metadata，并据此 metadata 决定 HITL。
+- 不要直接创建 `HumanInTheLoopMiddleware`，而是传入 `build_agent(... interrupt_on=interrupt_on ...)`。该路径会同时处理 DeepAgents 默认 `general-purpose` subagent 与 declarative subagent 的继承。
+- `ask_user.py` fallback 从 `{"decisions": [{"type": "respond", "message": "..."}]}` 中只提取 message。
+- `streaming.py` native adapter 只使用 `review_configs[].action_name = "ask_user"`。
+- frontend 添加类似 `standardInterruptToToolCalls()` 的纯 mapping 与 multi-action decision coordinator。
+- 没有 explicit config 时的 default：
 
 ```python
 interrupt_on = {
@@ -756,108 +756,108 @@ interrupt_on = {
 }
 ```
 
-테스트:
+测试：
 
-- human_in_the_loop middleware만 추가해도 `write_file`, `edit_file`, `execute_in_skill`이 gate되는지 확인
-- explicit `interrupt_on`이 있으면 명시 정책 우선
-- HITL 설정이 없어도 대화형 모드에서는 `ask_user`가 표준 `respond` policy에 들어가는지 확인
-- trigger mode에서는 `ask_user`와 `interrupt_on`이 모두 빠지는지 확인
-- ask_user native fallback이 표준 resume payload에서 message만 반환하는지 확인
-- standard interrupt payload의 multi-action decision 개수/순서가 보존되는지 확인
+- 验证只添加 human_in_the_loop middleware 时，`write_file`、`edit_file`、`execute_in_skill` 是否也会被 gate
+- 如果存在 explicit `interrupt_on`，以明确策略优先
+- 验证即使没有 HITL 设置，对话模式下 `ask_user` 是否也会进入标准 `respond` policy
+- 验证 trigger mode 下是否同时移除 `ask_user` 和 `interrupt_on`
+- 验证 ask_user native fallback 是否只从标准 resume payload 返回 message
+- 验证 standard interrupt payload 中 multi-action decision 的数量/顺序是否保留
 
-우선도:
+优先级：
 
 - P0
 
-### P0-4. trigger/schedule 실행은 HITL을 끄지만 대체 risk policy가 없다
+### P0-4. trigger/schedule 执行会关闭 HITL，但没有替代 risk policy
 
-현재 상태:
+当前状态：
 
-- trigger mode에서는 `interrupt_on = None`으로 강제된다.
+- trigger mode 中会强制 `interrupt_on = None`。
   - `backend/app/agent_runtime/executor.py:698-701`
-- ask_user tool도 trigger mode에서 제외된다.
+- ask_user tool 也会在 trigger mode 中排除。
   - `backend/app/agent_runtime/executor.py:773-776`
-- 이는 hang 방지를 위해 필요하지만, mutation tool이 자동 실행되는 문제를 해결하지는 않는다.
+- 这对避免 hang 是必要的，但并没有解决 mutation tool 自动执行的问题。
 
-왜 중요한가:
+为什么重要：
 
-스케줄 실행은 사람이 보고 있는 채팅보다 더 엄격한 정책이 필요하다. Gmail 발송, Calendar 생성, 외부 webhook 호출, skill subprocess 같은 작업이 예약 실행에서 무승인으로 나갈 수 있다.
+调度执行需要比有人盯着的聊天更严格的策略。Gmail 发送、Calendar 创建、外部 webhook 调用、skill subprocess 等操作可能在定时执行中未经审批直接发出。
 
-개선안:
+改进方案：
 
-- schedule/channel 실행용 tool risk policy 추가
-  - `read_only`: 자동 허용
-  - `write_internal`: pre-approved일 때 허용
-  - `external_mutation`: 기본 차단 또는 approval inbox
-  - `code_execution`: 기본 차단
-- trigger 생성/수정 시 위험 도구가 있으면 UI 경고
-- async approval inbox 추가
-  - schedule run이 approval 필요 상태로 멈춤
-  - owner에게 알림
-  - 만료 시 auto reject
-- trigger run status에 `waiting_approval` 추가
+- 添加用于 schedule/channel 执行的 tool risk policy
+  - `read_only`：自动允许
+  - `write_internal`：在 pre-approved 时允许
+  - `external_mutation`：默认阻止或进入 approval inbox
+  - `code_execution`：默认阻止
+- 创建/修改 trigger 时，如存在高风险工具则在 UI 警告
+- 添加 async approval inbox
+  - schedule run 在需要 approval 时暂停
+  - 通知 owner
+  - 到期时 auto reject
+- 在 trigger run status 中添加 `waiting_approval`
 
-우선도:
+优先级：
 
 - P0
 
-### P0-2. user agent middleware model이 system/env credential을 사용할 수 있다
+### P0-2. user agent middleware model 可以使用 system/env credential
 
-현재 상태:
+当前状态：
 
-- user conversation runtime은 `provider_api_keys=env_provider_keys()`를 넘긴다.
+- user conversation runtime 会传入 `provider_api_keys=env_provider_keys()`。
   - `backend/app/routers/conversations.py:128`
-  - trigger도 동일: `backend/app/agent_runtime/trigger_executor.py:194`
-- `_resolve_middleware_model_params()`는 middleware params의 `model`/`fallback_model` 문자열을 `create_chat_model()`로 미리 해석한다.
+  - trigger 也相同：`backend/app/agent_runtime/trigger_executor.py:194`
+- `_resolve_middleware_model_params()` 会预先通过 `create_chat_model()` 解析 middleware params 中的 `model`/`fallback_model` 字符串。
   - `backend/app/agent_runtime/executor.py:547-566`
-- `create_chat_model()`은 `api_key`가 없으면 `_ENV_FALLBACK`을 사용한다.
+- `create_chat_model()` 在没有 `api_key` 时会使用 `_ENV_FALLBACK`。
   - `backend/app/agent_runtime/model_factory.py:139-140`
-- `_ENV_FALLBACK`은 내부 caller용이라고 주석에 적혀 있지만, 현재 user agent middleware model resolution에도 들어간다.
+- `_ENV_FALLBACK` 的注释写明它用于内部 caller，但当前 user agent middleware model resolution 也会走这条路径。
   - `backend/app/agent_runtime/model_factory.py:51-59`
 
-왜 중요한가:
+为什么重要：
 
-ADR-016 이후 user-facing agent chat은 owner-registered credential로 실행되어야 한다. main model은 `resolve_llm_api_key_for_agent()`가 이를 강제하지만, middleware가 별도 model을 요구하는 경우 operator/system/env key를 사용할 여지가 있다.
+ADR-016 之后，user-facing agent chat 应使用 owner-registered credential 执行。main model 由 `resolve_llm_api_key_for_agent()` 强制保证这一点，但 middleware 如果需要单独的 model，仍有使用 operator/system/env key 的空间。
 
-개선안:
+改进方案：
 
-- user agent runtime에서는 `provider_api_keys`에 system/env fallback을 넣지 않는다.
-- middleware model params는 다음 중 하나로 제한한다.
-  - main model 재사용
-  - user-owned credential이 명시된 model only
-  - system flow(builder/assistant)에서만 system resolver 허용
-- `create_chat_model(..., allow_env_fallback=False)` 옵션을 분리한다.
-- `_resolve_middleware_model_params()`가 fallback 금지 모드에서 `api_key=None`이면 즉시 오류 처리한다.
+- 在 user agent runtime 中，不要向 `provider_api_keys` 放入 system/env fallback。
+- middleware model params 限制为以下之一：
+  - 复用 main model
+  - 仅允许明确指定 user-owned credential 的 model
+  - 只在 system flow(builder/assistant) 中允许 system resolver
+- 拆分 `create_chat_model(..., allow_env_fallback=False)` 选项。
+- `_resolve_middleware_model_params()` 在禁止 fallback 的模式下若 `api_key=None`，立即报错。
 
-우선도:
+优先级：
 
 - P0
 
-### P0-7. MCP discovery와 runtime credential/transport 처리가 다르다
+### P0-7. MCP discovery 与 runtime 的 credential/transport 处理不一致
 
-현재 상태:
+当前状态：
 
-- discovery/probe 경로는 `resolve_deep()`으로 headers/env vars credential interpolation을 수행한다.
+- discovery/probe 路径通过 `resolve_deep()` 执行 headers/env vars credential interpolation。
   - `backend/app/mcp/client.py:32-64`
   - `backend/app/mcp/discovery.py:31-43`
-- runtime config는 server headers를 raw로 넘긴다.
+- runtime config 会原样传递 server headers。
   - `backend/app/services/chat_service.py:625-640`
-- executor는 `mcp_transport_headers`를 그대로 사용하고 credential interpolation을 하지 않는다.
+- executor 直接使用 `mcp_transport_headers`，不会执行 credential interpolation。
   - `backend/app/agent_runtime/executor.py:469-489`
-- config에는 `"credentials": mcp_credentials`가 들어가지만 executor의 `_build_mcp_tools()`는 `auth_config`만 보고 있어 사실상 무시된다.
+- config 中虽然放入 `"credentials": mcp_credentials`，但 executor 的 `_build_mcp_tools()` 只看 `auth_config`，实际上被忽略。
   - `backend/app/services/chat_service.py:637`
   - `backend/app/agent_runtime/executor.py:494-504`
-- `stdio` MCP는 discovery에서는 지원되지만 runtime에서는 `server.url`이 없으면 건너뛴다.
+- `stdio` MCP 在 discovery 中受支持，但 runtime 中如果没有 `server.url` 就会被跳过。
   - `backend/app/services/chat_service.py:611-612`
 
-왜 중요한가:
+为什么重要：
 
-UI에서 "연결/발견 성공"한 MCP tool이 실제 agent runtime에서는 인증 실패하거나 아예 빠질 수 있다. 특히 remote MCP와 stdio MCP를 모두 지원한다고 보이는 제품에서는 신뢰도 문제가 크다.
+UI 中“连接/发现成功”的 MCP tool，在实际 agent runtime 中可能认证失败，甚至完全缺失。尤其是在产品看起来同时支持 remote MCP 和 stdio MCP 的情况下，这会严重影响可信度。
 
-개선안:
+改进方案：
 
-- discovery와 runtime이 동일한 connection builder를 사용하게 한다.
-- runtime config에 다음을 모두 전달한다.
+- 让 discovery 与 runtime 使用同一个 connection builder。
+- 向 runtime config 传入以下全部内容。
   - `transport`
   - `url`
   - `command`
@@ -865,631 +865,631 @@ UI에서 "연결/발견 성공"한 MCP tool이 실제 agent runtime에서는 인
   - `env_vars`
   - `headers`
   - decrypted credentials
-- runtime `_build_mcp_tools()`에서 `build_headers()`/`build_env_vars()` 또는 공통 helper 사용
-- `stdio` runtime 지원을 구현하거나, UI에서 "discovery only, runtime unsupported"로 명확히 표시
-- MCP client/session caching 또는 lazy wrapper를 검토한다.
+- 在 runtime `_build_mcp_tools()` 中使用 `build_headers()`/`build_env_vars()` 或共用 helper
+- 实现 `stdio` runtime 支持，或在 UI 中明确显示“discovery only, runtime unsupported”
+- 评估 MCP client/session caching 或 lazy wrapper。
 
-우선도:
+优先级：
 
 - P0
 
-## 5. P1: 기능은 되지만 신뢰도/성능/운영성이 부족한 항목
+## 5. P1：功能可用，但可信度/性能/可运营性不足的事项
 
-### P1-1. MCP tool loading이 매 turn 네트워크 discovery를 반복한다
+### P1-1. MCP tool loading 每个 turn 都会重复网络 discovery
 
-현재 상태:
+当前状态：
 
-- `_prepare_agent()`는 매 실행마다 `_build_mcp_tools()`를 호출한다.
+- `_prepare_agent()` 每次执行都会调用 `_build_mcp_tools()`。
   - `backend/app/agent_runtime/executor.py:662-664`
-- `_build_mcp_tools()`는 `MultiServerMCPClient(...).get_tools()`를 호출한다.
+- `_build_mcp_tools()` 会调用 `MultiServerMCPClient(...).get_tools()`。
   - `backend/app/agent_runtime/executor.py:511-520`
-- DB에는 이미 `mcp_tools.input_schema`와 `last_seen_at`이 저장되어 있다.
+- DB 中已经保存 `mcp_tools.input_schema` 与 `last_seen_at`。
   - discovery path: `backend/app/mcp/discovery.py:82-110`
 
-왜 중요한가:
+为什么重要：
 
-MCP server가 느리거나 외부 네트워크에 있으면 첫 토큰 전 latency가 커진다. 연결 실패 시 전체 agent build가 늦어지고, 많은 MCP tool을 붙인 agent일수록 병목이 커진다.
+如果 MCP server 较慢或位于外部网络，首 token 前 latency 会增大。连接失败时整个 agent build 都会变慢，绑定越多 MCP tool 的 agent，瓶颈越严重。
 
-개선안:
+改进方案：
 
-- runtime tool wrapper는 DB schema 기반으로 즉시 생성하고, 실제 call 시 client를 연다.
-- server별 client/session pool을 둔다.
-- health_status가 unhealthy인 server는 빠른 실패 stub로 대체한다.
-- tool schema cache invalidation은 discovery/update 시점에 처리한다.
+- runtime tool wrapper 基于 DB schema 立即创建，真正 call 时再打开 client。
+- 为每个 server 建立 client/session pool。
+- 对 health_status 为 unhealthy 的 server，用快速失败 stub 替代。
+- tool schema cache invalidation 在 discovery/update 时处理。
 
-우선도:
+优先级：
 
 - P1
 
-### P1-2. skill runtime copytree가 매 turn event loop에서 동기 실행된다
+### P1-2. skill runtime copytree 每个 turn 都在 event loop 中同步执行
 
-현재 상태:
+当前状态：
 
-- `_prepare_agent()`에서 `build_skill_runtime_context()`를 직접 호출한다.
+- `_prepare_agent()` 会直接调用 `build_skill_runtime_context()`。
   - `backend/app/agent_runtime/executor.py:728`
-- `build_skill_runtime_context()` 내부는 sync `mkdir`, `shutil.rmtree`, `shutil.copyfile`, `shutil.copytree`를 실행한다.
+- `build_skill_runtime_context()` 内部会同步执行 `mkdir`、`shutil.rmtree`、`shutil.copyfile`、`shutil.copytree`。
   - `backend/app/marketplace/skill_runtime.py:173-192`
   - `backend/app/marketplace/skill_runtime.py:248-261`
-- helper docstring은 caller가 필요하면 `asyncio.to_thread`로 감싸라고 쓰여 있으나 현재 caller는 감싸지 않는다.
+- helper docstring 写明 caller 如有需要应使用 `asyncio.to_thread` 包裹，但当前 caller 没有这样做。
   - `backend/app/marketplace/skill_runtime.py:161-164`
 
-왜 중요한가:
+为什么重要：
 
-큰 `.skill` package나 여러 skill을 붙인 agent는 agent build 중 event loop를 블로킹한다. 동일 thread에서 매 turn target dir을 지우고 copy하므로 불필요한 IO도 크다.
+绑定大型 `.skill` package 或多个 skill 的 agent，会在 agent build 期间阻塞 event loop。同一 thread 每个 turn 都删除 target dir 并重新 copy，也会产生大量不必要 IO。
 
-개선안:
+改进方案：
 
-- `_prepare_agent()`에서 `await asyncio.to_thread(build_skill_runtime_context, ...)`
-- content_hash 기반으로 이미 materialized된 skill은 skip
-- target refresh는 atomic temp dir + rename
-- max package size와 file count 제한을 runtime에도 적용
-- cleanup job retention과 active run 상태를 함께 고려
+- 在 `_prepare_agent()` 中使用 `await asyncio.to_thread(build_skill_runtime_context, ...)`
+- 基于 content_hash，对已 materialized 的 skill 执行 skip
+- target refresh 使用 atomic temp dir + rename
+- 在 runtime 也应用 max package size 和 file count 限制
+- cleanup job retention 与 active run 状态一并考虑
 
-우선도:
+优先级：
 
 - P1
 
-### P1-3. DeepAgents event stream 구조를 충분히 활용하지 못한다
+### P1-3. 没有充分利用 DeepAgents event stream 结构
 
-현재 상태:
+当前状态：
 
-- `stream_agent_response()`는 `agent.astream(..., stream_mode="messages")`만 사용한다.
+- `stream_agent_response()` 只使用 `agent.astream(..., stream_mode="messages")`。
   - `backend/app/agent_runtime/streaming.py:273-278`
-- tool call start는 message chunk의 `tool_calls`를 해석해 만든다.
+- tool call start 通过解析 message chunk 中的 `tool_calls` 生成。
   - `backend/app/agent_runtime/streaming.py:326-354`
-- tool result는 `msg.type == "tool"`만 본다.
+- tool result 只看 `msg.type == "tool"`。
   - `backend/app/agent_runtime/streaming.py:356-368`
-- SSE type에 `tool_call_id`가 없다.
+- SSE type 中没有 `tool_call_id`。
   - `frontend/src/lib/types/index.ts:323-328`
-- frontend는 일반 tool result를 마지막 tool call에 붙인다.
+- frontend 会把普通 tool result 绑定到最后一个 tool call。
   - `frontend/src/lib/chat/use-chat-runtime.ts:431-442`
 
-왜 중요한가:
+为什么重要：
 
-같은 tool을 연속 호출하거나 subagent 내부 tool call이 섞이면 result가 잘못된 card에 붙을 수 있다. DeepAgents의 subagent lifecycle, nested path, parent/child relation도 UI에서 잃어버린다.
+连续调用同一个 tool，或夹杂 subagent 内部 tool call 时，result 可能绑定到错误的 card。DeepAgents 的 subagent lifecycle、nested path、parent/child relation 也会在 UI 中丢失。
 
-개선안:
+改进方案：
 
-- `astream_events` 또는 DeepAgents 공식 event projection 사용 검토
-- SSE schema 확장
+- 评估使用 `astream_events` 或 DeepAgents 官方 event projection
+- 扩展 SSE schema
   - `tool_call_id`
   - `parent_tool_call_id`
   - `agent_path`
   - `subagent_name`
   - `run_id`
   - `status`
-- backend에서 `tc.get("id")`와 ToolMessage `tool_call_id`를 보존해 emit
-- frontend는 마지막 tool call이 아니라 `tool_call_id`로 result 매칭
-- share trace chip과 right rail도 동일 id를 사용
+- backend 保留 `tc.get("id")` 和 ToolMessage `tool_call_id` 后 emit
+- frontend 不再按最后一个 tool call，而是按 `tool_call_id` 匹配 result
+- share trace chip 与 right rail 也使用相同 id
 
-우선도:
+优先级：
 
 - P1
 
-### P1-4. model fallback은 실제 LLM 호출 실패가 아니라 model construction 실패만 잡는다
+### P1-4. model fallback 只能捕获 model construction 失败，无法捕获实际 LLM 调用失败
 
-현재 상태:
+当前状态：
 
-- executor의 `_build_model_with_fallback()`은 `create_chat_model()` 호출을 try/except한다.
+- executor 的 `_build_model_with_fallback()` 会对 `create_chat_model()` 调用做 try/except。
   - `backend/app/agent_runtime/executor.py:570-617`
-- `create_chat_model()`은 대부분 SDK wrapper 객체를 생성할 뿐 실제 API 호출은 streaming/invoke 시점에 발생한다.
+- `create_chat_model()` 大多只是创建 SDK wrapper 对象，真正 API 调用发生在 streaming/invoke 阶段。
   - `backend/app/agent_runtime/model_factory.py:121-161`
-- 별도 `create_chat_model_with_fallback()`도 "we don't probe the model on every request"라고 명시한다.
+- 单独的 `create_chat_model_with_fallback()` 也明确写着“we don't probe the model on every request”。
   - `backend/app/agent_runtime/model_factory.py:435-445`
-- fallback chain에는 model provider/name/base_url만 있고 credential resolving은 primary key 재사용 전제다.
+- fallback chain 只有 model provider/name/base_url，credential resolving 默认复用 primary key。
   - `backend/app/routers/conversations.py:145-184`
   - `backend/app/agent_runtime/trigger_executor.py:30-62`
 
-왜 중요한가:
+为什么重要：
 
-429, 500, provider outage, auth error 같은 실제 fallback 대상은 대부분 LLM 호출 시점에 발생한다. 현재 구조에서는 fallback UI가 있어도 user-visible runtime failure를 충분히 회복하지 못할 가능성이 높다.
+429、500、provider outage、auth error 等真正需要 fallback 的情况，多数发生在 LLM 调用阶段。按当前结构，即使 UI 有 fallback，也很可能无法充分恢复 user-visible runtime failure。
 
-개선안:
+改进方案：
 
-- LangChain model fallback primitive 또는 middleware를 실제 model runnable에 적용한다.
-- fallback model별 credential 정책을 명확히 한다.
-  - same provider/same key만 허용
-  - 또는 fallback model별 user-owned credential resolve
-- streaming path에서 fallback 발생 사실을 trace/event에 남긴다.
+- 将 LangChain model fallback primitive 或 middleware 应用到实际 model runnable。
+- 明确 fallback model 的 credential 策略。
+  - 只允许 same provider/same key
+  - 或为每个 fallback model resolve user-owned credential
+- 在 streaming path 的 trace/event 中记录 fallback 发生。
 - tests:
-  - primary `astream`이 429를 던질 때 fallback model stream으로 이어지는지 확인
-  - fallback provider가 다를 때 credential 누락 오류가 명확한지 확인
+  - 验证 primary `astream` 抛出 429 时是否会继续切换到 fallback model stream
+  - 验证 fallback provider 不同时，credential 缺失 error 是否明确
 
-우선도:
+优先级：
 
 - P1
 
-### P1-5. memory는 파일 하나로 열려 있지만 제품 수준 장기 메모리 정책이 없다
+### P1-5. memory 虽开放为一个文件，但没有产品级长期记忆策略
 
-현재 상태:
+当前状态：
 
-- agent id가 있으면 `/agents/{agent_id}/AGENTS.md`를 memory source로 넘긴다.
+- 如果存在 agent id，会把 `/agents/{agent_id}/AGENTS.md` 作为 memory source 传入。
   - `backend/app/agent_runtime/executor.py:768-772`
-- DeepAgents `MemoryMiddleware`는 memory file을 system prompt에 로드한다.
+- DeepAgents `MemoryMiddleware` 会把 memory file 加载进 system prompt。
   - `deepagents/graph.py:718-727`
   - installed `deepagents/middleware/memory.py:290-349`
-- 현재 코드는 agent memory directory만 만들고 `AGENTS.md` 파일은 만들지 않는다.
+- 当前代码只创建 agent memory directory，不创建 `AGENTS.md` 文件。
   - `backend/app/agent_runtime/executor.py:769-771`
-- 파일 생성 lifecycle, write approval, memory UI, namespace policy는 없다.
-- `store`는 `build_agent()`에 있지만 실제 user agent에서 전달하지 않는다.
+- 没有文件创建 lifecycle、write approval、memory UI、namespace policy。
+- `store` 虽存在于 `build_agent()`，但实际 user agent 没有传入。
   - `backend/app/agent_runtime/executor.py:360-387`
 
-왜 중요한가:
+为什么重要：
 
-장기 메모리는 사용자가 이해하고 통제해야 하는 제품 기능이다. 현재는 hidden file로만 동작하며, file write 권한과 결합하면 모델이 사용자 승인 없이 memory를 변경할 수 있다. 반대로 `AGENTS.md`가 없거나 모델이 memory 파일을 만들지 않으면 사용자는 memory가 켜져 있다고 기대하지만 실제로는 `(No memory loaded)`에 가까운 상태가 된다.
+长期记忆应该是用户能理解并控制的产品功能。当前它只以 hidden file 形式运行，与 file write 权限结合后，模型可能在未经用户批准的情况下修改 memory。反过来，如果 `AGENTS.md` 不存在或模型没有创建 memory 文件，用户可能以为 memory 已开启，实际却接近 `(No memory loaded)` 状态。
 
-개선안:
+改进方案：
 
-- memory write policy 명시
+- 明确 memory write policy
   - off / chat-approved / schedule-disabled / auto
-- agent 생성 시 empty `AGENTS.md`를 만들지, 첫 memory write 때 만들지 결정한다.
-- AGENTS.md management UI 추가
-- StoreBackend 또는 DB-backed Store 도입 검토
-- per-user/per-agent namespace 설계
-- schedule/channel 실행에서 memory write approval 정책 추가
-- memory reload 정책 정의
-  - 같은 conversation checkpoint에서 `memory_contents`가 이미 있으면 DeepAgents가 재로드를 skip하므로, 외부 UI에서 memory를 수정했을 때 새 run에 반영되는 조건을 명확히 해야 한다.
+- 决定是在 agent 创建时生成空 `AGENTS.md`，还是在第一次 memory write 时创建。
+- 添加 AGENTS.md management UI
+- 评估引入 StoreBackend 或 DB-backed Store
+- 设计 per-user/per-agent namespace
+- 为 schedule/channel 执行添加 memory write approval 策略
+- 定义 memory reload 策略
+  - 同一 conversation checkpoint 中如果已有 `memory_contents`，DeepAgents 会 skip reload，因此需要明确从外部 UI 修改 memory 后，在什么条件下会反映到新 run。
 
-우선도:
+优先级：
 
 - P1
 
-### P1-6. streaming error가 hook failure로 기록되지 않는다
+### P1-6. streaming error 不会被记录为 hook failure
 
-현재 상태:
+当前状态：
 
-- `stream_agent_response()` 내부에서 agent stream exception을 잡아 SSE `error`를 emit한다.
+- `stream_agent_response()` 内部会捕获 agent stream exception 并 emit SSE `error`。
   - `backend/app/agent_runtime/streaming.py:383-389`
-- 이 exception은 `_run_agent_stream()` 밖으로 전파되지 않는다.
+- 该 exception 不会传播到 `_run_agent_stream()` 外部。
   - `backend/app/agent_runtime/executor.py:917-942`
-- 따라서 hook framework는 실패가 아니라 post success로 기록될 수 있다.
+- 因此 hook framework 可能记录成 post success，而不是失败。
 
-왜 중요한가:
+为什么重要：
 
-사용자에게는 error가 보이지만 backend audit/usage/observability에서는 성공처럼 보일 수 있다. schedule/invoke path는 exception을 전파하지만 streaming path와 불일치한다.
+用户虽然看到 error，但 backend audit/usage/observability 中可能看起来像成功。schedule/invoke path 会传播 exception，与 streaming path 不一致。
 
-개선안:
+改进方案：
 
-- `stream_agent_response()`가 error 발생 여부를 `error_sink`에 기록하거나 exception을 typed result로 반환
-- `_run_agent_stream()`이 hook failure/post를 정확히 나눈다.
-- trace_storage에도 turn status를 남긴다.
+- 让 `stream_agent_response()` 通过 `error_sink` 记录是否发生 error，或以 typed result 返回 exception
+- 让 `_run_agent_stream()` 准确区分 hook failure/post
+- 在 trace_storage 中也记录 turn status
 
-우선도:
+优先级：
 
 - P1
 
-### P1-7. assistant fixer agent가 DeepAgents built-in tools를 의도치 않게 가진다
+### P1-7. assistant fixer agent 意外拥有 DeepAgents built-in tools
 
-현재 상태:
+当前状态：
 
-- assistant agent는 일반 runtime의 `build_agent()`를 사용한다.
+- assistant agent 使用普通 runtime 的 `build_agent()`。
   - `backend/app/agent_runtime/assistant/assistant_agent.py:84-91`
-- `middleware=[]`를 넘겨도 DeepAgents built-in tool suite는 additive로 들어간다.
-- DeepAgents 0.6.1 source 기준 built-ins:
+- 即使传入 `middleware=[]`，DeepAgents built-in tool suite 仍会以 additive 方式加入。
+- 按 DeepAgents 0.6.1 source，built-ins：
   - `write_todos`
   - `ls`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`
-  - `execute`는 sandbox backend에서만 실제 실행
+  - `execute` 只会在 sandbox backend 中真正执行
   - `task`
 
-왜 중요한가:
+为什么重要：
 
-assistant fixer의 목적은 DB 설정을 읽고 제한된 write tools로 수정하는 것이다. 파일/태스크 도구가 섞이면 행동 범위가 넓어지고, UI/테스트가 기대하는 도구 표면과 실제 tool surface가 달라진다.
+assistant fixer 的目的，是读取 DB 设置并通过受限 write tools 修改。混入文件/任务工具会扩大行为范围，也会让 UI/测试预期的工具表面与实际 tool surface 不一致。
 
-개선안:
+改进方案：
 
-- assistant는 LangChain `create_agent`로 분리하거나
-- DeepAgents HarnessProfile의 `excluded_tools`로 built-in tools를 명시 제거하거나
-- assistant용 `permissions`를 deny-all로 설정하고 `task` 사용 여부를 제품적으로 결정한다.
+- 将 assistant 拆分为 LangChain `create_agent`，或者
+- 通过 DeepAgents HarnessProfile 的 `excluded_tools` 明确移除 built-in tools，或者
+- 将 assistant 的 `permissions` 设为 deny-all，并从产品层面决定是否允许使用 `task`。
 
-우선도:
+优先级：
 
 - P1
 
-## 6. P2: 유지보수/UX/문서 정합성 항목
+## 6. P2：维护性/UX/文档一致性事项
 
-### P2-1. middleware catalog와 assistant catalog가 서로 다르다
+### P2-1. middleware catalog 与 assistant catalog 不一致
 
-현재 상태:
+当前状态：
 
-- public `/api/middlewares`는 auto-injected middleware를 제외한다.
+- public `/api/middlewares` 会排除 auto-injected middleware。
   - `backend/app/routers/agents.py:244-250`
   - `backend/app/agent_runtime/middleware_registry.py:464-480`
-- assistant read tool은 `MIDDLEWARE_REGISTRY` 전체를 그대로 보여준다.
+- assistant read tool 会原样展示整个 `MIDDLEWARE_REGISTRY`。
   - `backend/app/agent_runtime/assistant/tools/read_tools.py:143-154`
-- assistant write tool은 registry에 있으면 저장하지만 executor는 `DEEPAGENT_BUILTIN_TYPES`를 다시 필터링한다.
+- assistant write tool 只要在 registry 中就会保存，但 executor 又会过滤 `DEEPAGENT_BUILTIN_TYPES`。
   - `backend/app/agent_runtime/assistant/tools/write_tools.py:193-220`
   - `backend/app/agent_runtime/executor.py:667-673`
 
-개선안:
+改进方案：
 
-- assistant도 `get_middleware_registry(exclude_builtin=True)` 사용
-- auto-injected 항목은 "항상 포함됨"으로만 표시
-- user-configurable middleware와 provider/internal middleware를 분리
+- assistant 也使用 `get_middleware_registry(exclude_builtin=True)`
+- auto-injected 项只显示为“始终包含”
+- 分离 user-configurable middleware 与 provider/internal middleware
 
-우선도:
+优先级：
 
 - P2
 
-### P2-2. Anthropic prompt caching middleware가 중복될 수 있다
+### P2-2. Anthropic prompt caching middleware 可能重复
 
-현재 상태:
+当前状态：
 
-- DeepAgents 0.6.1은 `AnthropicPromptCachingMiddleware`를 tail stack에 무조건 추가한다.
-- Moldy도 provider가 anthropic이면 `get_provider_middleware()`에서 같은 middleware를 직접 추가한다.
+- DeepAgents 0.6.1 会无条件在 tail stack 添加 `AnthropicPromptCachingMiddleware`。
+- Moldy 在 provider 为 anthropic 时，也会通过 `get_provider_middleware()` 直接添加同一个 middleware。
   - `backend/app/agent_runtime/middleware_registry.py:414-427`
-- 동시에 `anthropic_prompt_caching`은 auto-injected type으로 분류되어 있다.
+- 同时，`anthropic_prompt_caching` 又被归类为 auto-injected type。
   - `backend/app/agent_runtime/middleware_registry.py:430-440`
 
-개선안:
+改进方案：
 
-- provider middleware에서 `anthropic_prompt_caching` 제거
-- OpenAI moderation처럼 실제 DeepAgents가 자동 추가하지 않는 middleware만 provider auto로 유지
-- runtime middleware stack snapshot test 추가
+- 从 provider middleware 中移除 `anthropic_prompt_caching`
+- 只对像 OpenAI moderation 这样 DeepAgents 不会自动添加的 middleware 保留 provider auto
+- 添加 runtime middleware stack snapshot test
 
-우선도:
+优先级：
 
 - P2
 
-### P2-3. `recursion_limit` 설정 도구가 실제 runtime에 반영되지 않는다
+### P2-3. `recursion_limit` 设置工具没有真正反映到 runtime
 
-현재 상태:
+当前状态：
 
-- assistant write tool은 `model_params["recursion_limit"]`를 저장한다.
+- assistant write tool 会保存 `model_params["recursion_limit"]`。
   - `backend/app/agent_runtime/assistant/tools/write_tools.py:631-649`
-- read tool도 이 값을 보여준다.
+- read tool 也会显示该值。
   - `backend/app/agent_runtime/assistant/tools/read_tools.py:263-271`
-- 하지만 `_prepare_agent()`의 LangGraph config에는 `thread_id`와 optional `checkpoint_id`만 들어간다.
+- 但 `_prepare_agent()` 的 LangGraph config 中只有 `thread_id` 和 optional `checkpoint_id`。
   - `backend/app/agent_runtime/executor.py:796-803`
-- DeepAgents는 compiled graph에 `recursion_limit=9999`를 기본 config로 붙인다.
+- DeepAgents 会在 compiled graph 上默认挂载 `recursion_limit=9999` config。
 
-개선안:
+改进方案：
 
-- `cfg.model_params.get("recursion_limit")`를 LangGraph config top-level에 넣는다.
-- 또는 DeepAgents 기본을 쓰기로 결정하고 assistant 도구/문서를 제거한다.
+- 将 `cfg.model_params.get("recursion_limit")` 放入 LangGraph config top-level。
+- 或者决定使用 DeepAgents 默认值，并移除 assistant 工具/文档中的相关项。
 
-우선도:
+优先级：
 
 - P2
 
-### P2-4. docs/PRD/marketplace spec가 현재 코드보다 오래되었다
+### P2-4. docs/PRD/marketplace spec 落后于当前代码
 
-현재 상태:
+当前状态：
 
-- `AGENTS.md`: 최신 migration을 M39라고 설명했지만 코드에는 M50까지 있었다.
-- `docs/PRD.md`: PoC/mock auth 서술이 남아 있었다.
-- `docs/marketplace-resources-prd.md`와 spec: broad `/skills/` mount가 현재 문제라고 쓰여 있었으나 runtime은 per-thread mount로 바뀌어 있었다.
+- `AGENTS.md`：文档称最新 migration 为 M39，但代码已到 M50。
+- `docs/PRD.md`：仍保留 PoC/mock auth 描述。
+- `docs/marketplace-resources-prd.md` 与 spec：写着 broad `/skills/` mount 仍是当前问题，但 runtime 已改为 per-thread mount。
 
-해결 상태(2026-06-07):
+解决状态（2026-06-07）：
 
 - `AGENTS.md`, `CLAUDE.md`, `README.md`, `README_KO.md`, `docs/ARCHITECTURE.md`,
   `docs/PRD.md`, `TASKS.md`, `docs/design-docs/index.md`,
-  `docs/marketplace-resources-prd.md`를 현재 소스 기준으로 갱신했다.
+  已按当前源码更新 `docs/marketplace-resources-prd.md`。
 
-개선안:
+改进方案：
 
-- `docs/ARCHITECTURE.md`, `PRD.md`, marketplace docs를 코드 기준으로 갱신
-- "resolved since M47/M50" 같은 changelog 표기
-- DeepAgents runtime 현황 표를 별도 유지
+- 按代码更新 `docs/ARCHITECTURE.md`、`PRD.md`、marketplace docs
+- 添加“resolved since M47/M50”之类 changelog 标记
+- 单独维护 DeepAgents runtime 状态表
 
-우선도:
+优先级：
 
 - P2
 
-## 7. 현재 잘 되어 있는 부분
+## 7. 当前做得较好的部分
 
-아래는 유지할 가치가 있는 구조다.
+以下结构值得保留。
 
-- `create_deep_agent()` 호출이 `build_agent()`로 중앙화되어 있다.
+- `create_deep_agent()` 调用已集中到 `build_agent()`。
   - `backend/app/agent_runtime/executor.py:360-387`
-- conversation id를 LangGraph `thread_id`로 사용하는 방향은 맞다.
+- 使用 conversation id 作为 LangGraph `thread_id` 的方向是正确的。
   - `backend/app/agent_runtime/executor.py:796-803`
-- Postgres checkpointer singleton을 통해 HITL/resume 기반은 갖춰져 있다.
+- 通过 Postgres checkpointer singleton 已具备 HITL/resume 基础。
   - `backend/app/agent_runtime/checkpointer.py`
-- DeepAgents `write_todos` plan tool은 자동 주입되고, frontend 전용 Plan card도 있다.
+- DeepAgents `write_todos` plan tool 会自动注入，frontend 也有专用 Plan card。
   - `frontend/src/components/chat/tool-ui/plan-tool-ui.tsx`
-- skill broad mount 문제는 per-thread copytree와 prompt rewrite로 상당 부분 개선되었다.
+- skill broad mount 问题已通过 per-thread copytree 与 prompt rewrite 得到较大改善。
   - `backend/app/marketplace/skill_runtime.py:232-268`
   - `backend/app/agent_runtime/executor.py:736-766`
-- memory source를 `create_deep_agent(memory=...)`로 넘기는 최소 연결은 있다.
+- 已有把 memory source 传入 `create_deep_agent(memory=...)` 的最小连接。
   - `backend/app/agent_runtime/executor.py:768-792`
-- schedule run history는 첨부 문서 작성 이후 구현되어 있다.
+- schedule run history 已在附件文档编写之后实现。
   - `backend/app/models/agent_trigger_run.py`
   - `frontend/src/app/schedules/page.tsx:411-469`
-- trigger ownership과 schema 정합성도 첨부 문서보다 개선되어 있다.
+- trigger ownership 与 schema 一致性也比附件文档描述时更完善。
   - `backend/app/routers/triggers.py:119-143`
   - `backend/app/services/trigger_service.py:182-239`
 
-## 8. 권장 구현 순서
+## 8. 推荐实施顺序
 
 ### Milestone 0: Existing trace endpoint access control
 
-목표: Langfuse debugger를 붙이기 전에 이미 존재하는 trace endpoint의 정보 노출 가능성을 닫는다.
+目标：在接入 Langfuse debugger 前，先关闭现有 trace endpoint 的信息暴露可能性。
 
-1. `/api/conversations/{conversation_id}/traces`에 `CurrentUser = Depends(get_current_user)` 추가
-2. `chat_service.get_conversation()` 대신 `get_owned_conversation()` 또는 동일한 ownership guard 사용
-3. share page trace 노출과 authenticated debug trace API의 응답 shape를 분리
-4. trace event redaction regression test 추가
+1. 为 `/api/conversations/{conversation_id}/traces` 添加 `CurrentUser = Depends(get_current_user)`
+2. 使用 `get_owned_conversation()` 或等价 ownership guard，替代 `chat_service.get_conversation()`
+3. 分离 share page trace 暴露与 authenticated debug trace API 的响应 shape
+4. 添加 trace event redaction regression test
 
-완료 기준:
+完成标准：
 
-- 다른 사용자의 `conversation_id`로 trace event를 조회할 수 없다.
-- unauthenticated request는 trace를 받지 못한다.
-- public share page는 의도한 chip 렌더링용 최소 trace만 받는다.
+- 无法通过其他用户的 `conversation_id` 查询 trace event。
+- unauthenticated request 无法获得 trace。
+- public share page 只接收预期用于 chip 渲染的最小 trace。
 
 ### Milestone 1: Credential boundary quick fix
 
-목표: 사용자 실행에서 운영자/system/env key가 섞이는 경로를 먼저 닫는다.
+目标：先关闭用户执行中混入 operator/system/env key 的路径。
 
-1. user-facing conversation/trigger runtime에서 `provider_api_keys=env_provider_keys()` 전달 제거 또는 system flow 전용으로 분리
-2. `create_chat_model(..., allow_env_fallback=False)` 옵션 추가
-3. `_resolve_middleware_model_params()`가 user-owned credential 없는 middleware model을 거절하도록 변경
-4. builder/assistant 같은 system flow만 명시적으로 env/system fallback 허용
+1. 从 user-facing conversation/trigger runtime 中移除 `provider_api_keys=env_provider_keys()` 的传递，或拆分为 system flow 专用
+2. 添加 `create_chat_model(..., allow_env_fallback=False)` 选项
+3. 修改 `_resolve_middleware_model_params()`，拒绝没有 user-owned credential 的 middleware model
+4. 只允许 builder/assistant 等 system flow 明确使用 env/system fallback
 
-완료 기준:
+完成标准：
 
-- user agent의 middleware model이 env/system credential로 생성되지 않는다.
-- main model과 middleware model credential 정책이 테스트로 분리된다.
-- credential 누락 시 조용히 fallback하지 않고 user-actionable error가 나온다.
+- user agent 的 middleware model 不会通过 env/system credential 创建。
+- main model 与 middleware model credential 策略通过测试分离。
+- credential 缺失时不会静默 fallback，而是给出 user-actionable error。
 
 ### Milestone 2: HITL and ask_user standardization
 
-1. `ask_user_tool`을 interrupt policy 계산 전에 추가
-2. manual `HumanInTheLoopMiddleware` 인스턴스 제거
-3. `build_agent(..., interrupt_on=interrupt_on ...)`으로 DeepAgents top-level path 사용
-4. native `ask_user.py` fallback resume parser 추가
-5. `streaming.py` native adapter를 `action_name` 표준 shape로 고정
-6. frontend standard interrupt mapper/coordinator 추가
+1. 在计算 interrupt policy 前添加 `ask_user_tool`
+2. 移除 manual `HumanInTheLoopMiddleware` instance
+3. 通过 `build_agent(..., interrupt_on=interrupt_on ...)` 使用 DeepAgents top-level path
+4. 添加 native `ask_user.py` fallback resume parser
+5. 将 `streaming.py` native adapter 固定为 `action_name` 标准 shape
+6. 添加 frontend standard interrupt mapper/coordinator
 
-완료 기준:
+完成标准：
 
-- HITL 설정이 없어도 대화형 모드의 `ask_user`는 `respond` decision으로 resume된다.
-- 위험 도구 approval과 자연어 되묻기가 같은 표준 interrupt wire를 쓴다.
-- 기본 `general-purpose` subagent에도 top-level HITL policy가 상속된다.
-- multi-action interrupt는 decision 배열 길이와 순서를 보존해 한 번에 resume된다.
+- 即使没有 HITL 设置，对话模式下的 `ask_user` 也会以 `respond` decision resume。
+- 高风险工具 approval 与自然语言追问使用同一个标准 interrupt wire。
+- 默认 `general-purpose` subagent 也会继承 top-level HITL policy。
+- multi-action interrupt 会保留 decision 数组的长度和顺序，并一次性 resume。
 
 ### Milestone 3: Tool risk policy and trigger guard
 
-1. registry/builtin/MCP/skill tool에 `risk_level` 또는 `requires_approval` metadata 추가
-2. default HITL policy를 tool name heuristic이 아니라 risk metadata 기반으로 생성
-3. trigger/invoke mode에서는 `external_mutation`, `code_execution`을 기본 차단
-4. trigger run에 blocked reason을 남기고 UI에서 원인을 표시
+1. 为 registry/builtin/MCP/skill tool 添加 `risk_level` 或 `requires_approval` metadata
+2. 基于 risk metadata，而不是 tool name heuristic，生成 default HITL policy
+3. 在 trigger/invoke mode 下默认阻止 `external_mutation`、`code_execution`
+4. 在 trigger run 中记录 blocked reason，并在 UI 显示原因
 
-완료 기준:
+完成标准：
 
-- Gmail send, Calendar create/update/delete, webhook, `execute_in_skill`은 대화형 모드에서 승인 없이 실행되지 않는다.
-- trigger mode에서 위험 도구는 자동 실행되지 않는다.
-- 단순 read-only tool은 불필요한 승인 없이 계속 실행된다.
+- Gmail send、Calendar create/update/delete、webhook、`execute_in_skill` 在对话模式下不会未经审批执行。
+- trigger mode 下不会自动执行高风险工具。
+- 简单 read-only tool 会继续运行，不需要不必要的审批。
 
 ### Milestone 4: Filesystem permissions and skill containment
 
-1. `build_agent(..., permissions=...)` 추가
-2. agent/thread/user scoped permission builder 추가
-3. built-in file tool 접근 regression tests
+1. 添加 `build_agent(..., permissions=...)`
+2. 添加 agent/thread/user scoped permission builder
+3. 添加 built-in file tool access regression tests
 4. `execute_in_skill` HITL default gate
-5. `curl` 제거 또는 allowlist proxy화
+5. 移除 `curl`，或改造成 allowlist proxy
 
-완료 기준:
+完成标准：
 
-- agent A가 agent B memory/conversation/skill을 읽지 못한다.
-- selected skill만 읽을 수 있다.
-- `write_file`/`edit_file`/`execute_in_skill`이 승인 없이 실행되지 않는다.
+- agent A 无法读取 agent B 的 memory/conversation/skill。
+- 只能读取 selected skill。
+- `write_file`/`edit_file`/`execute_in_skill` 不会未经审批执行。
 
 ### Milestone 5: MCP runtime parity and external credential correctness
 
-1. discovery/runtime 공통 connection builder
-2. runtime credential interpolation 연결
-3. stdio runtime 지원 여부 결정
+1. 建立 discovery/runtime 共用 connection builder
+2. 接入 runtime credential interpolation
+3. 决定是否支持 stdio runtime
 4. MCP tool wrapper caching/lazy call
 
-완료 기준:
+完成标准：
 
-- discovery에서 성공한 credential-bound header/env가 runtime call에서도 동일하게 적용된다.
-- stdio server는 runtime 지원 또는 UI에서 명확히 차단된다.
-- MCP 연결 실패가 첫 토큰 latency를 과도하게 늘리지 않는다.
+- discovery 中成功的 credential-bound header/env 在 runtime call 中也会以相同方式应用。
+- stdio server 要么得到 runtime 支持，要么在 UI 中明确阻止。
+- MCP 连接失败不会过度增加首 token latency。
 
 ### Milestone 6: Sub-agent runtime correctness
 
-1. `AgentConfig.subagents` 추가
-2. child agent runtime assembly helper 추가
-3. `build_agent(..., subagents=...)` 추가
-4. child agent별 tools/skills/model/permissions/HITL inheritance 정책 구현
-5. subagent runtime tests 추가
+1. 添加 `AgentConfig.subagents`
+2. 添加 child agent runtime assembly helper
+3. 添加 `build_agent(..., subagents=...)`
+4. 实现每个 child agent 的 tools/skills/model/permissions/HITL inheritance 策略
+5. 添加 subagent runtime tests
 
-완료 기준:
+完成标准：
 
-- parent에 연결한 child agent name이 `task` tool의 available subagent로 보인다.
-- child prompt/tool/model이 실제로 사용된다.
-- parent와 child tool 권한이 섞이지 않는다.
-- child agent도 top-level HITL/permission boundary를 벗어나지 못한다.
+- 连接到 parent 的 child agent name 会显示为 `task` tool 的 available subagent。
+- child prompt/tool/model 会实际被使用。
+- parent 与 child 的 tool 权限不会混在一起。
+- child agent 也无法越过 top-level HITL/permission boundary。
 
 ### Milestone 7: Event streaming and trace fidelity
 
-1. SSE에 `tool_call_id` 추가
-2. frontend result matching을 id 기반으로 변경
-3. DeepAgents subagent event projection 검토
-4. trace_sink에 agent path/tool lifecycle 저장
+1. 在 SSE 中添加 `tool_call_id`
+2. 将 frontend result matching 改为基于 id
+3. 评估 DeepAgents subagent event projection
+4. 在 trace_sink 中保存 agent path/tool lifecycle
 
-완료 기준:
+完成标准：
 
-- 같은 tool을 연속 호출해도 결과가 정확한 card에 붙는다.
-- subagent start/end/error가 parent run과 구분된다.
-- share trace chip/right rail이 같은 id 체계를 쓴다.
+- 即使连续调用同一个 tool，结果也会绑定到正确的 card。
+- subagent start/end/error 会与 parent run 区分。
+- share trace chip/right rail 使用同一套 id 体系。
 
 ### Milestone 8: Streaming error observability
 
-1. `stream_agent_response`에 `error_sink` 또는 typed result 추가
-2. `_run_agent_stream`에서 hook success/failure 기록 분리
-3. `message_events.status`와 trace metadata에 failed/error 상태 반영
-4. stream/invoke/trigger 실패 semantics 통일 테스트 추가
+1. 为 `stream_agent_response` 添加 `error_sink` 或 typed result
+2. 在 `_run_agent_stream` 中分离 hook success/failure 记录
+3. 在 `message_events.status` 与 trace metadata 中反映 failed/error 状态
+4. 添加统一 stream/invoke/trigger 失败 semantics 的测试
 
-완료 기준:
+完成标准：
 
-- streaming error가 `message_events`와 trace/hook에서 성공이 아니라 실패로 남는다.
-- scheduler/invoke/stream 실행의 실패 상태가 같은 방식으로 조회된다.
-- Langfuse 연동 전에 내부 run failure metadata가 신뢰 가능한 상태가 된다.
+- streaming error 在 `message_events` 与 trace/hook 中会记录为失败，而不是成功。
+- scheduler/invoke/stream 执行的失败状态可以用相同方式查询。
+- 在接入 Langfuse 之前，内部 run failure metadata 会先达到可信状态。
 
 ### Milestone 9: Langfuse trace debugger POC
 
-1. `langfuse>=3.8,<4.0` dependency와 `LANGFUSE_*` settings wiring 확정
-2. `observability/langfuse.py` adapter 추가
-3. LangGraph config에 `CallbackHandler`, metadata, tags 주입
-4. `message_events` external trace correlation 컬럼 추가
-5. backend debug proxy API 추가
-6. conversation debug route 또는 drawer에 Agent Prism POC 연결
+1. 确认 `langfuse>=3.8,<4.0` dependency 与 `LANGFUSE_*` settings wiring
+2. 添加 `observability/langfuse.py` adapter
+3. 向 LangGraph config 注入 `CallbackHandler`、metadata、tags
+4. 为 `message_events` 添加 external trace correlation 列
+5. 添加 backend debug proxy API
+6. 在 conversation debug route 或 drawer 中接入 Agent Prism POC
 
-완료 기준:
+完成标准：
 
-- Langfuse trace가 assistant turn 단위로 생성된다.
-- `conversation_id`가 Langfuse session으로 묶인다.
-- Moldy run id와 Langfuse trace id가 1:1로 연결된다.
-- 다른 사용자의 trace는 debug API로 조회할 수 없다.
-- Langfuse 장애 시 Moldy chat 실행은 실패하지 않는다.
+- Langfuse trace 按 assistant turn 单位生成。
+- `conversation_id` 会归入 Langfuse session。
+- Moldy run id 与 Langfuse trace id 建立 1:1 关联。
+- 无法通过 debug API 查询其他用户的 trace。
+- Langfuse 故障时 Moldy chat 执行不会失败。
 
 ### Milestone 10: Runtime performance and reliability
 
 1. MCP tool wrapper cache/lazy call
-2. skill runtime copytree를 `asyncio.to_thread`와 content_hash cache로 변경
-3. real model fallback을 construction-time이 아니라 invoke/stream-time fallback으로 구현
+2. 将 skill runtime copytree 改为 `asyncio.to_thread` + content_hash cache
+3. 将 real model fallback 从 construction-time 改为 invoke/stream-time fallback
 
-완료 기준:
+完成标准：
 
-- MCP가 느려도 첫 토큰 latency가 과도하게 늘지 않는다.
-- 큰 skill package가 event loop를 블로킹하지 않는다.
-- primary model runtime error에서 fallback 발생 여부가 trace에 남는다.
+- 即使 MCP 很慢，也不会过度增加首 token latency。
+- 大型 skill package 不会阻塞 event loop。
+- primary model 出现 runtime error 时，trace 中会记录是否发生 fallback。
 
 ### Milestone 11: Memory and plan productization
 
-1. memory write policy 정의
-2. `AGENTS.md` 생성/부재/reload 정책 결정
-3. StoreBackend 또는 DB-backed memory route 검토
-4. memory management UI/audit 추가
-5. Todo state 조회/side panel 또는 trace integration 설계
+1. 定义 memory write policy
+2. 决定 `AGENTS.md` 的创建/缺失/reload 策略
+3. 评估 StoreBackend 或 DB-backed memory route
+4. 添加 memory management UI/audit
+5. 设计 Todo state 查询/side panel 或 trace integration
 
-완료 기준:
+完成标准：
 
-- memory가 "숨은 파일"이 아니라 사용자가 이해하고 통제하는 기능이 된다.
-- 다른 agent/conversation memory를 읽거나 수정할 수 없다.
-- plan state를 tool card 외에도 안정적으로 조회할 수 있다.
+- memory 不再是“隐藏文件”，而会成为用户能够理解和控制的功能。
+- 无法读取或修改其他 agent/conversation 的 memory。
+- plan state 除 tool card 外也能稳定查询。
 
 ### Milestone 12: Automatic run product surface
 
 1. schedule/channel tool risk policy
 2. async approval inbox model
 3. trigger run `waiting_approval` status
-4. channel delivery target 설계
-5. agent identity mode 도입
+4. 设计 channel delivery target
+5. 引入 agent identity mode
 
-완료 기준:
+完成标准：
 
-- 자동 실행에서 external mutation/code execution은 기본 차단 또는 approval pending이 된다.
-- 사용자는 pending approval을 나중에 승인/거절할 수 있다.
-- schedule/channel이 어떤 credential identity로 실행되는지 명확하다.
+- 自动执行中的 external mutation/code execution 会默认阻止或进入 approval pending。
+- 用户可以之后批准/拒绝 pending approval。
+- schedule/channel 以哪种 credential identity 执行会保持明确。
 
-## 9. 검증 체크리스트
+## 9. 验证检查表
 
 ### Subagents
 
-- parent A와 child B를 만든다.
-- B에 A와 다른 system prompt와 tool set을 둔다.
-- A에 B를 연결한다.
-- A에게 B에게 위임하라고 요청한다.
-- `task` call이 B의 canonical name으로 발생하는지 확인한다.
-- B의 prompt/tool/model만 사용되는지 trace로 확인한다.
+- 创建 parent A 与 child B。
+- 为 B 设置与 A 不同的 system prompt 和 tool set。
+- 将 B 连接到 A。
+- 要求 A 委托给 B。
+- 确认 `task` call 是否使用 B 的 canonical name。
+- 通过 trace 确认是否只使用 B 的 prompt/tool/model。
 
 ### Filesystem and permissions
 
-- `read_file("/")`가 허용된 경로 외 목록을 보여주지 않는지 확인한다.
-- `read_file("/skills/<uuid>/SKILL.md")`가 차단되는지 확인한다.
-- `read_file("/runtime/<current_thread>/skills/<slug>/SKILL.md")`만 허용되는지 확인한다.
-- `write_file("/agents/<other_agent>/AGENTS.md")`가 차단되는지 확인한다.
-- `edit_file`도 같은 정책을 따르는지 확인한다.
+- 确认 `read_file("/")` 是否不会显示允许路径之外的目录。
+- 确认 `read_file("/skills/<uuid>/SKILL.md")` 是否被阻止。
+- 确认是否只允许 `read_file("/runtime/<current_thread>/skills/<slug>/SKILL.md")`。
+- 确认 `write_file("/agents/<other_agent>/AGENTS.md")` 是否被阻止。
+- 确认 `edit_file` 是否遵循相同策略。
 
 ### Skill execution
 
-- unselected skill slug로 `execute_in_skill` 호출 시 거절된다.
-- selected skill script가 timeout/size/concurrency 제한을 따른다.
-- credential env가 stdout/stderr에 찍혀도 redaction된다.
-- Python script가 host absolute path를 읽을 수 없는 sandbox로 격리된다.
-- network egress가 policy에 맞게 차단된다.
+- 使用未选择的 skill slug 调用 `execute_in_skill` 时会被拒绝。
+- selected skill script 遵守 timeout/size/concurrency 限制。
+- 即使 credential env 被输出到 stdout/stderr，也会被 redaction。
+- Python script 被隔离到无法读取 host absolute path 的 sandbox。
+- network egress 会按 policy 阻止。
 
 ### HITL
 
-- human_in_the_loop middleware만 추가한 agent에서 `write_file`이 interrupt된다.
-- `execute_in_skill`이 interrupt된다.
-- Gmail send/Calendar create 등 mutation tool이 interrupt된다.
-- HITL middleware 설정이 없어도 `ask_user`가 `respond` decision으로 interrupt된다.
-- native `ask_user` fallback은 `{"decisions": [{"type": "respond", "message": "..."}]}`에서 message만 반환한다.
-- 표준 interrupt payload는 `review_configs[].action_name`을 사용한다.
-- 일반 대화 페이지에서 표준 interrupt payload가 `ask_user`/approval card로 렌더링된다.
-- multi-action interrupt는 모든 decision을 모은 뒤 한 번만 resume한다.
-- trigger mode에서 위험 도구가 자동 실행되지 않고 policy에 따라 차단/approval pending 된다.
+- 在只添加 human_in_the_loop middleware 的 agent 中，`write_file` 会触发 interrupt。
+- `execute_in_skill` 会触发 interrupt。
+- Gmail send/Calendar create 等 mutation tool 会触发 interrupt。
+- 即使没有 HITL middleware 设置，`ask_user` 也会以 `respond` decision 触发 interrupt。
+- native `ask_user` fallback 会从 `{"decisions": [{"type": "respond", "message": "..."}]}` 中只返回 message。
+- 标准 interrupt payload 使用 `review_configs[].action_name`。
+- 在普通对话页面中，standard interrupt payload 会渲染为 `ask_user`/approval card。
+- multi-action interrupt 会先收集全部 decision，再只 resume 一次。
+- trigger mode 下高风险工具不会自动执行，而是按 policy 被阻止/进入 approval pending。
 
 ### Plan / TodoList
 
-- 긴 작업 요청 시 `write_todos` tool call이 발생한다.
-- `write_todos` 결과가 Plan card로 렌더링된다.
-- 같은 conversation의 다음 turn에서 graph state의 `todos`가 유지되는지 확인한다.
-- 반복 plan update가 SSE `tool_call_id` 기반으로 올바른 card에 매칭된다.
+- 请求长任务时会出现 `write_todos` tool call。
+- `write_todos` result 会渲染为 Plan card。
+- 验证同一 conversation 的下一 turn 中 graph state 的 `todos` 是否保留。
+- 重复 plan update 会基于 SSE `tool_call_id` 匹配到正确 card。
 
 ### Memory
 
-- 새 agent의 `/agents/{agent_id}/AGENTS.md` 생성/부재 정책이 명확하다.
-- `AGENTS.md`에 저장한 내용이 다음 model call의 `<agent_memory>`에 들어간다.
-- 다른 agent의 memory file을 읽거나 수정할 수 없다.
-- 외부 UI에서 memory를 수정한 뒤 다음 run에 반영되는 reload 정책이 검증된다.
-- schedule/channel 실행에서 memory write가 policy에 따라 차단 또는 승인 대기된다.
+- 新 agent 的 `/agents/{agent_id}/AGENTS.md` 创建/缺失策略保持明确。
+- `AGENTS.md` 中保存的内容会进入下一次 model call 的 `<agent_memory>`。
+- 无法读取或修改其他 agent 的 memory file。
+- 从外部 UI 修改 memory 后，下一 run 会按已验证的 reload 策略反映修改。
+- schedule/channel 执行中的 memory write 会按 policy 被阻止或进入审批等待。
 
 ### MCP
 
-- header interpolation credential이 runtime call에 적용된다.
-- env var interpolation credential이 stdio runtime에 적용된다.
-- 같은 MCP server의 같은 tool을 여러 번 호출해도 latency가 과도하지 않다.
-- server unhealthy 상태에서 빠르게 설명 가능한 stub error가 나온다.
+- header interpolation credential 会应用到 runtime call。
+- env var interpolation credential 会应用到 stdio runtime。
+- 多次调用同一 MCP server 的同一 tool 时，latency 不会过高。
+- server 为 unhealthy 状态时，会快速返回可解释的 stub error。
 
 ### Streaming
 
-- tool_call_start와 tool_call_result에 같은 `tool_call_id`가 있다.
-- 같은 tool이 연속 호출되어도 result가 올바르게 붙는다.
-- subagent tool calls가 parent tool calls와 구분된다.
-- streaming error가 hook failure/trace status에 남는다.
+- tool_call_start 与 tool_call_result 拥有相同 `tool_call_id`。
+- 即使连续调用同一个 tool，result 也会正确绑定。
+- subagent tool calls 会与 parent tool calls 区分。
+- streaming error 会记录到 hook failure/trace status。
 
 ### Langfuse Debugger
 
-- Langfuse disabled 상태에서 chat/resume/edit/regenerate가 기존처럼 동작한다.
-- Langfuse enabled 상태에서 assistant turn마다 trace가 1개 생성된다.
-- trace metadata에 user/conversation/agent/run/checkpoint/source가 들어간다.
-- debug trace list/detail API가 conversation ownership을 검증한다.
-- Langfuse API 장애 시 `message_events` 기반 fallback이 표시된다.
-- capture input/output off, redaction on, sample rate 설정이 각각 동작한다.
+- Langfuse disabled 状态下，chat/resume/edit/regenerate 与现有行为一致。
+- Langfuse enabled 状态下，每个 assistant turn 会生成 1 个 trace。
+- trace metadata 中包含 user/conversation/agent/run/checkpoint/source。
+- debug trace list/detail API 会验证 conversation ownership。
+- Langfuse API 故障时会显示基于 `message_events` 的 fallback。
+- capture input/output off、redaction on、sample rate 设置分别正常生效。
 
-## 10. 최종 우선순위 표
+## 10. 最终优先级表
 
-실행 순서 1-11이 이번 감사의 핵심 개선 순서다. 12번 이후는 correctness/security 경계가 선 뒤 진행할 후속 성능/제품화 항목이다.
+执行顺序 1-11 是本次审计的核心改进顺序。第 12 项之后，是建立 correctness/security 边界后再推进的后续性能/产品化事项。
 
-| 실행 순서 | 우선순위 | 항목 | 이유 | 주요 파일 |
+| 执行顺序 | 优先级 | 项目 | 原因 | 主要文件 |
 |---:|---|---|---|---|
-| 1 | P0 | existing trace endpoint access control | 현재 `/api/conversations/{conversation_id}/traces`가 auth/ownership 없이 SSE trace를 반환할 수 있어 Langfuse 이전에 닫아야 한다. | `conversations.py`, `trace_storage.py` |
-| 2 | P0 | middleware model credential boundary | 사용자 실행에서 system/env key가 섞이는 것은 인증/비용/격리 문제라 가장 먼저 닫아야 한다. | `executor.py`, `model_factory.py`, `conversations.py`, `trigger_executor.py` |
-| 3 | P0 | HITL/ask_user 표준 interrupt 연결 | approval, ask_user, subagent inheritance의 공통 wire다. 이후 위험 도구 정책의 기반이다. | `executor.py`, `ask_user.py`, `streaming.py`, `use-chat-runtime.ts` |
-| 4 | P0 | tool risk 기반 HITL policy와 trigger guard | 현재 trigger는 사람이 없어서 HITL을 끄지만 위험 도구 대체 정책이 없다. 자동 실행 사고를 먼저 막는다. | `executor.py`, tool registry, `trigger_service.py` |
-| 5 | P0 | filesystem permissions/CompositeBackend | DeepAgents file tools가 전역 `data` root를 보는 상태라 memory/skill/conversation 격리의 기초가 필요하다. | `executor.py`, `skill_runtime.py` |
-| 6 | P0 | `execute_in_skill` containment/sandbox | 단기 gate/curl 제거 후 sandbox/worker로 옮긴다. credential env와 host subprocess 조합이 가장 위험하다. | `executor.py`, marketplace skill runtime |
-| 7 | P0 | MCP runtime credential/transport parity | discovery에서 성공한 MCP가 runtime에서 인증/transport mismatch로 실패하거나 raw secret interpolation이 누락된다. | `chat_service.py`, `executor.py`, `mcp/client.py` |
-| 8 | P0 | sub-agent runtime 연결 | 핵심 기능이지만 안전 경계 후 켜야 child agent가 tool/permission surface를 증폭하지 않는다. | `executor.py`, `chat_service.py`, `agent_service.py` |
-| 9 | P1 | DeepAgents event stream/tool_call_id | tool result, plan update, subagent trace가 안정적으로 맞물리려면 id 기반 event가 필요하다. | `streaming.py`, `use-chat-runtime.ts` |
-| 10 | P1 | streaming error observability | 사용자에게는 error가 보이는데 backend는 성공처럼 기록되는 운영 리스크를 줄인다. | `streaming.py`, hooks/trace |
-| 11 | P1 | Langfuse trace debugger POC | 내부 SSE trace를 유지하면서 LangGraph/LLM/tool span waterfall을 외부 observability로 보강한다. | `executor.py`, `message_event.py`, debug API/UI |
-| 12 | P1 | MCP tool loading cache/lazy call | correctness 후 first-token latency와 MCP 장애 전파를 줄인다. | `executor.py`, MCP runtime |
-| 13 | P1 | skill copytree async/cache | 큰 skill package가 event loop를 막는 성능 병목을 줄인다. | `skill_runtime.py`, `executor.py` |
-| 14 | P1 | real model fallback | fallback UI와 실제 runtime 실패 회복을 일치시킨다. | `executor.py`, `model_factory.py` |
-| 15 | P1 | memory product policy | 최소 연결은 있지만 사용자 통제/approval/store/reload 정책이 없다. FS 격리 이후에 제품화한다. | `executor.py`, memory UI |
-| 16 | P1 | plan product state | `write_todos` tool은 있으나 제품 수준 조회/side panel/trace는 없다. event id 정리 후 다룬다. | chat UI, trace/right rail |
-| 17 | P1 | assistant runtime separation | fixer agent가 DeepAgents built-ins를 의도치 않게 받는 문제를 닫는다. | `assistant_agent.py`, `executor.py` |
-| 18 | P2 | middleware catalog 정리 | 사용자 설정 가능 항목과 auto/internal 항목을 분리한다. | `middleware_registry.py`, assistant read/write tools |
-| 19 | P2 | provider middleware 중복 제거 | Anthropic prompt caching 중복 가능성을 줄인다. | `middleware_registry.py` |
-| 20 | P2 | recursion_limit no-op 수정 | 설정값이 실제 runtime에 반영되지 않는 UX 정합성 문제다. | assistant tools, `executor.py` |
-| 21 | P2 | 문서 갱신 | 코드와 PRD/AGENTS/marketplace docs 간 상태 차이를 줄인다. | `AGENTS.md`, `docs/PRD.md`, marketplace docs |
+| 1 | P0 | existing trace endpoint access control | 当前 `/api/conversations/{conversation_id}/traces` 可能在没有 auth/ownership 的情况下返回 SSE trace，因此必须在 Langfuse 之前关闭。 | `conversations.py`, `trace_storage.py` |
+| 2 | P0 | middleware model credential boundary | 用户执行中混入 system/env key 属于认证/成本/隔离问题，应最优先关闭。 | `executor.py`, `model_factory.py`, `conversations.py`, `trigger_executor.py` |
+| 3 | P0 | HITL/ask_user 标准 interrupt 接线 | 是 approval、ask_user、subagent inheritance 的共同 wire，也是后续高风险工具策略的基础。 | `executor.py`, `ask_user.py`, `streaming.py`, `use-chat-runtime.ts` |
+| 4 | P0 | 基于 tool risk 的 HITL policy 与 trigger guard | 当前 trigger 因无人在线而关闭 HITL，但没有高风险工具替代策略。应优先防止自动执行事故。 | `executor.py`, tool registry, `trigger_service.py` |
+| 5 | P0 | filesystem permissions/CompositeBackend | DeepAgents file tools 当前看到全局 `data` root，需要先建立 memory/skill/conversation 隔离基础。 | `executor.py`, `skill_runtime.py` |
+| 6 | P0 | `execute_in_skill` containment/sandbox | 短期移除 gate/curl，再迁移到 sandbox/worker。credential env 与 host subprocess 的组合风险最高。 | `executor.py`, marketplace skill runtime |
+| 7 | P0 | MCP runtime credential/transport parity | discovery 中成功的 MCP 可能在 runtime 因认证/transport mismatch 失败，或漏掉 raw secret interpolation。 | `chat_service.py`, `executor.py`, `mcp/client.py` |
+| 8 | P0 | sub-agent runtime 接入 | 虽是核心功能，但应在安全边界后开启，避免 child agent 放大 tool/permission surface。 | `executor.py`, `chat_service.py`, `agent_service.py` |
+| 9 | P1 | DeepAgents event stream/tool_call_id | 要让 tool result、plan update、subagent trace 稳定对应，需要基于 id 的 event。 | `streaming.py`, `use-chat-runtime.ts` |
+| 10 | P1 | streaming error observability | 降低用户看到 error、backend 却记录成成功的运营风险。 | `streaming.py`, hooks/trace |
+| 11 | P1 | Langfuse trace debugger POC | 在保留内部 SSE trace 的同时，用外部 observability 补强 LangGraph/LLM/tool span waterfall。 | `executor.py`, `message_event.py`, debug API/UI |
+| 12 | P1 | MCP tool loading cache/lazy call | correctness 之后，降低 first-token latency 与 MCP 故障传播。 | `executor.py`, MCP runtime |
+| 13 | P1 | skill copytree async/cache | 减少大型 skill package 阻塞 event loop 的性能瓶颈。 | `skill_runtime.py`, `executor.py` |
+| 14 | P1 | real model fallback | 让 fallback UI 与实际 runtime 失败恢复保持一致。 | `executor.py`, `model_factory.py` |
+| 15 | P1 | memory product policy | 已有最小连接，但没有用户控制/approval/store/reload 策略。应在 FS 隔离之后产品化。 | `executor.py`, memory UI |
+| 16 | P1 | plan product state | 已有 `write_todos` tool，但没有产品级查询/side panel/trace。应在 event id 整理后处理。 | chat UI, trace/right rail |
+| 17 | P1 | assistant runtime separation | 解决 fixer agent 意外获得 DeepAgents built-ins 的问题。 | `assistant_agent.py`, `executor.py` |
+| 18 | P2 | middleware catalog 整理 | 分离用户可配置项与 auto/internal 项。 | `middleware_registry.py`, assistant read/write tools |
+| 19 | P2 | 移除 provider middleware 重复 | 降低 Anthropic prompt caching 重复的可能性。 | `middleware_registry.py` |
+| 20 | P2 | 修复 recursion_limit no-op | 设置值未真正反映到 runtime，属于 UX 一致性问题。 | assistant tools, `executor.py` |
+| 21 | P2 | 文档更新 | 减少代码与 PRD/AGENTS/marketplace docs 之间的状态差异。 | `AGENTS.md`, `docs/PRD.md`, marketplace docs |
 
-## 11. 한 줄 결론
+## 11. 一句话结论
 
-현재 Moldy는 "DeepAgents 기반"이라는 방향은 맞지만, 아직 "DeepAgents harness를 Moldy의 권한/credential/subagent/skill/스케줄 제품 모델에 맞게 조립한 상태"는 아니다. 다시 정렬한 최우선 과제는 existing trace endpoint access control, credential boundary, HITL/ask_user 표준화, trigger risk guard, filesystem permission, skill execution containment다. Langfuse debugger는 필요하지만, 기존 trace API 권한과 event id/correlation을 먼저 정리한 뒤 붙이는 순서가 가장 덜 위험하다.
+当前 Moldy 选择“基于 DeepAgents”的方向是正确的，但还没有达到“按 Moldy 的权限/credential/subagent/skill/调度产品模型组装好 DeepAgents harness”的状态。重新排序后的最优先事项是 existing trace endpoint access control、credential boundary、HITL/ask_user 标准化、trigger risk guard、filesystem permission、skill execution containment。Langfuse debugger 有必要，但最稳妥的顺序是先整理现有 trace API 权限与 event id/correlation，再接入。

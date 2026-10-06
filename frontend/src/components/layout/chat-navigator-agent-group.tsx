@@ -53,8 +53,8 @@ export function ChatNavigatorAgentGroup({
   const t = useTranslations('sidebar.agents')
   const isSidebarCollapsed = isSidebarCollapsedProp ?? false
   const isActiveAgent = activeAgentId === agent.id
-  // 펼침 판정은 부모의 isAgentExpanded 단일 출처가 내려준 expanded만 따른다
-  // (활성 에이전트 기본 펼침 + collapse override도 부모에서 계산됨)
+  // 展开判定只遵循父级 isAgentExpanded 单一来源传下来的 expanded
+  // （活跃智能体默认展开 + collapse override 也由父级计算）
   const shouldExpand = !isSidebarCollapsed && expanded
   const search = searchQuery.trim()
   const {

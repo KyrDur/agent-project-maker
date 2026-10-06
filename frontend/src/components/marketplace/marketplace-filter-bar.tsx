@@ -35,7 +35,6 @@ export function MarketplaceFilterBar({ filters, onChange, superUser }: Marketpla
   ]
   const sourceOptions = [
     { value: 'user', label: t('source.user') },
-    { value: 'k-skill', label: t('source.kSkill') },
     { value: 'import', label: t('source.import') },
     { value: 'system_seed', label: t('source.systemSeed') },
   ]

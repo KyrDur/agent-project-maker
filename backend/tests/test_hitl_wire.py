@@ -1,14 +1,14 @@
-"""HiTL wire format 회귀 가드.
+"""HiTL wire format 回归保护。
 
-A. ``Decision`` Pydantic 검증
-B. ``ResumeRequest`` (decisions 필수) Pydantic 검증
-C. ``POST /api/conversations/{id}/messages/resume`` router → 표준 dict 페이로드
-D. ``stream_agent_response`` ``GraphInterrupt`` catch 시 표준 chunk 단독 emit
-   - 표준 미들웨어 HITLRequest shape: 그대로 emit
-   - 자체 ``ask_user.py`` native interrupt: 표준 ``respond`` action으로 어댑트
-   - ``aget_state`` 실패 fallback: 빈 표준 chunk
+A. ``Decision`` Pydantic 验证
+B. ``ResumeRequest``（decisions 必填）Pydantic 验证
+C. ``POST /api/conversations/{id}/messages/resume`` router → 标准 dict payload
+D. ``stream_agent_response`` ``GraphInterrupt`` catch 时只 emit 标准 chunk
+   - 标准 middleware HITLRequest shape：原样 emit
+   - 自有 ``ask_user.py`` native interrupt：适配为标准 ``respond`` action
+   - ``aget_state`` 失败 fallback：空标准 chunk
 
-미들웨어 인스턴스화 가드는 ``test_hitl_middleware.py`` 별도 파일에 있다.
+middleware 实例化保护在独立文件 ``test_hitl_middleware.py`` 中。
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ from app.schemas.conversation import Decision, ResumeRequest
 from tests.conftest import TEST_USER_ID, TestSession
 
 # ---------------------------------------------------------------------------
-# A. Decision Pydantic 검증
+# A. Decision Pydantic 验证
 # ---------------------------------------------------------------------------
 
 
@@ -75,7 +75,7 @@ class TestDecisionSchema:
         assert d.message == "hello"
 
     def test_reject_message_is_optional(self):
-        # message 없이도 OK (미들웨어가 기본 메시지 생성).
+        # 即使没有 message 也 OK（middleware 会生成默认消息）。
         d = Decision(type="reject")
         assert d.type == "reject"
         d2 = Decision(type="reject", message="reason")
@@ -88,18 +88,18 @@ class TestDecisionSchema:
     def test_model_dump_excludes_none_for_typed_dict_compat(self):
         d = Decision(type="approve")
         dumped = d.model_dump(exclude_none=True)
-        # LangChain HITLResponse TypedDict는 NotRequired — None 키 제외.
+        # LangChain HITLResponse TypedDict 为 NotRequired — 排除 None key。
         assert dumped == {"type": "approve"}
 
 
 # ---------------------------------------------------------------------------
-# B. ResumeRequest 표준 단독
+# B. ResumeRequest 仅标准格式
 # ---------------------------------------------------------------------------
 
 
 class TestResumeRequestSchema:
     def test_decisions_required(self):
-        """``decisions`` 필드 누락 시 422."""
+        """缺少 ``decisions`` 字段时返回 422。"""
         with pytest.raises(ValidationError, match="decisions"):
             ResumeRequest()  # type: ignore[call-arg]
 
@@ -257,8 +257,8 @@ class TestResumeRouterPayload:
 
     @pytest.mark.asyncio
     async def test_legacy_response_field_rejected_422(self, client: AsyncClient):
-        """legacy ``response`` 필드는 unknown — Pydantic 기본 ignore. ``decisions``가
-        없으면 422.
+        """legacy ``response`` 字段为 unknown — Pydantic 默认 ignore。没有
+        ``decisions`` 时返回 422。
         """
         conv_id = await _seed_user_agent_conv()
         resp = await client.post(
@@ -269,7 +269,7 @@ class TestResumeRouterPayload:
 
 
 # ---------------------------------------------------------------------------
-# D. Streaming — 표준 chunk 단독
+# D. Streaming — 只 emit 标准 chunk
 # ---------------------------------------------------------------------------
 
 
@@ -317,7 +317,7 @@ def _parse_interrupt_events(events: list[str]) -> list[dict[str, Any]]:
 
 
 class TestInterruptToStandardChunk:
-    """``_interrupt_to_standard_chunk`` 단위 검증."""
+    """``_interrupt_to_standard_chunk`` 单元验证。"""
 
     def test_standard_hitl_request_passthrough(self):
         intr_value = {
@@ -331,10 +331,10 @@ class TestInterruptToStandardChunk:
         assert chunk["review_configs"] == intr_value["review_configs"]
 
     def test_ask_user_native_adapted_to_respond_action(self):
-        """자체 ``ask_user.py`` interrupt → 표준 ``respond`` action으로 어댑트."""
+        """自有 ``ask_user.py`` interrupt → 适配为标准 ``respond`` action。"""
         intr_value = {
             "type": "ask_user",
-            "question": "어떤 옵션을 원하세요?",
+            "question": "你想要哪个选项？",
             "options": ["A", "B"],
         }
         chunk = _interrupt_to_standard_chunk("ns-ask-1", intr_value)
@@ -343,26 +343,26 @@ class TestInterruptToStandardChunk:
         assert len(chunk["action_requests"]) == 1
         action = chunk["action_requests"][0]
         assert action["name"] == "ask_user"
-        assert action["args"] == {"question": "어떤 옵션을 원하세요?", "options": ["A", "B"]}
+        assert action["args"] == {"question": "你想要哪个选项？", "options": ["A", "B"]}
         review = chunk["review_configs"][0]
         assert review["action_name"] == "ask_user"
         assert "tool_name" not in review
         assert review["allowed_decisions"] == ["respond"]
 
     def test_ask_user_native_preserves_extended_question_flow_args(self):
-        """native ask_user v2 payload는 mode/questions/title을 그대로 frontend로 전달."""
+        """native ask_user v2 payload 将 mode/questions/title 原样传给 frontend。"""
         intr_value = {
             "type": "ask_user",
             "mode": "question_flow",
-            "title": "에이전트 설정 확인",
+            "title": "确认 agent 设置",
             "questions": [
                 {
                     "id": "tone",
-                    "label": "답변 톤",
+                    "label": "回答语气",
                     "type": "single_select",
                     "options": [
                         {"id": "concise", "label": "简洁明了"},
-                        {"id": "detailed", "label": "자세하게"},
+                        {"id": "detailed", "label": "详细"},
                     ],
                     "required": True,
                 }
@@ -374,19 +374,19 @@ class TestInterruptToStandardChunk:
         assert chunk is not None
         assert chunk["action_requests"][0]["args"] == {
             "mode": "question_flow",
-            "title": "에이전트 설정 확인",
+            "title": "确认 agent 设置",
             "questions": intr_value["questions"],
         }
 
     def test_ask_user_native_preserves_option_list_args(self):
-        """native ask_user option_list payload는 min/max 선택 제한을 유지한다."""
+        """native ask_user option_list payload 保留 min/max 选择限制。"""
         intr_value = {
             "type": "ask_user",
             "mode": "option_list",
-            "title": "사용할 도구를 선택하세요",
+            "title": "请选择要使用的 tool",
             "minSelections": 1,
             "maxSelections": 3,
-            "options": [{"id": "web", "label": "Web Search", "description": "최신 정보 검색"}],
+            "options": [{"id": "web", "label": "Web Search", "description": "搜索最新信息"}],
         }
 
         chunk = _interrupt_to_standard_chunk("ns-options-1", intr_value)
@@ -394,24 +394,24 @@ class TestInterruptToStandardChunk:
         assert chunk is not None
         assert chunk["action_requests"][0]["args"] == {
             "mode": "option_list",
-            "title": "사용할 도구를 선택하세요",
+            "title": "请选择要使用的 tool",
             "minSelections": 1,
             "maxSelections": 3,
             "options": intr_value["options"],
         }
 
     def test_unknown_shape_returns_none(self):
-        """알 수 없는 dict shape은 skip (None)."""
+        """未知 dict shape 会 skip（None）。"""
         assert _interrupt_to_standard_chunk("ns", {"random": "stuff"}) is None
         assert _interrupt_to_standard_chunk("ns", None) is None
 
 
 class TestStreamingStandardEmit:
-    """``stream_agent_response``의 INTERRUPT chunk 표준 단독 emit."""
+    """``stream_agent_response`` 的 INTERRUPT chunk 只 emit 标准格式。"""
 
     @pytest.mark.asyncio
     async def test_standard_chunk_only_for_hitl_request(self):
-        """표준 미들웨어 HITLRequest shape → 표준 chunk 1개만 emit."""
+        """标准 middleware HITLRequest shape → 只 emit 1个标准 chunk。"""
         intr_value = {
             "action_requests": [
                 {
@@ -433,15 +433,15 @@ class TestStreamingStandardEmit:
         events = [e async for e in stream_agent_response(agent, [], {})]
         intrs = _parse_interrupt_events(events)
 
-        assert len(intrs) == 1, "표준 단독 emit (legacy chunk 없음)"
+        assert len(intrs) == 1, "仅 emit 标准格式（无 legacy chunk）"
         std = intrs[0]
         assert "action_requests" in std and "review_configs" in std
-        assert "value" not in std, "legacy 'value' 키는 더 이상 emit되지 않음"
+        assert "value" not in std, "不再 emit legacy 'value' key"
         assert std["interrupt_id"] == "ns-42"
 
     @pytest.mark.asyncio
     async def test_ask_user_native_emits_adapted_standard_chunk(self):
-        """자체 ask_user interrupt도 표준 wire로 어댑트되어 단일 chunk emit."""
+        """自有 ask_user interrupt 也适配为标准 wire，仅 emit 单个 chunk。"""
         intr_value = {"type": "ask_user", "question": "Choose?", "options": ["a", "b"]}
         state = _make_state_with_interrupts([_make_intr("ns-ask-1", intr_value)])
         agent = _InterruptingAgent(state)
@@ -449,7 +449,7 @@ class TestStreamingStandardEmit:
         events = [e async for e in stream_agent_response(agent, [], {})]
         intrs = _parse_interrupt_events(events)
 
-        assert len(intrs) == 1, "ask_user도 표준 chunk 단독"
+        assert len(intrs) == 1, "ask_user 也只 emit 标准 chunk"
         chunk = intrs[0]
         assert "action_requests" in chunk
         assert chunk["action_requests"][0]["name"] == "ask_user"
@@ -459,7 +459,7 @@ class TestStreamingStandardEmit:
 
     @pytest.mark.asyncio
     async def test_unknown_shape_emits_no_chunk(self):
-        """표준 shape도 ask_user도 아닌 dict는 chunk emit하지 않음 (skip)."""
+        """既非标准 shape 也非 ask_user 的 dict 不 emit chunk（skip）。"""
         intr_value = {"random": "stuff"}
         state = _make_state_with_interrupts([_make_intr("ns-x", intr_value)])
         agent = _InterruptingAgent(state)
@@ -471,7 +471,7 @@ class TestStreamingStandardEmit:
 
     @pytest.mark.asyncio
     async def test_fallback_empty_standard_chunk_when_aget_state_fails(self):
-        """``aget_state`` 실패 + ``was_interrupted=True`` → 빈 표준 chunk."""
+        """``aget_state`` 失败 + ``was_interrupted=True`` → 空标准 chunk。"""
         agent = _InterruptingAgent(RuntimeError("aget_state boom"))
 
         events = [e async for e in stream_agent_response(agent, [], {})]
@@ -486,18 +486,18 @@ class TestStreamingStandardEmit:
 
 
 class TestAskUserFallbackResumeParser:
-    """native ask_user fallback이 표준 resume payload를 모델에 그대로 노출하지 않는다."""
+    """native ask_user fallback 不会把标准 resume payload 原样暴露给 model。"""
 
     def test_ask_user_returns_respond_message_from_standard_resume_payload(self):
         with patch(
             "app.agent_runtime.tools.ask_user.interrupt",
-            return_value={"decisions": [{"type": "respond", "message": "옵션 A"}]},
+            return_value={"decisions": [{"type": "respond", "message": "选项 A"}]},
         ):
-            assert ask_user.invoke({"question": "어느 쪽?"}) == "옵션 A"
+            assert ask_user.invoke({"question": "哪一个？"}) == "选项 A"
 
     def test_ask_user_falls_back_to_string_response(self):
-        with patch("app.agent_runtime.tools.ask_user.interrupt", return_value="옵션 B"):
-            assert ask_user.invoke({"question": "어느 쪽?"}) == "옵션 B"
+        with patch("app.agent_runtime.tools.ask_user.interrupt", return_value="选项 B"):
+            assert ask_user.invoke({"question": "哪一个？"}) == "选项 B"
 
     def test_ask_user_accepts_question_flow_payload(self):
         with patch("app.agent_runtime.tools.ask_user.interrupt", return_value="完成") as intr:
@@ -505,11 +505,11 @@ class TestAskUserFallbackResumeParser:
                 ask_user.invoke(
                     {
                         "mode": "question_flow",
-                        "title": "에이전트 설정 확인",
+                        "title": "确认 agent 设置",
                         "questions": [
                             {
                                 "id": "tone",
-                                "label": "답변 톤",
+                                "label": "回答语气",
                                 "type": "single_select",
                                 "options": [{"id": "concise", "label": "简洁明了"}],
                             }
@@ -522,20 +522,20 @@ class TestAskUserFallbackResumeParser:
         payload = intr.call_args.args[0]
         assert payload["type"] == "ask_user"
         assert payload["mode"] == "question_flow"
-        assert payload["title"] == "에이전트 설정 확인"
+        assert payload["title"] == "确认 agent 设置"
         assert payload["questions"][0]["id"] == "tone"
 
 
 # ---------------------------------------------------------------------------
-# E. edit-by-index — 백엔드가 pending action index로 edited_action.name을 채운다
+# E. edit-by-index — backend 用 pending action index 填充 edited_action.name
 # ---------------------------------------------------------------------------
 
 
 class TestEditByIndexNameFill:
-    """프론트가 도구 이름을 몰라도(name 생략) 백엔드가 pending action을 index로
-    매칭해 ``edited_action.name``을 권위적으로 채운다. langchain
-    ``HumanInTheLoopMiddleware``는 decision↔action을 positional index로 매칭하고
-    ``edited_action["name"]``을 hard subscript로 읽기 때문이다.
+    """即使 frontend 不知道 tool name（省略 name），backend 也会按 index
+    匹配 pending action，并权威填充 ``edited_action.name``。因为 langchain
+    ``HumanInTheLoopMiddleware`` 会按 positional index 匹配 decision↔action，
+    并用 hard subscript 读取 ``edited_action["name"]``。
     """
 
     def test_name_filled_for_edit_without_name(self):
@@ -549,7 +549,7 @@ class TestEditByIndexNameFill:
         assert edited["args"]["command"] == "new"
 
     def test_name_overwritten_authoritatively(self):
-        # 프론트가 틀린 name(또는 stale)을 보내도 백엔드 index가 권위적.
+        # 即使 frontend 发送错误 name（或 stale），backend index 也具有权威性。
         response = {
             "decisions": [
                 {
@@ -584,8 +584,8 @@ class TestEditByIndexNameFill:
         assert restored["decisions"][1]["edited_action"]["args"]["to"] == "x@y"
 
     def test_redacted_secret_restored_and_name_filled(self):
-        # 시크릿 칸은 프론트에서 <redacted>로 잠겨 오고, 백엔드가 checkpoint
-        # 원본으로 복원하면서 동시에 name도 채운다.
+        # secret 字段从 frontend 以 <redacted> 锁定传来，backend 会从 checkpoint
+        # 原值恢复，同时填充 name。
         response = {
             "decisions": [
                 {
@@ -630,7 +630,7 @@ class TestEditByIndexNameFill:
         ]
 
     def test_name_falls_back_to_client_value_without_matching_raw_action(self):
-        # 방어: raw action이 없으면(매칭 실패) 기존 동작대로 프론트 name 유지.
+        # 防御：若没有 raw action（匹配失败），按现有行为保留 frontend name。
         response = {
             "decisions": [
                 {"type": "edit", "edited_action": {"name": "client_name", "args": {"x": 1}}}
@@ -643,9 +643,9 @@ class TestEditByIndexNameFill:
         assert restored["decisions"][0]["edited_action"]["args"]["x"] == 1
 
     def test_name_less_edit_without_raw_action_fails_closed(self):
-        # 프론트가 name을 생략(백엔드가 index로 채움)했는데 매칭 raw action도 없으면,
-        # name 없는 edited_action은 langchain에서 hard subscript로 크래시하므로
-        # 통과시키지 말고 fail-closed 해야 한다.
+        # frontend 省略 name（期望 backend 按 index 填充）但又没有匹配的 raw action 时，
+        # 缺 name 的 edited_action 会在 langchain 中因 hard subscript 崩溃，因此
+        # 不应放行，必须 fail-closed。
         response = {"decisions": [{"type": "edit", "edited_action": {"args": {"command": "new"}}}]}
 
         with pytest.raises(RedactedResumeArgsUnavailable):
@@ -653,9 +653,9 @@ class TestEditByIndexNameFill:
 
 
 class TestRestoreResumePayloadEditGate:
-    """``restore_redacted_resume_payload``의 early-return 게이트는 redacted 유무와
-    무관하게 edit decision이 있으면 index 해석 경로를 타야 한다(name 채우기 필요).
-    비-edit(approve/reject/respond) resume은 그대로 short-circuit.
+    """``restore_redacted_resume_payload`` 的 early-return gate 无论是否有 redacted，
+    只要存在 edit decision 都必须走 index 解析路径（需要填充 name）。
+    非 edit（approve/reject/respond）resume 仍直接 short-circuit。
     """
 
     @pytest.mark.asyncio

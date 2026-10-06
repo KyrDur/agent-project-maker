@@ -66,21 +66,68 @@ async def bootstrap(agent_id: uuid.UUID, user_id: uuid.UUID) -> None:
             project = await projects.create_project(db, agent_id, user_id)
             if not project.builder_session_id:
                 return  # Automatic baseline is limited to Builder-origin projects.
-            if (project.requirements_json or {}).get("bootstrap", {}).get("stage") == "results":
-                return
             stage = "v1"
             try:
+                from app.marketplace.payloads import canonical_json_hash
+                from app.services.agent_project_llm import role_configurations
+
+                configurations = await role_configurations(db, user_id)
+                saved = (project.eval_spec_json or {}).get("role_configurations")
+                if (project.requirements_json or {}).get("bootstrap", {}).get(
+                    "stage"
+                ) == "results" and saved == configurations:
+                    return
+                if saved and saved != configurations:
+                    project.eval_spec_json = None
+                    project.completion_json = None
+                    await db.commit()
                 versions = await projects.list_versions(db, agent_id, user_id)
                 v1 = next(v for v in versions if v.version_number == 1)
                 stage = "plan"
                 await progress(db, project, stage)
                 if not project.eval_spec_json:
                     await semantic.generate(db, agent_id, user_id, v1.id)
-                stage = "focus"
+                from app.models.agent_project import AgentProjectEvalSet
+                from app.schemas.agent_project import EvalRunCreate
+                from app.services import agent_project_evaluation as evaluation
+                from app.services.agent_project_practice import requirements_hash
+
+                scope = canonical_json_hash(
+                    {"requirements_hash": requirements_hash(project), "roles": configurations}
+                )
+                dataset_id = uuid.uuid5(project.id, "automatic-benchmark:" + scope)
+                stage = "cases"
                 await progress(db, project, stage)
-                # Final product flow pauses here: the user must choose evaluation
-                # focus areas before the formal 20-case benchmark is generated.
-                return
+                dataset = await db.get(AgentProjectEvalSet, dataset_id)
+                if dataset is None or (
+                    not dataset.frozen
+                    and dataset.quality_report_json
+                    and dataset.quality_report_json.get("status") != "approved"
+                ):
+                    dataset = await semantic.generate(
+                        db, agent_id, user_id, v1.id, cases=True, dataset_id=dataset_id
+                    )
+                stage = "validation"
+                await progress(db, project, stage)
+                dataset = await evaluation.judge_set(db, agent_id, user_id, dataset.id)
+                if (dataset.quality_report_json or {}).get("status") != "approved":
+                    raise ValueError("evaluation_generation_invalid")
+                stage = "evaluation"
+                await progress(db, project, stage)
+                run = await evaluation.create_run(
+                    db,
+                    agent_id,
+                    user_id,
+                    EvalRunCreate(
+                        version_id=v1.id,
+                        eval_set_id=dataset.id,
+                        request_id=uuid.uuid5(project.id, "automatic-baseline:" + scope),
+                    ),
+                )
+                await progress(db, project, stage, run_id=run.id)
+                if run.status == "pending":
+                    await evaluation.execute_run(run.id, agent_id, user_id)
+                await progress(db, project, "results", run_id=run.id)
             except Exception as exc:
                 await db.rollback()
                 logger.exception("Builder project bootstrap failed at %s", stage)

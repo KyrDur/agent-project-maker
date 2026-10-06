@@ -82,7 +82,7 @@ describe('useChatRuntime — regenerate target selection', () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
-          messages: [msg('user-1', 'user', '안녕'), msg('stream-active', 'assistant', '안녕!')],
+          messages: [msg('user-1', 'user', '你好'), msg('stream-active', 'assistant', '你好！')],
           streamFn: unusedStreamFn as unknown as (
             content: string,
             signal: AbortSignal,
@@ -106,7 +106,7 @@ describe('useChatRuntime — regenerate target selection', () => {
     const { result } = renderHook(
       () =>
         useChatRuntime({
-          messages: [msg('user-1', 'user', '안녕'), msg(assistantId, 'assistant', '안녕!')],
+          messages: [msg('user-1', 'user', '你好'), msg(assistantId, 'assistant', '你好！')],
           streamFn: unusedStreamFn as unknown as (
             content: string,
             signal: AbortSignal,

@@ -60,7 +60,7 @@ describe('MessageAttachmentItem', () => {
     render(<MessageAttachmentItem brief={brief()} />)
 
     const thumbnail = screen.getByRole('img', { name: 'photo.png' })
-    // 마크다운/인라인 이미지와 동일한 공용 ChatImage(.chat-image)로 렌더된다.
+    // 使用与 markdown/inline image 相同的公共 ChatImage(.chat-image) 渲染。
     expect(thumbnail).toHaveClass('chat-image')
   })
 
@@ -71,7 +71,7 @@ describe('MessageAttachmentItem', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     await user.click(screen.getByRole('img', { name: 'photo.png' }))
 
-    // ChatImage 라이트박스(DialogShell) 안에 원본 이미지가 뜬다.
+    // ChatImage lightbox(DialogShell) 中显示原图。
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('img', { name: 'photo.png' })).toBeInTheDocument()
   })

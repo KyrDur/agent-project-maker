@@ -59,7 +59,7 @@ beforeEach(() =>
 )
 
 async function openEvaluationTab() {
-  await userEvent.click(await screen.findByRole('button', { name: /Evaluation/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /评测\s*评测证据/ }))
 }
 
 it('generates a plan then cases and edits mocks using the existing editor', async () => {
@@ -77,8 +77,7 @@ it('generates a plan then cases and edits mocks using the existing editor', asyn
     http.post(`${path}/eval-sets/generate`, async ({ request }) => {
       expect(await request.json()).toEqual({
         version_id: 'v1',
-        evaluation_focus: ['tool_correctness', 'groundedness'],
-        evaluation_focus_reason: '重点确认工具和依据',
+        evaluation_focus_reason: null,
       })
       server.use(http.get(`${path}/eval-sets`, () => HttpResponse.json([dataset])))
       return HttpResponse.json(dataset)
@@ -95,13 +94,8 @@ it('generates a plan then cases and edits mocks using the existing editor', asyn
   expect(await screen.findByText('Complete the task')).toBeInTheDocument()
   expect(await screen.findByText('20 个测试用例')).toBeInTheDocument()
   const generate = await screen.findByRole('button', { name: '生成 20 个测试用例' })
-  expect(generate).toBeDisabled()
-  await userEvent.click(screen.getByLabelText(/工具调用正确性/))
-  await userEvent.click(screen.getByLabelText(/事实依据与证据/))
-  await userEvent.type(
-    screen.getByPlaceholderText(/正式使用前必须确认/),
-    '重点确认工具和依据',
-  )
+  expect(generate).toBeEnabled()
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   await userEvent.click(generate)
   await userEvent.click(
     await screen.findByRole('button', { name: /Generated example.*编辑|编辑.*Generated example/ }),
@@ -160,7 +154,7 @@ it('shows pass rate, individual scores and failed-case evidence', async () => {
   )
   render(<ProjectWorkbench agentId="agent-id" />)
   await openEvaluationTab()
-  expect(await screen.findByText('通过率85%')).toBeInTheDocument()
+  expect(await screen.findByText(/全部用例通过率：85%/)).toBeInTheDocument()
   expect(await screen.findByText(/Revenue is absent from the sources/)).toBeInTheDocument()
   expect(await screen.findByText(/Revenue doubled/)).toBeInTheDocument()
 })

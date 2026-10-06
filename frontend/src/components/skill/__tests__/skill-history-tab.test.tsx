@@ -5,7 +5,7 @@ import type { SkillRevisionDetail, SkillRevisionSummary } from '@/lib/types/skil
 
 import type { SkillDetailTabSlots } from '../skill-detail-tab-shell'
 
-// 구 DialogShell 렌더러 삭제(Phase 2) — 테스트는 슬롯을 평면 렌더한다.
+// 删除旧 DialogShell 渲染器（Phase 2）— 测试将插槽扁平渲染。
 function renderTestSlots(slots: SkillDetailTabSlots) {
   return (
     <>
@@ -27,12 +27,12 @@ vi.mock('@/lib/hooks/use-skill-revisions', () => ({
   useSkillRevisions: (...args: readonly unknown[]) => mockUseSkillRevisions(...args),
   useSkillRevision: (...args: readonly unknown[]) => mockUseSkillRevision(...args),
   useRollbackSkillRevision: (...args: readonly unknown[]) => mockUseRollbackSkillRevision(...args),
-  // M4 diff 카드 — 이 테스트의 관심사가 아니라 로딩 상태로 고정.
+  // M4 diff 卡片 — 不是该测试关注点，因此固定为加载中状态。
   useSkillRevisionFiles: () => ({ data: undefined, isLoading: true, isError: false }),
   useSkillRevisionFileContent: () => ({ data: undefined, isLoading: true, isError: false }),
 }))
 
-// Phase 3 — 히스토리 탭이 리비전 통과율 배지용으로 version-stats를 조회한다.
+// Phase 3 — 历史标签页为修订版通过率徽标查询 version-stats。
 vi.mock('@/lib/hooks/use-skill-evaluations', () => ({
   useSkillEvaluationVersionStats: () => ({ data: [], isLoading: false }),
 }))
@@ -47,7 +47,7 @@ function buildRevision(overrides: Partial<SkillRevisionSummary>): SkillRevisionS
     content_hash: 'hash-1',
     size_bytes: 128,
     file_count: 1,
-    changelog_summary: '초기 생성',
+    changelog_summary: '初始创建',
     created_at: '2026-06-01T00:00:00Z',
     ...overrides,
   }
@@ -86,7 +86,7 @@ describe('SkillHistoryTab', () => {
           revision_number: 1,
           operation: 'create',
           content_hash: '111111111111',
-          changelog_summary: '처음 생성',
+          changelog_summary: '首次创建',
         }),
         buildRevision({
           id: 'rev-3',
@@ -94,7 +94,7 @@ describe('SkillHistoryTab', () => {
           operation: 'builder_improvement',
           content_hash: '333333333333',
           file_count: 3,
-          changelog_summary: '날씨 요약 규칙 개선',
+          changelog_summary: '改进天气摘要规则',
           created_at: '2026-06-03T00:00:00Z',
         }),
         buildRevision({
@@ -103,7 +103,7 @@ describe('SkillHistoryTab', () => {
           operation: 'manual_content_update',
           content_hash: '222222222222',
           file_count: 2,
-          changelog_summary: '문구 수정',
+          changelog_summary: '修改文案',
           created_at: '2026-06-02T00:00:00Z',
         }),
       ],
@@ -113,12 +113,12 @@ describe('SkillHistoryTab', () => {
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
     const revisions = screen.getAllByRole('article')
-    expect(within(revisions[0]).getByText('리비전 3')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('修订版 3')).toBeInTheDocument()
     expect(within(revisions[0]).getByText('当前')).toBeInTheDocument()
-    expect(within(revisions[0]).getByText(/빌더 개선/)).toBeInTheDocument()
-    expect(within(revisions[0]).getByText('3개 파일')).toBeInTheDocument()
-    expect(within(revisions[1]).getByText('리비전 2')).toBeInTheDocument()
-    expect(within(revisions[2]).getByText('리비전 1')).toBeInTheDocument()
+    expect(within(revisions[0]).getByText(/建设者改进/)).toBeInTheDocument()
+    expect(within(revisions[0]).getByText('3 文件')).toBeInTheDocument()
+    expect(within(revisions[1]).getByText('修订版 2')).toBeInTheDocument()
+    expect(within(revisions[2]).getByText('修订版 1')).toBeInTheDocument()
   })
 
   it('shows selected revision detail and disables rollback for the current revision', async () => {
@@ -128,7 +128,7 @@ describe('SkillHistoryTab', () => {
         revision_number: 2,
         operation: 'manual_content_update',
         changed_files: [{ path: 'SKILL.md', status: 'modified' }],
-        changelog_items: [{ title: '지침을 더 구체화', path: 'SKILL.md' }],
+        changelog_items: [{ title: '细化指令', path: 'SKILL.md' }],
         compatibility_result: { targets: { openai_codex: { status: 'ok' } } },
         evaluation_summary: { status: 'completed', mean_score: 0.82 },
       }),
@@ -136,7 +136,7 @@ describe('SkillHistoryTab', () => {
         id: 'rev-3',
         revision_number: 3,
         operation: 'builder_improvement',
-        changelog_summary: '최신 개선',
+        changelog_summary: '最新改进',
       }),
     }
     mockUseSkillRevisions.mockReturnValue({
@@ -146,7 +146,7 @@ describe('SkillHistoryTab', () => {
           id: 'rev-3',
           revision_number: 3,
           operation: 'builder_improvement',
-          changelog_summary: '최신 개선',
+          changelog_summary: '最新改进',
           created_at: '2026-06-03T00:00:00Z',
         }),
       ],
@@ -161,18 +161,18 @@ describe('SkillHistoryTab', () => {
 
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
-    expect(screen.getByText('리비전 3 상세')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '리비전 3 되돌리기' })).toBeDisabled()
+    expect(screen.getByText('修订版 3 详细信息')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '回滚到修订版 3' })).toBeDisabled()
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: '리비전 2 보기' }))
+    await user.click(screen.getByRole('button', { name: '查看修订版 2' }))
 
-    expect(screen.getByText('리비전 2 상세')).toBeInTheDocument()
-    expect(screen.getByText('지침을 더 구체화 · SKILL.md')).toBeInTheDocument()
+    expect(screen.getByText('修订版 2 详细信息')).toBeInTheDocument()
+    expect(screen.getByText('细化指令 · SKILL.md')).toBeInTheDocument()
     expect(screen.getByText('SKILL.md · modified')).toBeInTheDocument()
     expect(screen.getByText('便携兼容性')).toBeInTheDocument()
     expect(screen.getByText('OpenAI/Codex')).toBeInTheDocument()
-    expect(screen.getByText('通行证')).toBeInTheDocument()
+    expect(screen.getByText('通过')).toBeInTheDocument()
     expect(screen.getByText('mean_score: 0.82')).toBeInTheDocument()
   })
 
@@ -203,12 +203,10 @@ describe('SkillHistoryTab', () => {
     render(<SkillHistoryTab skillId="skill-1">{renderTestSlots}</SkillHistoryTab>)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: '리비전 1 보기' }))
-    await user.click(screen.getByRole('button', { name: '리비전 1 되돌리기' }))
+    await user.click(screen.getByRole('button', { name: '查看修订版 1' }))
+    await user.click(screen.getByRole('button', { name: '回滚到修订版 1' }))
 
-    expect(
-      screen.getByText('回滚会将当前内容保留为新的历史记录条目。'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('回滚会将当前内容保留为新的历史记录条目。')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '回滚' }))
 

@@ -50,10 +50,7 @@ class LLMCredentialRequiredError(AppError):
     def __init__(self) -> None:
         super().__init__(
             code="llm_credential_required",
-            message=(
-                "본인의 LLM API 키가 등록되어 있지 않습니다. "
-                "/credentials 페이지에서 키를 등록한 뒤 다시 시도해주세요."
-            ),
+            message=("尚未注册您自己的 LLM API 密钥。 请在 /credentials 页面注册密钥后重试。"),
             status=422,
         )
 
@@ -69,8 +66,8 @@ async def resolve_llm_api_key_for_agent(
     Raises ``LLMCredentialRequiredError`` when no usable user-owned credential
     exists.
 
-    INFO 레벨 trace 를 한 줄씩 emit — 어느 단계에서 키가 결정/실패했는지
-    backend stdout 로 진단 가능 (silent fail 회귀 방지).
+    INFO 级 trace 逐行 emit — 可诊断密钥在哪个阶段确定/失败
+    backend stdout 可用于诊断（防止 silent fail 回归）。
     """
 
     subject_user_id = identity.credential_subject_user_id if identity is not None else agent.user_id
@@ -85,17 +82,6 @@ async def resolve_llm_api_key_for_agent(
 
     cred = getattr(agent, "llm_credential", None)
     if cred is not None:
-        if cred.is_system and (
-            model is not None
-            and cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)
-        ):
-            key = await _decrypt_api_key(cred)
-            if key is not None:
-                logger.info(
-                    "agent %s: api_key from explicit system llm_credential",
-                    agent.id,
-                )
-                return key
         if _credential_owned_by_subject(cred, subject_user_id) and (
             model is not None
             and cred.definition_key == PROVIDER_TO_DEFINITION_KEY.get(model.provider)

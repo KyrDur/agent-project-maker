@@ -22,8 +22,8 @@ const FAKE_CRED_TYPES = [
     has_oauth: false,
   },
   {
-    key: 'naver_search',
-    display_name: 'Naver Search',
+    key: 'google_search',
+    display_name: 'Google Search',
     icon_id: 'search',
     documentation_url: null,
     category: 'search',
@@ -52,10 +52,10 @@ const FAKE_CREDENTIALS = [
   },
   // Non-LLM credential should be filtered out of the credential picker.
   {
-    id: 'cred-naver-1',
+    id: 'cred-search-1',
     user_id: 'user-1',
-    definition_key: 'naver_search',
-    name: 'Naver Prod',
+    definition_key: 'google_search',
+    name: 'Google Search Test',
     field_keys: ['client_id', 'client_secret'],
     is_shared: false,
     status: 'active',
@@ -161,7 +161,7 @@ test.describe('Models page', () => {
     await expect(page.getByText('空')).toBeVisible()
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
     await expect(page.getByRole('heading', { name: '添加对话框' })).toBeVisible()
@@ -210,7 +210,7 @@ test.describe('Models page', () => {
     await expect(page.getByText('空')).toBeVisible()
 
     await page
-      .getByRole('button', { name: /새 모델|모델 추가/ })
+      .getByRole('button', { name: /新模型|添加模型/ })
       .first()
       .click()
 

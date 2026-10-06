@@ -24,7 +24,7 @@ const checks = [
       'Missing node_modules/@rhwp/core/rhwp_bg.wasm. Reinstall dependencies before build/dev.',
   },
   {
-    name: 'messages-ko',
+    name: 'messages-zh-CN',
     ok: existsSync(join(root, 'messages', 'zh-CN.json')),
     message: 'Missing messages/zh-CN.json.',
   },

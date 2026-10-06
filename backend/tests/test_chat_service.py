@@ -152,11 +152,11 @@ async def test_auto_title_from_first_user_message(db: AsyncSession):
     conv = await create_conversation(db, agent_id)  # title="备用标题"
     assert conv.title == "备用标题"
 
-    await maybe_set_auto_title(db, conv.id, "오늘 날씨 어때?")
+    await maybe_set_auto_title(db, conv.id, "今天天气怎么样？")
 
     updated = await get_conversation(db, conv.id)
     assert updated is not None
-    assert updated.title == "오늘 날씨 어때?"
+    assert updated.title == "今天天气怎么样？"
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_auto_title_no_change_when_already_set(db: AsyncSession):
     await db.commit()
     conv = await create_conversation(db, agent_id, title="Custom Title")
 
-    await maybe_set_auto_title(db, conv.id, "새로운 내용")
+    await maybe_set_auto_title(db, conv.id, "新内容")
 
     updated = await get_conversation(db, conv.id)
     assert updated is not None
@@ -232,13 +232,13 @@ async def test_hydrates_pending_write_file_interrupt_from_trace_chunks(db: Async
     interrupt_id = "agent:file-write"
     file_args = {
         "file_path": "/runtime/today_diary.md",
-        "content": "# 오늘 하루\n\n좋은 하루였다.",
+        "content": "# 今天一天\n\n是美好的一天。",
     }
     response = MessageResponse(
         id=msg_id,
         conversation_id=conv.id,
         role="assistant",
-        content="파일을 만들게요.",
+        content="我来创建文件。",
         tool_calls=[{"id": "toolu-1", "name": "write_file", "args": file_args}],
         tool_call_id=None,
         created_at=conv.created_at,
@@ -279,7 +279,7 @@ async def test_hydrates_pending_write_file_interrupt_from_trace_chunks(db: Async
             {
                 "id": f"{run_id}-4",
                 "event": "message_end",
-                "data": {"content": "파일을 만들게요.", "status": "completed"},
+                "data": {"content": "我来创建文件。", "status": "completed"},
             },
         ],
     )
@@ -325,13 +325,13 @@ async def test_hydrates_pending_write_file_interrupt_from_protocol_trace(db: Asy
     interrupt_id = "agent:file-write:v3"
     file_args = {
         "file_path": "/runtime/today_diary.md",
-        "content": "# 오늘 하루\n\n좋은 하루였다.",
+        "content": "# 今天一天\n\n是美好的一天。",
     }
     response = MessageResponse(
         id=msg_id,
         conversation_id=conv.id,
         role="assistant",
-        content="파일을 만들게요.",
+        content="我来创建文件。",
         tool_calls=[{"id": "toolu-1", "name": "write_file", "args": file_args}],
         tool_call_id=None,
         created_at=conv.created_at,
@@ -415,7 +415,7 @@ async def test_does_not_hydrate_completed_write_file_interrupt(db: AsyncSession)
     interrupt_id = "agent:file-write"
     file_args = {
         "file_path": "/conversations/thread-a/today_diary.md",
-        "content": "# 오늘 하루\n\n좋은 하루였다.",
+        "content": "# 今天一天\n\n是美好的一天。",
     }
     assistant_response = MessageResponse(
         id=assistant_msg_id,
@@ -490,13 +490,13 @@ async def test_hydrates_interrupt_only_on_matching_tool_call_response(db: AsyncS
     run_id = str(uuid.uuid4())
     file_args = {
         "file_path": "/conversations/thread-a/today_diary.md",
-        "content": "# 오늘 하루\n\n좋은 하루였다.",
+        "content": "# 今天一天\n\n是美好的一天。",
     }
     datetime_response = MessageResponse(
         id=datetime_msg_id,
         conversation_id=conv.id,
         role="assistant",
-        content="오늘 날짜를 확인할게요.",
+        content="我来确认今天的日期。",
         tool_calls=[{"id": "toolu-date", "name": "current_datetime", "args": {}}],
         tool_call_id=None,
         created_at=conv.created_at,

@@ -15,8 +15,8 @@ type SkillDetailPackageFooterProps = {
 }
 
 /**
- * 소스 탭(패키지) 푸터 — 저장 + 패키지 요약(크기·버전·연결 수).
- * 삭제/내보내기/닫기는 스튜디오 설정 탭·행 메뉴가 소유한다 (Phase 2 D1).
+ * 源标签页(包) 页脚 — 保存 + 包摘要（大小·版本·连接数）。
+ * 删除/导出/关闭由工作室设置标签页·行菜单负责 (Phase 2 D1)。
  */
 export function SkillDetailPackageFooter({
   savePending,

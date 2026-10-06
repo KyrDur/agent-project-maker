@@ -57,7 +57,7 @@ const server: McpServer = {
   id: 'mcp-1',
   user_id: 'user-1',
   name: 'GitHub MCP',
-  description: 'GitHub 이슈와 PR을 조회합니다.',
+  description: '查询 GitHub issue 和 PR。',
   transport: 'stdio',
   url: null,
   command: 'npx',
@@ -81,7 +81,7 @@ const otherServer: McpServer = {
   ...server,
   id: 'mcp-2',
   name: 'Slack MCP',
-  description: 'Slack 메시지를 보냅니다.',
+  description: '发送 Slack 消息。',
 }
 
 const health: HealthCheckEntry = {
@@ -109,12 +109,12 @@ describe('McpServersPage', () => {
   it('uses a tabbed card panel instead of the old server table', () => {
     render(<McpServersPage />)
 
-    expect(screen.getByRole('tab', { name: '전체 1개' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全部 1' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('搜索服务器')).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: '名称' })).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(screen.getByText('GitHub 이슈와 PR을 조회합니다.')).toBeInTheDocument()
-    expect(screen.getByText('12개 도구')).toBeInTheDocument()
+    expect(screen.getByText('查询 GitHub issue 和 PR。')).toBeInTheDocument()
+    expect(screen.getByText('12 个工具')).toBeInTheDocument()
   })
 
   it('renders MCP servers as status cards by default', () => {
@@ -130,9 +130,9 @@ describe('McpServersPage', () => {
     const user = userEvent.setup()
     render(<McpServersPage />)
 
-    await user.click(screen.getByRole('tab', { name: /연결됨/ }))
+    await user.click(screen.getByRole('tab', { name: /已连接/ }))
 
-    expect(screen.getByRole('tab', { name: '연결됨 1개' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '已连接 1' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('opens the detail dialog from the detailId deep link', () => {
@@ -148,7 +148,7 @@ describe('McpServersPage', () => {
     )
   })
 
-  it('딥링크를 연 뒤 다른 카드를 관리하면 URL을 갱신하고 닫으면 깜빡임 없이 닫힌다', async () => {
+  it('打开 deep link 后管理其他卡片时会更新 URL，关闭时不会闪烁并正常关闭', async () => {
     const user = userEvent.setup()
     mockUseMcpServers.mockReturnValue({ data: [server, otherServer], isLoading: false })
     mockSearchParams.value = new URLSearchParams('detailId=mcp-1')

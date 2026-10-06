@@ -26,15 +26,15 @@ async def test_quote_freezes_only_selected_message_and_keeps_provenance(
         kind="conversation",
         id=seed.conversation.id,
         message_id="answer-1",
-        quote="선택한 문장",
-        comment="더 자세히 알려줘",
+        quote="选中的句子",
+        comment="请告诉我更多细节",
         label="forged title",
         message_role="user",
     )
     tree = MessageTree(
         nodes=[
             MessageTreeNode(
-                message=AIMessage(id="answer-1", content="앞 문단\n선택한 문장\n뒤 문단"),
+                message=AIMessage(id="answer-1", content="前一段\n选中的句子\n后一段"),
                 parent_id=None,
                 introduced_by_checkpoint_id="checkpoint-1",
             )
@@ -51,13 +51,13 @@ async def test_quote_freezes_only_selected_message_and_keeps_provenance(
         resolver = resource_context_resolver(db, seed, tmp_path)
         result = await resolver.resolve(ChatResourceContextRequest(resources=[reference]))
         item = result.resources[0]
-        assert item.quote == "선택한 문장"
+        assert item.quote == "选中的句子"
         assert item.message_id == "answer-1"
         assert item.message_role == "assistant"
         assert item.resolved_label == "Current"
-        assert "뒤 문단" not in item.text
-        assert "더 자세히 알려줘" in item.text
-        assert item.to_public_reference().get("quote") == "선택한 문장"
+        assert "后一段" not in item.text
+        assert "请告诉我更多细节" in item.text
+        assert item.to_public_reference().get("quote") == "选中的句子"
         assert await resolver.reauthorize(result) == result
 
         with pytest.raises(ResourceContextNotFoundError):

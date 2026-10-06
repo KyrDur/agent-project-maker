@@ -82,8 +82,8 @@ test.describe('Durable chat run summary', () => {
       await expect(
         page.locator('[data-moldy-message-role="assistant"]').filter({ has: summary }),
       ).toHaveCount(1)
-      await expect(summary).toContainText('도구 총 0')
-      await expect(summary).toContainText('서브 에이전트 총 0')
+      await expect(summary).toContainText('工具总数 0')
+      await expect(summary).toContainText('子 Agent 总数 0')
       await summary.getByRole('button', { name: '显示活动' }).click()
       await expect(summary.getByRole('listitem').first()).toBeVisible()
       await page.screenshot({
@@ -118,7 +118,7 @@ test.describe('Durable chat run summary', () => {
         `[data-testid="run-summary"][data-run-id="${canceledRunId}"]`,
       )
       await expect(canceledSummary).toBeVisible({ timeout: 15_000 })
-      await expect(canceledSummary).toContainText('도구 총')
+      await expect(canceledSummary).toContainText('工具总数')
 
       await page.reload()
       await expect(

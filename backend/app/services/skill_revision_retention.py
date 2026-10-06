@@ -79,8 +79,8 @@ async def prune_revisions_for_skill(
 ) -> list[SkillRevision]:
     if skill.user_id != user_id:
         return []
-    # limit=None 필수 — 기본 100 창만 보면 창 밖 리비전이 영구히 prune에서
-    # 빠져 스냅샷 디스크가 샌다 (R5).
+    # 必须 limit=None — 若只看默认 100 窗口，窗口外 revision 会永久从 prune 中
+    # 漏掉，造成 snapshot 磁盘泄漏（R5）。
     revisions = await skill_revision_service.list_revisions(
         db, skill=skill, user_id=user_id, limit=None
     )

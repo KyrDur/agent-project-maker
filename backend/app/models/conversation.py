@@ -29,8 +29,8 @@ class Conversation(Base):
         onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
         nullable=False,
     )
-    # 메시지 idx → ISO timestamp 매핑. 한 번 부여되면 변경되지 않아
-    # list_messages 호출 시 옛 메시지 시각이 흔들리지 않게 한다.
+    # message idx → ISO timestamp 映射。一旦赋值就不会改变，
+    # 避免调用 list_messages 时旧消息时间发生漂移。
     message_timestamps: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     # M-CHAT1b — user-selected branch tip (a LangGraph checkpoint_id). When
     # the user clicks `<` `>` on a sibling, the frontend stores the new tip

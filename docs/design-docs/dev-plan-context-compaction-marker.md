@@ -1,118 +1,118 @@
-# 개발 기획서 — 자동압축 표시(마커) B-풀버전: "압축 중… → 요약 완료"
+# 开发规划书 — 自动压缩显示(marker) B-完整版：“压缩中… → 摘要完成”
 
-> 이 문서 **하나만 보고** 처음부터 끝까지 구현 가능하도록, 실제 소스 기준 **파일:라인 + 검증된 사실 + 변경 스니펫 + 테스트 + 리스크**를 명시한다.
-> 대상 버전: deepagents `0.6.9`, langchain `1.4.x`, Moldy 브랜치 `feature/context-compaction`(Phase 0 커밋 `c1b03660` 이후).
-> 선행: Phase 0(`models.context_window` 단일화 + 게이지 + 자동압축 임계값 교정)는 **이미 완료·검증·커밋됨**. 이 문서는 그 위에 얹는 **표시(마커)** 작업이다.
-> 범위: **자동압축이 일어날 때 (a) 진행 중 "압축 중…" 일시 상태 + (b) 완료 후 "이전 대화를 요약했어요 · 원본 보기" 영구 마커** 를 v3 채팅(프로덕션)에 띄운다. 부수적으로 **요약 토큰 누수(answer 오염) 차단**(LangChain 공식 권장)을 함께 한다.
+> 为了能**只看这一份文档**就从头到尾完成实现，本文基于实际源码明确列出**文件:行号 + 已验证事实 + 修改 snippet + 测试 + 风险**。
+> 目标版本：deepagents `0.6.9`、langchain `1.4.x`、Moldy 分支 `feature/context-compaction`（Phase 0 commit `c1b03660` 之后）。
+> 前置：Phase 0（`models.context_window` 单一化 + gauge + 自动压缩 threshold 修正）**已完成、验证并提交**。本文是在此基础上增加的**显示(marker)**工作。
+> 范围：**自动压缩发生时，在 v3 聊天（生产）中显示 (a) 进行中的“压缩中…”临时状态 + (b) 完成后的“已摘要之前的对话 · 查看原文”永久 marker**。同时顺带处理**防止摘要 token 泄漏（污染 answer）**（LangChain 官方建议）。
 
 ---
 
-## 0. 한눈에 — 무엇을 / 어디에
+## 0. 一览 — 做什么 / 在哪里
 
-| 단계 | 사용자 경험 | 핵심 변경 |
+| 阶段 | 用户体验 | 核心变更 |
 |------|------------|-----------|
-| 압축 진행 중 | 응답 스피너 라벨이 **"압축 중…"** 으로 바뀜 (답변 생성과 구분) | 백엔드: 요약 토큰 감지 → `compaction(state=running)` 이벤트 emit + 요약 토큰 **suppress** / 프론트: transient activity |
-| 압축 완료 | "압축 중…" 사라지고 답변이 흐르며, 그 턴에 작게 **"이전 대화를 요약했어요 · 원본 보기"** 한 줄이 영구 표시 | 백엔드: `_summarization_event` 감지 → `compaction(state=done, offload_path)` emit / 프론트: 메시지 메타 attach → 인라인 마커 렌더 |
+| 压缩进行中 | 回复 spinner 标签变为**“压缩中…”**（与答案生成区分） | backend：检测摘要 token → emit `compaction(state=running)` event + **suppress** 摘要 token / frontend：transient activity |
+| 压缩完成 | “压缩中…”消失，答案开始流出，并在该 turn 上永久显示一行小字**“已摘要之前的对话 · 查看原文”** | backend：检测 `_summarization_event` → emit `compaction(state=done, offload_path)` / frontend：attach 到 message metadata → 渲染 inline marker |
 
-**핵심 한 줄:** deepagents 0.6.9 자동압축은 요약을 `messages`에 남기지 않고 스트림 메타데이터(`lc_source=summarization`)와 state(`_summarization_event`)로만 드러낸다 → **백엔드 스트림 어댑터에서 감지/emit** 하고 프론트는 그 이벤트를 렌더한다. (LangChain 공식 deepagents *context-engineering* 문서가 `metadata.lc_source=="summarization"` 감지를 권장.)
+**核心一句话：** deepagents 0.6.9 自动压缩不会把摘要留在 `messages` 中，只通过 stream metadata（`lc_source=summarization`）和 state（`_summarization_event`）暴露 → 在 **backend stream adapter 中检测/emit**，frontend 渲染该事件。（LangChain 官方 deepagents *context-engineering* 文档建议检测 `metadata.lc_source=="summarization"`。）
 
 ---
 
-## 1. 선행 사실 (모두 실측/소스 확인 완료)
+## 1. 前置事实（均已实测/源码确认）
 
-### 1.1 deepagents 0.6.9 자동압축의 실제 동작
-- `create_deep_agent`는 `create_summarization_middleware(model, backend)`를 기본 스택에 주입한다(`graph.py:779`, 서브에이전트 `:626/:702`). 트리거는 `compute_summarization_defaults(model)`이 `model.profile["max_input_tokens"]`로 계산 → **Phase 0가 채운 `context_window` 기준 `("fraction", 0.85)`**.
-- **요약은 `messages` state에 들어가지 않는다.** `_DeepAgentsSummarizationMiddleware.wrap_model_call`(summarization.py:1003~)은 docstring 그대로 *"does NOT modify the LangGraph state. Instead, it tracks summarization events in middleware state(`_summarization_event`)"*. 요약은 **모델 요청에만 transient 적용**되고, persisted `messages`는 원본 유지.
-- 따라서 "요약 메시지를 messages에서 찾는" 방식(구 `before_model` 가정)은 0.6.9에서 **동작하지 않는다.** 이게 Phase 1 재설계의 이유.
+### 1.1 deepagents 0.6.9 自动压缩的实际行为
+- `create_deep_agent` 会将 `create_summarization_middleware(model, backend)` 注入默认 stack（`graph.py:779`，子 Agent `:626/:702`）。trigger 由 `compute_summarization_defaults(model)` 基于 `model.profile["max_input_tokens"]` 计算 → **以 Phase 0 填充的 `context_window` 为准使用 `("fraction", 0.85)`**。
+- **摘要不会进入 `messages` state。** `_DeepAgentsSummarizationMiddleware.wrap_model_call`（summarization.py:1003~）正如 docstring 所写：*“does NOT modify the LangGraph state. Instead, it tracks summarization events in middleware state(`_summarization_event`)”*。摘要只会**临时应用到模型请求**，persisted `messages` 保留原文。
+- 因此，“在 messages 中查找摘要消息”的方式（旧 `before_model` 假设）在 0.6.9 中**不起作用。** 这正是 Phase 1 重新设计的原因。
 
-### 1.2 압축은 "답변 직전 단계"라 입력 불가 구간과 겹친다
-순서(한 턴 안):
+### 1.2 压缩是“回答前步骤”，因此与不可输入区间重叠
+顺序（一个 turn 内）：
 ```
-[사용자 전송] → 옛 대화 요약(LLM 1회, 압축 중) → 실제 답변 생성 → [완료]
+[用户发送] → 摘要旧对话（LLM 1 次，压缩中）→ 生成实际回答 → [完成]
 ```
-이 턴이 도는 동안 컴포저는 이미 "응답 중(Stop)" 상태 → **압축 중 별도 입력 불가**(클로드코드와 동일). 부족한 건 "왜 기다리는지"를 알려주는 표시뿐.
+这个 turn 执行期间 composer 已处于“回复中（Stop）”状态 → **压缩中无法额外输入**（与 Claude Code 相同）。缺少的只是告诉用户“为什么在等待”的显示。
 
-### 1.3 v3(프로덕션) 스트림에서 압축 신호가 드러나는 형태 — **실측**
-프로덕션 채팅은 `runtimeMode==='langgraph_v3'`(기본값, `frontend/src/lib/chat/runtime-mode.ts`)이고, 백엔드는 `astream_events(version="v3")`를 쓴다(`langgraph_streaming.py:_open_v3_stream` L72-83). 작은 `context_window`로 압축을 강제하고 v3 이벤트를 떠보면:
+### 1.3 在 v3（生产）stream 中暴露压缩信号的形式 — **实测**
+生产聊天默认是 `runtimeMode==='langgraph_v3'`（`frontend/src/lib/chat/runtime-mode.ts`），backend 使用 `astream_events(version="v3")`（`langgraph_streaming.py:_open_v3_stream` L72-83）。通过较小的 `context_window` 强制压缩并抓取 v3 event 后，可看到：
 
 ```
 v3 methods: {'values': 2, 'messages': 10}
-lc_source=summarization 운반: method=='messages' (payload, metadata) 튜플의 metadata.lc_source
-_summarization_event 운반: method=='values' 의 data 안 {cutoff_index, summary_message, file_path}
+携带 lc_source=summarization：method=='messages' 的 (payload, metadata) tuple 中 metadata.lc_source
+携带 _summarization_event：method=='values' 的 data 中 {cutoff_index, summary_message, file_path}
 ```
 
-즉 v3 이벤트에서:
-- **요약 생성 토큰** = `method=="messages"` 이벤트의 `metadata.lc_source == "summarization"`.
-- **압축 확정 신호** = `method=="values"` 이벤트의 `data["_summarization_event"]`(키: `cutoff_index`, `summary_message`, `file_path`).
+也就是说，在 v3 event 中：
+- **摘要生成 token** = `method=="messages"` event 的 `metadata.lc_source == "summarization"`。
+- **压缩确认信号** = `method=="values"` event 的 `data["_summarization_event"]`（key：`cutoff_index`、`summary_message`、`file_path`）。
 
-타임라인:
+timeline：
 ```
-messages(lc_source)×N   ← 압축 중 (요약 토큰)        → state=running
+messages(lc_source)×N   ← 压缩中（摘要 token）        → state=running
 values(_summarization_event, cutoff_index>0)         → state=done (+offload_path)
-messages(lc_source 없음)×M ← 실제 답변
+messages(lc_source 无)×M ← 实际答案
 ```
 
-> ⚠️ **현재 누수 위험:** `adapt_v3_protocol_event`(langgraph_protocol_adapter.py:37) → `_normalize_protocol_data`(:140) → `_message_payload_with_metadata`(:151-163)가 `metadata.lc_source`를 메시지 payload에 **그대로 합쳐 프론트로 보낸다.** 요약 토큰(`messages`)을 그대로 흘리면 assistant-ui LangGraph SDK가 **요약 텍스트를 답변/유령 메시지로 렌더**할 수 있다. LangChain 공식 문서도 이 토큰을 **필터링**한다 → 본 작업에서 suppress 한다.
+> ⚠️ **当前泄漏风险：** `adapt_v3_protocol_event`（langgraph_protocol_adapter.py:37）→ `_normalize_protocol_data`（:140）→ `_message_payload_with_metadata`（:151-163）会把 `metadata.lc_source` **原样合并进 message payload 并发送到 frontend。** 如果摘要 token（`messages`）原样流出，assistant-ui LangGraph SDK 可能会**把摘要文本渲染为答案/ghost message**。LangChain 官方文档也会**过滤**这些 token → 本工作中将其 suppress。
 
-### 1.4 오프로드 파일 경로
-Moldy 백엔드는 `FilesystemBackend(root_dir=_DATA_DIR, virtual_mode=True)`(runtime_component_builder.py:603) — **CompositeBackend 아님** → `artifacts_root="/"` → 오프로드 경로는 결정적으로 **`/conversation_history/{thread_id}.md`**. 단, 가능하면 `_summarization_event["file_path"]`를 직접 쓰고, 없을 때만 이 규칙으로 derive 한다(미래 backend 교체 안전).
+### 1.4 offload 文件路径
+Moldy backend 使用 `FilesystemBackend(root_dir=_DATA_DIR, virtual_mode=True)`（runtime_component_builder.py:603）— **不是 CompositeBackend** → `artifacts_root="/"` → offload 路径可确定为 **`/conversation_history/{thread_id}.md`**。不过应尽量直接使用 `_summarization_event["file_path"]`，只有缺失时才按此规则 derive（保证未来 backend 替换安全）。
 
-### 1.5 두 개의 스트리밍 경로 (production = v3)
-| 경로 | 사용처 | 백엔드 | 프론트 변환 |
+### 1.5 两条 streaming 路径（production = v3）
+| 路径 | 使用位置 | backend | frontend 转换 |
 |------|--------|--------|-------------|
-| **v3 (프로덕션)** | `langgraph_v3` 기본 | `langgraph_streaming.py`(`astream_events v3`) + `adapt_v3_protocol_event` | LangGraph 런타임(`use-moldy-langgraph-stream.ts`) |
+| **v3（生产）** | `langgraph_v3` 默认 | `langgraph_streaming.py`（`astream_events v3`）+ `adapt_v3_protocol_event` | LangGraph runtime（`use-moldy-langgraph-stream.ts`） |
 | legacy | `NEXT_PUBLIC_CHAT_RUNTIME=legacy` | `streaming.py`(`stream_mode="messages"`) | `use-chat-runtime.ts` + `convert-message.ts` |
 
-→ **v3가 필수, legacy는 선택(권장).** 둘 다 같은 신호(`lc_source` / `_summarization_event`)를 쓰므로 동일 로직을 두 경로에 둔다.
+→ **v3 必做，legacy 可选（建议）。** 两者都使用相同信号（`lc_source` / `_summarization_event`），因此可在两条路径中放置相同逻辑。
 
 ---
 
-## 2. 설계
+## 2. 设计
 
-### 2.1 이벤트 계약 (백엔드 → 프론트)
-프론트 `custom` 채널로 단일 side-channel 이벤트를 보낸다. method = `custom:moldy.compaction`(또는 `custom`+`name="moldy.compaction"`). data payload:
+### 2.1 事件契约（backend → frontend）
+通过 frontend `custom` channel 发送单一 side-channel event。method = `custom:moldy.compaction`（或 `custom`+`name="moldy.compaction"`）。data payload：
 
 ```jsonc
-// 압축 시작
+// 压缩开始
 { "state": "running" }
-// 압축 완료
+// 压缩完成
 { "state": "done", "offload_path": "/conversation_history/{thread_id}.md", "cutoff_index": 12 }
 ```
 
-- **run당 최대 1쌍(running→done)** 으로 dedup. (한 턴에 압축은 보통 1회. 멀티스텝 런에서 2회 이상이면 각 쌍을 emit해도 되지만 v1은 **run당 1회**로 단순화 + `log` 남김.)
-- 이벤트는 기존 emit 경로(`stored_custom_protocol_event`)로 나가 **persist + broker + replay** 가 공짜로 된다(아래 3.1).
+- **每个 run 最多 1 对（running→done）**，进行 dedup。（一个 turn 通常压缩 1 次。multi-step run 中若达到 2 次以上，也可以 emit 每一对，但 v1 简化为**每个 run 1 次** + 留 `log`。）
+- event 通过现有 emit 路径（`stored_custom_protocol_event`）发出，可自动获得 **persist + broker + replay**（见 3.1）。
 
-### 2.2 백엔드 책임
-1. **감지**: v3 루프에서 adapted event를 보고
-   - `method=="messages"` & `data.metadata.lc_source=="summarization"` → 요약 토큰.
-   - `method=="values"` & `data._summarization_event.cutoff_index>0` → 압축 확정.
-2. **suppress**: 요약 토큰(`messages` w/ lc_source) 이벤트는 **프론트로 yield하지 않는다**(누수 차단).
-3. **emit**: 첫 요약 토큰에서 `compaction(running)` 1회, `_summarization_event` 도착에서 `compaction(done, offload_path)` 1회.
+### 2.2 backend 责任
+1. **检测**：在 v3 loop 中检查 adapted event
+   - `method=="messages"` & `data.metadata.lc_source=="summarization"` → 摘要 token。
+   - `method=="values"` & `data._summarization_event.cutoff_index>0` → 压缩确认。
+2. **suppress**：摘要 token（`messages` w/ lc_source）event **不 yield 给 frontend**（阻止泄漏）。
+3. **emit**：在第一个摘要 token 时 emit 1 次 `compaction(running)`，在 `_summarization_event` 到达时 emit 1 次 `compaction(done, offload_path)`。
 
-### 2.3 프론트 책임 (v3 LangGraph 런타임)
-1. **transient "압축 중…"**: `compaction(running)` → `done` 사이 동안 표시. 기존 activity 인프라(`RunActivity`)에 `kind:'compaction'` 추가 → 로딩 인디케이터가 렌더.
-2. **영구 "이전 대화를 요약했어요 · 원본 보기"**: `compaction(done)` → 해당 assistant 턴 메시지 메타에 attach → `AssistantMessageParts` 근처에서 인라인 마커 렌더. (persist된 이벤트가 reload 시 replay → 재attach → 영구.)
+### 2.3 frontend 责任（v3 LangGraph runtime）
+1. **transient“压缩中…”**：`compaction(running)` → `done` 之间显示。向现有 activity 基础设施（`RunActivity`）新增 `kind:'compaction'` → loading indicator 渲染。
+2. **永久“已摘要之前的对话 · 查看原文”**：`compaction(done)` → attach 到对应 assistant turn message metadata → 在 `AssistantMessageParts` 附近渲染 inline marker。（persisted event 会在 reload 时 replay → 再次 attach → 永久存在。）
 
 ---
 
-## 3. 구현 — 백엔드
+## 3. 实现 — backend
 
-### 3.1 이벤트 헬퍼 (계약 + emit 수단 확인)
-- `RAW_PROTOCOL_METHODS`(langgraph_protocol_adapter.py:18-)에 `"custom"` 이미 포함.
-- side-channel emit 도구: `app/agent_runtime/protocol_events.py:stored_custom_protocol_event(name, data, ...)` (protocol_side_effects.py가 이미 사용). 이걸로 `name="moldy.compaction"` 이벤트를 만든다.
-- **event_names.py**: 백엔드 상수는 필수는 아니나 가독성 위해 추가 권장:
+### 3.1 event helper（确认契约 + emit 手段）
+- `RAW_PROTOCOL_METHODS`（langgraph_protocol_adapter.py:18-）中已包含 `"custom"`。
+- side-channel emit 工具：`app/agent_runtime/protocol_events.py:stored_custom_protocol_event(name, data, ...)`（protocol_side_effects.py 已在使用）。用它创建 `name="moldy.compaction"` event。
+- **event_names.py**：backend 常量并非必需，但为可读性建议新增：
   ```python
   # event_names.py
   COMPACTION: Final = "moldy.compaction"   # custom side-channel name
   ```
 
-### 3.2 v3 경로 감지/suppress/emit — `langgraph_streaming.py`
-대상: `stream_agent_response_langgraph`의 v3 루프(현재 L275-309 `else: async for raw_event in stream:`).
+### 3.2 v3 路径检测/suppress/emit — `langgraph_streaming.py`
+目标：`stream_agent_response_langgraph` 的 v3 loop（当前 L275-309 `else: async for raw_event in stream:`）。
 
-감지 헬퍼(같은 모듈 또는 `langgraph_protocol_adapter.py`에 추가):
+检测 helper（添加在同一 module 或 `langgraph_protocol_adapter.py`）：
 ```python
 def _compaction_signal(event: StoredProtocolEvent) -> str | None:
-    """adapted protocol event에서 압축 신호를 분류.
+    """从 adapted protocol event 中分类压缩信号。
     returns: "summary_token" | "committed" | None
     """
     data = event.get("data")
@@ -136,9 +136,9 @@ def _compaction_offload_path(event: StoredProtocolEvent, thread_id: str) -> str 
     return f"/conversation_history/{thread_id}.md" if thread_id else None
 ```
 
-루프 변경(스니펫, 기존 `yield await emit(event)` 직전/직후):
+修改 loop（snippet，位于现有 `yield await emit(event)` 前后）：
 ```python
-# 루프 진입 전 상태:
+# 进入 loop 前的状态：
 _compaction_running_emitted = False
 _compaction_done_emitted = False
 
@@ -150,8 +150,8 @@ if _is_empty_input_requested_event(event):
 
 signal = _compaction_signal(event)
 if signal == "summary_token":
-    # 1) 요약 토큰은 답변 오염 방지 위해 프론트로 보내지 않는다(누수 차단).
-    # 2) 첫 토큰에서 "압축 중" 1회 emit.
+    # 1) 为防止污染 answer，不将摘要 token 发送到 frontend（阻止泄漏）。
+    # 2) 在第一个 token 时 emit 1 次“压缩中”。
     if not _compaction_running_emitted:
         _compaction_running_emitted = True
         side_effect_seq += 1
@@ -159,7 +159,7 @@ if signal == "summary_token":
             name=event_names.COMPACTION, run_id=msg_id, thread_id=thread_id,
             seq=side_effect_seq, data={"state": "running"},
         ))
-    continue  # ← suppress: 요약 토큰 자체는 yield 안 함
+    continue  # ← suppress：摘要 token 本身不 yield
 if signal == "committed" and not _compaction_done_emitted:
     _compaction_done_emitted = True
     side_effect_seq += 1
@@ -171,161 +171,161 @@ if signal == "committed" and not _compaction_done_emitted:
             "cutoff_index": event["data"]["_summarization_event"]["cutoff_index"],
         },
     ))
-    # values 이벤트 자체는 기존대로 계속 흘려보낸다(상태 동기화 유지) → 아래 yield 유지
+    # values event 本身仍按现有逻辑继续流出（维持 state 同步）→ 保留下方 yield
 
 yield await emit(event)
-# (이후 usage/side-effect 수집 로직은 그대로)
+# （之后的 usage/side-effect 收集逻辑保持不变）
 ```
-> ⚠️ `stored_custom_protocol_event`의 정확한 시그니처(seq/event_id/namespace 인자)는 `protocol_events.py:75-148`에서 확인 후 맞춘다. side-effect 이벤트들이 `side_effect_seq`를 증가시키며 쓰는 패턴(`collect_protocol_side_effect_events`)을 그대로 따른다.
+> ⚠️ `stored_custom_protocol_event` 的准确 signature（seq/event_id/namespace 参数）请在 `protocol_events.py:75-148` 中确认后匹配。完全沿用 side-effect events 通过增加 `side_effect_seq` 使用的模式（`collect_protocol_side_effect_events`）。
 
-> ⚠️ **fallback 경로(L241-274, `_open_stream_mode_fallback`, 테스트 fake용)** 도 같은 처리를 추가해야 일관. 거기선 `adapt_stream_mode_chunk`가 (mode,data) 튜플을 adapt하므로 동일 `_compaction_signal` 재사용 가능.
+> ⚠️ **fallback 路径（L241-274，`_open_stream_mode_fallback`，测试 fake 用）** 也需要加入相同处理以保持一致。那里 `adapt_stream_mode_chunk` 会 adapt (mode,data) tuple，因此可复用同一个 `_compaction_signal`。
 
-### 3.3 legacy 경로 (선택, 권장) — `streaming.py`
-대상: `stream_agent_response`의 `async for chunk in agent.astream(stream_mode="messages")`(L394-). `msg, metadata = chunk` 직후, `builder:internal` skip(L402) 다음에:
+### 3.3 legacy 路径（可选，建议）— `streaming.py`
+目标：`stream_agent_response` 的 `async for chunk in agent.astream(stream_mode="messages")`（L394-）。在 `msg, metadata = chunk` 之后、`builder:internal` skip（L402）之后：
 ```python
 if (metadata or {}).get("lc_source") == "summarization":
     if not _compaction_emitted:
         _compaction_emitted = True
         yield emit(event_names.COMPACTION, {"state": "running"})
-    continue  # suppress 요약 토큰
+    continue  # suppress 摘要 token
 ```
-legacy는 `_summarization_event`(updates/values)를 안 받으므로 `done`은 **첫 비-요약 토큰 전환** 또는 스트림 종료 시 1회 emit(`{"state":"done","offload_path": f"/conversation_history/{thread_id}.md"}`). thread_id는 `config["configurable"]["thread_id"]`.
-> legacy는 프로덕션 아님 → v1에서 **running만**(누수 차단 + "압축 중") 해도 허용. done 마커는 v3 우선.
+legacy 不会接收 `_summarization_event`（updates/values），因此 `done` 可在**第一个非摘要 token 切换**时或 stream 结束时 emit 1 次（`{"state":"done","offload_path": f"/conversation_history/{thread_id}.md"}`）。thread_id 为 `config["configurable"]["thread_id"]`。
+> legacy 不是生产路径 → v1 即使只做 **running**（阻止泄漏 + “压缩中”）也可接受。done marker 优先支持 v3。
 
-### 3.4 redaction / persist 확인
-- `redact_private_reasoning`(adapter)와 `protocol_redaction.py`가 새 custom 이벤트 data(`offload_path` 등)를 깨지 않는지 확인. `offload_path`는 민감정보 아님(경로). 시크릿 마스킹 대상 아님.
-- custom 이벤트는 기존 emit 경로로 persist(`message_events`)되어 **reload replay** 됨 → 프론트 영구 마커의 근거.
+### 3.4 redaction / persist 确认
+- 确认 `redact_private_reasoning`（adapter）与 `protocol_redaction.py` 不会破坏新 custom event data（`offload_path` 等）。`offload_path` 不属于敏感信息（路径），也不是 secret masking 对象。
+- custom event 会通过现有 emit 路径 persist（`message_events`），因此会在 **reload replay** 中出现 → 成为 frontend 永久 marker 的依据。
 
 ---
 
-## 4. 구현 — 프론트 (v3 LangGraph 런타임)
+## 4. 实现 — frontend（v3 LangGraph runtime）
 
-경로 전제: `chat-runtime-section.tsx`가 `runtimeMode==='langgraph_v3'`일 때 `useMoldyLangGraphStream`(`use-moldy-langgraph-stream.ts`) 사용. custom 이벤트는 `['custom']` 채널로 들어옴(`activity-protocol.ts`의 `ActivityProtocolMethod`에 `custom:${string}` 이미 존재).
+路径前提：当 `chat-runtime-section.tsx` 中 `runtimeMode==='langgraph_v3'` 时使用 `useMoldyLangGraphStream`（`use-moldy-langgraph-stream.ts`）。custom event 会进入 `['custom']` channel（`activity-protocol.ts` 的 `ActivityProtocolMethod` 已包含 `custom:${string}`）。
 
-### 4.1 compaction 이벤트 파싱 훅 — 신규 `langgraph-runtime/compaction-events.ts`
-패턴 출처: `memory-events.ts`(useLangGraphMemoryEffects, custom 이벤트 파싱/dedup) + `usage-events.ts`(message attach). 신규 훅:
-- `['custom']` 채널 구독, `customName(event)==='moldy.compaction'` 필터.
-- `state==='running'|'done'` 파싱(Zod 또는 타입가드; `isCompactionPayload`).
-- 반환:
-  - `compactionStatus: 'idle' | 'running'`(transient, running 수신~done 수신까지)
-  - `compactionByRunId: Map<runId, {offloadPath?}>`(done 시 기록) → 메시지 attach용.
-- dedup: `event_id`(`memory-events.ts:84-89` 패턴).
+### 4.1 compaction event 解析 hook — 新增 `langgraph-runtime/compaction-events.ts`
+模式来源：`memory-events.ts`（useLangGraphMemoryEffects，custom event 解析/dedup）+ `usage-events.ts`（message attach）。新增 hook：
+- 订阅 `['custom']` channel，过滤 `customName(event)==='moldy.compaction'`。
+- 解析 `state==='running'|'done'`（Zod 或 type guard；`isCompactionPayload`）。
+- 返回：
+  - `compactionStatus: 'idle' | 'running'`（transient，从收到 running 到收到 done）
+  - `compactionByRunId: Map<runId, {offloadPath?}>`（done 时记录）→ 用于 message attach。
+- dedup：`event_id`（`memory-events.ts:84-89` 模式）。
 
-### 4.2 transient "압축 중…" — activity 또는 status flag
-두 방식 중 택1(권장 A):
-- **A. activity 주입(권장)**: `activity-model.ts`의 `RunActivityKind`에 `'compaction'` 추가. compaction-events 훅이 `running` 동안 `{kind:'compaction', status:'running', label}` activity를 `activities`에 합류 → `StreamingMessageLoadingIndicator`(assistant-message-loading.tsx:76-114)가 `RunActivityStrip`으로 렌더(기존 인프라 그대로). `done`이면 제거(또는 complete 후 사라짐).
-- **B. status flag**: 훅이 `compactionStatus`를 노출 → 로딩 인디케이터가 `WittyLoadingMessage` 대신 `t('chat.compaction.running')`("압축 중…")을 표시.
-- A가 기존 activity 렌더/정렬 인프라를 재사용해 더 견고. `run-activity-strip.tsx`/`activity-model.ts`에 kind 라벨/아이콘만 추가.
+### 4.2 transient“压缩中…”— activity 或 status flag
+两种方式中选 1（推荐 A）：
+- **A. 注入 activity（推荐）**：在 `activity-model.ts` 的 `RunActivityKind` 中新增 `'compaction'`。compaction-events hook 在 `running` 期间将 `{kind:'compaction', status:'running', label}` activity 合并进 `activities` → `StreamingMessageLoadingIndicator`（assistant-message-loading.tsx:76-114）通过 `RunActivityStrip` 渲染（复用现有基础设施）。`done` 时移除（或 complete 后消失）。
+- **B. status flag**：hook 暴露 `compactionStatus` → loading indicator 不再显示 `WittyLoadingMessage`，改为 `t('chat.compaction.running')`（“压缩中…”）。
+- A 复用现有 activity 渲染/排序基础设施，更稳健。只需在 `run-activity-strip.tsx`/`activity-model.ts` 中新增 kind 标签/图标。
 
-### 4.3 영구 마커 "이전 대화를 요약했어요 · 원본 보기"
-- compaction-events 훅의 `compactionByRunId` → 해당 assistant 메시지 메타에 attach: `usage-events.ts`의 `withUsage`/`attachUsageToMessages`(메시지 배열에 metadata.custom 합치기) 패턴을 그대로 본떠 `attachCompactionToMessages(messages, compactionByRunId)` 작성 → `metadata.custom.compaction = {offloadPath}`.
-  - run→message 매핑은 usage-events가 이미 쓰는 `runMessageIds`(usage-events.ts:393-400) 매핑을 참고/재사용.
-- 신규 컴포넌트 `components/chat/compaction-summary.tsx`(Phase 1 시도분 재작성):
+### 4.3 永久 marker“已摘要之前的对话 · 查看原文”
+- compaction-events hook 的 `compactionByRunId` → attach 到对应 assistant message metadata：完全仿照 `usage-events.ts` 的 `withUsage`/`attachUsageToMessages`（向 message array 合并 metadata.custom）模式，编写 `attachCompactionToMessages(messages, compactionByRunId)` → `metadata.custom.compaction = {offloadPath}`。
+  - run→message 映射参考/复用 usage-events 已使用的 `runMessageIds` 映射（usage-events.ts:393-400）。
+- 新组件 `components/chat/compaction-summary.tsx`（重写 Phase 1 尝试版本）：
   ```tsx
   export function CompactionSummary({ offloadPath }: { offloadPath?: string }) {
     const t = useTranslations('chat.compaction')
-    // 아이콘(lucide Minimize2Icon) + t('summary') + (offloadPath ? 클립보드 복사 "원본 보기" 버튼)
-    // design-system: text-xs text-muted-foreground / text-primary-strong, rounded-md 이내, 시맨틱 색만
+    // icon（lucide Minimize2Icon）+ t('summary') +（有 offloadPath 时提供 clipboard copy“查看原文”按钮）
+    // design-system：text-xs text-muted-foreground / text-primary-strong，rounded-md 以内，仅使用 semantic color
   }
   ```
-- 렌더 위치: `assistant-thread.tsx`의 `AssistantMessageParts`(L236 부근) 직후 또는 `AssistantArtifactCards`(L248-303) 인접. `useAuiState((s)=> (s.message?.metadata as {custom?:{compaction?:{offloadPath?:string}}})?.custom?.compaction)`로 읽어 있으면 `<CompactionSummary/>` 렌더.
-  - ⚠️ **selector reference-stable**: 빈 기본값은 모듈 상수(`const EMPTY = {}`)로 — 매 렌더 새 객체 반환 시 무한 리렌더(과거 Phase 2a에서 겪은 `useAuiState` 버그).
+- 渲染位置：`assistant-thread.tsx` 的 `AssistantMessageParts`（L236 附近）之后，或 `AssistantArtifactCards`（L248-303）附近。通过 `useAuiState((s)=> (s.message?.metadata as {custom?:{compaction?:{offloadPath?:string}}})?.custom?.compaction)` 读取，存在时渲染 `<CompactionSummary/>`。
+  - ⚠️ **selector reference-stable**：空默认值必须使用 module 常量（`const EMPTY = {}`）— 如果每次 render 返回新对象，会无限 rerender（过去 Phase 2a 曾遇到 `useAuiState` bug）。
 
 ### 4.4 i18n
-`frontend/messages/ko.json` + `en.json` `chat` 네임스페이스에:
+在 `frontend/messages/ko.json` + `en.json` 的 `chat` namespace 中：
 ```jsonc
 "chat": {
   "compaction": {
-    "running": "이전 대화를 압축하는 중…",   // en: "Compacting earlier messages…"
-    "summary": "이전 대화를 요약해 컨텍스트를 정리했어요",  // en: "Older messages were summarized to free up context"
-    "viewOriginal": "원본 보기",  // en: "View original"
-    "copied": "경로 복사됨"        // en: "Path copied"
+    "running": "正在压缩之前的对话…",   // en: "Compacting earlier messages…"
+    "summary": "已摘要之前的对话以整理 context",  // en: "Older messages were summarized to free up context"
+    "viewOriginal": "查看原文",  // en: "View original"
+    "copied": "路径已复制"        // en: "Path copied"
   }
 }
 ```
-activity 라벨을 쓰면 `chat.activity.compaction`도 함께. 작성 후 `pnpm lint:i18n`.
+如果使用 activity 标签，也一起添加 `chat.activity.compaction`。完成后运行 `pnpm lint:i18n`。
 
 ---
 
-## 5. 변경 파일 요약
+## 5. 修改文件摘要
 
-**백엔드**
-- `app/agent_runtime/event_names.py` — `COMPACTION` 상수.
-- `app/agent_runtime/langgraph_streaming.py` — v3 루프 + fallback 루프에 감지/suppress/emit.
-- `app/agent_runtime/langgraph_protocol_adapter.py` — `_compaction_signal`/`_compaction_offload_path` 헬퍼(또는 streaming 모듈에).
-- (선택) `app/agent_runtime/streaming.py` — legacy 경로 동일 처리.
-- `app/agent_runtime/protocol_events.py` — `stored_custom_protocol_event` 시그니처 확인(변경 불필요 예상).
+**backend**
+- `app/agent_runtime/event_names.py` — `COMPACTION` 常量。
+- `app/agent_runtime/langgraph_streaming.py` — 在 v3 loop + fallback loop 中检测/suppress/emit。
+- `app/agent_runtime/langgraph_protocol_adapter.py` — `_compaction_signal`/`_compaction_offload_path` helper（或放在 streaming module 中）。
+- （可选）`app/agent_runtime/streaming.py` — legacy 路径做相同处理。
+- `app/agent_runtime/protocol_events.py` — 确认 `stored_custom_protocol_event` signature（预计无需修改）。
 
-**프론트**
-- `src/lib/chat/langgraph-runtime/compaction-events.ts`(신규) — custom 이벤트 파싱/dedup/attach.
-- `src/lib/chat/langgraph-runtime/activity-model.ts` — `RunActivityKind`에 `'compaction'`(방식 A).
-- `src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts` — 훅 배선(반환에 compaction 합류, 메시지 attach).
-- `src/components/chat/assistant-message-loading.tsx` — transient "압축 중" 렌더(activity 또는 flag).
-- `src/components/chat/compaction-summary.tsx`(신규) — 영구 마커.
-- `src/components/chat/assistant-thread.tsx` — `AssistantMessageParts` 인접에 마커 렌더 분기.
+**前端**
+- `src/lib/chat/langgraph-runtime/compaction-events.ts`（新增）— custom event 解析/dedup/attach。
+- `src/lib/chat/langgraph-runtime/activity-model.ts` — 在 `RunActivityKind` 中新增 `'compaction'`（方式 A）。
+- `src/lib/chat/langgraph-runtime/use-moldy-langgraph-stream.ts` — hook wiring（在返回值中合并 compaction，并 attach 到 message）。
+- `src/components/chat/assistant-message-loading.tsx` — 渲染 transient“压缩中”（activity 或 flag）。
+- `src/components/chat/compaction-summary.tsx`（新增）— 永久 marker。
+- `src/components/chat/assistant-thread.tsx` — 在 `AssistantMessageParts` 附近添加 marker 渲染分支。
 - `frontend/messages/ko.json` + `en.json` — i18n.
 
 ---
 
-## 6. 리스크 & 조심할 것 (★ hot path)
+## 6. 风险 & 注意事项（★ hot path）
 
-| # | 리스크 | 대응 |
+| # | 风险 | 应对 |
 |---|--------|------|
-| R1 ★ | **요약 토큰 suppress가 과해 일반 답변 토큰까지 누락** | suppress 조건을 `lc_source=="summarization"` **정확 일치**로만. 회귀 테스트: 압축 발생 런에서 답변 content 무손실 단언(Level 2). |
-| R2 ★ | suppress 누락 → 요약 텍스트가 답변/유령 메시지로 **누수** | v3 `messages`+lc_source, legacy metadata.lc_source 둘 다 차단. 누수 단언 테스트. |
-| R3 | compaction 이벤트 **중복/순서** (running 여러 번, done 먼저) | run당 `_running/_done` 플래그 1회. 멀티스텝 시 run당 1쌍으로 제한 + `log`. |
-| R4 | reload 시 마커 **사라짐/중복** | 이벤트가 `message_events`로 persist→replay됨을 확인. 프론트 dedup(event_id). |
-| R5 | `useAuiState` selector 무한 리렌더 | 기본값 모듈 상수, reference-stable. |
-| R6 | usage 누락(요약 토큰 skip으로 요약 LLM 비용 미집계) | v1 허용(내부 오버헤드). 필요시 별도 usage 채널로 분리 집계(후속). `log`로 가시화. |
-| R7 | trigger(스케줄) 모드 | trigger executor도 같은 스트림 경로면 자동 적용. HiTL 무관. 캡쳐로 확인. |
-| R8 | feature flag | `MOLDY_COMPACTION_MARKER_ENABLED`(env, 기본 on) 또는 settings로 감싸 문제 시 즉시 off 가능(권장). |
+| R1 ★ | **摘要 token suppress 过度，导致普通答案 token 也被漏掉** | suppress 条件必须只做 `lc_source=="summarization"` **精确匹配**。回归测试：发生压缩的 run 中断言 answer content 无损（Level 2）。 |
+| R2 ★ | suppress 漏掉 → 摘要文本**泄漏**到答案/ghost message | v3 `messages`+lc_source、legacy metadata.lc_source 两处都阻断。加入泄漏断言测试。 |
+| R3 | compaction event **重复/顺序**（多次 running、done 先到） | 每个 run 用 `_running/_done` flag 保证 1 次。multi-step 时限制为每个 run 1 对 + `log`。 |
+| R4 | reload 后 marker **消失/重复** | 确认 event 会 persist 到 `message_events`→replay。frontend 按 event_id dedup。 |
+| R5 | `useAuiState` selector 无限 rerender | 默认值使用 module 常量，保持 reference-stable。 |
+| R6 | usage 漏记（因跳过摘要 token 而未统计摘要 LLM 成本） | v1 可接受（内部 overhead）。如需要，后续通过独立 usage channel 分开统计。用 `log` 提供可见性。 |
+| R7 | trigger（schedule）模式 | 如果 trigger executor 也走相同 stream 路径则自动适用。与 HiTL 无关。通过 capture 确认。 |
+| R8 | feature flag | 用 `MOLDY_COMPACTION_MARKER_ENABLED`（env，默认 on）或 settings 包裹，出现问题时可立即 off（建议）。 |
 
-**되돌리기**: DB 마이그레이션 없음 → 문제 시 PR revert로 완전 복구. Phase 0와 **PR 분리**(Phase 0는 이미 커밋됨).
+**回滚**：无 DB migration → 出问题时可通过 PR revert 完全恢复。与 Phase 0 **分 PR**（Phase 0 已提交）。
 
 ---
 
-## 7. 테스트 전략 (§Phase 0와 동일 원리 — 85% 안 채우고 `context_window`를 작게)
+## 7. 测试策略（与 §Phase 0 相同原理 — 不用填满 85%，直接缩小 `context_window`）
 
-### Level 1 — 프론트 단위 (vitest)
-- `compaction-events.ts`: mock custom 이벤트(`{method:'custom:moldy.compaction', params:{data:{state:'running'}}}` / `done`) → status 전이 + `compactionByRunId` attach 단언. (`memory-tool-ui.test.ts` 스타일)
-- `attachCompactionToMessages`: 메시지 배열에 `metadata.custom.compaction` 합쳐지는지.
-- `compaction-summary.tsx`: "요약했어요"+"원본 보기"(offloadPath 유무) 렌더, user 말풍선 아님.
+### Level 1 — frontend 单元（vitest）
+- `compaction-events.ts`：mock custom event（`{method:'custom:moldy.compaction', params:{data:{state:'running'}}}` / `done`）→ 断言 status 转移 + `compactionByRunId` attach。（`memory-tool-ui.test.ts` 风格）
+- `attachCompactionToMessages`：确认 message array 中合并了 `metadata.custom.compaction`。
+- `compaction-summary.tsx`：渲染“已摘要”+“查看原文”（有/无 offloadPath），且不是 user 气泡。
 
-### Level 2 — 백엔드 통합 (pytest, 브라우저 X) ★가장 중요
-`context_window=1500`(또는 50) 모델로 deep agent 빌드 → `astream_events(version="v3")`를 직접 돌려:
-- 압축 발생 시 **`compaction(running)` 1회 + `compaction(done, offload_path)` 1회** 가 yield되는지.
-- **요약 토큰(messages+lc_source)이 yield되지 않는지(suppress)** + 최종 답변 content 무손실.
-- `stream_agent_response_langgraph`를 직접 호출하는 통합 테스트가 이상적(기존 `tests/agent_runtime/test_langgraph_*` 참고). fake 모델은 `GenericFakeChatModel` + `bind_tools`→self, `profile={"max_input_tokens":50}`.
+### Level 2 — backend 集成（pytest，非浏览器）★最重要
+用 `context_window=1500`（或 50）模型构建 deep agent → 直接运行 `astream_events(version="v3")`：
+- 压缩发生时是否各 yield **1 次 `compaction(running)` + 1 次 `compaction(done, offload_path)`**。
+- **摘要 token（messages+lc_source）是否不被 yield（suppress）** + 最终 answer content 无损。
+- 最理想是直接调用 `stream_agent_response_langgraph` 的 integration test（参考现有 `tests/agent_runtime/test_langgraph_*`）。fake model 使用 `GenericFakeChatModel` + `bind_tools`→self，`profile={"max_input_tokens":50}`。
 
-> 재현 핵심: fake 모델 멀티턴으로 토큰 누적 > `0.85×window` → 압축 발생. (검증 스니펫 §9)
+> 复现关键：fake model 多 turn 累积 token > `0.85×window` → 触发压缩。（验证 snippet §9）
 
-### Level 3 — E2E (선택, 결정론적)
-- **scripted `E2E_COMPACTION` 마커**(`e2e_scripted_model.py`): 입력에 마커가 있으면 결정론적으로 `compaction` 이벤트 시퀀스를 방출 → 프론트 마커 렌더 단언/캡쳐. 트리거 로직과 분리해 flaky 제거. (기존 `E2E_TOOL_GROUP` 패턴)
-- 또는 tiny-context 실모델로 2~3턴 → "압축 중…" + 영구 마커 캡쳐.
+### Level 3 — E2E（可选，确定性）
+- **scripted `E2E_COMPACTION` marker**（`e2e_scripted_model.py`）：输入包含 marker 时确定性地发出 `compaction` event 序列 → 断言/capture frontend marker 渲染。与 trigger 逻辑分离，减少 flaky。（现有 `E2E_TOOL_GROUP` 模式）
+- 或使用 tiny-context 真实模型 2~3 turn → capture“压缩中…” + 永久 marker。
 
-### 검증 매트릭스
-| 대상 | 방법 | 85%? |
+### 验证矩阵
+| 对象 | 方法 | 85%? |
 |------|------|------|
-| 이벤트 emit(running/done) + suppress | Level 2(window=50, astream_events v3) | ❌ |
-| 답변 무손실(누수 X) | Level 2 단언 | ❌ |
-| 파싱/attach/렌더 | Level 1 단위 | ❌ |
-| 마커 UI 전체 | scripted E2E or tiny-context | ❌ |
+| event emit(running/done) + suppress | Level 2(window=50, astream_events v3) | ❌ |
+| answer 无损（不泄漏） | Level 2 断言 | ❌ |
+| parsing/attach/render | Level 1 单元 | ❌ |
+| marker UI 全链路 | scripted E2E or tiny-context | ❌ |
 
 ---
 
-## 8. 완료 기준 (done-when)
-- [ ] 압축 발생 런에서 백엔드가 `compaction(running)`→`compaction(done,offload_path)`를 **각 1회** emit하고, 요약 토큰은 프론트로 가지 않는다(누수 0).
-- [ ] 일반(압축 없는) 턴에는 compaction 이벤트가 전혀 없고 답변 동작 무회귀.
-- [ ] v3 프로덕션 채팅에서 압축 시 **"압축 중…"** 표시 → 사라지고 **"이전 대화를 요약했어요 · 원본 보기"** 영구 표시, reload 후에도 유지.
-- [ ] tsc 0 / vitest / 백엔드 ruff+pytest / lint(i18n·design-system) 그린.
-- [ ] 실서버(또는 scripted) 캡쳐: "압축 중…" + 영구 마커 + (게이지 압축 후 하락).
-- [ ] feature flag로 off 가능. Phase 0와 별도 PR.
+## 8. 完成标准（done-when）
+- [ ] 发生压缩的 run 中，backend 各 emit **1 次** `compaction(running)`→`compaction(done,offload_path)`，摘要 token 不发送到 frontend（泄漏 0）。
+- [ ] 普通（无压缩）turn 中完全没有 compaction event，答案行为无回归。
+- [ ] v3 生产聊天中，压缩时显示**“压缩中…”** → 消失后永久显示**“已摘要之前的对话 · 查看原文”**，reload 后仍保留。
+- [ ] tsc 0 / vitest / backend ruff+pytest / lint（i18n·design-system）green。
+- [ ] 真实 server（或 scripted）capture：“压缩中…” + 永久 marker +（压缩后 gauge 下降）。
+- [ ] 可通过 feature flag off。与 Phase 0 分 PR。
 
 ---
 
-## 9. 부록 — 압축 재현/검증 스니펫 (구현 중 그대로 사용)
+## 9. 附录 — 压缩复现/验证 snippet（实现过程中直接使用）
 
-작은 window로 자동압축을 강제하고 v3 이벤트를 확인:
+通过较小 window 强制自动压缩并确认 v3 event：
 ```python
 import itertools, asyncio, inspect, warnings
 warnings.filterwarnings("ignore")
@@ -337,14 +337,14 @@ from deepagents import create_deep_agent
 class FakeModel(GenericFakeChatModel):
     def bind_tools(self, tools, **kwargs): return self
 
-fake = FakeModel(messages=itertools.cycle([AIMessage(content="요약/응답")]))
-fake.profile = {"max_input_tokens": 50}   # 작게 → 즉시 압축
+fake = FakeModel(messages=itertools.cycle([AIMessage(content="摘要/回答")]))
+fake.profile = {"max_input_tokens": 50}   # 缩小 → 立即压缩
 agent = create_deep_agent(model=fake, tools=[], system_prompt="sys", checkpointer=InMemorySaver())
 cfg = {"configurable": {"thread_id": "t"}}
-agent.invoke({"messages": [HumanMessage(content="첫 질문 " * 30)]}, cfg)  # 히스토리 누적
+agent.invoke({"messages": [HumanMessage(content="第一个问题 " * 30)]}, cfg)  # 累积 history
 
 async def go():
-    s = agent.astream_events({"messages": [HumanMessage(content="둘째 " * 30)]}, cfg, version="v3")
+    s = agent.astream_events({"messages": [HumanMessage(content="第二个 " * 30)]}, cfg, version="v3")
     if inspect.iscoroutine(s): s = await s
     async for ev in s:
         params = (ev or {}).get("params") or {}
@@ -352,21 +352,21 @@ async def go():
         if ev.get("method") == "messages" and isinstance(data, (list, tuple)) and len(data) == 2:
             md = data[1] if isinstance(data[1], dict) else {}
             if md.get("lc_source") == "summarization":
-                print("요약 토큰(suppress 대상)")
+                print("摘要 token（suppress 对象）")
         if ev.get("method") == "values" and isinstance(data, dict) and "_summarization_event" in data:
-            print("압축 확정:", data["_summarization_event"]["file_path"])
+            print("压缩确认：", data["_summarization_event"]["file_path"])
 asyncio.run(go())
 ```
-기대 출력: "요약 토큰…" 여러 번 → "압축 확정: /conversation_history/t.md".
+预期输出：“摘要 token…”多次 → “压缩确认：/conversation_history/t.md”。
 
 ---
 
-## 10. 작업 순서
+## 10. 工作顺序
 ```
-1) 백엔드 v3 감지/suppress/emit (langgraph_streaming + adapter 헬퍼) + Level 2 통합 테스트(누수 0 + emit 1쌍)
-2) 백엔드 legacy 동일 처리(선택) + event_names 상수
-3) 프론트 compaction-events 훅 + Level 1 단위
-4) transient "압축 중"(activity kind) + 영구 마커(compaction-summary + assistant-thread 분기) + i18n
-5) (선택) scripted E2E_COMPACTION + 캡쳐
-6) feature flag, /code-review, PR(Phase 0와 분리)
+1) backend v3 检测/suppress/emit（langgraph_streaming + adapter helper）+ Level 2 integration test（泄漏 0 + emit 1 对）
+2) backend legacy 同样处理（可选）+ event_names 常量
+3) frontend compaction-events hook + Level 1 unit
+4) transient“压缩中”（activity kind）+ 永久 marker（compaction-summary + assistant-thread 分支）+ i18n
+5) （可选）scripted E2E_COMPACTION + capture
+6) feature flag、/code-review、PR（与 Phase 0 分开）
 ```

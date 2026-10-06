@@ -92,19 +92,19 @@ test.describe('HITL tool approval — reject', () => {
 
     const composer = page.locator('textarea[data-moldy-composer-input="true"]').last()
     await expect(composer).toBeVisible()
-    await composer.fill('mcp 도구 사용 승인 HITL')
+    await composer.fill('使用 mcp 工具并请求 HITL 审批')
     await composer.press('Enter')
 
     // 1. The tool call pauses on an approval card before executing.
-    await expect(page.getByText('승인이 필요합니다').last()).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('需要批准').last()).toBeVisible({ timeout: 30_000 })
 
     // 2. Reject → confirm.
     await page.getByRole('button', { name: '拒绝', exact: true }).last().click()
     await page.getByRole('button', { name: '拒绝 确认' }).last().click()
 
-    // M8-2 회귀 가드: 백엔드가 인터럽트 전이를 trace보다 먼저 커밋하고 resume
-    // 핸들러가 전이를 짧게 기다리므로, 거부 resume은 재시도 없이 한 번에
-    // 수락되어야 한다 (재시도 문구가 뜨면 레이스 회귀).
+    // M8-2 回归守卫：后端先于 trace 提交 interrupt 状态转移，然后 resume
+    // handler 会短暂等待状态转移，因此拒绝 resume 应无需重试、一次即可
+    // 被接受（如果出现重试文案，则说明 race 回归）。
     const rejectedBadge = page.getByText('被拒绝').last()
     await expect(rejectedBadge).toBeVisible({ timeout: 30_000 })
     await expect(

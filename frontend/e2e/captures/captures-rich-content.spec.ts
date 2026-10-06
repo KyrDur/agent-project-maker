@@ -72,13 +72,13 @@ test.describe('Wave 7 — rich content captures', () => {
       await settle(page)
       await capture(page, WAVE, '01-edit-overview.png')
 
-      // Right-panel tabs (Fix/테스트/오프너/스케줄/설정/API) + left form's 비주얼 toggle.
+      // Right-panel tabs (Fix/测试/开场白/日程/设置/API) + left form's 视觉 toggle.
       const tabs: ReadonlyArray<readonly [RegExp, string]> = [
-        [/비주얼/, '02-edit-form-visual.png'],
-        [/테스트/, '03-edit-test.png'],
-        [/오프너/, '04-edit-opener.png'],
-        [/스케줄/, '05-edit-schedule.png'],
-        [/^설정$/, '06-edit-settings.png'],
+        [/视觉/, '02-edit-form-visual.png'],
+        [/测试/, '03-edit-test.png'],
+        [/开场白/, '04-edit-opener.png'],
+        [/日程/, '05-edit-schedule.png'],
+        [/^设置$/, '06-edit-settings.png'],
         [/^API$/, '07-edit-api.png'],
       ]
       for (const [name, file] of tabs) {
@@ -102,7 +102,7 @@ test.describe('Wave 7 — rich content captures', () => {
     // was blowing the test budget) — the priority is the sort MENU.
     const agentIds = await seedRealisticAgents(request, csrf)
     if (agentIds[0]) {
-      for (const title of ['멤버십 취소 문의', '수업 예약 도움', '크레딧 잔액 확인']) {
+      for (const title of ['会员取消咨询', '课程预约帮助', '查看积分余额']) {
         await createConversation(request, csrf, agentIds[0], title)
       }
     }
@@ -148,11 +148,11 @@ test.describe('Wave 7 — rich content captures', () => {
     const simpleModelId = await scriptedModelId(request)
     const simpleCreated = await request.post(`${API_BASE}/api/agents`, {
       headers: csrf,
-      data: { name: '첨부 도우미', system_prompt: '첨부를 확인합니다.', model_id: simpleModelId },
+      data: { name: '附件助手', system_prompt: '正在检查附件。', model_id: simpleModelId },
     })
     const simpleAgent = (await simpleCreated.json()) as { id: string }
     try {
-      const cid = await createConversation(request, csrf, simpleAgent.id, '첨부 데모')
+      const cid = await createConversation(request, csrf, simpleAgent.id, '附件演示')
       await nav(page, `/agents/${simpleAgent.id}/conversations/${cid}`)
 
       // Mirror the proven chat-attachments-display flow with REAL awaits so the
@@ -184,8 +184,8 @@ test.describe('Wave 7 — rich content captures', () => {
           (r) => r.url().includes('/api/uploads') && r.request().method() === 'POST',
           { timeout: 30_000 },
         )
-        await composer.fill('이 회원증 이미지 확인해줘')
-        await page.getByRole('button', { name: /전송/ }).click()
+        await composer.fill('帮我看看这张会员卡图片')
+        await page.getByRole('button', { name: /发送/ }).click()
         const upload = await uploadResponse
         if (upload.status() !== 201) throw new Error(`attachment upload failed: ${upload.status()}`)
 
@@ -211,12 +211,12 @@ test.describe('Wave 7 — rich content captures', () => {
         console.warn(`[capture-tour] attachment bubble/lightbox failed: ${String(error)}`)
       }
 
-      // Generate a real artifact (skill agent) so the Files (생성된 파일) list isn't empty.
+      // Generate a real artifact (skill agent) so the Files (已生成文件) list isn't empty.
       const { agentId: skillAgentId, childId } = await createRichAgent(request, csrf)
       try {
-        const cid2 = await createConversation(request, csrf, skillAgentId, '문서 생성')
+        const cid2 = await createConversation(request, csrf, skillAgentId, '文档生成')
         await nav(page, `/agents/${skillAgentId}/conversations/${cid2}`)
-        await sendMessage(page, 'E2E_DOCX 문서를 생성해줘')
+        await sendMessage(page, '生成 E2E_DOCX 文档')
         await approveExecuteInSkill(page).catch(() => {})
         await settleStream(page, 120_000)
         await nav(page, '/artifacts')
@@ -237,11 +237,11 @@ test.describe('Wave 7 — rich content captures', () => {
     const modelId = await scriptedModelId(request)
     const created = await request.post(`${API_BASE}/api/agents`, {
       headers: csrf,
-      data: { name: '트레이스 데모', system_prompt: '도움.', model_id: modelId },
+      data: { name: 'Trace 演示', system_prompt: '帮助。', model_id: modelId },
     })
     const agent = (await created.json()) as { id: string }
     try {
-      const cid = await createConversation(request, csrf, agent.id, '트레이스 대화')
+      const cid = await createConversation(request, csrf, agent.id, 'Trace 对话')
       await page.goto(`/agents/${agent.id}/conversations/${cid}`, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
       await page.getByPlaceholder('占位符').waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
       await sendMessage(page, 'E2E_TOOL_GROUP')
@@ -272,7 +272,7 @@ test.describe('Wave 7 — rich content captures', () => {
       await page
         .goto(`/agents/${agent.id}/conversations/${cid}/traces`, { waitUntil: 'commit', timeout: 120_000 })
         .catch(() => {})
-      await page.getByText(/Trace 상세|트레이스/).first().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
+      await page.getByText(/Trace 详情|追踪/).first().waitFor({ state: 'visible', timeout: 30_000 }).catch(() => {})
       await settle(page, 1_800)
       // Capture the trace page as loaded first (proves it rendered).
       await capture(page, WAVE, '18-trace.png')
@@ -303,11 +303,11 @@ test.describe('Wave 7 — rich content captures', () => {
     const modelId = await scriptedModelId(request)
     const created = await request.post(`${API_BASE}/api/agents`, {
       headers: csrf,
-      data: { name: '사용량 데모', system_prompt: '응답.', model_id: modelId },
+      data: { name: '用量演示', system_prompt: '响应。', model_id: modelId },
     })
     const agent = (await created.json()) as { id: string }
     try {
-      const cid = await createConversation(request, csrf, agent.id, '사용량 대화')
+      const cid = await createConversation(request, csrf, agent.id, '用量对话')
       await nav(page, `/agents/${agent.id}/conversations/${cid}`)
       for (let i = 0; i < 3; i += 1) {
         await sendMessage(page, 'E2E_TOKEN_USAGE_STREAM')

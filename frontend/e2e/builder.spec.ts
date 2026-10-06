@@ -17,7 +17,7 @@ test.describe('Conversational builder', () => {
     await page.goto(`/agents/new/conversational?initialMessage=${encodeURIComponent(prompt)}`)
 
     // POST /api/builder created a session (label shows in the header).
-    await expect(page.getByText(/세션 #/)).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText(/会话 #/)).toBeVisible({ timeout: 30_000 })
 
     // The user's request is echoed into the thread.
     await expect(page.getByText(prompt).first()).toBeVisible()

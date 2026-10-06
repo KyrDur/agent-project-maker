@@ -1,6 +1,6 @@
-"""Assistant 읽기 도구 — Safe 도구 (DB 수정 없음).
+"""Assistant 读取工具 — Safe 工具（不修改 DB）。
 
-도구 목록:
+工具列表：
 1. get_agent_config
 2. get_model_config
 3. list_available_tools
@@ -44,11 +44,11 @@ def build_read_tools(
     agent_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> list[StructuredTool]:
-    """Assistant 읽기 도구 16개를 생성한다.
+    """创建 16 个 Assistant 读取工具。
 
-    각 도구는 호출 시마다 fresh DB 세션을 생성하여 사용한다.
-    LangGraph 에이전트의 도구 실행은 빌드 시점의 클로저 DB 세션이
-    이미 닫혀 있을 수 있으므로, 매 호출마다 새 세션을 열어야 안전하다.
+    每个工具每次调用时都创建并使用fresh DB 会话。
+    LangGraph 智能体的工具执行时，构建阶段闭包中的 DB 会话
+    可能已经关闭，因此每次调用都重新打开会话才安全。
     """
 
     # ------ helpers ------
@@ -60,7 +60,7 @@ def build_read_tools(
     # ------ 1. get_agent_config ------
 
     async def get_agent_config() -> str:
-        """현재 에이전트의 전체 설정을 조회합니다."""
+        """查询当前智能体的完整配置。"""
         agent = await _get_agent()
         if not agent:
             return tr("agent_not_found_1a3985")
@@ -118,7 +118,7 @@ def build_read_tools(
     # ------ 2. get_model_config ------
 
     async def get_model_config() -> str:
-        """현재 에이전트의 모델 설정을 조회합니다."""
+        """查询当前智能体的模型配置。"""
         agent = await _get_agent()
         if not agent:
             return tr("agent_not_found_1a3985")
@@ -136,7 +136,7 @@ def build_read_tools(
     # ------ 3. list_available_tools ------
 
     async def list_available_tools() -> str:
-        """시스템에서 사용 가능한 도구 목록을 조회합니다."""
+        """查询系统中可用的工具列表。"""
         async with async_session_factory() as session:
             items = await get_tools_catalog(session, user_id)
             return json.dumps(items, ensure_ascii=False, indent=2)
@@ -144,7 +144,7 @@ def build_read_tools(
     # ------ 5. list_available_middlewares ------
 
     async def list_available_middlewares() -> str:
-        """시스템에서 사용 가능한 미들웨어 목록을 조회합니다."""
+        """查询系统中可用的中间件列表。"""
         items = [
             {
                 "type": key,
@@ -159,18 +159,18 @@ def build_read_tools(
     # ------ 6. list_available_subagents ------
 
     async def list_available_subagents() -> str:
-        """서브에이전트로 사용 가능한 에이전트 목록을 조회합니다."""
+        """查询可用作子智能体的智能体列表。"""
         async with async_session_factory() as session:
             result = await session.execute(
                 select(Agent.id, Agent.name, Agent.description, Agent.model_id).where(
                     Agent.user_id == user_id,
                     Agent.id != agent_id,
-                    # 히든 런타임 에이전트는 서브에이전트 후보에서 제외.
+                    # 隐藏运行时智能体不纳入子智能体候选。
                     Agent.runtime_profile == AGENT_RUNTIME_PROFILE_STANDARD,
                 )
             )
             rows = result.all()
-            # model display_name은 별도 쿼리로 가져온다
+            # model display_name 通过单独查询获取
             model_ids = {r.model_id for r in rows if r.model_id}
             model_names: dict[str, str] = {}
             if model_ids:
@@ -192,7 +192,7 @@ def build_read_tools(
     # ------ 6-2. list_available_skills ------
 
     async def list_available_skills() -> str:
-        """사용 가능한 스킬 목록을 조회합니다."""
+        """查询可用的技能列表。"""
         async with async_session_factory() as session:
             result = await session.execute(
                 select(Skill).where(Skill.user_id == user_id).order_by(Skill.name)
@@ -211,7 +211,7 @@ def build_read_tools(
     # ------ 7. list_available_models ------
 
     async def list_available_models() -> str:
-        """사용 가능한 모델 목록을 조회합니다."""
+        """查询可用的模型列表。"""
         async with async_session_factory() as session:
             result = await session.execute(select(Model))
             models = result.scalars().all()
@@ -229,21 +229,19 @@ def build_read_tools(
     # ------ 8. get_agent_required_secrets ------
 
     async def get_agent_required_secrets() -> str:
-        """에이전트에 필요한 API 키 목록을 조회합니다."""
-        # PoC: 도구 타입별 필요 키 반환
+        """查询智能体所需的 API 密钥列表。"""
+        # PoC: 返回不同工具类型所需的密钥
         agent = await _get_agent()
         if not agent:
             return tr("agent_not_found_1a3985")
         required: set[str] = set()
         for link in agent.tool_links:
-            if "naver" in link.tool.name.lower():
-                required.update(["NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"])
             if "google" in link.tool.name.lower():
                 required.update(["GOOGLE_API_KEY", "GOOGLE_CSE_ID"])
         return json.dumps(
             {
                 "required": sorted(required),
-                "registered": [],  # PoC: 시크릿 스토어 미구현
+                "registered": [],  # PoC: 密钥存储尚未实现
                 "missing": sorted(required),
             },
             ensure_ascii=False,
@@ -252,14 +250,14 @@ def build_read_tools(
     # ------ 9. get_user_secrets ------
 
     async def get_user_secrets() -> str:
-        """사용자가 등록한 시크릿 목록을 조회합니다."""
-        # PoC: 시크릿 스토어 미구현
+        """查询用户已注册的密钥列表。"""
+        # PoC: 密钥存储尚未实现
         return json.dumps({"secrets": []}, ensure_ascii=False)
 
     # ------ 10. get_chat_openers ------
 
     async def get_chat_openers() -> str:  # noqa: D401
-        """현재 에이전트의 채팅 시작 질문 목록을 조회합니다."""
+        """查询当前智能体的聊天开场问题列表。"""
         agent = await _get_agent()
         if not agent:
             return tr("agent_not_found_1a3985")
@@ -269,7 +267,7 @@ def build_read_tools(
     # ------ 11. get_recursion_limit ------
 
     async def get_recursion_limit() -> str:
-        """현재 에이전트의 재귀 한도를 조회합니다."""
+        """查询当前智能体的递归上限。"""
         agent = await _get_agent()
         if not agent:
             return tr("agent_not_found_1a3985")
@@ -279,27 +277,27 @@ def build_read_tools(
     # ------ 12. list_permanent_files ------
 
     async def list_permanent_files() -> str:
-        """에이전트에 업로드된 영구 파일 목록을 조회합니다."""
-        # PoC: 파일 업로드 미구현
+        """查询已上传到智能体的永久文件列表。"""
+        # PoC: 文件上传尚未实现
         return json.dumps({"files": []}, ensure_ascii=False)
 
     # ------ 13. get_file_content ------
 
     async def get_file_content(file_id: str) -> str:
-        """파일 내용을 미리봅니다.
+        """预览文件内容。
 
         Args:
-            file_id: 파일 고유 ID
+            file_id: 文件唯一 ID
         """
         return tr("file_v_not_found_62501a", v0=f"{file_id}")
 
     # ------ 14. search_system_prompt ------
 
     async def search_system_prompt(keyword: str) -> str:
-        """시스템 프롬프트에서 키워드를 검색합니다.
+        """在系统提示词中搜索关键词。
 
         Args:
-            keyword: 검색할 키워드
+            keyword: 要搜索的关键词
         """
         agent = await _get_agent()
         if not agent:
@@ -348,7 +346,7 @@ def build_read_tools(
         }
 
     async def list_cron_schedules() -> str:
-        """에이전트의 크론 스케줄 목록을 조회합니다."""
+        """查询智能体的定时计划列表。"""
         async with async_session_factory() as session:
             result = await session.execute(
                 select(AgentTrigger).where(
@@ -363,10 +361,10 @@ def build_read_tools(
     # ------ 16. get_cron_schedule ------
 
     async def get_cron_schedule(schedule_id: str) -> str:
-        """특정 크론 스케줄의 상세 정보를 조회합니다.
+        """查询特定定时计划的详细信息。
 
         Args:
-            schedule_id: 스케줄 UUID
+            schedule_id: 计划 UUID
         """
         try:
             sid = uuid.UUID(schedule_id)

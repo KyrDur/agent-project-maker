@@ -52,8 +52,12 @@ const run = {
   ],
 }
 
-async function openProjectTab(name: 'Versions' | 'Evaluation') {
-  await userEvent.click(await screen.findByRole('button', { name: new RegExp(name) }))
+async function openProjectTab(name: string) {
+  await userEvent.click(
+    await screen.findByRole('button', {
+      name: name === '版本' ? /版本\s*版本演进/ : /评测\s*评测证据/,
+    }),
+  )
 }
 
 beforeEach(() => {
@@ -91,7 +95,7 @@ it('creates a version and refreshes the history', async () => {
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Versions')
+  await openProjectTab('版本')
   await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
   expect(await screen.findByText('版本已创建。')).toBeInTheDocument()
   expect(await screen.findByRole('button', { name: 'V2' })).toBeInTheDocument()
@@ -102,7 +106,7 @@ it('explains unchanged configuration and exposes version detail', async () => {
     http.post(`${path}/versions`, () => HttpResponse.json({ outcome: 'unchanged', version: v1 })),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Versions')
+  await openProjectTab('版本')
   await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
   expect(await screen.findByText('配置不变。保留了最新版本。')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'V1' }))
@@ -124,7 +128,7 @@ it('shows the evaluation empty state and creates an accessible manual case', asy
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Evaluation')
+  await openProjectTab('评测\\s*评测证据')
   expect(await screen.findByText('尚无评测用例。添加一个用例开始。')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '运行评测' })).toBeDisabled()
   await userEvent.click(screen.getByRole('button', { name: '添加用例' }))
@@ -145,7 +149,7 @@ it('edits, disables and removes a case', async () => {
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Evaluation')
+  await openProjectTab('评测\\s*评测证据')
   await userEvent.click(await screen.findByRole('button', { name: '编辑Greeting case' }))
   await userEvent.clear(screen.getByLabelText('用例名称'))
   await userEvent.type(screen.getByLabelText('用例名称'), 'Edited')
@@ -169,7 +173,7 @@ it('submits evaluation against the chosen version and shows persisted results', 
     }),
   )
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Evaluation')
+  await openProjectTab('评测\\s*评测证据')
   await waitFor(() => expect(screen.getByRole('button', { name: '运行评测' })).toBeEnabled())
   await userEvent.click(screen.getByRole('button', { name: '运行评测' }))
   await userEvent.click(await screen.findByText(/V1 · 已完成/))
@@ -189,7 +193,7 @@ it.each(['pending', 'running', 'completed', 'failed'] as const)(
       ),
     )
     render(<ProjectWorkbench agentId="agent-id" />)
-    await openProjectTab('Evaluation')
+    await openProjectTab('评测\\s*评测证据')
     await userEvent.click(await screen.findByText(new RegExp(`V1 · ${labels[status]}`)))
     expect(screen.getByText(labels[status], { selector: 'p' })).toBeInTheDocument()
     if (status === 'failed')
@@ -212,7 +216,7 @@ it('shows loading while data is in flight', async () => {
 it('compares two versions without treating different datasets as comparable', async () => {
   server.use(http.get(`${path}/versions`, () => HttpResponse.json([v2, v1])))
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Versions')
+  await openProjectTab('版本')
   expect(await screen.findByText('Old instruction')).toBeInTheDocument()
   expect(screen.getByText('New instruction')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: '左侧版本' })).toBeInTheDocument()
@@ -225,7 +229,7 @@ it('compares two versions without treating different datasets as comparable', as
 it('shows retry controls for a rejected version creation', async () => {
   server.use(http.post(`${path}/versions`, () => HttpResponse.json({}, { status: 500 })))
   render(<ProjectWorkbench agentId="agent-id" />)
-  await openProjectTab('Versions')
+  await openProjectTab('版本')
   await userEvent.click(await screen.findByRole('button', { name: '创建版本' }))
   expect(await screen.findByRole('alert')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '重试' })).toBeInTheDocument()

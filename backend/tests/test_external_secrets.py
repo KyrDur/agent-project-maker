@@ -19,7 +19,7 @@ from app.credentials.external_secrets import (
 @pytest.fixture
 def env_provider(monkeypatch: pytest.MonkeyPatch) -> EnvSecretsProvider:
     monkeypatch.setenv("MOLDY_SECRET_OPENAI", "env-openai-value")
-    monkeypatch.setenv("MOLDY_SECRET_NAVER", "env-naver-value")
+    monkeypatch.setenv("MOLDY_SECRET_SEARCH", "env-search-value")
     return EnvSecretsProvider()
 
 
@@ -39,7 +39,7 @@ async def test_env_provider_has_secret(env_provider: EnvSecretsProvider) -> None
 async def test_env_provider_list(env_provider: EnvSecretsProvider) -> None:
     listed = await env_provider.list_secrets()
     assert "OPENAI" in listed
-    assert "NAVER" in listed
+    assert "SEARCH" in listed
 
 
 @pytest.mark.asyncio

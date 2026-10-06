@@ -114,7 +114,7 @@ export function useProjectGeneration(agentId: string) {
   const cases = useMutation({
     mutationFn: (data: {
       versionId: string
-      evaluation_focus: string[]
+      evaluation_focus?: string[]
       evaluation_focus_reason?: string | null
     }) => agentProjectApi.generateCases(agentId, data.versionId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),

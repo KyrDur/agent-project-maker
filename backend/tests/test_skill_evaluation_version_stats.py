@@ -1,4 +1,4 @@
-"""Phase 3 §6 — 버전별 통과율 집계 API."""
+"""Phase 3 §6 — 按版本统计通过率 API。"""
 
 from __future__ import annotations
 

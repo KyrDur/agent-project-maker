@@ -1,4 +1,4 @@
-"""Phase 3 비용 실회계 — estimate 실단가 계산 + usage 캡처 유틸."""
+"""Phase 3 真实成本核算 — estimate 实际单价计算 + usage 捕获工具。"""
 
 from __future__ import annotations
 

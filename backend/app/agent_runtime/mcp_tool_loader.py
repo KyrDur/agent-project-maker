@@ -21,26 +21,26 @@ logger = logging.getLogger(__name__)
 
 
 def _auth_config_to_headers(auth_config: dict[str, str] | None) -> dict[str, str]:
-    """auth_config를 HTTP 헤더로 변환."""
+    """将 auth_config 转换为 HTTP header。"""
     if not auth_config:
         return {}
     if "headers" in auth_config:
-        return auth_config["headers"]  # type: ignore[return-value]  # legacy: dict 형태 전달 시
+        return auth_config["headers"]  # type: ignore[return-value]  # legacy: 传入 dict 形式时
     return {}
 
 
 def _url_to_server_key(url: str) -> str:
-    """MCP 서버 URL을 고유 키로 변환 (호스트 + 경로 포함)."""
+    """将 MCP server URL 转换为唯一 key（包含 host + path）。"""
     parsed = urlparse(url)
     key = parsed.netloc + parsed.path.rstrip("/")
     return key.replace(".", "_").replace(":", "_").replace("/", "_")
 
 
 class _AuthInjectorInterceptor:
-    """MCP 도구 호출 시 auth_config 값을 arguments에 자동 주입.
+    """调用 MCP 工具时，将 auth_config 值自动注入 arguments。
 
-    langchain-mcp-adapters의 ToolCallInterceptor 프로토콜을 구현.
-    MCP 서버로 JSON-RPC tools/call 전송 직전에 request.args를 수정한다.
+    实现 langchain-mcp-adapters 的 ToolCallInterceptor protocol。
+    在向 MCP server 发送 JSON-RPC tools/call 之前修改 request.args。
     """
 
     def __init__(self, tool_auth: dict[str, dict]) -> None:
@@ -55,7 +55,7 @@ class _AuthInjectorInterceptor:
 
 
 def _hide_auth_params_from_schema(tool: BaseTool, auth_keys: set[str]) -> None:
-    """도구의 dict 스키마에서 auth 파라미터를 제거하여 LLM에게 숨김."""
+    """从工具的 dict schema 中移除 auth parameter，对 LLM 隐藏。"""
     schema = tool.args_schema
     if not isinstance(schema, dict) or not auth_keys:
         return
@@ -67,7 +67,7 @@ def _hide_auth_params_from_schema(tool: BaseTool, auth_keys: set[str]) -> None:
 
 
 def _create_mcp_error_stub(name: str) -> BaseTool:
-    """MCP 서버 연결 실패 시 에러를 반환하는 stub 도구."""
+    """MCP server 连接失败时返回 error 的 stub 工具。"""
 
     async def _call(**kwargs: Any) -> str:
         return f"MCP tool '{name}' is temporarily unavailable. Please try again later."
@@ -81,16 +81,16 @@ def _create_mcp_error_stub(name: str) -> BaseTool:
 
 
 async def _build_mcp_tools(mcp_configs: list[dict]) -> list[BaseTool]:
-    """MCP 도구를 langchain-mcp-adapters로 생성."""
+    """使用 langchain-mcp-adapters 创建 MCP 工具。"""
     if not mcp_configs:
         return []
 
     from langchain_mcp_adapters.client import MultiServerMCPClient
 
-    # 1. MCP 서버 (URL, transport headers)별로 그룹화 — 같은 URL이어도 다른
-    # 연결이 다른 헤더(X-Tenant 등)를 쓸 수 있으므로 URL만으로 묶으면 멀티
-    # 테넌트 MCP gateway에서 cross-tenant 헤더 혼선이 발생한다 (Codex 7차
-    # adversarial P2). 헤더 조합도 함께 키로 사용해 분리.
+    # 1. 按 MCP server（URL, transport headers）分组 — 即使 URL 相同，不同
+    # connection 也可能使用不同 header（X-Tenant 等），因此只按 URL 分组会在多
+    # 租户 MCP gateway 中导致 cross-tenant header 混淆（Codex 第 7 次
+    # adversarial P2）。将 header 组合作为 key 的一部分进行隔离。
     servers: dict[str, dict] = {}
     tool_filter: dict[str, set[str]] = {}  # server_key → {tool_names}
     tool_auth: dict[str, dict] = {}  # tool_name → auth_config
@@ -99,13 +99,13 @@ async def _build_mcp_tools(mcp_configs: list[dict]) -> list[BaseTool]:
     for tc in mcp_configs:
         url = tc["mcp_server_url"]
         tool_name = tc.get("mcp_tool_name", tc["name"])
-        # transport 헤더는 `mcp_transport_headers`(신규 경로, connection
-        # 경유) 우선 사용. legacy auth_config["headers"]도 fallback.
+        # transport header 优先使用 `mcp_transport_headers`（新路径，经 connection
+        # 传递）。legacy auth_config["headers"] 也 fallback。
         headers = tc.get("mcp_transport_headers") or _auth_config_to_headers(tc.get("auth_config"))
-        # 정렬된 JSON 직렬화의 SHA256 단축 해시 — process 재시작 후에도 같은
-        # (url, headers) 조합이 같은 key/이름 prefix를 생성하도록 deterministic
-        # 사용. `hash()`는 PYTHONHASHSEED 때문에 process-randomized라 HiTL
-        # resume 시 tool name이 바뀜 (Codex 8차 adversarial F2).
+        # 使用排序后的 JSON 序列化结果的 SHA256 短 hash — 即使 process 重启，相同
+        # (url, headers) 组合也会生成相同的 key/name prefix，以保证 deterministic
+        # 行为。`hash()` 会因 PYTHONHASHSEED 而 process-randomized，因此在 HiTL
+        # resume 时 tool name 会变化（Codex 第 8 次 adversarial F2）。
         headers_digest = hashlib.sha256(
             json.dumps(headers or {}, sort_keys=True).encode()
         ).hexdigest()[:8]
@@ -126,17 +126,17 @@ async def _build_mcp_tools(mcp_configs: list[dict]) -> list[BaseTool]:
         if auth:
             tool_auth[tool_name] = auth
 
-    # auth 파라미터 키 수집 (스키마에서 숨길 대상)
+    # 收集 auth parameter key（需要从 schema 中隐藏）
     auth_param_keys: set[str] = set()
     for auth in tool_auth.values():
         auth_param_keys.update(auth.keys())
 
-    # interceptor: MCP tools/call 직전에 auth 값을 arguments에 주입
+    # interceptor: 在 MCP tools/call 之前将 auth 值注入 arguments
     interceptors: list[Any] = [ResultMetaInterceptor()]
     if tool_auth:
         interceptors.insert(0, _AuthInjectorInterceptor(tool_auth))
 
-    # 2. 서버별로 도구 로딩 + 필터링 — (tool, origin) 쌍으로 추적
+    # 2. 按 server 加载 + 过滤工具 — 以 (tool, origin) 对进行追踪
     collected: list[tuple[BaseTool, str]] = []
 
     from app.agent_runtime.mcp_cache import MCPToolWithRetry, get_cached_mcp_tools
@@ -151,7 +151,7 @@ async def _build_mcp_tools(mcp_configs: list[dict]) -> list[BaseTool]:
                 server_config: dict[str, Any] = config,
             ) -> list[BaseTool]:
                 client = MultiServerMCPClient(
-                    {cache_key: server_config},  # type: ignore[arg-type]  # dict는 Connection TypedDict 호환
+                    {cache_key: server_config},  # type: ignore[arg-type]  # dict 与 Connection TypedDict 兼容
                     tool_interceptors=interceptors,  # type: ignore[arg-type]
                 )
                 return await asyncio.wait_for(
@@ -210,7 +210,7 @@ async def _build_mcp_tools(mcp_configs: list[dict]) -> list[BaseTool]:
             for tool_name in tool_filter[key]:
                 collected.append((_create_mcp_error_stub(tool_name), key))
 
-    # 3. 중복 이름 disambiguation — 서버 키를 prefix로 추가
+    # 3. 重名 disambiguation — 添加 server key 作为 prefix
     name_counts: dict[str, int] = {}
     for tool, _ in collected:
         name_counts[tool.name] = name_counts.get(tool.name, 0) + 1

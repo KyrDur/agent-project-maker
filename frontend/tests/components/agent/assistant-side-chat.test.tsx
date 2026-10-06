@@ -143,7 +143,7 @@ describe('AssistantSideChatProvider', () => {
     }
   })
 
-  it('닫았다 다시 연 같은 에이전트의 독립 메시지와 세션을 유지한다', async () => {
+  it('关闭后重新打开同一智能体时，保留其独立消息和会话', async () => {
     const user = userEvent.setup()
     renderSideChat()
 
@@ -170,7 +170,7 @@ describe('AssistantSideChatProvider', () => {
     )
   })
 
-  it('에이전트별 사이드 transcript를 분리한다', async () => {
+  it('按智能体分离侧边 transcript', async () => {
     const user = userEvent.setup()
     renderSideChat()
 
@@ -193,7 +193,7 @@ describe('AssistantSideChatProvider', () => {
     )
   })
 
-  it('사이드 메시지 변경과 닫기가 메인 transcript를 변경하지 않는다', async () => {
+  it('侧边消息变更和关闭不会修改主 transcript', async () => {
     const user = userEvent.setup()
     renderSideChat()
 
@@ -204,7 +204,7 @@ describe('AssistantSideChatProvider', () => {
     expect(screen.getByTestId('main-transcript')).toHaveTextContent('main message')
   })
 
-  it('사이드 runtime 성공·오류·취소와 닫기가 메인 표시 atom을 변경하지 않는다', async () => {
+  it('侧边 runtime 的成功、错误、取消及关闭不会修改主显示 atom', async () => {
     const user = userEvent.setup()
     const mainStore = createStore()
     const mainUsage = { inputTokens: 101, outputTokens: 202, cost: 3.03 }
@@ -224,7 +224,7 @@ describe('AssistantSideChatProvider', () => {
     expect(mainStore.get(reconnectStateAtom)).toBe('reconnecting')
   })
 
-  it('다른 에이전트 경로로 이동하면 열린 패널을 닫는다', async () => {
+  it('移动到其他智能体路径时关闭已打开的面板', async () => {
     const user = userEvent.setup()
     const mainStore = createStore()
     const view = renderSideChat(mainStore)
@@ -243,7 +243,7 @@ describe('AssistantSideChatProvider', () => {
     await waitFor(() => expect(screen.queryByTestId('assistant-side-chat')).not.toBeInTheDocument())
   })
 
-  it('사용자가 바뀌면 보관한 사이드 세션을 비운다', async () => {
+  it('用户变化时清空保存的侧边会话', async () => {
     const user = userEvent.setup()
     const mainStore = createStore()
     const view = renderSideChat(mainStore)
@@ -274,7 +274,7 @@ describe('AssistantSideChatProvider', () => {
     )
   })
 
-  it('모바일 dialog에서 composer에 초점을 두고 닫으면 trigger로 초점을 돌린다', async () => {
+  it('在移动端 dialog 中聚焦 composer 后关闭时，将焦点返回 trigger', async () => {
     testState.isMobile = true
     const user = userEvent.setup()
     renderSideChat()

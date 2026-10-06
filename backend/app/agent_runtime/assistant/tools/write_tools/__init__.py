@@ -1,16 +1,16 @@
-"""Assistant 쓰기 도구 — DB 수정 도구 (Verify First).
+"""Assistant 写入工具 — DB 修改工具（Verify First）。
 
-도구 목록:
-1. add_tool_to_agent (배치)
-2. remove_tool_from_agent (배치)
-3. add_middleware_to_agent (배치)
-4. remove_middleware_from_agent (배치)
-5. add_subagent_to_agent (배치)
-6. remove_subagent_from_agent (배치)
-7. add_skill_to_agent (배치)
-8. remove_skill_from_agent (배치)
-9. edit_system_prompt (부분 수정)
-10. update_system_prompt (전체 교체)
+工具列表：
+1. add_tool_to_agent（批量）
+2. remove_tool_from_agent（批量）
+3. add_middleware_to_agent（批量）
+4. remove_middleware_from_agent（批量）
+5. add_subagent_to_agent（批量）
+6. remove_subagent_from_agent（批量）
+7. add_skill_to_agent（批量）
+8. remove_skill_from_agent（批量）
+9. edit_system_prompt（局部修改）
+10. update_system_prompt（整体替换）
 11. update_model_config
 12. update_middleware_config
 13. update_chat_openers
@@ -44,15 +44,15 @@ def build_write_tools(
     agent_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> list[StructuredTool]:
-    """Assistant 쓰기 도구 18개를 생성한다.
+    """创建 18 个 Assistant 写入工具。
 
-    각 도구는 호출 시마다 fresh DB 세션을 생성하여 사용한다.
-    LangGraph 에이전트의 도구 실행은 빌드 시점의 클로저 DB 세션이
-    이미 닫혀 있을 수 있으므로, 매 호출마다 새 세션을 열어야 안전하다.
+    每个工具每次调用时都创建并使用fresh DB 会话。
+    LangGraph 智能体的工具执行时，构建阶段闭包中的 DB 会话
+    可能已经关闭，因此每次调用都重新打开会话才安全。
     """
-    # call-time global lookup: 테스트가 이 모듈의 `async_session_factory`를
-    # monkeypatch하므로, import 시점 바인딩이 아니라 호출 시점에 모듈 전역을 읽어
-    # 컨텍스트에 주입한다. 그룹 모듈은 ctx.session_factory만 사용해야 한다.
+    # call-time global lookup: 测试会对本模块的 `async_session_factory` 进行
+    # monkeypatch，因此不在 import 时绑定，而是在调用时读取模块全局变量
+    # 并注入上下文。组模块只能使用 ctx.session_factory。
     ctx = WriteToolContext(
         session_factory=async_session_factory,
         agent_id=agent_id,

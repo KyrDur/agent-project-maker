@@ -1,109 +1,109 @@
 # ADR-013: Service-side LLM Key from Credentials (Builder/Assistant Sub-agent)
 
-- **상태**: 승인됨 (2026-05-06)
-- **DRI**: 피차이 (System Architect)
-- **관련**: ADR-005 (Builder/Assistant), ADR-009 (Greenfield Credentials), commit `a7fc92d` (런타임 키 격리)
-- **영역**: `app/agent_runtime/model_factory.py`, `app/agent_runtime/builder/sub_agents/helpers.py`, `app/services/system_credential_resolver.py`, `app/routers/credentials.py`, `app/main.py`
+- **状态**：已批准（2026-05-06）
+- **DRI**：Pichai（System Architect）
+- **相关**：ADR-005（Builder/Assistant）、ADR-009（Greenfield Credentials）、commit `a7fc92d`（runtime key 隔离）
+- **范围**: `app/agent_runtime/model_factory.py`, `app/agent_runtime/builder/sub_agents/helpers.py`, `app/services/system_credential_resolver.py`, `app/routers/credentials.py`, `app/main.py`
 
 ---
 
-## § 맥락
+## § 背景
 
-현재 구조는 LLM 키 출처가 **3-tier로 분기**되어 있다:
+当前结构中，LLM 密钥来源**分为 3 个层级**：
 
-| Caller | Key 출처 | 비고 |
+| Caller | Key 来源 | 备注 |
 |--------|---------|------|
-| End-user agent (chat_service) | `Agent.llm_credential` → `decrypt_with_external` | 정상 동작 |
-| System-billed flow (Fix Agent, Image Gen) | `system_credential_resolver`: ENV → `is_system=True` Credential | ADR 이전 도입, ENV→system tiered |
-| **Builder / Assistant sub-agent** | `PROVIDER_API_KEY_MAP` (alias of `_ENV_FALLBACK`) — **ENV only** | 본 ADR의 갭 |
+| End-user agent (chat_service) | `Agent.llm_credential` → `decrypt_with_external` | 正常工作 |
+| System-billed flow (Fix Agent, Image Gen) | `system_credential_resolver`: ENV → `is_system=True` Credential | ADR 之前已引入，ENV→system 分层 |
+| **Builder / Assistant sub-agent** | `PROVIDER_API_KEY_MAP` (alias of `_ENV_FALLBACK`) — **ENV only** | 本 ADR 的缺口 |
 
-Builder/Assistant helper (`builder/sub_agents/helpers.py:73,85`) 는 `PROVIDER_API_KEY_MAP.get(provider)` 만 사용한다. 사용자가 `/credentials` UI 에 `anthropic` 키를 등록해도 builder 는 그것을 보지 않는다.
+Builder/Assistant helper (`builder/sub_agents/helpers.py:73,85`) 只使用 `PROVIDER_API_KEY_MAP.get(provider)`。即使用户在 `/credentials` UI 中注册 `anthropic` 密钥，builder 也看不到它。
 
-**사용자 mental model**: "Credentials UI = LLM 키 단일 진실 공급원"  
-**현재 코드**: builder 는 `.env` 만 본다 → mental model 위반
+**用户 mental model**: "Credentials UI = LLM 密钥的单一事实来源"<br>
+**当前代码**: builder 只查看 `.env` → 违反 mental model
 
-`system_credential_resolver` 는 이미 ENV→system credential tiered lookup 패턴을 가지고 있다 (Fix Agent, Image Gen 에서 사용). 본 ADR 의 핵심은 **"이 패턴을 builder/assistant 까지 확장하되, 추가 부담 없이 user credentials 도 fallback에 포함시킬 것인가"** 의 결정.
+`system_credential_resolver` 已经具备 ENV→system credential 的分层 lookup 模式（用于 Fix Agent、Image Gen）。本 ADR 的核心是决定：**"在把该模式扩展到 builder/assistant 的同时，是否在不增加额外负担的情况下，把 user credentials 也纳入 fallback"**。
 
-a7fc92d ("런타임 키 격리") 이후 우리는 `Agent.llm_credential` 흐름과 `_ENV_FALLBACK` 흐름을 의도적으로 분리해 왔다 — end-user 가 자기 키로 빌링되는 경로와 operator 가 빌링되는 경로의 격리. 본 ADR 은 이 격리를 깨지 않으면서 UX 갭을 메운다.
+自 a7fc92d（"运行时密钥隔离"）以来，我们一直有意将 `Agent.llm_credential` 流程与 `_ENV_FALLBACK` 流程分离——隔离 end-user 使用自己的密钥计费的路径，与 operator 计费的路径。本 ADR 在不破坏这种隔离的前提下弥补 UX 缺口。
 
 ---
 
-## § 결정
+## § 决策
 
-### 결정 1: 우선순위 — `ENV > system credentials > user credentials`
+### 决策 1：优先级 — `ENV > system credentials > user credentials`
 
 ```
 key resolution for builder/assistant sub-agent (provider P):
-  1. settings.{P}_api_key  (env / .env)         ← 있으면 즉시 반환
+  1. settings.{P}_api_key  (env / .env)         ← 存在则立即返回
   2. Credential where is_system=True, definition_key=P
-  3. (신규) Credential where is_system=False, definition_key=P, status='active'
-       ↳ 동일 user 다중 row 시 created_at DESC LIMIT 1
-  4. None                                        ← caller 가 LLM 에러 surface
+  3. （新增）Credential where is_system=False, definition_key=P, status='active'
+       ↳ 同一 user 存在多行时 created_at DESC LIMIT 1
+  4. None                                        ← caller 暴露 LLM 错误
 ```
 
-**근거**:
-- ENV 1순위 = backward compat. 기존 `.env`-only 배포 영향 0.
-- System 2순위 = operator-managed 키가 user 키보다 우선. PoC 단계에서 mock user 단일이라 충돌 거의 없으나, 인증 도입 후에도 일관됨.
-- User 3순위 = 사용자 mental model 충족. `/credentials` UI 에 키 등록하면 builder 도 자동 사용.
+**依据**：
+- ENV 优先级第 1 = backward compat。对现有 `.env`-only 部署影响为 0。
+- System 优先级第 2 = operator-managed 密钥优先于 user 密钥。PoC 阶段只有单一 mock user，几乎不会冲突；引入认证后也保持一致。
+- User 优先级第 3 = 符合用户 mental model。在 `/credentials` UI 中注册密钥后，builder 也会自动使用。
 
-### 결정 2: 재사용 전략 — `system_credential_resolver` 확장
+### 决策 2：复用策略 — 扩展 `system_credential_resolver`
 
-`system_credential_resolver.py` 의 `resolve_system_api_key()` 를 **확장**하지 않고, **신규 helper** 를 `app/credentials/service.py` 에 추가한다:
+不**扩展** `system_credential_resolver.py` 的 `resolve_system_api_key()`，而是在 `app/credentials/service.py` 中添加**新的 helper**：
 
 ```python
-# app/credentials/service.py (신규)
+# app/credentials/service.py（新增）
 async def get_provider_keys(db: AsyncSession) -> dict[str, str | None]:
-    """LLM provider → api_key dict. system credentials 우선, user fallback.
-    
+    """LLM provider → api_key dict。system credentials 优先，user fallback。
+<br>
     Returns dict keyed by _ENV_FALLBACK key (openai/anthropic/google/openrouter).
-    .env 우선순위는 호출자가 적용 (sync_env_fallback_from_credentials).
+    .env 优先级由调用方应用（sync_env_fallback_from_credentials）。
     """
 ```
 
-**왜 신규 helper 인가**:
-- `resolve_system_api_key()` 는 단일 provider 단건 lookup (Fix Agent, Image Gen 패턴). startup sync 는 **bulk** 로 전 provider 한 번에 가져와야 효율적.
-- 본 ADR 의 호출처는 "dict 갱신용 bulk reader" 이지 "런타임 단건 resolver" 가 아니다. 의미론적으로 다른 함수.
-- `resolve_system_api_key` 는 user credentials 를 **의도적으로 배제**한다 (operator billing). 이 의미를 깨면 안 됨.
+**为什么使用新 helper**：
+- `resolve_system_api_key()` 是针对单个 provider 的单次 lookup（Fix Agent、Image Gen 模式）。startup sync 需要以 **bulk** 方式一次性获取全部 provider，效率才高。
+- 本 ADR 的调用方是“用于更新 dict 的 bulk reader”，而不是“运行时单次 resolver”。两者语义不同。
+- `resolve_system_api_key` **有意排除** user credentials（operator billing）。不能破坏这一语义。
 
-### 결정 3: Invalidate Hook — `_ENV_FALLBACK.update()` (mutable dict)
+### 决策 3：Invalidate Hook — `_ENV_FALLBACK.update()` (mutable dict)
 
-3개 옵션을 비교했다:
+比较了 3 个选项：
 
-| 옵션 | 장점 | 단점 | 결정 |
+| 选项 | 优点 | 缺点 | 决策 |
 |------|------|------|------|
-| (a) **mutable dict `.update()`** | `PROVIDER_API_KEY_MAP` alias 그대로 유지, 코드 변경 최소, atomic update | startup + CRUD 시점에 명시적 호출 필요 | ✅ **채택** |
-| (b) callback registry | 미래 consumer 도 hook 가능 | 과한 추상화 (현재 consumer = builder helper 1곳) | ❌ Musk Step 1 위반 |
-| (c) lazy reload-on-read + TTL cache | sync 호출 누락 방지 | 매 호출 DB 조회 잠재적 비용, TTL 동안 stale, 테스트 hook 어려움 | ❌ |
+| (a) **mutable dict `.update()`** | 保持 `PROVIDER_API_KEY_MAP` alias 不变，代码改动最小，atomic update | 需要在 startup + CRUD 时显式调用 | ✅ **采用** |
+| (b) callback registry | 未来 consumer 也可以 hook | 过度抽象（当前 consumer = builder helper 1 处） | ❌ 违反 Musk Step 1 |
+| (c) lazy reload-on-read + TTL cache | 防止遗漏 sync 调用 | 每次调用可能产生 DB 查询成本，TTL 期间 stale，测试 hook 困难 | ❌ |
 
-**구현 형태**:
+**实现形式**：
 ```python
 # model_factory.py
 def sync_env_fallback_from_credentials(
     cred_keys: dict[str, str | None]
 ) -> None:
-    """Provider별 dict.update(). .env 우선 정책: 기존 truthy 값은 덮지 않음."""
+    """按 Provider 执行 dict.update()。.env 优先策略：不覆盖已有 truthy 值。"""
     for provider, key in cred_keys.items():
         if key and not _ENV_FALLBACK.get(provider):
             _ENV_FALLBACK[provider] = key
 ```
 
-**호출 지점**:
-1. `app/main.py` lifespan startup — Bootstrap 직후 1회
-2. `app/routers/credentials.py` — POST/PATCH/DELETE 핸들러 `await db.commit()` 직후, `definition_key in {anthropic, openai, google_genai, openrouter, openai_compatible}` 인 경우만
+**调用位置**：
+1. `app/main.py` lifespan startup — Bootstrap 之后执行 1 次
+2. `app/routers/credentials.py` — POST/PATCH/DELETE handler 中 `await db.commit()` 之后，仅当 `definition_key in {anthropic, openai, google_genai, openrouter, openai_compatible}` 时
 
-**Thread safety**: CPython GIL + dict `.update()` atomic. dict 객체 교체 (`_ENV_FALLBACK = ...`) 는 `PROVIDER_API_KEY_MAP` alias 가 stale 참조 보유하게 되므로 **금지**.
+**Thread safety**: CPython GIL + dict `.update()` atomic。禁止替换 dict 对象（`_ENV_FALLBACK = ...`），否则 `PROVIDER_API_KEY_MAP` alias 会持有 stale 引用。
 
-### 결정 4: Provider definition_key ↔ `_ENV_FALLBACK` Key 매핑
+### 决策 4：Provider definition_key ↔ `_ENV_FALLBACK` Key 映射
 
-| credential definition_key | `_ENV_FALLBACK` key | 비고 |
+| credential definition_key | `_ENV_FALLBACK` key | 备注 |
 |---------------------------|---------------------|------|
 | `anthropic` | `anthropic` | 1:1 |
 | `openai` | `openai` | 1:1 |
-| `google_genai` | `google` | **별칭 매핑 필요** (settings.google_api_key) |
+| `google_genai` | `google` | **需要别名映射** (settings.google_api_key) |
 | `openrouter` | `openrouter` | 1:1 |
-| `openai_compatible` | — (skip) | base_url 필수, env 단일키로 표현 불가. credential 흐름은 그대로 (chat_service 경로). builder 는 사용 안 함. |
+| `openai_compatible` | — (skip) | 必须有 base_url，无法用 env 单一密钥表达。credential 流程保持不变（chat_service 路径）。builder 不使用。 |
 
-매핑 테이블은 `app/credentials/service.py` 에 상수로 명시:
+映射表以常量形式显式写在 `app/credentials/service.py` 中：
 ```python
 LLM_DEFINITION_TO_ENV_KEY: dict[str, str] = {
     "anthropic": "anthropic",
@@ -111,55 +111,55 @@ LLM_DEFINITION_TO_ENV_KEY: dict[str, str] = {
     "google_genai": "google",
     "openrouter": "openrouter",
 }
-# openai_compatible: builder/assistant 미지원 — Agent.llm_credential 경로만
+# openai_compatible: builder/assistant 不支持 — 仅使用 Agent.llm_credential 路径
 ```
 
-`is_llm_definition(key) -> bool` 헬퍼는 위 dict 의 key 멤버십으로 판단.
+`is_llm_definition(key) -> bool` helper 通过上述 dict 的 key membership 判断。
 
 ---
 
-## § 위험 + 완화
+## § 风险 + 缓解
 
-| 위험 | 완화 |
+| 风险 | 缓解 |
 |------|------|
-| Credential rotation 시 sync 누락 → builder 가 stale 키 사용 | CRUD 3곳 (POST/PATCH/DELETE) hook 누락 검증 가드 (M3 신규 테스트). `definition_key` 화이트리스트 분기. |
-| System vs user credential 충돌 | 결정 1 우선순위 명문화. system 1건 + user N건 동시 존재 시 system 우선. |
-| a7fc92d "런타임 키 격리" 와 충돌 | end-user agent (`Agent.llm_credential`) 경로는 **변경 0**. 이 ADR 은 builder/assistant (operator-billed surface) 에만 영향. ADR-005 builder 흐름은 원래 operator-billed 의도였음. |
-| `.env` priority 위반 회귀 | `sync_env_fallback_from_credentials` 가 `if key and not _ENV_FALLBACK.get(provider)` 가드. 신규 가드 `test_env_key_takes_priority_over_credential` (M1 §5.5). |
-| Multi-user 환경에서 user credentials 의 "어떤 user 키" 모호성 | PoC 단계 (mock user 1명) — 즉시 문제 아님. 인증 도입 시 재검토. ADR §향후 작업에 명시. |
-| `openai_compatible` 누락 시 사용자 혼란 | UI 에서 builder/assistant 가 지원하는 provider 목록 명시 (저커버그 영역, 본 ADR 범위 외). |
+| Credential rotation 时遗漏 sync → builder 使用 stale 密钥 | 在 3 个 CRUD 位置（POST/PATCH/DELETE）设置防止遗漏 hook 的验证 guard（M3 新增测试）。按 `definition_key` 白名单分支。 |
+| System 与 user credential 冲突 | 在决策 1 中明确优先级。system 1 条 + user N 条同时存在时 system 优先。 |
+| 与 a7fc92d "运行时密钥隔离" 冲突 | end-user agent (`Agent.llm_credential`) 路径**改动 0**。本 ADR 只影响 builder/assistant（operator-billed surface）。ADR-005 builder 流程原本就意图由 operator 计费。 |
+| `.env` priority 违规回归 | `sync_env_fallback_from_credentials` 使用 `if key and not _ENV_FALLBACK.get(provider)` guard。新增 guard `test_env_key_takes_priority_over_credential` (M1 §5.5)。 |
+| Multi-user 环境中 user credentials 的“到底使用哪个 user 密钥”存在歧义 | PoC 阶段（单一 mock user）— 暂时不是问题。引入认证时重新评估。在 ADR §未来工作中注明。 |
+| 缺少 `openai_compatible` 导致用户困惑 | 在 UI 中明确 builder/assistant 支持的 provider 列表（Zuckerberg 范围，本 ADR 范围外）。 |
 
 ---
 
-## § 마이그레이션
+## § 迁移
 
 **Backward Compat**:
-- `.env` 에 `ANTHROPIC_API_KEY` 가 있는 사용자: 동작 변경 0. `_ENV_FALLBACK["anthropic"]` 는 startup 시 settings 값으로 채워지고, sync 함수는 truthy 값을 덮지 않음.
-- `PROVIDER_API_KEY_MAP` alias 보존 → builder helper (`L73,L85`) 코드 변경 0.
+- `.env` 中已有 `ANTHROPIC_API_KEY` 的用户：行为改动 0。`_ENV_FALLBACK["anthropic"]` 在 startup 时由 settings 值填充，sync 函数不会覆盖 truthy 值。
+- 保留 `PROVIDER_API_KEY_MAP` alias → builder helper (`L73,L85`) 代码改动 0。
 
-**신규 동작**:
-- `.env` 비어있고 `/credentials` UI 에 anthropic 키 등록 시:
+**新增行为**：
+- `.env` 为空且在 `/credentials` UI 注册 anthropic 密钥时：
   - startup → `_ENV_FALLBACK["anthropic"] = "<credentials key>"`
-  - 이후 builder 호출 → `PROVIDER_API_KEY_MAP.get("anthropic")` 가 신규 키 반환
+  - 之后调用 builder → `PROVIDER_API_KEY_MAP.get("anthropic")` 返回新密钥
 
-**DB 마이그레이션**: 없음. 스키마 변경 0.
+**DB 迁移**：无。schema 改动 0。
 
-**Frontend 변경**: 없음. UI 는 이미 `/credentials` 로 키 등록 가능 (mental model 부합).
-
----
-
-## § 향후 작업 (본 ADR 범위 외)
-
-1. 인증 도입 시 user credentials fallback 의 user 선택 정책 (본 ADR 은 mock user 단일 가정).
-2. `openai_compatible` builder 지원 — model_name + base_url + api_key 트리플 필요. Settings 확장 또는 별도 ADR.
-3. Credential rotation audit log → `_ENV_FALLBACK` sync 이벤트 기록 (운영 가시성).
+**Frontend 改动**：无。UI 已可通过 `/credentials` 注册密钥（符合 mental model）。
 
 ---
 
-## § 결정 요약
+## § 未来工作（本 ADR 范围外）
 
-1. **우선순위**: ENV > system credential > user credential > None
-2. **재사용**: 신규 helper `credential_service.get_provider_keys(db)` (bulk reader). `resolve_system_api_key` 는 의미 보존 (변경 0).
-3. **Hook**: `_ENV_FALLBACK.update()` (mutable dict) — startup 1회 + CRUD 3곳 (`definition_key` LLM 화이트리스트 분기).
-4. **매핑**: `anthropic`, `openai` 1:1 / `google_genai → google` / `openrouter` 1:1 / `openai_compatible` skip.
-5. **Backward compat**: `.env` priority 보존. 기존 사용자 영향 0.
+1. 引入认证时 user credentials fallback 的 user 选择策略（本 ADR 假设只有单一 mock user）。
+2. `openai_compatible` builder 支持 — 需要 model_name + base_url + api_key 三元组。扩展 Settings 或另立 ADR。
+3. Credential rotation audit log → 记录 `_ENV_FALLBACK` sync 事件（运维可观测性）。
+
+---
+
+## § 决策摘要
+
+1. **优先级**: ENV > system credential > user credential > None
+2. **复用**: 新 helper `credential_service.get_provider_keys(db)` (bulk reader)。`resolve_system_api_key` 保留原语义（改动 0）。
+3. **Hook**: `_ENV_FALLBACK.update()` (mutable dict) — startup 1 次 + 3 个 CRUD 位置（按 `definition_key` LLM 白名单分支）。
+4. **映射**: `anthropic`, `openai` 1:1 / `google_genai → google` / `openrouter` 1:1 / `openai_compatible` skip。
+5. **Backward compat**: 保留 `.env` priority。对现有用户影响为 0。

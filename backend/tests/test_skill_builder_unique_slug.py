@@ -23,7 +23,7 @@ def _skill_content(*, name: str = "skill") -> str:
 
 
 def _korean_draft() -> dict[str, object]:
-    name = "회의록 액션 아이템 정리"
+    name = "整理会议纪要行动项"
     return {
         "name": name,
         "slug": name,
@@ -58,14 +58,14 @@ async def test_confirm_create_uses_unique_slug_when_korean_draft_falls_back_to_s
         session = await skill_builder_service.create_session(
             db,
             user_id=TEST_USER_ID,
-            user_request="회의록 정리 스킬을 만들어줘",
+            user_request="帮我创建会议纪要整理技能",
         )
         await skill_builder_service.save_draft_package(db, session, draft=_korean_draft())
 
         created = await skill_builder_service.confirm_session(db, session, user_id=TEST_USER_ID)
         await db.commit()
 
-    assert created.name == "회의록 액션 아이템 정리"
+    assert created.name == "整理会议纪要行动项"
     assert created.slug == "skill-2"
     assert session.status == SkillBuilderStatus.COMPLETED.value
     assert session.finalized_skill_id == created.id

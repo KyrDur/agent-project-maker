@@ -70,9 +70,9 @@ async def test_record_event_sanitizes_sensitive_metadata(db: AsyncSession) -> No
 
 @pytest.mark.asyncio
 async def test_record_self_event_fills_identity_columns(db: AsyncSession) -> None:
-    """record_self_event는 21개 self-action 감사 사이트의 단일 신원 채움 지점 —
-    각 컬럼을 리터럴 기대값(독립 오라클)으로 고정한다. record_event 출력과의
-    상호 비교(tautology)로 대체하지 말 것 (BE-P5 교훈)."""
+    """record_self_event 是21个 self-action audit site 的单一身份填充点 —
+    将每一列固定为 literal 期望值（独立 oracle）。不要用与 record_event 输出
+    相互比较（tautology）替代（BE-P5 教训）。"""
 
     user_id = uuid.uuid4()
     db.add(User(id=user_id, email="self@test.com", name="Self"))

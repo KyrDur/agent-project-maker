@@ -43,7 +43,7 @@ async def test_publish_error_persists_same_event_ids_as_live_broker() -> None:
 
 @pytest.mark.asyncio
 async def test_cancel_before_running_finalizes_run_as_canceled() -> None:
-    """cancel 이 워커 기동 전(queued)에 커밋되면 failed 가 아니라 canceled 로 종료."""
+    """若 cancel 在 worker 启动前（queued）已 commit，则应以 canceled 而非 failed 结束。"""
     conversation_id = await seed_conversation_with_agent()
     async with TestSession() as db:
         conv = await db.get(Conversation, conversation_id)
@@ -56,7 +56,7 @@ async def test_cancel_before_running_finalizes_run_as_canceled() -> None:
             source="chat",
             input_preview="cancel before start",
         )
-        # cancel API 가 워커보다 먼저 queued -> canceling 을 커밋한 상황 재현.
+        # 复现 cancel API 先于 worker commit queued -> canceling 的情况。
         await conversation_run_service.request_cancel_run(db, run)
         await db.commit()
         run_id = run.id
@@ -66,7 +66,7 @@ async def test_cancel_before_running_finalizes_run_as_canceled() -> None:
     async def never_stream(*args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
         nonlocal executor_called
         executor_called = True
-        if False:  # pragma: no cover - async generator 형태 유지
+        if False:  # pragma: no cover - 保持 async generator 形式
             yield ""
 
     user = CurrentUser(
@@ -102,7 +102,7 @@ async def test_cancel_before_running_finalizes_run_as_canceled() -> None:
 
 @pytest.mark.asyncio
 async def test_worker_skips_finalization_when_run_already_terminal() -> None:
-    """sweep 등이 먼저 terminal 로 보낸 run 은 워커가 재finalize 하지 않는다."""
+    """已被 sweep 等路径先转为 terminal 的 run，worker 不应再次 finalize。"""
     conversation_id = await seed_conversation_with_agent()
     async with TestSession() as db:
         conv = await db.get(Conversation, conversation_id)
@@ -127,7 +127,7 @@ async def test_worker_skips_finalization_when_run_already_terminal() -> None:
 
     async def never_stream(*args: Any, **kwargs: Any) -> AsyncGenerator[str, None]:
         raise AssertionError("executor must not run for a terminal run")
-        if False:  # pragma: no cover - async generator 형태 유지
+        if False:  # pragma: no cover - 保持 async generator 形式
             yield ""
 
     user = CurrentUser(
@@ -237,7 +237,7 @@ async def test_backfill_runs_after_branch_activation(
     monkeypatch.setattr(conversation_run_worker, "_backfill_turn_attachments", fake_backfill)
 
     async def empty_stream(*_args: Any, **_kwargs: Any) -> AsyncGenerator[str, None]:
-        if False:  # pragma: no cover - async generator 형태 유지
+        if False:  # pragma: no cover - 保持 async generator 形式
             yield ""
 
     user = CurrentUser(
@@ -317,8 +317,8 @@ async def test_chat_run_does_not_persist_latest_branch_leaf(
 
 
 def test_redact_run_error_message_masks_injected_secret() -> None:
-    # 예외 텍스트에 run credential 값이 echo되면 값 기반 마스킹으로 가려야 한다
-    # (블록리스트가 놓치는 bare token/URL-embedded 케이스 방어 — CLAUDE.md redaction).
+    # 若异常文本 echo 出 run credential 值，必须通过基于值的 masking 遮蔽
+    # （防御 blocklist 漏掉 bare token/URL-embedded 情况 — CLAUDE.md redaction）。
     secret = "sk-injected-secret-abcdef123456"
     masked = conversation_run_worker._redact_run_error_message(
         f"model call failed: token {secret} at https://gw/v1", {secret}
@@ -335,12 +335,12 @@ def test_redact_run_error_message_blank_returns_none() -> None:
 async def test_interrupted_run_transitions_before_trace_finalization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """M8-2 regression: 인터럽트 런은 상태 전이("interrupted" 커밋)가
-    finalize_trace(느린 message_events 영속화)보다 먼저 실행되어야 한다.
-    승인 카드는 스트림 도중 이미 클라이언트에 flush되므로, 전이가 trace 뒤로
-    밀리면 그 사이 도착한 resume이 부모 run을 못 찾아 RESUME_NOT_FOUND로
-    튕긴다. (헬퍼 각각은 올바르고 이 순서만이 계약이다 — backfill 순서 테스트와
-    같은 방식.)"""
+    """M8-2 regression: interrupt run 的状态 transition（commit "interrupted"）
+    必须先于 finalize_trace（较慢的 message_events 持久化）执行。
+    approval card 已在 stream 中 flush 给 client，如果 transition 排在 trace 后面，
+    中间到达的 resume 会找不到父 run 并被 RESUME_NOT_FOUND
+    拒绝。（每个 helper 单独都正确，只有这个顺序才是合约 — 与 backfill 顺序测试
+    相同方式。）"""
 
     conversation_id = await seed_conversation_with_agent()
     async with TestSession() as db:
@@ -384,7 +384,7 @@ async def test_interrupted_run_transitions_before_trace_finalization(
     )
 
     async def empty_stream(*_args: Any, **_kwargs: Any) -> AsyncGenerator[str, None]:
-        if False:  # pragma: no cover - async generator 형태 유지
+        if False:  # pragma: no cover - 保持 async generator 形式
             yield ""
 
     user = CurrentUser(
@@ -415,8 +415,8 @@ async def test_interrupted_run_transitions_before_trace_finalization(
 async def test_completed_run_keeps_trace_before_transition_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """대조군: 인터럽트가 아닌(완료) 런은 기존 순서 유지 — trace 완결 후 terminal
-    전이. M8-2 재정렬이 completed/failed 경로를 건드리지 않았음을 고정한다."""
+    """对照组：非 interrupt（completed）run 保持现有顺序 — trace 完整后再 terminal
+    transition。固定 M8-2 重排未影响 completed/failed 路径。"""
 
     conversation_id = await seed_conversation_with_agent()
     async with TestSession() as db:
@@ -456,7 +456,7 @@ async def test_completed_run_keeps_trace_before_transition_order(
     )
 
     async def empty_stream(*_args: Any, **_kwargs: Any) -> AsyncGenerator[str, None]:
-        if False:  # pragma: no cover - async generator 형태 유지
+        if False:  # pragma: no cover - 保持 async generator 形式
             yield ""
 
     user = CurrentUser(

@@ -7,7 +7,7 @@ vi.mock('@/lib/hooks/use-conversations', () => ({
     data: [
       {
         id: 'conv-1',
-        title: '주말 여행 상담',
+        title: '周末旅行咨询',
         updated_at: '2026-05-30T03:00:00Z',
         unread_count: 0,
       },
@@ -29,10 +29,10 @@ describe('ScheduleForm', () => {
     render(<ScheduleForm onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: '一次' }))
-    await user.type(screen.getByPlaceholderText('名称'), '한 번만 실행')
+    await user.type(screen.getByPlaceholderText('名称'), '仅运行一次')
     await user.type(
       screen.getByPlaceholderText('提示'),
-      '테스트 메시지',
+      '测试消息',
     )
     fireEvent.change(screen.getByLabelText('预定于'), {
       target: { value: '2030-01-02T09:30' },
@@ -42,13 +42,13 @@ describe('ScheduleForm', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: '한 번만 실행',
+        name: '仅运行一次',
         trigger_type: 'one_time',
         schedule_config: {
           scheduled_at: new Date('2030-01-02T09:30').toISOString(),
         },
-        input_message: '테스트 메시지',
-        timezone: 'Asia/Seoul',
+        input_message: '测试消息',
+        timezone: 'Asia/Shanghai',
         conversation_policy: 'schedule_thread',
       }),
     )
@@ -64,7 +64,7 @@ describe('ScheduleForm', () => {
 
     expect(screen.queryByPlaceholderText('对话ID')).not.toBeInTheDocument()
     await user.click(screen.getByRole('combobox', { name: '对话' }))
-    await user.click(screen.getByRole('option', { name: /주말 여행 상담/ }))
+    await user.click(screen.getByRole('option', { name: /周末旅行咨询/ }))
     await user.click(screen.getByRole('button', { name: '创建' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))

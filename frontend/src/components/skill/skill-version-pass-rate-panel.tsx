@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * 버전별 통과율 추이 (Phase 3 §6) — completed 평가 런을
- * (skill_version, content_hash)로 묶은 실측 집계를 바 리스트로 보여준다.
+ * 按版本通过率趋势 (Phase 3 §6) — 将 completed 评估运行按
+ * (skill_version, content_hash) 分组后的实测汇总以条形列表展示。
  */
 
 import { useTranslations } from 'next-intl'

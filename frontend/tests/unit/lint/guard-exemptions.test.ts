@@ -18,7 +18,7 @@ function suppressionRules(source: string, filePath: string): string[] {
 // (the describe title also avoids the literal directive — the guard scans
 // this file's raw text, and the exemption under test must not vouch for it)
 describe('type-safety guard: test-file expect-error exemption', () => {
-  const reasoned = `// ${EXPECT_ERROR} - SSR 환경 시뮬레이션을 위해 window를 제거한다.\nexport const x = 1\n`
+  const reasoned = `// ${EXPECT_ERROR} - 为模拟 SSR 环境而移除 window。\nexport const x = 1\n`
 
   it('allows a reasoned expect-error in *.test.ts and __tests__/ files', () => {
     expect(suppressionRules(reasoned, 'src/lib/chat/__tests__/foo.test.ts')).toEqual([])

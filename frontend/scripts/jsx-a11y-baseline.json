@@ -56,13 +56,6 @@
     "message": "Visible, non-interactive elements with click handlers must have at least one keyboard listener."
   },
   {
-    "filePath": "src/app/agents/new/page.tsx",
-    "line": 121,
-    "column": 7,
-    "ruleId": "jsx-a11y/control-has-associated-label",
-    "message": "A control must be associated with a text label."
-  },
-  {
     "filePath": "src/app/mcp-servers/_components/mcp-import-dialog.tsx",
     "line": 157,
     "column": 13,

@@ -84,7 +84,7 @@ describe('ApprovalCard', () => {
           tool_name: 'write_file',
           tool_args: {
             file_path: '/runtime/today_diary.md',
-            content: '오늘 하루 기록',
+            content: '今天一天的记录',
           },
         },
         status: { type: 'requires-action' },
@@ -450,7 +450,7 @@ describe('ApprovalCard', () => {
     expect(screen.queryByText('invalidJson')).toBeNull()
   })
 
-  // ── allowed_decisions 버튼 게이팅 ──────────────────────────────────
+  // ── allowed_decisions 按钮 gating ──────────────────────────────────
   function renderCard(args: Record<string, unknown>, hitl?: Record<string, unknown>) {
     function ApprovalUnderTest() {
       return renderApproval({
@@ -535,8 +535,8 @@ describe('ApprovalCard', () => {
     })
   })
 
-  // ── 세션 동의 옵션 (스킬 빌더 AD-4) ─────────────────────────────────
-  it('세션 동의 옵션은 review_configs 플래그가 있을 때만 렌더된다', () => {
+  // ── session consent 选项（技能 Builder AD-4）─────────────────────────────────
+  it('仅当存在 review_configs flag 时渲染 session consent 选项', () => {
     renderCard({
       approval_id: 'consent-0',
       tool_name: 'test_skill_draft',
@@ -558,7 +558,7 @@ describe('ApprovalCard', () => {
     expect(screen.getByRole('checkbox', { name: 'allowForSession' })).toBeInTheDocument()
   })
 
-  it('동의 체크 후 승인하면 decision에 scope:session이 첨부된다', async () => {
+  it('勾选 consent 后批准，会在 decision 中附加 scope:session', async () => {
     const onResumeDecisions = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
     renderCard(
       {
@@ -582,7 +582,7 @@ describe('ApprovalCard', () => {
     })
   })
 
-  it('동의 체크 없이 승인하면 표준 approve만 전송된다', async () => {
+  it('不勾选 consent 直接批准，只发送标准 approve', async () => {
     const onResumeDecisions = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
     renderCard(
       {
@@ -603,7 +603,7 @@ describe('ApprovalCard', () => {
     })
   })
 
-  // ── 멀티액션 그룹 카드 (모두 승인) ──────────────────────────────────
+  // ── 多 action 分组卡（全部批准）──────────────────────────────────
   it('shows one approval at a time and flushes the existing decision batch on the last step', async () => {
     const registerDecision = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
     function Card({ index }: { index: number }) {
@@ -679,7 +679,7 @@ describe('ApprovalCard', () => {
       </HiTLContext.Provider>,
     )
 
-    // Compact cards drop their own "승인이 필요합니다" header; the group owns the
+    // Compact cards drop their own "需要批准" header; the group owns the
     // count header + the single approve-all button.
     expect(screen.queryByText('approvalRequired')).toBeNull()
     expect(screen.getByText('approveAll')).toBeInTheDocument()

@@ -31,7 +31,7 @@ function makeConversation(overrides: Partial<Conversation> = {}): Conversation {
   return {
     id: 'conv-1',
     agent_id: 'agent-1',
-    title: '아침 브리핑',
+    title: '晨间简报',
     is_pinned: false,
     unread_count: 0,
     last_activity_source: 'user',
@@ -53,20 +53,20 @@ function renderRow(conversation: Conversation) {
   )
 }
 
-describe('ChatNavigatorSessionRow — 스케줄 활동 배지', () => {
-  it('last_activity_source가 schedule이면 시계 배지를 보여준다', () => {
+describe('ChatNavigatorSessionRow — 日程活动徽标', () => {
+  it('last_activity_source 为 schedule 时显示时钟徽标', () => {
     const { container } = renderRow(
       makeConversation({ last_activity_source: 'schedule', unread_count: 2 }),
     )
     expect(container.querySelector('[data-moldy-schedule-activity="conv-1"]')).not.toBeNull()
   })
 
-  it('일반(user) 대화에는 배지가 없다', () => {
+  it('普通(user) 对话不显示徽标', () => {
     const { container } = renderRow(makeConversation())
     expect(container.querySelector('[data-moldy-schedule-activity]')).toBeNull()
   })
 
-  it('핀 고정 대화는 핀 아이콘이 우선한다', () => {
+  it('已置顶的对话优先显示置顶图标', () => {
     const { container } = renderRow(
       makeConversation({ is_pinned: true, last_activity_source: 'schedule' }),
     )

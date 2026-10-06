@@ -17,7 +17,7 @@ interface DeepAgentsStatePanelProps extends DeepAgentsStateFileActions {
   readonly isLoading?: boolean
   readonly isInterrupted?: boolean
   /**
-   * Render the todos ("작업 목록") section. Defaults to true. The live streaming
+   * Render the todos ("任务列表") section. Defaults to true. The live streaming
    * loading indicator passes false: the assistant message already renders the
    * same todos as its persistent "Plan" card (the `write_todos` tool-ui), so
    * showing them here too duplicated the planning state on screen (and tripped

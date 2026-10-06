@@ -19,10 +19,10 @@ class SkillBuilderMode(StrEnum):
 
 
 class SkillBuilderStatus(StrEnum):
-    # v2 상태 기계: active → confirming → completed (+abandoned = GC 대상).
+    # v2 状态机：active → confirming → completed（+abandoned = GC 对象）。
     ACTIVE = "active"
     ABANDONED = "abandoned"
-    # 구 one-pass 플로우 레거시 값 — 기존 row 호환용.
+    # 旧 one-pass flow 的 legacy 值 — 为兼容已有 row 保留。
     COLLECTING = "collecting"
     DRAFTING = "drafting"
     REVIEW = "review"
@@ -59,7 +59,7 @@ class SkillDraftFile(BaseModel):
 
 
 class SkillBuilderFileEntry(BaseModel):
-    """드래프트 워크스페이스 파일 요약 (레일 소스 뷰, M7) — 내용 없음."""
+    """草稿工作区文件摘要（rail source view，M7）— 不含内容。"""
 
     model_config = ConfigDict(frozen=True)
 
@@ -75,7 +75,7 @@ class SkillBuilderFilesResponse(BaseModel):
 
 
 class SkillBuilderFileContentResponse(BaseModel):
-    """드래프트 파일 내용 (소유자 전용 조회 — 레일 소스 뷰어)."""
+    """草稿文件内容（仅 owner 可查询 — rail source viewer）。"""
 
     model_config = ConfigDict(frozen=True)
 
@@ -101,7 +101,7 @@ class SkillDraftPackage(BaseModel):
 
 
 class SkillBuilderSessionBrief(BaseModel):
-    """세션 목록용 경량 응답 — draft/snapshot 등 무거운 JSON 컬럼 제외."""
+    """用于会话列表的轻量响应 — 排除 draft/snapshot 等较重的 JSON 列。"""
 
     model_config = ConfigDict(from_attributes=True, frozen=True)
 
@@ -138,8 +138,8 @@ class SkillBuilderSessionResponse(BaseModel):
     eval_result: dict[str, JsonValue] | None = None
     trigger_eval_result: dict[str, JsonValue] | None = None
     finalized_skill_id: uuid.UUID | None = None
-    # v2 (빌더 챗): 빌더 대화/히든 에이전트 식별자. conversation_id는 세션
-    # 컬럼에서, agent_id는 대화 역참조로 라우터가 채운다 (ORM 속성 아님).
+    # v2（Builder 聊天）：Builder 对话/hidden Agent 标识符。conversation_id 从 session
+    # 列中读取，agent_id 由 router 从对话反向引用填充（不是 ORM 属性）。
     conversation_id: uuid.UUID | None = None
     agent_id: uuid.UUID | None = None
     error_message: str | None = None

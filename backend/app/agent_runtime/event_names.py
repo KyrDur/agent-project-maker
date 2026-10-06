@@ -1,28 +1,28 @@
 """Centralized SSE event name constants.
 
-W3-out 트랙 도중 발견 — ``streaming.py`` 가 emit 하는 이벤트 이름과
-``routers/conversations.py`` 의 검증 로직 (``_is_pending_interrupt`` /
-``_replay_resume_generator``) 이 별개의 매직 스트링으로 정의되어 있어
-한 쪽이 rename 되면 silent breakage 가 발생할 수 있다 (예: ``"interrupt"``
-→ ``"hitl_pause"`` 변경 시 resume endpoint 의 409 차단이 silently no-op).
+W3-out 轨道中发现 — ``streaming.py`` emit 的事件名称与
+``routers/conversations.py`` 的验证逻辑（``_is_pending_interrupt`` /
+``_replay_resume_generator``）分别定义成了不同的魔法字符串，
+如果一侧 rename，可能发生 silent breakage（例如 ``"interrupt"``
+→ ``"hitl_pause"`` 变更时，resume endpoint 的 409 阻断会 silently no-op）。
 
-이 모듈은 단일 source of truth — emit 측과 검증 측이 모두 import 한다.
-새 SSE 이벤트 추가 시 여기에 상수 등록.
+本模块是单一 source of truth — emit 侧与验证侧都 import 它。
+新增 SSE 事件时，在这里注册常量。
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-# Producer side — ``streaming.py`` 의 emit 클로저가 발행하는 표준 이벤트.
+# Producer side — ``streaming.py`` 的 emit 闭包发布的标准事件。
 MESSAGE_START: Final = "message_start"
 CONTENT_DELTA: Final = "content_delta"
 MESSAGE_END: Final = "message_end"
 ERROR: Final = "error"
 INTERRUPT: Final = "interrupt"
-# wire format 은 ``tool_call_start`` / ``tool_call_result`` (frontend
-# ``SSEEventType`` 와 일치). 초기 작성 시 ``tool_call`` / ``tool_result`` 로
-# 잘못 둬 dead constant 였다 — 트랙 종료 시점 cross-file audit 에서 발견.
+# wire format 为 ``tool_call_start`` / ``tool_call_result``（与 frontend
+# ``SSEEventType`` 一致）。最初编写时误设为 ``tool_call`` / ``tool_result``，
+# 因而成为 dead constant — 在轨道结束时的 cross-file audit 中发现。
 TOOL_CALL_START: Final = "tool_call_start"
 TOOL_CALL_RESULT: Final = "tool_call_result"
 FILE_EVENT: Final = "file_event"
@@ -53,11 +53,11 @@ SUBAGENT_NAMES: Final = "moldy.subagent_names"
 # into this run's system prompt. Stable event id (``<run_id>:memory_recalled``)
 # dedupes on replay/reload (same contract as SUBAGENT_NAMES).
 MEMORY_RECALLED: Final = "moldy.memory_recalled"
-# Skill builder chat rail (스킬 스튜디오 phase 1, AD-5). Two ``custom`` events:
-# ``moldy.skill_draft`` — stream-head 1회, stable id ``<run_id>:skill_draft``,
-# 드래프트 상태 요약(세션 id/모드/slug/파일 경로·크기/변경 수 — 파일 내용 금지).
-# ``moldy.skill_validation`` — ``validate_skill``/``finalize_skill`` 도구 결과
-# projection (memory_event_projection 패턴), 기존 validation_result 스키마 그대로.
+# Skill builder chat rail（技能工作室 phase 1，AD-5）。Two ``custom`` events:
+# ``moldy.skill_draft`` — stream-head 1 次，stable id ``<run_id>:skill_draft``,
+# 草稿状态摘要（会话 id/模式/slug/文件路径·大小/变更数 — 禁止包含文件内容）。
+# ``moldy.skill_validation`` — ``validate_skill``/``finalize_skill`` 工具结果
+# projection（memory_event_projection 模式），保持现有 validation_result schema 不变。
 SKILL_DRAFT: Final = "moldy.skill_draft"
 SKILL_VALIDATION: Final = "moldy.skill_validation"
 MEMORY_PROPOSED: Final = "memory_proposed"
@@ -65,6 +65,6 @@ MEMORY_SAVED: Final = "memory_saved"
 MEMORY_REJECTED: Final = "memory_rejected"
 MEMORY_DELETED: Final = "memory_deleted"
 
-# Resume-only — W3-out M3 GET endpoint 가 broker 가 죽은 채로 streaming
-# row 만 남은 경우 발행. client 는 이 이벤트를 받으면 자동 재시도를 멈춘다.
+# Resume-only — W3-out M3 GET endpoint 在 broker 已失效、只剩 streaming
+# row 时发布。client 收到此事件后会停止自动重试。
 STALE: Final = "stale"

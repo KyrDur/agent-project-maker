@@ -64,8 +64,8 @@ test.describe('Tools catalog', () => {
       .click()
 
     // Dialog opened
-    await expect(page.getByRole('heading', { name: '새 HTTP Request' })).toBeVisible()
-    await page.getByLabel(/이름/).fill('Webhook')
+    await expect(page.getByRole('heading', { name: '新 HTTP Request' })).toBeVisible()
+    await page.getByLabel(/名称/).fill('Webhook')
     await page.getByRole('textbox', { name: 'URL *' }).fill('https://example.com/hook')
 
     await page.getByRole('button', { name: '提交' }).click()

@@ -15,11 +15,11 @@ import {
  * drives each decision to its result and captures the screen changes from the
  * HITL edit-hardening work:
  *
- *  - allowed_decisions gating: execute_in_skill ([approve, reject]) shows NO 수정
+ *  - allowed_decisions gating: execute_in_skill ([approve, reject]) shows NO 修改
  *    button, while edit_file ([approve, edit, reject]) DOES — the visible contrast.
  *  - the field-based editor that replaced the raw JSON textarea, with the
  *    sensitive key locked read-only (<redacted>).
- *  - approve / reject / edit result badges (승인됨 / 거부됨 / 수정 승인됨).
+ *  - approve / reject / edit result badges (已批准 / 已拒绝 / 修改后批准).
  *
  * Split into two tests so the multi-action pair gets its own timeout budget (the
  * single+edit set alone spends most of one). Each scenario runs in a FRESH
@@ -31,9 +31,9 @@ import {
  */
 
 const WAVE = 'wave10-hitl-decisions'
-const SINGLE_PROMPT = '문서 생성 도구를 사용해 승인 후 실행해줘'
-const COMPLETION_MESSAGE = '문서 파일 생성이 완료되었습니다. 오른쪽 파일 패널에서 확인하세요.'
-const DOCX_PREVIEW_HEADING = 'Moldy 문서 생성 검증 보고서'
+const SINGLE_PROMPT = '使用文档生成工具，批准后执行'
+const COMPLETION_MESSAGE = '文档文件已生成完成。请在右侧文件面板中查看。'
+const DOCX_PREVIEW_HEADING = 'Moldy 文档生成验证报告'
 
 async function waitForCompletedDocxCapture(page: Page): Promise<void> {
   await expect(page.getByText(COMPLETION_MESSAGE, { exact: true }).last()).toBeVisible({
@@ -95,7 +95,7 @@ function makeChatDriver(
     const conversationId = await freshConversation(request, csrfHeaders, agentId, title)
     await gotoChat(conversationId)
     await sendMessage(page, prompt)
-    await expect(page.getByText(/승인이 필요합니다|Approval Required/).last()).toBeVisible({
+    await expect(page.getByText(/需要批准|Approval Required/).last()).toBeVisible({
       timeout: 40_000,
     })
     await page.waitForTimeout(600)
@@ -133,18 +133,18 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
 
     try {
       await runSteps([
-        // ── Single (execute_in_skill → [approve, reject], NO 수정 button) ──
+        // ── Single (execute_in_skill → [approve, reject], NO 修改 button) ──
         {
           file: '01-single-card.png',
           run: async () => {
-            await sendAndWaitCard('HITL 단독 카드', SINGLE_PROMPT)
+            await sendAndWaitCard('HITL 单卡', SINGLE_PROMPT)
             await captureLocator(card.last(), WAVE, '01-single-card.png')
           },
         },
         {
           file: '02-single-approved.png',
           run: async () => {
-            await sendAndWaitCard('HITL 단독 승인', SINGLE_PROMPT)
+            await sendAndWaitCard('HITL 单卡批准', SINGLE_PROMPT)
             await approveExecuteInSkill(page)
             await expect(page.getByText('已批准', { exact: true }).last()).toBeVisible({
               timeout: 30_000,
@@ -157,7 +157,7 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
         {
           file: '03-single-rejected.png',
           run: async () => {
-            await sendAndWaitCard('HITL 단독 거부', SINGLE_PROMPT)
+            await sendAndWaitCard('HITL 单卡拒绝', SINGLE_PROMPT)
             await page.getByRole('button', { name: '拒绝', exact: true }).last().click()
             await page.getByRole('button', { name: '拒绝 确认' }).last().click()
             await expect(page.getByText('被拒绝', { exact: true }).last()).toBeVisible({
@@ -167,11 +167,11 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
             await capture(page, WAVE, '03-single-rejected.png')
           },
         },
-        // ── Edit-capable (edit_file → [approve, edit, reject], 수정 button shown) ──
+        // ── Edit-capable (edit_file → [approve, edit, reject], 修改 button shown) ──
         {
           file: '04-edit-card.png',
           run: async () => {
-            await sendAndWaitCard('HITL 수정 카드', 'E2E_HITL_EDIT')
+            await sendAndWaitCard('HITL 修改卡片', 'E2E_HITL_EDIT')
             await captureLocator(card.last(), WAVE, '04-edit-card.png')
           },
         },
@@ -190,7 +190,7 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
         {
           file: '06-edit-approved.png',
           run: async () => {
-            await sendAndWaitCard('HITL 수정 후 승인', 'E2E_HITL_EDIT')
+            await sendAndWaitCard('HITL 修改后批准', 'E2E_HITL_EDIT')
             await page.getByRole('button', { name: '编辑', exact: true }).last().click()
             await expect(page.getByLabel('new_string').last()).toBeVisible({ timeout: 10_000 })
             // Edit a non-secret field to show the editor is interactive.
@@ -251,7 +251,7 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
         {
           file: '07-multi-card.png',
           run: async () => {
-            await gotoSendMulti('HITL 멀티 카드')
+            await gotoSendMulti('HITL 多卡')
             // ONE grouped container wrapping both mounted decisions, with only
             // the current action visible (ask_user-style paging).
             await expect(group).toBeVisible({ timeout: 20_000 })
@@ -266,14 +266,14 @@ test.describe('Wave 10 — HITL approval decision captures', () => {
         {
           file: '08-multi-approved.png',
           run: async () => {
-            await gotoSendMulti('HITL 멀티 승인')
+            await gotoSendMulti('HITL 多卡批准')
             // One "批准全部" click drives every action; the coordinator resumes once.
             await page.getByTestId('approval-approve-all-button').click()
             await expect(page.getByText('已批准', { exact: true })).toHaveCount(2, {
               timeout: 30_000,
             })
             await expect(page.getByText('所有行动已完成', { exact: true })).toBeVisible()
-            await expect(page.getByText(/승인 대기 2건/)).toBeHidden()
+            await expect(page.getByText(/待批准 2 项/)).toBeHidden()
             await waitForCompletedDocxCapture(page)
             await page.waitForTimeout(400)
             await capture(page, WAVE, '08-multi-approved.png')

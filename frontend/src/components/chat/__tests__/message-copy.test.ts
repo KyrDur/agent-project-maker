@@ -17,12 +17,12 @@ describe('message copy helpers', () => {
   it('extracts only copyable text from mixed message content', () => {
     expect(
       getMessageCopyText([
-        { type: 'text', text: '사용자 질문' },
+        { type: 'text', text: '用户问题' },
         { type: 'tool-call' },
-        { type: 'reasoning', text: '중간 추론' },
+        { type: 'reasoning', text: '中间推理' },
         { type: 'image' },
       ]),
-    ).toBe('사용자 질문\n\n중간 추론')
+    ).toBe('用户问题\n\n中间推理')
   })
 
   it('passes string content through unchanged', () => {
@@ -33,9 +33,9 @@ describe('message copy helpers', () => {
     const writeText = vi.fn<Clipboard['writeText']>().mockResolvedValue(undefined)
     setClipboard({ writeText })
 
-    await copyTextToClipboard('복사할 메시지')
+    await copyTextToClipboard('要复制的消息')
 
-    expect(writeText).toHaveBeenCalledWith('복사할 메시지')
+    expect(writeText).toHaveBeenCalledWith('要复制的消息')
   })
 
   it('falls back to document copy command when Clipboard API is unavailable', async () => {

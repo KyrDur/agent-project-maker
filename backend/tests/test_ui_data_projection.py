@@ -92,7 +92,7 @@ def test_projects_chart_from_recognized_demo_tool() -> None:
 
 def test_projects_stats_from_recognized_demo_tool() -> None:
     result = json.dumps(
-        {"ui_type": "stats", "items": [{"label": "총 요청", "value": 1240, "delta": 12}]}
+        {"ui_type": "stats", "items": [{"label": "总请求数", "value": 1240, "delta": 12}]}
     )
 
     payloads = project_demo(result, tool_call_id="c")
@@ -104,7 +104,7 @@ def test_projects_stats_from_recognized_demo_tool() -> None:
             "message_id": None,
             "run_id": None,
             "tool_call_id": "c",
-            "props": {"items": [{"label": "총 요청", "value": 1240, "delta": 12}]},
+            "props": {"items": [{"label": "总请求数", "value": 1240, "delta": 12}]},
         }
     ]
 
@@ -165,7 +165,7 @@ def test_non_dict_json_returns_empty() -> None:
 def test_execute_in_skill_projects_terminal_card() -> None:
     payloads = ui_data_from_tool_result(
         "execute_in_skill",
-        "Row count: 42\n집계 완료",
+        "Row count: 42\n汇总完成",
         tool_call_id="call-skill-1",
     )
 
@@ -176,22 +176,22 @@ def test_execute_in_skill_projects_terminal_card() -> None:
             "message_id": None,
             "run_id": None,
             "tool_call_id": "call-skill-1",
-            "props": {"lines": "Row count: 42\n집계 완료"},
+            "props": {"lines": "Row count: 42\n汇总完成"},
         }
     ]
 
 
 def test_execute_in_skill_strips_output_files_suffix() -> None:
-    result = "stdout 본문\n\nOUTPUT_FILES: report.md, chart.png"
+    result = "stdout 正文\n\nOUTPUT_FILES: report.md, chart.png"
     payloads = ui_data_from_tool_result("execute_in_skill", result, tool_call_id="c")
 
-    assert payloads[0]["props"] == {"lines": "stdout 본문"}
+    assert payloads[0]["props"] == {"lines": "stdout 正文"}
 
 
 def test_execute_in_skill_empty_output_projects_nothing() -> None:
     assert ui_data_from_tool_result("execute_in_skill", "", tool_call_id="c") == []
     assert ui_data_from_tool_result("execute_in_skill", "   \n", tool_call_id="c") == []
-    # OUTPUT_FILES만 있고 stdout이 비면 카드도 없다 (파일 칩은 pill이 담당).
+    # 只有 OUTPUT_FILES 且 stdout 为空时，也没有卡片（文件标签由 pill 负责）。
     assert (
         ui_data_from_tool_result("execute_in_skill", "\n\nOUTPUT_FILES: a.png", tool_call_id="c")
         == []
@@ -208,7 +208,7 @@ def test_execute_in_skill_truncates_huge_output() -> None:
 
 
 def test_transformer_active_without_demo_flag() -> None:
-    # 실도구 transformer는 demo 게이트와 무관하게 항상 동작한다.
+    # 实际工具 transformer 不受 demo 门槛影响，始终生效。
     payloads = ui_data_from_tool_result(
         "execute_in_skill", "ok", tool_call_id="c", demo_enabled=False
     )

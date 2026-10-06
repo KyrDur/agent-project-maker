@@ -38,16 +38,16 @@ export type SkillRollbackResponse = {
   readonly revision: SkillRevisionSummary
 }
 
-/** 리비전 스냅샷 파일 목록 (Phase 2 — 버전 diff/소스 보기). */
+/** revision snapshot 文件列表（Phase 2 — version diff/source view）。 */
 export type SkillRevisionFileEntry = {
   readonly path: string
   readonly size: number
-  /** 앞 8KB sniff에 널바이트 — 내용 조회는 404(fail-closed). */
+  /** 前 8KB sniff 中有 null byte — 内容查询返回 404（fail-closed）。 */
   readonly is_binary: boolean
 }
 
 export type SkillRevisionFilesResponse = {
-  /** 리텐션이 스냅샷을 정리한 리비전 — 파일 목록/내용 없음. */
+  /** retention 已清理 snapshot 的 revision — 无文件列表/内容。 */
   readonly snapshot_pruned: boolean
   readonly files: readonly SkillRevisionFileEntry[]
 }

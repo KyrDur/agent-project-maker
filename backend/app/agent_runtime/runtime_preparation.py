@@ -154,27 +154,25 @@ async def prepare_runtime_components_impl(
         skills_sources = [skills_virtual_prefix]
         if stored_policy:
             system_prompt += (
-                "\n\n## 스킬 사용 규칙\n"
-                "스킬을 사용할 때는 반드시 read_file 도구로 SKILL.md를 먼저 읽고 "
-                "그 안의 지시를 직접 따르세요. "
-                "task 도구의 subagent_type에 스킬 이름을 넣지 마세요. "
-                "task 도구를 사용할 때 subagent_type은 task 도구 설명에 표시된 "
-                "available subagent types 중 하나여야 합니다."
+                "\n\n## Skill 使用规则\n"
+                "使用 Skill 时，必须先通过 read_file 工具读取 SKILL.md，"
+                "并直接遵循其中的指令。"
+                "不要把 Skill 名称填入 task 工具的 subagent_type。"
+                "使用 task 工具时，subagent_type 必须是 task 工具说明中显示的"
+                "available subagent types 之一。"
             )
         else:
             langchain_tools.append(bindings.create_skill_execute_tool(skill_ctx))
             system_prompt += (
-                "\n\n## 스킬 사용 규칙\n"
-                "스킬을 사용할 때는 반드시 read_file 도구로 SKILL.md를 먼저 읽고 "
-                "그 안의 지시를 직접 따르세요. "
-                "스크립트 실행이 필요하면 execute_in_skill 도구를 사용하세요. "
-                "task 도구의 subagent_type에 스킬 이름을 넣지 마세요. "
-                "task 도구를 사용할 때 subagent_type은 task 도구 설명에 표시된 "
-                "available subagent types 중 하나여야 합니다.\n"
-                "스크립트 실행 후 OUTPUT_FILES에 이미지가 있으면 "
-                "![image](/api/conversations/"
-                + cfg.thread_id
-                + "/files/<파일명>) 형식으로 표시하세요."
+                "\n\n## Skill 使用规则\n"
+                "使用 Skill 时，必须先通过 read_file 工具读取 SKILL.md，"
+                "并直接遵循其中的指令。"
+                "如果需要执行脚本，请使用 execute_in_skill 工具。"
+                "不要把 Skill 名称填入 task 工具的 subagent_type。"
+                "使用 task 工具时，subagent_type 必须是 task 工具说明中显示的"
+                "available subagent types 之一。\n"
+                "执行脚本后，如果 OUTPUT_FILES 中有图片，"
+                "![image](/api/conversations/" + cfg.thread_id + "/files/<文件名>) 格式显示。"
             )
         skills_block = bindings.build_skills_prompt(cfg.agent_skills)
         if skills_block:

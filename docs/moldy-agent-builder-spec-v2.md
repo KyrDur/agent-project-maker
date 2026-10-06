@@ -1,102 +1,102 @@
-# Deep Agent Builder — 시스템 기획서 (v2)
+# Deep Agent Builder — 系统规划书 (v2)
 
-> 자연어 요청 하나로 맞춤형 AI 에이전트를 자동 생성하고 관리하는 멀티 에이전트 오케스트레이션 시스템
+> 通过一个自然语言请求自动创建并管理定制 AI agent 的多 agent 编排系统
 >
-> **v2 변경점:** Deep Agent Assistant 프롬프트 분석을 통해 도구 생태계, 시스템 프롬프트 템플릿, 에이전트 관리 워크플로우, 서브에이전트 구조, 시크릿 관리, 크론 스케줄, RAG 설정 등의 실제 구현 세부사항을 추가함.
+> **v2 变更点:** 通过分析 Deep Agent Assistant prompt，补充了工具生态、系统 prompt 模板、agent 管理 workflow、subagent 结构、secret 管理、cron schedule、RAG 设置等实际实现细节。
 
 ---
 
-## 1. 프로젝트 개요
+## 1. 项目概览
 
-### 1.1 시스템 전체 구조: 빌더 + 어시스턴트
+### 1.1 系统整体结构: Builder + Assistant
 
-이 시스템은 두 개의 독립적인 에이전트로 구성된다:
+该系统由两个独立 agent 构成:
 
-| 에이전트 | 역할 | 작동 시점 |
+| agent | 角色 | 运行时机 |
 |---------|------|----------|
-| **Deep Agent Builder** | 자연어 요청을 받아 새 에이전트를 **처음부터 생성**하는 오케스트레이터 | 에이전트 생성 시 |
-| **Deep Agent Assistant** | 이미 생성된 에이전트의 설정을 **수정·관리**하는 도우미 | 에이전트 생성 후 |
+| **Deep Agent Builder** | 接收自然语言请求并**从零开始创建**新 agent 的 orchestrator | 创建 agent 时 |
+| **Deep Agent Assistant** | **修改·管理**已创建 agent 设置的助手 | 创建 agent 后 |
 
-Builder가 에이전트를 만들면, 이후 사용자는 Assistant를 통해 도구 추가/제거, 시스템 프롬프트 개선, 모델 변경, 스케줄 설정 등을 할 수 있다.
+Builder 创建 agent 后，用户可以通过 Assistant 添加/移除工具、改进 system prompt、变更模型、设置 schedule 等。
 
-### 1.2 핵심 설계 원칙
+### 1.2 核心设计原则
 
-- **단일 책임 원칙 (Single Responsibility):** 각 서브에이전트는 정확히 하나의 전문 영역만 담당한다.
-- **순차적 파이프라인:** 이전 단계의 출력이 다음 단계의 입력이 되는 체인 구조.
-- **파일 기반 상태 관리:** 모든 중간 산출물을 YAML/Markdown 파일로 디스크에 기록하여 재현성과 디버깅 용이성을 확보한다.
-- **격리된 컨텍스트:** 서브에이전트는 서로의 내부 상태를 공유하지 않으며, 오직 구조화된 데이터만 전달받는다.
-- **VERIFY before MODIFY:** 모든 수정 작업 전에 현재 상태를 먼저 확인한다 (Assistant 원칙에서 차용).
-- **MINIMAL changes:** 사용자가 명시적으로 요청한 부분만 수정한다.
+- **单一职责原则 (Single Responsibility):** 每个 subagent 只负责一个明确的专业领域。
+- **顺序 pipeline:** 前一阶段的输出作为下一阶段输入的链式结构。
+- **基于文件的状态管理:** 将所有中间产物以 YAML/Markdown 文件写入磁盘，确保可复现性并便于 debugging。
+- **隔离的 context:** subagent 之间不共享内部状态，仅传递结构化数据。
+- **VERIFY before MODIFY:** 每次修改前先确认当前状态（借鉴 Assistant 原则）。
+- **MINIMAL changes:** 仅修改用户明确要求的部分。
 
-### 1.3 시스템 구성 요소
+### 1.3 系统组成
 
-| 구성 요소 | 역할 |
+| 组成 | 角色 |
 |-----------|------|
-| **오케스트레이터 (Deep Agent Builder)** | 전체 빌드 파이프라인을 순서대로 실행하고, 서브에이전트 호출·결과 저장·진행 상황 보고를 담당 |
-| **의도 분석 서브에이전트** | 사용자 요청을 정밀 분석하여 AgentCreationIntent 구조체로 정리 |
-| **도구 추천 서브에이전트** | Intent를 기반으로 에이전트에 필요한 도구(Tool) 목록을 선정 |
-| **미들웨어 추천 서브에이전트** | Intent + 도구 정보를 기반으로 미들웨어(안정성·성능·보안 계층)를 선정 |
-| **프롬프트 생성 서브에이전트** | 위 모든 정보를 종합하여 에이전트의 시스템 프롬프트(마크다운)를 작성 |
-| **빌드 시스템** | 설정 파일들을 읽어 실제 LangGraph/Agent Framework 기반 에이전트를 인스턴스화 |
-| **Deep Agent Assistant** | 빌드 완료된 에이전트의 설정을 수정·관리하는 별도 에이전트 |
+| **Orchestrator (Deep Agent Builder)** | 按顺序执行完整构建 pipeline，负责调用 subagent、保存结果、报告进度 |
+| **意图分析 subagent** | 精确分析用户请求并整理为 AgentCreationIntent 结构体 |
+| **工具推荐 subagent** | 基于 Intent 选择 agent 所需的 Tool 列表 |
+| **Middleware 推荐 subagent** | 基于 Intent + 工具信息选择 middleware（稳定性·性能·安全层） |
+| **Prompt 生成 subagent** | 综合以上全部信息编写 agent 的 system prompt（Markdown） |
+| **构建系统** | 读取配置文件并实例化实际的 LangGraph/Agent Framework agent |
+| **Deep Agent Assistant** | 修改·管理构建完成后的 agent 设置的独立 agent |
 
 ---
 
-## 2. 전체 아키텍처
+## 2. 整体架构
 
-### 2.1 에이전트 생성 흐름 (Builder)
+### 2.1 Agent 创建流程 (Builder)
 
 ```
-사용자 요청 (자연어)
+用户请求（自然语言）
     │
     ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  오케스트레이터 (Deep Agent Builder)                              │
+│  Orchestrator (Deep Agent Builder)                              │
 │                                                                  │
-│  Phase 1: 프로젝트 초기화                                         │
+│  Phase 1: 项目初始化                                             │
 │    ├─ write_project_config()   → project_config.md               │
-│    ├─ create_project_folder()  → 프로젝트 디렉토리 생성            │
-│    └─ update_project_config_path() → project_config.md 경로 갱신  │
+│    ├─ create_project_folder()  → 创建项目目录                    │
+│    └─ update_project_config_path() → 更新 project_config.md 路径 │
 │                                                                  │
-│  Phase 2: 의도 분석                                               │
-│    └─ 서브에이전트 호출 (description + 사용자 요청)                 │
+│  Phase 2: 意图分析                                               │
+│    └─ 调用 subagent（description + 用户请求）                    │
 │       → AgentCreationIntent (JSON)                               │
 │                                                                  │
-│  Phase 3: 도구 추천                                               │
-│    └─ 서브에이전트 호출 (AgentCreationIntent)                      │
-│       → tools.yaml 저장                                          │
+│  Phase 3: 工具推荐                                               │
+│    └─ 调用 subagent (AgentCreationIntent)                        │
+│       → 保存 tools.yaml                                         │
 │                                                                  │
-│  Phase 4: 미들웨어 추천                                           │
-│    └─ 서브에이전트 호출 (AgentCreationIntent + 도구 목록)           │
-│       → middlewares.yaml 저장                                    │
+│  Phase 4: Middleware 推荐                                        │
+│    └─ 调用 subagent（AgentCreationIntent + 工具列表）             │
+│       → 保存 middlewares.yaml                                   │
 │                                                                  │
-│  Phase 5: 시스템 프롬프트 생성                                     │
-│    └─ 서브에이전트 호출 (Intent + Tools + Middlewares)              │
-│       → system_prompt.md 저장                                    │
+│  Phase 5: 生成 system prompt                                     │
+│    └─ 调用 subagent (Intent + Tools + Middlewares)               │
+│       → 保存 system_prompt.md                                   │
 │                                                                  │
-│  Phase 6: 에이전트 설정 저장                                       │
+│  Phase 6: 保存 agent 设置                                        │
 │    └─ write_agent_config() → config.yaml                         │
 │                                                                  │
-│  Phase 7: 최종 에이전트 빌드                                       │
-│    └─ build_final_agent() → Agent ID 반환                        │
+│  Phase 7: 最终构建 agent                                         │
+│    └─ build_final_agent() → 返回 Agent ID                       │
 └──────────────────────────────────────────────────────────────────┘
     │
     ▼
-실제 동작하는 에이전트 (agent_id로 호출 가능)
+实际可运行的 agent（可通过 agent_id 调用）
     │
     ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  Deep Agent Assistant (생성 후 관리)                              │
-│  - 도구/미들웨어/서브에이전트 추가·제거                             │
-│  - 시스템 프롬프트 수정·개선                                       │
-│  - 모델 설정 변경                                                 │
-│  - 크론 스케줄 관리                                               │
-│  - RAG 파일 설정                                                  │
-│  - 시크릿(API 키) 확인                                            │
+│  Deep Agent Assistant（创建后管理）                              │
+│  - 添加·移除工具/middleware/subagent                            │
+│  - 修改·改进 system prompt                                      │
+│  - 修改模型设置                                                  │
+│  - 管理 cron schedule                                            │
+│  - 设置 RAG 文件                                                 │
+│  - 检查 secret(API key)                                         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 의존성 그래프 (Builder 내부)
+### 2.2 依赖图（Builder 内部）
 
 ```
 Phase 1 ──→ Phase 2 ──→ Phase 3 ──┐
@@ -109,152 +109,152 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──┐
                      Phase 5 ──→ Phase 6 ──→ Phase 7
 ```
 
-Phase 3(도구 추천)과 Phase 4(미들웨어 추천)는 둘 다 Phase 2의 AgentCreationIntent에만 의존하지만, Phase 4가 도구 목록을 참조하면 더 정확한 추천이 가능하므로 기본적으로 Phase 3 → Phase 4 순차 실행을 권장한다.
+Phase 3（工具推荐）和 Phase 4（middleware 推荐）都只依赖 Phase 2 的 AgentCreationIntent，但如果 Phase 4 参考工具列表，推荐会更准确，因此默认建议按 Phase 3 → Phase 4 顺序执行。
 
 ---
 
-## 3. 실제 도구·미들웨어·서브에이전트 생태계
+## 3. 实际工具·middleware·subagent 生态
 
-> Deep Agent Assistant 프롬프트에서 확인된 실제 리소스 관리 체계
+> 从 Deep Agent Assistant prompt 中确认的实际资源管理体系
 
-### 3.1 도구(Tool) 관리 체계
+### 3.1 Tool 管理体系
 
-에이전트에 사용 가능한 도구는 중앙 카탈로그에서 관리된다. `list_available_tools`로 조회 가능하며, `add_tool_to_agent` / `remove_tool_from_agent`로 에이전트에 연결·해제한다.
+agent 可用工具由中央目录管理。可通过 `list_available_tools` 查询，并通过 `add_tool_to_agent` / `remove_tool_from_agent` 与 agent 建立/解除连接。
 
-**확인된 도구 예시:**
+**已确认的工具示例:**
 
-| 카테고리 | 도구명 | 설명 |
+| 类别 | 工具名 | 说明 |
 |---------|--------|------|
-| 웹 검색 | tavily_search | 일반 웹 검색, 최신 뉴스/정보에 적합 |
-| 시맨틱 검색 | exa_search | 개념/문맥 기반 시맨틱 검색 |
-| 한국 뉴스 | naver_news | 네이버 뉴스 검색 API |
-| 한국 블로그 | naver_blog | 네이버 블로그 검색 API |
+| Web 搜索 | tavily_search | 通用 Web 搜索，适合最新新闻/信息 |
+| 语义搜索 | exa_search | 基于概念/context 的语义搜索 |
+| 韩国新闻 | naver_news | Naver 新闻搜索 API |
+| 韩国博客 | naver_blog | Naver 博客搜索 API |
 
-**내부 자동 도구 (모든 에이전트에 자동 포함, 카탈로그에 표시 안 됨):**
+**内部自动工具（所有 agent 自动包含，不显示在目录中）:**
 
-| 도구명 | 설명 |
+| 工具名 | 说明 |
 |--------|------|
-| list_agent_files | 에이전트에 업로드된 영구 파일 목록 조회 |
-| read_agent_file | 파일 내용 읽기 (PDF→Markdown, Image→Base64) |
+| list_agent_files | 查询上传到 agent 的永久文件列表 |
+| read_agent_file | 读取文件内容（PDF→Markdown, Image→Base64） |
 
-**도구 설정 구조:**
-각 도구는 개별 설정(config_override)을 가질 수 있으며, `get_tool_config` / `update_tool_config`으로 관리된다. 또한 도구마다 필요한 시크릿(API 키)이 정의되어 있다.
+**工具配置结构:**
+每个工具都可以有独立设置(config_override)，通过 `get_tool_config` / `update_tool_config` 管理。此外，每个工具还定义了所需 secret(API key)。
 
-### 3.2 미들웨어(Middleware) 관리 체계
+### 3.2 Middleware 管理体系
 
-미들웨어는 에이전트의 도구 호출 전후에 개입하는 계층이다. `list_available_middlewares`로 조회, `add_middleware_to_agent` / `remove_middleware_from_agent`로 관리한다.
+middleware 是在 agent 工具调用前后介入的层。可通过 `list_available_middlewares` 查询，通过 `add_middleware_to_agent` / `remove_middleware_from_agent` 管理。
 
-**확인된 미들웨어 예시:**
+**已确认的 middleware 示例:**
 
-| 미들웨어명 | 설명 | 특이사항 |
+| middleware 名 | 说明 | 特别事项 |
 |-----------|------|---------|
-| ToolRetryMiddleware | 외부 API 호출 실패 시 자동 재시도 | - |
-| SummarizationMiddleware | 대화 히스토리 자동 요약으로 토큰 절약 | - |
-| TodoListMiddleware | 작업 계획 수립 및 진행 추적 | **시스템 프롬프트에 사용 지침 추가 필수** (아래 참조) |
+| ToolRetryMiddleware | 外部 API 调用失败时自动重试 | - |
+| SummarizationMiddleware | 自动总结对话 history 以节省 token | - |
+| TodoListMiddleware | 制定任务计划并跟踪进度 | **必须在 system prompt 中加入使用说明**（见下文） |
 
-**TodoListMiddleware 필수 프롬프트 지침:**
+**TodoListMiddleware 必需的 prompt 说明:**
 
-이 미들웨어를 추가할 때는 반드시 다음 내용을 시스템 프롬프트에 포함해야 한다:
+添加该 middleware 时，必须在 system prompt 中包含以下内容:
 
 ```markdown
-## 작업 계획 및 실행 (Todo List)
+## 任务规划与执行 (Todo List)
 
-복잡한 작업을 수행할 때는 반드시 `write_todos` 도구를 활용하여 
-작업 계획(plans)을 먼저 수립하세요.
-계획을 세운 후, 각 항목을 순차적으로 이행하면서 작업을 수행합니다.
+执行复杂任务时，必须使用 `write_todos` 工具先制定
+任务计划(plans)。
+制定计划后，按顺序完成各项并执行任务。
 
-### 작업 순서
-1. 사용자 요청을 분석하여 필요한 단계를 파악
-2. `write_todos` 도구로 작업 계획을 작성
-3. 계획에 따라 각 단계를 순차적으로 실행
-4. 각 단계 완료 시 진행 상황을 업데이트
+### 任务顺序
+1. 分析用户请求，识别所需步骤
+2. 使用 `write_todos` 工具编写任务计划
+3. 按计划顺序执行各步骤
+4. 每个步骤完成时更新进度
 ```
 
-### 3.3 서브에이전트(Subagent) 관리 체계
+### 3.3 Subagent 管理体系
 
-에이전트는 다른 에이전트를 서브에이전트로 호출할 수 있다. `list_available_subagents`로 조회, `add_subagent_to_agent` / `remove_subagent_from_agent`로 관리한다.
+agent 可以调用其他 agent 作为 subagent。通过 `list_available_subagents` 查询，通过 `add_subagent_to_agent` / `remove_subagent_from_agent` 管理。
 
-서브에이전트 추가 시 확인할 사항:
-- 역할/전문 분야
-- 사용할 모델
-- 호출 조건 (언제 위임할 것인가)
-- 접근 가능한 도구
+添加 subagent 时需确认:
+- 角色/专业领域
+- 使用的模型
+- 调用条件（何时委派）
+- 可访问的工具
 
-### 3.4 모델(Model) 설정
+### 3.4 Model 设置
 
-`list_available_models`로 사용 가능한 모델 목록을 조회하고, `update_model_config`로 설정을 변경한다.
+通过 `list_available_models` 查询可用模型列表，通过 `update_model_config` 修改设置。
 
-**설정 가능한 파라미터:**
+**可配置参数:**
 
-| 파라미터 | 설명 | 기본값 |
+| 参数 | 说明 | 默认值 |
 |---------|------|--------|
-| model_name | LLM 모델 식별자 | anthropic:claude-sonnet-4-5 |
-| temperature | 응답의 창의성/무작위성 | (모델 기본값) |
-| max_tokens | 최대 응답 토큰 수 | (모델 기본값) |
-| top_p | 누적 확률 샘플링 | (모델 기본값) |
-| top_k | 상위 K개 토큰 샘플링 | (모델 기본값) |
+| model_name | LLM 模型标识符 | anthropic:claude-sonnet-4-5 |
+| temperature | 响应的创造性/随机性 |（模型默认值） |
+| max_tokens | 最大响应 token 数 |（模型默认值） |
+| top_p | 累积概率采样 |（模型默认值） |
+| top_k | Top K token 采样 |（模型默认值） |
 
-### 3.5 시크릿(Secret) 관리
+### 3.5 Secret 管理
 
-에이전트가 외부 API를 사용하려면 API 키가 필요하다. 시크릿 관리 체계:
+agent 使用外部 API 时需要 API key。secret 管理体系:
 
-1. `get_agent_required_secrets` → 에이전트에 필요한 시크릿 키 목록 조회 (모델, 도구, 미들웨어에서 필요한 키)
-2. `get_user_secrets` → 사용자가 등록한 시크릿 목록 조회
-3. 비교하여 누락된 키 식별
-4. 누락된 키가 있으면 발급 가이드 제공 후 `/secrets` 페이지로 안내
+1. `get_agent_required_secrets` → 查询 agent 所需的 secret key 列表（模型、工具、middleware 所需 key）
+2. `get_user_secrets` → 查询用户已注册的 secret 列表
+3. 对比并识别缺失的 key
+4. 若存在缺失 key，提供申请指南后引导至 `/secrets` 页面
 
-### 3.6 크론 스케줄(Cron Schedule) 관리
+### 3.6 Cron Schedule 管理
 
-에이전트에 예약 실행을 설정할 수 있다.
+可以为 agent 设置预约执行。
 
-**스케줄 유형:**
-- **반복(recurring):** cron 표현식으로 정의 (5필드: minute hour day-of-month month day-of-week)
-- **1회(one-time):** scheduled_at으로 특정 시점 지정
+**Schedule 类型:**
+- **重复(recurring):** 使用 cron 表达式定义（5 个字段: minute hour day-of-month month day-of-week）
+- **1次(one-time):** 使用 scheduled_at 指定具体时间点
 
-**제약 사항:**
-- 기본 타임존: Asia/Seoul
-- 사용자당 최대 20개 스케줄 (모든 에이전트 합산)
-- 1회 스케줄: scheduled_at은 미래 시점이어야 함
+**限制事项:**
+- 默认 timezone: Asia/Seoul
+- 每个用户最多 20 个 schedule（所有 agent 合计）
+- 1次 schedule: scheduled_at 必须是未来时间
 
-**주요 크론 패턴:**
+**主要 cron 模式:**
 
-| 패턴 | 표현식 | 설명 |
+| 模式 | 表达式 | 说明 |
 |------|--------|------|
-| 매시 정각 | `0 * * * *` | Every hour |
-| 매일 오전 9시 | `0 9 * * *` | Daily 9 AM |
-| 평일 오전 9시 | `0 9 * * 1-5` | Weekdays 9 AM |
-| 매주 월요일 10시 | `0 10 * * 1` | Every Monday 10 AM |
-| 매월 1일 9시 | `0 9 1 * *` | 1st of month 9 AM |
-| 30분마다 | `*/30 * * * *` | Every 30 minutes |
+| 每小时整点 | `0 * * * *` | Every hour |
+| 每天上午 9 点 | `0 9 * * *` | Daily 9 AM |
+| 工作日上午 9 点 | `0 9 * * 1-5` | Weekdays 9 AM |
+| 每周一 10 点 | `0 10 * * 1` | Every Monday 10 AM |
+| 每月 1 日 9 点 | `0 9 1 * *` | 1st of month 9 AM |
+| 每 30 分钟 | `*/30 * * * *` | Every 30 minutes |
 
-### 3.7 Recursion Limit (재귀 한도)
+### 3.7 Recursion Limit（递归上限）
 
-LangGraph 기반 에이전트의 실행 깊이를 제한하는 설정이다.
+这是限制基于 LangGraph 的 agent 执行深度的设置。
 
-| 범위 | 권장 대상 |
+| 范围 | 推荐对象 |
 |------|----------|
-| 기본값 25 | 단순 Q&A |
-| 25~50 | 일반 도구 사용 |
-| 50~75 | 복잡한 분석 |
-| 75~100 | 다단계 작업 |
-| 100+ | 서브에이전트를 호출하는 에이전트 |
+| 默认值 25 | 简单 Q&A |
+| 25~50 | 一般工具使用 |
+| 50~75 | 复杂分析 |
+| 75~100 | 多阶段任务 |
+| 100+ | 调用 subagent 的 agent |
 
-주의: 값이 높으면 무한 루프 발생 시 API 비용이 크게 증가할 수 있다.
+注意: 数值过高时，如果发生无限循环，API 成本可能大幅增加。
 
 ---
 
-## 4. 프로젝트 폴더 구조
+## 4. 项目文件夹结构
 
-### 4.1 데이터베이스 루트 구조
+### 4.1 数据库根目录结构
 
 ```
 agent_database/
 └── {user_id}/
-    ├── project_config.md          # 사용자 메타데이터
-    ├── tmp/                       # 프로젝트 작업 폴더
-    │   └── {timestamp}_{uuid}/    # 각 에이전트 생성 세션
+    ├── project_config.md          # 用户 metadata
+    ├── tmp/                       # 项目工作文件夹
+    │   └── {timestamp}_{uuid}/    # 每个 agent 创建 session
     └── agents/
-        └── {agent_id}/            # 빌드 완료된 에이전트
+        └── {agent_id}/            # 构建完成的 agent
             ├── project_config.md
             ├── system_prompt.md
             ├── tools.yaml
@@ -262,13 +262,13 @@ agent_database/
             └── config.yaml
 ```
 
-### 4.2 각 파일의 스키마
+### 4.2 各文件的 schema
 
 **project_config.md**
 ```markdown
 # Project Configuration
 
-user_id="{사용자 고유 ID}"
+user_id="{用户唯一 ID}"
 project_path="{user_id}/tmp/{timestamp}_{uuid}"
 ```
 
@@ -293,7 +293,7 @@ middlewares:
 **config.yaml**
 ```yaml
 agent_name: "Web Search Agent"
-agent_description: "사용자의 검색 쿼리를 받아 인터넷에서 정보를 검색하고..."
+agent_description: "接收用户的搜索 query，在互联网上搜索信息并..."
 tools:
   - "tavily_search"
   - "naver_news"
@@ -304,317 +304,317 @@ middlewares:
 model_name: "anthropic:claude-sonnet-4-5"
 primary_task_type: "web_search"
 use_cases:
-  - "정보 검색"
-  - "뉴스 조회"
+  - "信息搜索"
+  - "新闻查询"
 ```
 
 ---
 
-## 5. Phase별 상세 설계 (Builder)
+## 5. 各 Phase 详细设计 (Builder)
 
 ---
 
-### 5.1 Phase 1: 프로젝트 초기화
+### 5.1 Phase 1: 项目初始化
 
-#### 목적
-에이전트 생성 세션을 위한 작업 공간을 준비한다.
+#### 目的
+为 agent 创建 session 准备工作空间。
 
-#### 실행 주체
-오케스트레이터가 직접 도구를 호출한다. 서브에이전트(LLM)를 사용하지 않는다.
+#### 执行主体
+由 orchestrator 直接调用工具。不使用 subagent(LLM)。
 
-#### 단계별 동작
+#### 分步动作
 
 **Step 1 — write_project_config**
-- 기능: 사용자 ID를 파일 시스템에 기록.
-- 서브에이전트는 messages만 받으므로 state.user_id에 접근할 수 없다. 따라서 이 도구로 먼저 user_id를 파일에 기록해야 한다.
-- 출력: `{AGENT_BASE_FOLDER}/{user_id}/project_config.md`
-- 초기 내용: `user_id="{user_id}"`, `project_path=""`
-- 제약: 반드시 create_project_folder보다 먼저 호출.
+- 功能: 将用户 ID 写入文件系统。
+- subagent 只接收 messages，因此无法访问 state.user_id。因此必须先用该工具将 user_id 写入文件。
+- 输出: `{AGENT_BASE_FOLDER}/{user_id}/project_config.md`
+- 初始内容: `user_id="{user_id}"`, `project_path=""`
+- 限制: 必须在 create_project_folder 之前调用。
 
 **Step 2 — create_project_folder**
-- 기능: `{AGENT_BASE_FOLDER}/{user_id}/tmp/{timestamp}_{uuid}/` 폴더 생성.
-- 타임스탬프 + UUID v4로 고유 식별자 보장.
-- 출력: 생성된 폴더의 절대 경로.
+- 功能: 创建 `{AGENT_BASE_FOLDER}/{user_id}/tmp/{timestamp}_{uuid}/` 文件夹。
+- 使用 timestamp + UUID v4 确保唯一标识符。
+- 输出: 已创建文件夹的绝对路径。
 
 **Step 3 — update_project_config_path**
-- 기능: Step 1에서 만든 project_config.md의 빈 project_path를 Step 2의 경로로 갱신.
+- 功能: 将 Step 1 创建的 project_config.md 中空的 project_path 更新为 Step 2 的路径。
 
-#### 오케스트레이터 지침
+#### Orchestrator 指引
 
 ```
-1. write_project_config 호출 → project_config.md 생성
-2. create_project_folder 호출 → 프로젝트 폴더 생성
-3. update_project_config_path 호출 → 경로 동기화
-4. Todo에서 Phase 1 완료 표시
-5. "[Phase 1 완료] 프로젝트 초기화 완료" 보고
+1. 调用 write_project_config → 创建 project_config.md
+2. 调用 create_project_folder → 创建项目文件夹
+3. 调用 update_project_config_path → 同步路径
+4. 在 Todo 中标记 Phase 1 完成
+5. 报告 "[Phase 1 完成] 项目初始化完成"
 ```
 
 ---
 
-### 5.2 Phase 2: 의도 분석
+### 5.2 Phase 2: 意图分析
 
-#### 목적
-사용자의 자연어 요청을 분석하여 **AgentCreationIntent**를 생성한다.
+#### 目的
+分析用户的自然语言请求，生成 **AgentCreationIntent**。
 
-#### 실행 주체
-**의도 분석 서브에이전트**
+#### 执行主体
+**意图分析 subagent**
 
-#### 서브에이전트 시스템 프롬프트 (설계 참고용)
+#### Subagent system prompt（设计参考）
 
 ```markdown
-# 의도 분석 에이전트 — 시스템 프롬프트
+# 意图分析 agent — system prompt
 
-## 역할
-당신은 AI 에이전트 생성을 위한 의도 분석 전문가입니다.
-사용자의 자연어 요청을 받아 에이전트를 만들기 위해 필요한 모든 정보를
-체계적으로 분석하고 구조화합니다.
+## 角色
+你是用于创建 AI agent 的意图分析专家。
+接收用户的自然语言请求，分析创建 agent 所需的全部信息，
+并进行系统化分析与结构化整理。
 
-## 출력 형식 (AgentCreationIntent)
-반드시 아래 JSON 형식으로만 응답한다:
+## 输出格式 (AgentCreationIntent)
+必须只以以下 JSON 格式响应:
 
 {
-  "agent_name": "영문 에이전트 이름",
-  "agent_name_ko": "한글 에이전트 이름",
-  "agent_description": "에이전트의 역할과 기능에 대한 상세 설명 (3~5문장)",
-  "primary_task_type": "에이전트의 핵심 작업을 한 문장으로 기술",
-  "tool_preferences": "선호하는 도구 유형이나 API 종류",
-  "output_style": "결과물의 형태 (요약, 리포트, 목록 등)",
-  "response_tone": "응답의 톤과 스타일",
-  "use_cases": ["사용 사례 1", "사용 사례 2", "사용 사례 3"],
-  "constraints": ["제약 조건"],
-  "required_capabilities": ["필수 기능 1", "필수 기능 2"]
+  "agent_name": "英文 agent 名称",
+  "agent_name_ko": "韩文 agent 名称",
+  "agent_description": "关于 agent 角色和功能的详细说明（3~5 句）",
+  "primary_task_type": "用一句话描述 agent 的核心任务",
+  "tool_preferences": "偏好的工具类型或 API 种类",
+  "output_style": "结果形式（摘要、报告、列表等）",
+  "response_tone": "响应的语气和风格",
+  "use_cases": ["使用场景 1", "使用场景 2", "使用场景 3"],
+  "constraints": ["限制条件"],
+  "required_capabilities": ["必需功能 1", "必需功能 2"]
 }
 
-## 추론 가이드라인
-- "검색 에이전트"만 언급 → 일반 웹 검색 + 뉴스 검색을 기본 포함
-- "번역 에이전트"만 언급 → 다국어 번역 기본, 한국어↔영어 우선
-- "코딩 에이전트"만 언급 → 코드 생성 + 디버깅 + 설명 기본
-- 톤 미명시 → "친근하고 캐주얼한 어조" 기본값
-- output_style 미명시 → "간단한 요약과 주요 포인트" 기본값
+## 推理指南
+- 仅提及"搜索 agent" → 默认包含通用 Web 搜索 + 新闻搜索
+- 仅提及"翻译 agent" → 默认多语言翻译，韩语↔英语优先
+- 仅提及"编码 agent" → 默认代码生成 + debugging + 说明
+- 未指定语气 → 默认值"友好且 casual 的语气"
+- 未指定 output_style → 默认值"简要摘要和主要要点"
 
-## 주의사항
-- 사용자에게 추가 질문하지 않는다. 주어진 정보만으로 최선의 분석 수행.
-- 모호한 요청도 합리적 기본값을 채워 완전한 Intent를 반환.
-- JSON 외 다른 텍스트를 포함하지 않는다.
+## 注意事项
+- 不向用户追加提问。仅根据已有信息做最佳分析。
+- 即使请求模糊，也填充合理默认值并返回完整 Intent。
+- 不包含 JSON 以外的其他文本。
 ```
 
-#### 오케스트레이터가 전달하는 Task Description
+#### Orchestrator 传递的 Task Description
 
 ```
-사용자가 "{사용자의 원본 요청}"라고 요청했습니다.
-다음 정보를 수집해주세요:
+用户请求了"{用户的原始请求}"。
+请收集以下信息:
 
-1. 에이전트 이름 (영문과 한글)
-2. 에이전트 설명 (상세한 기능 설명)
-3. 주요 작업 유형 (primary_task_type)
-4. 에이전트의 주요 기능들
-5. 사용자가 원하는 기능의 특징
+1. agent 名称（英文和韩文）
+2. agent 说明（详细功能说明）
+3. 主要任务类型 (primary_task_type)
+4. agent 的主要功能
+5. 用户期望功能的特征
 
-사용자의 요청을 정리하고 AgentCreationIntent 형식으로 반환해주세요.
+请整理用户请求，并以 AgentCreationIntent 格式返回。
 ```
 
 ---
 
-### 5.3 Phase 3: 도구 추천
+### 5.3 Phase 3: 工具推荐
 
-#### 목적
-AgentCreationIntent를 분석하여 에이전트에 필요한 도구를 선정한다.
+#### 目的
+分析 AgentCreationIntent，选择 agent 所需工具。
 
-#### 실행 주체
-**도구 추천 서브에이전트**
+#### 执行主体
+**工具推荐 subagent**
 
-#### 서브에이전트 시스템 프롬프트 (설계 참고용)
+#### Subagent system prompt（设计参考）
 
 ```markdown
-# 도구 추천 에이전트 — 시스템 프롬프트
+# 工具推荐 agent — system prompt
 
-## 역할
-AgentCreationIntent를 분석하여 에이전트에 가장 적합한 도구를 추천한다.
+## 角色
+分析 AgentCreationIntent，为 agent 推荐最合适的工具。
 
-## 사용 가능한 도구 카탈로그
+## 可用工具目录
 
-(실제 시스템에서는 list_available_tools API로 동적 조회)
+（实际系统中通过 list_available_tools API 动态查询）
 
-### 웹 검색
-| 도구명 | 경로 | 설명 |
+### Web 搜索
+| 工具名 | 路径 | 说明 |
 |--------|------|------|
-| tavily_search | tools/tavily-search.yaml | 범용 웹 검색. 뉴스, 블로그, 일반 웹 포괄 |
-| exa_search | tools/exa-search.yaml | 시맨틱 검색. 개념/문맥 기반 검색에 적합 |
-| naver_news | tools/naver-news.yaml | 네이버 뉴스 검색. 한국어 뉴스 특화 |
-| naver_blog | tools/naver-blog.yaml | 네이버 블로그 검색. 사용자 경험담, 리뷰 |
+| tavily_search | tools/tavily-search.yaml | 通用 Web 搜索。覆盖新闻、博客、普通网页 |
+| exa_search | tools/exa-search.yaml | 语义搜索。适合基于概念/context 的搜索 |
+| naver_news | tools/naver-news.yaml | Naver 新闻搜索。专注韩文新闻 |
+| naver_blog | tools/naver-blog.yaml | Naver 博客搜索。用户体验、评论 |
 
-### 데이터 처리
-| 도구명 | 경로 | 설명 |
+### 数据处理
+| 工具名 | 路径 | 说明 |
 |--------|------|------|
-| data_parser | tools/data-parser.yaml | JSON, XML, CSV 파싱 |
-| text_summarizer | tools/text-summarizer.yaml | 긴 텍스트 요약 |
+| data_parser | tools/data-parser.yaml | 解析 JSON, XML, CSV |
+| text_summarizer | tools/text-summarizer.yaml | 长文本摘要 |
 
-### 코드 실행
-| 도구명 | 경로 | 설명 |
+### 代码执行
+| 工具名 | 路径 | 说明 |
 |--------|------|------|
-| code_executor | tools/code-executor.yaml | Python 코드 실행 |
-| code_analyzer | tools/code-analyzer.yaml | 코드 정적 분석 |
+| code_executor | tools/code-executor.yaml | 执行 Python 代码 |
+| code_analyzer | tools/code-analyzer.yaml | 静态分析代码 |
 
-### 외부 API
-| 도구명 | 경로 | 설명 |
+### 外部 API
+| 工具名 | 路径 | 说明 |
 |--------|------|------|
-| api_caller | tools/api-caller.yaml | 범용 REST API 호출 |
+| api_caller | tools/api-caller.yaml | 通用 REST API 调用 |
 
-## 선택 기준
-1. **필수성:** primary_task_type 수행에 반드시 필요한가?
-2. **적합성:** use_cases와 required_capabilities를 충족하는가?
-3. **최소성:** 3~5개 적정. 불필요한 도구 금지.
-4. **다양성:** 서로 보완하는 도구 조합 선호.
-5. **사용자 선호:** tool_preferences 명시 시 우선 반영.
+## 选择标准
+1. **必要性:** 是否为执行 primary_task_type 所必需？
+2. **适配性:** 是否满足 use_cases 和 required_capabilities？
+3. **最小化:** 以 3~5 个为宜。禁止不必要工具。
+4. **多样性:** 优先选择彼此互补的工具组合。
+5. **用户偏好:** 若指定 tool_preferences，优先反映。
 
-## 주의: 유사 도구 선택 기준
-동일 기능의 도구가 복수 존재할 때:
-- tavily_search vs exa_search: 최신 뉴스/일반 정보 → tavily, 개념/문맥 기반 → exa
-- 한국 특화 필요시 → naver_news, naver_blog 추가
+## 注意: 相似工具选择标准
+存在多个相同功能工具时:
+- tavily_search vs exa_search: 最新新闻/一般信息 → tavily，基于概念/context → exa
+- 需要韩国本地化时 → 添加 naver_news, naver_blog
 
-## 출력 형식
-JSON 배열만 반환:
+## 输出格式
+只返回 JSON 数组:
 [
   {
-    "tool_name": "고유 식별자",
-    "tool_path": "정의 파일 경로",
-    "description": "한 줄 설명",
-    "reason": "선택 이유"
+    "tool_name": "唯一标识符",
+    "tool_path": "定义文件路径",
+    "description": "一句话说明",
+    "reason": "选择原因"
   }
 ]
 ```
 
-#### 오케스트레이터가 전달하는 Task Description
+#### Orchestrator 传递的 Task Description
 
 ```
 user_id: {user_id}
 
-다음 AgentCreationIntent를 분석하여 필요한 도구들을 추천해주세요:
+请分析以下 AgentCreationIntent 并推荐所需工具:
 
 AgentCreationIntent:
-{Phase 2에서 반환된 전체 JSON}
+{Phase 2 返回的完整 JSON}
 
-위 정보를 분석하여 이 에이전트에 필요한 도구들을 추천해주세요.
-각 도구에 대해 tool_name과 tool_path를 포함한 형식으로 반환해주세요:
+请分析以上信息，为该 agent 推荐所需工具。
+请以包含每个工具的 tool_name 和 tool_path 的格式返回:
 
 [
   {
-    "tool_name": "도구 이름",
-    "tool_path": "도구의 파일 경로",
-    "description": "도구의 간단한 설명",
-    "reason": "이 도구가 필요한 이유"
+    "tool_name": "工具名称",
+    "tool_path": "工具文件路径",
+    "description": "工具的简要说明",
+    "reason": "需要该工具的原因"
   }
 ]
 ```
 
 ---
 
-### 5.4 Phase 4: 미들웨어 추천
+### 5.4 Phase 4: Middleware 推荐
 
-#### 목적
-에이전트의 안정성·성능·보안을 위한 미들웨어를 선정한다.
+#### 目的
+选择用于 agent 稳定性·性能·安全的 middleware。
 
-#### 실행 주체
-**미들웨어 추천 서브에이전트**
+#### 执行主体
+**Middleware 推荐 subagent**
 
-#### 서브에이전트 시스템 프롬프트 (설계 참고용)
+#### Subagent system prompt（设计参考）
 
 ```markdown
-# 미들웨어 추천 에이전트 — 시스템 프롬프트
+# Middleware 推荐 agent — system prompt
 
-## 역할
-AgentCreationIntent와 도구 목록을 분석하여 적합한 미들웨어를 추천한다.
+## 角色
+分析 AgentCreationIntent 和工具列表，推荐合适的 middleware。
 
-## 사용 가능한 미들웨어 카탈로그
+## 可用 middleware 目录
 
-### 안정성
-| 미들웨어명 | 경로 | 설명 |
+### 稳定性
+| middleware 名 | 路径 | 说明 |
 |-----------|------|------|
-| ToolRetryMiddleware | middlewares/tool-retry.yaml | 외부 API 실패 시 지수 백오프 재시도 (최대 3회) |
-| CircuitBreakerMiddleware | middlewares/circuit-breaker.yaml | 연속 실패 시 도구 호출 일시 차단 |
-| FallbackMiddleware | middlewares/fallback.yaml | 주 도구 실패 시 대체 도구 자동 전환 |
+| ToolRetryMiddleware | middlewares/tool-retry.yaml | 外部 API 失败时指数 backoff 重试（最多 3 次） |
+| CircuitBreakerMiddleware | middlewares/circuit-breaker.yaml | 连续失败时暂时阻止工具调用 |
+| FallbackMiddleware | middlewares/fallback.yaml | 主工具失败时自动切换到替代工具 |
 
-### 성능
-| 미들웨어명 | 경로 | 설명 |
+### 性能
+| middleware 名 | 路径 | 说明 |
 |-----------|------|------|
-| SummarizationMiddleware | middlewares/summarization.yaml | 대화 히스토리 자동 요약으로 토큰 절약 |
-| CacheMiddleware | middlewares/cache.yaml | 동일 쿼리 결과 캐시 |
-| RateLimiterMiddleware | middlewares/rate-limiter.yaml | API 호출 빈도 제한 |
+| SummarizationMiddleware | middlewares/summarization.yaml | 自动总结对话 history 以节省 token |
+| CacheMiddleware | middlewares/cache.yaml | 缓存相同 query 结果 |
+| RateLimiterMiddleware | middlewares/rate-limiter.yaml | 限制 API 调用频率 |
 
-### 작업 관리
-| 미들웨어명 | 경로 | 설명 |
+### 任务管理
+| middleware 名 | 路径 | 说明 |
 |-----------|------|------|
-| TodoListMiddleware | middlewares/todo-list.yaml | 작업 계획 수립 및 진행 추적 (write_todos 도구 제공) |
+| TodoListMiddleware | middlewares/todo-list.yaml | 制定任务计划并跟踪进度（提供 write_todos 工具） |
 
-### 보안
-| 미들웨어명 | 경로 | 설명 |
+### 安全
+| middleware 名 | 路径 | 说明 |
 |-----------|------|------|
-| InputSanitizer | middlewares/input-sanitizer.yaml | 악의적 입력 필터링 |
-| OutputFilterMiddleware | middlewares/output-filter.yaml | 민감 정보 응답 필터링 |
+| InputSanitizer | middlewares/input-sanitizer.yaml | 过滤恶意输入 |
+| OutputFilterMiddleware | middlewares/output-filter.yaml | 过滤响应中的敏感信息 |
 
-## 선택 기준
-1. 외부 API 도구 존재 → ToolRetryMiddleware 거의 필수
-2. 긴 대화 예상 → SummarizationMiddleware 추천
-3. 복잡한 다단계 작업 → TodoListMiddleware 추천
-4. 빈번한 API 호출 → RateLimiter 또는 Cache 추천
-5. 민감 데이터 처리 → InputSanitizer + OutputFilter 추천
-6. 최소 1개, 최대 5개 범위
+## 选择标准
+1. 存在外部 API 工具 → ToolRetryMiddleware 几乎必需
+2. 预计长对话 → 推荐 SummarizationMiddleware
+3. 复杂多阶段任务 → 推荐 TodoListMiddleware
+4. 频繁 API 调用 → 推荐 RateLimiter 或 Cache
+5. 处理敏感数据 → 推荐 InputSanitizer + OutputFilter
+6. 至少 1 个、最多 5 个
 
-## 특별 규칙
-- TodoListMiddleware 추천 시: 반드시 reason에 
-  "시스템 프롬프트에 write_todos 사용 지침 추가 필요"라고 명시할 것
+## 特别规则
+- 推荐 TodoListMiddleware 时: 必须在 reason 中
+  明确写出"需要在 system prompt 中添加 write_todos 使用说明"
 
-## 출력 형식
-JSON 배열만 반환:
+## 输出格式
+只返回 JSON 数组:
 [
   {
-    "middleware_name": "고유 식별자",
-    "middleware_path": "정의 파일 경로",
-    "description": "한 줄 설명",
-    "reason": "선택 이유"
+    "middleware_name": "唯一标识符",
+    "middleware_path": "定义文件路径",
+    "description": "一句话说明",
+    "reason": "选择原因"
   }
 ]
 ```
 
-#### 오케스트레이터가 전달하는 Task Description
+#### Orchestrator 传递的 Task Description
 
 ```
 user_id: {user_id}
 
-다음 정보를 분석하여 필요한 미들웨어들을 추천해주세요:
+请分析以下信息并推荐所需 middleware:
 
 AgentCreationIntent:
-{Phase 2에서 반환된 전체 JSON}
+{Phase 2 返回的完整 JSON}
 
-추천된 도구들:
-{Phase 3에서 확정된 도구 이름 배열}
+推荐的工具:
+{Phase 3 中确定的工具名称数组}
 
-위 정보를 분석하여 에이전트의 성능, 보안, 안정성을 고려한
-미들웨어들을 추천해주세요:
+请分析以上信息，综合考虑 agent 的性能、安全、稳定性，
+推荐 middleware:
 
 [
   {
-    "middleware_name": "미들웨어 이름",
-    "middleware_path": "미들웨어의 파일 경로",
-    "description": "미들웨어의 간단한 설명",
-    "reason": "이 미들웨어가 필요한 이유"
+    "middleware_name": "middleware 名称",
+    "middleware_path": "middleware 文件路径",
+    "description": "middleware 的简要说明",
+    "reason": "需要该 middleware 的原因"
   }
 ]
 ```
 
 ---
 
-### 5.5 Phase 5: 시스템 프롬프트 생성
+### 5.5 Phase 5: 生成 system prompt
 
-#### 목적
-모든 정보를 종합하여 에이전트의 시스템 프롬프트를 작성한다.
+#### 目的
+综合所有信息编写 agent 的 system prompt。
 
-#### 실행 주체
-**프롬프트 생성 서브에이전트**
+#### 执行主体
+**Prompt 生成 subagent**
 
-#### 공식 프롬프트 템플릿 (Deep Agent Assistant에서 확인)
+#### 官方 prompt 模板（从 Deep Agent Assistant 中确认）
 
-Deep Agent Assistant가 사용하는 공식 시스템 프롬프트 템플릿 구조:
+Deep Agent Assistant 使用的官方 system prompt 模板结构:
 
 ```markdown
 # {Agent Name}
@@ -644,252 +644,252 @@ Deep Agent Assistant가 사용하는 공식 시스템 프롬프트 템플릿 구
 - NEVER: [prohibited behaviors]
 ```
 
-#### 서브에이전트 시스템 프롬프트 (설계 참고용)
+#### Subagent system prompt（设计参考）
 
 ```markdown
-# 프롬프트 생성 에이전트 — 시스템 프롬프트
+# Prompt 生成 agent — system prompt
 
-## 역할
-모든 정보를 종합하여 에이전트가 즉시 사용할 수 있는
-고품질 시스템 프롬프트를 마크다운으로 작성한다.
+## 角色
+综合所有信息，编写 agent 可立即使用的
+高质量 Markdown system prompt。
 
-## 필수 포함 섹션 (공식 템플릿 준수)
+## 必须包含的 section（遵循官方模板）
 
-### 1. Role (역할)
-- 에이전트 이름과 핵심 역할을 1~2문장으로 정의
+### 1. Role（角色）
+- 用 1~2 句话定义 agent 名称和核心角色
 
-### 2. Responsibilities (핵심 책임)
-- 번호 목록으로 주요 작업 3~5가지 기술
+### 2. Responsibilities（核心职责）
+- 用编号列表描述 3~5 项主要任务
 
-### 3. Tool Guidelines (도구 가이드)
-- 각 도구별로:
-  - `{tool_name}`: Purpose, When (사용 조건), Caution (주의사항)
-  - 호출 예시 포함 권장
+### 3. Tool Guidelines（工具指南）
+- 对每个工具:
+  - `{tool_name}`: Purpose, When（使用条件）, Caution（注意事项）
+  - 建议包含调用示例
 
-### 4. Subagent Guidelines (서브에이전트 가이드) — 서브에이전트가 있는 경우
-- 각 서브에이전트별: Expertise (전문 분야), Delegate when (위임 조건)
+### 4. Subagent Guidelines（subagent 指南）— 存在 subagent 时
+- 对每个 subagent: Expertise（专业领域）, Delegate when（委派条件）
 
-### 5. Workflow (작업 흐름)
-- 사용자 요청 수신 시 따라야 할 단계별 절차
-- 의사결정 로직 포함 (어떤 도구를 언제 선택할지)
+### 5. Workflow（工作流程）
+- 接收用户请求时应遵循的分步流程
+- 包含决策逻辑（何时选择哪个工具）
 
-### 6. Constraints (제약 조건)
-- ALWAYS: 필수 행동 목록
-- NEVER: 금지 행동 목록
+### 6. Constraints（限制条件）
+- ALWAYS: 必须行为列表
+- NEVER: 禁止行为列表
 
-### 7. (미들웨어 특수 섹션)
-- TodoListMiddleware 포함 시: "작업 계획 및 실행" 섹션 필수 추가
-- SummarizationMiddleware 포함 시: 에이전트가 이를 인지하되 직접 제어하지 않음 명시
+### 7.（middleware 特殊 section）
+- 包含 TodoListMiddleware 时: 必须新增"任务规划与执行"section
+- 包含 SummarizationMiddleware 时: 明确 agent 应知晓它，但不直接控制
 
-## 프롬프트 품질 기준
-1. 명확성: 모호한 표현 대신 구체적 행동 지침
-2. 구체성: "적절히 대응" 대신 정확한 절차 기술
-3. 완전성: 도구 사용법, 오류 처리, 응답 스타일 모두 포함
-4. 실용성: 실제 사용 시나리오 예시 포함
+## Prompt 质量标准
+1. 清晰性: 使用具体行为指引，避免模糊表达
+2. 具体性: 不写"适当处理"，而是描述准确流程
+3. 完整性: 包含工具用法、错误处理、响应风格
+4. 实用性: 包含实际使用场景示例
 
-## 제약
-- 분량: 2000~5000자
-- 언어: 에이전트 설명 언어와 동일
-- 마크다운 형식만. JSON/YAML 포함 금지.
-- 프롬프트만 반환. 부가 설명 금지.
+## 限制
+- 长度: 2000~5000 字符
+- 语言: 与 agent 说明语言相同
+- 仅使用 Markdown 格式。禁止包含 JSON/YAML。
+- 只返回 prompt。禁止附加说明。
 ```
 
-#### 오케스트레이터가 전달하는 Task Description
+#### Orchestrator 传递的 Task Description
 
 ```
 user_id: {user_id}
 
-다음 모든 정보를 종합하여 고품질의 시스템 프롬프트(마크다운 형식)를
-생성해주세요. 2000~5000자 범위로 작성하고, 에이전트가 실제로 사용할
-지침서로서 역할할 수 있어야 합니다.
+请综合以下所有信息，生成高质量 system prompt（Markdown 格式），
+长度控制在 2000~5000 字符，并能够作为 agent 实际使用的
+操作指南。
 
 === AgentCreationIntent ===
-{Phase 2에서 반환된 전체 JSON}
+{Phase 2 返回的完整 JSON}
 
-=== 추천된 도구 ===
+=== 推荐工具 ===
 1. {tool_name} ({tool_path}) - {description}
 2. ...
 
-=== 추천된 미들웨어 ===
+=== 推荐 middleware ===
 1. {middleware_name} ({middleware_path}) - {description}
 2. ...
 
-=== 요구사항 ===
-- 마크다운 형식
-- 공식 템플릿 구조 준수:
+=== 要求 ===
+- Markdown 格式
+- 遵循官方模板结构:
   # {Agent Name}
   ## Role → ## Responsibilities → ## Tool Guidelines → ## Workflow → ## Constraints
-- 각 도구별 Purpose / When / Caution 포함
-- 응답 스타일과 톤 가이드 포함
-- 실제 동작 가능한 구체적 지침 포함
-- TodoListMiddleware 포함 시 write_todos 사용 지침 섹션 필수 추가
-- 2000~5000자 범위
+- 每个工具包含 Purpose / When / Caution
+- 包含响应风格和语气指南
+- 包含可实际执行的具体指引
+- 包含 TodoListMiddleware 时必须新增 write_todos 使用说明 section
+- 2000~5000 字符
 ```
 
 ---
 
-### 5.6 Phase 6: 에이전트 설정 저장
+### 5.6 Phase 6: 保存 agent 设置
 
-#### 목적
-config.yaml에 모든 메타정보를 통합한다.
+#### 目的
+将所有 metadata 统一写入 config.yaml。
 
-#### 실행 주체
-오케스트레이터가 직접 `write_agent_config` 도구를 호출한다.
+#### 执行主体
+orchestrator 直接调用 `write_agent_config` 工具。
 
-#### 오케스트레이터 지침
-
-```
-1. Phase 2 Intent에서 agent_name, agent_description, primary_task_type, use_cases 추출
-2. Phase 3 tools.yaml에서 도구 이름 목록 추출
-3. Phase 4 middlewares.yaml에서 미들웨어 이름 목록 추출
-4. write_agent_config 호출
-5. Todo에서 Phase 6 완료 표시
-```
-
----
-
-### 5.7 Phase 7: 최종 에이전트 빌드
-
-#### 목적
-모든 설정 파일을 읽어 실제 에이전트 인스턴스를 생성한다.
-
-#### 빌드 프로세스
+#### Orchestrator 指引
 
 ```
-1. config.yaml → model_name 읽어 LLM 인스턴스 생성
-2. system_prompt.md → 시스템 메시지로 설정
-3. tools.yaml → 각 도구 정의를 로드하고 에이전트에 바인딩
-4. middlewares.yaml → 각 미들웨어를 실행 파이프라인에 삽입
-5. LangGraph 그래프 구성
-6. Agent ID 생성 (= timestamp_uuid)
-7. agents 디렉토리로 이동하여 영구 저장
-8. Recursion Limit 기본값 설정 (도구 수와 서브에이전트 유무에 따라)
+1. 从 Phase 2 Intent 提取 agent_name, agent_description, primary_task_type, use_cases
+2. 从 Phase 3 tools.yaml 提取工具名称列表
+3. 从 Phase 4 middlewares.yaml 提取 middleware 名称列表
+4. 调用 write_agent_config
+5. 在 Todo 中标记 Phase 6 完成
 ```
 
 ---
 
-## 6. Deep Agent Assistant 상세 설계 (생성 후 관리)
+### 5.7 Phase 7: 最终构建 agent
 
-> Builder가 에이전트를 만든 후, Assistant가 에이전트를 수정·관리한다.
+#### 目的
+读取所有配置文件，创建实际 agent 实例。
 
-### 6.1 정체성과 핵심 원칙
+#### 构建流程
+
+```
+1. config.yaml → 读取 model_name 并创建 LLM 实例
+2. system_prompt.md → 设置为 system message
+3. tools.yaml → 加载每个工具定义并绑定到 agent
+4. middlewares.yaml → 将每个 middleware 插入执行 pipeline
+5. 构建 LangGraph graph
+6. 生成 Agent ID (= timestamp_uuid)
+7. 移动到 agents 目录并永久保存
+8. 设置 Recursion Limit 默认值（根据工具数量及是否存在 subagent）
+```
+
+---
+
+## 6. Deep Agent Assistant 详细设计（创建后管理）
+
+> Builder 创建 agent 后，由 Assistant 修改·管理 agent。
+
+### 6.1 身份与核心原则
 
 ```
 Identity: Deep Agent Assistant
-역할: 기존 에이전트의 설정을 수정하는 AI
+角色: 修改现有 agent 设置的 AI
 
-핵심 원칙:
-1. VERIFY before MODIFY: 수정 전 항상 get_agent_config 호출
-2. MINIMAL changes: 사용자가 명시적으로 요청한 부분만 수정
-3. PRESERVE existing: 요청하지 않은 기존 지침 삭제 금지
-4. VALIDATE resources: 추가 전 list_available_* 로 존재 확인
-5. SYNC prompt: 리소스 추가/제거 후 반드시 시스템 프롬프트도 업데이트
+核心原则:
+1. VERIFY before MODIFY: 修改前始终调用 get_agent_config
+2. MINIMAL changes: 仅修改用户明确要求的部分
+3. PRESERVE existing: 禁止删除未被要求删除的现有指引
+4. VALIDATE resources: 添加前使用 list_available_* 确认存在
+5. SYNC prompt: 添加/移除资源后必须同步更新 system prompt
 ```
 
-### 6.2 리소스 추가 워크플로우 (ADD)
+### 6.2 添加资源 workflow (ADD)
 
 ```
-1. get_agent_config        → 현재 상태 확인
-2. list_available_*        → 리소스 존재 여부 검증
-3. add_*_to_agent          → 리소스 추가 (배치 지원)
-4. update_system_prompt    → 시스템 프롬프트에 사용 가이드 추가
-5. CHECK secrets           → 필요한 API 키 등록 여부 확인
+1. get_agent_config        → 确认当前状态
+2. list_available_*        → 校验资源是否存在
+3. add_*_to_agent          → 添加资源（支持 batch）
+4. update_system_prompt    → 在 system prompt 中添加使用指南
+5. CHECK secrets           → 确认所需 API key 是否已注册
 ```
 
-### 6.3 리소스 제거 워크플로우 (REMOVE)
+### 6.3 移除资源 workflow (REMOVE)
 
 ```
-1. get_agent_config             → 리소스 존재 확인
-2. remove_*_from_agent          → 리소스 제거
-3. search_system_prompt         → 2-pass 검색으로 프롬프트 내 참조 발견
-   ├─ 1st pass: 정확한 리소스 이름 (예: "tavily_search")
-   ├─ 발견된 대체 이름 확인 (예: "웹 검색 도구")
-   └─ 2nd pass: 대체 이름으로 재검색
-4. edit_system_prompt           → 각 참조를 순차적으로 제거/수정
-5. search_system_prompt         → 남은 참조 없는지 확인 (최대 3회 반복)
-6. get_agent_config             → 최종 확인
+1. get_agent_config             → 确认资源存在
+2. remove_*_from_agent          → 移除资源
+3. search_system_prompt         → 通过 2-pass 搜索发现 prompt 中的引用
+   ├─ 1st pass: 精确资源名称（例如 "tavily_search"）
+   ├─ 确认发现的替代名称（例如 "Web 搜索工具"）
+   └─ 2nd pass: 使用替代名称再次搜索
+4. edit_system_prompt           → 依次移除/修改每个引用
+5. search_system_prompt         → 确认没有残留引用（最多重复 3 次）
+6. get_agent_config             → 最终确认
 ```
 
-### 6.4 시스템 프롬프트 개선 워크플로우 (IMPROVE)
+### 6.4 改进 system prompt workflow (IMPROVE)
 
-반복적 "확인-식별-적용" 루프를 사용한다:
+使用迭代式"确认-识别-应用"循环:
 
-**Step 0: 초기 설정**
-1. get_agent_config → 전체 프롬프트 읽기
-2. 프롬프트 상태 분석: 비어있음 / 부분적 / 완전함
-3. 사용자에게 진행 메시지 전송
+**Step 0: 初始设置**
+1. get_agent_config → 读取完整 prompt
+2. 分析 prompt 状态: 空 / 部分 / 完整
+3. 向用户发送进度消息
 
-**Step 1: 반복 개선 루프 (3~7회)**
+**Step 1: 迭代改进循环（3~7 次）**
 
-각 반복은 세 단계를 거친다:
+每次迭代经过三个阶段:
 
-| 반복 | 렌즈 | 초점 |
+| 迭代 | 视角 | 重点 |
 |------|------|------|
-| 1회차 | STRUCTURE | 섹션 구성, 제목 계층, 논리 흐름, 포매팅 |
-| 2회차 | PRECISION | 모호한 표현, 누락된 엣지 케이스, 불명확한 조건 |
-| 3회차 | COMPLETENESS | 도구/미들웨어 워크플로우 누락, 기능 대비 갭, 제약 누락 |
-| 4~7회차 | OPEN | 모든 차원에서 남은 이슈 |
+| 第 1 次 | STRUCTURE | section 结构、标题层级、逻辑流、formatting |
+| 第 2 次 | PRECISION | 模糊表达、遗漏 edge case、不明确条件 |
+| 第 3 次 | COMPLETENESS | 工具/middleware workflow 遗漏、功能 gap、限制遗漏 |
+| 第 4~7 次 | OPEN | 所有维度的剩余问题 |
 
-**Phase A — Verify (확인)**
-- get_agent_config로 현재 프롬프트 재확인
-- 이전 반복의 수정이 정상 적용됐는지 검증
+**Phase A — Verify（确认）**
+- 通过 get_agent_config 再次确认当前 prompt
+- 校验上一轮修改是否正确应用
 
-**Phase B — Identify (식별)**
-- 현재 렌즈로 분석하여 수정 포인트 목록 작성
-- 품질 게이트: 실질적 변경만 허용 (단순 미용 수정은 불가)
-- 종료 조건: 3회차 이후 실질적 수정 없으면 STOP
+**Phase B — Identify（识别）**
+- 以当前视角分析并列出修改点
+- 质量 gate: 只允许实质性变更（不允许纯美化修改）
+- 结束条件: 第 3 次后若没有实质性修改则 STOP
 
-**Phase C — Apply (적용)**
-- 비어있는 프롬프트 → `update_system_prompt` (전체 교체)
-- 기존 프롬프트 수정 → `edit_system_prompt` (부분 수정, 선호)
-- 순차 호출 필수 (병렬 호출 시 race condition 위험)
+**Phase C — Apply（应用）**
+- 空 prompt → `update_system_prompt`（整体替换）
+- 修改现有 prompt → `edit_system_prompt`（局部修改，优先）
+- 必须顺序调用（并行调用有 race condition 风险）
 
-**종료 조건:**
-- 3회차 완료 후 잔여 이슈 없으면 → STOP
-- 7회차 완료 → 강제 STOP, 미해결 사항은 사용자에게 보고
+**结束条件:**
+- 第 3 次完成后没有剩余问题 → STOP
+- 第 7 次完成 → 强制 STOP，并向用户报告未解决事项
 
-### 6.5 명확화 질문 (Ask Clarifying Question)
+### 6.5 澄清问题 (Ask Clarifying Question)
 
-모호한 요청에는 추측 대신 질문한다. **한 응답에 정확히 1개 질문만 허용.**
+对于模糊请求应提问而不是猜测。**每次响应只允许恰好 1 个问题。**
 
-**필수 질문 시나리오:**
+**必须提问的场景:**
 
-| 시나리오 | 트리거 예시 | 질문 예시 |
+| 场景 | trigger 示例 | 问题示例 |
 |---------|-----------|----------|
-| 범위 모호한 수정 | "개선해 주세요" | "어떤 범위의 수정을 원하시나요?" |
-| 에이전트 목적 불명확 | 새 에이전트 생성, 목적 미언급 | "이 에이전트의 주요 용도는?" |
-| 서브에이전트 역할 불명확 | "서브에이전트 추가해 줘" | "어떤 역할을 담당하나요?" |
-| 유사 도구 복수 존재 | 검색 도구가 여러 개 | "tavily vs exa 중 어떤 걸 선호?" |
-| 미들웨어 필요 여부 | 새 기능 추가 시 | "미들웨어가 필요할까요?" |
-| 출력 스타일 미지정 | 톤/형식 중요한데 미명시 | "응답 형식을 어떻게 할까요?" |
+| 修改范围模糊 | "请改进" | "您希望修改哪个范围？" |
+| agent 目的不明确 | 创建新 agent，未说明目的 | "这个 agent 的主要用途是什么？" |
+| subagent 角色不明确 | "添加 subagent" | "它负责什么角色？" |
+| 存在多个相似工具 | 多个搜索工具 | "tavily vs exa，您更偏好哪个？" |
+| 是否需要 middleware | 添加新功能时 | "需要 middleware 吗？" |
+| 未指定输出风格 | 语气/格式重要但未说明 | "您希望响应采用什么格式？" |
 
-### 6.6 보안 규칙
+### 6.6 安全规则
 
 ```
-- 사용한 도구 이름을 절대 응답에 언급하지 않는다.
-  ❌ "get_agent_config를 사용하여 설정을 확인했습니다..."
-  ✅ "현재 설정을 확인하고 tavily-search 도구를 추가했습니다."
-- WHAT을 설명하되 HOW(도구명)는 숨긴다.
+- 绝不要在响应中提及使用过的工具名称。
+  ❌ "使用 get_agent_config 确认了设置..."
+  ✅ "已确认当前设置，并添加 tavily-search 工具。"
+- 说明 WHAT，但隐藏 HOW（工具名）。
 ```
 
 ---
 
-## 7. 핵심 데이터 구조
+## 7. 核心数据结构
 
 ### 7.1 AgentCreationIntent
 
 ```typescript
 interface AgentCreationIntent {
-  agent_name: string;              // 영문 이름
-  agent_name_ko: string;           // 한글 이름
-  agent_description: string;       // 상세 설명 (3~5문장)
-  primary_task_type: string;       // 핵심 작업
-  use_cases: string[];             // 사용 사례 (최소 3개)
-  required_capabilities: string[]; // 필수 기능
-  tool_preferences: string;        // 도구 선호
-  output_style: string;            // 출력 스타일
-  response_tone: string;           // 응답 톤
-  constraints: string[];           // 제약 조건
+  agent_name: string;              // 英文名称
+  agent_name_ko: string;           // 韩文名称
+  agent_description: string;       // 详细说明（3~5 句）
+  primary_task_type: string;       // 核心任务
+  use_cases: string[];             // 使用场景（至少 3 个）
+  required_capabilities: string[]; // 必需功能
+  tool_preferences: string;        // 工具偏好
+  output_style: string;            // 输出风格
+  response_tone: string;           // 响应语气
+  constraints: string[];           // 限制条件
 }
 ```
 
@@ -919,155 +919,155 @@ type MiddlewareRecommendationResult = MiddlewareRecommendation[];
 
 ---
 
-## 8. 전체 도구 목록
+## 8. 完整工具列表
 
-### 8.1 Builder 전용 도구
+### 8.1 Builder 专用工具
 
-| 도구 | 유형 | 설명 |
+| 工具 | 类型 | 说明 |
 |------|------|------|
-| write_project_config | Write | 프로젝트 메타데이터 저장 |
-| create_project_folder | Write | 프로젝트 작업 폴더 생성 |
-| update_project_config_path | Write | 프로젝트 경로 갱신 |
-| task(description) | Invoke | 서브에이전트에게 작업 위임 |
-| write_tool_information | Write | tools.yaml 저장 |
-| write_middleware_information | Write | middlewares.yaml 저장 |
-| write_system_prompt | Write | system_prompt.md 저장 |
-| write_agent_config | Write | config.yaml 저장 |
-| build_final_agent | Build | 최종 에이전트 인스턴스 생성 |
+| write_project_config | Write | 保存项目 metadata |
+| create_project_folder | Write | 创建项目工作文件夹 |
+| update_project_config_path | Write | 更新项目路径 |
+| task(description) | Invoke | 将任务委派给 subagent |
+| write_tool_information | Write | 保存 tools.yaml |
+| write_middleware_information | Write | 保存 middlewares.yaml |
+| write_system_prompt | Write | 保存 system_prompt.md |
+| write_agent_config | Write | 保存 config.yaml |
+| build_final_agent | Build | 创建最终 agent 实例 |
 
-### 8.2 Assistant 전용 도구
+### 8.2 Assistant 专用工具
 
-**읽기 (Safe)**
+**读取 (Safe)**
 
-| 도구 | 설명 |
+| 工具 | 说明 |
 |------|------|
-| get_agent_config | 현재 에이전트 상태 (도구, 미들웨어, 프롬프트) |
-| get_model_config | 현재 모델 파라미터 |
-| get_tool_config | 특정 도구의 파라미터 |
-| list_available_tools | 추가 가능한 도구 목록 |
-| list_available_middlewares | 추가 가능한 미들웨어 목록 |
-| list_available_subagents | 추가 가능한 서브에이전트 목록 |
-| list_available_models | 사용 가능한 모델 목록 |
-| get_agent_required_secrets | 에이전트에 필요한 API 키 목록 |
-| get_user_secrets | 사용자가 등록한 시크릿 |
-| get_chat_openers | 현재 채팅 시작 질문 |
-| get_recursion_limit | 현재 재귀 한도 |
-| list_permanent_files | 업로드된 영구 파일 (RAG용) |
-| get_file_content | 파일 내용 미리보기 |
-| search_system_prompt | 프롬프트 내 키워드 검색 |
-| list_cron_schedules | 크론 스케줄 목록 |
-| get_cron_schedule | 특정 스케줄 상세 |
+| get_agent_config | 当前 agent 状态（工具、middleware、prompt） |
+| get_model_config | 当前模型参数 |
+| get_tool_config | 特定工具的参数 |
+| list_available_tools | 可添加的工具列表 |
+| list_available_middlewares | 可添加的 middleware 列表 |
+| list_available_subagents | 可添加的 subagent 列表 |
+| list_available_models | 可用模型列表 |
+| get_agent_required_secrets | agent 所需 API key 列表 |
+| get_user_secrets | 用户已注册的 secret |
+| get_chat_openers | 当前聊天开场问题 |
+| get_recursion_limit | 当前递归上限 |
+| list_permanent_files | 已上传的永久文件（用于 RAG） |
+| get_file_content | 文件内容预览 |
+| search_system_prompt | 搜索 prompt 中的关键词 |
+| list_cron_schedules | cron schedule 列表 |
+| get_cron_schedule | 特定 schedule 详情 |
 
-**사용자 명확화**
+**用户澄清**
 
-| 도구 | 설명 |
+| 工具 | 说明 |
 |------|------|
-| ask_clarifying_question | 옵션 3개 + 직접입력으로 사용자에게 질문 |
+| ask_clarifying_question | 以 3 个选项 + 直接输入向用户提问 |
 
-**쓰기 (Verify First)**
+**写入 (Verify First)**
 
-| 도구 | 설명 |
+| 工具 | 说明 |
 |------|------|
-| add_tool_to_agent | 도구 배치 추가 |
-| remove_tool_from_agent | 도구 배치 제거 |
-| add_middleware_to_agent | 미들웨어 배치 추가 |
-| remove_middleware_from_agent | 미들웨어 배치 제거 |
-| add_subagent_to_agent | 서브에이전트 배치 추가 |
-| remove_subagent_from_agent | 서브에이전트 배치 제거 |
-| edit_system_prompt | 부분 수정 (선호) |
-| update_system_prompt | 전체 교체 |
-| update_model_config | 모델 설정 변경 |
-| update_tool_config | 도구 파라미터 변경 |
-| update_middleware_config | 미들웨어 파라미터 변경 |
-| update_chat_openers | 채팅 시작 질문 변경 |
-| update_recursion_limit | 재귀 한도 변경 |
-| create_cron_schedule | 크론 스케줄 생성 |
-| update_cron_schedule | 스케줄 수정 |
-| delete_cron_schedule | 스케줄 삭제 |
-| enable_cron_schedule | 스케줄 활성화 |
-| disable_cron_schedule | 스케줄 비활성화 |
+| add_tool_to_agent | batch 添加工具 |
+| remove_tool_from_agent | batch 移除工具 |
+| add_middleware_to_agent | batch 添加 middleware |
+| remove_middleware_from_agent | batch 移除 middleware |
+| add_subagent_to_agent | batch 添加 subagent |
+| remove_subagent_from_agent | batch 移除 subagent |
+| edit_system_prompt | 局部修改（优先） |
+| update_system_prompt | 整体替换 |
+| update_model_config | 修改模型设置 |
+| update_tool_config | 修改工具参数 |
+| update_middleware_config | 修改 middleware 参数 |
+| update_chat_openers | 修改聊天开场问题 |
+| update_recursion_limit | 修改递归上限 |
+| create_cron_schedule | 创建 cron schedule |
+| update_cron_schedule | 修改 schedule |
+| delete_cron_schedule | 删除 schedule |
+| enable_cron_schedule | 启用 schedule |
+| disable_cron_schedule | 禁用 schedule |
 
 ---
 
-## 9. 오류 처리 전략
+## 9. 错误处理策略
 
-### 9.1 Builder Phase별 오류 대응
+### 9.1 Builder 各 Phase 错误应对
 
-| Phase | 가능한 오류 | 대응 |
+| Phase | 可能的错误 | 应对 |
 |-------|-----------|------|
-| Phase 1 | 폴더 생성 실패 | 즉시 중단, 사용자 알림 |
-| Phase 2 | 서브에이전트 응답이 JSON 아님 | 재시도 1회. 실패 시 기본 Intent 템플릿 사용 |
-| Phase 3 | 존재하지 않는 도구 추천 | 해당 도구 제외, 경고 메시지 |
-| Phase 4 | 존재하지 않는 미들웨어 추천 | 해당 미들웨어 제외, 경고 메시지 |
-| Phase 5 | 프롬프트 길이 기준 미달/초과 | 재시도 1회 |
-| Phase 6 | 파일 저장 실패 | 즉시 중단 |
-| Phase 7 | 빌드 실패 | 오류 내용 보고, 수동 수정 제안 |
+| Phase 1 | 文件夹创建失败 | 立即中止，通知用户 |
+| Phase 2 | subagent 响应不是 JSON | 重试 1 次。失败时使用默认 Intent 模板 |
+| Phase 3 | 推荐了不存在的工具 | 排除该工具，显示警告消息 |
+| Phase 4 | 推荐了不存在的 middleware | 排除该 middleware，显示警告消息 |
+| Phase 5 | prompt 长度低于/超过标准 | 重试 1 次 |
+| Phase 6 | 文件保存失败 | 立即中止 |
+| Phase 7 | 构建失败 | 报告错误内容，建议手动修改 |
 
-### 9.2 Assistant edit_system_prompt 오류 대응
+### 9.2 Assistant edit_system_prompt 错误应对
 
-- old_string이 프롬프트에서 발견되지 않음 → 오류 메시지와 컨텍스트 반환
-- old_string이 고유하지 않음 (여러 곳 매치) → replace_all 파라미터 사용 또는 더 구체적인 문자열로 재시도
-- 순차 호출 위반 (병렬 호출) → race condition 발생 가능, 반드시 순차 실행
+- old_string 未在 prompt 中发现 → 返回错误消息和 context
+- old_string 不唯一（多处匹配）→ 使用 replace_all 参数或以更具体的字符串重试
+- 违反顺序调用（并行调用）→ 可能发生 race condition，必须顺序执行
 
 ---
 
-## 10. RAG (파일 기반 응답) 설정 가이드
+## 10. RAG（基于文件的响应）设置指南
 
-에이전트가 업로드된 문서를 참조하여 답변하도록 설정하는 기능이다.
+这是让 agent 参考已上传文档进行回答的功能。
 
-### 10.1 핵심 규칙
+### 10.1 核心规则
 
-- `list_agent_files`와 `read_agent_file`은 **모든 에이전트에 자동 포함**되는 내부 도구
-- `list_available_tools`에는 표시되지 않음
-- `add_tool_to_agent`로 추가하려 하면 안 됨
-- 시스템 프롬프트에 사용 지침만 추가하면 됨
+- `list_agent_files` 和 `read_agent_file` 是**所有 agent 自动包含**的内部工具
+- 不会显示在 `list_available_tools` 中
+- 不应通过 `add_tool_to_agent` 添加
+- 只需在 system prompt 中添加使用指引
 
-### 10.2 설정 워크플로우
+### 10.2 设置 workflow
 
 ```
-1. list_permanent_files   → 업로드된 파일 확인
-2. get_file_content       → (선택) 파일 내용 미리보기
-3. get_agent_config       → 현재 프롬프트 확인
-4. update_system_prompt   → 파일 기반 응답 지침 추가
+1. list_permanent_files   → 确认已上传文件
+2. get_file_content       →（可选）预览文件内容
+3. get_agent_config       → 确认当前 prompt
+4. update_system_prompt   → 添加基于文件的响应指引
 ```
 
-### 10.3 프롬프트에 추가할 RAG 섹션 예시
+### 10.3 添加到 prompt 的 RAG section 示例
 
 ```markdown
-## 파일 기반 응답 지침
+## 基于文件的响应指引
 
-이 에이전트는 업로드된 문서를 참고하여 답변합니다.
+该 agent 会参考已上传文档回答。
 
-### 참고 가능 파일
-- sample.pdf: [파일에 대한 간단한 설명]
-- data.md: [파일에 대한 간단한 설명]
+### 可参考文件
+- sample.pdf: [文件的简要说明]
+- data.md: [文件的简要说明]
 
-### 작업 순서
-1. 사용자 질문 수신
-2. list_agent_files()로 파일 목록 확인
-3. 관련 파일을 read_agent_file(file_id)로 읽기
-4. 파일 내용을 바탕으로 답변 생성
+### 任务顺序
+1. 接收用户问题
+2. 使用 list_agent_files() 确认文件列表
+3. 通过 read_agent_file(file_id) 读取相关文件
+4. 基于文件内容生成回答
 
-### 주의사항
-- 항상 파일 내용을 먼저 확인한 후 답변
-- 파일에 없는 내용은 "파일에서 관련 정보를 찾을 수 없습니다"라고 안내
+### 注意事项
+- 回答前始终先确认文件内容
+- 文件中没有相关内容时，提示"无法在文件中找到相关信息"
 ```
 
-**중요:** 파일 내용을 시스템 프롬프트에 직접 복사하면 안 된다. 파일 이름만 참조로 넣고, 런타임에 `read_agent_file`로 읽도록 해야 한다.
+**重要:** 不得将文件内容直接复制到 system prompt。仅将文件名作为引用，并应在 runtime 中通过 `read_agent_file` 读取。
 
 ---
 
-## 11. 서브에이전트 호출 메커니즘
+## 11. Subagent 调用机制
 
-### 11.1 task() 함수의 동작
+### 11.1 task() 函数的运行方式
 
 ```python
 def task(description: str) -> str:
     """
-    서브에이전트에게 작업을 위임한다.
+    将任务委派给 subagent。
     
-    서브에이전트는 오케스트레이터의 state에 접근할 수 없다.
-    모든 필요한 정보는 description에 포함시켜야 한다.
+    subagent 无法访问 orchestrator 的 state。
+    所有所需信息都必须包含在 description 中。
     """
     sub_agent = get_sub_agent_for_current_phase()
     response = sub_agent.invoke({
@@ -1076,42 +1076,42 @@ def task(description: str) -> str:
     return response["messages"][-1].content
 ```
 
-### 11.2 격리 원칙
+### 11.2 隔离原则
 
-서브에이전트가 **받는 것:**
-- 자기 자신의 시스템 프롬프트 (내장)
-- 오케스트레이터가 보낸 description (messages)
+subagent **会接收:**
+- 自己的 system prompt（内置）
+- orchestrator 发送的 description (messages)
 
-서브에이전트가 **받지 못하는 것:**
-- 오케스트레이터의 시스템 프롬프트
-- 다른 서브에이전트의 프롬프트나 응답
-- 사용자와의 직접 대화 히스토리
-- 오케스트레이터의 내부 state (user_id 등)
-
----
-
-## 12. 확장 가능한 설계 포인트
-
-### 12.1 도구 카탈로그 동적화
-현재: 서브에이전트 프롬프트에 카탈로그 하드코딩
-개선: `list_available_tools` API를 서브에이전트가 직접 호출하여 동적 조회
-
-### 12.2 사용자 대화형 Intent 수집
-현재: 단일 요청으로 Intent 완성
-개선: 대화를 통해 점진적으로 Intent 정제 (Assistant의 ask_clarifying_question 패턴 차용)
-
-### 12.3 병렬 실행
-Phase 3과 Phase 4는 이론상 병렬 가능. asyncio나 LangGraph 병렬 노드로 빌드 시간 단축.
-
-### 12.4 에이전트 테스트 자동화
-Phase 8로 "자동 테스트" 추가: 생성된 에이전트에 테스트 쿼리 → 정상 동작 확인
-
-### 12.5 Builder → Assistant 원활한 연결
-빌드 완료 후 자동으로 Assistant 세션을 시작하여 사용자가 즉시 에이전트를 미세 조정할 수 있도록 한다.
+subagent **不会接收:**
+- orchestrator 的 system prompt
+- 其他 subagent 的 prompt 或响应
+- 与用户的直接对话 history
+- orchestrator 的内部 state（user_id 等）
 
 ---
 
-## 13. LangGraph 기반 구현 스케치
+## 12. 可扩展设计点
+
+### 12.1 工具目录动态化
+当前: 在 subagent prompt 中 hardcode 目录
+改进: 由 subagent 直接调用 `list_available_tools` API 动态查询
+
+### 12.2 通过用户对话收集 Intent
+当前: 通过单次请求完成 Intent
+改进: 通过对话逐步细化 Intent（借鉴 Assistant 的 ask_clarifying_question 模式）
+
+### 12.3 并行执行
+理论上 Phase 3 和 Phase 4 可并行。可用 asyncio 或 LangGraph 并行 node 缩短构建时间。
+
+### 12.4 Agent 测试自动化
+Phase 8 增加"自动测试": 向生成的 agent 发送测试 query → 确认正常运行
+
+### 12.5 Builder → Assistant 顺畅连接
+构建完成后自动启动 Assistant session，使用户可立即微调 agent。
+
+---
+
+## 13. 基于 LangGraph 的实现草图
 
 ```python
 from langgraph.graph import StateGraph, END
@@ -1137,8 +1137,8 @@ def phase1_init(state: BuilderState) -> BuilderState:
 
 def phase2_intent(state: BuilderState) -> BuilderState:
     description = f'''
-    사용자가 "{state['user_request']}"라고 요청했습니다.
-    AgentCreationIntent 형식으로 분석해주세요.
+    用户请求了"{state['user_request']}"。
+    请以 AgentCreationIntent 格式进行分析。
     '''
     result = intent_agent.invoke({"messages": [HumanMessage(content=description)]})
     intent = json.loads(result["messages"][-1].content)
@@ -1147,7 +1147,7 @@ def phase2_intent(state: BuilderState) -> BuilderState:
 def phase3_tools(state: BuilderState) -> BuilderState:
     description = f'''
     AgentCreationIntent: {json.dumps(state['intent'])}
-    필요한 도구들을 추천해주세요.
+    请推荐所需工具。
     '''
     result = tool_agent.invoke({"messages": [HumanMessage(content=description)]})
     tools = json.loads(result["messages"][-1].content)
@@ -1158,8 +1158,8 @@ def phase4_middlewares(state: BuilderState) -> BuilderState:
     tool_names = [t['tool_name'] for t in state['tools']]
     description = f'''
     AgentCreationIntent: {json.dumps(state['intent'])}
-    추천된 도구들: {json.dumps(tool_names)}
-    필요한 미들웨어들을 추천해주세요.
+    推荐工具: {json.dumps(tool_names)}
+    请推荐所需 middleware。
     '''
     result = middleware_agent.invoke({"messages": [HumanMessage(content=description)]})
     middlewares = json.loads(result["messages"][-1].content)
@@ -1171,13 +1171,13 @@ def phase5_prompt(state: BuilderState) -> BuilderState:
     === AgentCreationIntent ===
     {json.dumps(state['intent'])}
     
-    === 추천된 도구 ===
+    === 推荐工具 ===
     {format_tools(state['tools'])}
     
-    === 추천된 미들웨어 ===
+    === 推荐 middleware ===
     {format_middlewares(state['middlewares'])}
     
-    공식 템플릿 구조에 맞춰 2000~5000자의 시스템 프롬프트를 생성해주세요.
+    请按照官方模板结构生成 2000~5000 字符的 system prompt。
     '''
     result = prompt_agent.invoke({"messages": [HumanMessage(content=description)]})
     prompt = result["messages"][-1].content
@@ -1199,7 +1199,7 @@ def phase7_build(state: BuilderState) -> BuilderState:
     agent_id = build_final_agent(state["project_path"])
     return {**state, "agent_id": agent_id, "current_phase": 8}
 
-# 그래프 구성
+# 构建 graph
 graph = StateGraph(BuilderState)
 graph.add_node("phase1", phase1_init)
 graph.add_node("phase2", phase2_intent)
@@ -1223,20 +1223,20 @@ builder = graph.compile()
 
 ---
 
-## 부록 A: 도구/미들웨어 YAML 정의 예시
+## 附录 A: 工具/middleware YAML 定义示例
 
-### 도구 정의 (tools/tavily-search.yaml)
+### 工具定义 (tools/tavily-search.yaml)
 
 ```yaml
 name: tavily_search
 display_name: "Tavily Web Search"
-description: "Tavily API를 사용한 범용 웹 검색"
+description: "使用 Tavily API 的通用 Web 搜索"
 version: "1.0.0"
 
 parameters:
   query:
     type: string
-    description: "검색 쿼리"
+    description: "搜索 query"
     required: true
   max_results:
     type: integer
@@ -1254,12 +1254,12 @@ rate_limit:
   requests_per_minute: 60
 ```
 
-### 미들웨어 정의 (middlewares/tool-retry.yaml)
+### Middleware 定义 (middlewares/tool-retry.yaml)
 
 ```yaml
 name: ToolRetryMiddleware
-display_name: "도구 호출 재시도"
-description: "외부 API 호출 실패 시 지수 백오프 재시도"
+display_name: "重试工具调用"
+description: "外部 API 调用失败时进行指数 backoff 重试"
 version: "1.0.0"
 
 config:
@@ -1277,31 +1277,31 @@ applies_to:
 
 ---
 
-## 부록 B: 시크릿 확인 워크플로우 (Assistant)
+## 附录 B: Secret 确认 workflow (Assistant)
 
 ```
-1. get_agent_required_secrets → 필요한 키 목록
-   예: ["TAVILY_API_KEY", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"]
+1. get_agent_required_secrets → 所需 key 列表
+   示例: ["TAVILY_API_KEY", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"]
 
-2. get_user_secrets → 등록된 키 목록
-   예: ["TAVILY_API_KEY"]
+2. get_user_secrets → 已注册 key 列表
+   示例: ["TAVILY_API_KEY"]
 
-3. 누락 키 식별: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
+3. 识别缺失 key: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET
 
-4. 각 누락 키에 대해:
-   - tavily_search로 "{KEY_NAME} API key how to get" 검색
-   - 발급 가이드 제공
+4. 对每个缺失 key:
+   - 使用 tavily_search 搜索 "{KEY_NAME} API key how to get"
+   - 提供申请指南
 
-5. 사용자 안내:
-   🔧 키 등록 방법
-   API 키를 모두 발급받으셨다면:
-   1. /secrets 페이지로 이동
-   2. 다음 키들을 등록:
-      - NAVER_CLIENT_ID: 네이버 개발자 센터에서 발급
-      - NAVER_CLIENT_SECRET: 네이버 개발자 센터에서 발급
-   3. 저장
+5. 用户指引:
+   🔧 Key 注册方法
+   如果您已申请全部 API key:
+   1. 前往 /secrets 页面
+   2. 注册以下 key:
+      - NAVER_CLIENT_ID: 从 Naver 开发者中心申请
+      - NAVER_CLIENT_SECRET: 从 Naver 开发者中心申请
+   3. 保存
 ```
 
 ---
 
-*이 기획서는 (1) 사용자-Builder 대화 역분석 + (2) Deep Agent Assistant 공식 프롬프트 분석을 종합하여 작성한 참고 문서입니다. 실제 구현 시 도구 카탈로그, 서브에이전트 프롬프트, 에러 처리 로직은 프로젝트 요구사항에 맞게 조정이 필요합니다.*
+*本规划书是综合（1）用户-Builder 对话逆向分析 +（2）Deep Agent Assistant 官方 prompt 分析编写的参考文档。实际实现时，工具目录、subagent prompt、error 处理逻辑需要根据项目要求调整。*

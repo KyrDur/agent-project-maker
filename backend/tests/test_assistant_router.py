@@ -59,7 +59,7 @@ async def test_assistant_message(client: AsyncClient):
     ):
         resp = await client.post(
             f"/api/agents/{agent_id}/assistant/message",
-            json={"content": "시스템 프롬프트 수정해줘"},
+            json={"content": "帮我修改系统提示词"},
         )
 
     assert resp.status_code == 200

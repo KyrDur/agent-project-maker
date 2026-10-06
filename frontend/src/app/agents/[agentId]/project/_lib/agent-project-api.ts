@@ -1,5 +1,10 @@
 import { apiFetch, API_BASE } from '@/lib/api/client'
 import type {
+  SimulationSession,
+  ProjectRequirements,
+  ProjectDecision,
+  ProjectCompletion,
+  ProjectInterview,
   EvaluationReports,
   OptimizationProposal,
   PortfolioReport,
@@ -21,6 +26,42 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  createSimulation: (
+    agentId: string,
+    data: { request_id: string; version_id: string; scenario_id?: string },
+  ) =>
+    apiFetch<SimulationSession>(`${projectPath(agentId)}/simulation-sessions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  simulation: (agentId: string, id: string) =>
+    apiFetch<SimulationSession>(`${projectPath(agentId)}/simulation-sessions/${id}`),
+  sendSimulation: (agentId: string, id: string, data: { request_id: string; content: string }) =>
+    apiFetch<SimulationSession>(`${projectPath(agentId)}/simulation-sessions/${id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  resetSimulation: (agentId: string, id: string, requestId: string) =>
+    apiFetch<SimulationSession>(`${projectPath(agentId)}/simulation-sessions/${id}/reset`, {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId }),
+    }),
+  requirements: (agentId: string, task: ProjectRequirements) =>
+    apiFetch<AgentProject>(`${projectPath(agentId)}/requirements`, {
+      method: 'PUT',
+      body: JSON.stringify(task),
+    }),
+  decision: (agentId: string, decision: ProjectDecision) =>
+    apiFetch<AgentProject>(`${projectPath(agentId)}/decisions`, {
+      method: 'POST',
+      body: JSON.stringify(decision),
+    }),
+  completion: (agentId: string, analysis?: string) =>
+    apiFetch<ProjectCompletion>(
+      `${projectPath(agentId)}/completion`,
+      analysis == null ? {} : { method: 'POST', body: JSON.stringify({ analysis }) },
+    ),
+  interview: (agentId: string) => apiFetch<ProjectInterview>(`${projectPath(agentId)}/interview`),
   propose: (agentId: string, runId: string, requestId: string) =>
     apiFetch<OptimizationProposal>(`${projectPath(agentId)}/eval-runs/${runId}/proposals`, {
       method: 'POST',
@@ -78,7 +119,7 @@ export const agentProjectApi = {
   generateCases: (
     agentId: string,
     versionId: string,
-    data: { evaluation_focus: string[]; evaluation_focus_reason?: string | null },
+    data: { evaluation_focus?: string[]; evaluation_focus_reason?: string | null },
   ) =>
     apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/generate`, {
       method: 'POST',
@@ -111,7 +152,7 @@ export const agentProjectApi = {
       body: JSON.stringify({
         name: data.name,
         cases: data.cases.map(
-          ({ id, name, input, context, expected, tags, enabled, mock_tool_data }) => ({
+          ({
             id,
             name,
             input,
@@ -120,6 +161,19 @@ export const agentProjectApi = {
             tags,
             enabled,
             mock_tool_data,
+            initial_state,
+            judgment_basis,
+          }) => ({
+            id,
+            name,
+            input,
+            context,
+            expected,
+            tags,
+            enabled,
+            mock_tool_data,
+            initial_state,
+            judgment_basis,
           }),
         ),
       }),

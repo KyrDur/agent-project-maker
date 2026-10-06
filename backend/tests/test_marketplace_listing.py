@@ -1,19 +1,19 @@
-"""Phase 1 출시 게이트 — Listing 승인 (PRD §7, Spec §10.1).
+"""Phase 1 发布门槛 — Listing 审批 (PRD §7, Spec §10.1)。
 
-새 service 동작 (M2.5 course correction):
+新的 service 行为 (M2.5 course correction):
 
-* **기본 ``GET /api/marketplace/items``** (no ``?is_listed``) — Spec §10.1:
-  owner OR system OR (public+published+is_listed=True) OR (restricted+ACL).
-  ``visibility=unlisted``과 ``is_listed=False`` public은 list 결과에서 제외.
-* **``?is_listed=true``** — explicit, default와 동일 결과 (명시적 토글 가드용).
-* **``?is_listed=false``** — moderation 큐. owner의 미승인 + super_user에게
-  공개 미승인 후보. ``visibility=unlisted``은 여전히 제외.
-* **``visibility=unlisted``** — list에서 항상 제외. detail(``GET /items/{id}``)은
-  authenticated user 모두 접근 가능 (direct-link sharing).
-* **super_user** — 모든 항목 + 모든 ``is_listed`` 값 노출 (관리 권한).
+* **默认 ``GET /api/marketplace/items``** (no ``?is_listed``) — Spec §10.1:
+  owner OR system OR (public+published+is_listed=True) OR (restricted+ACL)。
+  ``visibility=unlisted`` 和 ``is_listed=False`` public 从 list 结果中排除。
+* **``?is_listed=true``** — explicit，与 default 结果相同（用于显式切换守卫）。
+* **``?is_listed=false``** — moderation 队列。owner 未审批项 + 向 super_user
+  暴露的未审批候选。``visibility=unlisted`` 仍排除。
+* **``visibility=unlisted``** — 始终从 list 中排除。detail(``GET /items/{id}``) 对
+  authenticated user 均可访问 (direct-link sharing)。
+* **super_user** — 暴露所有项 + 所有 ``is_listed`` 值（管理权限）。
 
-이 파일은 list 결과의 **포함/제외 매트릭스**를 가드한다. detail 접근 + ACL
-permission 행렬은 ``test_marketplace_access.py``가 담당.
+本文件守卫 list 结果的**包含/排除矩阵**。detail 访问 + ACL
+permission 矩阵由 ``test_marketplace_access.py`` 负责。
 """
 
 from __future__ import annotations
@@ -190,11 +190,11 @@ class TestDefaultListing:
         # MUST be excluded — non-owner cannot see these in default list.
         assert "public-unlisted" not in slugs, (
             "Default catalog leaks public+is_listed=False item — "
-            "Spec §10.1 위반 (M2.5 course correction 미적용)"
+            "违反 Spec §10.1（未应用 M2.5 course correction）"
         )
         assert "unlisted-vis" not in slugs, (
             "visibility=unlisted must NEVER appear in list responses — "
-            "Spec §7 'direct-link only' 위반"
+            "违反 Spec §7 'direct-link only'"
         )
 
     @pytest.mark.asyncio
@@ -431,7 +431,7 @@ class TestCatalogDefaultView:
     ) -> None:
         """``is_listed=False`` is not a security boundary — it's a
         catalog-discoverability flag. Direct-link sharing must still
-        work (PRD §7 "링크를 가진 사용자만 접근")."""
+        work (PRD §7 "仅持有链接的用户可访问")."""
 
         target = seeded["public_unlisted"]
         assert isinstance(target, MarketplaceItem)

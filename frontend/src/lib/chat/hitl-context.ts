@@ -5,8 +5,8 @@ import type { Decision } from '@/lib/types'
 
 export interface HiTLContextValue {
   /**
-   * `decisions` 배열 길이는 interrupt의 `action_requests.length`와 일치해야 한다
-   * (LangChain `HITLResponse` 계약).
+   * `decisions` 数组长度必须与 interrupt 的 `action_requests.length` 一致
+   * （LangChain `HITLResponse` contract）。
    */
   onResumeDecisions: (decisions: Decision[], displayText?: string) => Promise<void>
   registerDecision?: (
@@ -19,7 +19,7 @@ export interface HiTLContextValue {
 
 export const HiTLContext = createContext<HiTLContextValue | null>(null)
 
-/** Tool UI 컴포넌트에서 HiTL resume을 호출하기 위한 훅 */
+/** 用于从 Tool UI 组件调用 HiTL resume 的 hook */
 export function useHiTL() {
   return useContext(HiTLContext)
 }

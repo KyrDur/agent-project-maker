@@ -12,6 +12,7 @@ import { useSkill } from '@/lib/hooks/use-skills'
 
 const ROUTE_LABELS: Record<string, string> = {
   tools: 'nav.tools',
+  project: 'nav.project',
   artifacts: 'sidebar.nav.artifacts',
   models: 'nav.models',
   schedules: 'nav.schedules',
@@ -25,7 +26,7 @@ const ROUTE_LABELS: Record<string, string> = {
   'system-credentials': 'nav.systemCredentials',
   'system-llm': 'nav.systemLlm',
   skills: 'nav.skills',
-  // 스킬 스튜디오 탭 세그먼트 (Phase 2) — settings는 기존 라벨 재사용.
+  // 技能工作室标签页片段 (Phase 2) — settings 复用现有标签。
   evaluation: 'nav.skillEvaluation',
   versions: 'nav.skillVersions',
   source: 'nav.skillSource',
@@ -66,9 +67,9 @@ function SkillName({ id }: { id: string }) {
 }
 
 function MarketplaceItemName({ id }: { id: string }) {
-  // 404 / 401 시 hook 이 ApiError 를 throw 하므로 breadcrumb 가 빈 ID 로 떨어지면
-  // ``id`` fallback. detail page 에서 동일 query 가 이미 cache 되어 있어 추가
-  // round-trip 없음 (TanStack Query 자동 dedup).
+  // 404 / 401 时 hook 会以 ApiError throw，因此若 breadcrumb 落到空 ID，
+  // 则使用 ``id`` fallback。detail page 中相同 query 已经 cache，因此无需额外
+  // round-trip（TanStack Query 自动 dedup）。
   const { data: item } = useMarketplaceItem(id)
   return <>{item?.name ?? id}</>
 }
@@ -106,7 +107,7 @@ export function BreadcrumbNav() {
 
     // Skip segments without real pages
     if (SKIP_SEGMENTS.has(segment)) continue
-    // 빌더 세션 uuid는 자체 라벨이 없다 — '建设者' 크럼(인덱스 링크)까지만 표시.
+    // 构建器会话 uuid 没有自己的标签 — 只显示到 '建设者' 面包屑（索引链接）。
     if (isId && i > 0 && segments[i - 1] === 'builder') continue
 
     const isLast = i === segments.length - 1

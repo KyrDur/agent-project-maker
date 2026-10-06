@@ -7,7 +7,6 @@ import type {
   CredentialRequirement,
   CreateAgentFromBlueprintBody,
   InstallMarketplaceItemBody,
-  KSkillSyncStatus,
   MarketplaceInstallation,
   MarketplaceItem,
   MarketplaceItemACLBody,
@@ -162,11 +161,6 @@ export const marketplaceApi = {
     apiFetch<MarketplaceItem>(`/api/marketplace/admin/items/${itemId}/listed`, {
       method: 'POST',
       body: JSON.stringify({ is_listed: isListed }),
-    }),
-
-  kSkillSyncStatus: () =>
-    apiFetch<KSkillSyncStatus>('/api/marketplace/admin/k-skill/sync', {
-      method: 'POST',
     }),
 
   moderationQueue: () =>

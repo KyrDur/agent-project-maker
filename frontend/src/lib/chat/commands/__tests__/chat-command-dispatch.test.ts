@@ -17,7 +17,7 @@ const copy = {
 
 describe('chat command dispatch', () => {
   it('characterizes ordinary prompt text as model input', () => {
-    expect(parseChatCommand('일반 질문입니다')).toEqual({ kind: 'prompt' })
+    expect(parseChatCommand('这是一个普通问题')).toEqual({ kind: 'prompt' })
   })
 
   it('blocks unknown commands and arguments outside local search/help', async () => {
@@ -38,7 +38,7 @@ describe('chat command dispatch', () => {
     const openHelp = vi.fn()
     const commands = createChatCommands({ openTranscriptSearch, openHelp }, copy, 'Unavailable')
 
-    await expect(dispatchChatCommand('/search 오류', commands)).resolves.toEqual({
+    await expect(dispatchChatCommand('/search 错误', commands)).resolves.toEqual({
       kind: 'handled',
       commandId: 'search',
     })

@@ -1,56 +1,56 @@
-# ADR-007: Credentials `field_keys` 비암호화 캐시 컬럼
+# ADR-007：Credentials `field_keys` 非加密缓存列
 
-## 상태: 승인됨
+## 状态：已批准
 
-## 날짜: 2026-04-17
+## 日期：2026-04-17
 
-## 맥락
+## 背景
 
-`GET /api/credentials`는 각 credential에 대해 `data_encrypted`를 Fernet으로 복호화하고 JSON 파싱하여 `field_keys` 목록(키 이름만)을 응답에 포함한다. 현재 `credential_service.extract_field_keys()` → `resolve_credential_data()` → `decrypt_api_key()` 경로가 list 결과를 순회하며 호출되어 **N+1 복호화**가 발생한다. DB 쿼리는 1회지만 Fernet 연산이 row 수만큼 반복된다.
+`GET /api/credentials` 会对每个 credential 使用 Fernet 解密 `data_encrypted` 并解析 JSON，将 `field_keys` 列表（仅键名）包含在响应中。当前 `credential_service.extract_field_keys()` → `resolve_credential_data()` → `decrypt_api_key()` 路径会在遍历 list 结果时被调用，从而产生 **N+1 解密**。DB 查询只有 1 次，但 Fernet 运算会按 row 数重复。
 
-- 100 credential 기준 응답 추정 지연: ~1–2초 (CPU 바운드)
-- 복호화 비용이 credential 증가에 선형 비례
+- 以 100 个 credential 估算响应延迟：约 ~1–2 秒（CPU bound）
+- 解密成本随 credential 数量线性增长
 
-## 결정
+## 决定
 
-`credentials` 테이블에 `field_keys` 컬럼을 추가한다:
+在 `credentials` 表新增 `field_keys` 列：
 
-- 타입: `sa.JSON()` (PostgreSQL JSONB 매핑, SQLite aiosqlite 호환)
-- nullable=True (legacy row backfill 전 대응)
-- 저장 내용: **키 이름 목록만** (예: `["api_key"]`, `["client_id", "client_secret"]`) — 값은 여전히 `data_encrypted`에 Fernet으로 유지
+- 类型：`sa.JSON()`（PostgreSQL JSONB 映射，兼容 SQLite aiosqlite）
+- nullable=True（用于 legacy row backfill 前兼容）
+- 保存内容：**仅键名列表**（例如 `["api_key"]`、`["client_id", "client_secret"]`）— 值仍以 Fernet 加密方式保存在 `data_encrypted` 中
 
-`create_credential` / `update_credential`에서 data 변경 시 캐시를 동기화한다. `extract_field_keys()`는 캐시 우선, NULL이면 기존 복호화 경로로 fallback한다.
+当 `create_credential` / `update_credential` 的 data 变更时同步缓存。`extract_field_keys()` 优先使用缓存，若为 NULL 则 fallback 到现有解密路径。
 
-Alembic 마이그레이션(`m7_add_credential_field_keys`)의 `upgrade()`에서 기존 row에 대해 일회성 backfill을 수행한다(ENCRYPTION_KEY 미설정 시 스킵).
+Alembic migration（`m7_add_credential_field_keys`）的 `upgrade()` 会对现有 row 执行一次性 backfill（未设置 ENCRYPTION_KEY 时跳过）。
 
-## 대안
+## 替代方案
 
-- **A. Runtime lazy write-through**: 컬럼만 추가하고 read 경로에서 NULL → 복호화 → 저장. 단순하지만 read에 write 부작용 발생, 동시성 주의 필요.
-- **B. Runtime lazy fallback만**: 마이그레이션에서 backfill 없이 NULL로 두고 생성/갱신 시점에만 캐시. 기존 row는 영영 fallback 경로로만 서빙됨 (성능 개선 불완전).
-- **C. 별도 테이블 `credential_meta`**: 메타데이터 분리. 과도한 구조화 — 이 케이스에는 불필요.
-- **D. 응답 스키마에서 `field_keys` 제거**: 클라이언트 호환성 깨짐. UI가 이 목록으로 form UI를 구성 중이므로 기각.
+- **A. Runtime lazy write-through**：只新增列，read 路径中 NULL → 解密 → 保存。简单，但 read 会产生 write 副作用，需要注意并发。
+- **B. Runtime lazy fallback only**：migration 不 backfill，保持 NULL，仅在创建/更新时缓存。现有 row 将永远只走 fallback 路径（性能改善不完整）。
+- **C. 单独表 `credential_meta`**：拆分 metadata。结构过度 — 此场景无必要。
+- **D. 从响应 schema 中移除 `field_keys`**：会破坏客户端兼容性。UI 正通过该列表构建 form UI，因此否决。
 
-## 결과
+## 结果
 
-### 긍정
+### 正面影响
 
-- List API 응답 시 복호화 0회 (캐시 히트 시)
-- 응답 스키마 불변 → 클라이언트 변경 불필요
-- Legacy row는 fallback 경로로 점진적 마이그레이션 허용 (A와 동등한 안전망)
+- List API 响应时解密 0 次（cache hit 时）
+- 响应 schema 不变 → 客户端无需修改
+- Legacy row 可通过 fallback 路径逐步迁移（提供与 A 同等的安全兜底）
 
-### 부정
+### 负面影响
 
-- `credentials` 테이블에 컬럼 1개 추가 (미미)
-- 2 경로 유지 (캐시/fallback) — 단, fallback은 동일 로직 재사용이라 유지보수 부담 낮음
+- `credentials` 表新增 1 列（影响很小）
+- 保留 2 条路径（cache/fallback）— 但 fallback 复用相同逻辑，维护负担较低
 
-### 보안
+### 安全
 
-- `field_keys`는 **키 이름만** 저장. 값이 아님.
-- 기존에도 API 응답에 키 이름이 노출되었으므로 기밀성 악화 없음.
-- `data_encrypted`는 그대로 Fernet 암호화 유지.
+- `field_keys` **只保存键名**，不保存值。
+- 现有 API 响应本就会暴露键名，因此不会降低机密性。
+- `data_encrypted` 继续保持 Fernet 加密。
 
-## 관련 문서
+## 相关文档
 
-- 플랜: `~/.claude/plans/c-credentials-list-glistening-kurzweil.md`
-- 완료된 실행 기록: `docs/exec-plans/completed/backlog-c-field-keys-cache.md`
-- 이전 ADR: ADR-005(Builder/Assistant), ADR-003(스킬+메모리)
+- 计划：`~/.claude/plans/c-credentials-list-glistening-kurzweil.md`
+- 已完成执行记录：`docs/exec-plans/completed/backlog-c-field-keys-cache.md`
+- 之前的 ADR：ADR-005（Builder/Assistant）、ADR-003（skill+memory）

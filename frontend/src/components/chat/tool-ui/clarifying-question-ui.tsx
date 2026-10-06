@@ -20,9 +20,9 @@ interface ClarifyingArgs {
   option_1?: string
   option_2?: string
   option_3?: string
-  /** 선택 만료 timeout (초) — 미지정 시 5분 */
+  /** 选择过期 timeout (秒) — 未指定时为 5 分钟 */
   timeout_seconds?: number
-  /** 식별자 — deadline 리셋 키로 사용 */
+  /** 标识符 — 用作 deadline 重置键 */
   approval_id?: string
 }
 
@@ -33,12 +33,12 @@ interface ClarifyingResult {
 }
 
 /**
- * Fix 에이전트 `ask_clarifying_question` 도구 UI.
- * Backend는 일반 LLM tool로 옵션 3개 + "直接输入"을 반환.
- * 사용자가 옵션 클릭 시 setText + send로 새 사용자 메시지를 보낸다.
+ * Fix 智能体 `ask_clarifying_question` 工具 UI。
+ * Backend 通过普通 LLM tool 返回 3 个选项 + "直接输入"。
+ * 用户点击选项时，通过 setText + send 发送新的用户消息。
  *
- * HITL이 아니라 backend pause가 없으므로 만료 시 별도 액션 없이
- * 옵션 버튼만 disabled 처리하여 시각적 urgency만 표현.
+ * 因为不是 HITL，backend 不会 pause，所以过期时无需额外操作，
+ * 只将选项按钮设为 disabled，以视觉方式表达 urgency。
  */
 export function ClarifyingQuestionUI({
   args,
@@ -62,18 +62,18 @@ export function ClarifyingQuestionUI({
   }, [result])
 
   const question = parsed?.question ?? args?.question ?? ''
-  // parsed는 도구 결과 JSON — options가 배열이 아닌 shape도 방어한다.
+  // parsed 是工具结果 JSON — 也要防御 options 不是数组的 shape。
   const options =
     (Array.isArray(parsed?.options) ? parsed.options : undefined) ??
     ([args?.option_1, args?.option_2, args?.option_3, directInputLabel].filter(Boolean) as string[])
 
-  // 카드 인스턴스별 안정 키 — args.approval_id 우선, 없으면 마운트 시 생성
+  // 每个卡片实例的稳定 key —— 优先 args.approval_id，没有则 mount 时生成
   const fallbackId = useId()
   const approvalId = args?.approval_id ?? `clarifying-${fallbackId}`
 
-  // 만료는 시각적 신호만 — backend가 paused 상태가 아니므로 별도 resume 불필요
+  // 过期仅作为视觉信号 — backend 并非 paused 状态，因此无需额外 resume
   const handleExpire = useCallback(() => {
-    // no-op: remaining<=0이 picked===null과 함께 disabled 트리거
+    // no-op: remaining<=0 与 picked===null 一起触发 disabled
   }, [])
 
   const { remaining, isUrgent, formatted, extend } = useApprovalDeadline({
@@ -84,7 +84,7 @@ export function ClarifyingQuestionUI({
   })
 
   if (status.type === 'running' && !args?.question) {
-    // tool 호출 중 args 아직 없음 — 빈 상태
+    // tool 调用中 args 尚未到达 — 空状态
     return null
   }
 
@@ -96,17 +96,17 @@ export function ClarifyingQuestionUI({
     extend()
     setPicked(opt)
     if (opt === directInputLabel) {
-      // 사용자가 직접 입력 — disabled 처리만, 입력창에 직접 타이핑
+      // 用户直接输入 — 仅做 disabled 处理，直接在输入框中打字
       return
     }
     try {
-      // SuggestionTrigger와 동일한 패턴 — thread에 직접 user message append
+      // 与 SuggestionTrigger 相同的模式 — 直接在 thread 中对 user message 执行 append
       aui.thread.append({
         content: [{ type: 'text', text: opt }],
       })
     } catch (err) {
       reportClientWarning('clarifying', 'thread append error:', err)
-      setPicked(null) // 실패 시 다시 클릭 가능하게
+      setPicked(null) // 失败后可再次点击
     }
   }
 

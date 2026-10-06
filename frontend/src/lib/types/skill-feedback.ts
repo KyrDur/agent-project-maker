@@ -1,4 +1,4 @@
-/** Phase 3 스킬 단위 휴먼 피드백 (표시 전용 — pass_rate/health 미반영). */
+/** Phase 3 技能级 human feedback（仅展示 — 不影响 pass_rate/health）。 */
 
 export type SkillFeedbackRating = 'up' | 'down'
 

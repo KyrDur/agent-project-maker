@@ -76,7 +76,7 @@ async def test_trigger_crud(client: AsyncClient):
         json={
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
-            "input_message": "한글과컴퓨터 최신 뉴스 검색해줘",
+            "input_message": "帮我搜索人工智能与计算机最新新闻",
         },
     )
     assert resp.status_code == 201
@@ -116,7 +116,7 @@ async def test_trigger_guardrails_are_persisted(client: AsyncClient):
     resp = await client.post(
         f"/api/agents/{agent_id}/triggers",
         json={
-            "name": "제한 있는 스케줄",
+            "name": "受限计划",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
             "input_message": "立即查看",
@@ -140,7 +140,7 @@ async def test_trigger_selected_conversation_policy_is_persisted(client: AsyncCl
     agent_id = await _create_agent(client, model_id)
     conversation_resp = await client.post(
         f"/api/agents/{agent_id}/conversations",
-        json={"title": "기존 세션"},
+        json={"title": "现有会话"},
     )
     assert conversation_resp.status_code == 201
     conversation_id = conversation_resp.json()["id"]
@@ -148,7 +148,7 @@ async def test_trigger_selected_conversation_policy_is_persisted(client: AsyncCl
     resp = await client.post(
         f"/api/agents/{agent_id}/triggers",
         json={
-            "name": "기존 세션에 쓰기",
+            "name": "写入现有会话",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
             "input_message": "立即查看",
@@ -171,10 +171,10 @@ async def test_global_trigger_management_routes(client: AsyncClient):
     resp = await client.post(
         f"/api/agents/{agent_id}/triggers",
         json={
-            "name": "아침 뉴스",
+            "name": "晨间新闻",
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 15},
-            "input_message": "뉴스 요약",
+            "input_message": "新闻摘要",
         },
     )
     assert resp.status_code == 201
@@ -185,7 +185,7 @@ async def test_global_trigger_management_routes(client: AsyncClient):
     assert resp.status_code == 200
     triggers = resp.json()
     assert len(triggers) == 1
-    assert triggers[0]["name"] == "아침 뉴스"
+    assert triggers[0]["name"] == "晨间新闻"
     assert triggers[0]["agent_name"] == "Test Agent"
 
     resp = await client.get("/api/triggers/summary")
@@ -385,10 +385,10 @@ async def test_list_tools_includes_user_and_system(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_trigger_rejects_hidden_runtime_agent(client: AsyncClient, db):
-    """R2 회귀: 히든 런타임 에이전트(skill builder)는 트리거 대상이 될 수 없다 —
-    트리거 실행은 빌더 분기·System LLM 재해석을 우회해 placeholder 프롬프트를
-    표준 에이전트로 스케줄 실행하게 된다. 세션 응답에 agent_id가 노출되므로
-    UUID를 아는 것만으로 결선이 가능하면 히든 불변식이 깨진다."""
+    """R2 回归：隐藏运行时智能体(skill builder)不能作为触发器目标 —
+    触发器执行会绕过构建器分支·System LLM 重新解析，把 placeholder 提示词
+    当作标准智能体进行计划执行。由于会话响应会暴露 agent_id，
+    如果仅凭知道 UUID 就能连线，会破坏隐藏不变式。"""
 
     from app.services.skill_builder_hidden_agent import get_or_create_skill_builder_agent
     from tests.conftest import TEST_USER_ID

@@ -1,10 +1,10 @@
-"""에이전트 이미지 생성 어댑터 (Builder v3 Phase 6 전용).
+"""智能体图片生成适配器（Builder v3 Phase 6 专用）。
 
-기존 ``image_service.py``의 OpenRouter + Gemini Flash Image (Moldy 캐릭터)
-로직을 빌더 컨텍스트(Agent가 아직 없음)용으로 재사용한다.
+复用现有 ``image_service.py`` 的 OpenRouter + Gemini Flash Image（Moldy 角色）
+逻辑，用于构建器上下文（Agent 尚不存在）。
 
-저장 경로: ``{settings.agent_image_dir}/_builder/{session_id}/{uuid}.png``
-공개 URL: ``/api/builder/{session_id}/image/{filename}`` (라우터에서 서빙)
+保存路径: ``{settings.agent_image_dir}/_builder/{session_id}/{uuid}.png``
+公开 URL: ``/api/builder/{session_id}/image/{filename}``（由路由器提供）
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImageGenerationError(RuntimeError):
-    """이미지 생성 실패."""
+    """图片生成失败。"""
 
 
 def _builder_image_dir(session_id: str) -> Path:
@@ -43,10 +43,10 @@ def _builder_image_dir(session_id: str) -> Path:
 
 
 async def is_image_generation_available() -> bool:
-    """이미지 ``image`` system role이 설정되었는지 여부.
+    """是否设置了图片 ``image`` system role。
 
-    ADR-019: 운영자가 System LLM 설정에서 image 슬롯(credential + model)을
-    선택했으면 True. node가 이 결과로 phase 진입을 결정한다.
+    ADR-019: 如果管理员在 System LLM 设置中选择了 image 槽位（credential + model），
+    则为 True。node 根据此结果决定是否进入 phase。
     """
     async with async_session() as db:
         try:
@@ -62,7 +62,7 @@ def build_default_prompt(
     agent_description: str,
     primary_task_type: str = "",
 ) -> str:
-    """에이전트 메타데이터를 image_service의 user prompt 형식으로 변환."""
+    """将智能体元数据转换为 image_service 的 user prompt 格式。"""
     descriptor = primary_task_type or (agent_description or "")[:200]
     return (
         f"Agent Name: {agent_name}\n"
@@ -72,13 +72,13 @@ def build_default_prompt(
 
 
 def public_url_for(session_id: str, filename: str) -> str:
-    """프론트가 fetch할 수 있는 공개 URL."""
+    """前端可 fetch 的公开 URL。"""
     return f"/api/builder/{session_id}/image/{filename}"
 
 
 def resolve_local_path(session_id: str, filename: str) -> Path | None:
-    """공개 URL의 filename으로 디스크 경로를 찾는다 (라우터에서 서빙용)."""
-    safe = Path(filename).name  # path traversal 방어
+    """根据公开 URL 的 filename 查找磁盘路径（用于路由器提供）。"""
+    safe = Path(filename).name  # 防御 path traversal
     candidate = _builder_image_dir(session_id) / safe
     if candidate.exists() and candidate.is_file():
         return candidate
@@ -90,13 +90,13 @@ async def generate_agent_image(
     prompt: str,
     session_id: str,
 ) -> tuple[str, Path]:
-    """OpenRouter + Gemini Flash Image로 이미지를 생성하여 저장한다.
+    """使用 OpenRouter + Gemini Flash Image 生成并保存图片。
 
     Returns:
         (public_url, local_path)
 
     Raises:
-        ImageGenerationError: provider 미설정 또는 호출 실패
+        ImageGenerationError: provider 未设置或调用失败
     """
     async with async_session() as db:
         try:
@@ -164,7 +164,7 @@ async def generate_agent_image(
     except RuntimeError as exc:
         raise ImageGenerationError(str(exc)) from exc
 
-    # 파일 확장자 magic bytes로 판별
+    # 通过文件扩展名 magic bytes 判断
     if image_bytes[:3] == b"\xff\xd8\xff":
         ext = "jpg"
     elif image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":

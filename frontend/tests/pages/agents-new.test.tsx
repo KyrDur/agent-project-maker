@@ -29,15 +29,9 @@ describe('AgentNewPage', () => {
     expect(textarea).toBeInTheDocument()
   })
 
-  it('manual option links to correct path', () => {
+  it('offers only conversational creation', () => {
     render(<AgentNewPage />)
-    const manualLink = screen.getByText('手动构建').closest('a')
-    expect(manualLink).toHaveAttribute('href', '/agents/new/manual')
-  })
-
-  it('template option links to correct path', () => {
-    render(<AgentNewPage />)
-    const templateLink = screen.getByText('使用模板').closest('a')
-    expect(templateLink).toHaveAttribute('href', '/agents/new/template')
+    expect(screen.queryByText('手动构建')).not.toBeInTheDocument()
+    expect(screen.queryByText('使用模板')).not.toBeInTheDocument()
   })
 })

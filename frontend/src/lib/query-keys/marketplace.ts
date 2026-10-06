@@ -10,6 +10,5 @@ export const marketplaceQueryKeys = {
     ['marketplace', 'items', itemId, 'versions'] as const,
   version: (versionId: string | null | undefined) =>
     ['marketplace', 'versions', versionId] as const,
-  kSkillAdmin: ['marketplace', 'admin', 'k-skill'] as const,
   moderation: ['marketplace', 'admin', 'moderation'] as const,
 }

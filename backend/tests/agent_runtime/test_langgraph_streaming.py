@@ -69,7 +69,7 @@ async def test_langgraph_streaming_projects_usage_metadata_to_custom_event() -> 
     usage_event_data = payloads[2]["params"]["data"]
     assert usage_event_data["name"] == "usage"
     usage_payload = usage_event_data["payload"]
-    # 핵심 usage(토큰/비용) 키는 정확히 일치한다.
+    # 核心 usage（token/费用）键必须完全一致。
     for key, value in {
         "assistant_msg_id": "assistant-usage-1",
         "run_id": "run-usage",
@@ -80,8 +80,8 @@ async def test_langgraph_streaming_projects_usage_metadata_to_custom_event() -> 
         "estimated_cost": 0.22,
     }.items():
         assert usage_payload[key] == value
-    # 스트리밍 timing 이 usage payload 에 함께 실린다 (값은 monotonic 기반 비결정적이라
-    # 존재/타입만 검증). messages 이벤트가 usage 보다 먼저라 TTFT 도 측정된다.
+    # streaming timing 也包含在 usage payload 中（值基于 monotonic，具有不确定性，因此
+    # 只验证存在性/类型）。messages 事件早于 usage，因此 TTFT 也会测量。
     assert isinstance(usage_payload["generation_ms"], float)
     assert isinstance(usage_payload["tokens_per_second"], float)
     assert isinstance(usage_payload["ttft_ms"], float)
@@ -116,7 +116,7 @@ async def test_langgraph_streaming_emits_subagent_display_names_at_head() -> Non
             {"messages": []},
             {"configurable": {"thread_id": "thread-names"}},
             run_id="run-names",
-            subagent_display_names={"agent_12345678": "리서치 봇"},
+            subagent_display_names={"agent_12345678": "研究机器人"},
         )
     ]
 
@@ -132,7 +132,7 @@ async def test_langgraph_streaming_emits_subagent_display_names_at_head() -> Non
     assert payloads[0]["params"]["data"] == {"event": "running"}
     names_event = payloads[1]["params"]["data"]
     assert names_event["name"] == "moldy.subagent_names"
-    assert names_event["payload"] == {"names": {"agent_12345678": "리서치 봇"}}
+    assert names_event["payload"] == {"names": {"agent_12345678": "研究机器人"}}
 
 
 @pytest.mark.asyncio
@@ -146,8 +146,8 @@ async def test_langgraph_streaming_emits_memory_recalled_at_head() -> None:
     }
     agent = ProtocolAgent([raw_event])
     briefs = [
-        {"id": "m1", "scope": "user", "content": "한국어로 답변 선호"},
-        {"id": "m2", "scope": "agent", "content": "보고서는 표로 정리"},
+        {"id": "m1", "scope": "user", "content": "偏好用韩语回答"},
+        {"id": "m2", "scope": "agent", "content": "报告整理成表格"},
     ]
 
     chunks = [
@@ -162,7 +162,7 @@ async def test_langgraph_streaming_emits_memory_recalled_at_head() -> None:
     ]
 
     payloads = [sse_payload(chunk) for chunk in chunks]
-    # 회상 brief는 running 직후 custom 이벤트로 — 첫 토큰 전에 칩을 띄울 수 있다.
+    # recalled brief 在 running 后立即以 custom 事件发出 — 可在首个 token 前显示 chip。
     assert [payload["method"] for payload in payloads] == [
         "lifecycle",
         "custom",
@@ -172,15 +172,15 @@ async def test_langgraph_streaming_emits_memory_recalled_at_head() -> None:
     recalled_event = payloads[1]["params"]["data"]
     assert recalled_event["name"] == "moldy.memory_recalled"
     assert recalled_event["payload"] == {"memories": briefs}
-    # replay/reload dedup — stable event id 계약 (subagent_names와 동일).
+    # replay/reload dedup — stable event id 合约（与 subagent_names 相同）。
     assert payloads[1]["event_id"] == "run-memory:memory_recalled"
 
 
 @pytest.mark.asyncio
 async def test_langgraph_streaming_persists_masked_memory_but_streams_content() -> None:
-    """BE-P5(b) 회귀 가드 — persist 가 wire redaction 결과를 재사용해도 W2-3
-    계약은 유지된다: live wire 에는 기억 내용이 흐르고, message_events 로
-    가는 persist 버퍼에는 ``<redacted>`` 만 남는다."""
+    """BE-P5(b) 回归保护 — 即使 persist 复用 wire redaction 结果，W2-3
+    合约仍保持：live wire 中会传递记忆内容，而进入 message_events 的
+    persist buffer 中只保留 ``<redacted>``。"""
     agent = ProtocolAgent([])
     persisted: list[list[dict[str, Any]]] = []
 
@@ -195,11 +195,11 @@ async def test_langgraph_streaming_persists_masked_memory_but_streams_content() 
             {"configurable": {"thread_id": "thread-memory-persist"}},
             persist_callback=persist,
             run_id="run-memory-persist",
-            recalled_memories=[{"id": "m1", "scope": "user", "content": "한국어로 답변 선호"}],
+            recalled_memories=[{"id": "m1", "scope": "user", "content": "偏好用韩语回答"}],
         )
     ]
 
-    assert "한국어로 답변 선호" in "".join(chunks)
+    assert "偏好用韩语回答" in "".join(chunks)
     stored = [event for batch in persisted for event in batch]
     recalled = [
         event
@@ -214,9 +214,9 @@ async def test_langgraph_streaming_persists_masked_memory_but_streams_content() 
 
 @pytest.mark.asyncio
 async def test_langgraph_streaming_failed_partial_flush_recovers_in_order() -> None:
-    """BE-P5(e) — fire-and-forget partial flush 실패가 스트림을 죽이지 않고,
-    실패한 chunk 는 buffer 앞에 복원되어 이후/최종 flush 에서 순서 그대로
-    재시도된다 (유실 0, 중복 0, seq 단조)."""
+    """BE-P5(e) — fire-and-forget partial flush 失败不会杀死 stream，
+    失败的 chunk 会恢复到 buffer 前部，并在之后/最终 flush 中按原顺序
+    重试（丢失0，重复0，seq 单调）。"""
     raw_events = [
         {
             "type": "event",
@@ -225,7 +225,7 @@ async def test_langgraph_streaming_failed_partial_flush_recovers_in_order() -> N
             "seq": i + 1,
             "event_id": f"upstream-{i + 1}",
         }
-        for i in range(40)  # _FLUSH_BATCH_SIZE(32) 초과 → 스트림 중 flush 발생
+        for i in range(40)  # 超过 _FLUSH_BATCH_SIZE(32) → stream 中发生 flush
     ]
     agent = ProtocolAgent(raw_events)
     successful: list[list[dict[str, Any]]] = []
@@ -248,23 +248,23 @@ async def test_langgraph_streaming_failed_partial_flush_recovers_in_order() -> N
         )
     ]
 
-    assert fail_first["armed"] is False, "첫 flush 실패 경로가 실제로 실행돼야 한다"
+    assert fail_first["armed"] is False, "第一个 flush 失败路径必须实际执行"
     payloads = [sse_payload(chunk) for chunk in chunks]
     assert payloads[-1]["method"] == "lifecycle"
     assert payloads[-1]["params"]["data"] == {"event": "completed"}
 
     stored = [event for batch in successful for event in batch]
     stored_ids = [event["id"] for event in stored]
-    assert len(stored_ids) == len(set(stored_ids)), "재시도로 인한 중복 persist 금지"
-    assert len(stored) == len(chunks), "실패 chunk 포함 모든 이벤트가 결국 persist 된다"
+    assert len(stored_ids) == len(set(stored_ids)), "禁止因重试产生重复 persist"
+    assert len(stored) == len(chunks), "包括失败 chunk 在内的所有事件最终都应 persist"
     seqs = [event["seq"] for event in stored]
-    assert seqs == sorted(seqs), "실패 chunk 는 buffer 앞에 복원되어 순서를 보존한다"
+    assert seqs == sorted(seqs), "失败 chunk 恢复到 buffer 前部并保持顺序"
 
 
 @pytest.mark.asyncio
 async def test_langgraph_streaming_survives_total_persist_failure() -> None:
-    """persist 가 끝까지 실패해도 라이브 SSE 스트림은 완주한다 — DB 장애가
-    사용자 응답을 막지 않고, 유실은 log 로만 남는다 (legacy 와 동일 계약)."""
+    """即使 persist 一直失败，live SSE stream 也会完整跑完 — DB 故障
+    不阻塞用户响应，丢失只记录在 log 中（与 legacy 合约相同）。"""
     raw_events = [
         {
             "type": "event",
@@ -314,7 +314,7 @@ async def test_langgraph_streaming_orders_names_before_memory_recalled() -> None
             {"messages": []},
             {"configurable": {"thread_id": "thread-both"}},
             run_id="run-both",
-            subagent_display_names={"agent_12345678": "리서치 봇"},
+            subagent_display_names={"agent_12345678": "研究机器人"},
             recalled_memories=[{"id": "m1", "scope": "user", "content": "注释"}],
         )
     ]
@@ -609,8 +609,8 @@ async def test_langgraph_streaming_replaces_empty_input_requested_with_state_pay
                             "name": "ask_user",
                             "args": {
                                 "mode": "option_list",
-                                "title": "과일 선택",
-                                "options": ["사과", "배", "포도"],
+                                "title": "水果选择",
+                                "options": ["苹果", "梨", "葡萄"],
                                 "minSelections": 1,
                                 "maxSelections": 1,
                             },
@@ -646,7 +646,7 @@ async def test_langgraph_streaming_replaces_empty_input_requested_with_state_pay
     data = input_requested[0]["params"]["data"]
     assert data["interrupt_id"] == "intr-ask-user"
     assert data["payload"]["action_requests"][0]["name"] == "ask_user"
-    assert data["payload"]["action_requests"][0]["args"]["options"] == ["사과", "배", "포도"]
+    assert data["payload"]["action_requests"][0]["args"]["options"] == ["苹果", "梨", "葡萄"]
     assert payloads[-1]["params"]["data"] == {"event": "interrupted"}
 
     persisted_events = [event for batch in persisted for event in batch]

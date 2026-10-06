@@ -9,7 +9,7 @@ import { MultiApprovalContext, type MultiApprovalContextValue } from './multi-ap
 
 /**
  * Groups the N `request_approval` cards of ONE multi-action interrupt into a
- * single container: a "승인 대기 N건" header + a "批准全部" (approve all) button,
+ * single container: a "等待批准 N 项" header + a "批准全部" (approve all) button,
  * with each action rendered below as a compact, headerless `ApprovalCard`
  * (`children`). Approving all fires every undecided card's registered approve
  * callback; the HiTL coordinator already batches the N decisions and resumes

@@ -81,7 +81,7 @@ async def list_audit_events(
             created_to=created_to,
         )
     except PermissionError as exc:
-        raise ForbiddenError("forbidden", "권한이 없습니다") from exc
+        raise ForbiddenError("forbidden", "没有权限") from exc
 
     return AuditEventPageResponse(
         items=[_to_response(item) for item in page.items],

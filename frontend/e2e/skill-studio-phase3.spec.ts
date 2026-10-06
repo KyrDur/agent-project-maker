@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures'
 
-// Phase 3 — 평가 탭 실측 지표: A/B 벤치마크, usage/비용, 버전별 통과율,
-// 휴먼 피드백(스킬/케이스) 상호작용, 히스토리 배지, 실단가 estimate.
+// Phase 3 — evaluation tab 实测指标：A/B benchmark、usage/成本、各版本通过率，
+// human feedback（skill/case）交互、history badge、基于真实单价的 estimate。
 
 const now = '2026-07-12T00:00:00.000Z'
 const SKILL_ID = 'skill-alpha'
@@ -12,7 +12,7 @@ const skill = {
   id: SKILL_ID,
   name: 'Alpha Notes',
   slug: SKILL_ID,
-  description: 'Alpha Notes 설명',
+  description: 'Alpha Notes 描述',
   kind: 'text',
   version: '1.1.0',
   storage_path: null,
@@ -69,25 +69,25 @@ const completedRun = {
   case_results: [
     {
       case_index: 0,
-      name: '회의록 액션아이템',
+      name: '会议记录 action item',
       status: 'passed',
       score: 0.95,
       baseline_status: 'failed',
       baseline_score: 0.3,
-      grader_feedback: 'with-arm이 표 형식을 정확히 지켰습니다.',
-      evidence: '담당자/마감일 표 일치',
-      with_answer_preview: '| 담당자 | 마감일 |',
-      without_answer_preview: '일반 요약만 제공',
+      grader_feedback: 'with-arm 准确遵守了表格格式。',
+      evidence: '负责人/截止日期表一致',
+      with_answer_preview: '| 负责人 | 截止日期 |',
+      without_answer_preview: '仅提供普通摘要',
     },
     {
       case_index: 1,
-      name: '요약 케이스',
+      name: '摘要 case',
       status: 'passed',
       score: 0.9,
       baseline_status: 'failed',
       baseline_score: 0.2,
-      grader_feedback: '스킬 지침 준수.',
-      evidence: '핵심 항목 포함',
+      grader_feedback: '遵循 skill 指令。',
+      evidence: '包含核心项目',
     },
   ],
   error_message: null,
@@ -102,10 +102,10 @@ const completedRun = {
 const evaluationSet = {
   id: SET_ID,
   skill_id: SKILL_ID,
-  name: '품질 평가',
-  description: '핵심 응답 품질',
+  name: '质量评估',
+  description: '核心响应质量',
   source_kind: 'builder',
-  evals: [{ input: '질문 1' }, { input: '질문 2' }],
+  evals: [{ input: '问题 1' }, { input: '问题 2' }],
   expectations_schema_version: 1,
   latest_run: completedRun,
   created_at: now,
@@ -159,7 +159,7 @@ const revisions = [
     content_hash: 'hash-v2',
     file_count: 2,
     size_bytes: 300,
-    changelog_summary: '표 형식 강화',
+    changelog_summary: '强化表格格式',
     created_at: now,
   },
   {
@@ -170,7 +170,7 @@ const revisions = [
     content_hash: 'hash-v1',
     file_count: 1,
     size_bytes: 200,
-    changelog_summary: '최초 생성',
+    changelog_summary: '首次创建',
     created_at: now,
   },
 ]
@@ -202,7 +202,7 @@ async function mockPhase3Apis(page: import('@playwright/test').Page) {
     const method = route.request().method()
     const pathName = url.pathname
 
-    // --- 스킬 피드백 (GET/PUT) ---
+    // --- skill feedback（GET/PUT）---
     if (pathName === `/api/skills/${SKILL_ID}/feedback`) {
       if (method === 'PUT') {
         const body = route.request().postDataJSON() as { rating: string; comment?: string | null }
@@ -226,7 +226,7 @@ async function mockPhase3Apis(page: import('@playwright/test').Page) {
       })
     }
 
-    // --- 케이스 피드백 ---
+    // --- case feedback ---
     if (pathName.endsWith(`/runs/${RUN_ID}/case-feedback`)) {
       if (method === 'PUT') {
         const body = route.request().postDataJSON() as {
@@ -251,7 +251,7 @@ async function mockPhase3Apis(page: import('@playwright/test').Page) {
       return route.fulfill({ json: state.caseFeedback })
     }
 
-    // --- 평가/집계/usage ---
+    // --- evaluation/aggregate/usage ---
     if (pathName === `/api/skills/${SKILL_ID}/evaluations/version-stats`) {
       return route.fulfill({ json: versionStats })
     }
@@ -317,28 +317,28 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     await mockPhase3Apis(page)
     await page.goto(`/skills/${SKILL_ID}/evaluation`)
 
-    // usage 카드 — 실측 토큰/비용/실행 카운트.
+    // usage 卡片 — 实测 token/成本/执行次数。
     const usageCard = page.getByTestId('skill-usage-summary-card')
     await expect(usageCard).toBeVisible()
     await expect(usageCard).toContainText('4,240')
     await expect(usageCard).toContainText('$0.0184')
 
-    // 버전별 통과율 — 두 버전 바.
+    // 各版本通过率 — 两个版本 bar。
     const versionPanel = page.getByTestId('skill-version-pass-rate-panel')
     await expect(versionPanel).toContainText('1.0.0')
     await expect(versionPanel).toContainText('50%')
     await expect(versionPanel).toContainText('1.1.0')
     await expect(versionPanel).toContainText('95%')
 
-    // A/B 벤치마크 — 실측 배지 + with/without 바.
+    // A/B benchmark — 实测 badge + with/without bar。
     const benchmark = page.getByTestId('skill-benchmark-panel')
     await expect(benchmark.getByTestId('benchmark-measured')).toBeVisible()
     await expect(benchmark).toContainText('有技巧')
     await expect(benchmark).toContainText('没有技巧')
     await expect(benchmark).toContainText('30%')
 
-    // 런 실측 usage 라인.
-    await expect(page.getByTestId('run-usage-line')).toContainText('모델 콜 6회')
+    // run 实测 usage 行。
+    await expect(page.getByTestId('run-usage-line')).toContainText('model call 6 次')
   })
 
   test('skill feedback rating roundtrips through the API', async ({ page }) => {
@@ -380,7 +380,7 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     await mockPhase3Apis(page)
     await page.goto(`/skills/${SKILL_ID}/evaluation`)
 
-    await page.getByRole('button', { name: /다시 실행/ }).first().click()
+    await page.getByRole('button', { name: /重新运行/ }).first().click()
     await expect(page.getByTestId('estimate-cost')).toContainText('$0.0231')
     await expect(page.getByText('scripted-eval-model')).toBeVisible()
   })
@@ -389,7 +389,7 @@ test.describe('Skill studio phase 3 — measured evaluation surfaces', () => {
     await mockPhase3Apis(page)
     await page.goto(`/skills/${SKILL_ID}/evaluation`)
 
-    await page.getByRole('button', { name: /다시 실행/ }).first().click()
+    await page.getByRole('button', { name: /重新运行/ }).first().click()
     const toggle = page.getByTestId('estimate-baseline-toggle')
     await expect(toggle).toBeChecked()
     await expect(page.getByTestId('estimate-cost')).toContainText('$0.0231')

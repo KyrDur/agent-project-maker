@@ -231,7 +231,7 @@ test.describe('Chat navigator consolidation', () => {
     await expect(page.getByText('Alpha Agent').first()).toBeVisible()
     await expect(page.getByText('Alpha kickoff').first()).toBeVisible()
     await expect(page.getByRole('textbox', { name: '搜索智能体或对话' })).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Alpha Agent 대화 검색' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Alpha Agent 对话搜索' })).toHaveCount(0)
     await capturePage(page, 'chat-navigator-default.png')
 
     const kickoffRow = page.locator(
@@ -239,8 +239,8 @@ test.describe('Chat navigator consolidation', () => {
     )
     await kickoffRow.hover()
     await kickoffRow.getByRole('button', { name: '对话菜单' }).click()
-    await expect(page.getByRole('menuitem', { name: /이름 변경/ })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: /공유/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /重命名/ })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: /分享/ })).toBeVisible()
     await capturePage(page, 'chat-navigator-row-menu.png')
     await page.keyboard.press('Escape')
 
@@ -307,21 +307,21 @@ test.describe('Chat navigator consolidation', () => {
   }) => {
     await setupNavigatorPage(page)
 
-    // 에이전트 그룹 헤더 링크의 DOM 순서 (정렬 단언용)
-    // 메인 채팅 헤더 breadcrumb에도 /agents/<id> 링크가 있으므로 사이드바로 스코프를 좁힌다
+    // Agent group header link 的 DOM 顺序（用于 sort assertion）
+    // 主 chat header breadcrumb 中也有 /agents/<id> link，因此将 scope 缩小到 sidebar
     const sidebar = page.locator('[data-sidebar="sidebar"]')
     const agentHeaderOrder = () =>
       sidebar
         .locator('a[href="/agents/agent-1"], a[href="/agents/agent-2"]')
         .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href')))
 
-    // 기본 상태: 에이전트별 보기 + 최근 사용 정렬(Alpha가 위), 비활성 에이전트 세션은 접혀 있다
+    // 默认状态：按 Agent 查看 + 最近使用排序（Alpha 在上），inactive Agent session 折叠
     await expect(page.getByText('Alpha kickoff').first()).toBeVisible()
     await expect(page.getByText('Beta recent session')).toHaveCount(0)
     await expect.poll(agentHeaderOrder).toEqual(['/agents/agent-1', '/agents/agent-2'])
 
-    // 트리거는 opacity-0이라 헤딩 hover로 노출시킨 뒤 연다 (Playwright는 opacity-0도 클릭 가능하지만 캡처를 위해)
-    // Base UI 라디오 항목은 closeOnClick=false라 메뉴가 유지되므로, 한 번 열어 연속으로 조작한다
+    // trigger 是 opacity-0，因此先 hover heading 让其显示再打开（Playwright 虽可点击 opacity-0，但为了截图）
+    // Base UI radio item 的 closeOnClick=false，因此 menu 会保持打开，可一次打开后连续操作
     const menuTrigger = page.getByRole('button', { name: '导航器选项' })
     await menuTrigger.hover()
     await menuTrigger.click()
@@ -333,7 +333,7 @@ test.describe('Chat navigator consolidation', () => {
     ).toBeVisible()
     await capturePage(page, 'chat-navigator-options-menu.png')
 
-    // 에이전트 정렬을 생성순으로 바꾸면 Beta(06-02 생성)가 Alpha(06-01 생성) 위로 올라온다
+    // 将 Agent 排序改为按创建顺序后，Beta（06-02 创建）会排到 Alpha（06-01 创建）上方
     await page.getByRole('menuitem', { name: '智能体 排序' }).hover()
     await expect(page.getByRole('menuitemradio', { name: '最后使用' })).toHaveAttribute(
       'aria-checked',
@@ -343,7 +343,7 @@ test.describe('Chat navigator consolidation', () => {
     await expect.poll(agentHeaderOrder).toEqual(['/agents/agent-2', '/agents/agent-1'])
     await capturePage(page, 'chat-navigator-agent-sort-created.png')
 
-    // 보기 방식 서브메뉴: 세 가지 모드 라디오와 현재 선택(에이전트별)을 확인한다
+    // 查看方式 submenu：确认三种 mode radio 和当前选择（按 Agent）
     await page.getByRole('menuitem', { name: '分组方式' }).hover()
     await expect(page.getByRole('menuitemradio', { name: '通过 智能体' })).toHaveAttribute(
       'aria-checked',
@@ -353,15 +353,15 @@ test.describe('Chat navigator consolidation', () => {
     await expect(page.getByRole('menuitemradio', { name: '最近的对话' })).toBeVisible()
     await capturePage(page, 'chat-navigator-view-modes.png')
 
-    // 최근 대화 모드로 전환: 그룹 헤더가 사라지고 모든 세션이 에이전트 아바타와 함께 평탄화된다
+    // 切换到最近对话 mode：group header 消失，所有 session 与 Agent avatar 一起扁平化
     await page.getByRole('menuitemradio', { name: '最近的对话' }).click()
-    // Escape는 한 레벨씩 닫는다 (서브메뉴 → 루트 메뉴)
+    // Escape 每次关闭一级（submenu → root menu）
     await page.keyboard.press('Escape')
     await page.keyboard.press('Escape')
     await expect(page.getByRole('menuitem', { name: '分组方式' })).toHaveCount(0)
     const betaRow = page.locator('[data-chat-session-href="/agents/agent-2/conversations/conv-3"]')
     await expect(betaRow).toBeVisible()
-    // 에이전트 이름은 아바타 hover 툴팁으로 노출된다
+    // Agent 名称通过 avatar hover tooltip 显示
     const betaAgentTrigger = betaRow
       .locator('[data-slot="tooltip-trigger"]')
       .filter({ hasText: 'Beta Agent' })

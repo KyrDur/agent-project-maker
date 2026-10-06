@@ -24,8 +24,8 @@ function messageStartEvent(seq: number, id: string): ProtocolEvent {
 }
 
 describe('computeCompactionByMessageId', () => {
-  it('done 마커를 직전 마지막 message-start에 매핑한다', () => {
-    // 실측 순서: running(2) → 답변 message-start(7) → done(12)
+  it('将 done 标记映射到其前一个最后的 message-start', () => {
+    // 实测顺序：running(2) → 回答 message-start(7) → done(12)
     const events = [
       compactionEvent(2, { state: 'running' }),
       messageStartEvent(7, 'answer-msg'),
@@ -45,13 +45,13 @@ describe('computeCompactionByMessageId', () => {
     })
   })
 
-  it('running 마커만 있고 done이 없으면 비어 있다', () => {
+  it('只有 running 标记而没有 done 时为空', () => {
     const events = [compactionEvent(2, { state: 'running' }), messageStartEvent(3, 'm')]
 
     expect(computeCompactionByMessageId(events).size).toBe(0)
   })
 
-  it('done보다 늦은 message-start는 매핑하지 않는다', () => {
+  it('不映射晚于 done 的 message-start', () => {
     const events = [
       messageStartEvent(7, 'earlier'),
       compactionEvent(12, { state: 'done', history_id: 'hist_earlier' }),
@@ -64,7 +64,7 @@ describe('computeCompactionByMessageId', () => {
     expect(map.has('later')).toBe(false)
   })
 
-  it('반복된 완료 이벤트를 각 답변에 독립적으로 매핑한다', () => {
+  it('将重复的完成事件分别独立映射到各回答', () => {
     const events = [
       messageStartEvent(7, 'first-answer'),
       compactionEvent(12, { state: 'done', history_id: 'history-first', cutoff_index: 2 }),
@@ -80,7 +80,7 @@ describe('computeCompactionByMessageId', () => {
     )
   })
 
-  it('중첩된 message payload에서도 반복 완료 이벤트를 각 답변에 매핑한다', () => {
+  it('在嵌套 message payload 中也将重复完成事件分别映射到各回答', () => {
     const events = [
       {
         method: 'messages',
@@ -108,7 +108,7 @@ describe('computeCompactionByMessageId', () => {
     )
   })
 
-  it('사용자에게 투영하지 않는 upstream 필드는 marker에서 제거한다', () => {
+  it('从 marker 中移除不投影给用户的 upstream 字段', () => {
     const marker = compactionMarkerFromPayload({
       state: 'done',
       history_id: 'history-opaque',
@@ -125,7 +125,7 @@ describe('computeCompactionByMessageId', () => {
 })
 
 describe('attachCompactionToMessages + compactionFromMessage', () => {
-  it('매핑된 메시지에 마커를 붙이고 다시 읽는다', () => {
+  it('给已映射消息附加 marker 后重新读取', () => {
     const messages = [
       new HumanMessage({ id: 'u', content: 'q' }),
       new AIMessage({ id: 'answer-msg', content: 'a' }),
@@ -140,7 +140,7 @@ describe('attachCompactionToMessages + compactionFromMessage', () => {
     expect(compactionFromMessage(attached[0])).toBeNull()
   })
 
-  it('렌더되지 않은 id는 마지막 assistant 메시지로 폴백한다', () => {
+  it('未渲染的 id 回退到最后一条 assistant 消息', () => {
     const messages = [new AIMessage({ id: 'visible-answer', content: 'a' })]
     const map = new Map<string, CompactionMarker>([['stale-id', { historyId: 'hist_stale' }]])
 
@@ -149,7 +149,7 @@ describe('attachCompactionToMessages + compactionFromMessage', () => {
     expect(compactionFromMessage(attached[0])).toEqual({ historyId: 'hist_stale' })
   })
 
-  it('마커가 없으면 같은 배열 참조를 반환한다', () => {
+  it('没有 marker 时返回同一个数组引用', () => {
     const messages = [new AIMessage({ id: 'a', content: 'a' })]
 
     expect(attachCompactionToMessages(messages, new Map())).toBe(messages)
@@ -157,7 +157,7 @@ describe('attachCompactionToMessages + compactionFromMessage', () => {
 })
 
 describe('reduceActivity — compaction', () => {
-  it('running 동안 압축 activity를 띄우고 done에서 같은 pill을 complete로 전이한다', () => {
+  it('running 时显示压缩 activity，并在 done 时将同一个 pill 转为 complete', () => {
     const running = reduceActivity([], compactionEvent(2, { state: 'running' }))
     expect(running).toHaveLength(1)
     expect(running[0].kind).toBe('compaction')

@@ -24,6 +24,8 @@ export function ProjectCaseEditor({
   const [draft, setDraft] = useState(initial)
   const [mockText, setMockText] = useState(JSON.stringify(initial.mock_tool_data ?? {}, null, 2))
   const [contextText, setContextText] = useState(JSON.stringify(initial.context, null, 2))
+  const [stateText, setStateText] = useState(JSON.stringify(initial.initial_state ?? {}, null, 2))
+  const [expectedText, setExpectedText] = useState(JSON.stringify(initial.expected, null, 2))
   const [jsonError, setJsonError] = useState(false)
   const [required, setRequired] = useState(initial.expected.required_tools.join(', '))
   const [forbidden, setForbidden] = useState(initial.expected.forbidden_tools.join(', '))
@@ -40,7 +42,20 @@ export function ProjectCaseEditor({
         event.preventDefault()
         let mocks: unknown
         let context: unknown
+        let initialState: Record<string, unknown>
+        let extended: EvaluationCase['expected']
         try {
+          initialState = JSON.parse(stateText)
+          extended = JSON.parse(expectedText)
+          if (
+            !initialState ||
+            typeof initialState !== 'object' ||
+            Array.isArray(initialState) ||
+            !extended ||
+            typeof extended !== 'object' ||
+            Array.isArray(extended)
+          )
+            throw new Error()
           mocks = JSON.parse(mockText)
           context = JSON.parse(contextText)
           if (!mocks || typeof mocks !== 'object' || Array.isArray(mocks)) throw new Error()
@@ -74,11 +89,16 @@ export function ProjectCaseEditor({
         setJsonError(false)
         onSave({
           ...draft,
+          initial_state: initialState,
           mock_tool_data: mocks as EvaluationCase['mock_tool_data'],
           context: context as EvaluationCase['context'],
           tags: split(tags),
           expected: {
+            ...extended,
             ...draft.expected,
+            state: extended.state,
+            tool_arguments: extended.tool_arguments,
+            necessary_order: extended.necessary_order,
             required_tools: split(required),
             forbidden_tools: split(forbidden),
           },
@@ -177,6 +197,30 @@ export function ProjectCaseEditor({
           maxLength={100000}
           value={contextText}
           onChange={(e) => setContextText(e.target.value)}
+        />
+      </FormFieldShell>
+      <FormFieldShell id="case-basis" label={t('practice.judgmentBasis')}>
+        <Textarea
+          id="case-basis"
+          maxLength={4000}
+          value={draft.judgment_basis ?? ''}
+          onChange={(e) => setDraft({ ...draft, judgment_basis: e.target.value })}
+        />
+      </FormFieldShell>
+      <FormFieldShell id="case-state" label={t('practice.initialState')}>
+        <Textarea
+          id="case-state"
+          maxLength={100000}
+          value={stateText}
+          onChange={(e) => setStateText(e.target.value)}
+        />
+      </FormFieldShell>
+      <FormFieldShell id="case-rules" label={t('practice.businessAssertions')}>
+        <Textarea
+          id="case-rules"
+          maxLength={100000}
+          value={expectedText}
+          onChange={(e) => setExpectedText(e.target.value)}
         />
       </FormFieldShell>
       <FormFieldShell id="case-mocks" label={t('mockData')} description={t('mockDataHelp')}>

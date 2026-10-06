@@ -255,7 +255,7 @@ describe('useChatRuntime active run attach', () => {
     expect(captured.signal?.aborted).toBe(false)
   })
 
-  it('진행 중인 로컬 stream이 있으면 active run attach가 stream을 빼앗지 않는다', async () => {
+  it('存在进行中的本地 stream 时，active run attach 不会抢占 stream', async () => {
     const started = deferred()
     const release = deferred()
     let localStreamAborted = false
@@ -283,7 +283,7 @@ describe('useChatRuntime active run attach', () => {
     })
     await started.promise
 
-    // envelope refetch 가 방금 시작된 run 을 active 로 보고하는 상황 재현
+    // 复现 envelope refetch 将刚开始的 run 报告为 active 的情况
     rerender({ activeRun: activeRun() })
     await act(async () => {
       await Promise.resolve()
@@ -297,7 +297,7 @@ describe('useChatRuntime active run attach', () => {
     expect(localStreamAborted).toBe(false)
   })
 
-  it('정상 완료한 run의 stale envelope에는 재attach하지 않는다', async () => {
+  it('不会重新 attach 到已正常完成 run 的 stale envelope', async () => {
     const completedStreamFn = (
       _content: string,
       _signal: AbortSignal,
@@ -324,7 +324,7 @@ describe('useChatRuntime active run attach', () => {
       await result.current.sendMessage('hello')
     })
 
-    // 완료 후 envelope 이 아직 run-1 을 active 로 보고하는 stale 스냅샷 상황
+    // 完成后 envelope 仍把 run-1 报告为 active 的 stale 快照场景
     rerender({ activeRun: activeRun() })
     await act(async () => {
       await Promise.resolve()
@@ -333,7 +333,7 @@ describe('useChatRuntime active run attach', () => {
     expect(streamResumeAttach).not.toHaveBeenCalled()
   })
 
-  it('네트워크 실패로 중단된 run은 같은 마운트에서 attach로 복구된다', async () => {
+  it('因网络失败中断的 run 会在同一次挂载中通过 attach 恢复', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const failingStreamFn = (
       _content: string,
@@ -343,7 +343,7 @@ describe('useChatRuntime active run attach', () => {
       (async function* (): AsyncGenerator<SSEEvent> {
         options?.onRunId?.('run-1')
         yield { event: 'content_delta', id: 'run-1-1', data: { delta: 'partial' } }
-        // 4xx 는 withAutoResume 가 재시도하지 않고 즉시 throw — 테스트 결정성 확보
+        // 4xx 时 withAutoResume 不重试而立即 throw——确保测试确定性
         throw new StreamHttpError(404, 'connection dropped')
       })()
 
@@ -363,7 +363,7 @@ describe('useChatRuntime active run attach', () => {
     })
     expect(streamResumeAttach).not.toHaveBeenCalled()
 
-    // 서버에는 run-1 이 여전히 active — envelope 이 이를 보고하면 attach 로 복구
+    // 服务器上 run-1 仍为 active——如果 envelope 报告它，就通过 attach 恢复
     vi.mocked(streamResumeAttach).mockReturnValue(completedAttachStream())
     rerender({ activeRun: activeRun() })
 
@@ -379,7 +379,7 @@ describe('useChatRuntime active run attach', () => {
     consoleError.mockRestore()
   })
 
-  it('attach 도중 unmount 되면 이후 onStreamEnd/commit 콜백이 실행되지 않는다', async () => {
+  it('attach 过程中 unmount 后，不再执行后续 onStreamEnd/commit 回调', async () => {
     const started = deferred()
     const release = deferred()
     vi.mocked(streamResumeAttach).mockImplementation(async function* () {

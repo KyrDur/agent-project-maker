@@ -1,12 +1,12 @@
 import { atom } from 'jotai'
 
 /**
- * 스킬 빌더 챗 검증 레일 스토어 (스펙 AD-5).
+ * skill builder chat validation rail store（spec AD-5）。
  *
- * `moldy.skill_draft`(stream-head 드래프트 요약) / `moldy.skill_validation`
- * (validate_skill·finalize_skill 도구 projection) custom 이벤트를
- * conversationId 스코프로 보관한다 — chat-subagent-names 패턴 미러.
- * 페이로드는 요약 전용 계약(파일 경로/크기/카운트 + 검증 이슈) — 파일 내용 없음.
+ * 将 `moldy.skill_draft`（stream-head draft 摘要）/ `moldy.skill_validation`
+ * （validate_skill·finalize_skill 工具 projection）custom event
+ * 按 conversationId scope 保存 — 镜像 chat-subagent-names 模式。
+ * payload 仅用于摘要契约（文件路径/大小/计数 + validation issue）— 不含文件内容。
  */
 
 export interface SkillDraftBriefFile {
@@ -21,7 +21,7 @@ export interface SkillDraftBrief {
   readonly file_count: number
   readonly files: readonly SkillDraftBriefFile[]
   readonly changed_count: number
-  /** 드래프트 moldy.yaml의 credential 요구 수 (상태 카드 행, M7). */
+  /** draft moldy.yaml 的 credential 需求数（状态卡片行，M7）。 */
   readonly credential_requirement_count: number
 }
 
@@ -31,7 +31,7 @@ export interface SkillValidationSnapshot {
   readonly validation_result: Readonly<Record<string, unknown>>
 }
 
-/** conversationId → 최신 드래프트 요약 (run마다 최신으로 교체). */
+/** conversationId → 最新 draft 摘要（每个 run 替换为最新值）。 */
 export const chatSkillDraftBriefAtom = atom<Record<string, SkillDraftBrief>>({})
 
 export const setConversationSkillDraftBriefAtom = atom(
@@ -42,7 +42,7 @@ export const setConversationSkillDraftBriefAtom = atom(
   },
 )
 
-/** conversationId → 최신 검증 결과 projection (validate/finalize 도구 결과). */
+/** conversationId → 最新 validation result projection（validate/finalize 工具结果）。 */
 export const chatSkillValidationAtom = atom<Record<string, SkillValidationSnapshot>>({})
 
 export const setConversationSkillValidationAtom = atom(

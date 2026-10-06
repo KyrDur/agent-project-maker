@@ -1,142 +1,141 @@
 # Moldy — AI Agent Builder
 
-<!-- project-current-source: migration=m77_side_chat_link; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-09-10 -->
+<!-- project-current-source: migration=m85_project_simulation; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-10-06 -->
 
-노코드로 AI 에이전트를 만들고, 채팅하고, 스케줄링하는 웹 애플리케이션.
-**ADR-016에 따라 멀티유저 인증 적용 완료** (JWT + super_user). 운영자(super_user)와 일반 사용자 권한이 분리되어 있다.
+一个无需代码即可创建、聊天并调度 AI Agent 的 Web 应用。
+**已根据 ADR-016 完成多用户认证**（JWT + super_user）。运营者（super_user）与普通用户的权限已分离。
 
 ---
 
-## 기술 스택
+## 技术栈
 
-| 레이어 | 기술 | 버전 |
+| 层级 | 技术 | 版本 |
 |--------|------|------|
 | Frontend | Next.js (App Router) + React + TailwindCSS v4 + shadcn/ui | Next 16, React 19 |
-| 상태관리 | TanStack Query (서버), Jotai (클라이언트) | |
+| 状态管理 | TanStack Query（服务端）、Jotai（客户端） | |
 | Backend | FastAPI + SQLAlchemy (async) + Alembic | FastAPI 0.115+, SA 2.0+ |
-| AI Runtime | LangChain 1.x + LangGraph 1.x + **deepagents** 0.7.11 + LangSmith | `create_deep_agent` 기반 |
-| 인증 | JWT (HS256) + HttpOnly Cookie + CSRF double-submit | ADR-016 |
-| 암호화 | Cipher V2 — HKDF-SHA256 + AES-256-GCM, multi-key rotation | ADR-009 |
+| AI Runtime | LangChain 1.x + LangGraph 1.x + **deepagents** 0.7.11 + LangSmith | 基于 `create_deep_agent` |
+| 认证 | JWT (HS256) + HttpOnly Cookie + CSRF double-submit | ADR-016 |
+| 加密 | Cipher V2 — HKDF-SHA256 + AES-256-GCM, multi-key rotation | ADR-009 |
 | DB | PostgreSQL 16 (docker-compose) | |
-| 스케줄러 | APScheduler 3.x | |
-| 패키지 매니저 | uv (backend), pnpm (frontend) | |
-| 런타임 버전 | Python 3.12 (uv 자동 설치), Node 22 (`.node-version`) | |
-| 백엔드 개발 도구 | Ruff `ruff>=0.16.5,<0.17.0` (lock: 0.16.5) | |
+| 调度器 | APScheduler 3.x | |
+| 包管理器 | uv (backend), pnpm (frontend) | |
+| 运行时版本 | Python 3.12（uv 自动安装）、Node 22（`.node-version`） | |
+| 后端开发工具 | Ruff `ruff>=0.16.5,<0.17.0` (lock: 0.16.5) | |
 
 ---
 
-## 프로젝트 구조
+## 项目结构
 
 ```
 natural-mold/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app factory + lifespan (시드, 스케줄러, checkpointer)
-│   │   ├── config.py            # pydantic-settings (.env 기반)
+│   │   ├── main.py              # FastAPI app factory + lifespan（seed、scheduler、checkpointer）
+│   │   ├── config.py            # pydantic-settings（基于 .env）
 │   │   ├── database.py          # async engine + session
 │   │   ├── dependencies.py      # get_db, get_current_user, require_super_user, verify_csrf
-│   │   ├── scheduler.py         # APScheduler 싱글턴 (MCP health polling, refresh token GC 등)
+│   │   ├── scheduler.py         # APScheduler singleton（MCP health polling、refresh token GC 等）
 │   │   ├── models/              # SQLAlchemy ORM (user, agent, skill, mcp_server, credential, ...)
-│   │   ├── schemas/             # Pydantic request/response 스키마
-│   │   ├── routers/             # FastAPI 라우터 (agents, tools, skills, mcp, credentials, auth, ...)
-│   │   ├── services/            # 비즈니스 로직 레이어
-│   │   ├── auth/                # ADR-016 멀티유저 인증 (JWT, refresh token rotation, CSRF)
+│   │   ├── schemas/             # Pydantic request/response schema
+│   │   ├── routers/             # FastAPI router（agents, tools, skills, mcp, credentials, auth, ...）
+│   │   ├── services/            # 业务逻辑层
+│   │   ├── auth/                # ADR-016 多用户认证（JWT, refresh token rotation, CSRF）
 │   │   ├── security/            # Cipher V2 (HKDF-SHA256 + AES-256-GCM, multi-key rotation)
-│   │   ├── credentials/         # 자격증명 시스템
-│   │   │   ├── definitions/     # 22개 credential type 정의 (LLM, 검색, MCP, k-skill 계열 등)
-│   │   │   ├── service.py       # CRUD + field_keys 캐시 (ADR-007)
-│   │   │   ├── interpolation.py # {{$credentials.x}} 보간 (resolve_deep)
-│   │   │   └── external_secrets/ # Vault/ENV resolver (feature flag 기반)
-│   │   ├── skills/              # Skill 시스템 (text + .skill package)
-│   │   │   ├── service.py       # CRUD + 파일시스템 (data/skills/<id>/)
-│   │   │   ├── packager.py      # .skill ZIP extract (symlink/zip-slip/null-byte 방어)
+│   │   ├── credentials/         # 凭据系统
+│   │   │   ├── definitions/     # 定义 16 种 credential type（LLM、搜索、HTTP、MCP 等）
+│   │   │   ├── service.py       # CRUD + field_keys 缓存（ADR-007）
+│   │   │   ├── interpolation.py # {{$credentials.x}} 插值（resolve_deep）
+│   │   │   └── external_secrets/ # Vault/ENV resolver（基于 feature flag）
+│   │   ├── skills/              # Skill 系统（text + .skill package）
+│   │   │   ├── service.py       # CRUD + 文件系统（data/skills/<id>/）
+│   │   │   ├── packager.py      # .skill ZIP extract（防御 symlink/zip-slip/null-byte）
 │   │   │   ├── inspector.py     # SKILL.md frontmatter parse
 │   │   │   ├── runtime.py       # build_skills_for_agent (AgentSkillLink → descriptor)
-│   │   │   └── prompt.py        # build_skills_prompt (LLM에 skill 존재 알림)
-│   │   ├── mcp/                 # MCP 통합
+│   │   │   └── prompt.py        # build_skills_prompt（通知 LLM 存在 skill）
+│   │   ├── mcp/                 # MCP 集成
 │   │   │   ├── client.py        # connect_and_list (transports: stdio/sse/streamable_http)
-│   │   │   └── discovery.py     # tool 발견 + credential 보간 + last_seen_at upsert
-│   │   ├── agent_runtime/       # AI 실행 엔진 (deepagents 기반)
+│   │   │   └── discovery.py     # 发现 tool + credential 插值 + last_seen_at upsert
+│   │   ├── agent_runtime/       # AI 执行引擎（基于 deepagents）
 │   │   │   ├── executor.py      # compatibility facade (runtime split exports)
 │   │   │   ├── runtime_config.py # AgentConfig + RuntimeComponents
-│   │   │   ├── runtime_component_builder.py # model/tools/skills/memory/subagents 조립
-│   │   │   ├── agent_stream_runner.py # stream/invoke 실행 + hooks/Langfuse
+│   │   │   ├── runtime_component_builder.py # 组装 model/tools/skills/memory/subagents
+│   │   │   ├── agent_stream_runner.py # stream/invoke 执行 + hooks/Langfuse
 │   │   │   ├── skill_executor.py # execute_in_skill subprocess runner
 │   │   │   ├── mcp_tool_loader.py # MCP runtime tool loading
-│   │   │   ├── model_factory.py # LLM 인스턴스 + GPT-5/Anthropic quirks (ADR-014)
-│   │   │   ├── tool_factory.py  # builtin/registry/MCP 도구 빌더
-│   │   │   ├── middleware_registry.py # 22개 미들웨어 카탈로그 (auto/explicit/provider 분리)
-│   │   │   ├── streaming.py     # LangGraph → SSE (W3-out 부분 플러시)
+│   │   │   ├── model_factory.py # LLM 实例 + GPT-5/Anthropic quirks（ADR-014）
+│   │   │   ├── tool_factory.py  # builtin/registry/MCP 工具构建器
+│   │   │   ├── middleware_registry.py # 22 个 middleware 目录（区分 auto/explicit/provider）
+│   │   │   ├── streaming.py     # LangGraph → SSE（W3-out 部分 flush）
 │   │   │   ├── checkpointer.py  # AsyncPostgresSaver
-│   │   │   ├── credential_resolution.py # LLM credential 3단계 우선순위 (ADR-013)
-│   │   │   ├── builder_v3/      # 대화형 에이전트 생성 그래프
+│   │   │   ├── credential_resolution.py # LLM credential 三阶段优先级（ADR-013）
+│   │   │   ├── builder_v3/      # 对话式 Agent 创建图
 │   │   │   ├── assistant/       # Assistant panel agent/tools
-│   │   │   ├── mcp_client.py    # MCP wrapper (app.mcp.client에 위임)
-│   │   │   ├── trigger_executor.py # 스케줄 트리거 실행 (invoke 모드, HiTL 비활성)
-│   │   │   ├── naver_tools.py   # 네이버 검색 API 도구
-│   │   │   ├── google_tools.py  # Google Custom Search 도구
+│   │   │   ├── mcp_client.py    # MCP wrapper（委托给 app.mcp.client）
+│   │   │   ├── trigger_executor.py # 调度 trigger 执行（invoke 模式，禁用 HiTL）
+│   │   │   ├── google_tools.py  # Google Custom Search 工具
 │   │   │   └── google_workspace_tools.py # Gmail, Calendar, Chat Webhook
-│   │   └── seed/                # 시드 데이터 (모델, 템플릿, 시스템 도구, bootstrap_from_env)
-│   ├── alembic/                 # DB 마이그레이션 (head: m77_side_chat_link)
+│   │   └── seed/                # seed 数据（model、template、system tool、bootstrap_from_env）
+│   ├── alembic/                 # DB migration（head: m77_side_chat_link）
 │   ├── tests/                   # pytest (aiosqlite in-memory)
-│   ├── scripts/                 # 유틸리티 (migrate_mock_to_real_user, google_oauth_setup, ...)
+│   ├── scripts/                 # 工具脚本（migrate_mock_to_real_user, google_oauth_setup, ...）
 │   ├── pyproject.toml
-│   └── .env.example             # 환경변수 템플릿
+│   └── .env.example             # 环境变量模板
 │
 ├── frontend/                    # Next.js 16 + React 19 (App Router)
 │   ├── src/
-│   │   ├── app/                 # 라우트 (/, /agents, /tools, /skills, /mcp-servers, /credentials, /usage)
+│   │   ├── app/                 # route（/, /agents, /tools, /skills, /mcp-servers, /credentials, /usage）
 │   │   ├── components/          # ui (shadcn), layout, agent, chat, tool, shared
 │   │   ├── lib/                 # api, hooks (TanStack Query), stores (Jotai), sse, types
 │   │   └── hooks/
 │   ├── package.json
-│   └── AGENTS.md                # Next.js 16 주의사항
+│   └── AGENTS.md                # Next.js 16 注意事项
 │
 ├── docs/
-│   ├── PRD.md                   # 제품 요구사항 정의서
-│   ├── PRD-screens.md           # 화면별 와이어프레임
-│   ├── ARCHITECTURE.md          # 시스템 아키텍처
-│   ├── design-docs/             # ADR + 설계 스펙 (ADR-001~014, ADR-016~021 등)
-│   ├── tool-setup-guide.md      # 프리빌트 도구 API 키 설정 가이드
-│   └── marketplace-resources-prd.md # Agent/MCP/Skill 마켓플레이스 PRD + 구현 상태
+│   ├── PRD.md                   # 产品需求定义文档
+│   ├── PRD-screens.md           # 各页面 wireframe
+│   ├── ARCHITECTURE.md          # 系统架构
+│   ├── design-docs/             # ADR + 设计规格（ADR-001~014、ADR-016~021 等）
+│   ├── tool-setup-guide.md      # 预构建工具 API key 设置指南
+│   └── marketplace-resources-prd.md # Agent/MCP/Skill marketplace PRD + 实现状态
 │
 ├── docker-compose.yml           # PostgreSQL + Backend + Frontend
-├── TASKS.md                     # 태스크 목록
-└── .node-version                # Node 22 핀 (nvm/fnm/asdf 호환; Python은 uv가 관리)
+├── TASKS.md                     # 任务列表
+└── .node-version                # 固定 Node 22（兼容 nvm/fnm/asdf；Python 由 uv 管理）
 ```
 
 ---
 
-## 로컬 개발 환경 세팅
+## 本地开发环境设置
 
-### 사전 요구사항
+### 前置要求
 
-- [uv](https://docs.astral.sh/uv/) 설치 (Python 3.12 자동 프로비저닝 + backend 의존성)
-- Node.js 22 + [pnpm](https://pnpm.io/) (프론트엔드; `.node-version`에 `22` 핀)
-- Docker Desktop (PostgreSQL용)
+- 安装 [uv](https://docs.astral.sh/uv/)（自动配置 Python 3.12 + backend 依赖）
+- Node.js 22 + [pnpm](https://pnpm.io/)（frontend；`.node-version` 固定为 `22`）
+- Docker Desktop（用于 PostgreSQL）
 
-### git worktree 에서 작업 시
+### 在 git worktree 中工作时
 
-`backend/.env` 는 `.gitignore` 라 worktree 마다 별도 파일이 필요하지만, ground
-truth 는 main checkout 의 `backend/.env` 하나로 유지해야 한다 (같은 PG DB +
-같은 `ENCRYPTION_KEYS` 라야 기존 credential 복호화 정상 + `JWT_SECRET` 공유로
-세션도 share 됨). worktree 진입 후 1회만 실행:
+`backend/.env` 位于 `.gitignore` 中，因此每个 worktree 都需要单独的文件，但 ground
+truth 必须始终以 main checkout 中唯一的 `backend/.env` 为准（必须使用相同的 PG DB +
+相同的 `ENCRYPTION_KEYS`，现有 credential 才能正常解密；共享 `JWT_SECRET` 后
+session 也会共享）。进入 worktree 后仅执行一次：
 
 ```bash
 bash scripts/worktree-setup.sh
 ```
 
-스크립트는 멱등 — `backend/.env` 가 main 의 `.env` 로 symlink 되어 있는지
-확인하고, 없으면 생성한다. 또한 `uvicorn --reload` 가 publish/install 시
-`data/` 디렉토리 변경을 자동 reload 트리거하지 않도록 `--reload-dir app` 추가
-권장 안내도 출력한다.
+脚本是幂等的——检查 `backend/.env` 是否为指向 main `.env` 的 symlink，
+若不存在则创建。另外，为避免 `uvicorn --reload` 在 publish/install 时因
+`data/` 目录变化自动触发 reload，还会输出建议加入 `--reload-dir app` 的
+提示。
 
-#### worktree E2E seed / env 동기화
+#### worktree E2E seed / env 同步
 
-`backend/.env.example`에 새 변수가 추가되어도 이미 존재하는 main checkout의
-`backend/.env`에는 자동 반영되지 않는다. worktree는 main `backend/.env`를
-symlink로 공유하므로, 새 worktree에서 Playwright E2E를 바로 돌리려면 main
-`backend/.env`에 아래 값이 있는지 먼저 확인한다:
+即使 `backend/.env.example` 新增了变量，也不会自动同步到已经存在的 main checkout
+`backend/.env`。由于 worktree 通过 symlink 共享 main `backend/.env`，
+若要在新 worktree 中直接运行 Playwright E2E，应先确认 main
+`backend/.env` 中存在以下值：
 
 ```dotenv
 E2E_SEED_USER_ENABLED=true
@@ -145,28 +144,28 @@ E2E_USER_PASSWORD=correct horse battery staple 42
 E2E_USER_NAME=E2E User
 ```
 
-dev 환경에서 backend가 시작되면 `seed_e2e_user`가 위 계정을 DB에 super_user로
-생성하거나 갱신한다. `APP_ENV=production`에서는 `E2E_SEED_USER_ENABLED=true`여도
-항상 스킵된다. frontend E2E는 `frontend/.env.local`의 `E2E_USER_*` 값을
-우선 사용하고, 호환을 위해 기존 `E2E_EMAIL` / `E2E_PASSWORD`도 fallback으로
-읽는다.
+在 dev 环境启动 backend 时，`seed_e2e_user` 会在 DB 中将上述账户创建或更新为 super_user。
+在 `APP_ENV=production` 中，即使 `E2E_SEED_USER_ENABLED=true` 也会
+始终跳过。frontend E2E 优先使用 `frontend/.env.local` 中的 `E2E_USER_*` 值，
+为兼容现有配置，也会 fallback 到原有的 `E2E_EMAIL` / `E2E_PASSWORD`，
+并读取这些值。
 
-#### E2E 포트/DB 격리 (throwaway 스택)
+#### E2E 端口/DB 隔离（throwaway stack）
 
-기본 포트(3000/8001/5432)를 다른 프로젝트가 점유 중이면 throwaway 스택으로 격리해 실행한다:
+如果默认端口（3000/8001/5432）已被其他项目占用，则使用 throwaway stack 隔离运行：
 
 ```bash
-# 1) scripted throwaway Postgres (예: 호스트 5433, DB명은 lane prefix 필수)
+# 1) scripted throwaway Postgres（例如：host 5433，DB 名必须带 lane prefix）
 docker run -d --name moldy-e2e-scripted-pg -p 5433:5432 \
   -e POSTGRES_DB=moldy_e2e_scripted_local -e POSTGRES_USER=moldy -e POSTGRES_PASSWORD=moldy postgres:16-alpine
 until docker exec moldy-e2e-scripted-pg pg_isready -U moldy -d moldy_e2e_scripted_local; do sleep 1; done
 
-# 2) 마이그레이션 — throwaway DB에만 직접 실행 (공유/main DB 금지)
+# 2) migration——仅直接作用于 throwaway DB（禁止作用于共享/main DB）
 (cd backend && \
   DATABASE_URL='postgresql+asyncpg://moldy:moldy@localhost:5433/moldy_e2e_scripted_local' \
   uv run alembic upgrade head)
 
-# 3) E2E 실행 (playwright webServer가 backend+frontend 자체 기동)
+# 3) 执行 E2E（playwright webServer 自行启动 backend+frontend）
 (cd frontend && \
   E2E_FRONTEND_PORT=3100 E2E_BACKEND_PORT=8101 \
   DATABASE_URL='postgresql+asyncpg://moldy:moldy@localhost:5433/moldy_e2e_scripted_local' \
@@ -175,62 +174,62 @@ until docker exec moldy-e2e-scripted-pg pg_isready -U moldy -d moldy_e2e_scripte
   pnpm exec playwright test e2e/<spec>.spec.ts)
 ```
 
-주의:
+注意：
 
-- `DATABASE_URL_SYNC`는 `DATABASE_URL`에서 파생되지 않는 **별도 설정**이다
-  (`backend/app/config.py`). LangGraph checkpointer가 이 값을 쓰므로 **둘 다**
-  오버라이드해야 한다. 하나만 바꾸면 checkpointer가 기존 DB를 바라보다
-  PoolTimeout으로 백엔드 기동에 실패한다.
-- E2E lane은 `DATABASE_URL=postgresql+asyncpg://...`,
-  `DATABASE_URL_SYNC=postgresql://...` 형식을 요구하며 둘은 같은 host/port/database를
-  가리켜야 한다. scripted 기본 포트는 `3100/8101`, live 기본 포트는 `3200/8201`이다.
-  DB 이름은 각각 `moldy_e2e_scripted`/`moldy_e2e_scripted_*`,
-  `moldy_e2e_live`/`moldy_e2e_live_*` 형식이어야 한다. live는
-  `E2E_LLM_BASE_URL`, `E2E_LLM_API_KEY`, `E2E_LLM_MODEL`을 모두 설정한 뒤
-  `pnpm test:e2e:live`로 실행한다.
-- checkpointer의 psycopg `AsyncConnectionPool`은 `CHECKPOINTER_POOL_MIN_SIZE`
-  / `CHECKPOINTER_POOL_MAX_SIZE`로 조정된다(기본 1/10). 슬로우 스트리밍 런이나
-  평가 런이 동시에 많이 돌면 백엔드 전체가 직렬화되어 무관한 요청까지 timeout
-  날 수 있다. `--repeat-each` 스트레스 실패는 이 공유 풀/DB 부하가 원인일 수
-  있으니 origin/main 대조 실행으로 분리 판단할 것.
+- `DATABASE_URL_SYNC` 是**独立配置**，不会从 `DATABASE_URL` 派生。
+  （`backend/app/config.py`）。LangGraph checkpointer 使用该值，因此**两者都**
+  必须 override。只修改其中一个时，checkpointer 会继续指向原有 DB，
+  导致 backend 因 PoolTimeout 启动失败。
+- E2E lane 要求使用 `DATABASE_URL=postgresql+asyncpg://...`、
+  `DATABASE_URL_SYNC=postgresql://...` 格式，且两者必须指向相同的 host/port/database。
+  scripted 默认端口为 `3100/8101`，live 默认端口为 `3200/8201`。
+  DB 名必须分别采用 `moldy_e2e_scripted`/`moldy_e2e_scripted_*`、
+  `moldy_e2e_live`/`moldy_e2e_live_*` 格式。live 模式需要
+  在同时设置 `E2E_LLM_BASE_URL`、`E2E_LLM_API_KEY`、`E2E_LLM_MODEL` 后
+  通过 `pnpm test:e2e:live` 执行。
+- checkpointer 的 psycopg `AsyncConnectionPool` 通过 `CHECKPOINTER_POOL_MIN_SIZE`
+  / `CHECKPOINTER_POOL_MAX_SIZE` 调整（默认 1/10）。当慢速 streaming run 或
+  evaluation run 大量并发时，整个 backend 可能被串行化，甚至使无关请求也发生 timeout。
+  `--repeat-each` stress 失败可能源于这个共享 pool/DB 的负载，
+  应通过与 origin/main 对照执行来区分判断。
 
-#### E2E 캡처 / 이미지 산출물 규칙
+#### E2E 截图 / 图像产物规则
 
-Codex 내장 브라우저로 E2E를 요청받으면 실제 UI 조작과 검증은 내장 브라우저로
-수행한다. 다만 내장 브라우저의 screenshot API가 `Page.captureScreenshot`
-timeout, 빈 이미지, 깨진 이미지로 실패할 수 있다. 이 경우 검증 자체는 내장
-브라우저에서 계속하고, 최종 공유용 이미지 파일만 같은 local dev server와 같은
-E2E 계정으로 Playwright/Chrome 캡처 fallback을 사용한다. fallback을 사용했다면
-최종 보고에 명시한다.
+当被要求使用 Codex 内置浏览器执行 E2E 时，实际 UI 操作与验证应在内置浏览器中
+完成。但内置浏览器的 screenshot API 可能因 `Page.captureScreenshot`
+timeout、空图像或损坏图像而失败。此时验证本身继续使用内置
+浏览器进行，仅最终共享用的图像文件可在相同 local dev server 和相同
+E2E 账户下使用 Playwright/Chrome 截图 fallback。若使用了 fallback，
+必须在最终报告中注明。
 
-E2E 중 생성한 screenshot, video, trace, raw capture는 repo root에 흩뿌리지 말고
-항상 아래 경로에 모은다:
+E2E 期间生成的 screenshot、video、trace、raw capture 不得散落在 repo root，
+始终集中到以下路径：
 
 ```text
 output/e2e-captures/<YYYYMMDD>-<feature>/
 ```
 
-`output/`은 `.gitignore`에 포함되어 있으므로 이 산출물은 커밋하지 않는다. 과거처럼
-`memory-e2e-*.png`, `*.raw` 같은 임시 파일을 repo root에 남기지 않는다. 사용자에게
-이미지를 전달하기 전에는 `file output/e2e-captures/.../*.png`로 실제 PNG 여부와
-해상도를 확인하고, `view_image`로 직접 열어 텍스트/카드가 잘리지 않거나 깨지지
-않았는지 확인한다. 보안/secret 검증 화면을 캡처할 때는 실제 secret을 쓰지 않고
-명확한 더미 값을 사용하며, 불필요한 더미 secret 문자열이 최종 이미지에 보이면
-다시 캡처한다.
+`output/` 已包含在 `.gitignore` 中，因此这些产物不要 commit。不要像过去那样
+把 `memory-e2e-*.png`、`*.raw` 等临时文件留在 repo root。向用户
+交付图像前，必须通过 `file output/e2e-captures/.../*.png` 确认确实是 PNG
+并检查分辨率，再用 `view_image` 直接打开确认文本/卡片没有被裁切或损坏。
+在截图 security/secret 验证页面时，不要使用真实 secret，
+应使用明确的 dummy value；如果最终图像中出现不必要的 dummy secret 字符串，
+则重新截图。
 
-Tavily/Deep Research 구현 작업을 이어갈 때도 같은 원칙을 따른다.
-`TAVILY_API_KEY`는 per-user credential이 아니라 backend hosted key로 main
-`backend/.env`에 둔다. 상세 계획은
-`docs/superpowers/plans/2026-05-31-deep-research-tavily.md`를 기준으로 한다.
+继续实现 Tavily/Deep Research 时也遵循相同原则。
+`TAVILY_API_KEY` 不是 per-user credential，而是 backend hosted key，应放在 main
+`backend/.env` 中。详细计划以
+`docs/superpowers/plans/2026-05-31-deep-research-tavily.md` 为准。
 
-#### worktree dev 서버 포트/CORS 규칙
+#### worktree dev server 端口/CORS 规则
 
-워크트리에서 backend/frontend dev 서버를 띄울 때는 **frontend port,
-backend port, CORS origin, `NEXT_PUBLIC_API_BASE_URL`을 한 세트로 맞춰야
-한다.** 이 규칙을 지키지 않으면 브라우저에서 CORS, HttpOnly cookie, CSRF,
-API base URL이 서로 어긋나 로그인/요청/DB 연결이 깨진 것처럼 보인다.
+在 worktree 中启动 backend/frontend dev server 时，必须将 **frontend port、
+backend port、CORS origin、`NEXT_PUBLIC_API_BASE_URL` 作为一组对应配置。**
+若不遵守此规则，浏览器中的 CORS、HttpOnly cookie、CSRF、
+API base URL 会彼此错位，看起来像是 login/request/DB connection 出现故障。
 
-기본 권장값은 한 번에 하나의 worktree만 실행하고 고정 포트를 쓰는 것이다:
+默认建议一次只运行一个 worktree，并使用固定端口：
 
 ```bash
 # backend
@@ -242,8 +241,8 @@ cd frontend
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 pnpm dev -- --port 3000
 ```
 
-여러 worktree를 동시에 띄워야 하면 각 worktree마다 포트 쌍을 명시한다.
-예를 들어 frontend `3010`, backend `8010`을 쓸 때:
+如果必须同时运行多个 worktree，应为每个 worktree 明确指定一对端口。
+例如 frontend 使用 `3010`、backend 使用 `8010` 时：
 
 ```bash
 # backend
@@ -256,27 +255,27 @@ cd frontend
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8010 pnpm dev -- --port 3010
 ```
 
-에이전트는 worktree에서 dev 서버를 실행하거나 진단할 때 다음을 먼저 확인한다:
+Agent 在 worktree 中运行或诊断 dev server 时，首先确认以下事项：
 
-- `bash scripts/worktree-setup.sh`가 실행되어 `backend/.env`와 `backend/data`
-  가 main checkout을 가리키는 symlink인지 확인
-- main `backend/.env`에 E2E seed 값(`E2E_SEED_USER_ENABLED`, `E2E_USER_EMAIL`,
-  `E2E_USER_PASSWORD`, `E2E_USER_NAME`)이 있는지 확인
-- Deep Research/Tavily 작업이면 main `backend/.env`에 `TAVILY_API_KEY`가 있는지 확인
-- frontend가 실제로 뜬 origin이 backend의 `CORS_ALLOWED_ORIGINS`에 포함되는지 확인
-- frontend의 `NEXT_PUBLIC_API_BASE_URL`이 실제 backend port를 가리키는지 확인
-- Next.js가 포트 충돌로 자동 선택한 임의 포트를 그대로 쓰지 말고 `pnpm dev -- --port <port>`로 고정
-- 여러 backend를 같은 DB에 동시에 붙여도 PostgreSQL advisory-lock 리더를
-  `SCHEDULER_LEADERSHIP_POLL_SECONDS` 주기로 재검증한다. 리더 연결이 끊기면 기존
-  scheduler를 중지하고 다른 backend가 자동 승계하며, 비리더를 통해 변경된 trigger도
-  같은 주기로 리더가 재조정한다
+- 已执行 `bash scripts/worktree-setup.sh`，并确认 `backend/.env` 与 `backend/data`
+  是指向 main checkout 的 symlink
+- main `backend/.env` 中存在 E2E seed 值（`E2E_SEED_USER_ENABLED`、`E2E_USER_EMAIL`、
+  `E2E_USER_PASSWORD`、`E2E_USER_NAME`）
+- 如果是 Deep Research/Tavily 工作，确认 main `backend/.env` 中存在 `TAVILY_API_KEY`
+- frontend 实际运行的 origin 已包含在 backend 的 `CORS_ALLOWED_ORIGINS` 中
+- frontend 的 `NEXT_PUBLIC_API_BASE_URL` 指向实际 backend port
+- 不要沿用 Next.js 因端口冲突自动选择的随机端口，应通过 `pnpm dev -- --port <port>` 固定端口
+- 即使多个 backend 同时连接到同一 DB，也会按
+  `SCHEDULER_LEADERSHIP_POLL_SECONDS` 周期重新验证 PostgreSQL advisory-lock leader。若 leader 连接中断，
+  则停止原 scheduler，由其他 backend 自动接管；通过 non-leader 修改的 trigger 也
+  会由 leader 按相同周期重新协调
 
-### 1. 런타임 준비
+### 1. 运行时准备
 
-- Python 3.12 — `uv sync`(3단계) 시 자동 다운로드되므로 별도 설치 불필요
-- Node 22 — 시스템 패키지·nvm·fnm 등으로 설치 (`.node-version`에 `22` 핀)
+- Python 3.12 — 执行 `uv sync`（第 3 步）时自动下载，因此无需单独安装
+- Node 22 — 通过系统包、nvm、fnm 等安装（`.node-version` 固定为 `22`）
 
-### 2. DB 실행
+### 2. 启动 DB
 
 ```bash
 docker-compose up -d postgres
@@ -287,12 +286,12 @@ docker-compose up -d postgres
 
 ```bash
 cd backend
-cp .env.example .env  # API 키 + ENCRYPTION_KEYS / JWT_SECRET 설정
-uv sync               # 의존성 설치 (.venv 자동 생성)
-uv run alembic upgrade head   # DB 마이그레이션 (head: m77_side_chat_link)
+cp .env.example .env  # 设置 API key + ENCRYPTION_KEYS / JWT_SECRET
+uv sync               # 安装依赖（自动创建 .venv）
+uv run alembic upgrade head   # DB migration（head: m77_side_chat_link）
 uv run uvicorn app.main:app --reload --port 8001
 # → http://localhost:8001/docs (Swagger UI)
-# 시작 시 시드 데이터 자동 삽입 (모델, 템플릿, ENV → system credentials bootstrap)
+# 启动时自动插入 seed 数据（model、template、ENV → system credentials bootstrap）
 ```
 
 ### 4. Frontend
@@ -305,18 +304,18 @@ pnpm dev
 # Backend URL: NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 (.env.local)
 ```
 
-### 5. 테스트
+### 5. 测试
 
 ```bash
 cd backend
-uv run pytest               # 전체 테스트 (aiosqlite in-memory, DB 불필요)
-uv run pytest tests/test_agents.py  # 개별 파일
-uv run ruff check .         # 린트
+uv run pytest               # 全量测试（aiosqlite in-memory，无需 DB）
+uv run pytest tests/test_agents.py  # 单个文件
+uv run ruff check .         # lint
 ```
 
-빠른 전체 테스트가 필요하면 기본 설정을 바꾸지 않고 pytest-xdist를 임시로
-사용한다. 저사양/CI에서는 `-n 4`부터 시작하고, 고사양 로컬에서는 `-n 8`까지
-올려도 된다. `-n auto`는 worker가 과하게 늘어 오히려 느릴 수 있다.
+需要快速执行全量测试时，不修改默认配置，临时使用 pytest-xdist。
+低配置环境/CI 建议从 `-n 4` 开始，高配置本地环境可提高到 `-n 8`。
+`-n auto` 可能创建过多 worker，反而变慢。
 
 ```bash
 cd backend
@@ -325,235 +324,234 @@ uv run --with pytest-xdist pytest -q -n 4
 
 ```bash
 cd frontend
-pnpm build                  # 타입 체크 + 빌드
+pnpm build                  # 类型检查 + build
 pnpm lint                   # ESLint
-pnpm lint:design-system     # Moldy UI surface/radius/shadow/token 가드
+pnpm lint:design-system     # Moldy UI surface/radius/shadow/token guard
 ```
 
 ---
 
-## 아키텍처 패턴
+## 架构模式
 
 ### Backend: Router → Service → Model
 
 ```
-Router (routers/)      → HTTP 엔드포인트, 요청/응답 변환, 권한 가드
-Service (services/)    → 비즈니스 로직, DB 쿼리
+Router (routers/)      → HTTP endpoint、request/response 转换、权限 guard
+Service (services/)    → 业务逻辑、DB query
 Model (models/)        → SQLAlchemy ORM
-Schema (schemas/)      → Pydantic 입출력 스키마
+Schema (schemas/)      → Pydantic 输入/输出 schema
 ```
 
-- 모든 DB 접근은 async (`AsyncSession`)
-- 의존성 주입: `Depends(get_db)`, `Depends(get_current_user)`, `Depends(require_super_user)`, `Depends(verify_csrf)`
-- 인증: JWT(HS256) + HttpOnly Cookie(`moldy_at`, `moldy_rt`, `moldy_csrf`). `Authorization: Bearer` 헤더도 지원
-- 권한 모델: `is_super_user` boolean (RBAC 확장은 후속). 시스템 리소스(`is_system=True`, `user_id IS NULL`) 관리는 super_user 전용
+- 所有 DB 访问均为 async（`AsyncSession`）
+- 依赖注入：`Depends(get_db)`, `Depends(get_current_user)`, `Depends(require_super_user)`, `Depends(verify_csrf)`
+- 认证：JWT(HS256) + HttpOnly Cookie（`moldy_at`, `moldy_rt`, `moldy_csrf`）。也支持 `Authorization: Bearer` header
+- 权限模型：`is_super_user` boolean（RBAC 扩展留待后续）。系统资源（`is_system=True`, `user_id IS NULL`）仅允许 super_user 管理
 
 ### Backend: AI Runtime (agent_runtime/)
 
 ```
-executor.py                → compatibility facade (분리 모듈 re-export)
+executor.py                → compatibility facade（重新导出拆分后的模块）
 runtime_config.py          → AgentConfig + RuntimeComponents
-runtime_component_builder  → model/tools/skills/memory/subagents + create_deep_agent 준비
-agent_stream_runner        → stream/invoke 실행, hooks, Langfuse context
+runtime_component_builder  → model/tools/skills/memory/subagents + 准备 create_deep_agent
+agent_stream_runner        → 执行 stream/invoke、hooks、Langfuse context
 skill_executor             → execute_in_skill subprocess runner
 mcp_tool_loader            → MCP runtime tool loading
-model_factory              → provider별 LLM 인스턴스 (OpenAI/Anthropic/Google/OpenRouter/openai_compatible)
-tool_factory               → builtin/registry 도구 빌더 + shared HTTP client
-middleware_registry        → 22개 미들웨어 (deepagents auto-injected vs 명시 인스턴스)
-streaming                  → LangGraph 이벤트 → SSE + trace/artifact/usage capture
-checkpointer               → AsyncPostgresSaver (thread_id별 상태 영속화)
-credential_resolution      → LLM credential 우선순위 (직접 binding > 모델 기본 > provider 단일 매칭)
-trigger_executor           → 스케줄 트리거 (invoke 모드, ask_user/HiTL 비활성)
+model_factory              → 按 provider 创建 LLM 实例（OpenAI/Anthropic/Google/OpenRouter/openai_compatible）
+tool_factory               → builtin/registry 工具构建器 + shared HTTP client
+middleware_registry        → 22 个 middleware（deepagents auto-injected vs 显式实例）
+streaming                  → LangGraph event → SSE + trace/artifact/usage capture
+checkpointer               → AsyncPostgresSaver（按 thread_id 持久化状态）
+credential_resolution      → LLM credential 优先级（直接 binding > model 默认 > provider 单一匹配）
+trigger_executor           → 调度 trigger（invoke 模式，禁用 ask_user/HiTL）
 ```
 
-- 도구 타입: `builtin:*` (web_search, web_scraper, current_datetime), `registry`(Tool 모델의 definition_key 기반), `mcp`(AgentMcpToolLink)
-- Skill 시스템: 선택된 skill만 `/runtime/<thread_id>/.../skills/` 가상 경로에 노출한다. LLM은 `read_file`로 `SKILL.md`를 먼저 읽고 지시를 따른다.
-- Skill subprocess 실행: **`execute_in_skill` 도구**는 `skill_executor.py`에 있으며 Python 스크립트 allowlist, timeout, output dir, credential env injection, redaction 계약을 사용한다.
-- Generated file 규칙: user-visible 파일은 `/conversations/<thread_id>/...` 아래에 쓰게 유도하고 `conversation_artifacts`로 인덱싱한다.
+- 工具类型：`builtin:*`（web_search, web_scraper, current_datetime）、`registry`（基于 Tool model 的 definition_key）、`mcp`（AgentMcpToolLink）
+- Skill 系统：仅将选中的 skill 暴露到 `/runtime/<thread_id>/.../skills/` 虚拟路径。LLM 会先通过 `read_file` 读取 `SKILL.md` 并遵循其中指示。
+- Skill subprocess 执行：**`execute_in_skill` 工具**位于 `skill_executor.py`，采用 Python script allowlist、timeout、output dir、credential env injection、redaction 约定。
+- Generated file 规则：引导 user-visible 文件写入 `/conversations/<thread_id>/...` 下，并通过 `conversation_artifacts` 建立索引。
 
 ### Frontend: API Client → TanStack Query → Component
 
 ```
-lib/api/        → fetch 래퍼 (도메인별 파일)
-lib/hooks/      → useMutation, useQuery 래핑
-lib/stores/     → Jotai atoms (채팅 메시지, 사이드바 상태 등)
-lib/sse/        → EventSource 기반 SSE 스트리밍
-lib/types/      → Backend 스키마와 1:1 대응하는 TS 타입
+lib/api/        → fetch wrapper（按 domain 分文件）
+lib/hooks/      → 对 useMutation、useQuery 的封装
+lib/stores/     → Jotai atoms（chat message、sidebar 状态等）
+lib/sse/        → 基于 EventSource 的 SSE streaming
+lib/types/      → 与 Backend schema 1:1 对应的 TS type
 ```
 
-- 서버 상태(API 데이터) → TanStack Query
-- 클라이언트 상태(UI 로컬) → Jotai
-- SSE 스트리밍: 채팅 응답을 실시간으로 수신
+- Server state（API 数据）→ TanStack Query
+- Client state（UI 本地状态）→ Jotai
+- SSE streaming：实时接收 chat response
 
-### Next.js 16 주의사항
+### Next.js 16 注意事项
 
-> **이 프로젝트는 Next.js 16을 사용한다.** 기존 Next.js와 API/컨벤션이 다를 수 있다.
-> 코드 작성 전 반드시 `frontend/node_modules/next/dist/docs/`의 가이드를 확인할 것.
+> **本项目使用 Next.js 16。** API/约定可能与旧版 Next.js 不同。
+> 编写代码前必须查看 `frontend/node_modules/next/dist/docs/` 中的指南。
 
 ---
 
-## DB 스키마 (핵심 테이블)
+## DB schema（核心表）
 
-| 테이블 | 설명 |
+| 表 | 说明 |
 |--------|------|
-| `users` | 사용자 (hashed_password, is_active, is_super_user, login tracking, lockout) |
+| `users` | 用户（hashed_password, is_active, is_super_user, login tracking, lockout） |
 | `refresh_tokens` | JWT refresh token whitelist (rotation + replay detection) |
-| `agents` | AI 에이전트 (system_prompt, model_id, llm_credential_id, model_fallback_list) |
-| `agent_tools` | 에이전트-도구 연결 |
-| `agent_skills` | 에이전트-skill 연결 + `config`(credential binding override) |
-| `agent_mcp_tools` | 에이전트-MCP 도구 연결 |
+| `agents` | AI Agent（system_prompt, model_id, llm_credential_id, model_fallback_list） |
+| `agent_tools` | Agent-工具关联 |
+| `agent_skills` | Agent-skill 关联 + `config`（credential binding override） |
+| `agent_mcp_tools` | Agent-MCP 工具关联 |
 | `agent_subagents` | parent agent → child agent delegation |
-| `agent_triggers`, `agent_trigger_runs` | 스케줄 트리거와 실행 이력 |
-| `models` | LLM 모델 정의 (provider, model_id, default_credential_id) |
-| `tools` | 도구 (definition_key, parameters, credential_id, `is_system`) |
+| `agent_triggers`, `agent_trigger_runs` | 调度 trigger 与执行历史 |
+| `models` | LLM model 定义（provider, model_id, default_credential_id） |
+| `tools` | 工具（definition_key, parameters, credential_id, `is_system`） |
 | `skills` | Skill (kind=text|package, storage_path, content_hash, version, package_metadata) |
-| `mcp_servers` | MCP 서버 (transport, url/command, env_vars, headers, credential_id, `is_system`, health_status) |
-| `mcp_tools` | MCP 서버에서 발견된 도구 (input_schema, enabled, last_seen_at) |
-| `credentials` | 자격증명 (definition_key, data_encrypted, key_id, field_keys, `is_system`) |
-| `conversations` | 대화 세션 + active branch checkpoint |
-| `message_events`, `message_event_chunks` | SSE 이벤트 스트림, streaming resume, trace correlation |
-| `message_attachments`, `message_feedback` | 첨부/피드백 |
-| `conversation_artifacts`, `artifact_versions` | 생성 파일 artifact와 버전 |
-| `share_links` | 대화 공유 링크 (M30/M31) |
-| `token_usages` | 토큰 사용량 추적 |
-| `templates` | 에이전트 템플릿 |
-| `builder_sessions` | 대화형 에이전트 생성 세션 (구 agent_creation_sessions) |
+| `mcp_servers` | MCP server（transport, url/command, env_vars, headers, credential_id, `is_system`, health_status） |
+| `mcp_tools` | 从 MCP server 发现的工具（input_schema, enabled, last_seen_at） |
+| `credentials` | 凭据（definition_key, data_encrypted, key_id, field_keys, `is_system`） |
+| `conversations` | 对话 session + active branch checkpoint |
+| `message_events`, `message_event_chunks` | SSE event stream、streaming resume、trace correlation |
+| `message_attachments`, `message_feedback` | 附件/反馈 |
+| `conversation_artifacts`, `artifact_versions` | 生成文件 artifact 与版本 |
+| `share_links` | 对话共享链接（M30/M31） |
+| `token_usages` | token 用量追踪 |
+| `templates` | Agent 模板 |
+| `builder_sessions` | 对话式 Agent 创建 session（原 agent_creation_sessions） |
 | `marketplace_*` | marketplace item/version/ACL/installation/publication/binding |
 | `memory_*` | user/agent memory settings, records, proposals |
-| `agent_deployments`, `agent_api_*` | 외부 Agent API deployment/key/thread/run |
-| `audit_events`, `daily_spend_*`, `health_check_history` | 감사, 비용 집계, health history |
-| `system_llm_settings` | Builder/Assistant/Image role별 system model 설정 |
+| `agent_deployments`, `agent_api_*` | 外部 Agent API deployment/key/thread/run |
+| `audit_events`, `daily_spend_*`, `health_check_history` | 审计、费用汇总、health history |
+| `system_llm_settings` | 按 Builder/Assistant/Image role 设置 system model |
 
-마이그레이션: `backend/alembic/versions/` (Alembic). 최신 head는 `m77_side_chat_link`이다.
+migration：`backend/alembic/versions/`（Alembic）。最新 head 为 `m77_side_chat_link`。
 
-`is_system` 플래그가 있는 테이블 공통 제약: `CHECK ((is_system = false) OR (user_id IS NULL))`. 시스템 리소스는 user_id가 반드시 NULL.
+带有 `is_system` flag 的表共有约束：`CHECK ((is_system = false) OR (user_id IS NULL))`。系统资源的 user_id 必须为 NULL。
 
 ---
 
-## 환경 변수
+## 环境变量
 
-`backend/.env.example` 참조. 최소 동작에 필요한 키:
+参见 `backend/.env.example`。实现最小运行所需的 key：
 
-| 변수 | 필수 | 설명 |
+| 变量 | 必需 | 说明 |
 |------|------|------|
 | `DATABASE_URL` | O | PostgreSQL async URL |
-| `ENCRYPTION_KEYS` | O | Cipher V2 마스터 키 (HKDF info=`moldy-encryption-v1`). 콤마 구분 64-char hex, 첫 번째가 활성 키. 복수 키 회전 지원 |
-| `JWT_SECRET` | O | JWT HS256 서명 키 (ADR-016) |
-| LLM 키 (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` 등) | X (선택) | UI Credentials에서 등록 권장 (ADR-013). ENV에 있으면 dev에서 system credential로 bootstrap, production은 skip |
-| `E2E_SEED_USER_ENABLED`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, `E2E_USER_NAME` | X | 로컬 Playwright E2E용 더미 super_user seed. `APP_ENV=production`에서는 항상 skip |
-| `TAVILY_API_KEY` | X | Tavily hosted search / Deep Research 계획용 backend key. per-user credential로 넣지 않는다 |
-| 나머지 (Naver, Google 등) | X | 해당 도구 사용 시에만 필요 |
+| `ENCRYPTION_KEYS` | O | Cipher V2 master key（HKDF info=`moldy-encryption-v1`）。以逗号分隔的 64-char hex，第一个为 active key。支持多 key rotation |
+| `JWT_SECRET` | O | JWT HS256 signing key（ADR-016） |
+| LLM key（`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` 等） | X（可选） | 建议在 UI Credentials 中注册（ADR-013）。若 ENV 中存在，则 dev 环境 bootstrap 为 system credential，production 跳过 |
+| `E2E_SEED_USER_ENABLED`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, `E2E_USER_NAME` | X | 本地 Playwright E2E 使用的 dummy super_user seed。在 `APP_ENV=production` 中始终跳过 |
+| `TAVILY_API_KEY` | X | Tavily hosted search / Deep Research 计划使用的 backend key。不要作为 per-user credential 配置 |
+| 其余（Google 等） | X | 仅在使用相应工具时需要 |
 
-ENV에서 자동으로 생성되는 `is_system=True` credentials는 production 환경에서는 자동 생성을 건너뛰고, super_user가 직접 관리한다.
-
----
-
-## 자격증명 시스템 (ADR-007/009/013)
-
-- **Cipher V2** (`app/security/cipher.py`): HKDF-SHA256 → AES-256-GCM. Blob 구조 `[ver 1B | salt 32B | tag 16B | ciphertext]`, Base64 인코딩
-- **Multi-key rotation**: `credentials.key_id`로 활성 키 식별, 복호화는 모든 candidate 키 시도. APScheduler가 주1회 `rotate_credentials_to_active_key` 실행
-- **field_keys 캐시** (ADR-007): list API에서 N+1 복호화 회피. 키 이름만 JSON 컬럼에 저장
-- **definition_key 등록**: `app/credentials/definitions/__init__.py`에서 22개 등록 (LLM, Google/Naver, HTTP, MCP secret/OAuth2, SRT/KTX/Forest Trip/KIPRIS/DART/ODsay/Coupang/K-Skill Proxy 등)
-- **LLM credential 우선순위** (ADR-013): ENV fallback → system credentials → user credentials
-- **외부 secret resolver** (`external_secrets/`): `__external__:<provider>:<ref>` 마커로 Vault/ENV 동적 해석 (feature flag)
-- **시스템 credential 분리** (M36, M39): `is_system=True && user_id IS NULL`. 일반 사용자는 `/api/credentials`로 보이지 않고 super_user 전용 system credential 화면/API로 관리
+从 ENV 自动生成的 `is_system=True` credentials 在 production 环境中跳过自动创建，由 super_user 直接管理。
 
 ---
 
-## 빌트인 도구 시스템
+## 凭据系统（ADR-007/009/013）
 
-시스템 도구(`is_system=True`)는 서버 시작 시 자동 시드된다.
+- **Cipher V2**（`app/security/cipher.py`）：HKDF-SHA256 → AES-256-GCM。Blob 结构 `[ver 1B | salt 32B | tag 16B | ciphertext]`，Base64 编码
+- **Multi-key rotation**：通过 `credentials.key_id` 识别 active key，解密时尝试所有 candidate key。APScheduler 每周执行一次 `rotate_credentials_to_active_key`
+- **field_keys 缓存**（ADR-007）：避免 list API 中的 N+1 解密。仅将 key 名存入 JSON column
+- **definition_key 注册**：在 `app/credentials/definitions/__init__.py` 中注册 16 种（LLM、Google、HTTP、MCP secret/OAuth2）
+- **个人模型配置**：生成执行、测试设计、裁判分析三个角色独立读取当前用户的已绑定凭据；角色不可用明确报错，不使用系统凭据或 ENV 偷偷替换
+- **外部 secret resolver**（`external_secrets/`）：通过 `__external__:<provider>:<ref>` marker 动态解析 Vault/ENV（feature flag）
+- **系统 credential 分离**（M36, M39）：`is_system=True && user_id IS NULL`。普通用户无法通过 `/api/credentials` 查看，使用仅限 super_user 的 system credential 页面/API 管理
 
-| 도구 | 타입 | 필요 키 |
+---
+
+## 内置工具系统
+
+系统工具（`is_system=True`）在 server 启动时自动 seed。
+
+| 工具 | 类型 | 所需 key |
 |------|------|---------|
-| Web Search (DuckDuckGo) | builtin:web_search | 없음 |
-| Web Scraper | builtin:web_scraper | 없음 |
-| Current DateTime | builtin:current_datetime | 없음 (Seoul TZ) |
-| Naver 검색 (5종) | registry | naver_search credential |
-| Google 검색 (3종) | registry | google_search credential |
+| Web Search (DuckDuckGo) | builtin:web_search | 无 |
+| Web Scraper | builtin:web_scraper | 无 |
+| Current DateTime | builtin:current_datetime | 无（Shanghai TZ） |
+| Google 搜索（3 种） | registry | google_search credential |
 | Google Chat Webhook | registry | URL credential |
-| Gmail (2종) | registry | google_workspace_oauth2 |
-| Calendar (3종) | registry | google_workspace_oauth2 |
+| Gmail（2 种） | registry | google_workspace_oauth2 |
+| Calendar（3 种） | registry | google_workspace_oauth2 |
 
-서버 키가 설정되지 않은 도구는 에이전트별 credential을 개별 제공할 수 있다. 도구 카탈로그(`ToolDefinition`)는 **메모리 기반 registry**(`app/tools/registry.py`)에서 운영자가 코드로 정의한다.
+未设置 server key 的工具可为每个 Agent 单独提供 credential。工具目录（`ToolDefinition`）由运营者通过代码在**基于内存的 registry**（`app/tools/registry.py`）中定义。
 
 ---
 
-## 개발 컨벤션
+## 开发约定
 
 ### Git
 
-- 커밋 메시지: `<type>(<scope>): <subject>` (영문, 명령형)
-- 브랜치: `feature/{task-name}`, `fix/{issue}`, `refactor/{target}`
-- main 직접 커밋 금지, feature 브랜치에서 작업 후 머지
-- PR 생성 시 GitHub connector가 `Resource not accessible by integration` / 403을
-  반환하면 같은 connector 호출을 반복하지 않는다. 이 repo에서는 connector GitHub
-  App 권한이 부족한 경우가 있으며, `git push`와 `gh pr create`는 사용자 `gh`
-  인증 권한으로 정상 동작할 수 있다. 이 경우 `gh pr create --draft --base main
-  --head <branch>` fallback을 사용하고 최종 보고에 fallback 사용 사실을 남긴다
+- commit message：`<type>(<scope>): <subject>`（英文、祈使式）
+- branch：`feature/{task-name}`, `fix/{issue}`, `refactor/{target}`
+- 禁止直接 commit 到 main；在 feature branch 工作后 merge
+- 创建 PR 时，如果 GitHub connector 返回 `Resource not accessible by integration` / 403，
+  不要重复调用相同 connector。本 repo 中 connector GitHub
+  App 可能权限不足，而 `git push` 与 `gh pr create` 可使用用户的 `gh`
+  认证权限正常工作。此时使用 `gh pr create --draft --base main
+  --head <branch>` fallback，并在最终报告中注明使用了 fallback
 
 ### Backend
 
-- 타입 힌트 필수 (함수 시그니처, 반환 타입)
-- async/await 패턴, `select()` 구문
-- 린터: Ruff `ruff>=0.16.5,<0.17.0` (lock: 0.16.5, line-length=100, target=py312)
-- 테스트: pytest + aiosqlite in-memory (PostgreSQL 불필요)
-- 새 테이블 추가 시 Alembic 마이그레이션 필수
-- Ownership 검증: enumeration oracle 방지 — 없음(404)과 권한 없음(403) 응답을 외부로 동일하게 통일
+- 必须提供 type hint（函数 signature、return type）
+- async/await pattern、`select()` 语句
+- linter：Ruff `ruff>=0.16.5,<0.17.0`（lock: 0.16.5, line-length=100, target=py312）
+- 测试：pytest + aiosqlite in-memory（无需 PostgreSQL）
+- 新增 table 时必须提供 Alembic migration
+- Ownership 验证：防止 enumeration oracle——对外统一“无此资源”（404）与“无权限”（403）的响应
 
 ### Frontend
 
 - TypeScript strict mode
-- React 19 Server Components 우선, `'use client'` 최소화
-- UI: shadcn/ui 컴포넌트 우선 사용
-- 사용자에게 보이는 모든 정적 텍스트는 `next-intl` 메시지(`frontend/messages/*.json`)를 통해 렌더링하고 TS/TSX에 직접 하드코딩하지 않는다
-- Moldy의 기본 제품 언어는 한국어이므로 새 copy는 `frontend/messages/ko.json`에 먼저 자연스러운 한국어로 추가하고, 같은 key path를 `frontend/messages/en.json`에 적절한 영어로 반드시 함께 추가한다
-- UI copy를 추가/수정한 뒤에는 `cd frontend && pnpm lint:i18n`을 실행한다. 영어/ASCII 정적 텍스트까지 점검해야 하는 경우 `pnpm lint:i18n:strict`가 있으나, 기존 Agent Prism/코드 조각 오탐이 남아 있으므로 실패 시 실제 사용자 노출 문구는 i18n으로 옮기고 가드는 좁게 조정한다
-- any 금지 → unknown + 타입 가드
-- barrel export(index.ts) 지양
-- Moldy 디자인 시스템 가드: 새 UI 작업 후 `cd frontend && pnpm lint:design-system` 실행
-- 제품 화면에서 `rounded-xl/2xl/3xl`, `shadow-sm/md/lg/xl/2xl`, `shadow-[...]`, raw hex utility(`bg-[#...]` 등), `text-[...]`, `outline-none`, `transition-all` 직접 사용 금지. `moldy-card`, `moldy-panel`, `moldy-popover`, `moldy-skeleton-card`, `moldy-status-*`, `moldy-muted-panel` 등 공용 class/token으로 이동
-- 임의 `style={...}`는 동적 layout/library API일 때만 허용하고, `frontend/scripts/check-design-system.mjs` allowlist에 이유와 좁은 context regex를 함께 남긴다
-- 현재 허용된 inline style 예외는 tree depth indentation, syntax highlighter theme, usage bar width, resource grid columns, Agent Prism trace/timeline layout, phase progress ratio뿐이다
+- 优先使用 React 19 Server Components，尽量减少 `'use client'`
+- UI：优先使用 shadcn/ui component
+- 所有用户可见的静态文本都必须通过 `next-intl` message（`frontend/messages/*.json`）渲染，不得直接 hardcode 在 TS/TSX 中
+- Moldy 的默认产品语言为简体中文，因此新 copy 应先自然地添加到现有 `frontend/messages/zh-CN.json`，并必须同步将相同 key path 添加到 `frontend/messages/en.json` 的恰当英文版本
+- 添加/修改 UI copy 后运行 `cd frontend && pnpm lint:i18n`。如需连英文/ASCII 静态文本也一并检查，可使用 `pnpm lint:i18n:strict`；但现有 Agent Prism/代码片段仍有误报，因此失败时应将真正的用户可见文案迁移到 i18n，并将 guard 调整得更窄
+- 禁止 any → 使用 unknown + type guard
+- 尽量避免 barrel export（index.ts）
+- Moldy 设计系统 guard：新增 UI 工作后运行 `cd frontend && pnpm lint:design-system`
+- 产品页面中禁止直接使用 `rounded-xl/2xl/3xl`、`shadow-sm/md/lg/xl/2xl`、`shadow-[...]`、raw hex utility（`bg-[#...]` 等）、`text-[...]`、`outline-none`、`transition-all`。迁移到 `moldy-card`、`moldy-panel`、`moldy-popover`、`moldy-skeleton-card`、`moldy-status-*`、`moldy-muted-panel` 等公共 class/token
+- 任意 `style={...}` 仅在 dynamic layout/library API 时允许，并应在 `frontend/scripts/check-design-system.mjs` allowlist 中同时记录理由与狭窄的 context regex
+- 当前允许的 inline style 例外仅包括 tree depth indentation、syntax highlighter theme、usage bar width、resource grid columns、Agent Prism trace/timeline layout、phase progress ratio
 
 ---
 
-## ADR 인덱스
+## ADR 索引
 
-| ID | 제목 | 핵심 |
+| ID | 标题 | 核心 |
 |----|------|------|
-| ADR-001 | Deep Agent Engine | `create_deep_agent` 단일화, MCP는 `MultiServerMCPClient` |
+| ADR-001 | Deep Agent Engine | 统一使用 `create_deep_agent`，MCP 使用 `MultiServerMCPClient` |
 | ADR-002 | Checkpointer | LangGraph `AsyncPostgresSaver` |
-| ADR-003 | Skills Memory | skill 시스템 + memory 설계 |
-| ADR-004 | M4 Cleanup | 마이그레이션 정리 |
-| ADR-005 | Builder Assistant | 대화형 에이전트 생성 메타 에이전트 |
-| ADR-006 | Assistant UI Runtime | UI 실행 정책 |
-| ADR-007 | Credentials field_keys Cache | list API N+1 복호화 회피 |
-| ADR-008 | Connection Entity | MCP/credential 연결 모델 |
+| ADR-003 | Skills Memory | skill 系统 + memory 设计 |
+| ADR-004 | M4 Cleanup | 整理 migration |
+| ADR-005 | Builder Assistant | 用于对话式创建 Agent 的 meta Agent |
+| ADR-006 | Assistant UI Runtime | UI 执行策略 |
+| ADR-007 | Credentials field_keys Cache | 避免 list API N+1 解密 |
+| ADR-008 | Connection Entity | MCP/credential 关联模型 |
 | ADR-009 | Greenfield Credentials | Cipher V2, multi-key rotation |
-| ADR-010 | UI Tokens / Dialog Shell | 디자인 토큰 |
-| ADR-011 | SSE Stream Resume | 스트리밍 재개 |
-| ADR-012 | HiTL Middleware Migration | deepagents 자동 주입 회피, 명시 인스턴스 추가 |
-| ADR-013 | Service LLM Key from Credentials | ENV > system > user 우선순위 |
-| ADR-014 | Chat Model Factory Strategy | GPT-5 / Anthropic quirk 분리 |
+| ADR-010 | UI Tokens / Dialog Shell | 设计 token |
+| ADR-011 | SSE Stream Resume | 恢复 streaming |
+| ADR-012 | HiTL Middleware Migration | 避免 deepagents 自动注入，新增显式实例 |
+| ADR-013 | Service LLM Key from Credentials | ENV > system > user 优先级 |
+| ADR-014 | Chat Model Factory Strategy | 分离 GPT-5 / Anthropic quirk |
 | ADR-016 | Multi-user Auth | JWT + HttpOnly + refresh rotation + super_user |
-| ADR-017 | Marketplace Resources | Skill/MCP/Agent 공유 레이어, Phase 1 Skill |
-| ADR-018 | Relative Storage Path | worktree 간 data 경로 안정화 |
-| ADR-019 | System LLM Settings | 역할별 모델 선택 + base_url 주입 |
+| ADR-017 | Marketplace Resources | Skill/MCP/Agent 共享层，Phase 1 Skill |
+| ADR-018 | Relative Storage Path | 稳定 worktree 之间的 data 路径 |
+| ADR-019 | System LLM Settings | 按 role 选择 model + 注入 base_url |
 | ADR-020 | Chat Run AG-UI Adapter | LangGraph v3 run/stream protocol adapter |
-| ADR-021 | Value-Based Trace Redaction | 값 기반 trace secret 마스킹 |
+| ADR-021 | Value-Based Trace Redaction | 基于值的 trace secret masking |
 | ADR-022 | Runtime Policy Lifecycle | versioned agent policy, immutable conversation snapshot, run provenance |
 
-각 ADR 본문은 `docs/design-docs/`에 있다.
+各 ADR 正文位于 `docs/design-docs/`。
 
 ---
 
-## 현재 상태 요약
+## 当前状态摘要
 
-- **백엔드**: Alembic 소스 head `m77_side_chat_link` (환경별 마이그레이션 필요). 멀티유저 인증, marketplace skill publish/install, System LLM settings, schedule productization, Agent API, memory controls, audit events, generated artifacts, credential OAuth states, conversation runs, agent blueprints, chat navigation indexes, subagent runtime, executor split, skill usage and feedback, conversation runtime policy snapshot 반영.
-- **프론트엔드**: 멀티유저 로그인/회원가입 UI, MCP 서버 관리, Skill/Credential/Marketplace 관리, 채팅 SSE 스트리밍, artifact preview/right rail/library, memory/settings, Agent API settings, 트리거 스케줄링, Builder 마법사.
-- **구현됨**: MCP/Agent marketplace 게시·설치 및 공용 wizard, assistant-ui 0.15.18, 입력 큐·실행 지표·MCP Apps·고정 요약(M73~M76), Pyright basic-mode 오류 0 및 차단 CI. 현재 run에 직접 주입하는 Steer는 미구현.
-- **다음 단계**: E2E 범위·실행 결과는 `docs/e2e-coverage.md`에서 관리. 외부 OAuth 및
-  복잡한 marketplace 설치 조합, 접근성·키보드·성능 검증은 후속 범위.
-- 자세한 태스크 현황은 `TASKS.md` 참조
-- 기능 명세는 `docs/PRD.md` + `docs/PRD-screens.md` 참조
+- **Backend**：Alembic source head 为 `m77_side_chat_link`（各环境需要 migration）。已包含多用户认证、marketplace skill publish/install、System LLM settings、schedule productization、Agent API、memory controls、audit events、generated artifacts、credential OAuth states、conversation runs、agent blueprints、chat navigation indexes、subagent runtime、executor split、skill usage and feedback、conversation runtime policy snapshot。
+- **Frontend**：多用户 login/signup UI、MCP server 管理、Skill/Credential/Marketplace 管理、chat SSE streaming、artifact preview/right rail/library、memory/settings、Agent API settings、trigger scheduling、Builder wizard。
+- **已实现**：MCP/Agent marketplace 发布·安装及公共 wizard、assistant-ui 0.15.18、输入 queue·执行指标·MCP Apps·固定摘要（M73~M76）、Pyright basic-mode 错误 0 和阻断 CI。尚未实现直接注入当前 run 的 Steer。
+- **下一步**：E2E 覆盖范围·执行结果在 `docs/e2e-coverage.md` 中管理。外部 OAuth 与
+  复杂 marketplace 安装组合、无障碍·键盘·性能验证留待后续。
+- 详细 task 状态参见 `TASKS.md`
+- 功能规格参见 `docs/PRD.md` + `docs/PRD-screens.md`

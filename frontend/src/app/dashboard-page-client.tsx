@@ -5,8 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   MessageSquareIcon,
-  LayoutTemplateIcon,
-  PenLineIcon,
   SearchIcon,
   StarIcon,
   ArrowUpDownIcon,
@@ -147,7 +145,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="font-semibold">{t('aiSetup.title')}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {user?.is_super_user ? t('aiSetup.adminDescription') : t('aiSetup.userDescription')}
+                    {t('aiSetup.userDescription')}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -166,22 +164,20 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            {user?.is_super_user ? (
-              <Button
-                render={<Link href="/settings/system-llm" />}
-                className="w-full sm:w-auto"
-                size="sm"
-              >
-                {t('aiSetup.action')}
-                <ChevronRightIcon className="size-4" />
-              </Button>
-            ) : null}
+            <Button
+              render={<Link href="/settings/system-llm" />}
+              className="w-full sm:w-auto"
+              size="sm"
+            >
+              {t('aiSetup.action')}
+              <ChevronRightIcon className="size-4" />
+            </Button>
           </CardContent>
         </Card>
       ) : null}
 
       {/* Quick actions - 1.4fr + 1fr asymmetric grid */}
-      <div className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid shrink-0 grid-cols-1 gap-4">
         {/* Primary creation path */}
         <Link href="/agents/new" className="moldy-card-link group">
           <Card className={cn('moldy-dashboard-action-primary h-full min-h-40 gap-3 p-1.5 ring-0')}>
@@ -207,24 +203,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </Link>
-
-        {/* Secondary stack: manual / template */}
-        <div className="grid grid-rows-2 gap-4">
-          <SecondaryActionCard
-            href="/agents/new/manual"
-            icon={<PenLineIcon className="size-5" />}
-            label={t('quickAction.manual.label')}
-            description={t('quickAction.manual.description')}
-            tone="violet"
-          />
-          <SecondaryActionCard
-            href="/agents/new/template"
-            icon={<LayoutTemplateIcon className="size-5" />}
-            label={t('quickAction.template.label')}
-            description={t('quickAction.template.description')}
-            tone="sky"
-          />
-        </div>
       </div>
 
       {/* Keep the agent card grid scrollable without clipping card borders. */}
@@ -345,51 +323,5 @@ export default function DashboardPage() {
         onOpenChange={(open) => !open && setPublishAgent(null)}
       />
     </div>
-  )
-}
-
-type SecondaryTone = 'violet' | 'sky'
-
-const SECONDARY_TONE: Record<SecondaryTone, { iconBg: string }> = {
-  violet: {
-    iconBg: 'moldy-status-accent',
-  },
-  sky: {
-    iconBg: 'moldy-status-info',
-  },
-}
-
-interface SecondaryActionCardProps {
-  href: string
-  icon: React.ReactNode
-  label: string
-  description: string
-  tone: SecondaryTone
-}
-
-function SecondaryActionCard({ href, icon, label, description, tone }: SecondaryActionCardProps) {
-  const { iconBg } = SECONDARY_TONE[tone]
-  return (
-    <Link href={href} className="moldy-card-link group">
-      <Card className={cn('moldy-dashboard-action h-full gap-0 py-0')}>
-        <CardContent className="flex h-full items-center gap-3 p-4">
-          <div
-            className={cn(
-              'moldy-dashboard-action-icon flex size-10 shrink-0 items-center justify-center',
-              iconBg,
-            )}
-          >
-            {icon}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">{label}</p>
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{description}</p>
-          </div>
-          <span className="moldy-dashboard-arrow">
-            <ChevronRightIcon className="size-3.5" />
-          </span>
-        </CardContent>
-      </Card>
-    </Link>
   )
 }

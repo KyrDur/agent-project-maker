@@ -68,10 +68,10 @@ from app.services.conversation_stream_service import resolve_agent_context
 StartConversationRun = Callable[..., Awaitable[Any]]
 AgentStreamExecutor = Callable[..., Any]
 
-# M8-2 — 인터럽트 SSE 이벤트는 스트림 도중 즉시 클라이언트에 flush되지만,
-# 부모 run의 "interrupted" 상태 커밋은 워커 finalize 단계다. 카드가 보이자마자
-# 승인하면 전이 전에 resume이 도착할 수 있어, 활성 run이 전이를 마칠 때까지
-# 짧게 기다린다 (활성 run이 아예 없으면 진짜 not-found — 즉시 포기).
+# M8-2 — interrupt SSE event 会在 stream 过程中立即 flush 给 client，
+# 但 parent run 的 "interrupted" 状态 commit 位于 worker finalize 阶段。卡片一出现就
+# approve 时，resume 可能在状态切换前到达，因此会短暂等待 active run
+# 完成切换（若 active run 根本不存在，则是真正的 not-found — 立即放弃）。
 _RESUME_INTERRUPT_WAIT_TIMEOUT_S = 2.0
 _RESUME_INTERRUPT_WAIT_INTERVAL_S = 0.05
 
@@ -98,7 +98,7 @@ async def _wait_for_interrupted_parent_run(
             db, conversation_id=conversation_id, user_id=user_id
         )
         if active is None or time.monotonic() >= deadline:
-            # 전이 직후 창일 수 있으니 마지막으로 한 번 더 조회하고 포기한다.
+            # 可能正处于切换后的瞬间窗口，因此最后再查询一次后放弃。
             return await conversation_run_service.get_latest_interrupted_run(
                 db, conversation_id=conversation_id, user_id=user_id
             )
@@ -348,8 +348,8 @@ async def _handle_run_start_command(
             attachment_ids=attachment_ids,
         )
         if cfg.runtime_profile == "skill_builder" and cfg.draft_workspace_path:
-            # 빌더 챗 (AD-2/§6-3): 이번 턴 첨부를 드래프트 워크스페이스
-            # ``inputs/``로 **복사**한다 — uploads 마운트 금지.
+            # Builder Chat (AD-2/§6-3)：将本 turn 的附件复制到 Draft Workspace
+            # ``inputs/`` 中 — **复制**，禁止 uploads mount。
             from app.services import skill_draft_workspace
 
             await skill_draft_workspace.copy_conversation_attachments_to_inputs(
@@ -460,9 +460,9 @@ async def _handle_input_respond_command(
             db, conversation_id=conversation.id, user_id=user.id
         )
         if parent_run is not None:
-            # 워커 전이는 별도 세션 커밋이라, 대기 초반에 identity map에 적재된
-            # 인스턴스는 status/interrupt_id가 stale일 수 있다(R2) — PK는 정확하나
-            # 이후 필드를 읽는 코드가 오동작하지 않게 새로고침한다.
+            # worker 状态切换由独立 Session commit，因此等待初期载入 identity map 的
+            # 实例其 status/interrupt_id 可能 stale (R2) — PK 正确，但
+            # 为避免后续读取字段的代码误动作，需要 refresh。
             await db.refresh(parent_run)
     if parent_run is None:
         return command_error(
@@ -479,9 +479,9 @@ async def _handle_input_respond_command(
             code=validation_error.code,
             message=validation_error.message,
         )
-    # AD-4 — ``scope:"session"`` 동의를 세션에 기록하고 decision에서 비표준
-    # 키를 제거한다. **resolve_agent_context 이전**이어야 이번 resume의 에이전트
-    # 재빌드부터 동의가 즉시 효력을 갖는다 (모든 resume은 재빌드).
+    # AD-4 — 将 ``scope:"session"`` consent 记录到 Session，并在 decision 中使用非标准
+    # 删除该键。必须在 **resolve_agent_context 之前**，这样本次 resume 的 Agent
+    # 从重新构建开始，同意即可立即生效（所有 resume 都会重新构建）。
     consented_tools = await apply_session_consent_decisions(
         db,
         conversation_id=conversation.id,

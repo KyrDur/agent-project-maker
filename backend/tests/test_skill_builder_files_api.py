@@ -1,7 +1,7 @@
-"""드래프트 파일 조회 API (M7 — 레일 소스 뷰).
+"""草稿文件查询 API (M7 — 轨道源视图)。
 
-목록/내용/소유권 404/traversal 차단/inputs·바이너리 제외 + brief의
-credential_requirement_count 요약.
+验证列表/内容/所有权 404/traversal 阻断/排除 inputs·二进制 + brief 的
+credential_requirement_count 摘要。
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ _SKILL_MD = (
     "Use when summarizing meeting notes.\n"
 )
 
-_MOLDY_YAML = "credential_requirements:\n  - key: naver_search\n    kind: api_key\n"
+_MOLDY_YAML = "credential_requirements:\n  - key: google_search\n    kind: api_key\n"
 
 
 async def _make_session(
@@ -53,8 +53,8 @@ async def _make_session(
     (root / "SKILL.md").write_text(_SKILL_MD, encoding="utf-8")
     (root / "references" / "guide.md").write_text("guide body\n", encoding="utf-8")
     (root / "agents" / "moldy.yaml").write_text(_MOLDY_YAML, encoding="utf-8")
-    (root / "inputs" / "sample.csv").write_text("a,b\n", encoding="utf-8")  # 제외 대상
-    (root / "logo.png").write_bytes(b"\x89PNG\x00binary")  # 바이너리 skip
+    (root / "inputs" / "sample.csv").write_text("a,b\n", encoding="utf-8")  # 排除对象
+    (root / "logo.png").write_bytes(b"\x89PNG\x00binary")  # 二进制 skip
     session.draft_workspace_path = path
     await db.commit()
     return session

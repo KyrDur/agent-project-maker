@@ -1,4 +1,4 @@
-"""Assistant v2 schemas — 에이전트 설정 수정 도우미 메시지/이벤트."""
+"""Assistant v2 schemas — Agent 配置修改助手的消息/事件。"""
 
 from __future__ import annotations
 
@@ -11,19 +11,19 @@ from app.agent_runtime.builder_i18n import BuilderLocale
 from app.schemas.conversation import Decision
 
 # ---------------------------------------------------------------------------
-# Assistant 요청/응답
+# Assistant 请求/响应
 # ---------------------------------------------------------------------------
 
 
 class AssistantMessageRequest(BaseModel):
-    """POST /api/agents/{agent_id}/assistant/message — 메시지 요청."""
+    """POST /api/agents/{agent_id}/assistant/message — 消息请求。"""
 
     locale: BuilderLocale | None = None
     content: str = Field(..., min_length=1, max_length=4000)
     session_id: str | None = Field(
         default=None,
-        description="클라이언트가 생성한 세션 ID (crypto.randomUUID). "
-        "같은 session_id는 같은 대화를 유지, 없으면 agent_id 기반 기본값 사용.",
+        description="客户端生成的会话 ID（crypto.randomUUID）。 "
+        "相同 session_id 保持同一对话；没有时使用基于 agent_id 的默认值。",
     )
 
 
@@ -36,7 +36,7 @@ class AssistantResumeRequest(BaseModel):
 
 
 class AssistantMessageResponse(BaseModel):
-    """Assistant 메시지 응답 (SSE message_end 이벤트의 최종 데이터)."""
+    """Assistant 消息响应（SSE message_end 事件的最终数据）。"""
 
     role: str = "assistant"
     content: str
@@ -45,7 +45,7 @@ class AssistantMessageResponse(BaseModel):
 
 
 class AssistantToolCallResult(BaseModel):
-    """Assistant가 실행한 개별 도구 호출 결과 요약."""
+    """Assistant 执行的单个工具调用结果摘要。"""
 
     tool_name: str
     success: bool = True
@@ -53,12 +53,12 @@ class AssistantToolCallResult(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Assistant 도구 입출력 스키마
+# Assistant 工具输入/输出 schema
 # ---------------------------------------------------------------------------
 
 
 class AgentConfigSnapshot(BaseModel):
-    """get_agent_config 도구 반환값 — 에이전트 현재 설정 스냅샷."""
+    """get_agent_config 工具返回值 — Agent 当前配置快照。"""
 
     agent_id: uuid.UUID
     name: str
@@ -72,7 +72,7 @@ class AgentConfigSnapshot(BaseModel):
 
 
 class AgentToolInfo(BaseModel):
-    """에이전트에 연결된 도구 요약 정보."""
+    """与 Agent 连接的工具摘要信息。"""
 
     name: str
     description: str | None = None
@@ -81,7 +81,7 @@ class AgentToolInfo(BaseModel):
 
 
 class AgentMiddlewareInfo(BaseModel):
-    """에이전트에 연결된 미들웨어 요약 정보."""
+    """与 Agent 连接的中间件摘要信息。"""
 
     type: str
     display_name: str = ""
@@ -89,19 +89,19 @@ class AgentMiddlewareInfo(BaseModel):
 
 
 class AgentSkillInfo(BaseModel):
-    """에이전트에 연결된 스킬 요약 정보."""
+    """与 Agent 连接的 Skill 摘要信息。"""
 
     name: str
     description: str | None = None
 
 
 # ---------------------------------------------------------------------------
-# 도구 카탈로그 조회 결과
+# 工具 catalog 查询结果
 # ---------------------------------------------------------------------------
 
 
 class AvailableToolItem(BaseModel):
-    """list_available_tools 도구 반환값의 개별 항목."""
+    """list_available_tools 工具返回值中的单个条目。"""
 
     name: str
     description: str | None = None
@@ -110,7 +110,7 @@ class AvailableToolItem(BaseModel):
 
 
 class AvailableMiddlewareItem(BaseModel):
-    """list_available_middlewares 도구 반환값의 개별 항목."""
+    """list_available_middlewares 工具返回值中的单个条目。"""
 
     name: str
     display_name: str
@@ -120,7 +120,7 @@ class AvailableMiddlewareItem(BaseModel):
 
 
 class AvailableModelItem(BaseModel):
-    """list_available_models 도구 반환값의 개별 항목."""
+    """list_available_models 工具返回值中的单个条目。"""
 
     id: uuid.UUID
     display_name: str
@@ -129,68 +129,68 @@ class AvailableModelItem(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 리소스 추가/제거 도구 입력
+# 资源添加/删除工具输入
 # ---------------------------------------------------------------------------
 
 
 class AddResourceInput(BaseModel):
-    """add_tool_to_agent / add_middleware_to_agent 등의 입력."""
+    """add_tool_to_agent / add_middleware_to_agent 等的输入。"""
 
     names: list[str] = Field(..., min_length=1)
 
 
 class RemoveResourceInput(BaseModel):
-    """remove_tool_from_agent / remove_middleware_from_agent 등의 입력."""
+    """remove_tool_from_agent / remove_middleware_from_agent 等的输入。"""
 
     names: list[str] = Field(..., min_length=1)
 
 
 # ---------------------------------------------------------------------------
-# 시스템 프롬프트 수정 도구 입력
+# 系统 prompt 修改工具输入
 # ---------------------------------------------------------------------------
 
 
 class EditSystemPromptInput(BaseModel):
-    """edit_system_prompt 도구 입력."""
+    """edit_system_prompt 工具输入。"""
 
     old_string: str = Field(..., min_length=1)
-    new_string: str  # 빈 문자열 = 삭제
+    new_string: str  # 空字符串 = 删除
     replace_all: bool = False
 
 
 class UpdateSystemPromptInput(BaseModel):
-    """update_system_prompt 도구 입력."""
+    """update_system_prompt 工具输入。"""
 
     new_system_prompt: str = Field(..., min_length=1)
 
 
 class SearchSystemPromptInput(BaseModel):
-    """search_system_prompt 도구 입력."""
+    """search_system_prompt 工具输入。"""
 
     keyword: str = Field(..., min_length=1)
 
 
 class SearchSystemPromptResult(BaseModel):
-    """search_system_prompt 도구 출력."""
+    """search_system_prompt 工具输出。"""
 
     found: bool
     matches: list[PromptSearchMatch] = Field(default_factory=list)
 
 
 class PromptSearchMatch(BaseModel):
-    """프롬프트 내 키워드 매치 결과."""
+    """prompt 中的关键词匹配结果。"""
 
-    text: str  # 매치된 텍스트 (전후 컨텍스트 포함)
+    text: str  # 匹配到的文本（包含前后 context）
     line_number: int = 0
 
 
 # ---------------------------------------------------------------------------
-# 모델 설정 도구
+# 模型配置工具
 # ---------------------------------------------------------------------------
 
 
 class UpdateModelConfigInput(BaseModel):
-    """update_model_config 도구 입력."""
+    """update_model_config 工具输入。"""
 
     model_name: str | None = None
     temperature: float | None = None
@@ -200,28 +200,28 @@ class UpdateModelConfigInput(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 크론 스케줄 도구
+# cron schedule 工具
 # ---------------------------------------------------------------------------
 
 
 class CronScheduleInput(BaseModel):
-    """create_cron_schedule 도구 입력."""
+    """create_cron_schedule 工具输入。"""
 
     schedule_type: str = Field(..., pattern="^(recurring|one_time)$")
-    cron_expression: str | None = None  # recurring일 때 필수
-    scheduled_at: str | None = None  # one_time일 때 필수 (ISO 8601)
-    timezone: str = "Asia/Seoul"
+    cron_expression: str | None = None  # recurring 时必填
+    scheduled_at: str | None = None  # one_time 时必填（ISO 8601）
+    timezone: str = "Asia/Shanghai"
     message: str = Field(..., min_length=1)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
-# Clarifying Question 도구
+# Clarifying Question 工具
 # ---------------------------------------------------------------------------
 
 
 class AskClarifyingQuestionInput(BaseModel):
-    """ask_clarifying_question 도구 입력."""
+    """ask_clarifying_question 工具输入。"""
 
     question: str
     option_1: str
@@ -230,24 +230,24 @@ class AskClarifyingQuestionInput(BaseModel):
 
 
 class ClarifyingQuestionOutput(BaseModel):
-    """ask_clarifying_question 도구 출력 (프론트엔드에 표시)."""
+    """ask_clarifying_question 工具输出（显示在前端）。"""
 
     question: str
-    options: list[str]  # 3개 옵션 + "直接输入"
+    options: list[str]  # 3 个选项 + "直接输入"
 
 
 # ---------------------------------------------------------------------------
-# Secrets 확인 도구
+# Secrets 检查工具
 # ---------------------------------------------------------------------------
 
 
 class RequiredSecretsResult(BaseModel):
-    """get_agent_required_secrets 도구 출력."""
+    """get_agent_required_secrets 工具输出。"""
 
     required: list[str]
     registered: list[str]
     missing: list[str]
 
 
-# Pydantic v2 forward reference 해결
+# 解决 Pydantic v2 forward reference
 SearchSystemPromptResult.model_rebuild()
