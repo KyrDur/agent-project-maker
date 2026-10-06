@@ -299,11 +299,22 @@ async def build(category, owner, output, budget, rounds, instructions_only=False
             async with async_session() as db:
                 prior = await evaluation.get_run(db, aid, owner, uuid.UUID(state["run_id"]))
                 protocol = (prior.comparison_json or {}).get("execution_protocol") or {}
-                if (
+                needs_retry = (
                     prior.status == "failed"
                     and (prior.metrics_json or {}).get("errored")
                     and not protocol.get("judge_validation_retry_limit")
-                ):
+                )
+                minimum_calls = (
+                    len(prior.cases_snapshot_json or [])
+                    * (prior.comparison_json or {}).get("repetitions", 1)
+                    * 2
+                )
+                if needs_retry and budget.count + minimum_calls > budget.limit:
+                    receipt["protocol_retry_skipped"] = (
+                        "insufficient_budget_for_complete_protocol_rerun"
+                    )
+                    retry_id = None
+                elif needs_retry:
                     retry = await evaluation.create_run(
                         db,
                         aid,
