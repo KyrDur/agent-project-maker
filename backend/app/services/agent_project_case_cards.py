@@ -117,7 +117,7 @@ def case_cards(
                     "\n".join(
                         "个人已确认"
                         + {"requirements": "需求", "capabilities": "能力方案"}.get(
-                            d.get("stage"), "决策"
+                            str(d.get("stage")), "决策"
                         )
                         + f"：{d.get('choice')}；理由原文：{d.get('reason')}。"
                         for d in decisions or []

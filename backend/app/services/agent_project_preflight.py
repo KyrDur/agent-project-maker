@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError, ValidationError
+
 from app.schemas.agent_project import EvalSetWrite, EvalSpec
 from app.services.agent_project_executor import SnapshotExecutionUnavailable
 from app.services.agent_project_mock_tools import mock_tools
@@ -39,6 +42,31 @@ def preflight_case(config: dict[str, Any], case: dict[str, Any]) -> dict[str, An
     from app.services.agent_project_evaluation import score_case
 
     definitions = tool_definitions(config)
+    validators = {}
+    for name, definition in definitions.items():
+        schema = definition.get("input_schema")
+        if schema is None:
+            schema = {}
+
+        def local_references(value: Any) -> None:
+            if isinstance(value, dict):
+                if any(
+                    key in value and not str(value[key]).startswith("#")
+                    for key in ("$ref", "$dynamicRef")
+                ):
+                    raise ValueError("Tool schemas must not resolve external resources")
+                for child in value.values():
+                    local_references(child)
+            elif isinstance(value, list):
+                for child in value:
+                    local_references(child)
+
+        local_references(schema)
+        try:
+            Draft202012Validator.check_schema(schema)
+            validators[name] = Draft202012Validator(schema)
+        except SchemaError as exc:
+            raise ValueError("Invalid frozen tool parameter schema") from exc
     mocks = case.get("mock_tool_data") or {}
     if set(definitions) != set(mocks):
         raise ValueError("Every enabled capability needs a mock; undeclared tools are forbidden")
@@ -84,8 +112,9 @@ def preflight_case(config: dict[str, Any], case: dict[str, Any]) -> dict[str, An
     by_name = {t.name: t for t in tools}
     try:
         for call in case.get("reference_trace", []):
+            validators[call["name"]].validate(call.get("arguments") or {})
             by_name[call["name"]].invoke(call.get("arguments") or {})
-    except (KeyError, ValueError, SnapshotExecutionUnavailable) as exc:
+    except (KeyError, ValueError, ValidationError, SnapshotExecutionUnavailable) as exc:
         raise ValueError("Reference path cannot execute in the frozen environment") from exc
     if missing or any(t.get("error") in ENVIRONMENT_ERRORS for t in trace):
         raise ValueError("Reference path hits a missing environment response")

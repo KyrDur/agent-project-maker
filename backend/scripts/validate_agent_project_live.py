@@ -85,7 +85,8 @@ class Budget(BaseCallbackHandler):
             if self.count >= self.limit:
                 raise RuntimeError("live_acceptance_budget_exhausted")
             self.count += 1
-            self.path.write_text(
+            temporary = self.path.with_suffix(".tmp")
+            temporary.write_text(
                 json.dumps(
                     {
                         "actual_model_invocations": self.count,
@@ -95,6 +96,7 @@ class Budget(BaseCallbackHandler):
                     indent=2,
                 )
             )
+            temporary.replace(self.path)
 
 
 async def consume(stream):

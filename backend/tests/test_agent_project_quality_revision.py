@@ -190,6 +190,24 @@ def test_reference_path_recovery_writes_observable_state_and_is_isolated():
     assert first["reference_evidence"]["final_state"]["orders"][0]["status"] == "refunded"
 
 
+@pytest.mark.parametrize("mutation", ["wrong_type", "invalid_schema", "external_reference"])
+def test_reference_parameter_schema_is_checked_without_external_resolution(mutation):
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {"id": {"type": "string"}},
+        "required": ["id"],
+    }
+    case = reference_case()
+    if mutation == "wrong_type":
+        case["reference_trace"][0]["arguments"]["id"] = 42
+    elif mutation == "invalid_schema":
+        schema["type"] = "not_a_json_schema_type"
+    else:
+        schema["$ref"] = "https://example.invalid/tool-schema.json"
+    with pytest.raises(ValueError, match="Reference path|parameter schema|external resources"):
+        preflight_case({"planned_tools": [{"name": "refund", "input_schema": schema}]}, case)
+
+
 @pytest.mark.parametrize(
     "mutation", ["missing", "unknown", "no_recovery", "wrong_parameter", "missing_response"]
 )
