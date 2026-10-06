@@ -214,11 +214,12 @@ def case_lines(card: dict[str, Any]) -> list[str]:
         status = {"passed": "通过", "failed": "失败", "errored": "评测错误"}.get(
             trial["status"], trial["status"]
         )
+        conditions = trial["success_conditions"] or "历史缺失"
         lines += [
             f"V{trial['version']} / 第{trial['trial']}次试验 / {trial['reference']}",
             f"用户原话：{trial['user_request']}",
             f"初始模拟数据：{readable(trial['initial_state'])}",
-            f"成功条件：{trial['success_conditions'] or '历史缺失'}",
+            conditions if conditions.startswith("成功条件：") else f"成功条件：{conditions}",
             f"判据来源：{trial['judgment_basis'] or '见冻结评分规则'}",
         ]
         for event in trial["timeline"]:
@@ -298,8 +299,9 @@ def render_chinese_report(data: dict[str, Any]) -> dict[str, Any]:
                 "需求、能力与方案确认的实际作者见下方记录。\n"
             )
             + "\n".join(
-                f"{STAGE_NAMES.get(d['stage'], d['stage'])}：{d['choice']}；"
-                f"理由原文：{d['reason']}；"
+                f"{STAGE_NAMES.get(d['stage'], d['stage'])}："
+                f"{str(d['choice']).rstrip('。.;； ')}；"
+                f"理由原文：「{d['reason']}」；"
                 f"来源：{AUTHOR_NAMES.get(d.get('author'), d.get('author', '历史缺失'))}。"
                 for d in data.get("decisions", [])
             )

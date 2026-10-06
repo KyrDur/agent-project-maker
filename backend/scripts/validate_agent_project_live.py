@@ -27,6 +27,7 @@ from app.agent_runtime.checkpointer import (
 from app.agent_runtime.llm_user_context import llm_user_id
 from app.config import settings
 from app.database import async_session
+from app.marketplace.payloads import canonical_json_hash
 from app.models.agent_project import AgentProject, AgentProjectEvalRun
 from app.schemas.agent_project import EvalRunCreate
 from app.services import agent_project_evaluation as evaluation
@@ -38,6 +39,7 @@ from app.services import builder_project_lifecycle, builder_service
 from app.services.agent_project_llm import role_configurations
 from app.services.agent_project_materials import interview_material, resume_material
 from app.services.agent_project_portfolio_export import export_zip
+from app.services.agent_project_preflight import EXECUTION_PROTOCOL
 
 DEMO = "【Codex 开发验收演示，非用户本人撰写】"
 TASKS = {
@@ -304,7 +306,7 @@ async def build(category, owner, output, budget, rounds, instructions_only=False
                 needs_retry = (
                     prior.status == "failed"
                     and (prior.metrics_json or {}).get("errored")
-                    and not protocol.get("judge_validation_retry_limit")
+                    and protocol != EXECUTION_PROTOCOL
                 )
                 minimum_calls = (
                     len(prior.cases_snapshot_json or [])
@@ -322,7 +324,10 @@ async def build(category, owner, output, budget, rounds, instructions_only=False
                         aid,
                         owner,
                         EvalRunCreate(
-                            request_id=uuid.uuid5(prior.id, "quality-protocol-retry-v1"),
+                            request_id=uuid.uuid5(
+                                prior.id,
+                                "quality-protocol:" + canonical_json_hash(EXECUTION_PROTOCOL),
+                            ),
                             version_id=prior.version_id,
                             eval_set_id=prior.eval_set_id,
                             repetitions=(prior.comparison_json or {}).get("repetitions", 1),

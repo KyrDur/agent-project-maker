@@ -612,9 +612,10 @@ async def grade_case(
                 continue
             semantic.append(metric)
     if semantic:
-        from app.services.agent_project_llm import capture_calls
+        from app.services.agent_project_llm import capture_calls, captured_calls
 
-        judge_calls: list[dict[str, Any]] = []
+        active = captured_calls()
+        judge_calls: list[dict[str, Any]] = active if active is not None else []
 
         async def checked_judge(instruction: str, payload: dict[str, Any]) -> dict[str, Any]:
             response = await json_call(db, snapshot, user_id, "judge", instruction, payload)

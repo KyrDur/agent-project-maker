@@ -319,6 +319,43 @@ def test_minimal_patch_and_missing_skill_deferral():
 
 
 @pytest.mark.asyncio
+async def test_outer_judge_timeout_retains_captured_calls(db, experiment, monkeypatch):
+    import asyncio
+
+    from app.services.agent_project_llm import captured_calls
+
+    ex = experiment
+    ex.run.status = "pending"
+    ex.run.completed_at = None
+    ex.run.results_json = []
+    ex.run.metrics_json = {}
+    ex.run.comparison_json = {
+        **ex.run.comparison_json,
+        "execution_protocol": {"judge_timeout_seconds": 0.01},
+    }
+    await db.commit()
+
+    async def blocked_judge(*_args):
+        calls = captured_calls()
+        assert calls is not None
+        call = {"role": "judge", "status": "running", "source": "controlled_timeout"}
+        calls.append(call)
+        try:
+            await asyncio.sleep(1)
+        finally:
+            call["status"] = "cancelled"
+
+    monkeypatch.setattr(semantic, "grade_case", blocked_judge)
+    await evaluation.execute_run(ex.run.id, ex.agent.id, TEST_USER_ID)
+    row = await evaluation.get_run(db, ex.agent.id, TEST_USER_ID, ex.run.id)
+    assert row.status == "failed"
+    assert row.metrics_json["judge_errors"] == 20
+    assert row.metrics_json["execution_errors"] == 0
+    assert row.results_json is not None
+    assert all(r["judge_calls"][0]["status"] == "cancelled" for r in row.results_json)
+
+
+@pytest.mark.asyncio
 async def test_analyzer_repairs_protocol_without_changing_case_evidence(
     db, experiment, monkeypatch
 ):

@@ -9,7 +9,7 @@ from datetime import timedelta
 from time import perf_counter
 from typing import Any
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
@@ -481,8 +481,18 @@ async def expire_runs(db: AsyncSession, project_id: uuid.UUID) -> None:
     # Reconcile on authenticated, CSRF-protected submission, never from a GET.
     # No automatic replay after a process crash: a timed-out lease becomes failed.
     repeats = AgentProjectEvalRun.comparison_json["repetitions"].as_integer()
-    # Three repeats allow 60 × (execution + judge); legacy leases stay unchanged.
-    for minutes, condition in [(45, or_(repeats.is_(None), repeats != 3)), (135, repeats == 3)]:
+    judge_limit = AgentProjectEvalRun.comparison_json["execution_protocol"][
+        "judge_timeout_seconds"
+    ].as_integer()
+    single = or_(repeats.is_(None), repeats != 3)
+    short = or_(judge_limit.is_(None), judge_limit <= 95)
+    # Include both bounded judge attempts; do not expire a valid 60-trial worker early.
+    for minutes, condition in [
+        (45, and_(short, single)),
+        (135, and_(short, repeats == 3)),
+        (90, and_(judge_limit > 95, single)),
+        (270, and_(judge_limit > 95, repeats == 3)),
+    ]:
         await db.execute(
             update(AgentProjectEvalRun)
             .where(
@@ -671,6 +681,7 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     "judge_reasons": {},
                     "trial": trial,
                 }
+                judgments: list[dict[str, Any]] = []
                 try:
                     from app.services.agent_project_llm import capture_calls
 
@@ -695,16 +706,17 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                         status="passed" if all(c["passed"] for c in checks) else "failed",
                     )
                     if plan and plan.get("eval_spec"):
-                        async with asyncio.timeout(
-                            (row.comparison_json or {})
-                            .get("execution_protocol", {})
-                            .get("judge_timeout_seconds", 95)
-                        ):
-                            result.update(
-                                await grade_case(
-                                    db, snapshot, user_id, case, evidence, checks, plan
+                        with capture_calls(judgments):
+                            async with asyncio.timeout(
+                                (row.comparison_json or {})
+                                .get("execution_protocol", {})
+                                .get("judge_timeout_seconds", 95)
+                            ):
+                                result.update(
+                                    await grade_case(
+                                        db, snapshot, user_id, case, evidence, checks, plan
+                                    )
                                 )
-                            )
                 except SnapshotExecutionUnavailable as exc:
                     from app.services.agent_project_preflight import ENVIRONMENT_ERRORS
 
@@ -719,6 +731,8 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                         else "execution",
                     )
                 except TimeoutError:
+                    if judgments:
+                        result["judge_calls"] = judgments
                     for item in partial:
                         result.update(item.get("partial_execution", {}))
                     result.update(

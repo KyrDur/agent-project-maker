@@ -96,13 +96,15 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                     {project.data.builder_session_id && (
                       <SettingsSectionCard title={t('bootstrap.title')}>
                         <p>{t('bootstrap.steps')}</p>
-                        <p role="status">
-                          {t('bootstrap.current', {
-                            stage: t(
-                              `bootstrap.stages.${project.data.requirements_json?.bootstrap?.stage ?? 'v1'}`,
-                            ),
-                          })}
-                        </p>
+                        {project.data.requirements_json?.bootstrap && (
+                          <p role="status">
+                            {t('bootstrap.current', {
+                              stage: t(
+                                `bootstrap.stages.${project.data.requirements_json.bootstrap.stage}`,
+                              ),
+                            })}
+                          </p>
+                        )}
                         <Button
                           variant="outline"
                           disabled={bootstrap.isPending}

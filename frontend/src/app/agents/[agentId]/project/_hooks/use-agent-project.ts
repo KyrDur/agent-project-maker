@@ -27,6 +27,7 @@ export function useAgentProject(agentId: string) {
     queryFn: () => agentProjectApi.get(agentId),
     refetchInterval: (query) =>
       (query.state.data?.builder_session_id &&
+        query.state.data?.requirements_json?.bootstrap?.stage &&
         query.state.data?.requirements_json?.bootstrap?.stage !== 'results') ||
       ['pending', 'running'].includes(query.state.data?.report_json?.optimization?.state ?? '')
         ? query.state.data?.requirements_json?.bootstrap?.error
@@ -49,7 +50,12 @@ export function useAgentProject(agentId: string) {
   })
   const resumeBootstrap = bootstrap.mutate
   useEffect(() => {
-    if (builderSessionId && !resumed.current.has(agentId) && bootstrapStage !== 'results') {
+    if (
+      builderSessionId &&
+      bootstrapStage &&
+      !resumed.current.has(agentId) &&
+      bootstrapStage !== 'results'
+    ) {
       resumed.current.add(agentId)
       resumeBootstrap()
     }

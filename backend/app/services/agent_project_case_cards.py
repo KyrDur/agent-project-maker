@@ -119,7 +119,8 @@ def case_cards(
                         + {"requirements": "需求", "capabilities": "能力方案"}.get(
                             str(d.get("stage")), "决策"
                         )
-                        + f"：{d.get('choice')}；理由原文：{d.get('reason')}。"
+                        + f"：{str(d.get('choice')).rstrip('。.;； ')}；"
+                        + f"理由原文：「{d.get('reason')}」"
                         for d in decisions or []
                         if decision_author(d) in {"user", "user_confirmed"}
                         and d.get("stage") in {"requirements", "capabilities"}

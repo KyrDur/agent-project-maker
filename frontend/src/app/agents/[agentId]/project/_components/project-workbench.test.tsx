@@ -160,6 +160,23 @@ it('keeps creation available after an API failure', async () => {
   expect(screen.getByRole('button', { name: '创建项目' })).toBeEnabled()
 })
 
+it('keeps legacy Builder experiments readable without starting a new paid baseline', async () => {
+  const bootstrap = vi.fn()
+  server.use(
+    http.get(path, () => HttpResponse.json({ ...project, builder_session_id: 'legacy-builder' })),
+    http.post(`${path}/bootstrap`, () => {
+      bootstrap()
+      return HttpResponse.json({ accepted: true })
+    }),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  await screen.findByRole('button', { name: /设置\s*项目设置/ })
+  await userEvent.click(screen.getByRole('button', { name: /设置\s*项目设置/ }))
+  expect(await screen.findByText('构建与基线评估')).toBeInTheDocument()
+  expect(screen.queryByText('当前步骤：创建 V1 快照')).not.toBeInTheDocument()
+  expect(bootstrap).not.toHaveBeenCalled()
+})
+
 it('automatically resumes a Builder project and shows Chinese lifecycle progress', async () => {
   const bootstrap = vi.fn()
   server.use(

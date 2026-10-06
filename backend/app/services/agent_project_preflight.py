@@ -15,7 +15,7 @@ from app.services.agent_project_mock_tools import mock_tools
 EXECUTION_PROTOCOL = {
     "version": "mock_sandbox_v3",
     "execution_timeout_seconds": 30,
-    "judge_timeout_seconds": 95,
+    "judge_timeout_seconds": 190,
     "judge_validation_retry_limit": 1,
     "recursion_policy": "graph_default_with_frozen_middleware_limits",
     "simulation_policy": "isolated_state_and_text_skills_only",

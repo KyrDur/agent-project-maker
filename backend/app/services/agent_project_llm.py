@@ -26,6 +26,10 @@ from app.services.system_credential_resolver import resolve_system_model
 _calls: ContextVar[list[dict[str, Any]] | None] = ContextVar("project_calls", default=None)
 
 
+def captured_calls() -> list[dict[str, Any]] | None:
+    return _calls.get()
+
+
 @contextmanager
 def capture_calls(calls: list[dict[str, Any]]):
     token = _calls.set(calls)
