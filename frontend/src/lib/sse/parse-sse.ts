@@ -243,7 +243,7 @@ export async function* streamSSEPost<TEvent extends string>(
         })
         wakeUp()
       } catch {
-        // malformed JSON — 이전 parseSSEStream과 동일하게 silently skip.
+        // malformed JSON — 与之前 parseSSEStream 相同，silently skip。
       }
     },
     onclose() {

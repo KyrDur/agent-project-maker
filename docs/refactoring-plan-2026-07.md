@@ -1,735 +1,735 @@
-# Moldy 전체 리팩토링 계획 + 신규 기능 발굴 (2026-07-07)
+# Moldy 全面重构计划 + 新功能发掘 (2026-07-07)
 
-> **문서 목적**: 이 문서 하나만 보고 처음부터 끝까지 리팩토링을 수행할 수 있도록, 항목별 근거(file:line)·문제점·단계별 방안·검증 커맨드·공수를 기록한다.
-> **분석 방법**: 도메인별 병렬 분석(백엔드 구조/성능/중복, 프론트 구조·중복/성능·디자인, 인프라/DevX, 기능 갭). 모든 항목은 **실제 코드를 열어 확인한 file:line 근거**만 채택했고, 추측성 항목은 배제했다. 라인 번호는 2026-07-07 main(`828d056a`) 기준 — 시간이 지나면 어긋날 수 있으니 함수/심볼명으로 재탐색할 것.
-> **분석 시점 규모**: backend/app 84,902줄(라우터 68, 서비스 84, 모델 39), frontend/src 100,620줄(컴포넌트 342), Alembic 리비전 76(M63), backend 테스트 파일 267, e2e 스펙 69.
-
----
-
-## 0. 총평
-
-이 코드베이스는 **분해·공통화 역량이 이미 증명된 상태**다 — `conversation_agent_protocol*` 18파일 분해, executor split, `DialogShell` 38곳 채택, `lib/query-keys` 팩토리, 디자인 토큰 린트 가드가 그 증거다. 진짜 문제는 능력 부족이 아니라 **일관성 부족**이다:
-
-1. **적용 안 된 곳이 남았다** — `chat_service.py`(1,786줄), `install_service.py`(1,366줄), `use-moldy-langgraph-stream.ts`(2,941줄) 같은 갓 모듈, 서비스 레이어가 아예 없는 MCP/tools/models 라우터.
-2. **half-done 공통화** — 에러 팩토리(`error_codes.py`)·쿼리키 팩토리·`make_user` 픽스처·`BaseDetailDialog`가 **이미 존재하는데** 절반만 채택돼 드리프트가 진행 중.
-3. **hot path 성능 부채** — 폴링당 N+1(3계열), 이벤트 루프를 250ms 세우는 bcrypt, SSE 이벤트당 이중 redaction.
-4. **이중 시스템** — 프론트 채팅 legacy/v3 런타임 병렬 유지가 모든 채팅 기능의 비용을 2배로 만든다.
-5. **안전망 공백** — CI 파이프라인 부재, 채팅 라우트 에러 바운더리 부재, SSRF 미수정.
+> **文档目的**：确保只看这一份文档就能从头到尾完成重构，记录各项依据(file:line)、问题、分阶段方案、验证命令和工时。
+> **分析方法**：按领域并行分析（后端结构/性能/重复，前端结构·重复/性能·设计，基础设施/DevX，功能 gap）。所有条目只采纳**实际打开代码确认过的 file:line 依据**，排除推测项。行号以 2026-07-07 main(`828d056a`) 为准 — 时间推移后可能偏移，应按函数/符号名重新搜索。
+> **分析时规模**：backend/app 84,902 行（router 68，service 84，model 39），frontend/src 100,620 行（component 342），Alembic revision 76(M63)，backend 测试文件 267，e2e spec 69。
 
 ---
 
-## 진행 현황 (Progress) — 2026-07-09 갱신
+## 0. 总评
 
-머지된 PR 기준 실제 진행 상태. 세부 항목별 완료 표시는 아래 §1 매트릭스의 각 행에 반영.
+该代码库已经**证明了拆分与公共化能力** — `conversation_agent_protocol*` 拆成 18 个文件、executor split、38 处采用 `DialogShell`、`lib/query-keys` factory、设计 token lint guard 都是证据。真正的问题不是能力不足，而是**一致性不足**：
 
-| PR | 묶음 | 완료 항목 | 상태 |
+1. **仍有未覆盖区域** — `chat_service.py`（1,786 行）、`install_service.py`（1,366 行）、`use-moldy-langgraph-stream.ts`（2,941 行）这类 God module，以及完全没有 service layer 的 MCP/tools/models router。
+2. **half-done 公共化** — error factory（`error_codes.py`）、query key factory、`make_user` fixture、`BaseDetailDialog` **已经存在**，却只采用了一半，drift 正在发生。
+3. **hot path 性能债务** — 每次 polling 的 N+1（3 类）、让 event loop 停顿 250ms 的 bcrypt、每个 SSE 事件双重 redaction。
+4. **双系统** — 前端聊天 legacy/v3 runtime 并行维护，使所有聊天功能成本变为 2 倍。
+5. **安全网空白** — 缺少 CI pipeline、聊天 route error boundary、SSRF 尚未修复。
+
+---
+
+## 进展情况 (Progress) — 2026-07-09 更新
+
+基于已 merge PR 的实际进展状态。各细项完成标记已反映到下方 §1 matrix 的对应行。
+
+| PR | 分组 | 完成项 | 状态 |
 |----|------|-----------|------|
-| #279 | Phase 0 안전망 | SEC-1, SEC-2, SEC-3, BE-P4, FE-D1, IX-1 + 마스터 계획 문서 | ✅ 머지 |
-| #279 | pyright 번다운 A | data/ exclude(970→627) + `docs/pyright-burndown-plan.md` | ✅ 머지 |
-| #280 | Phase 1 hot path | BE-P1, BE-P3, BE-P6, BE-P7, **BE-P5 부분**((a)(c) 완료) | ✅ 머지 |
-| #281 | Phase 2 중복정리 | **BE-D2**(에러 팩토리), **BE-D4**(visibility 술어), CI 통합테스트 분리 | ✅ 머지 |
-| #282 | Phase 2 소유권 | **BE-D1 부분**(owned_conversation 의존성 + 10/30 라우터: artifacts·files·traces) | ✅ 머지 |
-| #283 | 린트 하드닝 계획 | `docs/lint-hardening-plan.md` + lint:all 스크립트 | ✅ 머지 |
-| #287 | 린트 A-1 | 가드 예외 3건 등록(+회귀 테스트) + 그린 가드 4개 CI·pre-commit 연결 (a11y·design-system·frontend-architecture strict는 A-2 잔여) | ✅ 머지 |
+| #279 | Phase 0 安全网 | SEC-1, SEC-2, SEC-3, BE-P4, FE-D1, IX-1 + master 计划文档 | ✅ merge |
+| #279 | pyright 清零 A | data/ exclude(970→627) + `docs/pyright-burndown-plan.md` | ✅ merge |
+| #280 | Phase 1 hot path | BE-P1, BE-P3, BE-P6, BE-P7, **BE-P5 部分**((a)(c) 完成) | ✅ merge |
+| #281 | Phase 2 去重 | **BE-D2**（error factory）, **BE-D4**（visibility 谓词）, CI integration test 拆分 | ✅ merge |
+| #282 | Phase 2 所有权 | **BE-D1 部分**（owned_conversation 依赖 + 10/30 router: artifacts·files·traces） | ✅ merge |
+| #283 | lint hardening 计划 | `docs/lint-hardening-plan.md` + lint:all 脚本 | ✅ merge |
+| #287 | lint A-1 | 登记 3 个 guard 例外（+回归测试）+ 4 个绿色 guard 接入 CI·pre-commit（a11y·design-system·frontend-architecture strict 留待 A-2） | ✅ merge |
 
-**부분완료 잔여** (재개 지점):
-- ~~**BE-P5**: (b) 이중 redaction, (d) seen_event_ids, (e) inline flush~~ → **PR #294로 완료** (상세는 실행 순서 6번)
-- ~~**BE-D1**: 나머지 20곳~~ → **PR #292로 완료** (18곳 전환 + run_cancel/stream_resume 의도적 보존 2곳 문서화; 상세는 실행 순서 5번)
+**部分完成剩余项**（恢复点）：
+- ~~**BE-P5**: (b) 双重 redaction, (d) seen_event_ids, (e) inline flush~~ → **由 PR #294 完成**（详见执行顺序 6）
+- ~~**BE-D1**: 剩余 20 处~~ → **由 PR #292 完成**（转换 18 处 + 文档化有意保留的 run_cancel/stream_resume 2 处；详见执行顺序 5）
 
-- ~~**Stage 2 전체** (BE-S7·BE-S2·BE-D3·BE-D7)~~ → **PR #295로 완료** (상세는 실행 순서 7–10번)
-- ~~**Stage 3 전체** (BE-S1·BE-S3·BE-S5·BE-S8·BE-S9·BE-S10)~~ → **PR #296으로 완료** (상세는 실행 순서 11–13번)
+- ~~**Stage 2 全部** (BE-S7·BE-S2·BE-D3·BE-D7)~~ → **由 PR #295 完成**（详见执行顺序 7–10）
+- ~~**Stage 3 全部** (BE-S1·BE-S3·BE-S5·BE-S8·BE-S9·BE-S10)~~ → **由 PR #296 完成**（详见执行顺序 11–13）
 
-**미착수 P1** (다음 우선): BE-P2(메시지 페이지네이션·FE연동), FE-S1(런타임 수렴), FE-S2(2941줄 훅), FE-P1(컨텍스트 churn), FE-P2(가상화). **미착수 P2/P3**: §1 매트릭스에서 ✅/🔶 없는 행 전부.
+**未启动 P1**（下一优先）：BE-P2（消息 pagination·FE 联动）、FE-S1（runtime 收敛）、FE-S2（2941 行 hook）、FE-P1（context churn）、FE-P2（virtualization）。**未启动 P2/P3**：§1 matrix 中所有没有 ✅/🔶 的行。
 
-**별도 트랙**: pyright 번다운 B/C/D(`docs/pyright-burndown-plan.md`), 린트 하드닝 A~G(`docs/lint-hardening-plan.md`).
+**单独 track**：pyright 清零 B/C/D（`docs/pyright-burndown-plan.md`），lint hardening A~G（`docs/lint-hardening-plan.md`）。
 
 ---
 
-## 1. 통합 우선순위 매트릭스
+## 1. 综合优先级矩阵
 
-우선순위 정의 — **P0**: 보안·신뢰성, 이번 주 내 착수. **P1**: 사용자 체감/개발 속도에 직접 효과, 1~2 스프린트. **P2**: 데이터 증가·기능 추가에 따라 악화되는 부채. **P3**: 여유 시. 공수 — S(반나절), M(1~2일), L(3일+).
+优先级定义 — **P0**：安全·可靠性，本周内启动。**P1**：直接影响用户体验/开发速度，1~2 个 sprint。**P2**：随数据增长·功能增加而恶化的债务。**P3**：有余力时。工时 — S（半天）、M（1~2 天）、L（3 天+）。
 
-### P0 — 즉시 (보안·신뢰성·저공수 고효과)
+### P0 — 立即（安全·可靠性·低工时高收益）
 
-| ID | 제목 | 카테고리 | 공수 |
+| ID | 标题 | 类别 | 工时 |
 |----|------|----------|:---:|
-| SEC-1 | ✅ web_scraper SSRF 미수정 (§3 참고) — Phase 0 완료 | 보안 | S~M |
-| SEC-2 | ✅ rotate_credentials no-progress 무한루프 잔존 — Phase 0 완료 | 신뢰성 | S |
-| SEC-3 | ✅ 트리거 run-now 경로 중복실행 가드 부재 — Phase 0 완료 | 신뢰성 | S~M |
-| BE-P4 | ✅ bcrypt가 이벤트 루프 250ms 블로킹 → `asyncio.to_thread` — Phase 0 완료 | 성능 | S |
-| FE-D1 | ✅ 채팅/공유/대시보드 라우트 에러 바운더리 전무 — Phase 0 완료 | 신뢰성 | M |
-| IX-1 | ✅ CI 파이프라인 + Pyright basic 하드 게이트 완료 (2026-09-07, 0 errors) | DevX | M |
+| SEC-1 | ✅ web_scraper SSRF 未修复（见 §3）— Phase 0 完成 | 安全 | S~M |
+| SEC-2 | ✅ rotate_credentials no-progress 无限循环残留 — Phase 0 完成 | 可靠性 | S |
+| SEC-3 | ✅ trigger run-now 路径缺少重复执行 guard — Phase 0 完成 | 可靠性 | S~M |
+| BE-P4 | ✅ bcrypt 阻塞 event loop 250ms → `asyncio.to_thread` — Phase 0 完成 | 性能 | S |
+| FE-D1 | ✅ chat/share/dashboard route 完全没有 error boundary — Phase 0 完成 | 可靠性 | M |
+| IX-1 | ✅ CI pipeline + Pyright basic 硬门禁完成 (2026-09-07, 0 errors) | DevX | M |
 
-### P1 — 임팩트 최대 (1~2 스프린트)
+### P1 — 影响最大（1~2 个 sprint）
 
-| ID | 제목 | 카테고리 | 공수 |
+| ID | 标题 | 类别 | 工时 |
 |----|------|----------|:---:|
-| BE-P1 | ✅ `GET /messages` 폴링 N+1 (interrupt 하이드레이션) — Phase 1 완료 | 성능 | M |
-| BE-P3 | ✅ 폴링 경로 MCP credential `FOR UPDATE` N+1 — Phase 1 완료 | 성능 | S~M |
-| BE-P5 | ✅ SSE 이벤트당 중복 비용 — (a)(c) PR #280, (b)(d)(e) PR #294 완료 | 성능 | M |
-| BE-P2 | `GET /messages` 무제한 로드 → keyset 페이지네이션 | 성능 | L |
-| BE-S2 | MCP/tools/models 서비스 레이어 신설 (라우터 raw DB 제거) | 구조 | M |
-| BE-S7 | credentials 라우터 OAuth 로직 → oauth_service | 구조 | M |
-| BE-S1 | chat_service.py 8-클러스터 분해 | 구조 | L |
-| BE-S3 | install_service.py 3-타입 분해 | 구조 | L |
-| BE-D1 | ✅ 소유권 조회+404 패턴 30곳 → Depends 의존성 — #282(10곳) + #292(잔여 18곳 + 보존 2곳 문서화) 완료. agents `owned_agent` 확산은 선택 후속 | 중복 | M |
-| BE-D2 | ✅ raw HTTPException 21곳 → error_codes 팩토리 통일 — #281 완료 (system_llm_settings는 byte-identical 계약이라 제외) | 중복 | S~M |
-| FE-S1 | 채팅 런타임 이중화(legacy/v3) 수렴 1단계 | 구조 | M~L |
-| FE-S2 | use-moldy-langgraph-stream.ts(2,941줄) 분해 | 구조 | L |
-| FE-P1 | 스트리밍 중 컨텍스트 churn → 전체 메시지 리렌더 | 성능 | M |
-| FE-P2 | 채팅 스레드 가상화 (선조치 memo는 S) | 성능 | L |
+| BE-P1 | ✅ `GET /messages` polling N+1（interrupt hydration）— Phase 1 完成 | 性能 | M |
+| BE-P3 | ✅ polling 路径 MCP credential `FOR UPDATE` N+1 — Phase 1 完成 | 性能 | S~M |
+| BE-P5 | ✅ 每个 SSE 事件的重复成本 — (a)(c) PR #280，(b)(d)(e) PR #294 完成 | 性能 | M |
+| BE-P2 | `GET /messages` 无限制加载 → keyset pagination | 性能 | L |
+| BE-S2 | 新建 MCP/tools/models service layer（移除 router raw DB） | 结构 | M |
+| BE-S7 | credentials router OAuth 逻辑 → oauth_service | 结构 | M |
+| BE-S1 | chat_service.py 拆分 8 个 cluster | 结构 | L |
+| BE-S3 | install_service.py 按 3 种类型拆分 | 结构 | L |
+| BE-D1 | ✅ 所有权查询+404 模式 30 处 → Depends 依赖 — #282（10 处）+ #292（剩余 18 处 + 文档化保留 2 处）完成。agents `owned_agent` 扩散为可选后续 | 重复 | M |
+| BE-D2 | ✅ raw HTTPException 21 处 → 统一使用 error_codes factory — #281 完成（system_llm_settings 因 byte-identical 契约排除） | 重复 | S~M |
+| FE-S1 | 聊天 runtime 双轨（legacy/v3）收敛第 1 阶段 | 结构 | M~L |
+| FE-S2 | 拆分 use-moldy-langgraph-stream.ts（2,941 行） | 结构 | L |
+| FE-P1 | streaming 期间 context churn → 全部消息 rerender | 性能 | M |
+| FE-P2 | 聊天 thread virtualization（先行 memo 为 S） | 性能 | L |
 
-### P2 — 부채 상환 (백로그 상단)
+### P2 — 偿还债务（backlog 顶部）
 
-| ID | 제목 | 카테고리 | 공수 |
+| ID | 标题 | 类别 | 工时 |
 |----|------|----------|:---:|
-| BE-P6 | ✅ FK 인덱스 5건 (M67) — Phase 1 완료 | 성능 | S |
-| BE-P7 | ✅ checkpointer 풀 2/20 + 엔진 풀 설정 노출 — Phase 1 완료 | 성능 | S~M |
-| BE-P8 | health_check_history 무한 증가 (retention dead code) | 성능 | S |
-| BE-P9 | MCP health 폴링 직렬 → 병렬화+backoff | 성능 | M |
-| BE-P10 | 마켓 MCP 설치 툴당 SELECT N+1 | 성능 | S |
-| BE-P11 | artifact ingest 파일당 다중 SELECT | 성능 | M |
-| BE-P12 | memories 무제한 목록 + 마켓 OFFSET 페이지네이션 | 성능 | M |
-| BE-S4 | services↔agent_runtime 양방향 결합 역전 | 구조 | L |
-| BE-S5 | write_tools.py 26개 클로저 분해 | 구조 | M |
-| BE-S6 | 디렉토리 컨벤션 ADR + services 서브패키징 | 구조 | M |
-| BE-S8 | artifact_service.py recorder/library 분해 | 구조 | M |
-| BE-S9 | scheduler.py 잡 로직 → 도메인 서비스 이관 | 구조 | M |
-| BE-S10 | runtime_component_builder.py 5-관심사 분해 | 구조 | M |
-| BE-D3 | audit record_event self-action 래퍼 | 중복 | M |
-| BE-D4 | ✅ system-or-owned 술어 8곳 → Tool.visible_to — #281 완료 (`_load_owned` 통합은 BE-D1과 함께 잔여) | 중복 | S~M |
-| BE-D7 | 테스트 Model/Agent 팩토리 픽스처 도입 | 중복 | M~L |
-| FE-S3 | assistant-thread.tsx(1,458줄) 분해 | 구조 | M |
-| FE-S4 | approval-card 분해 + 승인 훅 2계열 통합 | 구조 | M |
-| FE-S5 | 비대 page 2종(memory 649/template 617) 분해 | 구조 | M |
-| FE-S6 | 다이얼로그 셸 8+회 복붙 → 공용 훅 + dead 추상화 정리 | 중복 | L |
-| FE-S7 | lib/types/index.ts 혼합 바렐 해체 | 구조 | M |
-| FE-S8 | Query 키 인라인 9개 훅 → 팩토리 이관 (빠른 승리) | 중복 | S |
-| FE-P3 | 관리 테이블/네비게이터 가상화 | 성능 | M |
-| FE-P4 | 활성 런 1초 이중 폴링 일원화 | 성능 | M |
-| FE-D2 | a11y 라벨 26건 (baseline 해소) | 디자인 | M |
-| FE-D3 | loading/error/빈 상태 커버리지 균일화 | 디자인 | M |
-| FE-D5 | agent-prism 트레이스 UI 영어 전용 (i18n) | 디자인 | M |
-| FE-D6 | tool-ui shadcn 우회 + RadioGroup 프리미티브 신설 | 디자인 | M |
-| FE-D7 | 미디어 아티팩트 aria-label/캡션 | 디자인 | S |
-| IX-2 | pre-commit 훅 부재 | DevX | S |
-| IX-3 | docker-compose/Dockerfile 프로덕션 하드닝 | 인프라 | S~M |
-| IX-5 | 구조화 로깅 + request-id 부재 | 인프라 | M |
-| IX-6 | aiosqlite↔PG 격차 — CI에 PG integration 잡 | 테스트 | S~M |
+| BE-P6 | ✅ 5 个 FK index（M67）— Phase 1 完成 | 性能 | S |
+| BE-P7 | ✅ checkpointer pool 2/20 + 暴露 engine pool 设置 — Phase 1 完成 | 性能 | S~M |
+| BE-P8 | health_check_history 无限增长（retention dead code） | 性能 | S |
+| BE-P9 | MCP health polling 串行 → 并行化+backoff | 性能 | M |
+| BE-P10 | Marketplace MCP 安装每个 tool 一次 SELECT N+1 | 性能 | S |
+| BE-P11 | artifact ingest 每个文件多次 SELECT | 性能 | M |
+| BE-P12 | memories 无限制列表 + Marketplace OFFSET pagination | 性能 | M |
+| BE-S4 | 反转 services↔agent_runtime 双向耦合 | 结构 | L |
+| BE-S5 | 拆分 write_tools.py 的 26 个 closure | 结构 | M |
+| BE-S6 | 目录 convention ADR + services 子包化 | 结构 | M |
+| BE-S8 | artifact_service.py 拆分 recorder/library | 结构 | M |
+| BE-S9 | scheduler.py job 逻辑 → 迁移到领域 service | 结构 | M |
+| BE-S10 | runtime_component_builder.py 拆分 5 个关注点 | 结构 | M |
+| BE-D3 | audit record_event self-action wrapper | 重复 | M |
+| BE-D4 | ✅ 8 处 system-or-owned 谓词 → Tool.visible_to — #281 完成（`_load_owned` 统一仍与 BE-D1 一并剩余） | 重复 | S~M |
+| BE-D7 | 引入测试 Model/Agent factory fixture | 重复 | M~L |
+| FE-S3 | 拆分 assistant-thread.tsx（1,458 行） | 结构 | M |
+| FE-S4 | 拆分 approval-card + 合并 2 类 approval hook | 结构 | M |
+| FE-S5 | 拆分 2 个超大 page（memory 649/template 617） | 结构 | M |
+| FE-S6 | dialog shell 复制粘贴 8+ 次 → 公共 hook + 清理 dead 抽象 | 重复 | L |
+| FE-S7 | 拆除 lib/types/index.ts 混合 barrel | 结构 | M |
+| FE-S8 | 9 个 inline Query key hook → 迁移到 factory（quick win） | 重复 | S |
+| FE-P3 | 管理 table/navigator virtualization | 性能 | M |
+| FE-P4 | 活跃 run 每 1 秒双重 polling 统一 | 性能 | M |
+| FE-D2 | 26 个 a11y label（消除 baseline） | 设计 | M |
+| FE-D3 | 统一 loading/error/empty state 覆盖 | 设计 | M |
+| FE-D5 | agent-prism trace UI 仅英文（i18n） | 设计 | M |
+| FE-D6 | tool-ui 绕过 shadcn + 新建 RadioGroup primitive | 设计 | M |
+| FE-D7 | media artifact aria-label/caption | 设计 | S |
+| IX-2 | 缺少 pre-commit hook | DevX | S |
+| IX-3 | docker-compose/Dockerfile production hardening | 基础设施 | S~M |
+| IX-5 | 缺少结构化 logging + request-id | 基础设施 | M |
+| IX-6 | aiosqlite↔PG 差距 — 在 CI 增加 PG integration job | 测试 | S~M |
 
-### P3 — 여유 시
+### P3 — 有余力时
 
-| ID | 제목 | 카테고리 | 공수 |
+| ID | 标题 | 类别 | 工时 |
 |----|------|----------|:---:|
-| BE-P13 | scrape HTML 파싱/zip export `to_thread` | 성능 | S |
-| BE-S11 | marketplace 프로젝션 중복 통합 | 구조 | M |
-| BE-D5 | keyset 커서 정규화 공유 + limit 상수 통일 | 중복 | S~M |
-| BE-D6 | 도구 러너 인증+HTTP 헬퍼 추출 | 중복 | S |
-| BE-D8 | Response 스키마 믹스인 (이득 최소 — 후순위) | 중복 | S |
-| FE-S9 | features/ 디렉토리 이주 (도메인 단위 점진) | 구조 | L |
-| FE-S10 | openapi-typescript 타입 생성 도입 | 구조 | M |
-| FE-P5 | 페이지 'use client' → 서버 셸 분리 (신규 규칙 우선) | 성능 | M |
-| FE-P6 | chart.js dead dep 제거 + next/image | 성능 | S |
-| FE-P7 | 셀렉터 하드닝 + phase-timeline O(n) 스캔 | 성능 | S |
-| FE-D4 | chart-card 팔레트 토큰화 + bg-white 3건 dark 변형 | 디자인 | S |
-| IX-4 | Alembic 76 리비전 squash | DevX | M |
-| IX-7 | e2e captures/regression playwright 프로젝트 분리 | 테스트 | S |
+| BE-P13 | scrape HTML parsing/zip export `to_thread` | 性能 | S |
+| BE-S11 | 统一 marketplace projection 重复 | 结构 | M |
+| BE-D5 | 共享 keyset cursor normalization + 统一 limit 常量 | 重复 | S~M |
+| BE-D6 | 提取 tool runner auth+HTTP helper | 重复 | S |
+| BE-D8 | Response schema mixin（收益最小 — 后置） | 重复 | S |
+| FE-S9 | 迁移 features/ 目录（按领域渐进） | 结构 | L |
+| FE-S10 | 引入 openapi-typescript 类型生成 | 结构 | M |
+| FE-P5 | page 'use client' → 拆分 server shell（新规则优先） | 性能 | M |
+| FE-P6 | 移除 chart.js dead dep + next/image | 性能 | S |
+| FE-P7 | selector hardening + phase-timeline O(n) scan | 性能 | S |
+| FE-D4 | chart-card palette token 化 + 3 处 bg-white dark variant | 设计 | S |
+| IX-4 | squash 76 个 Alembic revision | DevX | M |
+| IX-7 | 拆分 e2e captures/regression playwright project | 测试 | S |
 
-### Quick Wins (공수 S로 즉시 처리 가능한 것만 모음)
+### Quick Wins（仅汇总工时 S、可立即处理的事项）
 
-`BE-P4`(bcrypt to_thread) · `BE-P6`(인덱스 마이그레이션 1개) · `BE-P8`(history GC) · `BE-P10`(설치 N+1 hoist) · `BE-P13`(to_thread 2곳) · `BE-D2`(에러 팩토리 치환) · `BE-D6`(러너 헬퍼) · `FE-S8`(쿼리키 이관) · `FE-P6`(chart.js 제거) · `FE-P7`(셀렉터 상수) · `FE-D4`(차트 토큰) · `FE-D7`(미디어 라벨) · `IX-2`(pre-commit) · `SEC-2`(회전 루프 가드)
-
----
-
-## 2. 권장 실행 로드맵 (Phase)
-
-### ▶ 현 시점 실행 순서 (2026-07-10, 미완료만) — 새 세션은 여기부터
-
-> **사용법**: `/clear` 후 새 세션에서 **"이 문서 실행 순서에서 다음 미완료 항목 진행해줘"** 한 문장이면 된다. 항목을 콕 집으려면 아래 번호의 프롬프트를 그대로 복붙. 공통 규칙: worktree에서 origin/main 기준 새 브랜치, 한 PR = 한 항목, 기능 변화 0(순수 이동은 facade), 검증 그린 후 PR. (백엔드 검증 = `ruff` + `pyright` + `pytest -n 4 --ignore=tests/integration` + `pytest tests/integration -m integration` 직렬(마커 자동부여 후 `-m integration` 필수 — 없으면 전량 deselect: dir-scoped는 exit 5 red, `pytest tests/` 전체 실행에선 조용히 제외됨), 푸시 시 `SKILL_EVALUATION_ENABLED=true`.)
-> 완료하면 이 목록에서 해당 줄에 ✅와 PR 번호를 남겨 다음 세션이 이어받게 할 것.
-
-**Stage 0 — 자동 게이트 먼저 (이후 모든 작업이 자동 검증받음. 최대 레버리지)**
-1. ✅ **린트 A-1** — PR #287. 재측정(i18n 3·type-safety 2·e2e-hygiene 40 = 전부 정당) → 예외 3건 등록 + 예외별 회귀 테스트 → 그린 가드 4개(lint·i18n·type-safety·e2e-hygiene)를 CI 개별 스텝 + lint-staged에 연결. **frontend-architecture는 2차 리뷰에서 거짓 그린 판명**(비-strict 항상 exit 0, strict는 blocking 3건 레드) → a11y(신규4+해소2)·design-system(12)과 함께 A-2 잔여(FE-D2·FE-D4 연동 + strict blocking 수정).
-2. ✅ **린트 C** — PR #288. `S` 룰 활성 + 51건(app 43 + scripts/alembic 8) 트리아지. 실수정 2: openwiki sync_repo.py(LLM 제공 --repo-url/--ref 옵션 주입·ext::/file:// transport 차단 + 테스트 22케이스), generate_image.py(S310 scheme 가드). 나머지 오탐 inline noqa + tests/·alembic/ per-file-ignores. 게이트 회귀 테스트(빨간불 주입 + 예외 non-blanket 네거티브) 동봉.
-3. ✅ **린트 F·G** — PR #290. F: `PGH` 활성(현 트리 위반 0 — 순수 예방 게이트, bare noqa/blanket type-ignore 금지) + 게이트 회귀 테스트. G: `tests/integration/conftest.py` 자동 마커 훅 + **CI 직렬 스텝 `-m integration` 필수**(마커 부여 후 plain `pytest tests/integration`은 전량 deselect → exit 5 red; 조용한 변종은 full-suite `pytest tests/`에서 형제 테스트 통과가 exit 0으로 가리는 경우 — 리뷰에서 exit code 정정, 최초 실측이 `| tail` 파이프 함정이었음) + 커버리지/deselection 회귀 테스트. m9는 self-skip이라 안전. pre-push의 plain `pytest tests/`에서 integration이 빠지는 건 의도(CI 직렬이 게이트). **알려진 사각지대(pre-existing)**: `tests/test_trace_storage.py`의 integration 마커 테스트 1건은 디렉토리 밖이라 어느 CI 스텝에서도 안 돌고, aiosqlite에선 실행 시 실패 + live PG 주입 인프라도 없는 죽은 테스트 — m9 패턴(INTEGRATION_DATABASE_URL)으로 tests/integration/ 이관이 후속 과제.
-4. ✅ **린트 E** — PR #291. 7룰 배치 활성 + 373건 트리아지(문서 실측 66건은 app/ 한정 — tests/ 308건이 실제 대부분). 실수정 ~48(RET 인라인·PTH pathlib(부팅 SSL 경로 포함)·PT011 match=·PT019 usefixtures·PT013/PT006/N806/N814), 전역 ignore N818(도메인 스타일 예외명 18건), per-file `app/**`=PT(라우터 `test_*` 엔드포인트 오탐 17건)·`tests/*`+=SLF001/DTZ/PT017/PT018/N801/N815(관용구·wire mock 267건), inline noqa 14(ssl 패치·ORM stash·tool schema camelCase·로컬 날짜 — 전부 이유 포함). 게이트 회귀 테스트 `test_lint_low_noise_rules.py`(빨간불 + 예외 rule-scoped 증명). 함정 2회 실증: C416 unsafe fix(`dict(rows.all())`)가 pyright 타입 회귀 유발 → `.tuples()`로 해결 / 커밋 훅 재포맷(113→354 insertions) 후 noqa anchor 재확인 필수였음(유지됨).
-
-**Stage 1 — 부분완료 마무리**
-5. ✅ **BE-D1 나머지** — PR #292. 잔여 18곳(8파일) 전환: conv 재사용 라우터(branches 2·crud 3·messages list·followup·shares create/revoke·e2e 4)는 conv 주입 — **`verify_csrf` 뒤 파라미터 위치**로 CSRF 403→404 순서 보존(decorator dependencies는 param 의존성보다 먼저 돌아 게이트를 decorator에 얹으면 순서가 뒤집힘, e2e heartbeat에 주석 실증). GET 게이트 5곳(runs 3·ag_ui·shares get)은 decorator `dependencies=[...]`. 의도적 보존 3: run_cancel 헬퍼(두 라우트가 conversation_id/thread_id 다른 path param 공유), messages stream_resume(`resume_not_found` 별도 계약+reject 로깅), crud get_conversation_detail(agent eager-load 별도 getter). shares 로컬 `_require_owned_conversation` 삭제. agents.py `owned_agent` 확산(6곳)은 §6 방안 2단계의 선택 후속으로 남김.
-6. ✅ **BE-P5 나머지** — PR #294. (b) persist가 wire 1회 redaction 재사용(`persistable_wire_protocol_event` = compact + memory 마스킹만; W2-3 계약은 `redact_memory_content` 분리로 유지, full/wire 변형 등가성 테스트로 잠금). (d) `build_persist_callback`에 run-scoped seen_event_ids 캐시 — 첫 flush 1회 시드(`load_persisted_event_ids`) 후 증분, **불변식 캐시 ⊆ DB**(commit 성공분만 반영, 실패 시 리셋 재시드; 캐시가 DB를 앞서면 재시도 이벤트가 dedup으로 유실). (e) v3 emit의 inline `await` flush → `asyncio.create_task` fire-and-forget — in-flight 한도 **1**(legacy는 4)로 run 내 직렬화해 chunk seq_start 단조 + (d) 캐시 무경합, 실패 chunk는 buffer **앞** 복원으로 순서 보존 + 5000 events 캡(legacy 패리티), finally에서 task join → 최종 flush.
-
-**Stage 2 — 레이어링·경계 (명확한 정답)** — ✅ **전체 PR #295** (한 PR, 항목별 커밋 + 항목별 리뷰)
-7. ✅ **BE-S7** — PR #295. OAuth ~286줄 → `app/credentials/oauth_service.py` (client=저수준 HTTP / service=DB 상태·오케스트레이션 계약 명시). **트랜잭션 정책 전역 결정: 서비스 flush / 라우터 commit.** `gc_oauth_states` public 노출(스케줄러 재사용 대비). 리뷰 반영: 콜백 교차 사용자 forbidden 회귀 테스트(비인증 콜백의 유일한 탈취 state 방어 분기 계약 잠금). 알려진 발산 1(의도): auth_start의 malformed URL 에러 경로가 commit→롤백으로 바뀜(정책 귀결, 더 원자적).
-8. ✅ **BE-S2** — PR #295. `mcp_service` 신설 + `tool_service`(CRUD·run·audit)·`model_service`(operator CRUD·in-use 체크) 확장, 3개 라우터 raw DB 접근 0. 기존 커밋 시퀀스(이중 commit 포함) 보존으로 semantics 불변. 리뷰 승인(발견 0).
-9. ✅ **BE-D3** — PR #295. `audit_service.record_self_event`가 self-action 신원 kwargs 7개 흡수, 18곳 치환(actor≠owner는 record_event 유지). 리뷰 반영: finalize 누락 사이트 + 신원 컬럼 리터럴 기대값 계약 테스트(위임 tautology 회피).
-10. ✅ **BE-D7** — PR #295. conftest `make_model`/`make_agent`/`seed_agent(db)->(user,model,agent)` + `AuthSession`/`register_session`(auth 5파일 shim 전환, 시그니처 보존). ORM 팩토리는 대표 2파일 채택, 나머지는 가드레일대로 점진 이관. 참고: Model에 (provider,model_name) unique 제약 없음(ORM 레벨) — seed 반복 호출 안전.
-
-**Stage 3 — 갓 모듈 분해 (facade 순수 이동, 하나씩)** — ✅ **전체 PR #296** (한 PR, 항목별 커밋 + 항목별 적대 리뷰 6회, 차단 발견 0)
-11. ✅ **BE-S1** — PR #296. chat_service.py 1810→104줄 facade, `app/services/chat/` 7모듈(interrupts/secrets/conversations/messages/usage/attachments/runtime_context). 함수-로컬 import 4곳 의도 유지(1 import-order 순환 + 3 테스트 monkeypatch call-time lookup — 승격하면 patch 우회로 기능 변화).
-12. ✅ **BE-S3** — PR #296. install_service.py 1365→400줄 facade+디스패처, `app/marketplace/install/`(common/snapshot/bindings/skill/mcp/agent_blueprint). 비-이동 seam 2곳(install_item skill 분기·update skill tail 추출)은 문장 단위 AST 동일 검증. `_payload_skill_kind`는 snapshot↔skill 순환 회피로 common 배치.
-13. ✅ **BE-S5 · BE-S8 · BE-S9 · BE-S10** — PR #296 (사용자 지시로 한 PR에 묶음). BE-S5: write_tools 1091줄 → 패키지 4그룹 빌더 + `WriteToolContext`(도구 23개 schema 바이트 동일, `async_session_factory` patch 표면은 call-time 주입으로 보존). BE-S8: artifact_service 1035→137줄 facade, `artifacts/`(recorder/library/content/summary/errors) — recorder의 `_sha256_file`은 call-time facade import(테스트 patch 관찰 경로). BE-S9: scheduler 인라인 잡 4건 → credentials/rotation·mcp_service·conversation_run_service·skill_runtime, **동명 wrapper 잔존 필수**(영속 SQLAlchemyJobStore가 module:qualname 직렬화 + 테스트가 `app.scheduler.async_session`/`_ROTATION_BATCH` patch — wrapper가 call-time 전역 읽어 DI). BE-S10: runtime_component_builder 930→600줄, `agent_runtime/runtime/`(models/reliability/interrupts/prompts/memory_context) — `create_chat_model`만 models에서 call-time builder import(12종 patch 표면 중 유일 위험). memory_context 인자 주입은 BE-S4(Stage 5)로 이연.
-
-**Stage 4 — 프론트 대형**
-14. **FE-P1** — 스트리밍 컨텍스트 churn(전체 메시지 리렌더). §8 [FE-P1]. (독립적·성능 임팩트 커서 프론트 먼저)
-15. **FE-S2** — use-moldy-langgraph-stream.ts(2,941줄) 분해. §7 [FE-S2].
-16. **FE-S3 · FE-S4** — assistant-thread / approval-card 분해.
-17. **FE-S1** — 채팅 런타임 이중화 수렴. §7 [FE-S1]. (설계 난제라 프론트 익숙해진 뒤)
-
-**Stage 5 — 구조 난제 + 페이지네이션**
-18. **BE-S4** — services↔agent_runtime 의존 역전(함수-로컬 import 155곳 근본). §4 [BE-S4].
-19. **BE-P2** — 메시지 keyset 페이지네이션(FE 연동). §5 [BE-P2].
-20. **BE-S6** — 디렉토리 컨벤션 ADR + 서브패키징. §4 [BE-S6].
-
-**Stage 6 — 백로그 (P2/P3 quick win, 병렬 가능)**
-- 백엔드 성능: BE-P8·P9·P10·P11·P12·P13 / 프론트 성능: FE-P2(가상화)·P3·P4·P5·P6·P7
-- 디자인·a11y: FE-D2~D7 + 린트 A-2(design-system·a11y 가드 연결) / 중복: BE-D5·D6·D8 · FE-S5~S10
-- 인프라: IX-3(docker)·IX-5(구조화 로깅)·IX-4(squash)
-
-**Stage 7 — 타입 게이트 (대형, 마지막)**
-21. ✅ **pyright 번다운** — 2026-09-07 완료. 1,258→0, CI `|| true` 제거,
-    basic-mode 하드 게이트 전환. 상세는 `docs/pyright-burndown-plan.md`.
-22. **린트 D·B 잔여** — pyright standard 승격 여부 결정 + 백엔드 커스텀
-    가드(raw HTTPException 금지 스크립트). basic 0 달성과 분리해서 진행한다.
-
-**순서 근거**: Stage 0을 먼저 = 이후 20여 PR이 자동 검증(이번 리팩토링 세션 최대 교훈). BE-S2가 BE-S9의 선행, 갓모듈(3)은 레이어 정리(2) 후 안전. BE-S4는 여러 갓모듈의 함수-로컬 import 냄새 근본이라 분해 후 마무리. 타입게이트(7)는 968 번다운 선행이라 맨 뒤.
+`BE-P4`（bcrypt to_thread）· `BE-P6`（1 个 index migration）· `BE-P8`（history GC）· `BE-P10`（安装 N+1 hoist）· `BE-P13`（2 处 to_thread）· `BE-D2`（替换 error factory）· `BE-D6`（runner helper）· `FE-S8`（迁移 query key）· `FE-P6`（移除 chart.js）· `FE-P7`（selector 常量）· `FE-D4`（chart token）· `FE-D7`（media label）· `IX-2`（pre-commit）· `SEC-2`（rotation loop guard）
 
 ---
 
-### 초기 분석 로드맵 (2026-07-07, 참고용)
+## 2. 推荐执行路线图 (Phase)
 
-의존 관계와 리스크를 고려한 순서. 각 Phase는 독립 브랜치/PR 묶음으로 진행하고, Phase 간 순서는 지키되 Phase 내부는 병렬 가능.
+### ▶ 当前执行顺序 (2026-07-10，仅未完成项) — 新 session 从这里开始
 
-- **Phase 0 — 안전망 (1주)**: SEC-1·2·3 + BE-P4 + FE-D1 + IX-1(CI). CI가 먼저 서야 이후 모든 리팩토링 PR이 자동 검증된다. 당시 Pyright 968개 기존 에러로 typecheck는 non-blocking이었으나, 2026-09-07 번다운 완료 후 blocking으로 전환했다.
-- **Phase 1 — hot path 성능 (1~2주)**: BE-P1 → BE-P3 → BE-P5 → BE-P6 → BE-P7 + Quick Wins 일괄. 전부 소규모 diff라 회귀 리스크 낮고 체감 효과 즉시.
-- **Phase 2 — 레이어링·경계 (2주)**: BE-S2 → BE-S7 → BE-D1 → BE-D2 → BE-D4. "명확한 정답"류라 리뷰 부담 적음. 이때 트랜잭션 정책(서비스 flush / 라우터 commit)을 전역 결정.
-- **Phase 3 — 갓 모듈 분해 (2~3주)**: BE-S1 → BE-S3 → FE-S2 → FE-S3 → FE-S4 → BE-S5. 전부 facade 기반 순수 이동 전략이라 기능 변화 0을 유지. 병행: FE-P1(컨텍스트 분리).
-- **Phase 4 — 이중 시스템 수렴 (2주+)**: FE-S1(런타임 수렴 1단계) → BE-S4(의존 역전) → BE-S9(스케줄러). BE-P2(메시지 페이지네이션)는 FE 소비부 변경과 함께.
-- **Phase 5 — 장기 개선 (백로그)**: 가상화(FE-P2/P3), 디자인/a11y 묶음(FE-D2~D7), 테스트 팩토리(BE-D7), 디렉토리 이주(FE-S9, BE-S6), 타입 생성(FE-S10), squash(IX-4).
+> **使用方法**：`/clear` 后，在新 session 中只需一句 **"按本文档执行顺序继续下一个未完成项"**。如需指定某项，直接复制下方编号对应的 prompt。通用规则：在 worktree 中基于 origin/main 建新 branch，一个 PR = 一个条目，功能变化 0（纯移动用 facade），验证全绿后 PR。（后端验证 = `ruff` + `pyright` + `pytest -n 4 --ignore=tests/integration` + `pytest tests/integration -m integration` 串行（自动加 marker 后必须带 `-m integration` — 否则全部 deselect：dir-scoped 为 exit 5 red，完整执行 `pytest tests/` 时会静默排除），push 时 `SKILL_EVALUATION_ENABLED=true`。）
+> 完成后在该列表对应行留下 ✅ 和 PR 编号，让下一 session 接着进行。
 
-**공통 가드레일**:
-- 리팩토링 PR은 **기능 변화 0** 원칙 — 순수 이동은 facade re-export로 기존 import 경로 보존.
-- 병합 전 전체 검증: `cd backend && uv run ruff check . && uv run pyright && uv run --with pytest-xdist pytest -q -n 4` / `cd frontend && pnpm lint && pnpm vitest run && pnpm build`. 채팅 관련 변경은 e2e `chat-*.spec.ts` 추가 실행 (푸시 시 `SKILL_EVALUATION_ENABLED=true` 필요).
-- 한 PR = 한 항목. drive-by 리팩토링 금지 (CLAUDE.md Minimal Impact).
+**Stage 0 — 先做自动门禁（之后所有工作都自动验证。杠杆最大）**
+1. ✅ **lint A-1** — PR #287。重新测量（i18n 3·type-safety 2·e2e-hygiene 40 = 全部合理）→ 登记 3 个例外 + 每个例外的回归测试 → 将 4 个绿色 guard（lint·i18n·type-safety·e2e-hygiene）接入 CI 独立 step + lint-staged。**frontend-architecture 在第 2 次 review 中被确认是假绿**（非 strict 始终 exit 0，strict 有 3 个 blocking red）→ 与 a11y（新增4+解决2）·design-system（12）一起留到 A-2（联动 FE-D2·FE-D4 + 修复 strict blocking）。
+2. ✅ **lint C** — PR #288。启用 `S` rule + triage 51 项（app 43 + scripts/alembic 8）。实际修改 2 处：openwiki sync_repo.py（注入 LLM 提供的 --repo-url/--ref 选项·阻断 ext::/file:// transport + 22 个测试 case），generate_image.py（S310 scheme guard）。其余误报采用 inline noqa + tests/·alembic/ per-file-ignores。附带门禁回归测试（注入 red + 例外 non-blanket negative）。
+3. ✅ **lint F·G** — PR #290。F：启用 `PGH`（当前 tree 违规 0 — 纯预防门禁，禁止 bare noqa/blanket type-ignore）+ 门禁回归测试。G：`tests/integration/conftest.py` 自动 marker hook + **CI 串行 step 必须 `-m integration`**（加 marker 后 plain `pytest tests/integration` 会全部 deselect → exit 5 red；安静变体是在 full-suite `pytest tests/` 中被 sibling 测试通过掩盖为 exit 0 — review 中修正了 exit code，最初实测踩了 `| tail` pipe 陷阱）+ coverage/deselection 回归测试。m9 因 self-skip 安全。pre-push 的 plain `pytest tests/` 排除 integration 是有意设计（CI 串行为 gate）。**已知盲区（pre-existing）**：`tests/test_trace_storage.py` 中有 1 个 integration marker 测试位于目录外，因此任何 CI step 都不会运行；在 aiosqlite 下执行会失败，且没有 live PG 注入基础设施，是 dead test — 后续应按 m9 模式（INTEGRATION_DATABASE_URL）迁移到 tests/integration/。
+4. ✅ **lint E** — PR #291。批量启用 7 条 rule + triage 373 项（文档实测的 66 项仅限 app/ — 实际多数是 tests/ 308 项）。实际修改 ~48（RET inline·PTH pathlib（含启动 SSL 路径）·PT011 match=·PT019 usefixtures·PT013/PT006/N806/N814），全局 ignore N818（领域风格异常名 18 项），per-file `app/**`=PT（router `test_*` endpoint 误报 17 项）·`tests/*`+=SLF001/DTZ/PT017/PT018/N801/N815（惯用法·wire mock 267 项），inline noqa 14（ssl patch·ORM stash·tool schema camelCase·本地日期 — 全部带原因）。门禁回归测试 `test_lint_low_noise_rules.py`（red + 证明例外为 rule-scoped）。2 次陷阱实证：C416 unsafe fix（`dict(rows.all())`）导致 pyright 类型回归 → 用 `.tuples()` 解决 / commit hook 重新格式化（113→354 insertions）后必须复查 noqa anchor（已保持）。
 
----
+**Stage 1 — 收尾部分完成项**
+5. ✅ **BE-D1 剩余项** — PR #292。转换剩余 18 处（8 个文件）：复用 conv 的 router（branches 2·crud 3·messages list·followup·shares create/revoke·e2e 4）注入 conv — 将参数位置放在 **`verify_csrf` 之后**以保持 CSRF 403→404 顺序（decorator dependencies 比 param 依赖更早运行，如果把 gate 放到 decorator 会颠倒顺序，e2e heartbeat 注释已实证）。GET gate 5 处（runs 3·ag_ui·shares get）使用 decorator `dependencies=[...]`。有意保留 3 处：run_cancel helper（两个 router 共享不同 path param 的 conversation_id/thread_id）、messages stream_resume（独立 `resume_not_found` 契约+reject logging）、crud get_conversation_detail（agent eager-load 独立 getter）。删除 shares 本地 `_require_owned_conversation`。agents.py 的 `owned_agent` 扩散（6 处）留作 §6 方案第 2 阶段的可选后续。
+6. ✅ **BE-P5 剩余项** — PR #294。(b) persist 复用 wire 1 次 redaction（`persistable_wire_protocol_event` = compact + 仅 memory masking；W2-3 契约通过拆出 `redact_memory_content` 保持，并用 full/wire 变体等价性测试锁定）。(d) `build_persist_callback` 增加 run-scoped seen_event_ids cache — 首次 flush 1 次 seed（`load_persisted_event_ids`）后增量更新，**不变量 cache ⊆ DB**（仅 commit 成功的部分写入；失败时 reset 并 reseed；若 cache 领先 DB，retry event 会被 dedup 丢失）。(e) v3 emit 的 inline `await` flush → `asyncio.create_task` fire-and-forget — in-flight 上限 **1**（legacy 为 4），以 run 内串行化保证 chunk seq_start 单调 + (d) cache 无竞争；失败 chunk 恢复到 buffer **前端**保持顺序 + 5000 events cap（legacy parity），finally 中 join task → final flush。
 
-## 3. 보안·신뢰성 잔존 이슈 — 2026-07-03 감사 추적 (재검증 완료)
+**Stage 2 — 分层·边界（答案明确）** — ✅ **全部 PR #295**（一个 PR，按条目 commit + 按条目 review）
+7. ✅ **BE-S7** — PR #295。OAuth ~286 行 → `app/credentials/oauth_service.py`（client=底层 HTTP / service=DB 状态·orchestration 契约明确）。**全局事务策略决定：service flush / router commit。** `gc_oauth_states` public 暴露（供 scheduler 复用）。review 反馈：加入 callback 跨用户 forbidden 回归测试（未认证 callback 唯一可劫持 state 的防御分支契约锁定）。已知偏差 1（有意）：auth_start 的 malformed URL error 路径从 commit→rollback 改变（策略推导，更原子）。
+8. ✅ **BE-S2** — PR #295。新建 `mcp_service` + 扩展 `tool_service`（CRUD·run·audit）·`model_service`（operator CRUD·in-use check），3 个 router raw DB 访问 0。保留原有 commit sequence（包括 double commit）以确保 semantics 不变。review 通过（发现 0）。
+9. ✅ **BE-D3** — PR #295。`audit_service.record_self_event` 吸收 self-action identity kwargs 7 个，替换 18 处（actor≠owner 保留 record_event）。review 反馈：补上遗漏的 finalize site + identity column literal expected-value contract test（避免 delegation tautology）。
+10. ✅ **BE-D7** — PR #295。conftest `make_model`/`make_agent`/`seed_agent(db)->(user,model,agent)` + `AuthSession`/`register_session`（auth 5 个文件 shim 转换，签名保留）。ORM factory 在代表性 2 个文件采用，其余按 guardrail 渐进迁移。参考：Model 没有 (provider,model_name) unique constraint（ORM 层）— seed 重复调用安全。
 
-이번 분석에서 감사 High 4건의 현재 상태를 코드로 재확인했다. **리팩토링과 별도 트랙으로 최우선 처리 권고.**
+**Stage 3 — God module 拆分（facade 纯移动，逐个进行）** — ✅ **全部 PR #296**（一个 PR，按条目 commit + 每项 6 次 adversarial review，blocking 发现 0）
+11. ✅ **BE-S1** — PR #296。chat_service.py 1810→104 行 facade，`app/services/chat/` 7 个模块（interrupts/secrets/conversations/messages/usage/attachments/runtime_context）。有意保留 4 处函数内 import（1 处 import-order cycle + 3 处测试 monkeypatch 的 call-time lookup — 提升到 top-level 会绕过 patch，造成功能变化）。
+12. ✅ **BE-S3** — PR #296。install_service.py 1365→400 行 facade+dispatcher，`app/marketplace/install/`（common/snapshot/bindings/skill/mcp/agent_blueprint）。2 个非纯移动 seam（install_item skill 分支·update skill tail 提取）通过逐句 AST identical 验证。`_payload_skill_kind` 为避免 snapshot↔skill cycle 放到 common。
+13. ✅ **BE-S5 · BE-S8 · BE-S9 · BE-S10** — PR #296（按用户指示合并为一个 PR）。BE-S5：write_tools 1091 行 → 4 组 builder package + `WriteToolContext`（23 个 tool schema byte-identical，`async_session_factory` patch surface 通过 call-time injection 保留）。BE-S8：artifact_service 1035→137 行 facade，`artifacts/`（recorder/library/content/summary/errors）— recorder 的 `_sha256_file` 使用 call-time facade import（测试 patch 观察路径）。BE-S9：scheduler 4 个 inline job → credentials/rotation·mcp_service·conversation_run_service·skill_runtime，**同名 wrapper 必须保留**（持久化 SQLAlchemyJobStore 序列化 module:qualname + 测试 patch `app.scheduler.async_session`/`_ROTATION_BATCH` — wrapper 在 call-time 读取 global 做 DI）。BE-S10：runtime_component_builder 930→600 行，`agent_runtime/runtime/`（models/reliability/interrupts/prompts/memory_context）— 只有 `create_chat_model` 在 models 中 call-time import builder（12 种 patch surface 中唯一风险）。memory_context 参数注入推迟到 BE-S4（Stage 5）。
 
-### [SEC-1] web_scraper SSRF — **미수정 (STILL PRESENT)**
-- **증거**: `backend/app/agent_runtime/tool_factory.py:149-162` — `scrape_url`이 모델(에이전트)이 제공한 URL을 아무 검증 없이 `client.get(url)`. 공유 클라이언트가 `follow_redirects=True`(`:102-106`)라 리다이렉트 경유 SSRF도 가능. `ipaddress`/`is_private`/`169.254`/allowlist 가드 전무 — localhost·RFC-1918·클라우드 메타데이터(`169.254.169.254`) 미차단.
-- **수정 방안**: ① URL 파싱 후 scheme http/https만 허용 ② 호스트 resolve 결과가 사설/루프백/링크로컬 IP면 거부 (`ipaddress.ip_address(...).is_private/is_loopback/is_link_local`) ③ 리다이렉트도 각 hop 재검증(httpx event hook 또는 수동 follow) ④ 응답 크기 상한. 기존 `sanitizeExternalUrl`(프론트) 철학과 동일한 서버판.
-- **검증**: `http://169.254.169.254/`, `http://localhost:8001/`, 사설 IP로 redirect하는 URL이 전부 차단되는 pytest 추가.
+**Stage 4 — 前端大型项**
+14. **FE-P1** — streaming context churn（全消息 rerender）。§8 [FE-P1]。（独立·性能影响大，因此先做前端）
+15. **FE-S2** — 拆分 use-moldy-langgraph-stream.ts（2,941 行）。§7 [FE-S2]。
+16. **FE-S3 · FE-S4** — 拆分 assistant-thread / approval-card。
+17. **FE-S1** — 聊天 runtime 双轨收敛。§7 [FE-S1]。（设计难题，熟悉前端后再做）
 
-### [SEC-2] rotate_credentials 무한루프 — **부분 수정 (잔존 리스크)**
-- **증거**: `backend/app/scheduler.py:235-251` — OFFSET 제거로 원래 문제는 완화됐으나, 한 배치(≥`_ROTATION_BATCH=100`) 전체가 지속 실패하면 동일 행을 재조회하는 no-progress `while True` 잔존(종료 가드 `len(rows) < _ROTATION_BATCH`가 트립 안 됨).
-- **수정 방안**: 실패 id를 세션 내 제외 목록에 축적해 다음 fetch에서 `id.notin_(failed)` 필터, 또는 no-progress(연속 2회 동일 id셋) 감지 시 break + 에러 로깅, 또는 max-iteration 캡.
-- **검증**: 복호 불가 credential 100+개 시드 후 잡이 종료되는 단위 테스트.
+**Stage 5 — 结构难题 + pagination**
+18. **BE-S4** — 反转 services↔agent_runtime 依赖（155 处函数内 import 的根源）。§4 [BE-S4]。
+19. **BE-P2** — 消息 keyset pagination（FE 联动）。§5 [BE-P2]。
+20. **BE-S6** — 目录 convention ADR + 子包化。§4 [BE-S6]。
 
-### [SEC-3] 트리거 중복실행 — **부분 수정 (run-now 경로 잔존)**
-- **증거**: `backend/app/agent_runtime/trigger_executor.py:80-122` — APScheduler `coalesce=True, max_instances=1` + 리더락으로 스케줄 경로는 방어되나, `routers/triggers.py:167`의 **run-now가 APScheduler를 우회**해 스케줄 실행 in-flight 중 사용자가 run-now를 누르면 이중 실행.
-- **수정 방안**: `execute_trigger` 진입 시 트리거 행 `SELECT … FOR UPDATE` + status→running 클레임(이미 running이면 409 반환), 또는 `agent_trigger_runs`에 "in-flight run당 1행" 부분 유니크 인덱스(`WHERE status='running'`)로 DB 레벨 방어.
-- **검증**: 동시 run-now 2회 → 1건만 실행되는 동시성 테스트.
+**Stage 6 — Backlog（P2/P3 quick win，可并行）**
+- 后端性能：BE-P8·P9·P10·P11·P12·P13 / 前端性能：FE-P2（virtualization）·P3·P4·P5·P6·P7
+- 设计·a11y：FE-D2~D7 + lint A-2（接入 design-system·a11y guard）/ 重复：BE-D5·D6·D8 · FE-S5~S10
+- 基础设施：IX-3（docker）·IX-5（结构化 logging）·IX-4（squash）
 
-### [SEC-4] 프론트 채팅 에러 바운더리 부재 — **유효 (FE-D1로 편입)**
-- 두 개 독립 분석이 재확인. 상세와 방안은 §8 FE-D1 참조.
+**Stage 7 — 类型门禁（大型，最后）**
+21. ✅ **pyright 清零** — 2026-09-07 完成。1,258→0，移除 CI `|| true`，
+    切换为 basic-mode 硬门禁。详情见 `docs/pyright-burndown-plan.md`。
+22. **lint D·B 剩余项** — 决定是否升级 pyright standard + 后端自定义
+    guard（禁止 raw HTTPException 的脚本）。与 basic 0 达成分开推进。
 
----
-
-## 4. 백엔드 — 구조/아키텍처 (BE-S)
-
-분석 범위: `backend/app/` (읽기 전용). 총 84,902 LOC / Python. 모든 발견은 실제 파일을 열어 확인한 것이며 라인 참조는 검증됨.
-
-**긍정적 기준선 (리팩토링 대상 아님, 참고용):** `routers/conversation_agent_protocol*.py` 18개 파일은 **모범적 분해 사례**다 — 라우트는 `conversation_agent_protocol.py`(6개)/`_sdk.py`(1개)에만 있고 나머지 16개는 순수 헬퍼 모듈(state, replay, resume, redaction, interrupts, event_normalization 등)로 책임 분리됨. 아래 god module들은 "이 팀이 할 줄 아는" 이 패턴을 아직 적용하지 않은 곳들이다. 또한 `services → routers` 역방향 import는 0건(레이어 방향성 자체는 지켜짐).
-
----
-
-### [BE-S1] `chat_service.py` 갓 모듈 — 7개 이질적 책임이 한 파일(1786줄)에 혼재
-- **우선순위 제안**: P1 — 프로젝트 최대 파일이자 채팅/트리거/폴링 hot path의 중심. 변경 빈도·병합 충돌·회귀 리스크가 가장 높다(MEMORY의 W2-3, 시크릿 수집 규칙 등 다수 사고가 이 파일에서 발생).
-- **카테고리**: 구조
-- **증거**: `app/services/chat_service.py`. `__all__`(56-84)에 24개 export. 실제 함수 클러스터:
-  1. **HITL 인터럽트 재구성** `_review_config_for_action`~`_hydrate_pending_interrupt_tool_calls` (104-493, ~20개 프라이빗 함수)
-  2. **시크릿 수집/리댁션** `collect_conversation_secret_values`, `_redact_response_tool_calls` (494-602)
-  3. **대화 CRUD + keyset 페이지네이션 + 커서 인코딩** `ConversationPageCursor`~`delete_conversation` (623-1030, `_encode/_decode_conversation_cursor` 포함)
-  4. **checkpointer 메시지 로딩** `list_messages_from_checkpointer` (1031-1224, 단일 194줄 함수)
-  5. **토큰 사용량/가격** `_resolve_agent_model_pricing`, `save_token_usage` (1239-1291)
-  6. **첨부 링크** `link_attachments_to_conversation`, `resolve_turn_user_message_id`, `link_attachments_to_message` (1293-1400)
-  7. **파일 리스트** `list_conversation_files` (1402-1480)
-  8. **에이전트 런타임 컨텍스트 조립** `get_agent_with_tools`, `build_tools_config`, `build_effective_prompt`, `build_agent_skills`, `trigger_blocked_tools_for_agent_tree` (1513-1786)
-- **문제점**: 8개 클러스터가 상호 결합이 거의 없는데도 한 파일에 있어 (a) 어떤 변경이든 파일 전체를 재이해해야 하고 (b) `import base64/json/uuid` + 12개 모델 import가 전부 top-level이라 4번(checkpointer)·6번(첨부)은 이미 함수-로컬 deferred import(1024, 1057-1059줄)로 순환 회피 중 — god module이 순환참조까지 유발. (c) read/poll 경로가 무거운 조립 로직과 같은 모듈이라 캐시/성능 튜닝 시 blast radius가 크다.
-- **리팩토링 방안**:
-  1. 새 패키지 `app/services/chat/` 생성, 기존 `chat_service.py`는 **facade**로 남겨 `__all__` 재-export(하위호환: 트리거 executor·conversations 라우터가 public shape에 의존 — 파일 docstring 9-12줄 명시).
-  2. `chat/interrupts.py` ← 클러스터 1 (104-493) 전체 이동.
-  3. `chat/secrets.py` ← 클러스터 2 (`collect_conversation_secret_values`, `_redact_response_tool_calls`). CLAUDE.md 규칙("read/poll은 경량 agent-only 수집 공유")과 정확히 대응되므로 독립 모듈이 규칙 준수 검증에도 유리.
-  4. `chat/conversations.py` ← 클러스터 3 (CRUD + 커서). `ConversationPageCursor`, `_encode/_decode_conversation_cursor`, `list_*_page` 이동.
-  5. `chat/messages.py` ← 클러스터 4 (`list_messages_from_checkpointer` + deferred import를 top-level로 승격 가능해짐).
-  6. `chat/usage.py` ← 클러스터 5, `chat/attachments.py` ← 클러스터 6+7, `chat/runtime_context.py` ← 클러스터 8.
-  7. facade는 `from app.services.chat.interrupts import *` 형태 대신 명시적 re-export만.
-  8. import 갱신 지점: `grep -rl "from app.services import chat_service\|from app.services.chat_service import"` → 대부분 facade 유지로 무변경. 내부 상호참조(예: 클러스터 8이 클러스터 2를 부름)는 새 모듈 경로로 교체.
-- **검증**: `uv run pytest tests/test_chat*.py tests/test_conversations*.py tests/test_triggers.py && uv run ruff check app/services/chat`
-- **예상 공수**: L (facade 하위호환 + deferred import 정리 포함)
+**顺序依据**：Stage 0 先做 = 后续 20 多个 PR 自动验证（本次重构 session 的最大教训）。BE-S2 是 BE-S9 的前置，God module（3）在 layer 整理（2）后更安全。BE-S4 是多个 God module 函数内 import 气味的根因，因此在拆分后收尾。类型门禁（7）需要先完成 968 项清零，所以最后做。
 
 ---
 
-### [BE-S2] MCP/tools/models 도메인에 **서비스 레이어가 아예 없음** — 라우터가 직접 DB 처리
-- **우선순위 제안**: P1 — 레이어링 위반의 가장 명백한 케이스. 라우터에 트랜잭션·쿼리·비즈니스 규칙이 섞여 재사용·테스트가 불가.
-- **카테고리**: 구조
-- **증거**: 라우터 전체 raw DB 접근 224건 중 상위:
-  - `routers/mcp.py` (825줄, **28건**): `_load_owned`(92), `_load_tools_for`(103)에 직접 `select`, 핸들러가 `db.add(server)`/`db.commit()`/`db.delete()` 직접 수행(234, 244, 292, 566, 582, 738-740). `import_servers`(455-608)는 credential 존재 확인 `select(Credential.id)`(492)까지 라우터에서 실행.
-  - `routers/tools.py` (11건): `create_tool`→`db.add`+`commit`(135-136), `run_tool_endpoint`(251) 실행 로직 인라인.
-  - `routers/models.py` (9건): `delete_model`이 `select(func.count(Agent.id))` in-use 체크(254)를 라우터에서 수행.
-  - `services/`에 `mcp_service.py`/`model_service.py` 부재 확인. `services/mcp_registry.py`는 static registry 캐시일 뿐 CRUD 아님. 대조적으로 agents/artifacts/memory/triggers/shares는 서비스 존재.
-- **문제점**: 트랜잭션 경계가 라우터에 있어 스케줄러·트리거·다른 라우터가 동일 로직을 재사용 불가 → 복붙 발생. ownership 규칙(`_load_owned`)이 라우터마다 재구현되어 enumeration-oracle 방지 규칙(security.md)이 일관 적용되는지 감사 어려움. 단위 테스트가 HTTP 계층을 거쳐야만 가능.
-- **리팩토링 방안**:
-  1. `app/services/mcp_service.py` 신설. `mcp.py`의 `_load_owned`, `_load_tools_for`, `create_server`/`update_server`/`delete_server`/`import_servers`/`export_servers`의 **DB 조작부만** 함수로 추출(`create_server(db, *, user_id, payload) -> McpServer` 등). 커밋은 서비스 내부 또는 라우터 중 한 곳으로 통일(프로젝트 기존 관례 = 서비스가 `flush`, 라우터가 `commit` → BE-S7과 동일 정책 채택 권장).
-  2. 라우터는 서비스 호출 + 스키마 변환 + 권한 가드(`Depends`)만 남긴다. `_invalidate_runtime_mcp_cache`/`_record_mcp_audit` 같은 사이드이펙트도 서비스로.
-  3. `tool_service.py`(기존 파일 확장)·`model_service.py`(신설)에 동일 적용. `run_tool_endpoint` 실행 로직은 `tool_service.run_tool(...)`로.
-  4. import 갱신: 각 라우터 상단 `from app.services import mcp_service`. 모델 import는 서비스로 이동.
-  5. facade 불필요(라우터는 외부 재사용 대상 아님).
-- **검증**: `uv run pytest tests/test_mcp*.py tests/test_tools*.py tests/test_models*.py && uv run ruff check app/services/mcp_service.py app/routers/mcp.py`
-- **예상 공수**: M (도메인당 반나절 × 3)
+### 初始分析路线图 (2026-07-07，参考)
+
+考虑依赖关系和风险后的顺序。每个 Phase 作为独立 branch/PR 分组推进，Phase 间顺序需遵守，Phase 内可并行。
+
+- **Phase 0 — 安全网（1 周）**：SEC-1·2·3 + BE-P4 + FE-D1 + IX-1（CI）。CI 必须先建立，这样之后所有重构 PR 才能自动验证。当时 Pyright 有 968 个既有错误，因此 typecheck 是 non-blocking；2026-09-07 清零完成后已改为 blocking。
+- **Phase 1 — hot path 性能（1~2 周）**：BE-P1 → BE-P3 → BE-P5 → BE-P6 → BE-P7 + Quick Wins 批量处理。都是小规模 diff，回归风险低，体感收益立即。
+- **Phase 2 — 分层·边界（2 周）**：BE-S2 → BE-S7 → BE-D1 → BE-D2 → BE-D4。属于"答案明确"的类型，review 负担小。此时全局确定事务策略（service flush / router commit）。
+- **Phase 3 — God module 拆分（2~3 周）**：BE-S1 → BE-S3 → FE-S2 → FE-S3 → FE-S4 → BE-S5。全部采用基于 facade 的纯移动策略，保持功能变化 0。并行：FE-P1（context 拆分）。
+- **Phase 4 — 双系统收敛（2 周+）**：FE-S1（runtime 收敛第 1 阶段）→ BE-S4（依赖反转）→ BE-S9（scheduler）。BE-P2（消息 pagination）与 FE 消费端修改一起做。
+- **Phase 5 — 长期改善（backlog）**：virtualization（FE-P2/P3）、设计/a11y 分组（FE-D2~D7）、测试 factory（BE-D7）、目录迁移（FE-S9, BE-S6）、类型生成（FE-S10）、squash（IX-4）。
+
+**通用 guardrail**：
+- 重构 PR 遵守**功能变化 0**原则 — 纯移动通过 facade re-export 保留现有 import 路径。
+- merge 前完整验证：`cd backend && uv run ruff check . && uv run pyright && uv run --with pytest-xdist pytest -q -n 4` / `cd frontend && pnpm lint && pnpm vitest run && pnpm build`。聊天相关变更额外执行 e2e `chat-*.spec.ts`（push 时需要 `SKILL_EVALUATION_ENABLED=true`）。
+- 一个 PR = 一个条目。禁止 drive-by 重构（CLAUDE.md Minimal Impact）。
 
 ---
 
-### [BE-S3] `marketplace/install_service.py` 갓 모듈 — 3개 설치 타입 + update + delete가 1366줄에 혼재
-- **우선순위 제안**: P1 — marketplace 최대 파일. skill/mcp/agent_blueprint 3계열의 설치·재설치·바인딩 검증이 뒤엉켜 한 타입 수정이 다른 타입을 깨뜨릴 위험.
-- **카테고리**: 구조
-- **증거**: `app/marketplace/install_service.py`. 함수군:
-  - **공통 유틸/스냅샷**: `_skill_storage_root`, `_target_for`, `_copy_snapshot`, `_rmtree_skill_storage`, `_replace_skill_snapshot` (83-273)
-  - **바인딩 검증**: `_validate_version_credential_bindings`, `_validate_mcp_bindings`, `_apply_mcp_payload_to_server`, `_materialize_mcp_tool_snapshot` (380-540)
-  - **MCP 설치**: `_install_mcp_item`(541-672), `_mcp_install_status_for_server`, `_overwrite_mcp_installation`(990-1054)
-  - **Agent blueprint 설치**: `_install_agent_blueprint_item`(673-810), `_agent_blueprint_status_from_bindings`, `_apply_agent_payload_to_blueprint`, `_overwrite_agent_blueprint_installation`(1055-1153)
-  - **오케스트레이터**: `install_item`(811-989, 178줄 — 타입 분기), `update_installation`(1154-1265), `delete_installation`(1266-1306), `_remove_install_artifacts`(1307)
-- **문제점**: `install_item`이 3타입을 if/elif 분기하며 각 타입의 상세 로직을 같은 파일에서 호출 → 파일 전체를 알아야 한 타입 수정 가능. MCP 바인딩 검증과 agent blueprint 바인딩 검증이 인접해 복붙·불일치 유발. 스냅샷 복사(파일시스템)와 DB 트랜잭션이 한 함수에 섞여 롤백 정합성 추론 어려움.
-- **리팩토링 방안**:
-  1. `app/marketplace/install/` 패키지 생성.
-  2. `install/snapshot.py` ← 스냅샷/스토리지 유틸(83-273).
-  3. `install/bindings.py` ← credential/mcp 바인딩 검증(338-540).
-  4. `install/skill.py` / `install/mcp.py` / `install/agent_blueprint.py` ← 타입별 `_install_*`/`_overwrite_*`/`_status_*`.
-  5. `install/__init__.py`(또는 기존 `install_service.py` facade)에 `install_item`/`update_installation`/`delete_installation` **디스패처만** 남기고 타입별 모듈로 위임.
-  6. 하위호환: `routers/marketplace.py`가 `from app.marketplace import install_service` 사용 → facade에서 3개 public 함수 re-export.
-  7. import 갱신: `install_locks.py`, `origin_service.py`가 install 심볼 참조하는지 `grep -rn "install_service\." app/` 확인 후 경로 교체.
-- **검증**: `uv run pytest tests/test_marketplace*.py && uv run ruff check app/marketplace/install`
-- **예상 공수**: L
+## 3. 安全·可靠性遗留问题 — 2026-07-03 审计跟踪（已重新验证）
+
+本次分析通过代码重新确认了审计 High 4 项的当前状态。**建议作为与重构独立的 track 最高优先处理。**
+
+### [SEC-1] web_scraper SSRF — **未修复 (STILL PRESENT)**
+- **证据**：`backend/app/agent_runtime/tool_factory.py:149-162` — `scrape_url` 对模型（Agent）提供的 URL 不做任何验证就 `client.get(url)`。共享 client 设置 `follow_redirects=True`（`:102-106`），因此也可通过 redirect 进行 SSRF。完全没有 `ipaddress`/`is_private`/`169.254`/allowlist guard — 未阻断 localhost·RFC-1918·云 metadata（`169.254.169.254`）。
+- **修改方案**：① 解析 URL 后只允许 scheme http/https ② 若 host resolve 结果为私网/loopback/link-local IP 则拒绝（`ipaddress.ip_address(...).is_private/is_loopback/is_link_local`）③ redirect 每个 hop 也重新验证（httpx event hook 或手动 follow）④ 设置响应大小上限。与现有 `sanitizeExternalUrl`（前端）的理念相同，是服务端版本。
+- **验证**：新增 pytest，确保 `http://169.254.169.254/`、`http://localhost:8001/`、redirect 到私网 IP 的 URL 全部被阻断。
+
+### [SEC-2] rotate_credentials 无限循环 — **部分修复（仍有风险）**
+- **证据**：`backend/app/scheduler.py:235-251` — 移除 OFFSET 后原问题有所缓解，但如果一个 batch（≥`_ROTATION_BATCH=100`）全部持续失败，仍存在反复查询同一批 row 的 no-progress `while True`（终止 guard `len(rows) < _ROTATION_BATCH` 不会触发）。
+- **修改方案**：在 session 内累积失败 id，并在下一次 fetch 时加 `id.notin_(failed)` 过滤；或检测 no-progress（连续 2 次相同 id 集）后 break + error logging；或设置 max-iteration cap。
+- **验证**：seed 100+ 个无法解密的 credential 后，加入确保 job 能结束的 unit test。
+
+### [SEC-3] trigger 重复执行 — **部分修复（run-now 路径仍存在）**
+- **证据**：`backend/app/agent_runtime/trigger_executor.py:80-122` — APScheduler `coalesce=True, max_instances=1` + leader lock 已保护 schedule 路径，但 `routers/triggers.py:167` 的 **run-now 绕过 APScheduler**，当 schedule 执行 in-flight 时用户点击 run-now 会发生双重执行。
+- **修改方案**：进入 `execute_trigger` 时对 trigger row 执行 `SELECT … FOR UPDATE` + status→running claim（已 running 则返回 409），或在 `agent_trigger_runs` 上加"每个 in-flight run 仅 1 行"的 partial unique index（`WHERE status='running'`）做 DB 层防御。
+- **验证**：并发 run-now 2 次 → 只执行 1 次的 concurrency test。
+
+### [SEC-4] 前端聊天 error boundary 缺失 — **有效（纳入 FE-D1）**
+- 两个独立分析再次确认。详情和方案见 §8 FE-D1。
 
 ---
 
-### [BE-S4] `services ↔ agent_runtime` 양방향 결합 → 순환참조 회피용 함수-로컬 import 24건(chat_service만)
-- **우선순위 제안**: P2 — 즉각 버그는 없으나 모듈 경계가 무너져 있어 신규 결합이 계속 늘고, deferred import가 "숨은 런타임 의존"이 되어 import 시점 에러를 실행 시점으로 미룸.
-- **카테고리**: 구조
-- **증거**: `services/`가 `agent_runtime`을 import하는 파일 **30개**, `agent_runtime/`이 `services`를 import하는 파일 **14개**(양방향). 회피 결과 `chat_service.py`에 함수-로컬 import 24건(예: 464-465, 515-517, 1024, 1057-1059). `scheduler.py`도 전부 함수-로컬 import(117, 228-230, 313, 377, 446, 481, 522-523, 609-610, 638, 687-688)로 부팅 순환을 회피 중.
-- **문제점**: 어느 방향이 "상위 레이어"인지 불명확. agent_runtime이 서비스를(DB/CRUD) 부르고 서비스가 다시 agent_runtime을(런타임 조립) 부르는 사이클이 존재해 import graph가 DAG가 아님. deferred import는 정적 분석·IDE 탐색을 무력화하고, 오타/시그니처 변경을 런타임까지 숨긴다.
-- **리팩토링 방안**:
-  1. 경계 규칙 확정 문서화(`docs/ARCHITECTURE.md`): **agent_runtime = 순수 실행 엔진, services = DB/오케스트레이션**. 방향은 `services → agent_runtime` 단방향만 허용.
-  2. `agent_runtime → services` 14개 역방향 import를 조사(`grep -rn "from app.services" app/agent_runtime/`). 대부분 CRUD 조회(memory, followup, agent) → 필요한 데이터를 **호출자(서비스)가 미리 로드해 인자로 주입**하도록 뒤집는다(의존성 역전). 예: `runtime_component_builder._load_memory_context`가 `memory_service`를 직접 부르는 대신, 상위 서비스가 memory records를 조회해 `AgentConfig`에 담아 전달.
-  3. 역전 불가한 최소 케이스만 `Protocol` 인터페이스(`app/agent_runtime/ports.py`)로 추상화.
-  4. 역전 완료 후 `chat_service`/`scheduler`의 함수-로컬 import를 top-level로 승격, 남는 것만 문서 주석.
-- **검증**: `uv run python -c "import app.main"` (부팅 순환 확인) + `uv run pytest` 전체 + `uv run ruff check`(unused import).
-- **예상 공수**: L (조사·역전 설계가 핵심)
+## 4. 后端 — 结构/架构 (BE-S)
+
+分析范围：`backend/app/`（只读）。总计 84,902 LOC / Python。所有发现均实际打开文件确认，行号引用已验证。
+
+**正向基准（非重构对象，仅供参考）：** `routers/conversation_agent_protocol*.py` 的 18 个文件是**优秀拆分案例** — route 仅存在于 `conversation_agent_protocol.py`（6 个）/`_sdk.py`（1 个），其余 16 个都是纯 helper module（state, replay, resume, redaction, interrupts, event_normalization 等），职责分离。下面的 god module 是"团队已经会做"却尚未应用这一模式的地方。另外，`services → routers` 反向 import 为 0（layer direction 本身得到遵守）。
 
 ---
 
-### [BE-S5] `write_tools.py` — `build_write_tools` 단일 함수 1093줄에 26개 툴 클로저
-- **우선순위 제안**: P2 — Assistant 패널 도구 전체가 하나의 팩토리 함수 안 nested closure. 한 도구 수정 시 1093줄 스코프를 로드해야 하고 개별 도구 단위 테스트가 사실상 불가.
-- **카테고리**: 구조
-- **증거**: `agent_runtime/assistant/tools/write_tools.py`. `def build_write_tools(`(53) 하나 안에 `add_tool_to_agent`(72), `remove_tool_from_agent`(107), `add/remove_mcp_tool`(132/170), `add/remove_middleware`(195/226), `add/remove_subagent`(256/328), `add/remove_skill`(367/416), `edit/update_system_prompt`(441/478), `update_model_config`(500), `update_middleware_config`(554), `update_chat_openers`(578), `update_agent_metadata`(601), `update_agent_identity_mode`(635), `update_recursion_limit`(676), cron 5종 `create/update/delete/enable/disable_cron_schedule`(696-980) 등 **26개 async 클로저** + 공유 헬퍼 `_get_agent_with_session`(65), `_resolve_trigger_for_write`(789). 형제 `read_tools.py`(470), `clarify_tools.py`(48)는 이미 분리돼 있음.
-- **문제점**: 클로저들이 공유 클로저 변수(session, agent_id 등)에 암묵 의존 → 개별 추출이 어렵게 얽힘. cron 5종(696-980, ~284줄)은 트리거 도메인으로 완전히 독립적인데도 같은 함수에. 파일이 커질수록 신규 도구 추가 시 diff·리뷰 비용 증가.
-- **리팩토링 방안**:
-  1. 공유 컨텍스트를 `@dataclass WriteToolContext(session_factory, agent_id, ...)`로 명시화(클로저 캡처 → 명시적 객체).
-  2. 도구를 그룹별 서브 빌더로 분해: `write_tools/tool_links.py`(add/remove tool·mcp), `write_tools/composition.py`(middleware·subagent·skill), `write_tools/agent_config.py`(prompt·model·metadata·identity·openers·recursion), `write_tools/cron.py`(cron 5종 + `_resolve_trigger_for_write`). 각 빌더가 `ctx`를 받아 `list[BaseTool]` 반환.
-  3. `build_write_tools`는 그룹 빌더 결과를 concat하는 얇은 조립자로.
-  4. import 갱신: `assistant_agent.py`가 `build_write_tools`만 참조하므로 시그니처 유지 시 무변경.
-- **검증**: `uv run pytest tests/test_assistant*.py && uv run ruff check app/agent_runtime/assistant/tools`
-- **예상 공수**: M
+### [BE-S1] `chat_service.py` God module — 7 个异质职责混在一个文件（1786 行）
+- **优先级建议**：P1 — 项目最大文件，也是 chat/trigger/polling hot path 核心。变更频率、merge conflict、回归风险最高（MEMORY 的 W2-3、secret 收集规则等多起事故都发生在该文件）。
+- **类别**：结构
+- **证据**：`app/services/chat_service.py`。`__all__`（56-84）有 24 个 export。实际函数 cluster：
+  1. **HITL interrupt 重建** `_review_config_for_action`~`_hydrate_pending_interrupt_tool_calls`（104-493，约 20 个 private function）
+  2. **secret 收集/redaction** `collect_conversation_secret_values`, `_redact_response_tool_calls`（494-602）
+  3. **conversation CRUD + keyset pagination + cursor encoding** `ConversationPageCursor`~`delete_conversation`（623-1030，包含 `_encode/_decode_conversation_cursor`）
+  4. **checkpointer 消息加载** `list_messages_from_checkpointer`（1031-1224，单个 194 行函数）
+  5. **token usage/pricing** `_resolve_agent_model_pricing`, `save_token_usage`（1239-1291）
+  6. **attachment link** `link_attachments_to_conversation`, `resolve_turn_user_message_id`, `link_attachments_to_message`（1293-1400）
+  7. **file list** `list_conversation_files`（1402-1480）
+  8. **Agent runtime context 组装** `get_agent_with_tools`, `build_tools_config`, `build_effective_prompt`, `build_agent_skills`, `trigger_blocked_tools_for_agent_tree`（1513-1786）
+- **问题**：8 个 cluster 几乎没有相互耦合，却放在同一文件中，导致 (a) 任何变更都必须重新理解整文件，(b) `import base64/json/uuid` + 12 个 model import 全部 top-level，而 cluster 4（checkpointer）·6（attachment）已经用函数内 deferred import（1024, 1057-1059 行）规避 cycle — god module 已经引发循环引用。(c) read/poll 路径与重型组装逻辑同模块，做 cache/performance tuning 时 blast radius 很大。
+- **重构方案**：
+  1. 新建 package `app/services/chat/`，现有 `chat_service.py` 保留为 **facade** 并 re-export `__all__`（向后兼容：trigger executor·conversations router 依赖 public shape — 文件 docstring 第 9-12 行已明确）。
+  2. `chat/interrupts.py` ← 整体移动 cluster 1（104-493）。
+  3. `chat/secrets.py` ← cluster 2（`collect_conversation_secret_values`, `_redact_response_tool_calls`）。它与 CLAUDE.md 规则（"read/poll 共享轻量 agent-only 收集"）完全对应，独立模块也更利于验证规则遵守。
+  4. `chat/conversations.py` ← cluster 3（CRUD + cursor）。移动 `ConversationPageCursor`, `_encode/_decode_conversation_cursor`, `list_*_page`。
+  5. `chat/messages.py` ← cluster 4（`list_messages_from_checkpointer` + deferred import 可提升到 top-level）。
+  6. `chat/usage.py` ← cluster 5，`chat/attachments.py` ← cluster 6+7，`chat/runtime_context.py` ← cluster 8。
+  7. facade 不使用 `from app.services.chat.interrupts import *`，只做显式 re-export。
+  8. import 更新点：`grep -rl "from app.services import chat_service\|from app.services.chat_service import"` → 大多可通过 facade 保持不变。内部交叉引用（如 cluster 8 调 cluster 2）改成新模块路径。
+- **验证**：`uv run pytest tests/test_chat*.py tests/test_conversations*.py tests/test_triggers.py && uv run ruff check app/services/chat`
+- **预计工时**：L（包含 facade 向后兼容 + deferred import 清理）
 
 ---
 
-### [BE-S6] 디렉토리 컨벤션 이원화 — 도메인 패키지(`app/marketplace/`,`mcp/`,`credentials/`,`skills/`) vs 평면 `services/*_service.py`
-- **우선순위 제안**: P2 — 신규 도메인을 어디에 둘지 규칙이 없어 팀마다 다르게 배치. "marketplace 로직은 어디?"를 매번 탐색해야 함.
-- **카테고리**: 구조
-- **증거**: 비즈니스 로직이 두 위치에 공존 — (a) 도메인 패키지: `app/marketplace/`(19파일), `app/mcp/`(7), `app/credentials/`(11), `app/skills/`(14), `app/agent_api/`(6). (b) 평면 서비스: `app/services/`에 90+ 파일(`agent_service.py`, `artifact_service.py`, `conversation_*` 등). `services/marketplace_service.py`는 없음(marketplace는 패키지). 반면 conversation/agent CRUD는 평면 서비스. 같은 "서비스 레이어"인데 물리 위치 규칙이 다름.
-- **문제점**: 어떤 도메인은 자기 패키지(내부에 service/schemas/payloads 응집), 어떤 도메인은 `services/`에 흩어짐(`conversation_*` 12개 파일이 `services/` 루트에 평면 나열). 신규 개발자가 도메인 코드를 찾는 비용 증가, 리팩토링 시 "이 도메인은 어느 컨벤션?" 판단 필요.
-- **리팩토링 방안**:
-  1. **결정 기록**(ADR 신설, 예: ADR-020 "Service layout convention"): 규모 임계값 정의 — "파일 3개 이상 = 도메인 패키지 `app/<domain>/`, 그 미만 = `services/<domain>_service.py`".
-  2. 즉시 이관은 위험하므로 **신규 규칙 + 점진 이관**. 우선 `services/`의 응집 그룹(`conversation_*` 12개, `skill_evaluation_*` 20+개, `skill_builder_*` 8개, `skill_revision_*` 5개, `model_*` 6개)을 각각 `services/conversation/`, `services/skill_evaluation/`, `services/skill_builder/` 서브패키지로 묶는다(순수 이동 + facade).
-  3. facade 필요: 이동한 모듈은 `services/__init__` 또는 얇은 re-export로 기존 import 경로 보존 후, 점진적으로 호출부 갱신.
-- **검증**: `uv run pytest`(전체) — 순수 이동이므로 그린 유지가 검증. `uv run ruff check app/services`.
-- **예상 공수**: M (규칙 결정 S + 서브패키징 M)
+### [BE-S2] MCP/tools/models 领域**完全没有 service layer** — router 直接处理 DB
+- **优先级建议**：P1 — layering 违规最明显的 case。router 中混入 transaction·query·business rule，无法复用和测试。
+- **类别**：结构
+- **证据**：所有 router 的 raw DB 访问 224 处中排名靠前：
+  - `routers/mcp.py`（825 行，**28 处**）：`_load_owned`（92）、`_load_tools_for`（103）直接 `select`，handler 直接执行 `db.add(server)`/`db.commit()`/`db.delete()`（234, 244, 292, 566, 582, 738-740）。`import_servers`（455-608）甚至在 router 中执行 credential 存在性检查 `select(Credential.id)`（492）。
+  - `routers/tools.py`（11 处）：`create_tool`→`db.add`+`commit`（135-136），`run_tool_endpoint`（251）执行逻辑 inline。
+  - `routers/models.py`（9 处）：`delete_model` 在 router 中执行 `select(func.count(Agent.id))` in-use check（254）。
+  - 已确认 `services/` 中没有 `mcp_service.py`/`model_service.py`。`services/mcp_registry.py` 只是 static registry cache，不是 CRUD。对比之下 agents/artifacts/memory/triggers/shares 都有 service。
+- **问题**：transaction boundary 在 router 中，使 scheduler·trigger·其他 router 无法复用相同逻辑 → 产生复制粘贴。ownership 规则（`_load_owned`）在各 router 重复实现，很难审计 enumeration-oracle 防护规则（security.md）是否一致应用。unit test 只能穿过 HTTP layer 才能完成。
+- **重构方案**：
+  1. 新建 `app/services/mcp_service.py`。从 `mcp.py` 的 `_load_owned`, `_load_tools_for`, `create_server`/`update_server`/`delete_server`/`import_servers`/`export_servers` 中**仅提取 DB 操作部分**为函数（如 `create_server(db, *, user_id, payload) -> McpServer`）。commit 统一在 service 内或 router 中其中一处（项目现有惯例 = service `flush`，router `commit` → 建议采用与 BE-S7 相同策略）。
+  2. router 只保留 service 调用 + schema conversion + permission guard（`Depends`）。`_invalidate_runtime_mcp_cache`/`_record_mcp_audit` 等 side effect 也移到 service。
+  3. 对 `tool_service.py`（扩展现有文件）·`model_service.py`（新建）做同样处理。`run_tool_endpoint` 执行逻辑改为 `tool_service.run_tool(...)`。
+  4. import 更新：各 router 顶部 `from app.services import mcp_service`。model import 移到 service。
+  5. 不需要 facade（router 不是外部复用对象）。
+- **验证**：`uv run pytest tests/test_mcp*.py tests/test_tools*.py tests/test_models*.py && uv run ruff check app/services/mcp_service.py app/routers/mcp.py`
+- **预计工时**：M（每个领域半天 × 3）
 
 ---
 
-### [BE-S7] `credentials.py` 라우터가 OAuth2 플로우 비즈니스 로직 ~286줄을 직접 보유
-- **우선순위 제안**: P1 — 시크릿/토큰 교환이라 보안 민감 경로인데 라우터에 오케스트레이션이 있어 재사용·테스트·감사가 어렵다. credentials는 이미 `app/credentials/service.py`가 있어 "부분 서비스"인데 OAuth만 라우터에 남음.
-- **카테고리**: 구조
-- **증거**: `routers/credentials.py`(786줄). CRUD는 `credential_service.create/update`에 위임(156-180 확인)하나 **커밋을 라우터에서**(`await db.commit()` 176). OAuth 계열은 전부 라우터: `_prepare_mcp_oauth_data`(491), `_persist_credential_payload`(574), `_gc_oauth_states`(584, `db.execute` 직접), `oauth2_auth_start`(617, `db.add(CredentialOAuthState)` 667), `oauth2_callback`(708, `select(CredentialOAuthState)` 718 + `select(Credential)` 732 + 토큰 교환 + `db.commit` 777). 별도로 `credentials/mcp_oauth_client.py`(474줄)가 존재하는데 라우터가 그 위 오케스트레이션을 중복 보유.
-- **문제점**: OAuth state 생성/해시/저장/콜백/토큰 교환/GC가 HTTP 핸들러에 인라인 → MCP 서버 등록 플로우(mcp.py)나 스케줄러의 state GC가 동일 로직을 재사용 불가. 보안 리뷰가 라우터 코드를 훑어야 함. `_gc_oauth_states`는 스케줄러 GC 잡과 개념 중복.
-- **리팩토링 방안**:
-  1. `app/credentials/oauth_service.py` 신설. `_prepare_mcp_oauth_data`, `_persist_credential_payload`, `_gc_oauth_states`, `oauth2_auth_start`/`oauth2_callback`의 **DB·토큰 교환 로직** 이동. 함수 시그니처는 `start_oauth(db, *, user, credential_id) -> AuthStartResult`, `handle_callback(db, *, code, state) -> Credential`.
-  2. `mcp_oauth_client.py`와 역할 정리: client=저수준 HTTP, oauth_service=DB 상태·오케스트레이션.
-  3. 라우터는 서비스 호출 + 리다이렉트/응답 변환만.
-  4. 트랜잭션 정책 통일: 서비스가 `flush`, 라우터가 `commit`(현 create 패턴과 일치) 또는 그 반대로 프로젝트 전역 결정(BE-S2와 함께).
-  5. `_gc_oauth_states`는 스케줄러가 재사용하도록 서비스 함수로 노출.
-- **검증**: `uv run pytest tests/test_credentials*.py tests/test_*oauth*.py && uv run ruff check app/credentials/oauth_service.py`
-- **예상 공수**: M
+### [BE-S3] `marketplace/install_service.py` God module — 3 种安装类型 + update + delete 混在 1366 行中
+- **优先级建议**：P1 — marketplace 最大文件。skill/mcp/agent_blueprint 3 类安装·重装·binding validation 交织，一个类型的修改可能破坏其他类型。
+- **类别**：结构
+- **证据**：`app/marketplace/install_service.py`。函数组：
+  - **公共 util/snapshot**：`_skill_storage_root`, `_target_for`, `_copy_snapshot`, `_rmtree_skill_storage`, `_replace_skill_snapshot`（83-273）
+  - **binding validation**：`_validate_version_credential_bindings`, `_validate_mcp_bindings`, `_apply_mcp_payload_to_server`, `_materialize_mcp_tool_snapshot`（380-540）
+  - **MCP 安装**：`_install_mcp_item`（541-672），`_mcp_install_status_for_server`, `_overwrite_mcp_installation`（990-1054）
+  - **Agent blueprint 安装**：`_install_agent_blueprint_item`（673-810），`_agent_blueprint_status_from_bindings`, `_apply_agent_payload_to_blueprint`, `_overwrite_agent_blueprint_installation`（1055-1153）
+  - **orchestrator**：`install_item`（811-989，178 行 — 类型分支），`update_installation`（1154-1265），`delete_installation`（1266-1306），`_remove_install_artifacts`（1307）
+- **问题**：`install_item` 用 if/elif 分支处理 3 种类型，并在同一文件调用各类型细节逻辑 → 修改一种类型也必须理解整文件。MCP binding validation 与 agent blueprint binding validation 相邻，容易复制粘贴和产生不一致。snapshot copy（文件系统）与 DB transaction 混在同一函数，rollback 一致性难以推理。
+- **重构方案**：
+  1. 新建 `app/marketplace/install/` package。
+  2. `install/snapshot.py` ← snapshot/storage util（83-273）。
+  3. `install/bindings.py` ← credential/mcp binding validation（338-540）。
+  4. `install/skill.py` / `install/mcp.py` / `install/agent_blueprint.py` ← 各类型 `_install_*`/`_overwrite_*`/`_status_*`。
+  5. 在 `install/__init__.py`（或现有 `install_service.py` facade）中只保留 `install_item`/`update_installation`/`delete_installation` **dispatcher**，委托到类型模块。
+  6. 向后兼容：`routers/marketplace.py` 使用 `from app.marketplace import install_service` → 在 facade re-export 3 个 public function。
+  7. import 更新：用 `grep -rn "install_service\." app/` 检查 `install_locks.py`, `origin_service.py` 是否引用 install symbol，再替换路径。
+- **验证**：`uv run pytest tests/test_marketplace*.py && uv run ruff check app/marketplace/install`
+- **预计工时**：L
 
 ---
 
-### [BE-S8] `artifact_service.py`(1037줄) — 델타 레코더/ingest + CRUD + 라이브러리 쿼리 + 스토리지 헬퍼 혼재
-- **우선순위 제안**: P2 — 스트리밍 중 파일 감지(hot path)와 라이브러리 조회(read path)가 한 모듈이라 성능 특성이 다른 코드가 결합.
-- **카테고리**: 구조
-- **증거**: `services/artifact_service.py`. 클러스터:
-  - **스냅샷/델타/ingest**: `ArtifactFileState`~`ArtifactDeltaRecorder`(45-151), `snapshot_output_dir`(152), `diff_snapshots`(211), `ingest_changed_files`(230-364)
-  - **런당 마감/링크**: `link_artifacts_to_messages`(392), `finalize_artifacts_for_run`(413)
-  - **라이브러리/조회 CRUD**: `list_conversation_artifacts`(365), `list_library_artifacts`(503), `list_recent_artifacts`(574), `set_artifact_favorite`(601), `record_artifact_opened/download`(614/627), `get_library_stats`(639), `delete_artifact`(774)
-  - **콘텐츠/스토리지 헬퍼**: `read_artifact_text_content`(697), `get_artifact_download_path`(729), `_storage_local_path`(834), `_sha256_file*`(1016-1027), `_summaries_from_artifacts`(841), `_file_event_payload`(1028)
-- **문제점**: 델타 레코딩(runtime 스트리밍이 매 파일 이벤트마다 호출)과 라이브러리 페이지네이션(UI 폴링)이 같은 파일 → 한쪽 변경 시 다른 쪽 회귀 위험, import 표면이 넓음.
-- **리팩토링 방안**:
-  1. `app/services/artifacts/` 패키지화, `artifact_service.py`는 facade.
+### [BE-S4] `services ↔ agent_runtime` 双向耦合 → 为规避循环引用而存在的函数内 import 24 处（仅 chat_service）
+- **优先级建议**：P2 — 虽无即时 bug，但模块边界已崩坏，新增耦合持续增加，deferred import 成为"隐藏 runtime 依赖"，把 import-time error 推迟到执行时。
+- **类别**：结构
+- **证据**：`services/` import `agent_runtime` 的文件 **30 个**，`agent_runtime/` import `services` 的文件 **14 个**（双向）。结果 `chat_service.py` 中有函数内 import 24 处（如 464-465, 515-517, 1024, 1057-1059）。`scheduler.py` 也全部使用函数内 import（117, 228-230, 313, 377, 446, 481, 522-523, 609-610, 638, 687-688）来规避启动 cycle。
+- **问题**：不清楚哪一方向才是"上层 layer"。agent_runtime 调 service（DB/CRUD），service 又回调 agent_runtime（runtime assembly），形成 cycle，使 import graph 不是 DAG。deferred import 削弱 static analysis·IDE navigation，并把 typo/signature change 隐藏到 runtime。
+- **重构方案**：
+  1. 确定并文档化边界规则（`docs/ARCHITECTURE.md`）：**agent_runtime = 纯执行引擎，services = DB/orchestration**。只允许 `services → agent_runtime` 单向依赖。
+  2. 调查 14 个 `agent_runtime → services` 反向 import（`grep -rn "from app.services" app/agent_runtime/`）。大多是 CRUD 查询（memory, followup, agent）→ 改为由**调用方（service）预加载所需数据并通过参数注入**（依赖反转）。例：`runtime_component_builder._load_memory_context` 不再直接调用 `memory_service`，而是由上层 service 查询 memory records 后放入 `AgentConfig` 传递。
+  3. 只有无法反转的最小 case 才抽象为 `Protocol` interface（`app/agent_runtime/ports.py`）。
+  4. 完成反转后，将 `chat_service`/`scheduler` 的函数内 import 提升为 top-level，只对剩余部分保留文档注释。
+- **验证**：`uv run python -c "import app.main"`（确认启动无循环）+ 完整 `uv run pytest` + `uv run ruff check`（unused import）。
+- **预计工时**：L（调查·反转设计是核心）
+
+---
+
+### [BE-S5] `write_tools.py` — `build_write_tools` 单函数 1093 行中包含 26 个 tool closure
+- **优先级建议**：P2 — Assistant panel 的所有工具都在一个 factory function 内作为 nested closure。修改单个工具时需要加载 1093 行 scope，单工具 unit test 基本不可行。
+- **类别**：结构
+- **证据**：`agent_runtime/assistant/tools/write_tools.py`。单个 `def build_write_tools(`（53）中包含 `add_tool_to_agent`（72）、`remove_tool_from_agent`（107）、`add/remove_mcp_tool`（132/170）、`add/remove_middleware`（195/226）、`add/remove_subagent`（256/328）、`add/remove_skill`（367/416）、`edit/update_system_prompt`（441/478）、`update_model_config`（500）、`update_middleware_config`（554）、`update_chat_openers`（578）、`update_agent_metadata`（601）、`update_agent_identity_mode`（635）、`update_recursion_limit`（676）、5 种 cron `create/update/delete/enable/disable_cron_schedule`（696-980）等 **26 个 async closure** + 共享 helper `_get_agent_with_session`（65）、`_resolve_trigger_for_write`（789）。同级 `read_tools.py`（470）、`clarify_tools.py`（48）已经拆分。
+- **问题**：closure 隐式依赖共享闭包变量（session, agent_id 等）→ 单独提取困难。cron 5 类（696-980，约 284 行）在 trigger 领域完全独立，却仍放在同一函数中。文件越大，新增工具的 diff·review 成本越高。
+- **重构方案**：
+  1. 用 `@dataclass WriteToolContext(session_factory, agent_id, ...)` 显式化共享 context（closure capture → 显式对象）。
+  2. 按组拆成子 builder：`write_tools/tool_links.py`（add/remove tool·mcp）、`write_tools/composition.py`（middleware·subagent·skill）、`write_tools/agent_config.py`（prompt·model·metadata·identity·openers·recursion）、`write_tools/cron.py`（cron 5 类 + `_resolve_trigger_for_write`）。每个 builder 接收 `ctx` 并返回 `list[BaseTool]`。
+  3. `build_write_tools` 变成只 concat 各组 builder 结果的薄 assembly。
+  4. import 更新：`assistant_agent.py` 只引用 `build_write_tools`，若签名保持不变则无需修改。
+- **验证**：`uv run pytest tests/test_assistant*.py && uv run ruff check app/agent_runtime/assistant/tools`
+- **预计工时**：M
+
+---
+
+### [BE-S6] 目录 convention 双轨 — domain package（`app/marketplace/`,`mcp/`,`credentials/`,`skills/`）vs 平铺 `services/*_service.py`
+- **优先级建议**：P2 — 缺少新领域应该放哪里的规则，各团队摆放方式不同。每次都要重新搜索"marketplace 逻辑在哪？"。
+- **类别**：结构
+- **证据**：业务逻辑同时存在于两类位置 — (a) domain package：`app/marketplace/`（19 个文件）、`app/mcp/`（7）、`app/credentials/`（11）、`app/skills/`（14）、`app/agent_api/`（6）。(b) 平铺 service：`app/services/` 有 90+ 个文件（`agent_service.py`, `artifact_service.py`, `conversation_*` 等）。不存在 `services/marketplace_service.py`（marketplace 是 package）。反之 conversation/agent CRUD 是平铺 service。同属"service layer"，物理位置规则却不同。
+- **问题**：有些 domain 有自己的 package（service/schemas/payloads 内聚），另一些则散落在 `services/`（`conversation_*` 12 个文件平铺在 `services/` 根目录）。新开发者定位 domain 代码成本更高，重构时也要再次判断"这个 domain 采用哪种 convention？"。
+- **重构方案**：
+  1. **记录决策**（新增 ADR，例如 ADR-020 "Service layout convention"）：定义规模阈值 — "3 个及以上文件 = domain package `app/<domain>/`，不足该数量 = `services/<domain>_service.py`"。
+  2. 立即迁移风险高，因此采用**新规则 + 渐进迁移**。优先把 `services/` 中内聚的组（`conversation_*` 12 个、`skill_evaluation_*` 20+ 个、`skill_builder_*` 8 个、`skill_revision_*` 5 个、`model_*` 6 个）分别归入 `services/conversation/`、`services/skill_evaluation/`、`services/skill_builder/` 子 package（纯移动 + facade）。
+  3. 需要 facade：移动后的模块通过 `services/__init__` 或薄 re-export 保留旧 import 路径，再渐进更新调用处。
+- **验证**：`uv run pytest`（全部）— 因为是纯移动，应保持全绿。`uv run ruff check app/services`。
+- **预计工时**：M（规则决策 S + 子包化 M）
+
+---
+
+### [BE-S7] `credentials.py` router 直接持有约 286 行 OAuth2 flow 业务逻辑
+- **优先级建议**：P1 — secret/token exchange 属于安全敏感路径，但 orchestration 在 router 中，难以复用、测试和审计。credentials 已有 `app/credentials/service.py`，属于"部分 service"，只有 OAuth 仍留在 router。
+- **类别**：结构
+- **证据**：`routers/credentials.py`（786 行）。CRUD 委托给 `credential_service.create/update`（已确认 156-180），但**commit 在 router 中**（`await db.commit()` 176）。OAuth 相关全部在 router：`_prepare_mcp_oauth_data`（491）、`_persist_credential_payload`（574）、`_gc_oauth_states`（584，直接 `db.execute`）、`oauth2_auth_start`（617，`db.add(CredentialOAuthState)` 667）、`oauth2_callback`（708，`select(CredentialOAuthState)` 718 + `select(Credential)` 732 + token exchange + `db.commit` 777）。另有 `credentials/mcp_oauth_client.py`（474 行），但 router 在其上层重复持有 orchestration。
+- **问题**：OAuth state 创建/哈希/存储/callback/token exchange/GC 都 inline 在 HTTP handler → MCP server 注册 flow（mcp.py）或 scheduler state GC 无法复用同一逻辑。安全 review 必须通读 router 代码。`_gc_oauth_states` 与 scheduler GC job 概念重复。
+- **重构方案**：
+  1. 新建 `app/credentials/oauth_service.py`。移动 `_prepare_mcp_oauth_data`, `_persist_credential_payload`, `_gc_oauth_states`、`oauth2_auth_start`/`oauth2_callback` 的 **DB·token exchange 逻辑**。函数签名为 `start_oauth(db, *, user, credential_id) -> AuthStartResult`, `handle_callback(db, *, code, state) -> Credential`。
+  2. 明确 `mcp_oauth_client.py` 的角色：client=底层 HTTP，oauth_service=DB 状态·orchestration。
+  3. router 只保留 service 调用 + redirect/response conversion。
+  4. 统一 transaction 策略：service `flush`，router `commit`（与当前 create 模式一致），或反过来作为项目全局决策（与 BE-S2 一起）。
+  5. 将 `_gc_oauth_states` 暴露为 service function，供 scheduler 复用。
+- **验证**：`uv run pytest tests/test_credentials*.py tests/test_*oauth*.py && uv run ruff check app/credentials/oauth_service.py`
+- **预计工时**：M
+
+---
+
+### [BE-S8] `artifact_service.py`（1037 行）— delta recorder/ingest + CRUD + library query + storage helper 混杂
+- **优先级建议**：P2 — streaming 中的文件检测（hot path）与 library 查询（read path）在同一模块，不同性能特性的代码被耦合。
+- **类别**：结构
+- **证据**：`services/artifact_service.py`。cluster：
+  - **snapshot/delta/ingest**：`ArtifactFileState`~`ArtifactDeltaRecorder`（45-151），`snapshot_output_dir`（152），`diff_snapshots`（211），`ingest_changed_files`（230-364）
+  - **run 级 finalize/link**：`link_artifacts_to_messages`（392），`finalize_artifacts_for_run`（413）
+  - **library/query CRUD**：`list_conversation_artifacts`（365），`list_library_artifacts`（503），`list_recent_artifacts`（574），`set_artifact_favorite`（601），`record_artifact_opened/download`（614/627），`get_library_stats`（639），`delete_artifact`（774）
+  - **content/storage helper**：`read_artifact_text_content`（697），`get_artifact_download_path`（729），`_storage_local_path`（834），`_sha256_file*`（1016-1027），`_summaries_from_artifacts`（841），`_file_event_payload`（1028）
+- **问题**：delta recording（runtime streaming 每个文件事件都会调用）和 library pagination（UI polling）放在同一文件 → 修改一边可能让另一边回归，import surface 过宽。
+- **重构方案**：
+  1. 将其 package 化为 `app/services/artifacts/`，`artifact_service.py` 保留 facade。
   2. `artifacts/recorder.py` ← `ArtifactFileState`/`ArtifactSnapshot`/`ArtifactDelta`/`ArtifactDeltaRecorder`/`snapshot_output_dir`/`diff_snapshots`/`ingest_changed_files`/`finalize_artifacts_for_run`.
-  3. `artifacts/library.py` ← 조회/즐겨찾기/stats/커서(`_encode/_decode_library_cursor` 포함).
-  4. `artifacts/content.py` ← 텍스트 읽기·다운로드·sha256·storage_local_path.
+  3. `artifacts/library.py` ← query/favorite/stats/cursor（包含 `_encode/_decode_library_cursor`）。
+  4. `artifacts/content.py` ← text read·download·sha256·storage_local_path。
   5. `artifacts/summary.py` ← `_summaries_from_artifacts`/`_summary_from_*`/`_file_event_payload`.
-  6. facade에서 기존 public 심볼 re-export(streaming.py·routers/artifacts.py 의존 보존; `grep -rn "artifact_service\." app/`로 지점 확인).
-- **검증**: `uv run pytest tests/test_artifact*.py && uv run ruff check app/services/artifacts`
-- **예상 공수**: M
+  6. 在 facade re-export 现有 public symbol（保留 streaming.py·routers/artifacts.py 依赖；用 `grep -rn "artifact_service\." app/` 确认位置）。
+- **验证**：`uv run pytest tests/test_artifact*.py && uv run ruff check app/services/artifacts`
+- **预计工时**：M
 
 ---
 
-### [BE-S9] `scheduler.py`(752줄) — 11개 잡의 비즈니스 로직이 등록 코드와 한 모듈에 인라인
-- **우선순위 제안**: P2 — 스케줄러는 "무엇을 언제 돌릴지"만 알아야 하는데 "어떻게"까지 들고 있어, 잡 로직 변경이 스케줄러 부팅과 얽힘. 전부 함수-로컬 import로 순환 회피 중(BE-S4의 증상).
-- **증거**: `app/scheduler.py`. `_run` 본문에 실제 비즈니스 로직 인라인: `rotate_credentials_to_active_key`(218-253, credential 회전 알고리즘), `poll_mcp_servers_health`(511-571, MCP health 폴링), `sweep_stale_conversation_runs`(607-631), `cleanup_skill_runtime_roots`(679), `draft_conversation_gc_run`(436)/`orphan_attachment_gc_run`(472)는 `chat_service`로 위임(446, 481)하나 나머지는 인라인. 각 잡마다 `register_*_job()` 짝(11쌍). 모든 의존이 함수-로컬 import.
-- **문제점**: 잡 로직 단위 테스트가 스케줄러 모듈을 거쳐야 함. credential 회전 같은 알고리즘이 스케줄러에 있어 수동 실행·재사용 불가(MEMORY 감사에서 `rotate_credentials 무한루프` 지적된 로직이 여기 인라인). 부팅 시 순환 때문에 전 함수가 지연 import.
-- **리팩토링 방안**:
-  1. 잡 **본문(로직)**을 각 도메인 서비스로 이동: `rotate_credentials_to_active_key` → `credentials/service.py`(또는 신설 `credential_rotation.py`), `poll_mcp_servers_health` → `services/mcp_service.py`(BE-S2와 연계), `sweep_stale_conversation_runs` → `conversation_run_service.py`, `cleanup_skill_runtime_roots` → `marketplace/skill_runtime.py`.
-  2. `scheduler.py`는 **등록만** 남긴다: `register_*_job()`이 서비스 함수를 `scheduler.add_job(target=service.fn, ...)`로 참조. `_job_id`/`_naive_utc`/`get_scheduler`/leader-election(27-92)은 순수 인프라라 유지.
-  3. 로직이 서비스로 가면 top-level import 가능해져 함수-로컬 import 제거(BE-S4 부분 해소).
-  4. facade 불필요.
-- **검증**: `uv run pytest tests/test_scheduler*.py tests/test_credentials*.py tests/test_mcp*.py && uv run python -c "import app.scheduler"`
-- **예상 공수**: M
+### [BE-S9] `scheduler.py`（752 行）— 11 个 job 的业务逻辑与注册代码 inline 在同一模块
+- **优先级建议**：P2 — scheduler 应只知道"何时运行什么"，却连"怎么做"也持有，因此 job 逻辑修改与 scheduler 启动耦合。全部采用函数内 import 来规避循环（BE-S4 的症状）。
+- **证据**：`app/scheduler.py`。`_run` body 中 inline 实际业务逻辑：`rotate_credentials_to_active_key`（218-253，credential rotation algorithm）、`poll_mcp_servers_health`（511-571，MCP health polling）、`sweep_stale_conversation_runs`（607-631）、`cleanup_skill_runtime_roots`（679），`draft_conversation_gc_run`（436）/`orphan_attachment_gc_run`（472）虽然委托给 `chat_service`（446, 481），其余仍 inline。每个 job 都有配对 `register_*_job()`（11 对）。所有依赖都是函数内 import。
+- **问题**：job 逻辑 unit test 必须经过 scheduler module。credential rotation 等算法存在于 scheduler，无法手动执行或复用（MEMORY 审计中指出的 `rotate_credentials 无限循环` 逻辑就 inline 在这里）。启动时又因 cycle 导致所有函数延迟 import。
+- **重构方案**：
+  1. 将 job **body（逻辑）**移到各 domain service：`rotate_credentials_to_active_key` → `credentials/service.py`（或新建 `credential_rotation.py`），`poll_mcp_servers_health` → `services/mcp_service.py`（与 BE-S2 联动），`sweep_stale_conversation_runs` → `conversation_run_service.py`，`cleanup_skill_runtime_roots` → `marketplace/skill_runtime.py`。
+  2. `scheduler.py` **只保留注册**：`register_*_job()` 通过 `scheduler.add_job(target=service.fn, ...)` 引用 service function。`_job_id`/`_naive_utc`/`get_scheduler`/leader-election（27-92）属于纯基础设施，保留。
+  3. 逻辑移入 service 后可使用 top-level import，移除函数内 import（部分解决 BE-S4）。
+  4. 不需要 facade。
+- **验证**：`uv run pytest tests/test_scheduler*.py tests/test_credentials*.py tests/test_mcp*.py && uv run python -c "import app.scheduler"`
+- **预计工时**：M
 
 ---
 
-### [BE-S10] `runtime_component_builder.py`(828줄) — 모델 조립 + 미들웨어 + 메모리 + 프롬프트 + 인터럽트 정책 다중 관심사
-- **우선순위 제안**: P2
-- **증거**: `agent_runtime/runtime_component_builder.py`:
-  - **모델 후보/폴백**: `_resolve_middleware_model_params`(103), `_model_constructor_params`(133), `_model_chain`(154), `_build_model_candidates`(166), `_build_model_with_fallback`(219), `_is_retryable_model_error`(225)
-  - **신뢰성 미들웨어**: `_has_visible_ai_content`(233), `EmptyContentRetryMiddleware`(254), `_build_default_reliability_middleware`(279)
-  - **인터럽트 정책**: `_default_interrupt_on_from_tools`(354), `_build_interrupt_on_policy`(363)
-  - **메모리**: `_recalled_memory_briefs`(448), `_load_memory_context`(464, `memory_service` 역방향 import), `_memory_write_policy_for_run`(500)
-  - **프롬프트 빌더**: `_system_prompt_with_temporal_context`(428), `_memory_tool_instruction_prompt`(521), `_interactive_tool_instruction_prompt`(541), `_artifact_file_instruction_prompt`(557)
-  - **오케스트레이터**: `_prepare_runtime_components`(571), `_prepare_agent`(752), `build_agent`(66)
-- **문제점**: 모델 폴백 로직·미들웨어 정의·프롬프트 문자열·메모리 조회가 한 파일이라 각기 다른 변경 이유(모델 제공자 quirk vs 프롬프트 카피 vs 메모리 정책)가 충돌. `EmptyContentRetryMiddleware` 클래스가 조립자 안에 정의됨.
-- **리팩토링 방안**:
-  1. `agent_runtime/runtime/models.py` ← 모델 후보/폴백/재시도 판정(103-231).
+### [BE-S10] `runtime_component_builder.py`（828 行）— model assembly + middleware + memory + prompt + interrupt policy 多关注点
+- **优先级建议**：P2
+- **证据**：`agent_runtime/runtime_component_builder.py`：
+  - **model candidate/fallback**：`_resolve_middleware_model_params`（103），`_model_constructor_params`（133），`_model_chain`（154），`_build_model_candidates`（166），`_build_model_with_fallback`（219），`_is_retryable_model_error`（225）
+  - **reliability middleware**：`_has_visible_ai_content`（233），`EmptyContentRetryMiddleware`（254），`_build_default_reliability_middleware`（279）
+  - **interrupt policy**：`_default_interrupt_on_from_tools`（354），`_build_interrupt_on_policy`（363）
+  - **memory**：`_recalled_memory_briefs`（448），`_load_memory_context`（464，反向 import `memory_service`），`_memory_write_policy_for_run`（500）
+  - **prompt builder**：`_system_prompt_with_temporal_context`（428），`_memory_tool_instruction_prompt`（521），`_interactive_tool_instruction_prompt`（541），`_artifact_file_instruction_prompt`（557）
+  - **orchestrator**：`_prepare_runtime_components`（571），`_prepare_agent`（752），`build_agent`（66）
+- **问题**：model fallback 逻辑·middleware 定义·prompt 字符串·memory 查询放在同一文件，各自的修改原因不同（provider quirk vs prompt copy vs memory policy），容易冲突。`EmptyContentRetryMiddleware` class 甚至定义在 assembly 模块中。
+- **重构方案**：
+  1. `agent_runtime/runtime/models.py` ← model candidate/fallback/retry 判定（103-231）。
   2. `agent_runtime/runtime/reliability.py` ← `EmptyContentRetryMiddleware` + `_build_default_reliability_middleware`.
-  3. `agent_runtime/runtime/interrupts.py` ← 인터럽트 정책(354-393). (CLAUDE.md의 `_default_interrupt_on_from_tools` 규칙과 대응 → 독립 모듈이 규칙 추적에 유리.)
-  4. `agent_runtime/runtime/prompts.py` ← 4개 프롬프트 빌더(428, 521-570).
-  5. `agent_runtime/runtime/memory_context.py` ← 메모리 3함수(BE-S4의 역전 대상 — 여기서 `memory_service` 직접 호출을 인자 주입으로).
-  6. `runtime_component_builder.py`는 `_prepare_runtime_components`/`_prepare_agent`/`build_agent` 조립자만 유지 + 위 모듈 import.
-- **검증**: `uv run pytest tests/test_runtime*.py tests/test_agent_stream*.py tests/test_memory*.py && uv run ruff check app/agent_runtime/runtime`
-- **예상 공수**: M
+  3. `agent_runtime/runtime/interrupts.py` ← interrupt policy（354-393）。（与 CLAUDE.md 的 `_default_interrupt_on_from_tools` 规则对应 → 独立模块更利于规则追踪。）
+  4. `agent_runtime/runtime/prompts.py` ← 4 个 prompt builder（428, 521-570）。
+  5. `agent_runtime/runtime/memory_context.py` ← 3 个 memory function（BE-S4 的反转对象 — 在这里把直接调用 `memory_service` 改为参数注入）。
+  6. `runtime_component_builder.py` 只保留 `_prepare_runtime_components`/`_prepare_agent`/`build_agent` assembly，并 import 上述模块。
+- **验证**：`uv run pytest tests/test_runtime*.py tests/test_agent_stream*.py tests/test_memory*.py && uv run ruff check app/agent_runtime/runtime`
+- **预计工时**：M
 
 ---
 
-### [BE-S11] `marketplace/` 프로젝션 로직 분산 — `service.py` + `origin_service.py`가 설치/발행 상태 계산을 중복 소유
-- **우선순위 제안**: P3
-- **증거**: `marketplace/service.py`의 `_project_item`(261)/`_project_items`(383)/`_publication_state_for_owner`(404)와 `marketplace/origin_service.py`의 `derive_origin_summary_for_skill`(70)/`_derive_publication_state`(128)/`derive_publication_summary_for_skill`(156)/`bulk_derive_publication_summaries`(198)/`derive_installation_summary`(265)/`bulk_derive_installation_summaries`(587)가 모두 "카탈로그 아이템의 발행·설치 상태"를 계산. `_publication_state_for_owner`(service.py)와 `_derive_publication_state`(origin_service.py)는 이름부터 관심사 중복.
-- **문제점**: 발행 상태 규칙이 바뀌면 두 파일을 동시 수정해야 하고 누락 시 catalog list와 detail이 불일치. `origin_service.py`(786줄)는 사실상 "프로젝션 서비스"인데 `service.py`도 프로젝션을 함.
-- **리팩토링 방안**:
-  1. 프로젝션 계산을 단일 모듈 `marketplace/projection.py`로 수렴: `_publication_state_for_owner`와 `_derive_publication_state`를 하나로 통합(호출부가 owner 관점/뷰어 관점을 파라미터로).
-  2. `service.py`는 카탈로그 **쿼리/페이지네이션**(`_base_catalog_query`, `list_items_page` 등)만, `projection.py`는 상태 파생만, `origin_service.py`는 installation 요약만으로 책임 정리.
-  3. 통합 전 두 상태 계산이 실제로 동일 결과인지 테스트로 고정(characterization test) 후 병합.
-- **검증**: `uv run pytest tests/test_marketplace*.py -k "project or publication or installation" && uv run ruff check app/marketplace`
-- **예상 공수**: M
+### [BE-S11] `marketplace/` projection 逻辑分散 — `service.py` + `origin_service.py` 重复持有 install/publish 状态计算
+- **优先级建议**：P3
+- **证据**：`marketplace/service.py` 的 `_project_item`（261）/`_project_items`（383）/`_publication_state_for_owner`（404）与 `marketplace/origin_service.py` 的 `derive_origin_summary_for_skill`（70）/`_derive_publication_state`（128）/`derive_publication_summary_for_skill`（156）/`bulk_derive_publication_summaries`（198）/`derive_installation_summary`（265）/`bulk_derive_installation_summaries`（587）都在计算"catalog item 的 publish·install 状态"。`_publication_state_for_owner`（service.py）和 `_derive_publication_state`（origin_service.py）连名称都体现关注点重复。
+- **问题**：publish 状态规则变化时必须同步修改两个文件，漏改会导致 catalog list 与 detail 不一致。`origin_service.py`（786 行）实际上已经是"projection service"，但 `service.py` 也在做 projection。
+- **重构方案**：
+  1. 将 projection 计算收敛到单一模块 `marketplace/projection.py`：合并 `_publication_state_for_owner` 和 `_derive_publication_state`（通过参数区分 owner 视角/viewer 视角）。
+  2. `service.py` 只负责 catalog **query/pagination**（`_base_catalog_query`, `list_items_page` 等），`projection.py` 只负责状态派生，`origin_service.py` 只负责 installation summary。
+  3. 合并前用测试固定两种状态计算实际结果相同（characterization test）后再统一。
+- **验证**：`uv run pytest tests/test_marketplace*.py -k "project or publication or installation" && uv run ruff check app/marketplace`
+- **预计工时**：M
 
 ---
 
-### [BE-S12] `config.py`(262줄) / `dependencies.py`(182줄) 비대화 점검 — **현행 유지 권장(리팩토링 불필요)**
-- **우선순위 제안**: P3 — 임계 미만. 과잉 분리 금지 원칙(Simplicity First)에 따라 지금은 두지 말 것을 명시적으로 권고.
-- **증거**: `app/config.py` — 단일 `Settings(BaseSettings)`에 필드 101개지만 섹션 주석으로 잘 구획됨(6-262). `app/dependencies.py` 182줄 — DI만, 비대 아님.
-- **리팩토링 방안**: **하지 말 것.** 지금은 no-op.
-- **예상 공수**: S (판단만)
+### [BE-S12] `config.py`（262 行）/ `dependencies.py`（182 行）肥大化检查 — **建议保持现状（无需重构）**
+- **优先级建议**：P3 — 低于阈值。根据避免过度拆分（Simplicity First）原则，明确建议现在不要动。
+- **证据**：`app/config.py` — 单个 `Settings(BaseSettings)` 有 101 个字段，但按 section comment 划分良好（6-262）。`app/dependencies.py` 182 行 — 只有 DI，不算过大。
+- **重构方案**：**不要做。** 当前 no-op。
+- **预计工时**：S（仅判断）
 
 ---
 
-### 요약 — 우선순위별 정리
+### 总结 — 按优先级整理
 
-| ID | 제목 | 우선순위 | 공수 |
+| ID | 标题 | 优先级 | 工时 |
 |----|------|:---:|:---:|
-| BE-S1 | chat_service.py 갓 모듈 8-클러스터 분해 | **P1** | L |
-| BE-S2 | MCP/tools/models 서비스 레이어 부재(라우터 raw DB) | **P1** | M |
-| BE-S3 | install_service.py 3-타입 갓 모듈 분해 | **P1** | L |
-| BE-S7 | credentials 라우터 OAuth 로직 → oauth_service | **P1** | M |
-| BE-S4 | services↔agent_runtime 양방향 결합 역전 | P2 | L |
-| BE-S5 | write_tools.py 1093줄 단일 팩토리 분해 | P2 | M |
-| BE-S6 | 디렉토리 컨벤션 이원화(ADR + 점진 서브패키징) | P2 | M |
-| BE-S8 | artifact_service.py recorder/library/content 분해 | P2 | M |
-| BE-S9 | scheduler.py 잡 로직 → 도메인 서비스 이관 | P2 | M |
-| BE-S10 | runtime_component_builder.py 5-관심사 분해 | P2 | M |
-| BE-S11 | marketplace 프로젝션 중복(service↔origin_service) 통합 | P3 | M |
-| BE-S12 | config/dependencies — **현행 유지(하지 말 것)** | P3 | S |
+| BE-S1 | chat_service.py God module 拆分 8 个 cluster | **P1** | L |
+| BE-S2 | MCP/tools/models 缺少 service layer（router raw DB） | **P1** | M |
+| BE-S3 | install_service.py 3 类型 God module 拆分 | **P1** | L |
+| BE-S7 | credentials router OAuth 逻辑 → oauth_service | **P1** | M |
+| BE-S4 | 反转 services↔agent_runtime 双向耦合 | P2 | L |
+| BE-S5 | 拆分 write_tools.py 1093 行单一 factory | P2 | M |
+| BE-S6 | 目录 convention 双轨（ADR + 渐进子包化） | P2 | M |
+| BE-S8 | artifact_service.py 拆分 recorder/library/content | P2 | M |
+| BE-S9 | scheduler.py job 逻辑 → domain service | P2 | M |
+| BE-S10 | runtime_component_builder.py 拆分 5 个关注点 | P2 | M |
+| BE-S11 | 统一 marketplace projection 重复（service↔origin_service） | P3 | M |
+| BE-S12 | config/dependencies — **保持现状（不要做）** | P3 | S |
 
-**착수 순서 권고**: BE-S2·BE-S7(레이어링 위반 = 명확한 정답, blast radius 작음) → BE-S1·BE-S3(최대 god module, facade로 안전) → BE-S4·BE-S9(순환/스케줄러는 함께 풀면 시너지) → 나머지 P2 → BE-S6는 ADR 결정 후 점진.
+**建议启动顺序**：BE-S2·BE-S7（layering 违规 = 答案明确，blast radius 小）→ BE-S1·BE-S3（最大 god module，用 facade 可安全拆）→ BE-S4·BE-S9（cycle/scheduler 一起解决有协同）→ 其余 P2 → BE-S6 在 ADR 决策后渐进。
 
-**핵심 인사이트**: 이 코드베이스는 분해 역량이 있다(`conversation_agent_protocol*` 18파일, executor split, marketplace 세분화가 증거). 문제는 **일관성** — 같은 패턴이 chat/artifact/scheduler/write_tools/install에는 아직 적용 안 됨. 대부분 facade 기반 순수 이동이라 리스크 낮음. 유일한 설계 난제는 BE-S4(services↔agent_runtime 방향 역전)이며 이것이 여러 god module의 함수-로컬 import 냄새의 근본 원인이다.
-
----
-
-## 5. 백엔드 — 성능 (BE-P)
-
-**범위**: `backend/app` 읽기 전용 분석. 7개 병렬 조사(N+1, 블로킹, 인덱스, 스트리밍, 스케줄러, 풀/페이지네이션) + 핵심 파일 직접 검증.
-**우선순위 기준**: 사용자 체감 빈도 × 비용. **P1 = 활성 채팅당 반복 폴링/스트리밍 hot path 또는 전역 이벤트 루프 블로킹** / P2 = 데이터 증가에 따라 무한정 악화되거나 쓰기/설치 경로 / P3 = 관리·백그라운드 경로.
+**核心洞察**：该代码库具备拆分能力（`conversation_agent_protocol*` 18 个文件、executor split、marketplace 细分就是证据）。问题是**一致性** — 同样模式还没有应用到 chat/artifact/scheduler/write_tools/install。大多可以通过 facade 纯移动，风险低。唯一真正的设计难题是 BE-S4（services↔agent_runtime 方向反转），也是多个 god module 出现函数内 import 气味的根因。
 
 ---
 
-### [BE-P1] `GET /messages` 폴링마다 pending-interrupt 하이드레이션이 MessageEvent 행당 별도 쿼리 (N+1)
-- **우선순위 제안**: **P1** — `GET /messages`는 활성 대화당 반복 폴링되는 최상위 hot path. 대화가 길수록 폴링당 쿼리 수가 선형 증가.
-- **카테고리**: 성능 (N+1)
-- **증거**: `services/chat_service.py:468-491` (루프) + `services/trace_storage.py:163-171` (행당 쿼리)
+## 5. 后端 — 性能 (BE-P)
+
+**范围**：只读分析 `backend/app`。7 个并行调查（N+1、blocking、index、streaming、scheduler、pool/pagination）+ 核心文件直接验证。
+**优先级标准**：用户体感频率 × 成本。**P1 = 每个活跃聊天都会重复的 polling/streaming hot path 或全局 event loop blocking** / P2 = 随数据增长无限恶化或写入/安装路径 / P3 = 管理·后台路径。
+
+---
+
+### [BE-P1] 每次 `GET /messages` polling 的 pending-interrupt hydration 都按 MessageEvent row 单独查询（N+1）
+- **优先级建议**：**P1** — `GET /messages` 是每个活跃对话都会重复 polling 的顶级 hot path。对话越长，每次 polling 的 query 数线性增长。
+- **类别**：性能（N+1）
+- **证据**：`services/chat_service.py:468-491`（loop）+ `services/trace_storage.py:163-171`（每 row 一次 query）
   ```python
   # chat_service.py:473-478
   for record in result.scalars().all():
       target_responses = [response_by_id[mid] for mid in linked_ids if mid in response_by_id]
       if not target_responses:
           continue
-      events = await trace_storage.load_events(db, record)   # ← 루프 안 await DB
+      events = await trace_storage.load_events(db, record)   # ← loop 内 await DB
   ```
-  `load_events`는 `record`마다 `select(MessageEventChunk.events).where(message_event_id == record.id)` 1건씩 실행. `_messages_to_response`(`chat_service.py:1136`, `user_id` 있을 때) 경유로 **모든 인증 `GET /messages`에서 실행**.
-- **문제점**: 툴콜 40턴 대화 = 1(부모) + 최대 40(chunk) = 41 쿼리/폴링. 대화 길이에 선형 증가하며 채팅 UI가 폴링할 때마다 반복.
-- **리팩토링 방안**:
-  1. 루프 전에 `target_responses`가 비지 않은 `record`만 필터링해 id 수집.
-  2. `select(MessageEventChunk.message_event_id, MessageEventChunk.events).where(message_event_id.in_(ids)).order_by(message_event_id, seq_start, created_at)` 단일 IN 쿼리로 배치.
-  3. `dict[event_id, list[events]]`로 그룹핑 후 in-memory 병합. → N+1 을 2 쿼리로.
-- **검증**: SQLAlchemy `echo=True` 또는 pytest에서 쿼리 카운터 픽스처로 40턴 대화 폴링 시 쿼리 수 41→2 확인.
-- **예상 공수**: **M**
+  `load_events` 对每个 `record` 执行 1 次 `select(MessageEventChunk.events).where(message_event_id == record.id)`。经 `_messages_to_response`（`chat_service.py:1136`，存在 `user_id` 时）会在**所有已认证 `GET /messages` 中执行**。
+- **问题**：40 轮 tool call 对话 = 1（parent）+ 最多 40（chunk）= 每次 polling 41 次 query。随对话长度线性增长，而且聊天 UI 每次 polling 都重复。
+- **重构方案**：
+  1. loop 前只筛选 `target_responses` 非空的 `record` 并收集 id。
+  2. 用单次 IN query：`select(MessageEventChunk.message_event_id, MessageEventChunk.events).where(message_event_id.in_(ids)).order_by(message_event_id, seq_start, created_at)` 批量加载。
+  3. 以 `dict[event_id, list[events]]` 分组后 in-memory 合并。→ N+1 降为 2 次 query。
+- **验证**：SQLAlchemy `echo=True` 或 pytest query counter fixture，确认 40 轮对话 polling 的 query 数从 41→2。
+- **预计工时**：**M**
 
 ---
 
-### [BE-P2] `GET /messages`가 대화 전체를 무제한 로드 (페이지네이션·상한 부재)
-- **우선순위 제안**: **P1** — 위와 같은 폴링 hot path. checkpointer 풀(BE-P7)과 직접 복합 악화.
-- **카테고리**: 성능 (페이지네이션)
-- **증거**: `routers/conversation_messages.py:137` → `services/chat_service.py:1031, 1079`
+### [BE-P2] `GET /messages` 无限制加载整个对话（无 pagination·上限）
+- **优先级建议**：**P1** — 与上面相同的 polling hot path。与 checkpointer pool（BE-P7）直接叠加恶化。
+- **类别**：性能（pagination）
+- **证据**：`routers/conversation_messages.py:137` → `services/chat_service.py:1031, 1079`
   ```python
   # chat_service.py:1079
-  messages = [node.message for node in tree.nodes]   # limit/cursor 없음
+  messages = [node.message for node in tree.nodes]   # 无 limit/cursor
   ```
-  `build_message_tree`가 매 호출 전체 checkpoint 트리를 순회하고 모든 메시지를 직렬화.
-- **문제점**: 수백~수천 턴/브랜치 대화는 폴링마다 전체 트리 재순회 + 전량 직렬화. checkpointer 풀 커넥션도 폴링마다 점유(BE-P7 복합).
-- **리팩토링 방안**:
-  1. 최근 N개 메시지 + 역방향 keyset 커서(메시지 index 기준) 반환. 오래된 턴은 lazy-load.
-  2. 최소한 하드 max limit 강제.
-  3. 폴링 경로에서 전체 checkpoint 트리 재순회 회피(증분/캐시).
-- **검증**: 500턴 대화 fixture로 `GET /messages` 응답 크기·지연 측정, 상한 적용 전후 비교.
-- **예상 공수**: **L** (checkpoint 트리 순회 구조 변경 수반)
+  `build_message_tree` 每次调用遍历完整 checkpoint tree 并序列化全部消息。
+- **问题**：数百~数千轮/branch 的对话每次 polling 都重新遍历完整 tree + 全量序列化。checkpointer pool connection 也在每次 polling 被占用（与 BE-P7 复合）。
+- **重构方案**：
+  1. 返回最近 N 条消息 + 反向 keyset cursor（基于 message index）。旧 turn lazy-load。
+  2. 至少强制 hard max limit。
+  3. polling 路径避免重新遍历完整 checkpoint tree（增量/cache）。
+- **验证**：用 500 轮对话 fixture 测量 `GET /messages` response size·latency，对比应用上限前后。
+- **预计工时**：**L**（涉及 checkpoint tree 遍历结构修改）
 
 ---
 
-### [BE-P3] 폴링 경로의 `build_tools_config`가 MCP 툴 링크당 `SELECT … FOR UPDATE` 반복 (N+1 + 불필요한 락)
-- **우선순위 제안**: **P1** — `collect_conversation_secret_values`(`chat_service.py:568`)가 **모든 `GET /messages`·`GET /threads/{id}/state` 폴링**에서 실행. 읽기 경로에서 행 락까지 취함.
-- **카테고리**: 성능 (N+1 + 락 경합)
-- **증거**: `services/chat_service.py:1702-1734` (루프) + `mcp/auth.py:61-64`
+### [BE-P3] polling 路径的 `build_tools_config` 对每个 MCP tool link 重复 `SELECT … FOR UPDATE`（N+1 + 不必要 lock）
+- **优先级建议**：**P1** — `collect_conversation_secret_values`（`chat_service.py:568`）在**所有 `GET /messages`·`GET /threads/{id}/state` polling** 中执行。read 路径甚至会拿 row lock。
+- **类别**：性能（N+1 + lock contention）
+- **证据**：`services/chat_service.py:1702-1734`（loop）+ `mcp/auth.py:61-64`
   ```python
   # chat_service.py:1719
   resolved_auth = await resolve_mcp_auth(db, credential_id=server.credential_id, ...)
   # mcp/auth.py:64
   credential = (await db.execute(stmt.with_for_update())).scalar_one_or_none()
   ```
-  게다가 이 credential 행은 이미 `_agent_runtime_load_options`(`chat_service.py:1521-1524`, `selectinload(McpTool.server).selectinload(McpServer.credential)`)로 eager load 되어 있어 **재조회가 중복**.
-- **문제점**: credential 있는 MCP 툴 M개면 폴링당 M회 `SELECT … FOR UPDATE`. (1) MCP 툴 수에 선형, (2) 순수 읽기 경로에서 행 락 → 동시 스트림과 락 경합.
-- **리팩토링 방안**:
-  1. `collect_conversation_secret_values`(읽기 경로)는 `build_tools_config`에 `db=None` 전달 → 이미 eager-load된 `server.credential`을 `decrypt_cached`로 in-memory 복호(라인 1733 분기가 이미 존재).
-  2. run 경로가 `resolve_mcp_auth`를 유지해야 하면, 읽기 caller에는 `.with_for_update()` 제거 + `WHERE id IN (...)` 배치.
-- **검증**: 폴링 시 `pg_locks` 관찰 + 쿼리 카운터로 M+1→0(읽기 경로) 확인.
-- **예상 공수**: **S~M**
+  而且该 credential row 已由 `_agent_runtime_load_options`（`chat_service.py:1521-1524`, `selectinload(McpTool.server).selectinload(McpServer.credential)`）eager load，**重复查询本身就是多余的**。
+- **问题**：有 credential 的 MCP tool 为 M 个时，每次 polling 执行 M 次 `SELECT … FOR UPDATE`。(1) 随 MCP tool 数线性增长，(2) 纯 read 路径拿 row lock → 与并发 stream 产生 lock contention。
+- **重构方案**：
+  1. `collect_conversation_secret_values`（read 路径）给 `build_tools_config` 传 `db=None` → 使用已 eager-load 的 `server.credential` 通过 `decrypt_cached` in-memory 解密（1733 行已有该分支）。
+  2. 如果 run 路径必须保留 `resolve_mcp_auth`，read caller 去掉 `.with_for_update()` + 用 `WHERE id IN (...)` 批量。
+- **验证**：polling 时观察 `pg_locks` + query counter，确认 M+1→0（read 路径）。
+- **预计工时**：**S~M**
 
 ---
 
-### [BE-P4] bcrypt 해시/검증이 이벤트 루프를 통째로 블로킹 (로그인·회원가입마다 ~250ms)
-- **우선순위 제안**: **P1** — 단일 로그인이 **전체 서버**의 모든 동시 SSE 스트림·폴링·API를 ~250ms 정지시킴. credential-stuffing 시 서버 직렬화.
-- **카테고리**: 성능 (이벤트 루프 블로킹)
-- **증거**: `services/auth_service.py:113, 131`(+`:84`), `auth/password.py:28`
+### [BE-P4] bcrypt 哈希/验证完全阻塞 event loop（每次登录·注册约 250ms）
+- **优先级建议**：**P1** — 单次登录会让**整个 server** 的所有并发 SSE stream·polling·API 停顿约 250ms。credential-stuffing 时 server 串行化。
+- **类别**：性能（event loop blocking）
+- **证据**：`services/auth_service.py:113, 131`（+`:84`），`auth/password.py:28`
   ```python
   # auth_service.py:131  (async def authenticate)
-  if not verify_password(password, user.hashed_password):   # ~250ms 동기
-  # auth_service.py:113  존재하지 않는 이메일도 타이밍 패드로 동일 비용
+  if not verify_password(password, user.hashed_password):   # ~250ms 同步
+  # auth_service.py:113  不存在的 email 也以 timing pad 支付同等成本
   verify_password(password, _DUMMY_PASSWORD_HASH)
-  # password.py:28  bcrypt__rounds=12  (의도적 느린 KDF)
+  # password.py:28  bcrypt__rounds=12  （有意的慢 KDF）
   ```
-- **문제점**: bcrypt cost-12 ≈ 250ms를 루프 스레드에서 실행 → 그동안 어떤 코루틴도 스케줄 불가. 실패/가짜 로그인도 패드로 250ms 소모.
-- **리팩토링 방안**: `await asyncio.to_thread(verify_password, …)` / `await asyncio.to_thread(hash_password, …)`로 워커 스레드에 오프로드. `_DUMMY_PASSWORD_HASH`(`:43`)는 import 타임이라 무관.
-- **검증**: 부하 도구로 로그인 20 rps 동시 + 별도 `GET /health` 지연 측정, to_thread 전후 p99 비교. 기존 auth 테스트 회귀 확인.
-- **예상 공수**: **S**
+- **问题**：bcrypt cost-12 ≈ 250ms 在 loop thread 执行 → 期间任何 coroutine 都无法调度。失败/假登录也因 pad 消耗 250ms。
+- **重构方案**：用 `await asyncio.to_thread(verify_password, …)` / `await asyncio.to_thread(hash_password, …)` offload 到 worker thread。`_DUMMY_PASSWORD_HASH`（`:43`）在 import time，与此无关。
+- **验证**：用负载工具并发登录 20 rps + 单独测 `GET /health` latency，对比 to_thread 前后 p99。确认现有 auth test 回归。
+- **预计工时**：**S**
 
 ---
 
-### [BE-P5] SSE 스트리밍 이벤트당 중복 비용 (redaction 2회 + 버려지는 json.dumps + 시크릿셋 재정렬 + O(n²) 이벤트 id 재로드)
-- **우선순위 제안**: **P1** — 토큰당(응답당 10²~10³회) 곱해지는 hot path. 여러 소항목의 복합.
-- **카테고리**: 성능 (per-event CPU + 준-quadratic DB)
+### [BE-P5] 每个 SSE streaming event 的重复成本（redaction 2 次 + 被丢弃的 json.dumps + secret set 重排 + O(n²) event id reload）
+- **优先级建议**：**P1** — 乘以每 token（每个回复 10²~10³ 次）的 hot path。多个子项叠加。
+- **类别**：性能（per-event CPU + 近似 quadratic DB）
 - **证据**:
-  - **(a) 이벤트당 버려지는 `json.dumps`** — `agent_runtime/protocol_events.py:50-55`, 무조건 호출(`:104`). 직렬화 가능성 검증용으로 stdlib `json.dumps` 전체 인코드 후 결과 폐기. `values` 이벤트는 전체 그래프 상태를 매번 재인코드.
-  - **(b) redaction 2회** — `langgraph_streaming.py:338-354`(wire) + `protocol_persistence.py:15-24`(persist). `redact_protocol_data`가 이벤트당 전체 재귀를 **두 번**(`_mask_known_values` + `_redact_sensitive_keys`).
-  - **(c) 시크릿셋 매 문자열 노드마다 재구축** — `marketplace/redaction.py:70-80`. run 내 불변인 시크릿셋을 문자열 키/값마다 `set` 재생성 + `sorted(key=len)`.
-  - **(d) O(n²) 이벤트 id 재로드** — `services/trace_storage.py:147-160`. 부분 플러시(32건/2s)마다 **누적된 모든** chunk `event_ids`를 재 SELECT + set 구축. T 이벤트 턴에서 ≈ O(T²/64).
-  - **참고 (양호)**: 모든 redaction 정규식은 모듈 레벨 `re.compile`, 값 마스킹은 `str.replace`(ReDoS 무관), DB 영속화는 32건/2s 배치. 컴파일-인-루프는 없음.
-- **문제점**: 2000 토큰 응답 = json.dumps 2000회(+resequence 시 2배, `values`는 전체상태), redaction 2×2000 재귀, 시크릿 정렬 ~16k회, 이벤트 id 재로드 ~62k 누적. 딥리서치/멀티툴 긴 턴에서 CPU·DB 급증.
-- **리팩토링 방안**:
-  1. (a) `_jsonable`의 검증용 `json.dumps` 제거(payload는 이미 `_serialize_value`로 정규화됨) 또는 debug 플래그 게이트.
-  2. (b) wire에서 1회 redaction 후, persist는 `values`/`updates`만 compact 추가 — 재-redaction 제거.
-  3. (c) run당 1회 `sorted(unique, key=len)` 메모이즈(ContextVar set 아이덴티티 키) 후 `replace_secret_values`에 주입.
-  4. (d) persist 클로저(`conversation_stream_service.py:349`)에 run-scoped `seen_event_ids` set 유지, DB 재로드는 retry 경로에만.
-  5. (추가) v3 플러시가 `emit`에서 inline `await`(`langgraph_streaming.py:354`)라 토큰 방출을 블로킹 → legacy처럼 `asyncio.create_task` fire-and-forget(`streaming.py:338`) 패턴으로.
-- **검증**: 2000토큰 스크립트 모델 런에서 이벤트당 CPU 프로파일(py-spy) + 긴 턴 총 쿼리 수 측정, 개선 전후 비교.
-- **예상 공수**: **M** (소항목 독립 적용 가능, (d)는 별도)
+  - **(a) 每个 event 都做却丢弃的 `json.dumps`** — `agent_runtime/protocol_events.py:50-55`，无条件调用（`:104`）。为验证可序列化性，用 stdlib `json.dumps` 完整编码后丢弃结果。`values` event 每次会重新编码完整 graph state。
+  - **(b) redaction 2 次** — `langgraph_streaming.py:338-354`（wire）+ `protocol_persistence.py:15-24`（persist）。`redact_protocol_data` 每个 event 做**两次**完整递归（`_mask_known_values` + `_redact_sensitive_keys`）。
+  - **(c) 每个字符串 node 都重建 secret set** — `marketplace/redaction.py:70-80`。run 内不变的 secret set 对字符串 key/value 每次都重新建 `set` + `sorted(key=len)`。
+  - **(d) O(n²) event id reload** — `services/trace_storage.py:147-160`。每次 partial flush（32 项/2s）都重新 SELECT **累计全部** chunk `event_ids` 并建 set。一个 T event turn 约为 O(T²/64)。
+  - **参考（良好）**：所有 redaction regex 都在 module-level `re.compile`，value masking 用 `str.replace`（无 ReDoS），DB persistence 以 32 项/2s batch。没有 compile-in-loop。
+- **问题**：2000 token 回复 = json.dumps 2000 次（resequence 时 2 倍，`values` 是完整 state）、redaction 2×2000 递归、secret 排序约 16k 次、event id reload 累计约 62k。deep research/multi-tool 长 turn 中 CPU·DB 暴涨。
+- **重构方案**：
+  1. (a) 移除 `_jsonable` 中仅用于验证的 `json.dumps`（payload 已由 `_serialize_value` 规范化）或放到 debug flag 后。
+  2. (b) wire 只做 1 次 redaction，persist 只额外 compact `values`/`updates` — 移除重复 redaction。
+  3. (c) 每个 run 1 次 `sorted(unique, key=len)` memoize（ContextVar set identity key），再注入 `replace_secret_values`。
+  4. (d) 在 persist closure（`conversation_stream_service.py:349`）维护 run-scoped `seen_event_ids` set，只有 retry 路径才 reload DB。
+  5. （追加）v3 flush 在 `emit` 中 inline `await`（`langgraph_streaming.py:354`），会阻塞 token emission → 改成与 legacy 相同的 `asyncio.create_task` fire-and-forget（`streaming.py:338`）模式。
+- **验证**：在 2000-token scripted model run 中做 per-event CPU profile（py-spy）+ 测量长 turn 总 query 数，比较优化前后。
+- **预计工时**：**M**（子项可独立应用，(d) 单独）
 
 ---
 
-### [BE-P6] FK·필터 컬럼 인덱스 누락 (5건, 전부 새 Alembic 마이그레이션 필요)
-- **우선순위 제안**: **P2** — 특히 `token_usages`는 스키마에서 가장 빠르게 증가(LLM 턴마다 1행)하는데 **비-PK 인덱스가 0개**.
-- **카테고리**: 성능 (인덱스)
-- **증거** (66개 마이그레이션 전수 대조로 실제 미존재 확인):
-  1. `models/token_usage.py:20` `agent_id` FK — `usage_service.py:18-23`의 `SUM(...) WHERE agent_id = ?`(`GET /api/agents/{id}/usage`)가 매번 풀스캔. **인덱스 전무 직접 확인** (PK만 존재).
-  2. `models/token_usage.py:17` `conversation_id` FK(`ON DELETE CASCADE`) — 대화 삭제 시 캐스케이드가 전체 테이블 스캔.
-  3. `models/message_attachment.py:28` `conversation_id` FK — `chat_service.py:1176-1178`(`GET /messages` 폴링) + `/files`(`:1450`)에서 필터. 유일 인덱스는 `message_id`(m28).
-  4. `models/mcp_server.py:44` `user_id` FK — MCP 서버 목록(`routers/mcp.py:200`) 등 다수가 `WHERE user_id = ?`. 인덱스 전무.
-  5. `models/agent_trigger.py:16` `agent_id` FK — `trigger_service.py:203`, `agent_service.py:544`. 기존 복합(`(user_id,status)` m47, `(status,next_run_at)` m53)이 `agent_id` 선두가 아니라 미커버.
-- **리팩토링 방안**: 새 Alembic 마이그레이션에서 `Index("ix_token_usages_agent_id","agent_id")`, `ix_token_usages_conversation_id`, `ix_message_attachments_conversation_id`(부분 인덱스 `WHERE message_id IS NOT NULL` 고려), `ix_mcp_servers_user_id`, `ix_agent_triggers_agent_id`(또는 `(agent_id,status)` 복합) 생성. 모델은 이미 프로덕션 존재라 `index=True`만으론 불가 → 마이그레이션 필수.
-- **검증**: `EXPLAIN ANALYZE`로 인덱스 스캔 전환 확인 + 대량 행 시드 후 지연 측정.
-- **예상 공수**: **S** (마이그레이션 1개)
+### [BE-P6] 缺少 FK·filter column index（5 项，全部需要新 Alembic migration）
+- **优先级建议**：**P2** — 尤其 `token_usages` 是 schema 中增长最快（每个 LLM turn 1 row）的表，却有 **0 个非 PK index**。
+- **类别**：性能（index）
+- **证据**（逐一对照 66 个 migration 确认确实不存在）：
+  1. `models/token_usage.py:20` `agent_id` FK — `usage_service.py:18-23` 的 `SUM(...) WHERE agent_id = ?`（`GET /api/agents/{id}/usage`）每次都 full scan。**已直接确认完全没有 index**（只有 PK）。
+  2. `models/token_usage.py:17` `conversation_id` FK（`ON DELETE CASCADE`）— 删除对话时 cascade full table scan。
+  3. `models/message_attachment.py:28` `conversation_id` FK — 在 `chat_service.py:1176-1178`（`GET /messages` polling）+ `/files`（`:1450`）中过滤。唯一 index 是 `message_id`（m28）。
+  4. `models/mcp_server.py:44` `user_id` FK — MCP server list（`routers/mcp.py:200`）等大量 `WHERE user_id = ?`。完全没有 index。
+  5. `models/agent_trigger.py:16` `agent_id` FK — `trigger_service.py:203`, `agent_service.py:544`。现有 composite（`(user_id,status)` m47，`(status,next_run_at)` m53）不是以 `agent_id` 开头，因此不覆盖。
+- **重构方案**：在新 Alembic migration 中创建 `Index("ix_token_usages_agent_id","agent_id")`、`ix_token_usages_conversation_id`、`ix_message_attachments_conversation_id`（可考虑 partial index `WHERE message_id IS NOT NULL`）、`ix_mcp_servers_user_id`、`ix_agent_triggers_agent_id`（或 `(agent_id,status)` composite）。模型已经在 production 存在，只加 `index=True` 不够 → 必须 migration。
+- **验证**：用 `EXPLAIN ANALYZE` 确认切换到 index scan + 大量 row seed 后测 latency。
+- **预计工时**：**S**（1 个 migration）
 
 ---
 
-### [BE-P7] checkpointer 풀 `max_size=10` 전역 병목 + 메인 엔진 풀 라이브러리 기본값
-- **우선순위 제안**: **P2** — CLAUDE.md에 이미 증상 문서화("슬로우 스트리밍/평가 런 다수 동시 → 백엔드 직렬화, 무관한 요청 timeout").
-- **카테고리**: 성능 (커넥션 풀)
+### [BE-P7] checkpointer pool `max_size=10` 全局瓶颈 + 主 engine pool 使用库默认值
+- **优先级建议**：**P2** — CLAUDE.md 已记录症状（"slow streaming/大量 eval run 并发 → backend 串行化，无关 request timeout"）。
+- **类别**：性能（connection pool）
 - **证据**:
-  - `agent_runtime/checkpointer.py:47-53` — `AsyncConnectionPool(min_size=1, max_size=10)`. 모든 스트림 쓰기 + **읽기 폴링**이 이 10 커넥션을 공유·경합.
-  - `database.py:15` — `create_async_engine(url, echo=False, pool_pre_ping=True)`. `pool_size`/`max_overflow`/`pool_timeout`/`pool_recycle` 전부 미설정 → 기본 5+10=15, `pool_recycle=-1`. config에 엔진 풀 노브 없음.
-  - httpx: tool client 싱글턴(`tool_factory.py:97`) + model client 캐시(`model_factory.py`)는 **양호**.
-- **리팩토링 방안**:
-  1. `CHECKPOINTER_POOL_MAX_SIZE` 상향(예 20~30, PG `max_connections`에서 엔진 몫 제외), `min_size` 2~4로 warm 유지.
-  2. 엔진 `pool_size`/`max_overflow`/`pool_recycle`(예 1800s)을 settings로 노출·설정.
-  3. BE-P2로 읽기 경로의 풀 압력 자체를 감소.
-- **검증**: 동시 스트림 N개 + 폴링 부하에서 `pg_stat_activity`·풀 대기 관측, 상향 전후 timeout율 비교.
-- **예상 공수**: **S** (설정) ~ M (엔진 노브 노출)
+  - `agent_runtime/checkpointer.py:47-53` — `AsyncConnectionPool(min_size=1, max_size=10)`。所有 stream write + **read polling** 共享、争抢这 10 个 connection。
+  - `database.py:15` — `create_async_engine(url, echo=False, pool_pre_ping=True)`。`pool_size`/`max_overflow`/`pool_timeout`/`pool_recycle` 全未设置 → 默认 5+10=15，`pool_recycle=-1`。config 中没有 engine pool knob。
+  - httpx：tool client singleton（`tool_factory.py:97`）+ model client cache（`model_factory.py`）是**良好实践**。
+- **重构方案**：
+  1. 提高 `CHECKPOINTER_POOL_MAX_SIZE`（例如 20~30，从 PG `max_connections` 中扣除 engine 配额），`min_size` 设 2~4 保持 warm。
+  2. 把 engine `pool_size`/`max_overflow`/`pool_recycle`（例如 1800s）暴露到 settings 并配置。
+  3. 通过 BE-P2 降低 read 路径本身的 pool 压力。
+- **验证**：并发 N 个 stream + polling load 时观察 `pg_stat_activity`·pool wait，对比提升前后 timeout rate。
+- **预计工时**：**S**（配置）~ M（暴露 engine knob）
 
 ---
 
-### [BE-P8] `health_check_history` 무한 증가 — retention 설정이 dead code
-- **우선순위 제안**: **P2**
-- **카테고리**: 성능 (테이블 팽창)
-- **증거**: `services/health_check.py:222-225, 296` (daily cron `0 4 * * *`) — 모델·서버당 1 INSERT/매일. `config.py:88` `health_check_history_retention_days: int = 90` — **어디서도 참조 안 됨**, `delete(HealthCheckHistory)` 코드 전무.
-- **리팩토링 방안**:
-  1. GC 잡 추가: `DELETE FROM health_check_history WHERE checked_at < now() - retention_days`(설정 이미 존재).
-  2. `checked_at` 인덱스 추가.
-  3. disabled/미사용 모델은 매일 프로브 제외.
-- **검증**: 대량 시드 후 GC 잡 실행으로 행 감소 확인.
-- **예상 공수**: **S**
+### [BE-P8] `health_check_history` 无限增长 — retention 设置是 dead code
+- **优先级建议**：**P2**
+- **类别**：性能（table bloat）
+- **证据**：`services/health_check.py:222-225, 296`（daily cron `0 4 * * *`）— 每 model/server 每天 1 INSERT。`config.py:88` `health_check_history_retention_days: int = 90` **没有任何引用**，也没有 `delete(HealthCheckHistory)` 代码。
+- **重构方案**：
+  1. 新增 GC job：`DELETE FROM health_check_history WHERE checked_at < now() - retention_days`（配置已存在）。
+  2. 给 `checked_at` 添加 index。
+  3. disabled/未使用 model 不做每日 probe。
+- **验证**：大量 seed 后执行 GC job，确认 row 数下降。
+- **预计工时**：**S**
 
 ---
 
-### [BE-P9] `mcp_health_poll`이 5분마다 모든 활성 MCP 서버를 직렬 재프로브
-- **우선순위 제안**: **P2**
-- **카테고리**: 성능 (스케줄러 잡)
-- **증거**: `scheduler.py:511, 532, 544` (`IntervalTrigger(minutes=5)`) — `select(McpServer).where(or_(is_system.is_(True), status != "disabled"))` LIMIT 없음, `for server in rows:` 순차 — 서버당 credential 복호 + connect_and_list 라이브 라운드트립.
-- **문제점**: `O(#서버)` 네트워크 커넥트를 5분마다 직렬. error/unreachable 서버도 backoff 없이 반복.
-- **리팩토링 방안**:
-  1. 바운디드 `asyncio.gather`/세마포어로 병렬화(`check_all_active`가 이미 하는 패턴).
-  2. per-probe 타임아웃 예산.
-  3. `health_polled_at` stale 서버만 증분 폴링 + 지속 실패 서버 지수 backoff.
-- **검증**: 서버 50개 시드 후 sweep wall-clock 병렬화 전후 측정.
-- **예상 공수**: **M**
+### [BE-P9] `mcp_health_poll` 每 5 分钟串行重新 probe 所有活跃 MCP server
+- **优先级建议**：**P2**
+- **类别**：性能（scheduler job）
+- **证据**：`scheduler.py:511, 532, 544`（`IntervalTrigger(minutes=5)`）— `select(McpServer).where(or_(is_system.is_(True), status != "disabled"))` 无 LIMIT，`for server in rows:` 顺序执行 — 每个 server 都做 credential decrypt + connect_and_list live roundtrip。
+- **问题**：每 5 分钟串行执行 `O(#server)` network connect。error/unreachable server 也没有 backoff，持续重复。
+- **重构方案**：
+  1. 用 bounded `asyncio.gather`/semaphore 并行化（`check_all_active` 已有相同模式）。
+  2. 设置 per-probe timeout budget。
+  3. 仅对 `health_polled_at` stale server 做增量 polling + 对持续失败 server 做指数 backoff。
+- **验证**：seed 50 个 server 后，测量 sweep wall-clock 并行化前后差异。
+- **预计工时**：**M**
 
 ---
 
-### [BE-P10] 마켓플레이스 MCP 설치 시 툴당 별도 SELECT — 배치 쿼리가 3줄 아래 이미 존재
-- **우선순위 제안**: **P2**
-- **카테고리**: 성능 (N+1)
-- **증거**: `marketplace/install_service.py:489-524` — `:498` 루프 안 툴당 `select(McpTool)...limit(1)`, `:522` 루프 직후 정확히 필요한 배치 쿼리가 이미 실행됨.
-- **리팩토링 방안**: `:522` 쿼리를 루프 전으로 hoist → `existing_by_name = {t.name: t for t in existing_tools}` → 루프 내 `existing_by_name.get(name)`. `:532` stale 링크 삭제도 `delete(...).where(mcp_tool_id.in_(stale_ids))` 단일문으로.
-- **검증**: 30툴 서버 설치 시 쿼리 카운트 확인.
-- **예상 공수**: **S**
+### [BE-P10] Marketplace MCP 安装时每个 tool 单独 SELECT — 所需 batch query 在下面 3 行已经存在
+- **优先级建议**：**P2**
+- **类别**：性能（N+1）
+- **证据**：`marketplace/install_service.py:489-524` — `:498` loop 内每个 tool 执行 `select(McpTool)...limit(1)`，而 `:522` loop 后立刻执行了恰好所需的 batch query。
+- **重构方案**：将 `:522` query hoist 到 loop 前 → `existing_by_name = {t.name: t for t in existing_tools}` → loop 内 `existing_by_name.get(name)`。`:532` stale link 删除也改为单条 `delete(...).where(mcp_tool_id.in_(stale_ids))`。
+- **验证**：安装 30-tool server 时确认 query count。
+- **预计工时**：**S**
 
 ---
 
-### [BE-P11] 런 파일 인제스트 `ingest_changed_files`가 변경 파일당 다중 SELECT
-- **우선순위 제안**: **P2**
-- **카테고리**: 성능 (N+1)
-- **증거**: `services/artifact_service.py:239-298` — `:245` 존재 확인, `:274` 재확인, `:291` max(version_number) — 델타(파일)당. `_summary_from_artifact`(`:269/:359`)가 추가 `_current_version` SELECT.
-- **리팩토링 방안**:
-  1. 루프 전 `select(ConversationArtifact).where(conversation_id, assistant_msg_id, logical_path.in_([...]))` → `{logical_path: artifact}`.
-  2. `select(ArtifactVersion.artifact_id, func.max(version_number)).where(artifact_id.in_(...)).group_by(...)` 배치.
-  3. 루프는 in-memory 조회 + insert만.
-- **검증**: 파일 10개 변경 런에서 쿼리 수 측정.
-- **예상 공수**: **M**
+### [BE-P11] run 文件 ingest 的 `ingest_changed_files` 对每个变更文件执行多次 SELECT
+- **优先级建议**：**P2**
+- **类别**：性能（N+1）
+- **证据**：`services/artifact_service.py:239-298` — `:245` 存在性检查、`:274` 再检查、`:291` max(version_number) — 都按 delta（文件）执行。`_summary_from_artifact`（`:269/:359`）还会额外执行 `_current_version` SELECT。
+- **重构方案**：
+  1. loop 前执行 `select(ConversationArtifact).where(conversation_id, assistant_msg_id, logical_path.in_([...]))` → `{logical_path: artifact}`。
+  2. batch 执行 `select(ArtifactVersion.artifact_id, func.max(version_number)).where(artifact_id.in_(...)).group_by(...)`。
+  3. loop 只做 in-memory 查询 + insert。
+- **验证**：10 个文件变更的 run 中测量 query 数。
+- **预计工时**：**M**
 
 ---
 
-### [BE-P12] 무제한 목록: `GET /api/memories` 상한 없음 + 마켓플레이스 OFFSET 페이지네이션
-- **우선순위 제안**: **P2**
-- **카테고리**: 성능 (페이지네이션)
+### [BE-P12] 无限制列表：`GET /api/memories` 无上限 + Marketplace OFFSET pagination
+- **优先级建议**：**P2**
+- **类别**：性能（pagination）
 - **证据**:
-  - `services/memory_service.py:368-373` — limit/커서 없음(라우터 `routers/memory.py:81-96`에 `limit` 파라미터 자체가 없음). 대조로 `list_runtime_memory_records`(`:376`)는 `.limit(RUNTIME_MEMORY_MAX_RECORDS)`로 이미 상한.
-  - `marketplace/service.py:207, 460-507` — `.limit(limit).offset(offset)` + post-filter가 페이지 채울 때까지 `raw_offset += batch_size` 재조회 루프.
-- **리팩토링 방안**:
-  1. memories: `limit`(서버 강제 max) + `(updated_at, id)` keyset — 대화 목록 패턴 재사용.
-  2. 마켓: `(created_at, id)` keyset 전환 + post-load 필터를 가능한 SQL로 push down.
-- **검증**: 대량 memory/마켓 아이템 시드 후 깊은 페이지 지연 비교.
-- **예상 공수**: **M**
+  - `services/memory_service.py:368-373` — 没有 limit/cursor（router `routers/memory.py:81-96` 甚至没有 `limit` 参数）。对比 `list_runtime_memory_records`（`:376`）已经用 `.limit(RUNTIME_MEMORY_MAX_RECORDS)` 设置上限。
+  - `marketplace/service.py:207, 460-507` — `.limit(limit).offset(offset)` + post-filter，页面没填满时循环用 `raw_offset += batch_size` 重新查询。
+- **重构方案**：
+  1. memories：`limit`（server 强制 max）+ `(updated_at, id)` keyset — 复用 conversation list 模式。
+  2. Marketplace：切换到 `(created_at, id)` keyset + 尽可能把 post-load filter push down 到 SQL。
+- **验证**：大量 seed memory/Marketplace item 后比较 deep page latency。
+- **预计工时**：**M**
 
 ---
 
-### [BE-P13] async 핸들러 내 동기 CPU/파일 작업 (web_scraper HTML 파싱, 스킬 zip export)
-- **우선순위 제안**: **P3**
-- **카테고리**: 성능 (이벤트 루프 블로킹)
+### [BE-P13] async handler 内的同步 CPU/文件操作（web_scraper HTML parsing、Skill zip export）
+- **优先级建议**：**P3**
+- **类别**：性能（event loop blocking）
 - **证据**:
-  - `agent_runtime/tool_factory.py:164-170` — `async def scrape_url` 내 `BeautifulSoup(resp.text,"html.parser")` + `get_text()`. 수 MB HTML 파싱을 루프에서.
-  - `routers/skills.py:237` → `skills/package_exporter.py:12-34` — async 핸들러가 동기 zip 빌드 직접 호출.
-  - `routers/skill_files.py:40, 53` — 동기 파일 읽기(경미). `image_service.py:139` 정적 PNG 최초 로드 동기(캐시됨, 경미).
-  - **참고 (양호)**: `skill_executor.py`, `mcp/client.py`, `skills/service.py`, install/publish의 zip/shutil은 이미 `asyncio.to_thread`. credential 복호는 sub-ms.
-- **리팩토링 방안**: `BeautifulSoup` 블록을 sync helper로 분리해 `await asyncio.to_thread(...)`(또는 `resp.text` 길이 상한). `zip_bytes = await asyncio.to_thread(build_installed_skill_zip_bytes, ...)`. skill_files 두 읽기 경로도 `to_thread`.
-- **검증**: 대형 HTML/패키지로 scrape·export 중 별도 요청 지연 측정.
-- **예상 공수**: **S**
+  - `agent_runtime/tool_factory.py:164-170` — `async def scrape_url` 内执行 `BeautifulSoup(resp.text,"html.parser")` + `get_text()`。数 MB HTML parsing 在 loop 中进行。
+  - `routers/skills.py:237` → `skills/package_exporter.py:12-34` — async handler 直接调用同步 zip build。
+  - `routers/skill_files.py:40, 53` — 同步文件读取（轻微）。`image_service.py:139` 首次加载静态 PNG 同步执行（有 cache，轻微）。
+  - **参考（良好）**：`skill_executor.py`、`mcp/client.py`、`skills/service.py`、install/publish 的 zip/shutil 已经使用 `asyncio.to_thread`。credential decrypt 为 sub-ms。
+- **重构方案**：将 `BeautifulSoup` block 拆成 sync helper，用 `await asyncio.to_thread(...)`（或限制 `resp.text` 长度）。`zip_bytes = await asyncio.to_thread(build_installed_skill_zip_bytes, ...)`。skill_files 的两个读取路径也改为 `to_thread`。
+- **验证**：用大型 HTML/package 测量 scrape·export 期间其他 request latency。
+- **预计工时**：**S**
 
 ---
 
-### 추가 임무 — 2026-07-03 감사 3건 현재 상태
+### 附加任务 — 2026-07-03 审计 3 项当前状态
 
-| 항목 | 판정 | 증거 |
+| 项目 | 判定 | 证据 |
 |------|------|------|
-| **web_scraper SSRF** (`tool_factory.py`) | **STILL PRESENT (미수정)** | `tool_factory.py:149-162` `scrape_url`이 모델 제공 URL을 검증 없이 `client.get(url)`. 공유 클라이언트가 `follow_redirects=True`(`:102-106`)라 리다이렉트-경유 SSRF 가능. `ipaddress`/`is_private`/`169.254`/`localhost`/allowlist 가드 전무 — localhost·RFC-1918·클라우드 메타데이터 `169.254.169.254`·`file://` 미차단. |
-| **rotate_credentials 무한루프** (`scheduler.py:235-251`) | **PARTIALLY FIXED** | OFFSET 제거로 원래 OOM/커서 미전진은 완화. 그러나 **no-progress 무한루프 잔존**: `re_encrypt_with_active_key`가 한 배치(≥`_ROTATION_BATCH=100`) 전부 지속 실패하면 동일 행 재fetch, 종료 가드 `if len(rows) < _ROTATION_BATCH`는 배치가 항상 꽉 차 트립 안 됨 → `while True` 무한. 실패 id 제외/no-progress break/max-iter 캡 필요. |
-| **트리거 중복실행** (`trigger_executor.py:80-122`) | **PARTIALLY FIXED** | `execute_trigger`에 DB 동시성 가드 없음(status→running 클레임/idempotency 없음). APScheduler `coalesce=True, max_instances=1` + 리더락으로 단일 프로세스 내 중복은 방지. 하지만 **run-now(`routers/triggers.py:167`)가 APScheduler 우회** → 스케줄 실행 in-flight + 사용자 run-now 동시 = 이중 실행. DB 레벨 `SELECT … FOR UPDATE` 또는 in-flight run 부분 유니크 인덱스 필요. |
+| **web_scraper SSRF** (`tool_factory.py`) | **STILL PRESENT（未修复）** | `tool_factory.py:149-162` 的 `scrape_url` 对模型提供的 URL 不做验证就 `client.get(url)`。共享 client 设置 `follow_redirects=True`（`:102-106`），因此可经 redirect SSRF。完全没有 `ipaddress`/`is_private`/`169.254`/`localhost`/allowlist guard — 未阻断 localhost·RFC-1918·云 metadata `169.254.169.254`·`file://`。 |
+| **rotate_credentials 无限循环** (`scheduler.py:235-251`) | **PARTIALLY FIXED** | 移除 OFFSET 后原有 OOM/cursor 不前进问题有所缓解。但仍有 **no-progress 无限循环**：若 `re_encrypt_with_active_key` 对一个 batch（≥`_ROTATION_BATCH=100`）全部持续失败，就会重新 fetch 同一批 row；终止 guard `if len(rows) < _ROTATION_BATCH` 因 batch 始终满额不会触发 → `while True` 无限。需要排除失败 id/no-progress break/max-iter cap。 |
+| **trigger 重复执行** (`trigger_executor.py:80-122`) | **PARTIALLY FIXED** | `execute_trigger` 没有 DB concurrency guard（无 status→running claim/idempotency）。APScheduler `coalesce=True, max_instances=1` + leader lock 可防止单进程内重复。但 **run-now（`routers/triggers.py:167`）绕过 APScheduler** → schedule 执行 in-flight + 用户同时 run-now = 双重执行。需要 DB 层 `SELECT … FOR UPDATE` 或 in-flight run partial unique index。 |
 
 ---
 
-### 요약 (우선순위별)
+### 总结（按优先级）
 
-- **P1 (채팅 hot path / 전역 블로킹)**: BE-P1(폴링 N+1 하이드레이션), BE-P2(무제한 메시지 로드), BE-P3(폴링 MCP `FOR UPDATE` N+1), BE-P4(bcrypt 루프 블로킹), BE-P5(SSE 이벤트당 중복 비용)
-- **P2**: BE-P6(인덱스 5건), BE-P7(checkpointer 풀+엔진 풀), BE-P8(health history 팽창), BE-P9(MCP 폴 직렬), BE-P10(설치 N+1), BE-P11(인제스트 N+1), BE-P12(무제한/offset 페이지네이션)
-- **P3**: BE-P13(async 블로킹 파싱/zip)
+- **P1（聊天 hot path / 全局 blocking）**：BE-P1（polling N+1 hydration）、BE-P2（无限制消息加载）、BE-P3（polling MCP `FOR UPDATE` N+1）、BE-P4（bcrypt loop blocking）、BE-P5（每个 SSE event 重复成本）
+- **P2**：BE-P6（5 个 index）、BE-P7（checkpointer pool+engine pool）、BE-P8（health history 膨胀）、BE-P9（MCP poll 串行）、BE-P10（安装 N+1）、BE-P11（ingest N+1）、BE-P12（无限制/offset pagination）
+- **P3**：BE-P13（async blocking parsing/zip）
 
-**가장 레버리지 큰 4개**: BE-P4(bcrypt `to_thread`, 공수 S, 전역 영향) → BE-P1/BE-P3(폴링 N+1 제거, 공수 S~M) → BE-P6(인덱스 마이그레이션, 공수 S) → BE-P7(풀 상향, 공수 S).
+**杠杆最大的 4 项**：BE-P4（bcrypt `to_thread`，工时 S，全局影响）→ BE-P1/BE-P3（移除 polling N+1，工时 S~M）→ BE-P6（index migration，工时 S）→ BE-P7（提升 pool，工时 S）。
 
-**보안 주의**: web_scraper SSRF는 성능 아닌 **미수정 보안 이슈**로 별도 트랙 권고. rotate_credentials·트리거 중복은 부분 수정 상태로 잔여 리스크 존재.
+**安全注意**：web_scraper SSRF 不是性能问题，而是**未修复的安全问题**，建议独立 track。rotate_credentials·trigger 重复执行仍处于部分修复状态，残留风险存在。
 
 ---
 
-## 6. 백엔드 — 중복 (BE-D)
+## 6. 后端 — 重复 (BE-D)
 
-### [BE-D1] 소유권 조회+None체크→not_found() 패턴 라우터 전면 중복
-- **우선순위 제안**: P1
-- **카테고리**: 중복
-- **증거**: `conv = await chat_service.get_owned_conversation(db, conversation_id, user.id)` + `if conv is None/not conv: raise conversation_not_found()` 3줄 블록이 **13개 파일 30개 호출부**에서 반복:
+### [BE-D1] 所有权查询+None 检查→not_found() 模式在 router 全面重复
+- **优先级建议**：P1
+- **类别**：重复
+- **证据**：`conv = await chat_service.get_owned_conversation(db, conversation_id, user.id)` + `if conv is None/not conv: raise conversation_not_found()` 的 3 行 block 在 **13 个文件 30 个调用处**重复：
   - `conversation_traces.py:52-54, 67-69`
   - `conversation_branches.py:118-120, 224-226`
   - `conversation_files.py:35-37, 51-53`
   - `conversation_messages.py:142-144`, `conversation_runs.py:110-112, 132-134`
-  - 그 외 `conversation_run_cancel/ag_ui/followup/crud`, `artifacts.py`, `shares.py`
-  - 별도로 `agents.py`는 `get_agent(db, agent_id, user.id)`+`agent_not_found()`를 **6회**(185/200/236/268/297/316) 반복, `assistant.py`도 동일 getter 사용
-- **문제점**: (1) None 체크가 `if conv is None`과 `if not conv` 두 형태로 섞여 있음 — 스타일 드리프트. (2) 신규 대화 엔드포인트 추가 시 소유권 가드를 빼먹기 쉬움(누락 시 IDOR). (3) enumeration-oracle 통일 규칙(404 단일 응답)이 각 호출부 수동 준수에 의존 — 한 곳이라도 403 raise하면 규칙 붕괴.
-- **리팩토링 방안**:
-  1. `app/dependencies.py`에 소유권 리졸버 의존성 팩토리 추가:
+  - 其余 `conversation_run_cancel/ag_ui/followup/crud`, `artifacts.py`, `shares.py`
+  - 另外 `agents.py` 将 `get_agent(db, agent_id, user.id)`+`agent_not_found()` **重复 6 次**（185/200/236/268/297/316），`assistant.py` 也使用同一 getter
+- **问题**：(1) None 检查混用 `if conv is None` 和 `if not conv` 两种形式 — 风格 drift。(2) 新增 conversation endpoint 时容易漏掉 ownership guard（漏掉即 IDOR）。(3) enumeration-oracle 统一规则（单一 404 response）依赖各调用处手动遵守 — 只要一处 raise 403，规则就被破坏。
+- **重构方案**：
+  1. 在 `app/dependencies.py` 中增加 ownership resolver dependency factory：
      ```python
      def owned_conversation(
          conversation_id: uuid.UUID,
@@ -738,44 +738,44 @@
      ) -> Conversation:  # async
          conv = await chat_service.get_owned_conversation(db, conversation_id, user.id)
          if conv is None:
-             raise conversation_not_found()  # 404 단일 응답 규칙 한 곳에 봉인
+             raise conversation_not_found()  # 将单一 404 response 规则封装在一个位置
          return conv
      ```
-     엔드포인트는 `conv: Conversation = Depends(owned_conversation)`로 path param + 소유권 + 404를 한 번에 흡수.
-  2. **한 도메인 먼저**: conversation 계열(가장 밀집) → 검증 후 agents(`owned_agent`)로 확산. 각 도메인 getter는 이미 존재(`get_owned_conversation`, `get_agent`)하므로 의존성 래핑만.
-  3. **과추상화 방지**: "모든 리소스 하나의 제네릭 의존성"으로 통합하지 말 것 — path param 이름/getter/에러 팩토리가 도메인마다 달라 제네릭화하면 오히려 복잡. 리소스별 얇은 의존성 함수 하나씩만.
-- **검증**: `uv run pytest tests/test_conversation_*.py tests/test_agents.py tests/test_multiuser_isolation.py` (소유권 404 회귀 커버), `uv run ruff check .`
-- **예상 공수**: M (getter는 재사용, 라우터 시그니처 치환이 물량)
+     endpoint 使用 `conv: Conversation = Depends(owned_conversation)`，一次吸收 path param + ownership + 404。
+  2. **先做一个 domain**：conversation 系列（最密集）→ 验证后扩展到 agents（`owned_agent`）。各 domain getter 已存在（`get_owned_conversation`, `get_agent`），只需 dependency wrapper。
+  3. **防止过度抽象**：不要统一成"所有资源共用一个 generic dependency" — 每个 domain 的 path param 名称/getter/error factory 不同，泛型化反而更复杂。每种资源只做一个薄 dependency function。
+- **验证**：`uv run pytest tests/test_conversation_*.py tests/test_agents.py tests/test_multiuser_isolation.py`（覆盖 ownership 404 回归），`uv run ruff check .`
+- **预计工时**：M（getter 复用，router signature 替换量大）
 
-### [BE-D2] error_codes.py 팩토리 존재하는데 raw HTTPException 404/403 드리프트
-- **우선순위 제안**: P1
-- **카테고리**: 중복 (+ 규칙 위반)
-- **증거**: `app/error_codes.py`에 `credential_not_found()`, `tool_not_found()`, `model_not_found()` 등 구조화 팩토리(KOR 메시지 + 에러코드)가 **이미 존재**하지만, 다수 라우터가 raw `HTTPException(status_code=404, detail="...")`(ENG 소문자)로 우회:
-  - `credential not found` raw: `credentials.py:110,247,422,735`, `models.py:282,324`, `mcp.py:357,365`, `health.py:226` — **9곳** (팩토리 `credential_not_found()` 있음)
+### [BE-D2] error_codes.py 已有 factory，但 raw HTTPException 404/403 仍在 drift
+- **优先级建议**：P1
+- **类别**：重复（+规则违规）
+- **证据**：`app/error_codes.py` 已有 `credential_not_found()`, `tool_not_found()`, `model_not_found()` 等结构化 factory（KOR 消息 + error code），但很多 router 绕过它，直接 raw `HTTPException(status_code=404, detail="...")`（ENG 小写）：
+  - `credential not found` raw：`credentials.py:110,247,422,735`, `models.py:282,324`, `mcp.py:357,365`, `health.py:226` — **9 处**（已有 factory `credential_not_found()`）
   - `tool not found`: `tools.py:73`, `mcp server not found`: `mcp.py:99`, `health.py:229`
   - `super_user required`: `models.py:110` (403 raw), `forbidden`: `credentials.py:740` (403 raw)
-  - 라우터 raw 404/403 총 **24곳** (`error_codes` 미경유)
-- **문제점**: 같은 "not found" 의미가 **두 가지 응답 스키마**로 나감 — 구조화 에러(`{code, message}` KOR) vs raw `{detail: "credential not found"}` ENG. 프론트가 에러코드로 분기하면 raw 경로는 코드 없이 새어나가 처리 불가. 또 raw 문자열이 리소스 유형을 노출("credential"/"mcp server")해 enumeration 힌트가 될 수 있음.
-- **리팩토링 방안**:
-  1. 신규 팩토리 없이 **기존 error_codes 팩토리로 치환**만: `raise HTTPException(status_code=404, detail="credential not found")` → `raise credential_not_found()`. 팩토리 미존재분(`unknown definition '{key}'`, `system credential not found`)만 error_codes.py에 소량 추가.
-  2. `models.py:110`의 `super_user required` 403은 가능하면 `Depends(require_super_user)`로 승격(단, `include_hidden`처럼 조건부 gate라 파라미터 의존 → 그 경우 `ForbiddenError` 팩토리로만 통일).
-  3. **가드레일**: 라우터에서 `HTTPException(status_code=404|403` 직접 사용 금지 컨벤션 + ruff custom rule 혹은 grep CI 체크로 회귀 차단.
-- **검증**: `uv run pytest tests/test_credentials*.py tests/test_tools.py tests/test_mcp*.py tests/test_models.py` (응답 스키마 단언 갱신 필요), `uv run ruff check .`
-- **예상 공수**: S~M
+  - router raw 404/403 共 **24 处**（未经过 `error_codes`）
+- **问题**：同一个 "not found" 含义产生**两种 response schema** — 结构化 error（`{code, message}` KOR）vs raw `{detail: "credential not found"}` ENG。如果前端按 error code 分支，raw 路径没有 code 就无法处理。此外 raw 字符串会泄露资源类型（"credential"/"mcp server"），可能成为 enumeration hint。
+- **重构方案**：
+  1. 不新增 factory，**只替换为已有 error_codes factory**：`raise HTTPException(status_code=404, detail="credential not found")` → `raise credential_not_found()`。只有没有 factory 的（`unknown definition '{key}'`, `system credential not found`）少量补到 error_codes.py。
+  2. `models.py:110` 的 `super_user required` 403 尽量升级为 `Depends(require_super_user)`（但如果像 `include_hidden` 一样是条件式 gate，只能参数依赖 → 此时仅统一为 `ForbiddenError` factory）。
+  3. **guardrail**：建立 convention，禁止在 router 直接使用 `HTTPException(status_code=404|403` + ruff custom rule 或 grep CI check 阻断回归。
+- **验证**：`uv run pytest tests/test_credentials*.py tests/test_tools.py tests/test_mcp*.py tests/test_models.py`（需要更新 response schema 断言），`uv run ruff check .`
+- **预计工时**：S~M
 
-### [BE-D3] audit_service.record_event self-owned 신원 kwargs 보일러플레이트
-- **우선순위 제안**: P2
-- **카테고리**: 중복
-- **증거**: `actor_user_id=user.id`가 **16개 라우터 41개 호출부**에 등장(`agents.py:152,205,240,271`, `tools.py`, `mcp.py`, `credentials.py`, `triggers.py`, `marketplace.py`, `shares.py` 등). 대부분 actor==owner==target_owner인 self-action이라 매 호출마다 아래 6~7개 kwargs가 그대로 반복 (agents.py:152-166 대표):
+### [BE-D3] audit_service.record_event self-owned identity kwargs boilerplate
+- **优先级建议**：P2
+- **类别**：重复
+- **证据**：`actor_user_id=user.id` 出现在 **16 个 router 41 个调用处**（`agents.py:152,205,240,271`, `tools.py`, `mcp.py`, `credentials.py`, `triggers.py`, `marketplace.py`, `shares.py` 等）。大多数是 actor==owner==target_owner 的 self-action，因此每次调用都原样重复下面 6~7 个 kwargs（agents.py:152-166 为代表）：
   ```python
   actor_type="user", actor_user_id=user.id, actor_email_snapshot=user.email,
   owner_user_id=user.id, owner_email_snapshot=user.email,
   target_owner_user_id=user.id, outcome="success", request=request,
   ```
-  `record_event` 시그니처는 **24개 kwargs**(audit_service.py:86).
-- **문제점**: 신원 필드를 손으로 6개씩 채우다 하나(예: `owner_email_snapshot`)를 빠뜨리면 감사 로그 필드 누락이 조용히 발생. `actor_type="user"` 하드코딩 반복도 오타 리스크.
-- **리팩토링 방안**:
-  1. audit_service에 self-action 편의 래퍼 추가:
+  `record_event` 签名有 **24 个 kwargs**（audit_service.py:86）。
+- **问题**：手工填写 6 个 identity field 时漏掉一个（如 `owner_email_snapshot`），audit log 就会静默缺字段。反复硬编码 `actor_type="user"` 也有 typo 风险。
+- **重构方案**：
+  1. 在 audit_service 中增加 self-action convenience wrapper：
      ```python
      async def record_self_event(
          db, user: CurrentUser, *, action: str, target_type: str,
@@ -792,58 +792,58 @@
              request=request, metadata=metadata,
          )
      ```
-  2. actor≠owner인 소수 케이스(관리자가 타 유저 리소스 조작, marketplace 등)는 기존 full `record_event` 유지 — 래퍼는 self-action에만.
-  3. **과추상화 방지**: 래퍼는 "가장 흔한 한 조합"만 흡수. 파라미터를 다시 24개로 부풀리지 말 것.
-- **검증**: `uv run pytest tests/test_audit*.py` + 각 도메인 감사 테스트, `ruff`
-- **예상 공수**: M (호출부 41곳 치환)
+  2. 少数 actor≠owner 的 case（管理员操作其他用户资源、marketplace 等）继续使用 full `record_event` — wrapper 只用于 self-action。
+  3. **防止过度抽象**：wrapper 只吸收"最常见的一种组合"。不要让参数再次膨胀到 24 个。
+- **验证**：`uv run pytest tests/test_audit*.py` + 各 domain audit test，`ruff`
+- **预计工时**：M（替换 41 个调用处）
 
-### [BE-D4] 라우터별 _load_owned 헬퍼 + system-or-owned 쿼리 술어 중복
-- **우선순위 제안**: P2
-- **카테고리**: 중복
-- **증거**: 파일마다 자체 소유권 로더 정의: `tools.py:62 _load_owned`, `mcp.py:92 _load_owned`, `credentials.py:107 _load_owned`, `models.py:277 _load_owned_credential`, `uploads.py:93 _get_owned_attachment`, `shares.py:63 _require_owned_conversation` — **6개**. 또 "시스템(NULL) 또는 내 소유" 술어 `or_(Tool.user_id == user_id, Tool.user_id.is_(None))`가 **7곳** 복붙: `tool_service.py:34`, `agent_service.py:246,428`, `agent_blueprint_service.py:294`, `builder_service.py:295`, `tools.py:68,103`.
-- **문제점**: `_load_owned`들이 서로 **다른 소유권 의미**를 가짐 — tools=system-or-owned, mcp=strict owned, credentials=`get_for_user`(is_system=False 필터 위임), uploads=strict+404-collapse. 겉보기 동명이라 향후 "다 똑같겠지" 하고 잘못 통합/수정할 위험. system-or-owned 술어는 7곳 중 한 곳만 조건 바뀌면(예: enabled 필터 추가) 정책 드리프트.
-- **리팩토링 방안**:
-  1. 술어를 모델 헬퍼로 추출(가장 안전한 최소 단위):
+### [BE-D4] 每个 router 自己的 _load_owned helper + system-or-owned query 谓词重复
+- **优先级建议**：P2
+- **类别**：重复
+- **证据**：各文件自定义 ownership loader：`tools.py:62 _load_owned`, `mcp.py:92 _load_owned`, `credentials.py:107 _load_owned`, `models.py:277 _load_owned_credential`, `uploads.py:93 _get_owned_attachment`, `shares.py:63 _require_owned_conversation` — **6 个**。另外"system（NULL）或自己所有"谓词 `or_(Tool.user_id == user_id, Tool.user_id.is_(None))` 被**复制 7 处**：`tool_service.py:34`, `agent_service.py:246,428`, `agent_blueprint_service.py:294`, `builder_service.py:295`, `tools.py:68,103`。
+- **问题**：这些 `_load_owned` 的**ownership 语义不同** — tools=system-or-owned，mcp=strict owned，credentials=`get_for_user`（委托 is_system=False filter），uploads=strict+404-collapse。名字看起来相同，未来容易误以为"都一样"而错误合并/修改。system-or-owned 谓词 7 处中只要一处条件变化（如新增 enabled filter），就会 policy drift。
+- **重构方案**：
+  1. 将谓词提取成 model helper（最安全的最小单位）：
      ```python
-     # app/models/tool.py 등
+     # app/models/tool.py 等
      def visible_to(user_id: uuid.UUID):  # system(NULL) + owned
          return or_(Tool.user_id == user_id, Tool.user_id.is_(None))
      ```
-     7개 호출부가 `Tool.visible_to(user_id)`를 공유 → 정책 단일 지점.
-  2. `_load_owned` 계열은 **BE-D1의 의존성 팩토리로 흡수**하되, 소유권 의미 차이를 `system_visible: bool` 플래그로 명시:
+     7 个调用处共享 `Tool.visible_to(user_id)` → policy 单一来源。
+  2. `_load_owned` 系列由 **BE-D1 的 dependency factory 吸收**，但用 `system_visible: bool` flag 显式区分 ownership 语义：
      ```python
      def owned_tool(..., system_visible=True): ...   # tools
      def owned_mcp_server(..., system_visible=False): ...  # strict
      ```
-  3. **과추상화 방지**: 단일 제네릭 `load_owned(Model, id, user)`로 뭉치지 말 것 — 소유권 의미(system 포함 여부, 404-collapse 여부)가 리소스마다 달라 플래그 폭발. 술어 추출(1)만으로도 큰 이득.
-- **검증**: `uv run pytest tests/test_tools.py tests/test_mcp*.py tests/test_agent_service*.py`, `ruff`
-- **예상 공수**: S(술어 추출) + M(로더 통합, BE-D1과 병행)
+  3. **防止过度抽象**：不要合并成单一 generic `load_owned(Model, id, user)` — ownership 语义（是否包含 system、是否 404-collapse）按资源不同，会导致 flag 爆炸。仅提取谓词（1）就有很大收益。
+- **验证**：`uv run pytest tests/test_tools.py tests/test_mcp*.py tests/test_agent_service*.py`，`ruff`
+- **预计工时**：S（谓词提取）+ M（loader 统一，与 BE-D1 并行）
 
-### [BE-D5] keyset 커서 인코딩/정규화 + 페이지네이션 파라미터 중복·불일치
-- **우선순위 제안**: P3
-- **카테고리**: 중복
-- **증거**: `_encode/_decode_*_cursor`가 서비스마다 재구현: `chat_service.py:656/674`(JSON+base64), `artifact_service.py:88/92`(separator 문자열), `audit_service.py`(커서 로직 보유). timestamp UTC-naive 정규화 `astimezone(UTC).replace(tzinfo=None)`가 `chat_service.py:691`(인라인)과 `artifact_service.py:82 _normalize_cursor_datetime`(헬퍼)에 복붙. 또 Query 선언 `limit: int = Query(default=…, ge=1, le=…)`가 **12+ 라우터**에서 상한 제각각: 100(`conversation_crud:82`), 200(`credentials:457`, `marketplace:178`, `health:162`), 100(`artifacts:171`), 100(`audit:49`).
-- **문제점**: (1) 커서 timestamp 정규화가 두 곳 — 한 곳만 tz 버그 고치면 다른 곳은 여전히 aware/naive 불일치로 keyset 페이지가 어긋남(중복/누락 행). (2) limit 상한이 API마다 달라 클라이언트가 예측 불가. 커서 포맷도 2종(JSON vs separator)이라 공유 디코더 불가.
-- **리팩토링 방안**:
-  1. `app/services/pagination.py` 신설 — 정규화만 우선 공유(리스크 최소):
+### [BE-D5] keyset cursor 编码/规范化 + pagination 参数重复·不一致
+- **优先级建议**：P3
+- **类别**：重复
+- **证据**：`_encode/_decode_*_cursor` 在各 service 重复实现：`chat_service.py:656/674`（JSON+base64）、`artifact_service.py:88/92`（separator string）、`audit_service.py`（含 cursor 逻辑）。timestamp UTC-naive 规范化 `astimezone(UTC).replace(tzinfo=None)` 在 `chat_service.py:691`（inline）和 `artifact_service.py:82 _normalize_cursor_datetime`（helper）重复。Query 声明 `limit: int = Query(default=…, ge=1, le=…)` 也在 **12+ router** 上上限各异：100（`conversation_crud:82`），200（`credentials:457`, `marketplace:178`, `health:162`），100（`artifacts:171`），100（`audit:49`）。
+- **问题**：(1) cursor timestamp normalization 有两处 — 如果只修一处 tz bug，另一处仍会因 aware/naive 不一致造成 keyset page 错位（重复/漏 row）。(2) limit 上限 API 间不同，client 难以预测。cursor format 也有 2 种（JSON vs separator），无法共享 decoder。
+- **重构方案**：
+  1. 新建 `app/services/pagination.py` — 先只共享 normalization（风险最低）：
      ```python
      def normalize_cursor_dt(value: datetime) -> datetime:
          return value.replace(tzinfo=None) if value.tzinfo is None else value.astimezone(UTC).replace(tzinfo=None)
      ```
-     `chat_service`/`artifact_service`가 공유.
-  2. 커서 포맷 통일(선택): `(sort_value, id)` 튜플 → base64(JSON) 인코더/디코더 1개로 수렴. **단 chat_service의 scope/is_pinned 복합 커서는 도메인 특수** → 무리한 통일 금지(의도된 분리).
-  3. 페이지네이션 Query 상한을 공용 상수(`DEFAULT_PAGE_LIMIT`, `MAX_PAGE_LIMIT`)로 통일하되, 실제 필요가 다른 곳(marketplace 대량 목록 200)은 유지.
-- **검증**: `uv run pytest tests/test_conversation_crud*.py tests/test_artifact*.py tests/test_audit*.py` (keyset 경계 테스트), `ruff`
-- **예상 공수**: S(정규화 공유) / M(커서 포맷 통일 시)
+     `chat_service`/`artifact_service` 共享。
+  2. cursor format 统一（可选）：`(sort_value, id)` tuple → 收敛到 1 个 base64(JSON) encoder/decoder。**但 chat_service 的 scope/is_pinned composite cursor 属于 domain-specific** → 禁止强行统一（有意分离）。
+  3. pagination Query 上限用公共常量（`DEFAULT_PAGE_LIMIT`, `MAX_PAGE_LIMIT`）统一，但真实需求不同的地方（marketplace 大列表 200）保留。
+- **验证**：`uv run pytest tests/test_conversation_crud*.py tests/test_artifact*.py tests/test_audit*.py`（keyset 边界测试），`ruff`
+- **预计工时**：S（共享 normalization）/ M（若统一 cursor format）
 
-### [BE-D6] 도구 정의 러너의 인증+HTTP 호출 마이크로 패턴 중복
-- **우선순위 제안**: P3
-- **카테고리**: 중복
-- **증거**: `app/tools/definitions/` 러너들이 동일 5단계 반복 — `cred_def = credential_registry.require("<key>")` → `apply_authentication(cred_def.authenticate, {...}, ctx.credentials)` → `response = await ctx.http_client.request(**request_opts)` → `response.raise_for_status()` → `response.json()`:
-  - `naver_search.py:56-68`, `google_search.py:34-42`, `gmail_send.py:37-49`, `google_calendar_event.py:47-55`, `http_request.py:61-73`(변형) — **5~6개 파일**
-- **문제점**: 러너마다 에러 처리(raise_for_status 후 상태/바디 조립)가 손으로 반복 — 하나는 `http_status` 포함, 하나는 미포함 등 응답 shape 미세 드리프트. 신규 도구 추가 시 인증 주입 한 줄 빠뜨리면 인증 없는 요청.
-- **리팩토링 방안**:
-  1. 공용 헬퍼(이미 `apply_authentication`은 추출돼 있으니 그 위 얇은 래퍼):
+### [BE-D6] 工具定义 runner 的 auth+HTTP call 微模式重复
+- **优先级建议**：P3
+- **类别**：重复
+- **证据**：`app/tools/definitions/` runner 重复同样 5 步 — `cred_def = credential_registry.require("<key>")` → `apply_authentication(cred_def.authenticate, {...}, ctx.credentials)` → `response = await ctx.http_client.request(**request_opts)` → `response.raise_for_status()` → `response.json()`：
+  - `naver_search.py:56-68`, `google_search.py:34-42`, `gmail_send.py:37-49`, `google_calendar_event.py:47-55`, `http_request.py:61-73`（variant）— **5~6 个文件**
+- **问题**：每个 runner 手写 error handling（raise_for_status 后 status/body assembly）— 有的包含 `http_status`，有的不包含，response shape 轻微 drift。新增工具时如果漏掉一行 auth injection，就会发出未认证 request。
+- **重构方案**：
+  1. 公共 helper（既然 `apply_authentication` 已经提取，就在它上面加薄 wrapper）：
      ```python
      # app/tools/http_runner.py
      async def authed_json_request(ctx, cred_key: str, *, method, url, params=None, json=None):
@@ -853,35 +853,35 @@
          resp.raise_for_status()
          return resp
      ```
-  2. **과추상화 방지**: naver의 `_format_items`/HTML strip처럼 도구별 후처리는 러너에 남김 — 헬퍼는 "인증+요청+raise+resp 반환"까지만. 응답 조립(`{"http_status":…, "items":…}`)은 각 러너 자유.
-  3. `naver_search.py`는 이미 파일 내부 `_make_runner`/`_common_parameters`로 잘 팩토링됨 — 크로스파일 러너 헬퍼만 추가.
-- **검증**: `uv run pytest tests/test_tool_definitions*.py tests/agent_runtime/` (도구 실행 테스트), `ruff`
-- **예상 공수**: S
+  2. **防止过度抽象**：像 naver 的 `_format_items`/HTML strip 这类 tool-specific postprocess 保留在 runner — helper 只负责"auth+request+raise+返回 resp"。response assembly（`{"http_status":…, "items":…}`）由各 runner 自由处理。
+  3. `naver_search.py` 已在文件内部用 `_make_runner`/`_common_parameters` 做了良好 factoring — 只新增跨文件 runner helper。
+- **验证**：`uv run pytest tests/test_tool_definitions*.py tests/agent_runtime/`（tool execution test），`ruff`
+- **预计工时**：S
 
-### [BE-D7] 테스트 픽스처 중복 — Model/Agent 시드 팩토리 부재
-- **우선순위 제안**: P2
-- **카테고리**: 중복
-- **증거**: `tests/conftest.py`에 `make_user`(217), `make_refresh_token`(240), `client`/`db`/`TEST_USER_ID` 공유 픽스처는 존재하나 **Model/Agent/Conversation 시드 픽스처가 없음**:
-  - `Model(provider="openai", model_name="gpt-4o", …)` 한 줄이 **37개 파일 41회** 복붙
-  - 로컬 `_seed_agent`/`_make_agent` 헬퍼가 **21개 파일 ~24개** 정의 (`test_memory_router.py:16`, `test_draft_conversation_gc.py:28`, `test_assistant_router.py:21`, `test_agent_api_control_plane.py:12`, `test_conversation_run_service.py:24`) — 이름/프롬프트만 다르고 구조 동일
-  - 인라인 `User(id=TEST_USER_ID, …)` **63회**인데 `make_user`는 5개 파일만 사용 (헬퍼 있는데 미채택)
-  - `/api/auth/register`+쿠키/CSRF 추출 로컬 `_register`/`_login` 헬퍼 **7개 파일** (`test_auth_login.py:26`, `test_multiuser_isolation.py:57`, `test_csrf.py:19` 등)
-- **문제점**: 스키마/모델 필드 변경 시(예: Model에 필수 컬럼 추가) 37+21개 파일을 일괄 수정해야 함 — 실제 스키마 마이그레이션 때마다 테스트 붕괴. `make_user`가 이미 있는데 안 쓰는 건 팩토리 채택 실패 신호.
-- **리팩토링 방안**:
-  1. `conftest.py`에 기존 `make_user` 스타일 factory-as-fixture 추가: `make_model(db, *, provider="openai", model_name="gpt-4o", …)`, `make_agent(db, *, user_id=TEST_USER_ID, model_id=…, name=…)`, 결합 `seed_agent(db) -> (user, model, agent)`.
-  2. `raw_client` 기반 `login_as`/`registered_session` 픽스처로 7개 auth 헬퍼 통합 (ORM 팩토리와 **분리 유지** — 실제 쿠키/CSRF 경로 검증이라 목적 다름).
-  3. **한 번에 다 치환 금지**: 신규 픽스처 도입 후, 새 테스트부터 강제 + 기존은 스키마 변경 시 점진 마이그레이션. `_make_agent_item*`(marketplace 객체 그래프), credential-specific `_make_agent_with_model`은 의도된 분리 → 건드리지 말 것.
-  - 대략 231개 top-level 테스트 중 **80~90개**가 인라인 ORM 시드 → 팩토리 채택 대상.
-- **검증**: `uv run --with pytest-xdist pytest -q -n 4` (전체 그린 확인)
-- **예상 공수**: M~L (물량은 크나 기계적)
+### [BE-D7] 测试 fixture 重复 — 缺少 Model/Agent seed factory
+- **优先级建议**：P2
+- **类别**：重复
+- **证据**：`tests/conftest.py` 已有 `make_user`（217）、`make_refresh_token`（240）、`client`/`db`/`TEST_USER_ID` 共享 fixture，但**没有 Model/Agent/Conversation seed fixture**：
+  - `Model(provider="openai", model_name="gpt-4o", …)` 一行在 **37 个文件 41 次**复制粘贴
+  - 本地 `_seed_agent`/`_make_agent` helper 在 **21 个文件约 24 个**定义（`test_memory_router.py:16`, `test_draft_conversation_gc.py:28`, `test_assistant_router.py:21`, `test_agent_api_control_plane.py:12`, `test_conversation_run_service.py:24`）— 名称/prompt 不同，结构相同
+  - inline `User(id=TEST_USER_ID, …)` **63 次**，但 `make_user` 只在 5 个文件使用（helper 已有却未采用）
+  - `/api/auth/register`+cookie/CSRF 提取本地 `_register`/`_login` helper **7 个文件**（`test_auth_login.py:26`, `test_multiuser_isolation.py:57`, `test_csrf.py:19` 等）
+- **问题**：schema/model field 变化时（如 Model 新增 required column），必须批量修改 37+21 个文件 — 实际每次 schema migration 都会让测试崩。`make_user` 已存在却没用，说明 factory adoption 失败。
+- **重构方案**：
+  1. 在 `conftest.py` 增加现有 `make_user` 风格的 factory-as-fixture：`make_model(db, *, provider="openai", model_name="gpt-4o", …)`, `make_agent(db, *, user_id=TEST_USER_ID, model_id=…, name=…)`，组合 `seed_agent(db) -> (user, model, agent)`。
+  2. 用基于 `raw_client` 的 `login_as`/`registered_session` fixture 统一 7 个 auth helper（与 ORM factory **保持分离** — 因为它们验证真实 cookie/CSRF path，目的不同）。
+  3. **禁止一次性全替换**：引入新 fixture 后，新测试开始强制使用；现有测试在 schema 变化时渐进迁移。`_make_agent_item*`（marketplace object graph）、credential-specific `_make_agent_with_model` 属于有意分离 → 不要改。
+  - 大约 231 个 top-level test 中 **80~90 个**使用 inline ORM seed → 属于 factory adoption 对象。
+- **验证**：`uv run --with pytest-xdist pytest -q -n 4`（确认全绿）
+- **预计工时**：M~L（量大但机械）
 
-### [BE-D8] Response 스키마 id/timestamp 필드 + ConfigDict 반복
-- **우선순위 제안**: P3
-- **카테고리**: 중복
-- **증거**: `id: uuid.UUID` / `user_id` / `created_at: datetime` / `updated_at: datetime` 필드 선언이 **17개 스키마 파일 184회**, `ConfigDict(from_attributes=True)`가 별도 9회. 대표: `tool.py:64-77 ToolInstanceResponse`(id/created_at/updated_at), `agent.py`, `mcp.py`, `credential.py`, `trigger.py`, `model.py` 등 모든 `*Response`가 동일 3~4필드 재선언.
-- **문제점**: 낮음 — 실 리스크는 크지 않으나, ORM Response 공통 베이스가 없어 `from_attributes` 설정을 개별 클래스가 각자 관리(일부 누락 시 `model_validate` 실패). 타임스탬프 직렬화 규약(예: tz-aware 통일)을 바꾸려면 17파일 수정.
-- **리팩토링 방안**:
-  1. `app/schemas/base.py`에 얇은 믹스인:
+### [BE-D8] Response schema id/timestamp field + ConfigDict 重复
+- **优先级建议**：P3
+- **类别**：重复
+- **证据**：`id: uuid.UUID` / `user_id` / `created_at: datetime` / `updated_at: datetime` field 声明在 **17 个 schema 文件重复 184 次**，`ConfigDict(from_attributes=True)` 另有 9 次。代表：`tool.py:64-77 ToolInstanceResponse`（id/created_at/updated_at）、`agent.py`, `mcp.py`, `credential.py`, `trigger.py`, `model.py` 等所有 `*Response` 都重复声明相同 3~4 个 field。
+- **问题**：低 — 实际风险不大，但没有 ORM Response 公共 base，各 class 单独管理 `from_attributes` 设置（漏掉时 `model_validate` 失败）。若修改 timestamp 序列化规范（如统一 tz-aware），需改 17 个文件。
+- **重构方案**：
+  1. 在 `app/schemas/base.py` 增加薄 mixin：
      ```python
      class ORMModel(BaseModel):
          model_config = ConfigDict(from_attributes=True)
@@ -890,252 +890,252 @@
          created_at: datetime
          updated_at: datetime
      ```
-     `*Response`가 `TimestampedResponse` 상속 → id/timestamp/config 흡수.
-  2. **과추상화 방지 (중요)**: `user_id`는 nullable 여부가 리소스마다 달라(`user_id: uuid.UUID | None` vs 필수) 베이스에 넣지 말 것. 필드 조합이 제각각인 스키마는 상속 강요 금지 — `ORMModel`(config만) 정도가 안전선. **이 항목은 이득이 가장 작으니 다른 P1/P2 이후 여유 시에만.**
-- **검증**: `uv run pytest tests/` (직렬화 회귀), `ruff`
-- **예상 공수**: S
+     `*Response` 继承 `TimestampedResponse` → 吸收 id/timestamp/config。
+  2. **防止过度抽象（重要）**：`user_id` 的 nullable 与否按资源不同（`user_id: uuid.UUID | None` vs 必填），不要放进 base。字段组合不同的 schema 不要强制继承 — `ORMModel`（只含 config）程度是安全线。**该项收益最小，只在其他 P1/P2 后有余力时做。**
+- **验证**：`uv run pytest tests/`（serialization 回归），`ruff`
+- **预计工时**：S
 
 ---
 
-**중복 아닌 것 (의도된 분리 — 제외)**:
-- **credential 보간(`resolve_deep`)**: `app/credentials/interpolation.py` 단일 함수로 이미 완전 중앙화 — mcp/client·mcp/auth·credentials/tester·authenticate가 모두 재사용(11 call sites). 조치 불필요.
-- **제네릭 베이스 CRUD 서비스**: `db.add/commit/refresh` 3종이 ~35회 반복하나 각 서비스 create/update가 스케줄러 sync·검증·감사 등 도메인 로직 다수 보유. 제네릭 BaseService 도입은 Simplicity First 위반 → **권장 안 함**. 필요하면 `commit_refresh(db, obj)` 미니 헬퍼 정도만.
-- **chat_service scope/is_pinned 복합 커서**: 도메인 특수 필드라 통일 대상 아님(BE-D5 참고).
+**不属于重复（有意分离 — 排除）**：
+- **credential interpolation（`resolve_deep`）**：已经通过 `app/credentials/interpolation.py` 单一函数完全中心化 — mcp/client·mcp/auth·credentials/tester·authenticate 全部复用（11 call sites）。无需处理。
+- **generic base CRUD service**：`db.add/commit/refresh` 3 类约重复 35 次，但各 service create/update 含 scheduler sync·validation·audit 等大量 domain logic。引入 generic BaseService 违反 Simplicity First → **不建议**。如有需要，只做 `commit_refresh(db, obj)` mini helper。
+- **chat_service scope/is_pinned composite cursor**：属于 domain-specific field，不是统一对象（见 BE-D5）。
 
 ---
 
-## 7. 프론트엔드 — 구조/중복 (FE-S)
+## 7. 前端 — 结构/重复 (FE-S)
 
-**요약 판단**: 공용 프리미티브 레이어(`components/shared/*`: `DialogShell` 38개 사용처, `ResourcePage`/`SettingsShell`/`FormFieldShell`/`base-detail-dialog`, `lib/query-keys/*` 팩토리)가 이미 성숙. 진짜 문제는 **채택 불일치(half-done commonization)**와 **채팅 런타임 이중화 + 초거대 파일 3개**. API 3계층(`apiFetch<T>` → `xxxApi` → `use-xxx`)은 깨끗해 findings 아님.
+**总结判断**：公共 primitive layer（`components/shared/*`：`DialogShell` 38 个使用处、`ResourcePage`/`SettingsShell`/`FormFieldShell`/`base-detail-dialog`，`lib/query-keys/*` factory）已经成熟。真正的问题是**采用不一致（half-done commonization）**和**聊天 runtime 双轨 + 3 个超大文件**。API 3 层（`apiFetch<T>` → `xxxApi` → `use-xxx`）很干净，不属于 findings。
 
-핵심 수치: 상위 3개 파일 5,766줄(use-moldy-langgraph-stream.ts 2941 / assistant-thread.tsx 1458 / use-chat-runtime.ts 1367). 프로젝트 규칙(coding-style.md: 파일 ≤800줄) 크게 초과.
+核心数据：前 3 大文件共 5,766 行（use-moldy-langgraph-stream.ts 2941 / assistant-thread.tsx 1458 / use-chat-runtime.ts 1367）。远超项目规则（coding-style.md：文件 ≤800 行）。
 
-### [FE-S1] 채팅 런타임 이중화 — legacy `useChatRuntime` vs v3 `useMoldyLangGraphStream` 완전 병렬 구현 공존
-- **우선순위 제안**: P1 / 구조
-- **증거**: 스위치 `lib/chat/runtime-mode.ts:3-5`(기본 langgraph_v3) → `conversations/[conversationId]/page.tsx:108,324` → `components/chat/chat-runtime-section.tsx:116`이 `LegacyRuntimeSection`(:174 useChatRuntime) / `LangGraphRuntimeSection`(:207 useMoldyLangGraphStream) 분기. legacy는 풀 병렬 구현: SSE 수동 파싱 `use-chat-runtime.ts:554-914` vs v3 `useStream`+`useChannel`. HITL/edit/regenerate/attach/stop/usage/artifact 전 개념 양쪽 중복. legacy 직접 소비처 4곳: `test-chat-panel.tsx:39`, `assistant-panel.tsx:109`, `app/agents/new/conversational/page.tsx:115`, chat-runtime-section legacy 분기.
-- **문제점**: 채팅 기능 추가마다 두 SSE 해석 경로 동시 유지. 회귀 위험 2배.
-- **리팩토링 방안** (수렴 로드맵):
-  1. **메인 채팅 legacy 분기 제거**: `chat-runtime-section.tsx`의 useLangGraphRuntime false 폴백(draft/no-conversation)을 없애고 draft는 항상 `useLanggraphDraftConversation`(page.tsx:179-189)으로 실 conversation 부트스트랩. `runtime-mode.ts` legacy escape hatch 제거.
-  2. **남은 3개 소비처 블로커**: builder(new/conversational)는 builder_v3 세션 프로토콜이라 백엔드에 builder 세션용 LangGraph thread 엔드포인트 생기기 전 이관 불가(legacy 유지 명시). test-chat-panel/assistant-panel은 ephemeral(streamAssistant, onMessagesCommit 로컬 히스토리) — v3 등가물 없음. 실 conversation 재호스팅 또는 legacy 전용 축소판 격리.
-  3. **최종**: `use-chat-runtime.ts`를 `lib/chat/legacy/`로 격리 이동, 소비처 3곳으로 명시적 축소. 삭제는 백엔드 프로토콜 통일 후.
-  - 테스트: `use-chat-runtime-*.test.tsx` 5종 legacy 전용 유지. v3 transport mock `createMockTransport()` 헬퍼 통일.
-- **검증**: `pnpm vitest run` / `pnpm build` / e2e `chat-*.spec.ts` 전체.
-- **예상 공수**: L (1단계 M, 소비처 은퇴 L, 백엔드 통일 XL)
+### [FE-S1] 聊天 runtime 双轨 — legacy `useChatRuntime` vs v3 `useMoldyLangGraphStream` 完全并行实现并存
+- **优先级建议**：P1 / 结构
+- **证据**：switch `lib/chat/runtime-mode.ts:3-5`（默认 langgraph_v3）→ `conversations/[conversationId]/page.tsx:108,324` → `components/chat/chat-runtime-section.tsx:116` 分支为 `LegacyRuntimeSection`（:174 useChatRuntime）/ `LangGraphRuntimeSection`（:207 useMoldyLangGraphStream）。legacy 有完整并行实现：SSE 手动 parsing `use-chat-runtime.ts:554-914` vs v3 `useStream`+`useChannel`。HITL/edit/regenerate/attach/stop/usage/artifact 所有概念双份。legacy 直接 consumer 4 处：`test-chat-panel.tsx:39`, `assistant-panel.tsx:109`, `app/agents/new/conversational/page.tsx:115`, chat-runtime-section legacy 分支。
+- **问题**：每增加一个聊天功能都要同时维护两条 SSE interpretation path。回归风险 2 倍。
+- **重构方案**（收敛路线图）：
+  1. **移除主聊天 legacy 分支**：去掉 `chat-runtime-section.tsx` 的 useLangGraphRuntime false fallback（draft/no-conversation），draft 始终通过 `useLanggraphDraftConversation`（page.tsx:179-189）bootstrap 为真实 conversation。移除 `runtime-mode.ts` legacy escape hatch。
+  2. **剩余 3 个 consumer blocker**：builder（new/conversational）使用 builder_v3 session protocol，在后端出现 builder session 用 LangGraph thread endpoint 前无法迁移（明确保留 legacy）。test-chat-panel/assistant-panel 是 ephemeral（streamAssistant, onMessagesCommit local history）— 没有 v3 等价物。需要 rehost 到真实 conversation 或隔离成 legacy 专用精简版。
+  3. **最终**：将 `use-chat-runtime.ts` 隔离移动到 `lib/chat/legacy/`，把 consumer 明确缩减到 3 处。删除要等后端 protocol 统一后。
+  - 测试：保留 `use-chat-runtime-*.test.tsx` 5 类 legacy 专用测试。统一 v3 transport mock `createMockTransport()` helper。
+- **验证**：`pnpm vitest run` / `pnpm build` / e2e `chat-*.spec.ts` 全部。
+- **预计工时**：L（第 1 阶段 M，consumer retire L，后端统一 XL）
 
-### [FE-S2] `use-moldy-langgraph-stream.ts` (2941줄) 분해
-- **우선순위 제안**: P1 / 구조
-- **증거**: `1-79` 임포트, `81-1991` ~1900줄 모듈레벨 순수 헬퍼, `1993-2941` 훅 본체(~948줄). 이미 잘 위임된 개념(artifact :2384, usage :2389, compaction :2395, data-ui :2425, memory :2517, subagent-names :2518, deepagents-state :2132, transport :2091, checkpoint-fork :2578, activity :2127). 인라인인데 분리 대상: thread-state 파서 4종(:234-309), terminal-notice append(:512-532), pending-edit/reload 렌더 상태머신(:137-174, :644-1064), sticky 메시지 캐시(:534-642, 1441-1951). 상태: useState 8 / useRef 9 / useCallback 20 / useMemo 23 / useEffect 12.
-- **리팩토링 방안** (6 모듈 + 2 훅, 부모 ~200줄 컴포지션 셸):
+### [FE-S2] 拆分 `use-moldy-langgraph-stream.ts`（2941 行）
+- **优先级建议**：P1 / 结构
+- **证据**：`1-79` import，`81-1991` 约 1900 行 module-level pure helper，`1993-2941` hook body（约 948 行）。已经委托良好的概念（artifact :2384, usage :2389, compaction :2395, data-ui :2425, memory :2517, subagent-names :2518, deepagents-state :2132, transport :2091, checkpoint-fork :2578, activity :2127）。仍 inline、应拆分的对象：thread-state parser 4 类（:234-309）、terminal-notice append（:512-532）、pending-edit/reload render state machine（:137-174, :644-1064）、sticky message cache（:534-642, 1441-1951）。状态：useState 8 / useRef 9 / useCallback 20 / useMemo 23 / useEffect 12。
+- **重构方案**（6 个模块 + 2 个 hook，父级约 200 行 composition shell）：
   ```
   lib/chat/langgraph-runtime/
-    thread-state-checkpoints.ts   ← (기존) + 파서 4종 (:234-334)   [순수, seam 낮음]
-    terminal-notice.ts            ← (기존) + appendTerminalRunNotice (:512-532)
-    sticky-messages.ts            ← 신규: 모듈-글로벌 Map 캐시 (:534-642,1441-1951)  [싱글턴 유지 필수]
-    pending-checkpoint-render.ts  ← 신규: edit/reload 순수 상태머신 (:398-1344)  [seam 高]
-    use-thread-hydration.ts       ← 신규: postRun 폴링 3 effect (:2173-2256,2433-2492)  [onCancel의 hydrationCanceledRef 순서]
-    use-hitl-decisions.ts         ← 신규: coordinator refs + resume API (:2773-2930)  [resolvedInterrupts는 부모 소유]
-    use-draft-submit.ts           ← 신규 (:553-585,1346-1370)
+    thread-state-checkpoints.ts   ← （现有）+ parser 4 类（:234-334）   [pure, seam 低]
+    terminal-notice.ts            ← （现有）+ appendTerminalRunNotice（:512-532）
+    sticky-messages.ts            ← 新增：module-global Map cache（:534-642,1441-1951）  [必须保持 singleton]
+    pending-checkpoint-render.ts  ← 新增：edit/reload pure state machine（:398-1344）  [seam 高]
+    use-thread-hydration.ts       ← 新增：postRun polling 3 个 effect（:2173-2256,2433-2492）  [注意 onCancel 的 hydrationCanceledRef 顺序]
+    use-hitl-decisions.ts         ← 新增：coordinator refs + resume API（:2773-2930）  [resolvedInterrupts 由父级持有]
+    use-draft-submit.ts           ← 新增（:553-585,1346-1370）
   ```
-  - 점진 순서: 순수 파서/notice → sticky-messages → pending-render 순수 함수 먼저 → hydration 훅 → HITL 훅.
-  - **지킬 seam**: ① 공유 ref `latestVisibleMessagesRef`(:2035), `pendingEditBase*Ref`(:2036-37) 복제 금지. ② `handleThreadState`(:2078)는 단일 mutation 퍼널 — 부모 유지(테어링 방지). ③ `resolvedInterrupts` 사이클 상태는 부모 소유. ④ `onNew/onEdit/onReload`의 `flushSync`(:2664,2696,2740) 동기 관측성 유지.
-- **검증**: `pnpm vitest run src/lib/chat/langgraph-runtime` / tsc / e2e chat 회귀.
-- **예상 공수**: L
+  - 渐进顺序：pure parser/notice → sticky-messages → 先拆 pending-render pure function → hydration hook → HITL hook。
+  - **必须守住的 seam**：① 禁止复制 shared ref `latestVisibleMessagesRef`（:2035）、`pendingEditBase*Ref`（:2036-37）。② `handleThreadState`（:2078）是单一 mutation funnel — 保留在父级（防止 tearing）。③ `resolvedInterrupts` cycle state 由父级持有。④ 保持 `onNew/onEdit/onReload` 的 `flushSync`（:2664,2696,2740）同步可观察性。
+- **验证**：`pnpm vitest run src/lib/chat/langgraph-runtime` / tsc / e2e chat 回归。
+- **预计工时**：L
 
-### [FE-S3] `assistant-thread.tsx` (1458줄) 분해
-- **우선순위 제안**: P2 / 구조
-- **증거**: 메시지 파트 렌더 :179-364, 아티팩트/compaction :366-438, 메시지 액션 :440-554,702-740, 브랜치 피커 :556-700(자기완결), 메시지 컴포넌트 맵 :830-1039, Cmd+F :1046-1056, ThreadComposer :1167-1345, StopButton/AttachmentChip/TokenBar :1347-1458.
-- **리팩토링 방안**:
+### [FE-S3] 拆分 `assistant-thread.tsx`（1458 行）
+- **优先级建议**：P2 / 结构
+- **证据**：message part rendering :179-364，artifact/compaction :366-438，message action :440-554,702-740，branch picker :556-700（自包含），message component map :830-1039，Cmd+F :1046-1056，ThreadComposer :1167-1345，StopButton/AttachmentChip/TokenBar :1347-1458。
+- **重构方案**：
   ```
   components/chat/thread/
     message-parts.tsx / message-artifacts-compaction.tsx / message-actions.tsx
-    branch-picker.tsx (첫 추출 권장) / message-components.tsx / thread-composer.tsx
-    assistant-thread.tsx (셸)
+    branch-picker.tsx（建议先提取）/ message-components.tsx / thread-composer.tsx
+    assistant-thread.tsx（shell）
   ```
-  순서: branch-picker → thread-composer → message-*. HITL 플러밍은 컨텍스트 주입 유지.
-- **예상 공수**: M
+  顺序：branch-picker → thread-composer → message-*。HITL plumbing 保持 context injection。
+- **预计工时**：M
 
-### [FE-S4] `approval-card.tsx` (701줄) 분해 + `use-approval-form` 중복
-- **우선순위 제안**: P2 / 구조+중복
-- **증거**: ArgsPreview(:223-272), ArgsEditor(:281-374), 결정 제출(:383-456), 버튼 3종(:588-654), ApprovalBadge(:146-167), 래퍼(:664-699). 중복①: `approval-card` 자체 `handleDecision`(:420-456) vs `tool-ui/use-approval-form.ts`(prompt-approval-ui.tsx:23 소비) — 공유 코드 0. 중복②: 헤더 셸 approval-card.tsx:684-696 ≈ grouped-approval-card.tsx:43-62.
-- **리팩토링 방안**: 1. `approval-args-editor/preview`, `decision-buttons`, `approval-badge` 순수 추출. 2. `useApprovalDecision` 훅으로 `use-approval-form.ts`와 통합. 3. `ApprovalCardShell` 공유. 테스트 주의: "restores redacted placeholders" 테스트는 un-redacted args 주입 → 실제 redacted 경로로 교정.
-- **예상 공수**: M
+### [FE-S4] 拆分 `approval-card.tsx`（701 行）+ `use-approval-form` 重复
+- **优先级建议**：P2 / 结构+重复
+- **证据**：ArgsPreview（:223-272）、ArgsEditor（:281-374）、decision submit（:383-456）、3 类 button（:588-654）、ApprovalBadge（:146-167）、wrapper（:664-699）。重复①：`approval-card` 自己的 `handleDecision`（:420-456）vs `tool-ui/use-approval-form.ts`（prompt-approval-ui.tsx:23 使用）— 共享代码 0。重复②：header shell approval-card.tsx:684-696 ≈ grouped-approval-card.tsx:43-62。
+- **重构方案**：1. 纯提取 `approval-args-editor/preview`, `decision-buttons`, `approval-badge`。2. 用 `useApprovalDecision` hook 与 `use-approval-form.ts` 统一。3. 共享 `ApprovalCardShell`。测试注意："restores redacted placeholders" 测试注入的是 un-redacted args → 应修正为真实 redacted path。
+- **预计工时**：M
 
-### [FE-S5] 비대 page — `settings/memory/page.tsx`(649) · `agents/new/template/page.tsx`(617)
-- **우선순위 제안**: P2 / 구조
-- **증거**: memory: CreateMemoryCard(:297-419), MemoryRecordItem(:421-576), PolicyCard(:173-295), ToggleField/SelectField(:578-649, FormFieldShell 재발명). template: 오케스트레이터(:48-259), `filtered`(:77-94)와 `filteredBlueprints`(:96-119) 중복, TemplateCard(:375-462)와 BlueprintCard(:464-545) ~80% 동일.
-- **리팩토링 방안**: memory → `_components/` 추출 + `useDirtyDraft` 소훅 + FormFieldShell 흡수. template → `_hooks/use-template-gallery.ts` + 단일 `GalleryItemCard` + `sortByKey` util.
-- **예상 공수**: M
+### [FE-S5] 超大 page — `settings/memory/page.tsx`（649）· `agents/new/template/page.tsx`（617）
+- **优先级建议**：P2 / 结构
+- **证据**：memory：CreateMemoryCard（:297-419）、MemoryRecordItem（:421-576）、PolicyCard（:173-295）、ToggleField/SelectField（:578-649，重新发明 FormFieldShell）。template：orchestrator（:48-259），`filtered`（:77-94）与 `filteredBlueprints`（:96-119）重复，TemplateCard（:375-462）与 BlueprintCard（:464-545）约 80% 相同。
+- **重构方案**：memory → 提取到 `_components/` + `useDirtyDraft` 小 hook + 吸收 FormFieldShell。template → `_hooks/use-template-gallery.ts` + 单一 `GalleryItemCard` + `sortByKey` util。
+- **预计工时**：M
 
-### [FE-S6] create/edit 다이얼로그 셸 8+회 복붙 + 미사용 `BaseDetailDialog`
-- **우선순위 제안**: P2 / 중복
-- **증거**: `credential-create-modal.tsx`(:54-57,:96-112), `model-add-dialog.tsx`(:85-128), `model-edit-dialog.tsx`(11 useState :51-63), `skill-create-tabs.tsx`, `tool-create-dialog.tsx`, `mcp-import-dialog.tsx` 동일 셸. **죽은 추상화**: `components/shared/base-detail-dialog.tsx`(130줄) 소비처 0. agent create(`agents/new/manual/page.tsx:62-103`)가 edit의 `useAgentSettingsDraft`(settings/page.tsx:70) 우회 — 13필드 raw useState 재선언.
-- **리팩토링 방안**: 1. `useResourceFormDialog<T>` 소훅(prop re-seed는 remount `key` 패턴). 2. detail 다이얼로그를 `BaseDetailDialog`로 이관(아니면 삭제). 3. `useAgentSettingsDraft` create/edit 겸용 일반화 + `AgentSettingsHeader` 공유.
-- **예상 공수**: L
+### [FE-S6] create/edit dialog shell 复制粘贴 8+ 次 + 未使用的 `BaseDetailDialog`
+- **优先级建议**：P2 / 重复
+- **证据**：`credential-create-modal.tsx`（:54-57,:96-112）、`model-add-dialog.tsx`（:85-128）、`model-edit-dialog.tsx`（11 个 useState :51-63）、`skill-create-tabs.tsx`, `tool-create-dialog.tsx`, `mcp-import-dialog.tsx` 使用相同 shell。**dead abstraction**：`components/shared/base-detail-dialog.tsx`（130 行）consumer 0。agent create（`agents/new/manual/page.tsx:62-103`）绕过 edit 的 `useAgentSettingsDraft`（settings/page.tsx:70）— 重新声明 13 个 field raw useState。
+- **重构方案**：1. 小 hook `useResourceFormDialog<T>`（prop re-seed 用 remount `key` 模式）。2. detail dialog 迁移到 `BaseDetailDialog`（否则删除）。3. 将 `useAgentSettingsDraft` 泛化为 create/edit 共用 + 共享 `AgentSettingsHeader`。
+- **预计工时**：L
 
-### [FE-S7] `lib/types/index.ts` (775줄) — 혼합 바렐(재수출 14 + 로컬 정의 67)
-- **우선순위 제안**: P2 / 구조
-- **증거**: :6-19 재수출 + :23-775 Agent 도메인 타입 67개 로컬 인라인. AGENTS.md "barrel export 지양" 상충.
-- **리팩토링 방안**: `types/agent.ts`, `types/chat.ts`, `types/middleware.ts`로 이동. index.ts는 재수출만(호환 유지) → 점진 직접 import 전환.
-- **예상 공수**: M
+### [FE-S7] `lib/types/index.ts`（775 行）— 混合 barrel（re-export 14 + local 定义 67）
+- **优先级建议**：P2 / 结构
+- **证据**：:6-19 re-export + :23-775 Agent domain type 67 个 local inline。与 AGENTS.md "避免 barrel export" 冲突。
+- **重构方案**：移动到 `types/agent.ts`, `types/chat.ts`, `types/middleware.ts`。index.ts 只保留 re-export（保持兼容）→ 渐进切换为直接 import。
+- **预计工时**：M
 
-### [FE-S8] Query 키 팩토리 드리프트 — 팩토리 13개 존재하나 9개 훅이 인라인 정의
-- **우선순위 제안**: P2 / 구조+중복 (빠른 승리 S)
-- **증거**: `lib/query-keys/*` 13개 팩토리 존재. 인라인 정의 9개 훅: `use-memory.ts:15`, `use-conversations.ts:39`, use-agent-api, use-artifact-library, use-audit-events, use-conversation-artifacts, use-conversation-files, use-conversation-title, use-share, use-system-llm-settings. AGENTS.md 규칙 위반.
-- **리팩토링 방안**: 인라인 `*Keys`를 `lib/query-keys/`로 이동(기존 `toolQueryKeys` 계층 형식). 테스트의 리터럴 배열 단언은 동일 배열 반환이므로 무변경.
-- **예상 공수**: S
+### [FE-S8] Query key factory drift — 已有 13 个 factory，但 9 个 hook inline 定义
+- **优先级建议**：P2 / 结构+重复（quick win S）
+- **证据**：`lib/query-keys/*` 已有 13 个 factory。inline 定义的 9 个 hook：`use-memory.ts:15`, `use-conversations.ts:39`, use-agent-api, use-artifact-library, use-audit-events, use-conversation-artifacts, use-conversation-files, use-conversation-title, use-share, use-system-llm-settings。违反 AGENTS.md 规则。
+- **重构方案**：将 inline `*Keys` 移到 `lib/query-keys/`（沿用现有 `toolQueryKeys` 层级格式）。测试中的 literal array 断言因返回相同 array 而无需修改。
+- **预计工时**：S
 
-### [FE-S9] 디렉토리 배치 불일치 — `features/`는 schedules 하나뿐
-- **우선순위 제안**: P3 / 구조
-- **증거**: AGENTS.md 규칙(route-only→`_components/`, 다중 라우트→`features/<domain>/`) 있으나 `features/`엔 schedules만. agent 도메인은 `components/agent/`(8) + `app/agents/.../settings/_components/`로 이원화. `src/hooks` vs `src/lib/hooks` 이원화도 존재.
-- **리팩토링 방안**: 규칙 준수 강제(lint:frontend-architecture) + 도메인 단위 PR로 점진 이주(`components/chat/` → `features/chat/` 등).
-- **예상 공수**: L (전량) / 도메인당 S~M
+### [FE-S9] 目录布局不一致 — `features/` 只有 schedules
+- **优先级建议**：P3 / 结构
+- **证据**：AGENTS.md 规则（route-only→`_components/`，多 route→`features/<domain>/`）已存在，但 `features/` 里只有 schedules。agent domain 分散在 `components/agent/`（8）+ `app/agents/.../settings/_components/`，形成双轨。`src/hooks` vs `src/lib/hooks` 也双轨。
+- **重构方案**：强制遵守规则（lint:frontend-architecture）+ 按 domain 独立 PR 渐进迁移（`components/chat/` → `features/chat/` 等）。
+- **预计工时**：L（全量）/ 每个 domain S~M
 
-### [FE-S10] 타입 드리프트 — 백엔드 Pydantic ↔ `lib/types/*` 수동 동기화, OpenAPI codegen 부재
-- **우선순위 제안**: P3 / 구조
-- **증거**: openapi/codegen 스크립트 없음. FastAPI `/openapi.json` 자동 제공.
-- **리팩토링 방안**: `openapi-typescript` 도입 — `pnpm gen:types` → `lib/types/api.gen.ts`, 도메인 타입은 `components['schemas']['AgentRead']` 파생. 타입만 생성(전면 orval 불필요). CI drift 체크.
-- **예상 공수**: M
+### [FE-S10] 类型 drift — 后端 Pydantic ↔ `lib/types/*` 手工同步，没有 OpenAPI codegen
+- **优先级建议**：P3 / 结构
+- **证据**：没有 openapi/codegen 脚本。FastAPI 自动提供 `/openapi.json`。
+- **重构方案**：引入 `openapi-typescript` — `pnpm gen:types` → `lib/types/api.gen.ts`，domain type 从 `components['schemas']['AgentRead']` 派生。只生成 type（无需全面 orval）。CI drift check。
+- **预计工时**：M
 
-### 부록: findings 아님 (강점)
-- API 클라이언트 3계층: 일관·간결. 제네릭 `useResourceQuery` 도입은 과추상화.
-- Jotai stores: 8개 atom 파일 대체로 일관.
-- DialogShell 채택: raw DialogContent 잔존 2개뿐.
-- mcp-servers 위저드 / agent settings: 이미 잘 분해됨(참고 모델).
+### 附录：不是 findings（优点）
+- API client 3 层：一致、简洁。引入 generic `useResourceQuery` 会是过度抽象。
+- Jotai stores：8 个 atom 文件整体一致。
+- DialogShell adoption：raw DialogContent 只剩 2 个。
+- mcp-servers wizard / agent settings：已经拆分良好（参考模型）。
 
-**우선순위 요약**: P1 = FE-S1, FE-S2. P2 = FE-S3·S4·S5·S6·S7·S8. P3 = FE-S9·S10. 빠른 승리 = FE-S8. 임팩트 최대 = FE-S1 + FE-S2.
+**优先级总结**：P1 = FE-S1, FE-S2。P2 = FE-S3·S4·S5·S6·S7·S8。P3 = FE-S9·S10。quick win = FE-S8。影响最大 = FE-S1 + FE-S2。
 
 ---
 
-## 8. 프론트엔드 — 성능/디자인/접근성 (FE-P/FE-D)
+## 8. 前端 — 性能/设计/可访问性 (FE-P/FE-D)
 
-**먼저 — 이미 양호(수정 불필요, 오탐 방지용)**
-- **디자인 토큰**: `pnpm lint:design-system` 가드가 강력히 작동. 제품 코드에 raw hex/arbitrary typography 사실상 없음 (`text-[..px]` 0건, product hex는 data-viz 팔레트 + 벤더 로고뿐).
-- **무거운 뷰어 번들**: mermaid/docx/xlsx/pptx/hwp/pdf/react-syntax-highlighter 전부 `lazy()`로 분리됨 (`artifacts/preview-registry.tsx`, `markdown-code-block.tsx:7`).
-- **메시지 변환/리스트 레이어**: converter 캐시·fingerprint·per-message memo 정교 (`message-list.ts:215-235`).
-- **useAuiState 셀렉터 대부분 준수**.
+**先说明 — 已经良好（无需修改，用于避免误报）**
+- **design token**：`pnpm lint:design-system` guard 工作得很强。产品代码几乎没有 raw hex/arbitrary typography（`text-[..px]` 0 处，product hex 只有 data-viz palette + vendor logo）。
+- **重型 viewer bundle**：mermaid/docx/xlsx/pptx/hwp/pdf/react-syntax-highlighter 全部通过 `lazy()` 拆分（`artifacts/preview-registry.tsx`, `markdown-code-block.tsx:7`）。
+- **message conversion/list layer**：converter cache·fingerprint·per-message memo 很精细（`message-list.ts:215-235`）。
+- **useAuiState selector 大多遵守规范**。
 
-### [FE-P1] 채팅 컨텍스트(`AssistantThreadDynamicContext`) 값이 스트리밍 토큰마다 churn → 전체 메시지 리렌더
-- **우선순위 제안**: P1 / 성능
-- **증거**: `components/chat/assistant-thread.tsx:860-883` — `dynamicContextValue`는 `useMemo`지만 의존성에 `activities`, `deepAgentsState` 포함. 토큰마다 새 참조:
-  - `deepAgentsState`: `use-moldy-langgraph-stream.ts:2132` `useMemo(selectDeepAgentsState(stream.values ?? {}), [stream.values])`. `stream.values`는 청크마다 새 참조 + `selectDeepAgentsState`(`deepagents-state.ts:187-192`)는 항상 새 `{todos, files}` + 새 배열 반환.
-  - `activities`: `use-moldy-langgraph-stream.ts:2124-2131` `reduce`가 새 배열.
-  - Provider는 `assistant-thread.tsx:1059`에서 전체 스레드를 감싸고 모든 user/assistant 메시지가 구독(:888, :931/:958).
-- **문제점**: 컨텍스트 값 identity가 토큰마다 바뀌어 마운트된 모든 메시지 래퍼 서브트리 재렌더. 대화 길이 N에 비례해 스트리밍 중 jank.
-- **리팩토링 방안**: 1. 토큰마다 변하는 필드(`deepAgentsState`, `activities`)를 identity 컨텍스트에서 분리 — 별도 provider 또는 jotai atom으로 옮겨 실제 소비 지점에서만 read. 2. `AssistantThreadDynamicContext`엔 안정 필드만. 3. `selectDeepAgentsState`가 내용 불변 시 이전 참조 재사용(구조적 동등 비교).
-- **검증**: React DevTools Profiler 스트리밍 60초 커밋 횟수 before/after.
-- **예상 공수**: M
+### [FE-P1] 聊天 context（`AssistantThreadDynamicContext`）值随 streaming token churn → 全消息 rerender
+- **优先级建议**：P1 / 性能
+- **证据**：`components/chat/assistant-thread.tsx:860-883` — `dynamicContextValue` 虽是 `useMemo`，但依赖包含 `activities`, `deepAgentsState`。每个 token 都产生新 reference：
+  - `deepAgentsState`：`use-moldy-langgraph-stream.ts:2132` `useMemo(selectDeepAgentsState(stream.values ?? {}), [stream.values])`。`stream.values` 每个 chunk 都是新 reference + `selectDeepAgentsState`（`deepagents-state.ts:187-192`）始终返回新 `{todos, files}` + 新 array。
+  - `activities`：`use-moldy-langgraph-stream.ts:2124-2131` 的 `reduce` 返回新 array。
+  - Provider 在 `assistant-thread.tsx:1059` 包裹整个 thread，所有 user/assistant message 都订阅（:888, :931/:958）。
+- **问题**：context value identity 每个 token 都变化，导致所有已挂载 message wrapper subtree rerender。对话长度 N 越大，streaming 期间 jank 越严重。
+- **重构方案**：1. 把每 token 变化的字段（`deepAgentsState`, `activities`）从 identity context 中拆出 — 移到独立 provider 或 jotai atom，只在实际消费点 read。2. `AssistantThreadDynamicContext` 只保留稳定字段。3. `selectDeepAgentsState` 在内容不变时复用旧 reference（结构等价比较）。
+- **验证**：用 React DevTools Profiler 对 streaming 60 秒的 commit 次数做 before/after 对比。
+- **预计工时**：M
 
-### [FE-P2] 채팅 메시지 스레드 가상화 부재
-- **우선순위 제안**: P1 / 성능
-- **증거**: `assistant-thread.tsx:1095` `<ThreadPrimitive.Messages>` non-virtualized. `useVirtualizer`/`react-window` 0건.
-- **문제점**: 100+ 턴 대화 진입 시 전체 트리 일괄 마운트 → 초기 렌더 지연 + 스크롤 프레임 드랍.
-- **리팩토링 방안**: 1. 저비용 — 메시지 `React.memo` + FE-P1 해소. 2. `@tanstack/react-virtual` 도입, 가변 높이 `measureElement`, 하단 고정 정합성. 3. 메시지 N개 임계값 기반 점진 도입.
-- **검증**: Profiler 200턴 초기 커밋 + 스크롤 long task, Lighthouse TBT.
-- **예상 공수**: L (본체) / S (memo 선조치)
+### [FE-P2] 缺少聊天消息 thread virtualization
+- **优先级建议**：P1 / 性能
+- **证据**：`assistant-thread.tsx:1095` 的 `<ThreadPrimitive.Messages>` non-virtualized。`useVirtualizer`/`react-window` 0 处。
+- **问题**：进入 100+ 轮对话时一次性挂载完整 tree → 初始 render 变慢 + scroll 掉帧。
+- **重构方案**：1. 低成本 — message `React.memo` + 解决 FE-P1。2. 引入 `@tanstack/react-virtual`，可变高度使用 `measureElement`，保证 bottom pin 一致性。3. 基于消息 N 条阈值渐进启用。
+- **验证**：Profiler 测 200 轮初始 commit + scroll long task，Lighthouse TBT。
+- **预计工时**：L（主体）/ S（memo 先行）
 
-### [FE-P3] 관리 테이블/확장 네비게이터 목록 가상화 부재
-- **우선순위 제안**: P2 / 성능
-- **증거**: `components/ui/data-table.tsx:261` 전체 행 렌더. 네비게이터 `layout/chat-navigator-agent-group.tsx:78-80` 확장+무한스크롤 시 무제한.
-- **리팩토링 방안**: DataTable opt-in row virtualizer(50행 초과 시), 네비게이터 확장 리스트 동일 재사용.
-- **예상 공수**: M
+### [FE-P3] 管理 table/展开 navigator list 缺少 virtualization
+- **优先级建议**：P2 / 性能
+- **证据**：`components/ui/data-table.tsx:261` 渲染全部 row。navigator `layout/chat-navigator-agent-group.tsx:78-80` 展开+无限滚动时无上限。
+- **重构方案**：DataTable opt-in row virtualizer（超过 50 行时），navigator 展开 list 复用相同方案。
+- **预计工时**：M
 
-### [FE-P4] 활성 런 중 1초 폴링으로 전체 대화 목록 이중 재요청
-- **우선순위 제안**: P2 / 성능
-- **증거**: `lib/hooks/use-conversations.ts:174-176` + `195-197` 둘 다 `refetchInterval` 1000ms, `use-conversation-runs.ts:20` run 상태도 1s. 스트리밍 시 초당 2회 전체 목록 + 1회 run 상태.
-- **리팩토링 방안**: 1. run-status 폴링 단일 채널로 일원화 → 변할 때만 `invalidateQueries`. 2. 전체 페이지 `refetchInterval` 제거 또는 3~5s + `structuralSharing`. 3. 네비게이터 미표시 시 폴링 중지.
-- **검증**: Network 탭 60초 요청 수 before/after.
-- **예상 공수**: M
+### [FE-P4] 活跃 run 中每 1 秒 polling 导致完整 conversation list 双重重复请求
+- **优先级建议**：P2 / 性能
+- **证据**：`lib/hooks/use-conversations.ts:174-176` + `195-197` 两处都有 1000ms `refetchInterval`，`use-conversation-runs.ts:20` 的 run status 也是 1s。streaming 时每秒 2 次完整 list + 1 次 run status。
+- **重构方案**：1. 将 run-status polling 统一为单一 channel → 只有变化时 `invalidateQueries`。2. 移除完整 page `refetchInterval` 或改为 3~5s + `structuralSharing`。3. navigator 不可见时停止 polling。
+- **验证**：Network tab 60 秒 request 数 before/after。
+- **预计工时**：M
 
-### [FE-P5] 페이지 레벨 'use client' 광범위
-- **우선순위 제안**: P3 / 성능
-- **증거**: 774 파일 중 361개 `'use client'`. `settings/*/page.tsx` 전부 + marketplace 페이지 루트가 client.
-- **리팩토링 방안**: 신규 페이지부터 서버 page.tsx + `_components/*-page-client.tsx` 분리 규칙화; 기존 대형 settings는 헤더 서버 추출부터.
-- **예상 공수**: M (전면) / S (신규 규칙만)
+### [FE-P5] page-level 'use client' 使用范围过广
+- **优先级建议**：P3 / 性能
+- **证据**：774 个文件中 361 个 `'use client'`。`settings/*/page.tsx` 全部 + marketplace page root 都是 client。
+- **重构方案**：从新 page 开始规范为 server page.tsx + `_components/*-page-client.tsx` 分离；现有大型 settings 先从 header server 提取开始。
+- **预计工时**：M（全面）/ S（仅新规则）
 
-### [FE-P6] 죽은 의존성 chart.js + next/image 미사용
-- **우선순위 제안**: P3 / 성능
-- **증거**: `package.json` `chart.js ^4.5.1` — src import 0건. `next/image` 0건, raw `<img>` 9건.
-- **리팩토링 방안**: chart.js 제거; 백엔드-서빙 아바타는 `images.remotePatterns` + `next/image`; 외부 썸네일은 `<img>` 유지.
-- **예상 공수**: S
+### [FE-P6] dead dependency chart.js + 未使用 next/image
+- **优先级建议**：P3 / 性能
+- **证据**：`package.json` 中 `chart.js ^4.5.1` — src import 0 处。`next/image` 0 处，raw `<img>` 9 处。
+- **重构方案**：移除 chart.js；backend-served avatar 使用 `images.remotePatterns` + `next/image`；外部 thumbnail 保持 `<img>`。
+- **预计工时**：S
 
-### [FE-P7] useAuiState 셀렉터 미세 위반 + phase-timeline O(n) 토큰당 스캔
-- **우선순위 제안**: P3 / 성능
-- **증거**: `assistant-thread.tsx:605-608` BranchPicker `meta` 셀렉터 `?? {}` 새 객체. `tool-ui/phase-timeline-ui.tsx:157-160` 토큰마다 전체 메시지 O(n) 스캔.
-- **리팩토링 방안**: `EMPTY_BRANCH_META` 모듈 상수; phase-timeline latest id를 런타임 이벤트에서 도출.
-- **예상 공수**: S
+### [FE-P7] useAuiState selector 细微违规 + phase-timeline 每 token 做 O(n) scan
+- **优先级建议**：P3 / 性能
+- **证据**：`assistant-thread.tsx:605-608` BranchPicker 的 `meta` selector 使用 `?? {}` 新对象。`tool-ui/phase-timeline-ui.tsx:157-160` 每个 token 扫描全部消息 O(n)。
+- **重构方案**：使用 `EMPTY_BRANCH_META` module 常量；phase-timeline latest id 从 runtime event 派生。
+- **预计工时**：S
 
-### [FE-D1] 채팅/대시보드/공유 라우트 에러 바운더리 완전 부재 (2026-07-03 감사 유효 확인)
-- **우선순위 제안**: P1 / 디자인(신뢰성)
-- **증거**: `ErrorBoundary` 0건. `app/error.tsx`·`app/global-error.tsx` 없음. route `error.tsx`는 settings/tools/marketplace/skills/mcp-servers 5곳만 — **agents(핵심 채팅), conversations, shared/[shareId], 대시보드 루트, usage/artifacts 미커버**.
-- **문제점**: 스트리밍 채팅 렌더 예외 시 화이트스크린 → 앱 셸 전체 붕괴. 공개 공유 링크도 방문자에게 노출.
-- **리팩토링 방안**: 1. `app/global-error.tsx` + `app/error.tsx`. 2. `app/agents/error.tsx`, `app/shared/error.tsx` — reset 버튼 + i18n. 채팅은 스트림 레벨 경계 검토. 3. 공용 `RouteError` 프리미티브로 통일.
-- **검증**: 의도적 throw 주입 E2E, axe.
-- **예상 공수**: M
+### [FE-D1] chat/dashboard/share route 完全缺少 error boundary（2026-07-03 审计确认有效）
+- **优先级建议**：P1 / 设计（可靠性）
+- **证据**：`ErrorBoundary` 0 处。没有 `app/error.tsx`·`app/global-error.tsx`。route `error.tsx` 只有 settings/tools/marketplace/skills/mcp-servers 5 处 — **agents（核心聊天）、conversations、shared/[shareId]、dashboard root、usage/artifacts 未覆盖**。
+- **问题**：streaming chat render exception 时白屏 → 整个 app shell 崩溃。公开 share link 访问者也会遇到。
+- **重构方案**：1. 新增 `app/global-error.tsx` + `app/error.tsx`。2. `app/agents/error.tsx`, `app/shared/error.tsx` — reset button + i18n。聊天考虑 stream-level boundary。3. 统一为公共 `RouteError` primitive。
+- **验证**：注入 intentional throw 的 E2E，axe。
+- **预计工时**：M
 
-### [FE-D2] 아이콘 컨트롤 접근성 라벨 누락 (baseline 40건)
-- **우선순위 제안**: P2 / 접근성
-- **증거**: `scripts/jsx-a11y-baseline.json` 40건: `control-has-associated-label` 26, `anchor-has-content` 7 등. 상위: `chat/trace-debugger-view.tsx`(4), `agent/visual-settings/nodes/agent-node.tsx`(3), `chat/right-rail/chat-right-rail.tsx`(2).
-- **리팩토링 방안**: 26건부터 `aria-label`(i18n 키) 추가 → baseline 제거 → 리뷰 체크리스트화.
-- **예상 공수**: M
+### [FE-D2] icon control 缺少 accessibility label（baseline 40 项）
+- **优先级建议**：P2 / 可访问性
+- **证据**：`scripts/jsx-a11y-baseline.json` 40 项：`control-has-associated-label` 26，`anchor-has-content` 7 等。最多的文件：`chat/trace-debugger-view.tsx`（4），`agent/visual-settings/nodes/agent-node.tsx`（3），`chat/right-rail/chat-right-rail.tsx`（2）。
+- **重构方案**：先给 26 项加 `aria-label`（i18n key）→ 移除 baseline → 纳入 review checklist。
+- **预计工时**：M
 
-### [FE-D3] 로딩/에러/빈 상태 커버리지 불균형
-- **우선순위 제안**: P2 / 디자인
-- **증거**: `loading.tsx` 5곳만. agents(채팅)/대시보드/shared/usage/artifacts엔 둘 다 없음. Skeleton 55파일 vs Spinner 38파일 혼재.
-- **리팩토링 방안**: 미커버 라우트 `loading.tsx`(관리=스켈레톤, 채팅=전용 셸) → 선택 규칙 문서화 → 공용 `EmptyState`.
-- **예상 공수**: M
+### [FE-D3] loading/error/empty state 覆盖不均
+- **优先级建议**：P2 / 设计
+- **证据**：只有 5 处 `loading.tsx`。agents（chat）/dashboard/shared/usage/artifacts 两者都没有。Skeleton 55 文件 vs Spinner 38 文件混用。
+- **重构方案**：给未覆盖 route 增加 `loading.tsx`（管理=Skeleton，chat=专用 shell）→ 文档化选择规则 → 公共 `EmptyState`。
+- **预计工时**：M
 
-### [FE-D4] chart-card 테마 비대응 하드코딩 팔레트 (+이중 가드 우회)
-- **우선순위 제안**: P3 / 디자인
-- **증거**: `components/chat/data-ui/chart-card.tsx:22-29` `CHART_PALETTE` 8개 hex 고정. `fill={seriesColor(index)}` JS 문자열이라 `raw-hex-utility` 가드와 inline-SVG 가드 양쪽 우회. 추가: `dark:` 없는 `bg-white` 3건 — `ui/slider.tsx:45`, `hwp-preview.tsx:147`, `pptx-preview.tsx:108`.
-- **리팩토링 방안**: CSS 변수 data-viz 토큰(`--chart-cat-1..8` 라이트/다크) → 팔레트 공유 → 가드 예외 축소. slider/문서 페인 `dark:` 변형 추가.
-- **예상 공수**: S
+### [FE-D4] chart-card theme 不适配的硬编码 palette（+绕过双重 guard）
+- **优先级建议**：P3 / 设计
+- **证据**：`components/chat/data-ui/chart-card.tsx:22-29` 的 `CHART_PALETTE` 固定 8 个 hex。由于 `fill={seriesColor(index)}` 是 JS string，绕过 `raw-hex-utility` guard 和 inline-SVG guard 两者。另有 3 处无 `dark:` 的 `bg-white` — `ui/slider.tsx:45`, `hwp-preview.tsx:147`, `pptx-preview.tsx:108`。
+- **重构方案**：CSS variable data-viz token（`--chart-cat-1..8` light/dark）→ 共享 palette → 缩小 guard 例外。给 slider/文档 pane 增加 `dark:` variant。
+- **预计工时**：S
 
-### [FE-D5] i18n 하드코딩 — agent-prism 트레이스 UI 영어 전용 (가드 스킵 영역)
-- **우선순위 제안**: P2 / i18n
-- **증거**: `scripts/check-static-i18n.mjs`가 `src/components/agent-prism/**` 명시적 스킵(line 33-40). `TextInput.tsx:133`, `Tabs.tsx:112`, `CollapseAndExpandControls.tsx:23/39`, `SearchInput.tsx:13`, `TraceViewerDesktopLayout.tsx:97/113`, `TraceViewerSearchAndControls.tsx:23`, `DetailsView.tsx:73` 등.
-- **리팩토링 방안**: 1. 래퍼 레벨에서 label/placeholder prop 주입. 2. 주입 불가 문자열만 최소 fork로 next-intl 키. 3. 스킵 범위 좁히기.
-- **예상 공수**: M
+### [FE-D5] i18n 硬编码 — agent-prism trace UI 仅英文（guard skip 区域）
+- **优先级建议**：P2 / i18n
+- **证据**：`scripts/check-static-i18n.mjs` 显式 skip `src/components/agent-prism/**`（line 33-40）。`TextInput.tsx:133`, `Tabs.tsx:112`, `CollapseAndExpandControls.tsx:23/39`, `SearchInput.tsx:13`, `TraceViewerDesktopLayout.tsx:97/113`, `TraceViewerSearchAndControls.tsx:23`, `DetailsView.tsx:73` 等。
+- **重构方案**：1. 在 wrapper 层注入 label/placeholder prop。2. 只有无法注入的 string 才通过最小 fork 改成 next-intl key。3. 缩小 skip 范围。
+- **预计工时**：M
 
-### [FE-D6] shadcn/ui 우회 — 채팅 tool-ui 수제 폼 컨트롤 + radio 프리미티브 부재
-- **우선순위 제안**: P2 / 디자인
-- **증거**: raw `<textarea>` 8건(approval-footer.tsx:57 등), raw text input(approval-card.tsx:335/345/355), raw checkbox(`user-input-ui.tsx:97` — shadcn Checkbox 존재하는데 우회), raw radio(`marketplace/update-strategy-dialog.tsx:131` — **RadioGroup 프리미티브 자체가 없음**).
-- **리팩토링 방안**: 1. `RadioGroup` shadcn 프리미티브 신설. 2. tool-ui 폼 컨트롤을 `ui/` 프리미티브로 교체(IME 컴포저 예외). 3. 리뷰 체크리스트/린트 강제.
-- **예상 공수**: M
+### [FE-D6] 绕过 shadcn/ui — chat tool-ui 手写 form control + 缺少 radio primitive
+- **优先级建议**：P2 / 设计
+- **证据**：raw `<textarea>` 8 处（approval-footer.tsx:57 等），raw text input（approval-card.tsx:335/345/355），raw checkbox（`user-input-ui.tsx:97` — 已有 shadcn Checkbox 却绕过），raw radio（`marketplace/update-strategy-dialog.tsx:131` — **RadioGroup primitive 本身不存在**）。
+- **重构方案**：1. 新建 `RadioGroup` shadcn primitive。2. tool-ui form control 替换为 `ui/` primitive（IME composer 例外）。3. review checklist/lint 强制。
+- **预计工时**：M
 
-### [FE-D7] 미디어 아티팩트 접근성 — audio/video 캡션·라벨 부재
-- **우선순위 제안**: P2 (국소) / 접근성
-- **증거**: `components/chat/artifacts/providers/media-preview.tsx:7` `<audio controls>` / `:9` `<video controls>` — `<track>` 없음 + `aria-label` 없음.
-- **리팩토링 방안**: 파일명 기반 `aria-label`, 가능한 경우 `<track kind="captions">`.
-- **예상 공수**: S
+### [FE-D7] media artifact 可访问性 — audio/video 缺少 caption·label
+- **优先级建议**：P2（局部）/ 可访问性
+- **证据**：`components/chat/artifacts/providers/media-preview.tsx:7` `<audio controls>` / `:9` `<video controls>` — 没有 `<track>` + 没有 `aria-label`。
+- **重构方案**：基于文件名设置 `aria-label`，可用时加入 `<track kind="captions">`。
+- **预计工时**：S
 
-### 요약 우선순위
-- **P1**: FE-P1(컨텍스트 churn), FE-P2(스레드 가상화), FE-D1(에러 바운더리)
+### 优先级总结
+- **P1**：FE-P1（context churn）、FE-P2（thread virtualization）、FE-D1（error boundary）
 - **P2**: FE-P3, FE-P4, FE-D2, FE-D3, FE-D5, FE-D6, FE-D7
 - **P3**: FE-P5, FE-P6, FE-P7, FE-D4
 
 ---
 
-## 9. 테스트/인프라/DevX (IX)
+## 9. 测试/基础设施/DevX (IX)
 
-직접 조사 결과 기반 (`.github/`, `docker-compose.yml`, 두 Dockerfile, `backend/pyproject.toml`, `backend/tests/conftest.py`, `frontend/e2e/`, `backend/app/seed/`, `backend/app/main.py`).
+基于直接调查结果（`.github/`, `docker-compose.yml`, 两个 Dockerfile, `backend/pyproject.toml`, `backend/tests/conftest.py`, `frontend/e2e/`, `backend/app/seed/`, `backend/app/main.py`）。
 
-**먼저 — 이미 양호 (오탐 방지용)**:
-- `backend/tests/conftest.py`(271줄): autouse DB 셋업, `client`/`raw_client`/`db` 픽스처, `make_user`/`make_refresh_token` 팩토리, CSRF 바이패스 — 공유 픽스처 체계 자체는 건강 (채택률 문제는 BE-D7).
-- pytest 마커 체계 존재: `[tool.pytest.ini_options]`에 `integration` 마커 + `addopts = "-m 'not integration'"` — live PG 테스트 분리 구조가 이미 있음.
-- 두 Dockerfile 모두 multi-stage: backend는 skill-node 빌드 스테이지 + `uv sync --frozen --no-dev`, frontend는 standalone Next 빌드 + 최소 runner. 레이어 순서(의존성 → 소스)도 캐시 친화적.
-- 시드 시스템(`app/seed/`, 총 1,257줄): 파일 소규모, upsert 방식 멱등 — 부팅 성능 이슈 없음.
+**先说明 — 已经良好（用于避免误报）**：
+- `backend/tests/conftest.py`（271 行）：autouse DB setup，`client`/`raw_client`/`db` fixture，`make_user`/`make_refresh_token` factory，CSRF bypass — 共享 fixture 体系本身健康（adoption rate 问题见 BE-D7）。
+- pytest marker 体系已存在：`[tool.pytest.ini_options]` 中有 `integration` marker + `addopts = "-m 'not integration'"` — live PG test 分离结构已经具备。
+- 两个 Dockerfile 都是 multi-stage：backend 为 skill-node build stage + `uv sync --frozen --no-dev`，frontend 为 standalone Next build + 最小 runner。layer 顺序（dependency → source）也有利于 cache。
+- seed 系统（`app/seed/`，共 1,257 行）：文件小，upsert 幂等 — 没有启动性能问题。
 
 ---
 
-### [IX-1] CI 파이프라인 완전 부재 — 모든 게이트가 로컬 수동 실행에 의존
-- **현재 상태(2026-09-07)**: CI 도입과 Pyright basic 0 달성이 모두 완료됐으며
-  `backend-typecheck`는 blocking이다. 아래 내용은 최초 조사 당시의 기록이다.
-- **우선순위 제안**: **P0** — 이 문서의 모든 리팩토링 PR이 CI 없이는 "전체 그린" 보장을 사람 손에 의존하게 됨. 리팩토링 착수 전 최우선.
-- **카테고리**: DevX
-- **증거**: `.github/workflows/` 디렉토리 없음(직접 확인). `.pre-commit-config.yaml`도 없음. 반면 게이트로 쓸 도구는 전부 준비됨: ruff(설정 존재), pyright(전체 968 기존 에러 — non-blocking 잡으로 시작, 신규/수정 파일은 파일 단위 클린 유지), pytest 2,500+, vitest 1,183+, eslint 커스텀 가드(`lint:design-system`, `lint:a11y`, `lint:i18n`, `lint:frontend-architecture`).
-- **문제점**: 브랜치/PR마다 사람이 전체 스위트를 돌려야 하고, 잊으면 회귀가 main에 도달. CLAUDE.md 메모리에도 "머지 전 vitest 전체 그린 확인" 실패 사례가 기록돼 있음.
-- **리팩토링 방안**:
-  1. `.github/workflows/ci.yml` 신설 — backend/frontend 2-job 분리, path filter로 무관 변경 스킵:
+### [IX-1] CI pipeline 完全缺失 — 所有 gate 依赖本地手动执行
+- **当前状态（2026-09-07）**：CI 引入和 Pyright basic 0 均已完成，
+  `backend-typecheck` 是 blocking。以下内容为首次调查时的记录。
+- **优先级建议**：**P0** — 没有 CI，本文件所有重构 PR 的"全绿"保证都依赖人工。应在重构开始前最高优先。
+- **类别**：DevX
+- **证据**：没有 `.github/workflows/` 目录（已直接确认）。也没有 `.pre-commit-config.yaml`。而可作为 gate 的工具都已准备：ruff（有配置）、pyright（当时共有 968 个既有错误 — 先以 non-blocking job 开始，新/改文件保持 file-level clean）、pytest 2,500+、vitest 1,183+、eslint custom guard（`lint:design-system`, `lint:a11y`, `lint:i18n`, `lint:frontend-architecture`）。
+- **问题**：每个 branch/PR 都要人工跑完整 suite，忘记就会让回归进入 main。CLAUDE.md memory 中也记录过"merge 前确认 vitest 全绿"失败案例。
+- **重构方案**：
+  1. 新建 `.github/workflows/ci.yml` — backend/frontend 拆成 2 个 job，用 path filter 跳过无关变更：
      ```yaml
      name: CI
      on:
@@ -1166,278 +1166,278 @@
            - run: pnpm vitest run
            - run: pnpm build
      ```
-  2. (2단계) e2e는 별도 워크플로우로 nightly 또는 label 트리거 — throwaway PG 서비스 컨테이너 + `E2E_SCRIPTED_MODEL_ENABLED=true E2E_SEED_USER_ENABLED=true` (CLAUDE.md의 E2E 격리 절차 그대로).
-  3. (3단계) IX-6의 PG integration 잡 추가.
-  4. 브랜치 보호 규칙: main에 두 job required.
-- **검증**: 워크플로우 도입 PR 자체가 그린으로 통과하는지 + 의도적 실패 커밋으로 게이트가 실제 차단하는지 확인.
-- **예상 공수**: M
+  2. （第 2 阶段）e2e 单独 workflow，nightly 或 label trigger — throwaway PG service container + `E2E_SCRIPTED_MODEL_ENABLED=true E2E_SEED_USER_ENABLED=true`（完全按 CLAUDE.md 的 E2E 隔离流程）。
+  3. （第 3 阶段）增加 IX-6 的 PG integration job。
+  4. branch protection rule：main 要求两个 job required。
+- **验证**：确认引入 workflow 的 PR 自己能全绿通过 + 用 intentional failure commit 验证 gate 确实阻断。
+- **预计工时**：M
 
 ---
 
-### [IX-2] pre-commit 훅 부재 — 커밋 단계 자동 게이트 없음
-- **우선순위 제안**: P2
-- **카테고리**: DevX
-- **증거**: `.pre-commit-config.yaml` 없음(직접 확인).
-- **문제점**: ruff format/lint 위반, 대형 파일 실수 커밋 등이 CI(도입 후)까지 가서야 발견 — 피드백 루프가 느림.
-- **리팩토링 방안**:
-  1. `.pre-commit-config.yaml` 추가: `ruff check --fix` + `ruff format`(backend), `eslint --fix`(frontend staged, lint-staged 병용 가능), `check-added-large-files`, `check-merge-conflict`.
-  2. `uv run pre-commit install` 안내를 README/CLAUDE.md 세팅 절차에 추가.
-  3. 무거운 검사(pyright, vitest)는 pre-commit에 넣지 말 것 — 커밋 속도 보호, CI 담당.
-- **검증**: 의도적 lint 위반 커밋이 로컬에서 차단되는지 확인.
-- **예상 공수**: S
+### [IX-2] 缺少 pre-commit hook — commit 阶段没有自动 gate
+- **优先级建议**：P2
+- **类别**：DevX
+- **证据**：没有 `.pre-commit-config.yaml`（已直接确认）。
+- **问题**：ruff format/lint 违规、大文件误 commit 等直到 CI（引入后）才发现 — feedback loop 慢。
+- **重构方案**：
+  1. 增加 `.pre-commit-config.yaml`：`ruff check --fix` + `ruff format`（backend），`eslint --fix`（frontend staged，可与 lint-staged 并用），`check-added-large-files`, `check-merge-conflict`。
+  2. 在 README/CLAUDE.md setup 流程增加 `uv run pre-commit install` 指引。
+  3. 不要把重型检查（pyright, vitest）放进 pre-commit — 保护 commit speed，由 CI 负责。
+- **验证**：确认 intentional lint violation commit 在本地被阻断。
+- **预计工时**：S
 
 ---
 
-### [IX-3] docker-compose/Dockerfile 프로덕션 하드닝 (감사 지적 부분 유효)
-- **우선순위 제안**: P2
-- **카테고리**: 인프라
-- **증거**: `docker-compose.yml` — PG 비밀번호 평문 `moldy`(:6), 모든 서비스 `restart` 정책 없음, backend/frontend `healthcheck` 없음(postgres만 있음, :12-16), frontend `depends_on: [backend]`가 condition 없음(:71-72). 두 Dockerfile 모두 **non-root USER 미지정**, `HEALTHCHECK` 인스트럭션 없음. (참고: env_file 분리·migration 선행 실행·NEXT_PUBLIC 빌드타임 주입 등은 이미 잘 처리돼 있음.)
-- **문제점**: 이 compose 파일이 사실상 프로덕션 배포 경로로도 쓰일 수 있는 구조인데, 컨테이너 재시작·기동 순서·상태 감시가 없어 장애 시 수동 복구 필요. 컨테이너가 root로 실행돼 컨테이너 탈출 시 피해 확대.
-- **리팩토링 방안**:
-  1. dev/prod 분리: 현 파일은 dev 전용으로 명시하고 `docker-compose.prod.yml` 오버레이 신설 — `restart: unless-stopped`, PG 비밀번호는 `.env` 변수화(`POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}`), 포트 바인딩 최소화(PG 5432 외부 노출 제거).
-  2. backend에 healthcheck 추가: `test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]` (기존 `/health` 라우터 활용) + frontend `depends_on: { backend: { condition: service_healthy } }`.
-  3. Dockerfile: `RUN useradd -m app && chown -R app /app` + `USER app` (backend는 `data/` 볼륨 권한 주의), 두 이미지에 `HEALTHCHECK` 추가.
-- **검증**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` 후 `docker ps` healthy 확인, 컨테이너 kill 후 자동 재시작 확인.
-- **예상 공수**: S~M
+### [IX-3] docker-compose/Dockerfile production hardening（审计指出部分仍有效）
+- **优先级建议**：P2
+- **类别**：基础设施
+- **证据**：`docker-compose.yml` — PG password 明文 `moldy`（:6），所有 service 都没有 `restart` policy，backend/frontend 没有 `healthcheck`（只有 postgres 有，:12-16），frontend `depends_on: [backend]` 没有 condition（:71-72）。两个 Dockerfile 都**未指定 non-root USER**，没有 `HEALTHCHECK` instruction。（参考：env_file 分离·先执行 migration·NEXT_PUBLIC build-time 注入等已经做得很好。）
+- **问题**：该 compose 文件结构上也可能被当作 production deploy path 使用，但没有 container restart·startup ordering·health monitoring，故障时需手动恢复。container 以 root 运行，发生 container escape 时损害扩大。
+- **重构方案**：
+  1. dev/prod 分离：明确当前文件仅供 dev，新增 `docker-compose.prod.yml` overlay — `restart: unless-stopped`，PG password 改为 `.env` variable（`POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}`），最小化 port binding（移除 PG 5432 外部暴露）。
+  2. backend 增加 healthcheck：`test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]`（复用现有 `/health` route）+ frontend `depends_on: { backend: { condition: service_healthy } }`。
+  3. Dockerfile：`RUN useradd -m app && chown -R app /app` + `USER app`（backend 注意 `data/` volume 权限），两个 image 都增加 `HEALTHCHECK`。
+- **验证**：执行 `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` 后确认 `docker ps` healthy，kill container 后确认自动 restart。
+- **预计工时**：S~M
 
 ---
 
-### [IX-4] Alembic 76개 리비전 — squash 검토
-- **우선순위 제안**: P3 (충돌·부팅 비용이 임계 미만이므로 서두를 필요 없음)
-- **카테고리**: DevX
-- **증거**: `backend/alembic/versions/` 76개 파일(M1~M63 + 병합 1개). 신규 환경마다 76개 순차 적용.
-- **문제점**: 신규 환경/E2E throwaway 스택 셋업마다 76 리비전 순차 실행(현재 수 초 수준이라 실용 문제는 작음). 병렬 feature 브랜치 간 head 충돌 빈도가 리비전 수에 비례해 증가.
-- **리팩토링 방안** (착수 시):
-  1. 마일스톤 시점(예: M63)을 기준으로 `alembic upgrade head` 완료된 DB에서 `alembic revision --autogenerate`가 빈 diff인지 먼저 확인(모델↔마이그레이션 싱크 검증).
-  2. 새 베이스라인 리비전 1개 생성: 현 head 스키마 전체를 `op.create_table` 세트로 담고 `down_revision=None`.
-  3. **기존 배포 DB 경로 보존이 핵심**: 베이스라인 리비전의 `upgrade()`에 "이미 `alembic_version`이 M63이면 스탬프만 갱신" 분기를 넣거나, 구 리비전 체인을 `versions/archive/`로 옮기고 기존 DB는 `alembic stamp <new-baseline>` 절차를 릴리스 노트에 명시.
-  4. E2E/CI가 새 베이스라인으로 기동되는지 확인 후 구 체인 제거.
-  - **주의**: 운영 DB가 하나라도 중간 리비전에 있으면 실패하므로, squash 전 전 환경 head 통일 필수.
-- **검증**: 빈 DB에 새 베이스라인 1개로 `upgrade head` → `uv run pytest` 전체 그린 + 기존 DB에 stamp 절차 리허설.
-- **예상 공수**: M
+### [IX-4] 76 个 Alembic revision — 评估 squash
+- **优先级建议**：P3（conflict·启动成本未到临界，无需急）
+- **类别**：DevX
+- **证据**：`backend/alembic/versions/` 76 个文件（M1~M63 + 1 个 merge）。每个新环境都顺序应用 76 个。
+- **问题**：新环境/E2E throwaway stack setup 每次顺序执行 76 revision（目前数秒，实际问题较小）。并行 feature branch 之间的 head conflict 频率随 revision 数增加。
+- **重构方案**（启动时）：
+  1. 以 milestone（如 M63）为基准，在已完成 `alembic upgrade head` 的 DB 上先确认 `alembic revision --autogenerate` 是否为空 diff（验证 model↔migration sync）。
+  2. 新建 1 个 baseline revision：把当前 head 完整 schema 写成 `op.create_table` 集合，并设 `down_revision=None`。
+  3. **保留现有 deploy DB path 是核心**：在 baseline revision 的 `upgrade()` 中加入"若现有 `alembic_version` 为 M63，只更新 stamp"分支，或者把旧 revision chain 移到 `versions/archive/`，并在 release note 明确现有 DB 执行 `alembic stamp <new-baseline>` 的步骤。
+  4. 确认 E2E/CI 可从新 baseline 启动后删除旧 chain。
+  - **注意**：只要有任一 production DB 停在中间 revision 就会失败，因此 squash 前必须让所有环境统一到 head。
+- **验证**：空 DB 仅用 1 个新 baseline 执行 `upgrade head` → 完整 `uv run pytest` 全绿 + 在现有 DB 演练 stamp 流程。
+- **预计工时**：M
 
 ---
 
-### [IX-5] 구조화 로깅·request-id 부재 — 운영 관측성 공백
-- **우선순위 제안**: P2
-- **카테고리**: 인프라
-- **증거**: `backend/app/main.py:43-55` — `logging.basicConfig` 뿐. request-id 미들웨어/correlation 부재(LLM 트레이스는 Langfuse/LangSmith로 별도 존재하나 **HTTP 요청 레벨** 상관관계 없음). 에러 추적(Sentry류) 없음.
-- **문제점**: 프로덕션에서 "이 500 에러가 어떤 요청/유저/대화에서 났나"를 로그로 역추적 불가. 멀티유저 서비스로 전환 완료(ADR-016)된 시점에서 운영 필수 요소.
-- **리팩토링 방안**:
-  1. request-id 미들웨어: `X-Request-ID` 수신 또는 uuid4 생성 → `contextvars`에 저장 → 응답 헤더 echo.
-  2. logging Filter로 모든 로그 레코드에 request_id/user_id 주입, 포맷을 JSON lines로(prod만; dev는 현행 유지 플래그).
-  3. 예외 핸들러에서 request_id 포함 구조화 에러 로그 + (선택) Sentry SDK 도입은 별도 결정.
-  4. **주의**: 로그에 credential/토큰이 흐르지 않도록 기존 redaction 규칙(CLAUDE.md Backend redaction) 준수 — 특히 헤더 로깅 금지.
-- **검증**: 두 동시 요청의 로그가 request_id로 구분되는지, 에러 응답 헤더에 id가 도는지 테스트.
-- **예상 공수**: M
+### [IX-5] 缺少结构化 logging·request-id — production observability 空白
+- **优先级建议**：P2
+- **类别**：基础设施
+- **证据**：`backend/app/main.py:43-55` — 只有 `logging.basicConfig`。没有 request-id middleware/correlation（LLM trace 通过 Langfuse/LangSmith 独立存在，但**HTTP request-level** 没有关联）。没有 error tracking（如 Sentry）。
+- **问题**：production 中无法从 log 反查"这个 500 error 来自哪个 request/user/conversation"。在 multi-user service 转换完成（ADR-016）后，这是 production 必需能力。
+- **重构方案**：
+  1. request-id middleware：接收 `X-Request-ID` 或生成 uuid4 → 存入 `contextvars` → 在 response header echo。
+  2. 用 logging Filter 给所有 log record 注入 request_id/user_id，format 改为 JSON lines（仅 prod；dev 用 flag 保持现状）。
+  3. exception handler 中记录包含 request_id 的结构化 error log + （可选）是否引入 Sentry SDK 单独决策。
+  4. **注意**：遵守现有 redaction 规则（CLAUDE.md Backend redaction），不要让 credential/token 进入 log — 尤其禁止 header logging。
+- **验证**：测试两个并发 request 的 log 能否用 request_id 区分、error response header 是否返回 id。
+- **预计工时**：M
 
 ---
 
-### [IX-6] aiosqlite↔PostgreSQL 격차 — integration 마커는 있는데 CI에서 안 돎
-- **우선순위 제안**: P2
-- **카테고리**: 테스트
-- **증거**: `backend/pyproject.toml` — `markers = ["integration: tests requiring live Postgres (skipped by default via addopts)"]` + `addopts = "-m 'not integration'"`. 즉 live PG 테스트 체계는 설계돼 있으나 CI가 없어 **아무 데서도 정기 실행되지 않음**. 기본 스위트는 aiosqlite in-memory라 FK enforcement·JSONB 연산·`FOR UPDATE` 락 동작·부분 유니크 인덱스(SEC-3 방안) 등 PG 전용 버그 클래스를 놓침 (2026-07-03 감사의 "aiosqlite FK 미검증" 지적과 동일 맥락).
-- **문제점**: 이 문서의 성능 리팩토링(인덱스, FOR UPDATE 제거, keyset)은 PG에서만 검증 의미가 있는데 검증 채널이 없음.
-- **리팩토링 방안**:
-  1. IX-1 CI에 `backend-integration` 잡 추가: `services: postgres:16-alpine` + `DATABASE_URL`/`DATABASE_URL_SYNC` 주입 + `uv run pytest -m integration`.
-  2. integration 대상 테스트 확충: FK cascade(대화 삭제), 트리거 동시 실행(SEC-3), keyset 페이지네이션 경계, credential rotation 배치.
-  3. 로컬 실행 절차를 CLAUDE.md 테스트 섹션에 한 줄 추가(`docker compose up -d postgres && uv run pytest -m integration`).
-- **검증**: integration 잡이 PG 서비스로 그린, sqlite에서 통과하지만 PG에서 실패하는 사례(예: FK 위반) 재현 테스트 1개로 격차 커버 입증.
-- **예상 공수**: S~M (CI 잡) + 테스트 확충은 점진
+### [IX-6] aiosqlite↔PostgreSQL 差距 — 有 integration marker 但 CI 不运行
+- **优先级建议**：P2
+- **类别**：测试
+- **证据**：`backend/pyproject.toml` — `markers = ["integration: tests requiring live Postgres (skipped by default via addopts)"]` + `addopts = "-m 'not integration'"`。也就是说 live PG test 体系已经设计好，但没有 CI，**没有任何地方定期运行**。默认 suite 使用 aiosqlite in-memory，因此会漏掉 FK enforcement·JSONB operation·`FOR UPDATE` lock behavior·partial unique index（SEC-3 方案）等 PG-specific bug class（与 2026-07-03 审计"aiosqlite 未验证 FK"的指出同一背景）。
+- **问题**：本文档的性能重构（index、移除 FOR UPDATE、keyset）只有在 PG 上验证才有意义，却没有验证 channel。
+- **重构方案**：
+  1. 在 IX-1 CI 增加 `backend-integration` job：`services: postgres:16-alpine` + 注入 `DATABASE_URL`/`DATABASE_URL_SYNC` + `uv run pytest -m integration`。
+  2. 扩充 integration test：FK cascade（删除对话）、trigger 并发执行（SEC-3）、keyset pagination boundary、credential rotation batch。
+  3. 在 CLAUDE.md test section 增加一行本地执行流程（`docker compose up -d postgres && uv run pytest -m integration`）。
+- **验证**：integration job 在 PG service 上全绿，并用 1 个 sqlite 通过、PG 失败的案例（如 FK violation）证明差距已覆盖。
+- **预计工时**：S~M（CI job）+ test 扩充渐进
 
 ---
 
-### [IX-7] e2e 스펙 69개 — captures 투어와 regression 혼재
-- **우선순위 제안**: P3
-- **카테고리**: 테스트
-- **증거**: `frontend/e2e/` 루트에 regression 스펙과 `captures/` 디렉토리, `manual-atlassian-oauth.spec.ts`(수동 전용) 혼재. `playwright.config.ts`(48줄)에 프로젝트 분리 없음. 실행이 파일명 알파벳 순서에 의존하는 함정도 메모리에 기록돼 있음(chat-states 워밍업).
-- **문제점**: 전체 실행 시 캡처 투어(스크린샷 목적, `E2E_CAPTURE_TOUR` 게이트)와 수동 스펙이 필터 없이 섞여 러너/CI 구성 시 매번 grep 필터를 손으로 짜야 함.
-- **리팩토링 방안**:
-  1. `playwright.config.ts`에 projects 분리: `regression`(기본, captures/·manual-* 제외 testIgnore), `captures`(testDir: e2e/captures, env 게이트 문서화), `manual`(수동 전용).
-  2. `pnpm e2e`, `pnpm e2e:captures` 스크립트 추가.
-  3. 알파벳 순서 의존(warm-up) 주석을 config에 명시.
-- **검증**: `pnpm exec playwright test --project=regression`이 captures를 건드리지 않는지 확인.
-- **예상 공수**: S
+### [IX-7] e2e spec 69 个 — captures tour 与 regression 混杂
+- **优先级建议**：P3
+- **类别**：测试
+- **证据**：`frontend/e2e/` root 混有 regression spec、`captures/` 目录、`manual-atlassian-oauth.spec.ts`（manual-only）。`playwright.config.ts`（48 行）没有 project 拆分。memory 中也记录过依赖文件名字母顺序的陷阱（chat-states warm-up）。
+- **问题**：完整执行时 capture tour（截图目的、`E2E_CAPTURE_TOUR` gate）与 manual spec 混在一起，配置 runner/CI 时每次都要手写 grep filter。
+- **重构方案**：
+  1. 在 `playwright.config.ts` 拆分 projects：`regression`（默认，testIgnore 排除 captures/·manual-*）、`captures`（testDir: e2e/captures，文档化 env gate）、`manual`（仅手动）。
+  2. 增加 `pnpm e2e`, `pnpm e2e:captures` script。
+  3. 在 config 明确注释对 alphabetical order 的依赖（warm-up）。
+- **验证**：确认 `pnpm exec playwright test --project=regression` 不触碰 captures。
+- **预计工时**：S
 
 ---
 
 
-## 10. 하지 말 것 — 검토 후 기각된 항목
+## 10. 不要做 — 评估后否决的条目
 
-분석 과정에서 후보로 올랐으나 **Simplicity First 원칙에 따라 명시적으로 기각**한 항목. 나중에 누군가 다시 제안할 때 재검토 비용을 아끼기 위해 기록한다.
+分析过程中曾列为候选，但根据 **Simplicity First 原则明确否决**。记录下来以节省未来再次提案时的复核成本。
 
-| 기각 항목 | 사유 |
+| 否决项 | 原因 |
 |-----------|------|
-| `config.py` Settings 도메인별 분리 (BE-S12) | 필드 101개지만 섹션 주석으로 구획 양호. 분리 시 `settings.X` 접근 경로 전면 변경 diff만 유발, 실익 없음 |
-| 제네릭 BaseService (CRUD 공통 부모 클래스) | 각 서비스 create/update가 스케줄러 sync·검증·감사 등 도메인 로직 보유 — 제네릭화는 과추상화. 필요 시 `commit_refresh(db, obj)` 미니 헬퍼까지만 |
-| 모든 리소스 단일 제네릭 `load_owned(Model, id, user)` | 소유권 의미(system 포함 여부, 404-collapse)가 리소스마다 달라 플래그 폭발. 리소스별 얇은 의존성 함수가 정답 (BE-D1/D4) |
-| 프론트 제네릭 `useResourceQuery` 훅 | 현 API 3계층(`apiFetch` → `xxxApi` → `use-xxx`)은 idiomatic TanStack — 보일러플레이트가 아니라 관례 |
-| credential 보간 로직 공통화 | `app/credentials/interpolation.py`의 `resolve_deep` 단일 함수로 **이미 완전 중앙화**(11 call sites). 조치 불필요 |
-| chat_service의 scope/is_pinned 복합 커서를 공용 커서로 통일 | 도메인 특수 필드 — 무리한 통일은 오히려 결합 유발. 정규화 함수(`normalize_cursor_dt`)만 공유 (BE-D5) |
-| BE-D8 Response 스키마 믹스인 전면 적용 | `user_id` nullable 여부가 리소스마다 달라 베이스에 못 넣음. `ORMModel`(config만)이 안전선이며 이득 최소 — P1/P2 소진 후에만 |
-| 전면 OpenAPI codegen (orval 등) | API 레이어가 이미 깨끗 — **타입만** 생성하는 `openapi-typescript` 경량 도입이 적정선 (FE-S10) |
+| 按 domain 拆分 `config.py` Settings（BE-S12） | 虽有 101 个字段，但 section comment 划分良好。拆分只会引发 `settings.X` 访问路径全量修改 diff，实际收益为零 |
+| generic BaseService（CRUD 公共 parent class） | 各 service create/update 含 scheduler sync·validation·audit 等 domain logic — 泛型化会过度抽象。需要时最多做 `commit_refresh(db, obj)` mini helper |
+| 所有资源共用单一 generic `load_owned(Model, id, user)` | ownership 语义（是否包含 system、是否 404-collapse）按资源不同，会导致 flag 爆炸。正确做法是按资源各自一个薄 dependency function（BE-D1/D4） |
+| 前端 generic `useResourceQuery` hook | 当前 API 3 层（`apiFetch` → `xxxApi` → `use-xxx`）是 idiomatic TanStack — 这不是 boilerplate，而是 convention |
+| credential interpolation 逻辑公共化 | 已通过 `app/credentials/interpolation.py` 的 `resolve_deep` 单函数**完全中心化**（11 call sites）。无需处理 |
+| 将 chat_service 的 scope/is_pinned composite cursor 统一为公共 cursor | domain-specific field — 强行统一反而造成耦合。只共享 normalization function（`normalize_cursor_dt`）（BE-D5） |
+| BE-D8 Response schema mixin 全面应用 | `user_id` nullable 与否按资源不同，不能放进 base。`ORMModel`（只含 config）是安全线，收益最小 — 仅在 P1/P2 清完后考虑 |
+| 全面 OpenAPI codegen（orval 等） | API layer 已经很干净 — 只生成**类型**的轻量 `openapi-typescript` 更合适（FE-S10） |
 
 ---
 
-## 11. 신규 기능 발굴
+## 11. 新功能发掘
 
-### 11-A. 이미 계획·문서화된 로드맵 (재발굴 아님 — 착수만 하면 되는 것)
+### 11-A. 已规划·文档化的 roadmap（不是重新发掘 — 只需启动）
 
-| 항목 | 출처 | 비고 |
+| 项目 | 来源 | 备注 |
 |------|------|------|
-| G1 멀티모달 입력 — 첨부 이미지가 모델에 전달 안 됨 | `docs/design-docs/chat-feature-gap-analysis.md` | **채팅 갭 1순위**. 끊김점이 `conversation_agent_protocol_commands.py` 한 곳으로 좁혀져 있고 `models.supports_vision` 컬럼 존재 — 공수 M. checkpoint base64 팽창만 리스크 |
-| Marketplace MCP/Agent publish·install UX 확장 | `TASKS.md` Active Follow-ups | Skill Phase 1 완료 상태. install_service에 MCP/blueprint 경로는 이미 존재(BE-S3 분해와 함께 진행 권장) |
-| 아티팩트/공유/마켓 설치/메모리 승인 E2E 확충 | `TASKS.md` | IX-7(프로젝트 분리)과 함께 |
-| 멀티-worktree 스케줄러 하드닝 | `TASKS.md` | SEC-3(중복실행 가드)이 선행 조건 |
-| OpenWiki Phase 2 — 스케줄 자동갱신 | 메모리(openwiki 분석) | 트리거 경로의 스킬 차단(`risk.py:317-325`) 해제 + invoke 경로 artifact recorder 주입 필요 |
-| 스킬 빌더 멀티턴 대화 이관 + 스킬 관리 UI 대개편 | 메모리(skill-ui-overhaul) | 현 스킬 빌더는 single-shot 폼 — 옵션 A(shell 재사용)/B(deep-agent 재작성)/C(일반 에이전트화) 결정 필요 |
-| 미들웨어 UX Phase D — 프리셋/실행 순서 DnD/provider 자동 감지 | `TASKS.md` Phase 14 잔여 | 레지스트리·UI 인프라 완비, 순수 UX 작업 |
-| 채팅 소소한 quick win 군: G9 슬래시 커맨드, G11 CSV/컬럼 토글, G12 음성·draft, G15 시간치환, G10-C/D | chat-feature-gap-analysis | 전부 S급으로 feasibility 검증 완료 |
+| G1 multimodal input — attachment image 未传给 model | `docs/design-docs/chat-feature-gap-analysis.md` | **chat gap 第 1 优先**。断点已收窄到 `conversation_agent_protocol_commands.py` 一处，且存在 `models.supports_vision` column — 工时 M。唯一风险是 checkpoint base64 膨胀 |
+| Marketplace MCP/Agent publish·install UX 扩展 | `TASKS.md` Active Follow-ups | Skill Phase 1 已完成。install_service 已有 MCP/blueprint path（建议与 BE-S3 拆分一起推进） |
+| 扩充 artifact/share/Marketplace install/memory approval E2E | `TASKS.md` | 与 IX-7（project 拆分）一起 |
+| multi-worktree scheduler hardening | `TASKS.md` | SEC-3（重复执行 guard）是前置条件 |
+| OpenWiki Phase 2 — schedule auto-update | memory（openwiki 分析） | 需要解除 trigger path 的 Skill 阻断（`risk.py:317-325`）+ 在 invoke path 注入 artifact recorder |
+| Skill builder 多轮对话迁移 + Skill 管理 UI 大改 | memory（skill-ui-overhaul） | 当前 Skill builder 是 single-shot form — 需要在 A（shell 复用）/B（deep-agent 重写）/C（一般 Agent 化）中决策 |
+| Middleware UX Phase D — preset/执行顺序 DnD/provider 自动检测 | `TASKS.md` Phase 14 剩余 | registry·UI 基础设施完备，纯 UX 工作 |
+| chat 小型 quick win 组：G9 slash command, G11 CSV/column toggle, G12 voice·draft, G15 时间替换, G10-C/D | chat-feature-gap-analysis | 全部已完成 S 级 feasibility 验证 |
 
-### 11-B. 신규 기능 제안 (우선순위순)
+### 11-B. 新功能建议（按优先级）
 
-제안 전 관련 테이블/라우터/화면의 존재 여부를 grep으로 확인해 이미 있는 기능은 제외했다. (확인 예: 트리거 타입은 `interval|cron|one_time`뿐 — `models/agent_trigger.py:23-25`, notification 인프라 부재, RAG/벡터 인프라 부재, agent_blueprints·daily_spend_*·skill_evaluation_* 존재.)
+在提案前已通过 grep 确认相关 table/router/screen 是否存在，排除已有功能。（确认示例：trigger type 只有 `interval|cron|one_time` — `models/agent_trigger.py:23-25`，不存在 notification 基础设施，不存在 RAG/vector 基础设施，agent_blueprints·daily_spend_*·skill_evaluation_* 已存在。）
 
-### [F1] 웹훅(이벤트) 트리거
-- **가치**: 지금은 시간 기반(interval/cron/one_time)으로만 에이전트가 깨어남. 외부 이벤트(폼 제출, 알림 수신, GitHub 이벤트, IoT)로 에이전트를 실행할 수 있으면 자동화 범위가 근본적으로 확장 — n8n/Zapier류 대비 최대 격차 중 하나.
-- **우선순위 제안**: P1 (가치 높음 × 기존 자산으로 비용 낮음)
-- **기존 자산 활용**: `agent_triggers`+`agent_trigger_runs` 테이블, `trigger_executor.py`(invoke 모드·HiTL 비활성 정책 그대로 재사용), Agent API의 키 인증 패턴(`agent_api_*`), `audit_events`.
-- **구현 스케치**:
-  1. 마이그레이션: `agent_triggers.trigger_type`에 `"webhook"` 추가 + `webhook_secret`(암호화 저장, Cipher V2 재사용) 컬럼.
-  2. `POST /api/hooks/{trigger_id}` 공개 엔드포인트 — HMAC-SHA256 서명 검증(`X-Moldy-Signature`), rate limit, payload 크기 상한.
-  3. payload를 트리거 메시지 템플릿에 보간해 `trigger_executor.execute_trigger` 호출(SEC-3의 중복실행 가드 선행 필수).
-  4. 프론트: 스케줄 폼(`features/schedules/components/schedule-form.tsx`)에 웹훅 타입 추가 — URL/시크릿 표시 + 재발급 버튼.
-  5. run 이력은 기존 `agent_trigger_runs` 화면 그대로.
-- **예상 공수**: M
+### [F1] Webhook（事件）Trigger
+- **价值**：目前 Agent 只能按时间（interval/cron/one_time）唤醒。若能由外部事件（表单提交、通知接收、GitHub event、IoT）触发 Agent，自动化范围会根本扩展 — 这是相对 n8n/Zapier 类产品最大的 gap 之一。
+- **优先级建议**：P1（价值高 × 可复用现有资产，成本低）
+- **现有资产复用**：`agent_triggers`+`agent_trigger_runs` table，`trigger_executor.py`（invoke mode·HiTL 禁用 policy 原样复用），Agent API 的 key auth pattern（`agent_api_*`），`audit_events`。
+- **实现草图**：
+  1. migration：给 `agent_triggers.trigger_type` 增加 `"webhook"` + `webhook_secret`（加密存储，复用 Cipher V2）column。
+  2. `POST /api/hooks/{trigger_id}` public endpoint — HMAC-SHA256 signature 验证（`X-Moldy-Signature`），rate limit，payload size 上限。
+  3. 将 payload 插入 trigger message template，再调用 `trigger_executor.execute_trigger`（必须先完成 SEC-3 重复执行 guard）。
+  4. 前端：在 schedule form（`features/schedules/components/schedule-form.tsx`）增加 webhook type — URL/secret 显示 + regenerate button。
+  5. run history 继续使用现有 `agent_trigger_runs` screen。
+- **预计工时**：M
 
-### [F2] RAG 지식베이스 (문서 업로드 → 검색 도구)
-- **가치**: "내 문서를 아는 에이전트"는 노코드 에이전트 빌더의 표준 기대치(Dify/Flowise 모두 보유)인데 Moldy에는 스킬(지시문)만 있고 문서 KB가 없음. 사내 위키/매뉴얼 기반 Q&A 에이전트를 즉시 가능하게 함.
-- **우선순위 제안**: P1 (가치 최대 — 공수는 L이지만 차별화 핵심)
-- **기존 자산 활용**: PostgreSQL 16(+pgvector 확장), 업로드 파이프라인(`POST /api/uploads`·`message_attachments`), credential 시스템(임베딩용 LLM 키 — ADR-013 우선순위 그대로), tool registry(`builtin:*` 패턴), 문서 아티팩트 뷰어(프리뷰 재사용), APScheduler(백그라운드 인덱싱).
-- **구현 스케치**:
-  1. 마이그레이션: pgvector 확장 + `knowledge_bases`/`kb_documents`/`kb_chunks(embedding vector)` 테이블 (is_system/user_id 규약 준수).
-  2. 인덱싱 파이프라인: 업로드 → 텍스트 추출(기존 문서 파서 자산) → 청킹 → 임베딩(system LLM settings에 embedding role 추가, ADR-019 패턴) — 스케줄러 백그라운드 잡으로 비동기 처리.
-  3. `builtin:kb_search` 도구: 에이전트에 KB 연결(`agent_knowledge_bases` 링크 테이블), top-k 검색 결과에 출처 chunk 포함.
-  4. 프론트: `/knowledge` 관리 화면(업로드·인덱싱 상태), 에이전트 설정에 KB 연결 섹션.
-  5. 채팅 인용 카드: 기존 search-tool 리치카드(출처 집계) 패턴 재사용.
-- **예상 공수**: L
+### [F2] RAG Knowledge Base（文档上传 → 搜索工具）
+- **价值**："懂我的文档的 Agent"是 no-code Agent builder 的标准预期（Dify/Flowise 都有），但 Moldy 只有 Skill（指令），没有 document KB。可立即支持基于内部 wiki/manual 的 Q&A Agent。
+- **优先级建议**：P1（价值最大 — 工时 L，但属于差异化核心）
+- **现有资产复用**：PostgreSQL 16（+pgvector extension）、upload pipeline（`POST /api/uploads`·`message_attachments`）、credential 系统（embedding 用 LLM key — 沿用 ADR-013 优先级）、tool registry（`builtin:*` 模式）、document artifact viewer（复用 preview）、APScheduler（后台 indexing）。
+- **实现草图**：
+  1. migration：pgvector extension + `knowledge_bases`/`kb_documents`/`kb_chunks(embedding vector)` table（遵守 is_system/user_id convention）。
+  2. indexing pipeline：upload → text extract（复用现有 document parser 资产）→ chunking → embedding（在 system LLM settings 增加 embedding role，沿用 ADR-019 模式）— 通过 scheduler background job 异步处理。
+  3. `builtin:kb_search` tool：把 KB 连接到 Agent（`agent_knowledge_bases` link table），top-k search result 包含 source chunk。
+  4. 前端：`/knowledge` 管理 screen（upload·indexing status），Agent settings 增加 KB connection section。
+  5. chat citation card：复用现有 search-tool rich card（source aggregation）模式。
+- **预计工时**：L
 
-### [F3] 사용량 쿼터·예산 제한
-- **가치**: 멀티유저 전환(ADR-016) 완료 후 운영자에게 필수 — 특정 유저/에이전트의 비용 폭주를 막을 수단이 현재 없음(집계·표시만 있음).
-- **우선순위 제안**: P2
-- **기존 자산 활용**: **`daily_spend_*` 집계 테이블이 이미 존재**, `token_usages`, super_user 권한, 채팅 에러 버블(예산 초과 안내 재사용).
-- **구현 스케치**:
-  1. `user_budgets`(user_id, monthly_usd_cap, alert_threshold) 테이블 + super_user 관리 API.
-  2. run 시작 전 체크: `agent_stream_runner` 진입점에서 daily_spend 합산 대비 캡 검사 → 초과 시 구조화 에러(error_codes 패턴)로 즉시 반환.
-  3. 80%/100% 도달 시 알림(F4와 연계) + 컴포저 옆 예산 게이지(기존 컨텍스트 게이지 UI 패턴 재사용).
-  4. super_user 화면: `/settings/usage`에 유저별 캡 관리 탭 추가.
-- **예상 공수**: M
+### [F3] Usage Quota·Budget Limit
+- **价值**：multi-user 转换（ADR-016）完成后，这是 operator 必需能力 — 当前没有手段阻止特定 user/Agent 的成本失控（只有 aggregate/display）。
+- **优先级建议**：P2
+- **现有资产复用**：**`daily_spend_*` aggregate table 已存在**，`token_usages`，super_user 权限，chat error bubble（复用预算超限提示）。
+- **实现草图**：
+  1. `user_budgets`（user_id, monthly_usd_cap, alert_threshold）table + super_user 管理 API。
+  2. run 开始前检查：在 `agent_stream_runner` entry 汇总 daily_spend 并与 cap 对比 → 超限立即以结构化 error（error_codes 模式）返回。
+  3. 达到 80%/100% 时 notification（与 F4 联动）+ composer 旁 budget gauge（复用现有 context gauge UI 模式）。
+  4. super_user screen：在 `/settings/usage` 增加按 user 管理 cap 的 tab。
+- **预计工时**：M
 
-### [F4] 알림 센터 (G14 확장)
-- **가치**: 트리거 실패·HITL 승인 대기·장시간 런 완료를 현재는 해당 화면에 들어가야만 알 수 있음. 스케줄 자동화가 늘수록(F1 도입 시 더욱) 미확인 실패가 조용히 쌓임.
-- **우선순위 제안**: P2
-- **기존 자산 활용**: `message_events` SSE 인프라, `agent_trigger_runs`(실패 상태), HITL interrupt 이벤트, Google Chat Webhook 도구(외부 채널 재사용), 네비게이터 레이아웃(벨 아이콘 배치).
-- **구현 스케치**:
-  1. `notifications` 테이블(user_id, type, payload, read_at) + 서비스/라우터.
-  2. 발생점 훅 3곳: trigger_executor 실패 시, HITL interrupt 발생 시(트리거 아닌 대화만), 60초+ 런 완료 시.
-  3. 프론트: 헤더 벨 아이콘 + 미읽음 배지 + 드롭다운 목록(클릭 시 해당 대화/스케줄로 점프 — 기존 jump-to-message 재사용).
-  4. (선택) 유저별 외부 채널 설정: Google Chat webhook/이메일로 포워딩.
-- **예상 공수**: M
+### [F4] Notification Center（扩展 G14）
+- **价值**：trigger 失败·等待 HITL approval·长 run 完成，目前只有进入对应 screen 才知道。随着 schedule automation 增多（尤其 F1 引入后），未确认失败会静默累积。
+- **优先级建议**：P2
+- **现有资产复用**：`message_events` SSE 基础设施，`agent_trigger_runs`（failure status），HITL interrupt event，Google Chat Webhook tool（复用外部 channel），navigator layout（放置 bell icon）。
+- **实现草图**：
+  1. `notifications` table（user_id, type, payload, read_at）+ service/router。
+  2. 3 个发生点 hook：trigger_executor 失败时，HITL interrupt 发生时（仅非 trigger conversation），60s+ run 完成时。
+  3. 前端：header bell icon + unread badge + dropdown list（点击跳到对应 conversation/schedule — 复用现有 jump-to-message）。
+  4. （可选）按 user 设置外部 channel：转发到 Google Chat webhook/email。
+- **预计工时**：M
 
-### [F5] 에이전트 버전 히스토리·롤백
-- **가치**: 프롬프트/도구 구성을 실험하다 "어제 잘 되던 설정"으로 못 돌아감. Fix Agent·Assistant가 에이전트를 자동 수정하는 제품 특성상 변경 이력의 가치가 특히 큼.
-- **우선순위 제안**: P2
-- **기존 자산 활용**: **`agent_blueprints`가 이미 에이전트 스냅샷 포맷** (marketplace 설치용 — `models/agent_blueprint.py`), `install_service._apply_agent_payload_to_blueprint` 역변환 로직, `audit_events`(변경 주체 기록).
-- **구현 스케치**:
-  1. agent_service.update 시 변경 전 상태를 blueprint 포맷으로 `agent_versions` 테이블에 스냅샷(직전과 diff 없으면 스킵).
-  2. `GET /api/agents/{id}/versions` + 버전 간 diff API(system_prompt는 텍스트 diff, 도구/스킬은 집합 diff).
-  3. 롤백: blueprint→agent 적용 로직(BE-S3 분해로 모듈화된 `install/agent_blueprint.py` 재사용).
-  4. 프론트: 에이전트 설정에 "버전 기록" 탭 — 타임라인 + diff 뷰 + 롤백 버튼(확인 다이얼로그).
-- **예상 공수**: M
+### [F5] Agent Version History·Rollback
+- **价值**：试验 prompt/tool 配置后无法回到"昨天还能正常工作的设置"。Fix Agent·Assistant 会自动修改 Agent，因此变更历史价值尤其高。
+- **优先级建议**：P2
+- **现有资产复用**：**`agent_blueprints` 已经是 Agent snapshot format**（用于 marketplace 安装 — `models/agent_blueprint.py`），`install_service._apply_agent_payload_to_blueprint` 反向转换逻辑，`audit_events`（记录变更主体）。
+- **实现草图**：
+  1. agent_service.update 时，把变更前状态按 blueprint format snapshot 到 `agent_versions` table（与上一版无 diff 则 skip）。
+  2. `GET /api/agents/{id}/versions` + 版本间 diff API（system_prompt 用 text diff，tool/Skill 用 set diff）。
+  3. rollback：复用 blueprint→agent apply 逻辑（BE-S3 拆分后模块化的 `install/agent_blueprint.py`）。
+  4. 前端：Agent settings 增加"版本记录"tab — timeline + diff view + rollback button（confirm dialog）。
+- **预计工时**：M
 
-### [F6] 에이전트 평가(eval) 하네스
-- **가치**: 프롬프트/모델 변경이 품질을 올렸는지 내렸는지 확인할 방법이 현재 없음(감으로 판단). F5(버전)와 결합하면 "버전 A vs B 성적표"가 가능.
-- **우선순위 제안**: P2 (F5 이후)
-- **기존 자산 활용**: **`skill_evaluation_*` 서비스 20+ 파일**(스킬 평가 인프라·`SKILL_EVALUATION_ENABLED` 플래그 — 평가 개념이 이미 코드베이스에 존재), `e2e_scripted_model`, `trigger_executor` invoke 모드(배치 실행), checkpoint fork(재실행 인프라), `message_feedback`(암묵 평가 데이터).
-- **구현 스케치**:
-  1. `eval_datasets`/`eval_cases`(질문, 기대 기준) CRUD.
-  2. 배치 러너: 에이전트(또는 버전)에 대해 케이스 일괄 invoke — trigger_executor 패턴 재사용, 동시성 제한.
-  3. LLM-judge 채점(system LLM settings에 judge role) + 점수 저장.
-  4. 프론트: 에이전트 설정 "평가" 탭 — 데이터셋 관리, 실행, 버전 간 점수 비교 표.
-- **예상 공수**: L
+### [F6] Agent Evaluation (eval) Harness
+- **价值**：目前无法确认 prompt/model 变更到底提升还是降低质量（只能凭感觉）。结合 F5（版本）后可以做"版本 A vs B scorecard"。
+- **优先级建议**：P2（F5 之后）
+- **现有资产复用**：**`skill_evaluation_*` service 20+ 文件**（Skill eval 基础设施·`SKILL_EVALUATION_ENABLED` flag — eval 概念已存在于代码库），`e2e_scripted_model`，`trigger_executor` invoke mode（batch execution），checkpoint fork（re-run 基础设施），`message_feedback`（隐式 eval data）。
+- **实现草图**：
+  1. `eval_datasets`/`eval_cases`（问题、expected criteria）CRUD。
+  2. batch runner：对 Agent（或版本）批量 invoke case — 复用 trigger_executor 模式，限制 concurrency。
+  3. LLM-judge scoring（system LLM settings 增加 judge role）+ 保存 score。
+  4. 前端：Agent 设置“评估”标签页 — 数据集管理、执行、版本间分数对比表。
+- **预计工时**：L
 
-### [F7] 에이전트 임베드 위젯
-- **가치**: 만든 에이전트를 자기 웹사이트에 채팅 위젯으로 붙이는 것 — Agent API(M56)가 이미 완성돼 있어 마지막 한 조각(위젯 JS)만 없음. 외부 노출 = 제품 홍보 루프.
-- **우선순위 제안**: P2
-- **기존 자산 활용**: **Agent API 완비**(`agent_deployments`, scoped API keys, threads, runs, `/v1` 스트리밍), `share_links`(공개 노출 패턴), 디자인 토큰.
-- **구현 스케치**:
-  1. 경량 위젯 번들(iframe 방식 — 호스트 CSS 격리): 플로팅 버튼 + 채팅 패널, `/v1` 스트리밍 소비.
-  2. deployment 설정 확장: 위젯 테마 색/인사말/허용 도메인(Origin 검증).
-  3. 퍼블릭 rate limit(deployment 단위) + 위젯 전용 익명 thread 정책.
-  4. Agent API 설정 화면에 embed `<script>` 스니펫 복사 UI.
-- **예상 공수**: M
+### [F7] Agent 嵌入小组件
+- **价值**：把创建的 Agent 作为聊天小组件嵌入自己的网站 — Agent API(M56) 已经完成，只缺最后一块（小组件 JS）。外部曝光 = 产品推广循环。
+- **优先级建议**：P2
+- **利用现有资产**：**Agent API 完备**（`agent_deployments`, scoped API keys, threads, runs, `/v1` 流式传输），`share_links`（公开暴露模式），设计 token。
+- **实现草图**：
+  1. 轻量小组件 bundle（iframe 方式 — 隔离宿主 CSS）：悬浮按钮 + 聊天面板，消费 `/v1` 流式传输。
+  2. 扩展 deployment 设置：小组件主题色/问候语/允许域名（Origin 校验）。
+  3. 公共 rate limit（deployment 单位）+ 小组件专用匿名 thread 策略。
+  4. 在 Agent API 设置页面提供复制 embed `<script>` 代码片段的 UI。
+- **预计工时**：M
 
-### [F8] 대화 분석 대시보드
-- **가치**: 운영자·헤비유저가 "어떤 에이전트가 많이 쓰이고, 어디서 실패하며, 비용이 어디로 가는지"를 한눈에. 현 `/usage`는 토큰 집계 위주.
-- **우선순위 제안**: P3
-- **기존 자산 활용**: `token_usages`, `daily_spend_*`, `agent_trigger_runs`, `message_feedback`, `audit_events`, 기존 수제 SVG 차트 컴포넌트(chart-card — FE-D4 토큰화 이후).
-- **구현 스케치**:
-  1. 집계 API: 기간별 대화 수/토큰/비용, 에이전트별 top-N, 도구 사용 빈도, 실패율(error_message 존재 run), 피드백 분포.
-  2. `/usage`를 탭 구조로 확장(사용량 | 분석) 또는 `/analytics` 신설.
-  3. BE-P6 인덱스(특히 token_usages) 선행 필수 — 집계 쿼리가 풀스캔이면 역효과.
-- **예상 공수**: M
+### [F8] 对话分析仪表盘
+- **价值**：让运营人员和重度用户一眼看清“哪些 Agent 使用量大、哪里失败、成本流向何处”。当前 `/usage` 主要是 token 汇总。
+- **优先级建议**：P3
+- **利用现有资产**：`token_usages`, `daily_spend_*`, `agent_trigger_runs`, `message_feedback`, `audit_events`，现有手写 SVG 图表组件（chart-card — FE-D4 token 化之后）。
+- **实现草图**：
+  1. 聚合 API：按时间段统计对话数/token/成本、按 Agent 的 top-N、工具使用频率、失败率（存在 error_message 的 run）、反馈分布。
+  2. 将 `/usage` 扩展为标签页结构（使用量 | 分析），或新建 `/analytics`。
+  3. 必须先做 BE-P6 索引（尤其 token_usages）— 如果聚合查询走全表扫描会适得其反。
+- **预计工时**：M
 
-### [F9] 대화 폴더·태그 정리
-- **가치**: 대화가 수백 개 쌓이면 pin/검색만으로 부족. 프로젝트별 그룹핑 요구는 채팅 제품의 공통 진화 경로.
-- **우선순위 제안**: P3
-- **기존 자산 활용**: 네비게이터(keyset 페이지네이션·pin·rename 완비, M63 인덱스), `conversations` 테이블.
-- **구현 스케치**: ① `conversation_tags`(또는 folders) 테이블 + CRUD ② 네비게이터 필터 칩 ③ 대화 컨텍스트 메뉴에 태그 지정. 
-- **예상 공수**: S~M
+### [F9] 对话文件夹·标签整理
+- **价值**：对话积累到数百条后，仅靠 pin/搜索不够。按项目分组是聊天产品的常见演进路径。
+- **优先级建议**：P3
+- **利用现有资产**：导航器（keyset 分页·pin·rename 完备，M63 索引），`conversations` 表。
+- **实现草图**：① `conversation_tags`（或 folders）表 + CRUD ② 导航器过滤 chip ③ 在对话上下文菜单中指定标签。
+- **预计工时**：S~M
 
-### [F10] 팀 워크스페이스 (에이전트 협업 공유)
-- **가치**: 현재 공유는 marketplace 발행(비동기 복사) 또는 대화 share link뿐 — 팀이 **같은 에이전트 인스턴스**를 함께 운영·수정하는 모델이 없음. B2B 방향의 관문 기능.
-- **우선순위 제안**: P3 (가치 크지만 권한 모델 전면 확장이라 공수 최대 — ADR 선행 필수)
-- **기존 자산 활용**: marketplace ACL 테이블(공유 권한 개념), `is_super_user` 권한 모델(RBAC 확장 여지가 ADR-016에 명시), audit_events.
-- **구현 스케치**: ① ADR 작성(workspace vs 리소스별 공유 — 스코프 결정이 핵심) ② `workspaces`/`workspace_members`(role) ③ 리소스 소유를 user_id → owner(workspace|user) 다형으로 확장(대규모 마이그레이션) ④ 초대 플로우 + 멤버 관리 UI. **주의: F1~F9 대비 리스크가 한 차원 높으므로 별도 스펙(/spec) 트랙 권장.**
-- **예상 공수**: XL
+### [F10] 团队工作区（Agent 协作共享）
+- **价值**：当前共享只有 marketplace 发布（异步复制）或对话 share link — 团队没有共同运营、修改**同一个 Agent 实例**的模型。这是通往 B2B 方向的关键入口功能。
+- **优先级建议**：P3（价值高，但需要全面扩展权限模型，工作量最大 — 必须先做 ADR）
+- **利用现有资产**：marketplace ACL 表（共享权限概念），`is_super_user` 权限模型（ADR-016 中注明了 RBAC 扩展空间），audit_events。
+- **实现草图**：① 编写 ADR（workspace vs 按资源共享 — scope 决策是关键）② `workspaces`/`workspace_members`(role) ③ 将资源所有权从 user_id → owner(workspace|user) 扩展为多态（大规模迁移）④ 邀请流程 + 成员管理 UI。**注意：相比 F1~F9 风险高一个量级，因此建议走单独的规格（/spec）轨道。**
+- **预计工作量**：XL
 
-### 기능 우선순위 요약
+### 功能优先级汇总
 
-| 순위 | 기능 | 근거 |
+| 排名 | 功能 | 依据 |
 |:---:|------|------|
-| 1 | G1 멀티모달 입력 (기계획) | 끊김점 1곳, 컬럼 존재 — 최소 공수로 채팅 체감 최대 |
-| 2 | F1 웹훅 트리거 | 자동화 확장의 관문, 기존 트리거 인프라 재사용 |
-| 3 | F2 RAG 지식베이스 | 경쟁 제품 대비 최대 격차, 차별화 핵심 |
-| 4 | F3 쿼터·예산 | 멀티유저 운영 필수, daily_spend 재사용으로 공수 M |
-| 5 | F4 알림 센터 | F1 도입 시 필수성 급증 |
-| 6 | F5 버전 히스토리 → F6 평가 | blueprint/skill_evaluation 자산 재사용, 순서 의존 |
-| 7 | F7 임베드 위젯 | Agent API 마지막 한 조각 |
-| 8+ | F8 분석, F9 태그, F10 워크스페이스 | 여유 시 / F10은 ADR 선행 |
+| 1 | G1 多模态输入（已有计划） | 仅 1 处断点，列已存在 — 以最小工作量获得最大的聊天体验提升 |
+| 2 | F1 Webhook 触发器 | 自动化扩展的入口，复用现有触发器基础设施 |
+| 3 | F2 RAG 知识库 | 与竞品相比差距最大，是差异化核心 |
+| 4 | F3 配额·预算 | 多用户运营必需，通过复用 daily_spend，工作量为 M |
+| 5 | F4 通知中心 | 引入 F1 后必要性急剧上升 |
+| 6 | F5 版本历史 → F6 评估 | 复用 blueprint/skill_evaluation 资产，有顺序依赖 |
+| 7 | F7 嵌入小组件 | Agent API 的最后一块拼图 |
+| 8+ | F8 分析、F9 标签、F10 工作区 | 有余力时 / F10 需先做 ADR |
 
 ---
 
-## 12. 부록 — 공통 검증 커맨드
+## 12. 附录 — 通用验证命令
 
-모든 리팩토링 PR은 병합 전 아래를 통과해야 한다 (IX-1 CI 도입 후에는 자동화).
+所有重构 PR 在合并前都必须通过以下检查（引入 IX-1 CI 后自动化）。
 
 ```bash
-# 백엔드 (backend/)
-uv run ruff check .                          # 린트
-uv run pyright                               # 타입체크 — basic-mode 전체 0 유지, CI blocking
-uv run --with pytest-xdist pytest -q -n 4    # 전체 테스트 (aiosqlite, DB 불필요)
-uv run pytest -m integration                 # live PG 필요 시 (docker compose up -d postgres 선행)
+# 后端 (backend/)
+uv run ruff check .                          # lint
+uv run pyright                               # 类型检查 — basic-mode 全部保持 0，CI blocking
+uv run --with pytest-xdist pytest -q -n 4    # 全量测试 (aiosqlite, 无需 DB)
+uv run pytest -m integration                 # 需要 live PG 时 (先执行 docker compose up -d postgres)
 
-# 프론트엔드 (frontend/)
-pnpm lint                                    # eslint + design-system/a11y/i18n/architecture 가드
-pnpm vitest run                              # 전체 유닛 (개별 파일 아님 — CLAUDE.md 규칙)
-pnpm build                                   # tsc + Next 빌드
+# 前端 (frontend/)
+pnpm lint                                    # eslint + design-system/a11y/i18n/architecture guard
+pnpm vitest run                              # 全量单元测试（不是单个文件 — CLAUDE.md 规则）
+pnpm build                                   # tsc + Next 构建
 
-# 채팅 관련 변경 시 추가
+# 涉及聊天的变更时追加
 pnpm exec playwright test e2e/chat-langgraph-v3-regressions.spec.ts
-# 전체 e2e는 throwaway 스택 절차(CLAUDE.md "E2E 포트/DB 격리") 준수
-# 푸시 전 backend pytest는 SKILL_EVALUATION_ENABLED=true 필요
+# 全量 e2e 遵循 throwaway 栈流程（CLAUDE.md “E2E 端口/DB 隔离”）
+# push 前 backend pytest 需要 SKILL_EVALUATION_ENABLED=true
 ```
 
-**성능 항목 측정 도구**: SQLAlchemy `echo=True` 또는 pytest 쿼리 카운터(N+1 검증), `py-spy`(이벤트 루프/CPU 프로파일), `EXPLAIN ANALYZE`(인덱스), React DevTools Profiler(리렌더 커밋 수), Network 탭(폴링 횟수), Lighthouse(TBT/번들).
+**性能项测量工具**：SQLAlchemy `echo=True` 或 pytest 查询计数器（N+1 验证），`py-spy`（事件循环/CPU profile），`EXPLAIN ANALYZE`（索引），React DevTools Profiler（rerender commit 次数），Network 标签页（polling 次数），Lighthouse（TBT/bundle）。
 
-**문서 유지 규칙**: 항목 완료 시 이 문서의 해당 행에 취소선 + PR 번호를 남기고, 라인 번호가 크게 어긋난 항목은 심볼명으로 재탐색해 갱신한다.
+**文档维护规则**：条目完成时，在本文档对应行加删除线 + PR 编号；如果行号偏差较大，则按 symbol 名重新搜索并更新。

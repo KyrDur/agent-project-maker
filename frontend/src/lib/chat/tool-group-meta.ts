@@ -15,17 +15,10 @@ const TOOL_LABEL_KEYS: Readonly<Record<string, string>> = {
   tavily_search: 'webSearch',
   web_search: 'webSearch',
   // registry definition_key——runtime 工具名的实际 fallback 值（tool_factory）。
-  naver_search_blog: 'naverBlog',
-  naver_search_news: 'naverNews',
-  naver_search_image: 'naverImage',
-  naver_search_shop: 'naverShop',
-  naver_search_local: 'naverLocal',
   google_search_web: 'googleSearch',
   google_search_image: 'googleImage',
   google_search_news: 'googleNews',
   // 过去硬编码的名称——用于兼容 fixture/snapshot。
-  naver_blog_search: 'naverBlog',
-  naver_news_search: 'naverNews',
   google_search: 'googleSearch',
   google_news_search: 'googleNews',
   read_file: 'readFile',
@@ -46,16 +39,9 @@ export function toolGroupLabelKey(toolName: string): string | null {
 const SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'tavily_search',
   'web_search',
-  'naver_search_blog',
-  'naver_search_news',
-  'naver_search_image',
-  'naver_search_shop',
-  'naver_search_local',
   'google_search_web',
   'google_search_image',
   'google_search_news',
-  'naver_blog_search',
-  'naver_news_search',
   'google_search',
   'google_news_search',
 ])
@@ -128,7 +114,7 @@ function resultPreview(result: unknown): string | null {
       const scalar = firstScalar(JSON.parse(text))
       if (scalar) return shortenLabel(scalar)
     } catch {
-      // JSON 파싱 실패 → 아래 첫 줄 폴백.
+      // JSON 解析失败 → fallback 到下面第一行。
     }
   }
   const firstLine = text.split('\n').find((line) => line.trim().length > 0)

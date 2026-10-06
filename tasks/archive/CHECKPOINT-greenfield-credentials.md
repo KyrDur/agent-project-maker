@@ -9,7 +9,7 @@
 
 ---
 
-## 결정 사항 (불변)
+## 决策事项 (不可变)
 
 1. Cipher: HKDF-SHA256(info=`b'moldy-encryption-v1'`), 단일 블롭 Base64(`[version 1B][salt 32B][authTag 16B][ciphertext]`), 멀티키 식별은 `credentials.key_id` 별도 컬럼.
 2. LLM 모델: `models` 유지(api_key_encrypted 제거), `agents.llm_credential_id` FK 추가, `llm_providers` 폐기.
@@ -275,7 +275,7 @@ python scripts/check_branding.py   # 0건
 - `services/usage_aggregate.py` 신규 — `get_daily_spend(target_kind, target_id, from_date, to_date, group_by)`. tenancy: user 축은 직접 FK, agent 축은 `Agent.user_id` join, model 축은 (per-model 테이블이 cross-user) `DailySpendAgent → Agent` join으로 *현 사용자 contribution*만 집계. `group_by=target` 시 user/agent/model 별 label 자동 fill.
 - `routers/usage.py` 보강 — `GET /api/usage/daily?target_kind=&target_id=&from=&to=&group_by=` 신규.
 - `NOTICES.md` — LiteLLM 차용 표에 `spend_writer.py` (DailySpendUpdateQueue), `usage_aggregate.py` (daily aggregate read API), `create_chat_model_with_fallback` (router fallback walk) 행 추가 + 본문 단락 보강.
-- 테스트:
+- 测试:
   - `test_spend_writer.py` (8) — flush_batch / ON CONFLICT 누적 / target 누락 시 axis skip / loop interval / stop drain / queue full degrade / distinct dates / Decimal precision
   - `test_usage_aggregate.py` (6) — user 축 시계열 / agent 축 group_by=target label / model 축 agent join scope / window 필터 / target_id 필터 / cross-tenant isolation
   - `test_model_fallback.py` (9) — recoverable classifier 3종 / executor chain (primary→fallback / 모두 실패 / unrecoverable / no chain) / `create_chat_model_with_fallback` audit (성공+실패) / no chain
@@ -317,7 +317,7 @@ python scripts/check_branding.py   # 0건
 - [ ] Sheet→Dialog 변환 4종: credential/skill/tool/mcp `*-detail-dialog.tsx` 신설 + 호출부 교체 + 기존 `*-detail-sheet.tsx` 삭제
 - 검증: `cd frontend && pnpm lint && pnpm build` (TS 에러 0, 빌드 성공)
 - done-when: 위 8개 항목 + Sheet 잔존 사용처 = 모바일 사이드바 + 대화목록 2건만
-- 상태: pending
+- 状态: pending
 
 ## M-UI2: Sprint 2 — 페이지 마이그레이션 + raw color 토큰화 + i18n
 - [ ] 5개 page.tsx (tools/models/skills/mcp-servers/credentials) → PageShell + isError 분기
@@ -325,14 +325,14 @@ python scripts/check_branding.py   # 0건
 - [ ] 한글 4건 + 영문 헤더 4건 → next-intl 메시지
 - 검증: `pnpm lint && pnpm build`
 - done-when: 페이지 5개에서 `flex flex-1 flex-col gap-6 ... p-6` 인라인 0건
-- 상태: pending
+- 状态: pending
 
 ## M-UI3: Sprint 3 — 에이전트 폼 RHF + Zod
 - [ ] `app/agents/[agentId]/settings/page.tsx` (518줄, useState 21개) → RHF + Zod
 - [ ] `app/agents/new/manual/page.tsx` 동일 스키마 재사용
 - 검증: `pnpm build` + 시각 회귀 (저장/Dirty/취소 동작)
 - done-when: useState 21→1 (form), 수동 dirty 195줄 삭제
-- 상태: pending
+- 状态: pending
 
 ## M-UI4: Sprint 4 — 성능 (번들/리렌더/Suspense)
 - [ ] `app/agents/[agentId]/visual-settings/page.tsx` xyflow `next/dynamic`
@@ -342,4 +342,4 @@ python scripts/check_branding.py   # 0건
 - [ ] Suspense 경계 도입 (채팅/visual-settings/usage)
 - 검증: `pnpm build` 청크 크기 비교 + 시각 회귀
 - done-when: visual-settings 청크가 메인 라우트보다 작음, key 안티패턴 0건
-- 상태: pending
+- 状态: pending

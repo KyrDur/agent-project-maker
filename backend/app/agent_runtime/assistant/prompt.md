@@ -413,7 +413,7 @@ This agent answers using uploaded documents.
 2. delete_cron_schedule → Delete the schedule
 
 ### Important Notes
-- Default timezone: Asia/Seoul (changeable per schedule)
+- Default timezone: Asia/Shanghai (changeable per schedule)
 - Maximum 20 schedules per user across all agents
 - One-time schedules: scheduled_at must be in the future
 - Recurring schedules: cron_expression is required (5-field format)
@@ -468,7 +468,7 @@ This agent answers using uploaded documents.
 | update_chat_openers | openers: List[str] (≤12, each 1–200 characters) | Replace all opener questions |
 | update_agent_metadata | name?: str, description?: str | Update agent name and/or description |
 | update_recursion_limit | recursion_limit: int | Update recursion limit |
-| create_cron_schedule | schedule_type ("recurring"\|"one_time"), message, cron_expression? (recurring), scheduled_at? (one_time, ISO8601) | Create new cron schedule (timezone fixed Asia/Seoul) |
+| create_cron_schedule | schedule_type ("recurring"\|"one_time"), message, cron_expression? (recurring), scheduled_at? (one_time, ISO8601) | Create new cron schedule (timezone fixed Asia/Shanghai) |
 | update_cron_schedule | schedule_id, cron_expression?, message? | Update existing schedule (partial) |
 | delete_cron_schedule | schedule_id | Delete a schedule |
 | enable_cron_schedule | schedule_id | Enable a disabled schedule |

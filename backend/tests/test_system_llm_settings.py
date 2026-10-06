@@ -204,8 +204,8 @@ async def test_put_nonexistent_credential_404(client: AsyncClient) -> None:
 async def test_put_non_llm_credential_422(client: AsyncClient, db: AsyncSession) -> None:
     cred_id = await _make_system_credential(
         db,
-        definition_key="naver_search",
-        data={"client_id": "id", "client_secret": "secret"},
+        definition_key="google_search",
+        data={"api_key": "id", "cse_id": "secret"},
     )
     resp = await client.put(
         f"{BASE}/text_primary",
@@ -470,8 +470,8 @@ async def test_invalid_credential_detail_is_byte_identical(
     )
     cred_id = await _make_system_credential(
         db,
-        definition_key="naver_search",
-        data={"client_id": "id", "client_secret": "secret"},
+        definition_key="google_search",
+        data={"api_key": "id", "cse_id": "secret"},
     )
     wrong_type = await client.put(
         f"{BASE}/text_fallback",

@@ -8,7 +8,7 @@ import { PhaseCard, PhaseCardHeader } from './phase-card'
 export type IntentConfidence = 'high' | 'medium' | 'low'
 
 export interface IntentSummaryCardProps {
-  /** 智能体名称（例：'韩康新闻监控'）。 */
+  /** 智能体名称（例：'行业新闻监控'）。 */
   name: string
   /** 智能体描述（一个段落）。 */
   description: string

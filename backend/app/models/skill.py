@@ -106,13 +106,13 @@ class Skill(Base):
     )
 
     # ---- m41 — marketplace lineage ---------------------------------------
-    # System skills (k-skill seed, system_seed) are owned by no specific user
+    # System skills are owned by no specific user
     # (CHECK enforced on tools/credentials; for skills we keep ``user_id``
     # NOT NULL so seed rows attach to the super_user account — see Spec §3.7).
     is_system: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
-    # Where the skill came from: 'user' | 'k-skill' | 'import' | 'system_seed'.
+    # Where the skill came from: 'user' | 'import' | 'system_seed'.
     source_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # When sourced from marketplace, the item + version that produced this
     # row. ON DELETE SET NULL so deleting an item doesn't cascade through
@@ -123,7 +123,7 @@ class Skill(Base):
     source_marketplace_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("marketplace_versions.id", ondelete="SET NULL"), nullable=True
     )
-    # Upstream commit id (k-skill, git-imported).
+    # Upstream commit id (git-imported).
     source_commit: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Snapshot of the version's credential_requirements at install time —
     # the runtime consults this without re-reading the marketplace row.

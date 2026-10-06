@@ -27,7 +27,7 @@ describe('SearchRender', () => {
     expect(screen.getByText('文件')).toBeInTheDocument()
   })
 
-  it('将 Naver items shape 渲染成卡片（description → snippet）', () => {
+  it('将 Google items shape 渲染成卡片（description → snippet）', () => {
     render(
       <SearchRender
         args={{ query: '美食店' }}
@@ -56,9 +56,9 @@ describe('SearchRender', () => {
             {
               title: '机械键盘',
               link: 'https://shop.example/1',
-              image: 'https://img.example/kb.jpg',
-              lprice: '12900',
-              mallName: '商城',
+              thumbnail: 'https://img.example/kb.jpg',
+              price: 12900,
+              merchant: '商城',
             },
           ],
         }}

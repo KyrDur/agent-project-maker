@@ -844,9 +844,9 @@ Requirements:
 
 Possible Korean copy:
 
-- `빠른 LLM 평가`
-- `정밀 비교 평가`
-- `스킬 사용 결과와 기준 결과를 모두 실행해서 비교합니다.`
+- `快速 LLM 评估`
+- `精细对比评估`
+- `同时执行技能使用结果和基准结果并进行比较。`
 
 Possible English copy:
 

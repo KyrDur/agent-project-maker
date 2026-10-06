@@ -95,8 +95,8 @@ This plan is based on the current source tree.
 
 The feature is complete when:
 
-- A user can start "대화로 만들기" from `/skills`.
-- A user can open an existing skill and start "대화로 개선" from the skill detail dialog.
+- A user can start "通过对话创建" from `/skills`.
+- A user can open an existing skill and start "通过对话改进" from the skill detail dialog.
 - The user sees a conversational UI, but the actual builder is not a normal Agent in the Agent list.
 - The builder asks for missing intent only when needed:
   - what the skill should enable
@@ -117,7 +117,7 @@ The feature is complete when:
 - The final skill can be opened in the existing Skill Detail dialog and edited with the existing package file editor.
 - If credential requirements are generated, the existing credential binding panel shows them.
 - Generated skills stay portable by default and do not put Moldy-only metadata in `SKILL.md` frontmatter.
-- `/skills` promotes "대화로 만들기" as the default creation path while preserving text creation and package upload.
+- `/skills` promotes "通过对话创建" as the default creation path while preserving text creation and package upload.
 - Global navigation keeps a single `Skills` entry. Skill creation, credentials, evaluations, history, compatibility, and rollback live inside `/skills`, skill detail tabs, status filters, and deep links instead of separate top-level menus.
 - Skill cards and agent skill picker rows show compact evaluation status so users can choose higher-quality installed skills.
 - Skill detail uses a unified tabbed detail surface for content/files, credentials, evaluation, history, and metadata instead of mixing all controls into one editing surface; advanced tabs can be conditionally visible when they have content or an actionable state.
@@ -289,8 +289,8 @@ Installed-skill UI rules:
 - Reuse `GET /api/skills/{skill_id}/credential-requirements`.
 - Reuse `GET/PUT/DELETE /api/skills/{skill_id}/credential-bindings`.
 - Move `SkillCredentialBindingsPanel` into the new `Credentials` tab.
-- If required user-scope bindings are missing, Skill Health returns `needs_credentials`, skill cards show `자격증명 필요`, and Evaluation tab primary action changes from `평가 실행` to `자격증명 연결`.
-- Clicking `자격증명 연결` opens the `Credentials` tab and focuses the first missing required requirement.
+- If required user-scope bindings are missing, Skill Health returns `needs_credentials`, skill cards show `需要凭据`, and Evaluation tab primary action changes from `运行评估` to `连接凭据`.
+- Clicking `连接凭据` opens the `Credentials` tab and focuses the first missing required requirement.
 - Do not add another credential picker to the eval flow.
 
 Runtime and evaluation rules:
@@ -964,7 +964,7 @@ Revision operations:
 - `manual_content_update`: text skill content change.
 - `manual_file_update`: package file create/update/delete/upload.
 - `builder_create`: skill created from a builder session.
-- `builder_improvement`: existing skill changed by "대화로 개선".
+- `builder_improvement`: existing skill changed by "通过对话改进".
 - `rollback`: current skill restored from an older revision.
 
 Storage:
@@ -1052,7 +1052,7 @@ Create `backend/scripts/backfill_skill_revisions.py`:
 
 UI behavior for legacy skills:
 
-- If no revision exists, the History tab shows: `현재 버전부터 이력이 쌓입니다.`
+- If no revision exists, the History tab shows: `从当前版本开始累积历史记录。`
 - On the first mutation of a skill with no revision, create a baseline `create` revision before applying the mutation, then create the mutation revision.
 - The empty History tab should not make users think rollback is broken; it should explain that old snapshots were not available before this feature.
 
@@ -1078,7 +1078,7 @@ POST /api/skill-builder/{session_id}/trigger-evals/run
 ```json
 {
   "mode": "create",
-  "user_request": "회의록 액션 아이템 추출 스킬을 만들어줘"
+  "user_request": "创建一个从会议纪要中提取行动项的技能"
 }
 ```
 
@@ -1086,7 +1086,7 @@ POST /api/skill-builder/{session_id}/trigger-evals/run
 {
   "mode": "improve",
   "source_skill_id": "uuid",
-  "user_request": "이 스킬이 마감일을 더 정확하게 뽑도록 개선해줘"
+  "user_request": "改进这个技能，让它更准确地提取截止日期"
 }
 ```
 
@@ -1331,7 +1331,7 @@ Rationale:
 Navigation structure:
 
 - Sidebar or primary navigation: keep only `Skills`.
-- `/skills` page: list, search, kind tabs, state filters, and the primary `대화로 만들기` action.
+- `/skills` page: list, search, kind tabs, state filters, and the primary `通过对话创建` action.
 - Skill detail dialog: `Content` or `Files`, `Credentials`, `Evaluation`, `History`, and `Metadata` tabs, shown conditionally.
 - Deep links may open a specific detail tab, for example `/skills?detailId=<id>&tab=evaluation`, but they still land inside `/skills`.
 - Admin-wide queues can become separate settings/admin surfaces later only if they cut across many skills, for example a global failed-evaluation queue or marketplace moderation queue.
@@ -1368,10 +1368,10 @@ Planned changes:
   - published
   - local/draft
 - Add evaluation summary to each `SkillCard` using `skill.latest_evaluation_summary`:
-  - completed: show pass rate, for example `평가 86%`
-  - stale: show `재평가 필요`
-  - no completed run: show `평가 없음`
-  - failed latest run: show `평가 실패`
+  - completed: show pass rate, for example `评估 86%`
+  - stale: show `需要重新评估`
+  - no completed run: show `暂无评估`
+  - failed latest run: show `评估失败`
 - Use `ResourceListCard.StatusRow` for the evaluation badge when marketplace badges are present. If there are no marketplace badges, still render a status row when an evaluation summary exists.
 - Keep card footer actions as `Publish` and `Manage`; do not add a card-level rerun action because reruns need evaluation set selection and evidence review.
 
@@ -1397,7 +1397,7 @@ Planned changes:
 
 - Replace the `scratch` tab with `chat`.
 - Rename visible tab copy:
-  - Korean: `대화로 만들기`
+  - 原韩文标签的中文翻译：`通过对话创建`
   - English: `Build by chat`
 - Remove browser-side JSZip creation from `ScratchTab`. Package generation moves to backend builder sessions.
 - Use `SkillBuilderDialog` as the single chat-builder implementation. Do not create a separate `SkillBuilderTab` abstraction in v1; `SkillCreateDialog` should delegate to `SkillBuilderDialog` when `initialTab === "chat"` so the chat surface can use the larger shell consistently.
@@ -1445,7 +1445,7 @@ Recommended layout:
 ```text
 SkillBuilderDialog
 ┌────────────────────────────────────────────────────────────────┐
-│ Header: 새 스킬 · 대화로 만들기                                  │
+│ Header: 新技能 · 通过对话创建                                  │
 ├───────────────────────────────┬────────────────────────────────┤
 │ Chat                           │ Preview                        │
 │ - user / assistant messages    │ - Files                        │
@@ -1453,7 +1453,7 @@ SkillBuilderDialog
 │ - composer                     │ - Validation                   │
 │ - streaming status             │ - Evaluation                   │
 ├───────────────────────────────┴────────────────────────────────┤
-│ Footer: 취소 · 검증 · 평가 실행 · 스킬 만들기                    │
+│ Footer: 取消 · 验证 · 运行评估 · 创建技能                    │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1495,12 +1495,12 @@ Current source:
 
 Existing skill improvement entry point:
 
-- Add a header or footer action named `대화로 개선` / `Improve by chat`.
+- Add a header or footer action named `通过对话改进` / `Improve by chat`.
 - The action opens the same `SkillBuilderDialog` in `mode="improve"` with `sourceSkillId={skill.id}`.
 - The first builder message should be prefilled from the user action when supplied, or use a default prompt:
 
 ```text
-이 스킬을 더 안정적이고 평가 가능한 형태로 개선해줘.
+请把这个技能改进得更稳定、更适合评估。
 ```
 
 - The builder preview should show:
@@ -1511,7 +1511,7 @@ Existing skill improvement entry point:
   - portable compatibility result
   - validation issues
   - evaluation result before apply, when available
-- The apply button copy should be `변경 적용` / `Apply changes`, not `스킬 만들기`.
+- The apply button copy should be `应用更改` / `Apply changes`, not `创建技能`.
 - If a hash conflict occurs, show:
   - current skill changed since this improvement session started
   - reload latest and reapply suggestion
@@ -1545,8 +1545,8 @@ Footer behavior:
 
 - `Content` / `Files`: show delete, close, and save actions exactly as today.
 - `Credentials`: show close only; credential changes are saved immediately by the existing binding mutations.
-- `Evaluation`: show close, `평가 다시 실행`, and `평가 취소` while a run is queued/running/grading.
-- `History`: show close and `이 버전으로 되돌리기` when a non-current revision is selected.
+- `Evaluation`: show close, `重新运行评估`, and `取消评估` while a run is queued/running/grading.
+- `History`: show close and `回滚到此版本` when a non-current revision is selected.
 - `Metadata`: show close and save metadata only if editable fields changed.
 
 Metadata tab:
@@ -1562,7 +1562,7 @@ History tab:
 - Show revision number, operation, created date, changelog summary, current marker, content hash, and file count.
 - Detail pane shows changelog items, changed files, compatibility result, and evaluation summary snapshot.
 - Selecting the current revision disables rollback.
-- Selecting an older revision enables `이 버전으로 되돌리기`.
+- Selecting an older revision enables `回滚到此版本`.
 - Rollback action calls `POST /api/skills/{skill_id}/revisions/{revision_id}/rollback`, shows a confirm dialog, then refreshes skill detail, skill list, evaluation summary, and revisions.
 - After rollback, open the new rollback revision detail and show a success toast.
 
@@ -1580,7 +1580,7 @@ Evaluation tab layout:
 Evaluation tab
 ┌───────────────────────────────────────────────────────────────┐
 │ Summary strip: latest pass rate · trigger accuracy · duration │
-│ Actions: 평가 다시 실행 · 평가 세트 만들기                      │
+│ Actions: 重新运行评估 · 创建评估集                      │
 ├──────────────────────────┬────────────────────────────────────┤
 │ Evaluation sets / runs    │ Selected run detail                 │
 │ - Builder generated set   │ - with-skill vs baseline metrics    │
@@ -1591,14 +1591,14 @@ Evaluation tab
 
 States:
 
-- No evaluation sets: show an empty state with `평가 세트 만들기`.
-- Evaluation set exists but no runs: show set details and primary `평가 실행`.
+- No evaluation sets: show an empty state with `创建评估集`.
+- Evaluation set exists but no runs: show set details and primary `运行评估`.
 - Estimate ready: show case count, model call count, estimated time, timeout, approximate cost, and baseline comparison before creating the run.
 - Running: show queued/running/grading status and keep previous completed run visible.
 - Completed: show latest summary and selected run detail.
 - Failed: show error message, failed stage, and allow rerun.
 - Cancelled: show cancellation time and allow rerun.
-- Stale: show `이 평가는 이전 스킬 버전 기준입니다` when `run.skill_content_hash !== skill.content_hash`.
+- Stale: show `此评估基于之前的技能版本` when `run.skill_content_hash !== skill.content_hash`.
 
 Data flow:
 
@@ -1645,19 +1645,19 @@ Mapping:
 
 In `ToolsSkillsDialog`, keep the row compact:
 
-- Selected column subtitle: `Skill · 평가 86%` or `Skill · 평가 없음`
-- Available skill row subtitle: `Package · 평가 86%` or `Text · 재평가 필요`
+- Selected column subtitle: `Skill · 评估 86%` or `Skill · 暂无评估`
+- Available skill row subtitle: `Package · 评估 86%` or `Text · 需要重新评估`
 - Do not add run detail or rerun controls to this dialog.
 
 Use `skill.health` when present for top-level labels:
 
-- `ready`: `검증됨`
-- `needs_evaluation`: `평가 없음`
-- `needs_rerun`: `재평가 필요`
-- `needs_credentials`: `자격증명 필요`
-- `evaluation_running`: `평가 중`
-- `evaluation_failed`: `평가 실패`
-- `low_confidence`: `낮은 통과율`
+- `ready`: `已验证`
+- `needs_evaluation`: `暂无评估`
+- `needs_rerun`: `需要重新评估`
+- `needs_credentials`: `需要凭据`
+- `evaluation_running`: `评估中`
+- `evaluation_failed`: `评估失败`
+- `low_confidence`: `通过率低`
 
 ### Copy And I18n
 
@@ -1667,50 +1667,50 @@ New Korean keys:
 
 ```json
 {
-  "buildWithChat": "대화로 만들기",
-  "improveWithChat": "대화로 개선",
-  "applyImprovement": "변경 적용",
-  "improvementConflict": "이 개선 세션을 시작한 뒤 스킬이 변경되었습니다.",
+  "buildWithChat": "通过对话创建",
+  "improveWithChat": "通过对话改进",
+  "applyImprovement": "应用更改",
+  "improvementConflict": "启动此改进会话后，技能已发生更改。",
   "changelog": {
-    "title": "변경 요약",
-    "empty": "표시할 변경 요약이 없습니다."
+    "title": "更改摘要",
+    "empty": "没有可显示的更改摘要。"
   },
   "compatibility": {
-    "title": "공용 호환성",
+    "title": "公共兼容性",
     "openaiCodex": "OpenAI/Codex",
     "claudeCode": "Claude Code",
     "vercelAgentSkills": "Vercel Agent Skills"
   },
   "history": {
-    "tab": "이력",
-    "current": "현재 버전",
-    "rollback": "이전 버전으로 되돌리기",
-    "rollbackConfirm": "이전 버전으로 되돌리면 현재 내용은 새 이력으로 보존됩니다.",
-    "rollbackDone": "이전 버전으로 되돌렸습니다."
+    "tab": "历史",
+    "current": "当前版本",
+    "rollback": "回滚到之前版本",
+    "rollbackConfirm": "回滚到之前版本后，当前内容会作为一条新的历史记录保留。",
+    "rollbackDone": "已回滚到之前版本。"
   },
   "evaluation": {
-    "tab": "평가",
-    "none": "평가 없음",
-    "passed": "평가 {rate}%",
-    "partial": "일부 통과 {rate}%",
-    "failed": "평가 실패",
-    "running": "평가 중",
-    "cancelled": "평가 취소됨",
-    "stale": "재평가 필요",
-    "rerun": "평가 다시 실행",
-    "cancel": "평가 취소",
-    "createSet": "평가 세트 만들기",
-    "estimate": "예상 {caseCount}개 케이스 · 약 {seconds}초",
-    "previousVersion": "이 평가는 이전 스킬 버전 기준입니다"
+    "tab": "评估",
+    "none": "暂无评估",
+    "passed": "评估 {rate}%",
+    "partial": "部分通过 {rate}%",
+    "failed": "评估失败",
+    "running": "评估中",
+    "cancelled": "评估已取消",
+    "stale": "需要重新评估",
+    "rerun": "重新运行评估",
+    "cancel": "取消评估",
+    "createSet": "创建评估集",
+    "estimate": "预计 {caseCount} 个用例 · 约 {seconds} 秒",
+    "previousVersion": "此评估基于之前的技能版本"
   },
   "health": {
-    "ready": "검증됨",
-    "needsEvaluation": "평가 없음",
-    "needsRerun": "재평가 필요",
-    "needsCredentials": "자격증명 필요",
-    "evaluationRunning": "평가 중",
-    "evaluationFailed": "평가 실패",
-    "lowConfidence": "낮은 통과율"
+    "ready": "已验证",
+    "needsEvaluation": "暂无评估",
+    "needsRerun": "需要重新评估",
+    "needsCredentials": "需要凭据",
+    "evaluationRunning": "评估中",
+    "evaluationFailed": "评估失败",
+    "lowConfidence": "通过率低"
   }
 }
 ```
@@ -2050,7 +2050,7 @@ Selection rules:
 The builder should tell the user what it inferred in plain language only when useful:
 
 ```text
-이 스킬은 회의록에서 구조화된 액션 아이템을 뽑는 유형으로 평가해볼게요.
+我会按“从会议纪要中提取结构化行动项”的类型来评估这个技能。
 ```
 
 Do not show a dropdown like "choose summarization/research/file_generation" in the default UI.
@@ -2070,7 +2070,7 @@ Keep the loop, but make it product-native:
 
 Optional eval-case review:
 
-- This is the "8번" from the brainstorming note.
+- This is the "第 8 项" from the brainstorming note.
 - It is not a required step in the default flow.
 - Show it only when:
   - the builder confidence is low
@@ -2122,7 +2122,7 @@ Add an optional `health` field to `SkillResponse` and `SkillBrief`:
 ```json
 {
   "state": "needs_rerun",
-  "label": "재평가 필요",
+  "label": "需要重新评估",
   "reason": "SKILL.md changed after the latest completed evaluation.",
   "severity": "warning"
 }
@@ -2302,7 +2302,7 @@ Rules:
 - Error when `name` is not lowercase kebab-case or exceeds 64 characters.
 - Error when `description` exceeds 1024 characters.
 - Warning when `description` is shorter than 80 characters.
-- Warning when `description` does not include trigger words such as "Use when", "사용", "when", "whenever", or a concrete file/domain/task context.
+- Warning when `description` does not include trigger words such as "Use when", "使用", "when", "whenever", or a concrete file/domain/task context.
 - Warning when `SKILL.md` body exceeds 500 lines.
 - Warning when `SKILL.md` contains scaffolding markers such as bracketed task markers, `Complete and informative`, `Replace with`, or HTML comments copied from the current scratch tab.
 - Error when a referenced file path in Markdown points outside the draft package.
@@ -2424,7 +2424,7 @@ Do not use user LLM credentials for this hidden builder in v1. It should behave 
 
 ### System LLM Readiness
 
-The first click on "대화로 만들기" must not become a 500 when the operator has not configured the System LLM.
+The first click on "通过对话创建" must not become a 500 when the operator has not configured the System LLM.
 
 Backend behavior:
 
@@ -2465,8 +2465,8 @@ Data shapes:
 Eval item:
 {
   "id": 1,
-  "prompt": "현실적인 사용자 요청",
-  "expected_output": "성공 조건 설명",
+  "prompt": "现实的用户请求",
+  "expected_output": "成功条件说明",
   "files": [],
   "expectations": ["The output includes a table with owner, due date, and action item columns."]
 }
@@ -2489,7 +2489,7 @@ Run result:
     {
       "text": "The output includes a table with owner, due date, and action item columns.",
       "passed": true,
-      "evidence": "The result contains a Markdown table with columns 담당자, 마감일, and 액션 아이템."
+      "evidence": "The result contains a Markdown table with columns 负责人, 截止日期, and 行动项."
     }
   ],
   "notes": []
@@ -2575,7 +2575,7 @@ New tabs:
 
 - Text
 - Package upload
-- 대화로 만들기
+- 通过对话创建
 
 The new conversational tab opens `SkillBuilderDialog` instead of creating a JSZip package in the browser. `SkillBuilderDialog` is the only chat-builder implementation in v1; do not duplicate the flow as a separate tab component.
 
@@ -2584,7 +2584,7 @@ Recommended UI layout:
 ```text
 DialogShell size="xl"
 ┌──────────────────────────────────────────────┐
-│ header: 스킬 만들기                           │
+│ header: 创建技能                           │
 ├───────────────────────┬──────────────────────┤
 │ chat thread            │ preview panel         │
 │ - user/assistant msgs  │ - file tree           │
@@ -2611,8 +2611,8 @@ Installed skill evaluation tab:
   - `Content` for text skills
   - `Files` for package skills
 - Show `Credentials` when credential requirements exist, required credentials are missing, `initialTab === "credentials"`, or a user opens it from a health/action link.
-- Show `Evaluation` when the skill has an evaluation set, latest evaluation summary, running evaluation, stale evaluation state, low-confidence state, `initialTab === "evaluation"`, or the user clicks "평가 관리".
-- Show `History` when revisions exist, the skill has been changed after the feature shipped, `initialTab === "history"`, or the user clicks "변경 이력".
+- Show `Evaluation` when the skill has an evaluation set, latest evaluation summary, running evaluation, stale evaluation state, low-confidence state, `initialTab === "evaluation"`, or the user clicks "管理评估".
+- Show `History` when revisions exist, the skill has been changed after the feature shipped, `initialTab === "history"`, or the user clicks "更改历史".
 - Show `Metadata` under an overflow/more action for simple skills, and as a normal tab when marketplace/compatibility metadata exists.
 - Recommended visible order when all apply:
   - `Content` or `Files`
@@ -2624,7 +2624,7 @@ Installed skill evaluation tab:
 - The tab should show:
   - latest completed run summary: pass rate, trigger accuracy, average duration, token delta, and completion time
   - a stale badge when `latest.skill_content_hash !== skill.content_hash`
-  - primary action: `평가 다시 실행` / `Run evaluation again`
+  - primary action: `重新运行评估` / `Run evaluation again`
   - secondary actions: create evaluation set, edit evaluation set, open run detail
   - left column: reusable evaluation sets and run history
   - right column: selected run detail with grouped case results, evidence, grader feedback, and benchmark deltas
@@ -2632,7 +2632,7 @@ Installed skill evaluation tab:
 - Builder-created evals become the first evaluation set on the finalized skill, so the user can rerun the same checks immediately from the skill detail dialog.
 - The UI should treat evaluation as optional quality evidence. Do not block normal skill editing or installation because a skill has no evaluation yet.
 - Empty states:
-  - If no evaluation set exists, show a compact action row: `평가 기준 만들기`.
+  - If no evaluation set exists, show a compact action row: `创建评估标准`.
   - If no revision exists, show the legacy-skill History copy from the Skill Revision Retention And Backfill section.
   - If no credential requirement exists, do not show a blank Credentials tab in the default tab list.
 
@@ -2951,12 +2951,12 @@ Expected: all validator tests pass.
 [
   {
     "role": "user",
-    "content": "만들고 싶은 스킬 설명",
+    "content": "描述想创建的技能",
     "created_at": "2026-06-13T00:00:00Z"
   },
   {
     "role": "assistant",
-    "content": "질문 또는 요약",
+    "content": "问题或摘要",
     "created_at": "2026-06-13T00:00:01Z"
   }
 ]
@@ -3359,7 +3359,7 @@ Expected: lint passes or reports only existing unrelated issues. Fix new issues 
 
 - [x] Change `CreateTab` to `'chat' | 'text' | 'package'`.
 - [x] Change `/skills` primary CTA and empty state action to open `openCreate('chat')`.
-- [x] Rename the visible scratch tab copy to "대화로 만들기" / "Build by chat".
+- [x] Rename the visible scratch tab copy to "通过对话创建" / "Build by chat".
 - [x] Remove browser-side JSZip package creation from `ScratchTab`.
 - [x] Start a skill builder session from the user's initial request.
 - [x] Render `SYSTEM_LLM_NOT_CONFIGURED` as the System LLM readiness state described in the System LLM Readiness section, not as a generic error toast.
@@ -3443,7 +3443,7 @@ Expected: both pass. Fix any new copy or design-system violations.
 - [x] Add `initialTab?: SkillDetailTab` to `SkillDetailDialog`.
 - [x] Support `/skills?detailId=<id>&tab=<tab>` deep links for detail tabs while keeping the route inside `/skills`.
 - [x] Add `getVisibleSkillDetailTabs(skill, state, initialTab)` and cover the conditional tab rules from the Frontend UX section.
-- [x] Add `대화로 개선` / `Improve by chat` action in `SkillDetailDialog`.
+- [x] Add `通过对话改进` / `Improve by chat` action in `SkillDetailDialog`.
 - [x] Start a `mode="improve"` skill builder session from that action.
 - [x] Split the current text editor, package editor, file preview, package sidebar, package footer, and credential binding panel out of `skill-detail-dialog.tsx`.
 - [x] Refactor `skill-detail-dialog.tsx` so it renders one `DialogShell.Body` and one `DialogShell.Footer`.
@@ -3451,8 +3451,8 @@ Expected: both pass. Fix any new copy or design-system violations.
 - [x] Move credential bindings from the content editor surface into the `Credentials` tab.
 - [x] Do not render a blank Credentials tab when a skill has no credential requirements and no credential-related deep link.
 - [x] In the `Credentials` tab, show required/optional badges, definition key, current binding state, and a missing-required summary at the top.
-- [x] When `health.state === "needs_credentials"`, render the skill card/detail status as `자격증명 필요` / `Needs credentials`.
-- [x] In the `Evaluation` tab, if required credentials are missing, replace `평가 실행` with `자격증명 연결` and switch to the `Credentials` tab on click.
+- [x] When `health.state === "needs_credentials"`, render the skill card/detail status as `需要凭据` / `Needs credentials`.
+- [x] In the `Evaluation` tab, if required credentials are missing, replace `运行评估` with `连接凭据` and switch to the `Credentials` tab on click.
 - [x] After binding or deleting a credential, invalidate skill detail, skill list, marketplace item, and evaluation queries so Skill Health updates immediately.
 - [x] Add `Metadata` tab using existing `useUpdateSkillMetadata`.
 - [x] Add an `Evaluation` tab/surface to the existing skill detail dialog when visible tab rules require it.
@@ -3461,7 +3461,7 @@ Expected: both pass. Fix any new copy or design-system violations.
 - [x] In `History`, list revisions newest first with operation, revision number, changelog summary, current marker, content hash, and file count.
 - [x] In `History`, show selected revision detail with changelog items, changed files, compatibility result, and evaluation snapshot.
 - [x] Disable rollback for the current revision.
-- [x] Add rollback confirmation copy: `이전 버전으로 되돌리면 현재 내용은 새 이력으로 보존됩니다.`
+- [x] Add rollback confirmation copy: `回滚到之前版本后，当前内容会作为一条新的历史记录保留。`
 - [x] On rollback success, refresh skill data, files/content, evaluation summaries, and revision list.
 - [x] Render `PortableCompatibilityPanel` in builder preview and revision detail.
 - [x] Show latest evaluation summary, stale badge, reusable evaluation sets, run history, and selected run details.
@@ -3605,19 +3605,19 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 pnpm dev --port 3000
 - [x] In browser, log in as a dev user.
 - [x] Verify the app-level navigation still has one `Skills` entry and no separate skill evaluation, skill history, skill credentials, rollback, or compatibility menu item.
 - [x] Open `/skills`.
-- [x] Verify the primary page CTA is "대화로 만들기".
+- [x] Verify the primary page CTA is "通过对话创建".
 - [x] Verify `/skills` uses kind tabs plus state filter chips for credential/evaluation/publish states instead of sending the user to separate skill management pages.
-- [x] Browser smoke evidence saved to `output/e2e-captures/20260615-skill-builder-manual/skills-page.png` after login with the seeded E2E user. The smoke verified one app-level `Skills` nav entry, the `/skills` URL, the "대화로 만들기" CTA, kind tabs, and state filter chips. Full LLM-backed create/improve/eval flow remains covered by the unchecked steps below.
+- [x] Browser smoke evidence saved to `output/e2e-captures/20260615-skill-builder-manual/skills-page.png` after login with the seeded E2E user. The smoke verified one app-level `Skills` nav entry, the `/skills` URL, the "通过对话创建" CTA, kind tabs, and state filter chips. Full LLM-backed create/improve/eval flow remains covered by the unchecked steps below.
 - [x] Temporarily test a missing `text_primary` System LLM configuration in a safe local DB or mocked API response and verify the conversational builder shows the readiness state instead of a generic 500/toast, while Text and Package Upload still work.
 - [x] Mock-only Playwright coverage verifies the empty `/skills` CTA opens Skill Builder creation, keeps the URL on `/skills`, sends requests only to `/api/skill-builder`, shows `SKILL.md`, `agents/openai.yaml`, OpenAI/Codex, Claude Code, and Vercel Agent Skills compatibility status, confirms the draft, refreshes the list, opens the created skill detail dialog, and captures `output/e2e-captures/20260615-skill-builder/builder-create-flow.png`.
 - [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-manual/builder-created-detail-after-fix.actual.png` after creating a Korean meeting-notes package skill through live `/api/skill-builder`. This pass also caught and fixed two live-only regressions: session-level compatibility results were not rendered in the builder preview, and Korean drafts collided on the fallback `skill` slug, leaving confirm sessions stuck in `confirming`.
-- [x] Click "대화로 만들기".
+- [x] Click "通过对话创建".
 - [x] Verify opening the Skill Builder does not navigate into a normal conversation thread, create a normal conversation run, or require the normal chat `ChatRuntimeSection`.
 - [x] Ask for a concrete skill, for example:
 
 ```text
-회의록을 넣으면 액션 아이템, 담당자, 마감일을 표로 정리하는 스킬을 만들어줘.
-가능하면 한국어 회의록 기준으로 동작하게 해줘.
+请创建一个技能：输入会议纪要后，将行动项、负责人、截止日期整理成表格。
+尽量让它以中文会议纪要为基准运行。
 ```
 
 - [x] Verify the builder asks at most two clarifying questions.
@@ -3626,35 +3626,35 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 pnpm dev --port 3000
 - [x] Verify validation shows portable compatibility status for OpenAI/Codex, Claude Code, and Vercel Agent Skills.
 - [x] Confirm.
 - [x] Verify the new skill appears in `/skills`.
-- [x] Verify the skill card shows an evaluation badge when an eval was generated, or "평가 없음" when no eval exists.
+- [x] Verify the skill card shows an evaluation badge when an eval was generated, or "暂无评估" when no eval exists.
 - [x] Open the skill detail dialog.
 - [x] Verify the detail dialog has `Files` or `Content` plus only the relevant advanced tabs for that skill state.
 - [x] For a simple skill with no credentials/evals/revisions, verify blank Credentials/Evaluation/History tabs are not forced into the default tab list.
 - [x] Verify file tree editing still works in the package `Files` tab.
 - [x] Verify credential binding panel renders in the `Credentials` tab.
-- [x] Click `대화로 개선`.
+- [x] Click `通过对话改进`.
 - [x] Ask the builder to improve one concrete behavior of the existing skill.
 - [x] Verify the builder opens in improve mode and shows original vs proposed file changes.
 - [x] Verify the improve preview shows a generated changelog and compatibility result before apply.
 - [x] Apply the improvement.
 - [x] Verify the existing skill row is updated, not duplicated.
 - [x] Open the `History` tab and verify a new `builder_improvement` revision appears with the changelog summary.
-- [x] Select the previous revision, click `이전 버전으로 되돌리기`, confirm, and verify a new `rollback` revision is created.
+- [x] Select the previous revision, click `回滚到之前版本`, confirm, and verify a new `rollback` revision is created.
 - [x] Verify rollback restores the previous `SKILL.md`/files while preserving the improvement revision in history.
 - [x] Start another improve session, edit the same skill manually before applying, and verify apply returns a conflict state instead of overwriting.
 - [x] Open the `Evaluation` tab.
 - [x] Verify the builder-created evaluation set appears when the builder generated evals.
-- [x] Click `평가 다시 실행` and verify the estimate confirmation appears before the run starts.
+- [x] Click `重新运行评估` and verify the estimate confirmation appears before the run starts.
 - [x] Start the run and verify a new run appears in history.
-- [x] If the run stays queued/running long enough, click `평가 취소` and verify the run becomes `cancelled`.
+- [x] If the run stays queued/running long enough, click `取消评估` and verify the run becomes `cancelled`.
 - [x] Edit the skill content and verify previous runs show a stale indicator when their content hash differs.
 - [x] Edit a package skill file under `scripts/` or `references/` and verify `content_hash` changes, previous runs become stale, and a new revision is created.
-- [x] Verify the skill card changes to `재평가 필요` or the matching Skill Health state after content changes.
+- [x] Verify the skill card changes to `需要重新评估` or the matching Skill Health state after content changes.
 - [x] Create or seed a skill that declares a required `credential_requirements` entry.
-- [x] Verify the skill card and detail header show `자격증명 필요`.
-- [x] Open the `Evaluation` tab for that skill and verify the primary action is `자격증명 연결`, not `평가 실행`.
-- [x] Click `자격증명 연결` and verify the dialog switches to the `Credentials` tab.
-- [x] Bind a matching user credential and verify the health state no longer says `자격증명 필요`.
+- [x] Verify the skill card and detail header show `需要凭据`.
+- [x] Open the `Evaluation` tab for that skill and verify the primary action is `连接凭据`, not `运行评估`.
+- [x] Click `连接凭据` and verify the dialog switches to the `Credentials` tab.
+- [x] Bind a matching user credential and verify the health state no longer says `需要凭据`.
 - [x] Run the evaluation and verify it records a new run without exposing credential values in evidence, stdout/stderr summaries, or UI metadata.
 - [x] Open `/settings/audit` and verify builder/evaluation lifecycle events are visible with sanitized metadata.
 - [x] Open the bound credential detail dialog and verify a runtime credential audit entry appears when `execute_in_skill` injected the credential.
@@ -3663,11 +3663,11 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8001 pnpm dev --port 3000
 - [x] Optional rollback smoke: restart the frontend with `NEXT_PUBLIC_CHAT_RUNTIME=legacy` and verify the Skill Builder still opens, because its stream path is builder-specific rather than tied to either normal chat runtime.
 
 - [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/skill-evaluation-tab.png` and `output/e2e-captures/20260615-skill-builder-real/skill-picker-quality-badges.png`. This pass verified live create, package file edit, improve apply, rollback, manual evaluation rerun, missing-credential evaluation blocking, audit visibility, and agent skill picker quality badges. It also caught and fixed two live regressions: package file content stayed stale after builder apply until `content_hash` was used as the file-cache scope, and `/agents` scoped i18n omitted the `skill` namespace so picker quality badges rendered raw translation keys.
-- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/simple-skill-tabs-latest.actual.png` after opening a simple package skill with no evaluation run. The detail dialog now keeps `내용`, `이력`, and `메타데이터` visible while suppressing the blank `평가` tab for the default `missing`/`needs_evaluation` state.
-- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/generated-eval-set-visible-latest.actual.png` after seeding a generated evaluation set with no prior run. The detail dialog shows the `평가` tab, the generated set card, `평가 없음`, `1개 케이스`, `다시 실행`, and the empty run-history state.
+- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/simple-skill-tabs-latest.actual.png` after opening a simple package skill with no evaluation run. The detail dialog now keeps `内容`, `历史`, and `元数据` visible while suppressing the blank `评估` tab for the default `missing`/`needs_evaluation` state.
+- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/generated-eval-set-visible-latest.actual.png` after seeding a generated evaluation set with no prior run. The detail dialog shows the `评估` tab, the generated set card, `暂无评估`, `1 个用例`, `重新运行`, and the empty run-history state.
 - [x] Live API pass against `http://localhost:8001` created an improve session, edited the source text skill through `PUT /api/skills/{skill_id}/content`, validated a builder draft, then confirmed the builder session. Confirm returned `409` with `SKILL_BUILDER_SOURCE_CONFLICT`; the source skill retained `Manual edit before builder apply.` and was deleted after the check.
-- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/skill-card-needs-rerun.png`, `output/e2e-captures/20260615-skill-builder-real/stale-evaluation-detail.png`, and `output/e2e-captures/20260615-skill-builder-real/long-running-evaluation-cancelled.png`. This pass verified package file edits under `references/` update `content_hash`, create a revision, mark prior evaluation runs stale, update Skill Health to `재평가 필요`, and let a long-running evaluation run move to API status `cancelled` from the Evaluation tab.
-- [x] Real API/browser pass saved `output/e2e-captures/20260615-skill-builder-real/credential-bound-evaluation.png`. This pass verified a matching user credential binding clears `자격증명 필요`, post-binding evaluation creates a run, known dummy secrets do not appear in run responses or UI metadata, and a script-backed `execute_in_skill` evaluation writes sanitized runtime credential audit metadata.
+- [x] Real browser pass saved `output/e2e-captures/20260615-skill-builder-real/skill-card-needs-rerun.png`, `output/e2e-captures/20260615-skill-builder-real/stale-evaluation-detail.png`, and `output/e2e-captures/20260615-skill-builder-real/long-running-evaluation-cancelled.png`. This pass verified package file edits under `references/` update `content_hash`, create a revision, mark prior evaluation runs stale, update Skill Health to `需要重新评估`, and let a long-running evaluation run move to API status `cancelled` from the Evaluation tab.
+- [x] Real API/browser pass saved `output/e2e-captures/20260615-skill-builder-real/credential-bound-evaluation.png`. This pass verified a matching user credential binding clears `需要凭据`, post-binding evaluation creates a run, known dummy secrets do not appear in run responses or UI metadata, and a script-backed `execute_in_skill` evaluation writes sanitized runtime credential audit metadata.
 - [x] Legacy chat-runtime smoke passed with `PW_SKIP_BACKEND=1 NEXT_PUBLIC_CHAT_RUNTIME=legacy E2E_FRONTEND_PORT=3010 E2E_WORKERS=1 pnpm exec playwright test e2e/skill-builder-create.spec.ts --project=chromium`, confirming Skill Builder opens through its own stream path instead of normal chat runtime internals.
 
 ## Rollout Strategy

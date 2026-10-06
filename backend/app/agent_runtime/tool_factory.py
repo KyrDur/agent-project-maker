@@ -303,8 +303,8 @@ _E2E_SCRIPTED_SEARCH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
     ),
 }
 # W2-2 rich-card fixtures — a curated query that also returns a Tavily-style
-# ``answer`` (summary box), and a ``shop:`` query prefix that returns the Naver
-# shopping ``items`` shape (thumbnail/lprice/mallName). Thumbnails point at
+# ``answer`` (summary box), and a ``shop:`` query prefix that returns simulated
+# shopping ``items`` (thumbnail/price/merchant). Thumbnails point at
 # frontend public assets so captures render without external network access.
 _E2E_SCRIPTED_SEARCH_ANSWERS: dict[str, str] = {
     "agentic os 概览": (
@@ -332,27 +332,27 @@ _E2E_SCRIPTED_SEARCH_RICH_RESULTS: dict[str, tuple[dict[str, str], ...]] = {
         },
     ),
 }
-_E2E_SCRIPTED_SHOP_ITEMS: tuple[dict[str, str], ...] = (
+_E2E_SCRIPTED_SHOP_ITEMS: tuple[dict[str, str | int], ...] = (
     {
         "title": "无线机械键盘 K1",
         "link": "https://shopping.example/k1",
         "thumbnail": "/logo.webp",
-        "lprice": "89000",
-        "mallName": "Moldy商店",
+        "price": 89000,
+        "merchant": "Moldy商店",
     },
     {
         "title": "低噪声无线纤薄键盘",
         "link": "https://shopping.example/slim",
         "thumbnail": "/moldy-mascot.webp",
-        "lprice": "42900",
-        "mallName": "键盘商店",
+        "price": 42900,
+        "merchant": "键盘商店",
     },
     {
         "title": "蓝牙多设备配对键盘",
         "link": "https://shopping.example/multi",
         "thumbnail": "/dashboard-mascot.webp",
-        "lprice": "156000",
-        "mallName": "办公商城",
+        "price": 156000,
+        "merchant": "办公商城",
     },
 )
 
@@ -397,7 +397,7 @@ def _build_e2e_scripted_search_tool() -> BaseTool:
         """Deterministic E2E search: returns scripted multi-domain results."""
 
         stripped = query.strip()
-        # ``shop:`` prefix → Naver shopping ``items`` shape (W2-2 rich-card fixture).
+        # ``shop:`` prefix → simulated shopping ``items`` shape (W2-2 rich-card fixture).
         if stripped.startswith("shop:"):
             return json.dumps(
                 {

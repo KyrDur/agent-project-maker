@@ -46,7 +46,7 @@ export default getRequestConfig(async () => {
 
   return {
     locale,
-    timeZone: 'Asia/Seoul',
+    timeZone: 'Asia/Shanghai',
     messages,
   }
 })

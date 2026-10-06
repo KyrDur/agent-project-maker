@@ -54,13 +54,6 @@ SCRIPTED_DOCUMENT_COMMANDS: dict[str, dict[str, str]] = {
             "--output moldy-pptx-demo.pptx"
         ),
     },
-    "E2E_HWPX": {
-        "skill_directory": "/skills/patent-hwpx-generator",
-        "command": (
-            "python scripts/generate_hwpx.py --input examples/e2e-patent.json "
-            "--output moldy-patent-demo.hwpx"
-        ),
-    },
 }
 LANGGRAPH_V3_ARTIFACT_COMMAND = {
     "skill_directory": "/skills/docx-document",
@@ -499,8 +492,8 @@ MEMORY_FINAL_CONTENT = "E2E memory tool run complete."
 # group — grouping needs N≥2 consecutive same-tool calls) so the pill renders
 # expanded with result cards. ``E2E_SEARCH_RICH``'s query is curated in
 # ``tool_factory`` to return an ``answer`` (summary box) + content snippets;
-# ``E2E_SEARCH_SHOP``'s ``shop:`` prefix returns the Naver shopping ``items``
-# shape (thumbnail/lprice/mallName → 缩略图+价格卡片).
+# ``E2E_SEARCH_SHOP``'s ``shop:`` prefix returns the simulated shopping ``items``
+# shape (thumbnail/price/merchant → 缩略图+价格卡片).
 SEARCH_RICH_MARKER = "E2E_SEARCH_RICH"
 SEARCH_RICH_QUERY = "agentic os 概览"
 SEARCH_RICH_FINAL_CONTENT = "E2E rich search rendering complete."

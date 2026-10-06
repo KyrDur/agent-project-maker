@@ -73,7 +73,7 @@ export function ClarifyingQuestionUI({
 
   // 过期仅作为视觉信号 — backend 并非 paused 状态，因此无需额外 resume
   const handleExpire = useCallback(() => {
-    // no-op: remaining<=0이 picked===null과 함께 disabled 트리거
+    // no-op: remaining<=0 与 picked===null 一起触发 disabled
   }, [])
 
   const { remaining, isUrgent, formatted, extend } = useApprovalDeadline({

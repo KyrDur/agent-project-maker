@@ -16,10 +16,7 @@ TEMPLATE_KEYS = (
     "daily_brief",
     "web_researcher",
     "data_collector",
-    "naver_news",
-    "shopping_compare",
     "openwiki",
-    "local_search",
 )
 CATEGORY_KEYS = {
     "生产力": "productivity",

@@ -1,7 +1,7 @@
 """Credential definition dataclass — the per-type schema + behavior bundle.
 
-A :class:`CredentialDefinition` is registered once per credential family (Naver
-Search, OpenAI, ...). It declares form fields, optional generic authentication,
+A :class:`CredentialDefinition` is registered once per credential family
+(OpenAI, HTTP Bearer, ...). It declares form fields, optional generic authentication,
 an optional connectivity test request, and OAuth2 pre-authentication hooks.
 """
 

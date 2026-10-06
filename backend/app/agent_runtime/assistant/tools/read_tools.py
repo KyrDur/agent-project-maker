@@ -236,8 +236,6 @@ def build_read_tools(
             return tr("agent_not_found_1a3985")
         required: set[str] = set()
         for link in agent.tool_links:
-            if "naver" in link.tool.name.lower():
-                required.update(["NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"])
             if "google" in link.tool.name.lower():
                 required.update(["GOOGLE_API_KEY", "GOOGLE_CSE_ID"])
         return json.dumps(

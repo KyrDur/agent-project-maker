@@ -369,14 +369,14 @@ async def test_create_hidden_default_returns_422(client: AsyncClient) -> None:
 async def test_discover_models_endpoint_forbids_non_llm_definition(
     client: AsyncClient,
 ) -> None:
-    """A naver_search credential cannot drive model discovery — 400."""
+    """A google_search credential cannot drive model discovery — 400."""
 
     create = await client.post(
         "/api/credentials",
         json={
-            "definition_key": "naver_search",
+            "definition_key": "google_search",
             "name": "n",
-            "data": {"client_id": "x", "client_secret": "y"},
+            "data": {"api_key": "x", "cse_id": "y"},
         },
     )
     cred_id = create.json()["id"]

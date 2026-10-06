@@ -88,7 +88,7 @@ test.describe('Wave 1 — hero flow captures', () => {
 
       // Turn 0 — a warm natural greeting reply (marker-driven, so the opener reads
       // like a real daily assistant instead of the bare scripted sentinel).
-      await sendMessage(page, 'E2E_DAILY_GREETING 你好！ 오늘 뭐부터 도와줄 수 있어요?')
+      await sendMessage(page, 'E2E_DAILY_GREETING 你好！ 今天先从什么开始帮你？')
       await settleStream()
       await capture(page, WAVE, '01b-greeting-reply.png')
 

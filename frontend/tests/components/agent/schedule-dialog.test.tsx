@@ -48,7 +48,7 @@ describe('ScheduleForm', () => {
           scheduled_at: new Date('2030-01-02T09:30').toISOString(),
         },
         input_message: '测试消息',
-        timezone: 'Asia/Seoul',
+        timezone: 'Asia/Shanghai',
         conversation_policy: 'schedule_thread',
       }),
     )

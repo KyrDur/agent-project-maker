@@ -10,7 +10,7 @@ ADR: `docs/design-docs/adr-019-system-llm-settings.md`
 - [ ] Alembic `m45_system_llm_settings.py` — create table + CHECK(role IN ...) + 3 role seed row (NULL cred/model)
 - 검증: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`
 - done-when: 마이그레이션 왕복 성공
-- 상태: pending
+- 状态: pending
 
 ## M2: resolver — resolve_system_model(role)
 - [ ] `system_credential_resolver.py`에 `resolve_system_model(db, role) -> ResolvedSystemModel(provider, model_name, api_key, base_url)`
@@ -18,7 +18,7 @@ ADR: `docs/design-docs/adr-019-system-llm-settings.md`
 - [ ] credential payload에서 base_url 추출
 - 검증: `uv run pytest tests/ -k system_llm -q`
 - done-when: 신규 단위테스트 통과
-- 상태: pending
+- 状态: pending
 
 ## M3: 배선 — builder/assistant/image 호출부 교체
 - [ ] `assistant_agent.py` → text_primary, base_url 전달
@@ -26,7 +26,7 @@ ADR: `docs/design-docs/adr-019-system-llm-settings.md`
 - [ ] `image_service.py` + `builder_v3/image_gen.py` → image role
 - 검증: `uv run ruff check . && uv run pytest -q`
 - done-when: 회귀 0, ruff 통과
-- 상태: pending
+- 状态: pending
 
 ## M4: API — system-llm-settings 라우터 (super_user)
 - [ ] `routers/system_llm_settings.py`: GET (3 role), PUT /{role}
@@ -34,7 +34,7 @@ ADR: `docs/design-docs/adr-019-system-llm-settings.md`
 - [ ] `schemas/system_llm_setting.py` + main.py 등록
 - 검증: `uv run pytest tests/ -k system_llm -q`
 - done-when: API 테스트 통과, require_super_user 가드 확인
-- 상태: pending
+- 状态: pending
 
 ## M5: 프론트 — System LLM 설정 화면
 - [ ] api client + TanStack Query hooks
@@ -42,10 +42,10 @@ ADR: `docs/design-docs/adr-019-system-llm-settings.md`
 - [ ] 슬롯 3개: credential select → discover-models → model select → 저장
 - 검증: `pnpm build && pnpm lint`
 - done-when: 타입체크/빌드 통과
-- 상태: pending
+- 状态: pending
 
 ## M6: 통합 검증
 - [ ] backend: `uv run ruff check . && uv run pytest`
 - [ ] frontend: `pnpm build && pnpm lint`
 - done-when: 전체 그린
-- 상태: pending
+- 状态: pending

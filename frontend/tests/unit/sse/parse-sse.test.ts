@@ -301,6 +301,6 @@ describe('streamSSEPost', () => {
     await expect(gen.next()).rejects.toThrow('HTTP 500')
   })
 
-  // body가 null인 응답 처리는 fetchEventSource 라이브러리 내부 로직이 담당하게
-  // 됐으므로 caller side 단위 테스트는 더 이상 의미 없음 → 삭제.
+  // body 为 null 的响应处理已由 fetchEventSource library 内部逻辑负责，
+  // 因此 caller side unit test 已无意义 → 删除。
 })

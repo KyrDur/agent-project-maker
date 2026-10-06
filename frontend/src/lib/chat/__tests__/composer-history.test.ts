@@ -27,7 +27,7 @@ describe('collectUserHistory', () => {
     const messages = [
       { role: 'user', content: '第一个问题' },
       { role: 'assistant', content: '回答' },
-      { role: 'user', content: '第一个问题' }, // 직전과 중복 아님? assistant 사이 → 히스토리상 연속
+      { role: 'user', content: '第一个问题' }, // 与前一个不重复？中间有 assistant → 在 history 中连续
       { role: 'user', content: '   ' },
       { role: 'user', content: '第二个问题' },
     ]

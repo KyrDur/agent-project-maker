@@ -266,7 +266,7 @@ async def test_required_tool_authentication_cannot_be_skipped(db):
 
     with pytest.raises(AppError) as error:
         await validate_tools(
-            db, TEST_USER_ID, [Tool(definition_key="naver_search_blog", enabled=True)]
+            db, TEST_USER_ID, [Tool(definition_key="google_search_web", enabled=True)]
         )
     assert error.value.code == "builder_tool_credential"
 

@@ -159,6 +159,6 @@ describe('ModelsPage', () => {
     expect(screen.getAllByRole('button', { name: /检查 .* 状态/ })[0]).toHaveClass('px-2')
   })
 
-  // 페이지 안의 DataTable / 모델 detail / provider 카드 / delete 흐름은
-  // model-* 컴포넌트 단위 테스트와 e2e가 책임진다 (페이지 단위에서 제외).
+  // 页面内的 DataTable / model detail / provider card / delete flow
+  // 由 model-* component unit test 和 e2e 负责（从 page unit 中排除）。
 })

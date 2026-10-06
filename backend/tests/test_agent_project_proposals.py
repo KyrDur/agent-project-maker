@@ -16,7 +16,6 @@ from app.services import agent_project_proposals as proposals
 from app.services import agent_project_semantic as semantic
 from app.services import agent_project_service as projects
 from app.services import builder_project_lifecycle as lifecycle
-from app.services.agent_project_executor import SnapshotExecutionUnavailable
 from tests import test_agent_project_phase3 as phase3
 from tests import test_agent_projects as phase1
 
@@ -462,14 +461,22 @@ async def test_second_review_uses_v2_and_all_three_versions_are_reported(
     v2_run = await evaluation.get_run(db, agent.id, USER, uuid.UUID(data["regression_run_id"]))
     assert v2_run.status == "completed"
     first_analyzer = optimization.json_call
+
     async def second_analyzer(*args):
         value = await first_analyzer(*args)
         ids = [c["case_id"] for c in args[-1]["cases"]]
-        value["analyses"] = [{**value["analyses"][0], "case_id": cid,
-            "root_cause": "Verification evidence is not explicit", "evidence": ["/metric_scores"]}
-            for cid in ids]
+        value["analyses"] = [
+            {
+                **value["analyses"][0],
+                "case_id": cid,
+                "root_cause": "Verification evidence is not explicit",
+                "evidence": ["/metric_scores"],
+            }
+            for cid in ids
+        ]
         value["groups"][0]["case_ids"] = ids
         return value
+
     monkeypatch.setattr(optimization, "json_call", second_analyzer)
     first_generator = proposals.json_call
 

@@ -55,7 +55,7 @@ PR #46 (credential 시스템) + PR #47 (MCP 그룹화) 머지 완료. prebuilt�
 - 마스킹 sentinel `***`는 PATCH로 다시 보내면 422 거부됨 — UI는 sentinel 값 다시 제출 안 함
 - 사용자 메모: 별도 브랜치 작업 시 stash 대신 worktree 사용 (이번엔 main에 modified 없으므로 일반 브랜치)
 
-## 실패 교훈
+## 失败教训
 
 - M1 변경(`update_tool_auth_config`에 CUSTOM 허용) 시 `tests/test_tools_router_extended.py::test_update_auth_config_non_prebuilt_returns_404`가 회귀로 잡힘. 이 테스트의 전제(=CUSTOM 거부)가 의도적으로 뒤집힌 케이스이므로 "회귀 아님" — 새 동작(다른 사용자 CUSTOM → 404 IDOR)을 검증하도록 갱신함. 추후 비슷한 의미 반전 변경 시 매칭되는 기존 테스트 1차 grep 권장 (예: `non_prebuilt`, `not in.*PREBUILT` 등 키워드).
 - 신규 테스트는 `test_update_mcp_server_credential` 패턴을 그대로 차용 (monkeypatch encryption._get_fernet → None, Credential 시드, PATCH 검증, 다른 user_id 거부). `_seed_mcp_server_with_tools` 같은 헬퍼는 CUSTOM에 없으므로 인라인 시드.

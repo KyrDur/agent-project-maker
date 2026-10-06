@@ -271,7 +271,7 @@ def add_trigger_job(
         return None
 
     job_id = _job_id(trigger_id)
-    timezone_name = str(schedule_config.get("timezone") or "Asia/Seoul")
+    timezone_name = str(schedule_config.get("timezone") or "Asia/Shanghai")
     timezone = ZoneInfo(timezone_name)
     schedule_fingerprint = build_trigger_schedule_fingerprint(trigger_type, schedule_config)
     job = None

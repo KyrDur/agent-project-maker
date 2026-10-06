@@ -82,7 +82,7 @@ interface AgentUpdate {
 - **DropdownMenu/Dialog**: shadcn 패턴 — `import from '@/components/ui/dialog'`
 - **isDirty**: 모든 변경(이름/설명/지침/모델/도구/미들웨어/오프너/모델 파라미터)이 같은 페이지 state로 흘러야 함
 
-## 실패 교훈
+## 失败教训
 
 (아직 없음 — Ralph Loop 진행 중 누적)
 

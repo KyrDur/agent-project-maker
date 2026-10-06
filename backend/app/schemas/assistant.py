@@ -210,7 +210,7 @@ class CronScheduleInput(BaseModel):
     schedule_type: str = Field(..., pattern="^(recurring|one_time)$")
     cron_expression: str | None = None  # recurring 时必填
     scheduled_at: str | None = None  # one_time 时必填（ISO 8601）
-    timezone: str = "Asia/Seoul"
+    timezone: str = "Asia/Shanghai"
     message: str = Field(..., min_length=1)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

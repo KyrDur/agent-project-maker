@@ -15,7 +15,7 @@ const trigger: AgentTrigger = {
   trigger_type: 'cron',
   schedule_config: { cron_expression: '5 9 * * 1,3' },
   input_message: 'Run',
-  timezone: 'Asia/Seoul',
+  timezone: 'Asia/Shanghai',
   conversation_policy: 'schedule_thread',
   schedule_conversation_id: null,
   target_conversation_id: null,

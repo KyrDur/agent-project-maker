@@ -43,7 +43,7 @@ natural-mold/
 │   │   ├── auth/                # ADR-016 多用户认证（JWT, refresh token rotation, CSRF）
 │   │   ├── security/            # Cipher V2 (HKDF-SHA256 + AES-256-GCM, multi-key rotation)
 │   │   ├── credentials/         # 凭据系统
-│   │   │   ├── definitions/     # 定义 22 种 credential type（LLM、搜索、MCP、k-skill 系列等）
+│   │   │   ├── definitions/     # 定义 16 种 credential type（LLM、搜索、HTTP、MCP 等）
 │   │   │   ├── service.py       # CRUD + field_keys 缓存（ADR-007）
 │   │   │   ├── interpolation.py # {{$credentials.x}} 插值（resolve_deep）
 │   │   │   └── external_secrets/ # Vault/ENV resolver（基于 feature flag）
@@ -73,7 +73,6 @@ natural-mold/
 │   │   │   ├── assistant/       # Assistant panel agent/tools
 │   │   │   ├── mcp_client.py    # MCP wrapper（委托给 app.mcp.client）
 │   │   │   ├── trigger_executor.py # 调度 trigger 执行（invoke 模式，禁用 HiTL）
-│   │   │   ├── naver_tools.py   # Naver 搜索 API 工具
 │   │   │   ├── google_tools.py  # Google Custom Search 工具
 │   │   │   └── google_workspace_tools.py # Gmail, Calendar, Chat Webhook
 │   │   └── seed/                # seed 数据（model、template、system tool、bootstrap_from_env）
@@ -442,7 +441,7 @@ migration：`backend/alembic/versions/`（Alembic）。最新 head 为 `m77_side
 | LLM key（`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` 等） | X（可选） | 建议在 UI Credentials 中注册（ADR-013）。若 ENV 中存在，则 dev 环境 bootstrap 为 system credential，production 跳过 |
 | `E2E_SEED_USER_ENABLED`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, `E2E_USER_NAME` | X | 本地 Playwright E2E 使用的 dummy super_user seed。在 `APP_ENV=production` 中始终跳过 |
 | `TAVILY_API_KEY` | X | Tavily hosted search / Deep Research 计划使用的 backend key。不要作为 per-user credential 配置 |
-| 其余（Naver、Google 等） | X | 仅在使用相应工具时需要 |
+| 其余（Google 等） | X | 仅在使用相应工具时需要 |
 
 从 ENV 自动生成的 `is_system=True` credentials 在 production 环境中跳过自动创建，由 super_user 直接管理。
 
@@ -453,8 +452,8 @@ migration：`backend/alembic/versions/`（Alembic）。最新 head 为 `m77_side
 - **Cipher V2**（`app/security/cipher.py`）：HKDF-SHA256 → AES-256-GCM。Blob 结构 `[ver 1B | salt 32B | tag 16B | ciphertext]`，Base64 编码
 - **Multi-key rotation**：通过 `credentials.key_id` 识别 active key，解密时尝试所有 candidate key。APScheduler 每周执行一次 `rotate_credentials_to_active_key`
 - **field_keys 缓存**（ADR-007）：避免 list API 中的 N+1 解密。仅将 key 名存入 JSON column
-- **definition_key 注册**：在 `app/credentials/definitions/__init__.py` 中注册 22 种（LLM、Google/Naver、HTTP、MCP secret/OAuth2、SRT/KTX/Forest Trip/KIPRIS/DART/ODsay/Coupang/K-Skill Proxy 等）
-- **LLM credential 优先级**（ADR-013）：ENV fallback → system credentials → user credentials
+- **definition_key 注册**：在 `app/credentials/definitions/__init__.py` 中注册 16 种（LLM、Google、HTTP、MCP secret/OAuth2）
+- **个人模型配置**：生成执行、测试设计、裁判分析三个角色独立读取当前用户的已绑定凭据；角色不可用明确报错，不使用系统凭据或 ENV 偷偷替换
 - **外部 secret resolver**（`external_secrets/`）：通过 `__external__:<provider>:<ref>` marker 动态解析 Vault/ENV（feature flag）
 - **系统 credential 分离**（M36, M39）：`is_system=True && user_id IS NULL`。普通用户无法通过 `/api/credentials` 查看，使用仅限 super_user 的 system credential 页面/API 管理
 
@@ -468,8 +467,7 @@ migration：`backend/alembic/versions/`（Alembic）。最新 head 为 `m77_side
 |------|------|---------|
 | Web Search (DuckDuckGo) | builtin:web_search | 无 |
 | Web Scraper | builtin:web_scraper | 无 |
-| Current DateTime | builtin:current_datetime | 无（Seoul TZ） |
-| Naver 搜索（5 种） | registry | naver_search credential |
+| Current DateTime | builtin:current_datetime | 无（Shanghai TZ） |
 | Google 搜索（3 种） | registry | google_search credential |
 | Google Chat Webhook | registry | URL credential |
 | Gmail（2 种） | registry | google_workspace_oauth2 |

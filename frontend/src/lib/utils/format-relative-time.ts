@@ -1,4 +1,4 @@
-const TIMEZONE = 'Asia/Seoul'
+const TIMEZONE = 'Asia/Shanghai'
 const LOCALE = 'zh-CN'
 
 const dayKeyFmt = new Intl.DateTimeFormat('en-CA', {
@@ -49,7 +49,7 @@ export function parseTimestamp(value: Date | string): Date {
 }
 
 /**
- * 简短的韩语相对时间（基于 KST）：
+ * 简短的中文相对时间（基于上海时区）：
  * - 今天  → "上午 10:30"
  * - 昨天  → yesterdayLabel
  * - 其他 → "5. 22."
@@ -79,7 +79,7 @@ export function formatRelativeShort(
 }
 
 /**
- * "2026年5月1日" — KST-anchored long date for editorial / hero surfaces.
+ * "2026年5月1日" — Shanghai-time-zone-based long date for editorial / hero surfaces.
  * Backend returns timezone-naive UTC; ``parseTimestamp`` normalizes that
  * before formatting so visitors in any TZ see the same date the author saw.
  */
@@ -87,7 +87,7 @@ export function formatLongDate(date: Date | string): string {
   return longDateFmt.format(parseTimestamp(date))
 }
 
-/** "2026. 5. 1." — KST-anchored short date for footer / meta strips. */
+/** "2026. 5. 1." — Shanghai-time-zone-based short date for footer / meta strips. */
 export function formatMediumDate(date: Date | string): string {
   return mediumDateFmt.format(parseTimestamp(date))
 }
@@ -103,10 +103,10 @@ const relativeFmt = new Intl.RelativeTimeFormat(LOCALE, {
 })
 
 /**
- * "刚刚 / N分钟前 / N小时前 / N天前 / 5月22日" — KST-anchored relative time
+ * "刚刚 / N分钟前 / N小时前 / N天前 / 5月22日" — Shanghai-time-zone-based relative time
  * for compact meta strips (e.g., agent card footer "last used").
  */
-export function formatRelativeKo(date: Date | string, now: Date = new Date()): string {
+export function formatRelativeTime(date: Date | string, now: Date = new Date()): string {
   const d = parseTimestamp(date)
   const diffSec = Math.max(0, (now.getTime() - d.getTime()) / 1000)
   if (diffSec < 60) return relativeFmt.format(0, 'second')

@@ -29,9 +29,16 @@ from app.schemas.agent_project import (
 from app.schemas.agent_project_optimization import OptimizeRequest, ProposalDecision
 from app.schemas.agent_project_portfolio import ResumeRequest
 from app.schemas.agent_project_report import EvaluationReports
+from app.schemas.agent_project_simulation import (
+    SimulationCreate,
+    SimulationMessage,
+    SimulationReset,
+    SimulationResponse,
+)
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_portfolio as portfolio
 from app.services import agent_project_service as service
+from app.services import agent_project_simulation as simulation
 
 public_router = APIRouter(tags=["agent-project-shares"])
 
@@ -504,15 +511,6 @@ async def project_interview(
     from app.services.agent_project_materials import interview
 
     return await interview(db, agent_id, user.id)
-
-
-from app.schemas.agent_project_simulation import (
-    SimulationCreate,
-    SimulationMessage,
-    SimulationReset,
-    SimulationResponse,
-)
-from app.services import agent_project_simulation as simulation
 
 
 @router.post("/simulation-sessions", response_model=SimulationResponse, status_code=201)

@@ -1951,7 +1951,8 @@
       "count": "{position}/{total}",
       "previous": "上一场比赛",
       "next": "下一场比赛",
-      "close": "关闭搜索"
+      "close": "关闭搜索",
+      "price": "价格：{price}"
     },
     "commands": {
       "ariaLabel": "聊天命令",
@@ -2039,11 +2040,6 @@
       "sourceCount": "来源 {count} 个",
       "labels": {
         "webSearch": "网页搜索",
-        "naverBlog": "Naver博客",
-        "naverNews": "Naver新闻",
-        "naverImage": "Naver 图像",
-        "naverShop": "纳弗购物",
-        "naverLocal": "本地Naver",
         "googleSearch": "谷歌搜索",
         "googleNews": "谷歌新闻",
         "googleImage": "谷歌图片",
@@ -2408,7 +2404,7 @@
         "running": "运行中",
         "count": "{count} 结果",
         "answer": "回答",
-        "price": "来自₩{price}",
+        "price": "价格：{price}",
         "thumbnailAlt": "搜索结果缩略图"
       },
       "skillExecution": {
@@ -2828,7 +2824,6 @@
       "title": "验证对话框",
       "description": "选择此工具应使用的凭据。",
       "provider": {
-        "naver": "纳维尔",
         "googleSearch": "谷歌搜索",
         "googleChat": "谷歌聊天",
         "googleWorkspace": "谷歌工作区"
@@ -3833,7 +3828,6 @@
       "origin": {
         "created_by_me": "由我创建",
         "imported_by_me": "由我导入",
-        "built_in_k_skill": "内置·k技能",
         "shared_with_me": "与我分享",
         "sharedBy": "分享者 {name}",
         "community": "社区",
@@ -3868,7 +3862,6 @@
       "back": "返回市场",
       "loading": "加载中...",
       "queueTitle": "待处理项目",
-      "syncTitle": "k-技能同步状态",
       "denied": {
         "title": "仅限运营商",
         "description": "您无权访问审核。"
@@ -3881,12 +3874,6 @@
         "review": "审核",
         "approve": "批准",
         "disable": "禁用"
-      },
-      "sync": {
-        "count": "物品数量：",
-        "lastUpdated": "最后更新：",
-        "command": "uv run python -m app.scripts.sync_k_skill --ref main",
-        "cliOnly": "同步只能从 CLI 运行。"
       },
       "toast": {
         "disabled": "项目已禁用",
@@ -4013,7 +4000,6 @@
       },
       "source": {
         "user": "用户",
-        "kSkill": "k技能",
         "import": "导入",
         "systemSeed": "系统"
       },
@@ -5011,7 +4997,6 @@
       "providerAll": "全部"
     },
     "providerName": {
-      "naver": "纳维尔",
       "googleSearch": "谷歌搜索",
       "googleChat": "谷歌聊天",
       "googleWorkspace": "谷歌工作区"
@@ -5139,24 +5124,16 @@
       "providerLabels": {
         "anthropic": "人择",
         "azure_openai": "Azure 开放人工智能",
-        "coupang_partners": "库邦合作伙伴",
-        "dart_api": "DART 开放 API",
-        "foresttrip_account": "森林旅行账户",
         "google_genai": "谷歌生成人工智能",
         "google_search": "谷歌自定义搜索",
         "google_workspace_oauth2": "Google Workspace OAuth2",
         "http_api_key": "HTTP API 密钥",
         "http_basic": "HTTP 基本身份验证",
         "http_bearer": "HTTP 承载令牌",
-        "kipris_plus_api": "KIPRIS Plus API",
-        "ktx_account": "KTX 账户",
         "mcp_oauth2": "MCP OAuth2 客户端",
-        "naver_search": "Naver 搜索",
-        "odsay_api": "ODsay API",
         "openai": "OpenAI",
         "openai_compatible": "OpenAI 兼容端点",
-        "openrouter": "开放路由器",
-        "srt_account": "SRT账户"
+        "openrouter": "开放路由器"
       },
       "categories": {
         "account": "账户",

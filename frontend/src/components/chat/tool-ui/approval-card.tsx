@@ -600,7 +600,7 @@ export function ApprovalCard({
               actual skill/tool, so expanding is only needed to inspect details. */}
       {toolArgs && Object.keys(toolArgs).length > 0 && <ArgsPreview args={toolArgs} />}
 
-      {/* 거부 사유 입력 (거부 선택 시) */}
+      {/* 输入拒绝理由（选择拒绝时） */}
       {decision === 'rejected' && !submitting && (
         <textarea
           aria-label={t('rejectReasonLabel')}
@@ -616,17 +616,17 @@ export function ApprovalCard({
         />
       )}
 
-      {/* 수정 인자 입력 (수정 선택 시) — 칸별 field editor. 시크릿 키는
-              read-only 잠금, 비-scalar는 칸별 JSON. raw JSON textarea 아님. */}
+      {/* 输入修改参数（选择修改时）— 按字段 field editor。secret key
+              read-only 锁定，非 scalar 按字段使用 JSON。不是 raw JSON textarea。 */}
       {showEdit && !submitting && (
         <ArgsEditor value={draft} onChange={setDraft} onInteract={onInteract} />
       )}
 
       {resumeError && <p className="mt-1 text-xs text-destructive">{resumeError}</p>}
 
-      {/* 세션 동의 옵션 (스킬 빌더 AD-4) — review_configs 플래그 조건부.
-              체크 후 승인하면 decisions에 scope:'session'이 첨부되어 이 세션의
-              같은 도구는 이후 승인 카드 없이 실행된다. */}
+      {/* session 同意选项（Skill Builder AD-4）— review_configs flag 条件式。
+              勾选后批准时，decisions 会附带 scope:'session'，本 session 中
+              同一工具之后无需 approval card 即可执行。 */}
       {args?.session_consent_eligible === true && canApprove && !submitting && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <input
@@ -650,7 +650,7 @@ export function ApprovalCard({
       {/* Action buttons */}
       {!submitting ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {/* 승인 */}
+          {/* 批准 */}
           {canApprove && (
             <button
               type="button"
@@ -664,7 +664,7 @@ export function ApprovalCard({
             </button>
           )}
 
-          {/* 수정 후 승인 — allowed_decisions에 edit이 있을 때만 노출 */}
+          {/* 修改后批准 — 仅 allowed_decisions 中存在 edit 时显示 */}
           {canEdit &&
             (!showEdit ? (
               <button
@@ -691,7 +691,7 @@ export function ApprovalCard({
               </button>
             ))}
 
-          {/* 거부 */}
+          {/* 拒绝 */}
           {canReject &&
             (decision !== 'rejected' ? (
               <button

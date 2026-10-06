@@ -88,8 +88,8 @@ function SearchResultCard({ item }: { item: SearchResultItem }) {
               <span className="moldy-ui-caption font-semibold text-foreground">
                 {t('price', { price: formatDisplayNumber(item.price) })}
               </span>
-              {item.mall_name ? (
-                <span className="moldy-ui-micro text-muted-foreground">{item.mall_name}</span>
+              {item.merchant ? (
+                <span className="moldy-ui-micro text-muted-foreground">{item.merchant}</span>
               ) : null}
             </div>
           )}
@@ -167,12 +167,9 @@ export function SearchRender({
 }
 
 // ──────────────────────────────────────────────
-// SearchToolUI — web_search + Tavily + Naver + Google
 //
 // toolName 必须与运行时名称一致才能匹配。registry 工具的运行时名称
 // `_safe_tool_name(Tool.name || display_name, fallback=definition_key)`
-// (backend tool_factory.py) — 韩文显示名会在清理时全部被移除，
-// 因而回退到 definition_key，所以实际流过来的是 definition_key(naver_search_blog 等)。
 // 如果用户将工具名改为 ASCII 导致名称不匹配，
 // 则由 GenericToolFallback 的基于 shape 的路由(looksLikeSearchResults)处理。
 // ──────────────────────────────────────────────
@@ -181,20 +178,12 @@ export const SEARCH_TOOL_UI_NAMES = [
   // builtin + 技能依赖(tavily_search) + E2E scripted
   'tavily_search',
   'web_search',
-  // registry definition_key (Naver 5 类)
-  'naver_search_blog',
-  'naver_search_news',
-  'naver_search_image',
-  'naver_search_shop',
-  'naver_search_local',
   // registry definition_key (Google 3 类)
   'google_search_web',
   'google_search_image',
   'google_search_news',
   // 过去的硬编码名称 — 虽然从未与实际运行时名称匹配，但为兼容旧对话
   // 快照/测试 fixture 而保留。
-  'naver_blog_search',
-  'naver_news_search',
   'google_search',
   'google_news_search',
 ] as const

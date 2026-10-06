@@ -141,7 +141,7 @@ export function ChatRightRail({ className, conversationId }: Props) {
 
   return (
     <>
-      {/* 넓은 데스크톱: inline split */}
+      {/* 宽屏 desktop: inline split */}
       <aside
         ref={rightRailRef}
         data-slot="chat-right-rail"
@@ -177,7 +177,7 @@ export function ChatRightRail({ className, conversationId }: Props) {
         ) : null}
       </aside>
 
-      {/* mobile/tablet: artifact는 독립 full-screen layer, 그 외 rail은 기존 drawer */}
+      {/* mobile/tablet: artifact 使用独立 full-screen layer，其余 rail 保持现有 drawer */}
       {isOpen ? (
         <div
           className={cn('fixed inset-0 z-40', isInlineRailAvailable && 'xl:hidden')}

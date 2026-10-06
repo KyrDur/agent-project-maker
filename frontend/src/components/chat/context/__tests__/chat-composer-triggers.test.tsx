@@ -108,7 +108,7 @@ describe('ChatComposerTriggers official trigger integration', () => {
     expect(execute).toHaveBeenCalledOnce()
   })
 
-  it('closes with Escape and does not execute Enter while Korean IME is composing', async () => {
+  it('closes with Escape and does not execute Enter while Chinese IME is composing', async () => {
     const execute = vi.fn()
     render(<Harness commands={[enabledCommand(execute)]} />)
     const input = screen.getByRole('textbox', { name: 'Message' })

@@ -62,11 +62,8 @@ const EXACT_TOOL_ICONS: Readonly<Record<string, LucideIcon>> = {
   save_agent_memory: BrainIcon,
 }
 
-/** 前缀映射 — 同一系列的变体（naver_blog_search 等）一次性处理。 */
-const PREFIX_TOOL_ICONS: ReadonlyArray<readonly [string, LucideIcon]> = [
-  ['naver_', SearchIcon],
-  ['google_', SearchIcon],
-]
+/** 前缀映射 — 同一系列的变体（google_search_web 等）一次性处理。 */
+const PREFIX_TOOL_ICONS: ReadonlyArray<readonly [string, LucideIcon]> = [['google_', SearchIcon]]
 
 /**
  * toolName → 内置固定映射图标。映射中没有则为 null（调用方回退到工具 icon_id 或

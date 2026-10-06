@@ -957,8 +957,8 @@ async def test_execute_stream_runtime_tool_called_per_entry(
         },
         {
             "tool_id": "2",
-            "definition_key": "naver_search_blog",
-            "name": "Naver Blog Search",
+            "definition_key": "google_search_web",
+            "name": "Google Web Search",
             "description": "blog",
             "parameters": {"query": "x"},
             "credentials": {"client_id": "a", "client_secret": "b"},

@@ -43,7 +43,7 @@ export function useChatNavigatorShortcuts({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      // IME 组合中的按键不是快捷键（保护韩文等组合输入）
+      // IME 组合中的按键不是快捷键（保护中文等组合输入）
       if (event.isComposing) return
       if (event.metaKey || event.ctrlKey) setShortcutPreviewActive(true)
       if ((event.metaKey || event.ctrlKey) && event.code === 'KeyK') {

@@ -1,7 +1,7 @@
 # References Index
 
-| 문서 | 설명 |
+| 文档 | 说明 |
 |------|------|
-| [PRD.md](../PRD.md) | 제품 요구사항 정의서 |
-| [PRD-screens.md](../PRD-screens.md) | 화면별 와이어프레임 |
-| [tool-setup-guide.md](../tool-setup-guide.md) | 프리빌트 도구 API 키 설정 가이드 |
+| [PRD.md](../PRD.md) | 产品需求说明书 |
+| [PRD-screens.md](../PRD-screens.md) | 按页面划分的 wireframe |
+| [tool-setup-guide.md](../tool-setup-guide.md) | 预构建工具 API key 设置指南 |

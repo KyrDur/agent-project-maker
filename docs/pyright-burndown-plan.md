@@ -1,84 +1,84 @@
-# Pyright 백로그 번다운 완료 기록
+# Pyright 积压问题清零完成记录
 
-> 상태: **2026-09-07 완료**. `uv run pyright` 0 에러에 도달했고 CI
-> `backend-typecheck`의 `|| true`를 제거해 basic-mode 하드 게이트로 승격했다.
-> `typeCheckingMode = "standard"` 승격은 이 작업에 포함하지 않으며 별도 결정으로 남긴다.
+> 状态：**2026-09-07 完成**。`uv run pyright` 已达到 0 个错误，并且 CI
+> 已移除 `backend-typecheck` 的 `|| true`，升级为 basic-mode 硬门禁。
+> `typeCheckingMode = "standard"` 的升级不包含在本次工作中，保留为单独决策。
 
-## 완료 결과
+## 完成结果
 
-- 최신 `origin/main` 출발점: **1,258건** (`app/**` 104, `tests/**` 1,154)
-- 완료 상태: **0 errors, 0 warnings, 0 informations** (`filesAnalyzed: 1,058`)
-- 설정: `basic` 유지, `data`, `.venv`, `alembic/versions` 제외 유지
-- CI: `.github/workflows/ci.yml`의 `backend-typecheck`를 blocking으로 전환
-- Pydantic 적용 원칙: HTTP·LLM·저장 JSON 등 검증이 필요한 신뢰 경계에서만 사용
-- 내부 계약: `TypedDict`, dataclass, Protocol, 좁은 JSON 타입과 명시적 런타임 내로잉 사용
-- 도구 테스트: 구현 세부의 `BaseTool.coroutine` 대신 공식 `BaseTool.ainvoke` 사용
+- 最新 `origin/main` 起点：**1,258 项**（`app/**` 104，`tests/**` 1,154）
+- 完成状态：**0 errors, 0 warnings, 0 informations**（`filesAnalyzed: 1,058`）
+- 设置：保持 `basic`，继续排除 `data`、`.venv`、`alembic/versions`
+- CI：将 `.github/workflows/ci.yml` 的 `backend-typecheck` 改为 blocking
+- Pydantic 应用原则：仅在 HTTP、LLM、存储 JSON 等需要验证的信任边界使用
+- 内部契约：使用 `TypedDict`、dataclass、Protocol、窄化的 JSON 类型和显式运行时窄化
+- 工具测试：使用官方 `BaseTool.ainvoke`，而不是实现细节中的 `BaseTool.coroutine`
 
-아래 분포와 단계별 내용은 2026-07-08 당시의 최초 분석 기록이다. 실제 작업은 이후
-합쳐진 코드의 더 큰 기준치에서 수행됐다.
+以下分布和各阶段内容是 2026-07-08 当时的首次分析记录。实际工作后来
+是在合并后代码更大的基准值上完成的。
 
-## 0. 전체 분포 (분석 시점: 970건)
+## 0. 整体分布（分析时：970 项）
 
-| 영역 | 건수 | 성격 |
+| 区域 | 数量 | 性质 |
 |------|-----:|------|
-| `data/**` | 343 | **앱 코드 아님** — 설치된 스킬 패키지 스크립트/업스트림 벤더 코드(런타임 데이터, 머신마다 다름) |
-| `tests/**` | 502 | 소수 반복 패턴에 집중 (아래 §3) |
-| `app/**` | 125 | 실코드 — 파일별로 국소화됨 (아래 §2) |
+| `data/**` | 343 | **不是应用代码** — 已安装 Skill 包脚本/上游 vendor 代码（运行时数据，每台机器不同） |
+| `tests/**` | 502 | 集中在少数重复模式（见下文 §3） |
+| `app/**` | 125 | 实际代码 — 按文件局部集中（见下文 §2） |
 
-## Phase A — 설정 정리 ✅ 완료 (이 커밋)
+## Phase A — 设置整理 ✅ 完成（本次提交）
 
-`[tool.pyright]`에 `exclude = ["data", ".venv", "alembic/versions"]` 추가.
-`data/`는 런타임 콘텐츠(설치 스킬·업로드·마켓 스냅샷)라 타입 게이트 대상이 아니며, 머신마다 내용이 달라 카운트를 비결정적으로 만들던 원인.
+在 `[tool.pyright]` 中添加 `exclude = ["data", ".venv", "alembic/versions"]`。
+`data/` 是运行时内容（已安装 Skill、上传、Marketplace 快照），不属于类型门禁对象，而且每台机器内容不同，是导致计数不确定的原因。
 
-**결과: 970 → 627** (-343, 무위험)
+**结果：970 → 627**（-343，无风险）
 
-## Phase B — app 실코드 정리 ✅ 완료
+## Phase B — app 实际代码整理 ✅ 完成
 
-파일별 집중도가 높아 상위 8개 파일만 처리해도 77건이 사라진다.
+问题按文件高度集中，只处理排名前 8 的文件就能消除 77 项。
 
-| 파일 | 건수 | 지배적 원인 | 수정 방향 |
+| 文件 | 数量 | 主要原因 | 修改方向 |
 |------|-----:|-------------|-----------|
-| `services/agent_blueprint_service.py` | 20 | JSON 컬럼(`dict \| None`)에 `.get()`/이터레이션 — null 가드 부재 | 함수 진입부에서 `payload = blueprint.payload or {}` 정규화 또는 로컬 내로잉. **주의: 실런타임 null 가능성 검토 — 단순 타입 침묵이 아니라 실제 방어가 맞는지 케이스별 판단** |
-| `agent_runtime/legacy_event_projection.py` | 12 | `dict[bytes, bytes]`를 `dict[str, Any]` 파라미터에 전달 등 | "legacy" 모듈 — **삭제/사용처 확인 먼저** (dead면 제거가 정답). 살아있으면 디코딩 경계에 명시적 변환 |
-| `agent_runtime/checkpointer.py` | 7 | 라이브러리(psycopg/langgraph) 타입 경계 | 경계에 좁은 `cast`/어댑터 |
-| `agent_runtime/skill_builder/graph.py` | 7 | LangGraph state dict 접근 | TypedDict state 스키마 정의 |
+| `services/agent_blueprint_service.py` | 20 | JSON 列（`dict \| None`）上调用 `.get()`/迭代 — 缺少 null 防护 | 在函数入口将 `payload = blueprint.payload or {}` 规范化，或做局部窄化。**注意：检查实际运行时 null 的可能性 — 应逐案例判断是否需要真实防护，而不只是让类型检查静默** |
+| `agent_runtime/legacy_event_projection.py` | 12 | 将 `dict[bytes, bytes]` 传给 `dict[str, Any]` 参数等 | "legacy" 模块 — **先确认删除/使用处**（若 dead，删除才是正确做法）。仍在使用则在解码边界做显式转换 |
+| `agent_runtime/checkpointer.py` | 7 | 库（psycopg/langgraph）类型边界 | 在边界使用窄化的 `cast`/适配器 |
+| `agent_runtime/skill_builder/graph.py` | 7 | LangGraph state dict 访问 | 定义 TypedDict state schema |
 | `agent_runtime/skill_builder/trigger_eval.py` | 7 | 〃 | 〃 |
-| `services/conversation_run_worker.py` | 6 | Optional 접근 | null 가드 |
-| `marketplace/install_service.py` | 5 | Optional/arg 타입 | BE-S3 분해 작업과 함께 처리 권장 |
-| `agent_runtime/langgraph_pending_inputs.py` 외 꼬리 17파일 | 61 | 파일당 1~3건 | 기계적 개별 수정 |
+| `services/conversation_run_worker.py` | 6 | Optional 访问 | null 防护 |
+| `marketplace/install_service.py` | 5 | Optional/arg 类型 | 建议与 BE-S3 拆分工作一起处理 |
+| `agent_runtime/langgraph_pending_inputs.py` 等尾部 17 个文件 | 61 | 每个文件 1~3 项 | 逐文件机械修改 |
 
-- 진행 방식: blueprint, skill builder/evaluation, protocol/runtime, storage 경계를 묶음별로
-  수정하고 각 파일 및 `app/` 전체가 0인지 확인했다.
-- `app/seed/system_skill_packages/*/scripts` 4건은 subprocess 실행 스크립트(임포트 안 됨) — 수정 또는 exclude 추가 중 택1(수정 권장, 4건뿐).
+- 推进方式：按 blueprint、skill builder/evaluation、protocol/runtime、storage 边界分组
+  修改，并确认每个文件及整个 `app/` 都为 0。
+- `app/seed/system_skill_packages/*/scripts` 的 4 项是 subprocess 执行脚本（不会 import）— 修改或新增 exclude 二选1（建议修改，只有 4 项）。
 
-## Phase C — 테스트 계약 정리 ✅ 완료
+## Phase C — 测试契约整理 ✅ 完成
 
-메시지 패턴이 6개로 수렴하므로 파일이 아니라 **패턴 단위**로 친다:
+消息模式收敛为 6 种，因此按**模式维度**处理，而不是按文件：
 
-| 패턴 | 건수 | 원인 | 수정 방향 |
+| 模式 | 数量 | 原因 | 修改方向 |
 |------|-----:|------|-----------|
-| `"__getitem__" not defined on int/float/bool` + `No overloads for __getitem__` | ~218 | skill_evaluation 테스트들이 넓은 재귀 JSON 결과를 바로 중첩 인덱싱 | 결과용 dict-compatible 타입과 경계 내로잉을 추가해 구조를 보존. blanket `Any`는 사용하지 않음 |
-| `Object of type "None" is not subscriptable` | 59 | Optional 반환 헬퍼를 바로 인덱싱 | 헬퍼에서 `assert x is not None` 후 반환 or 반환 타입 비-Optional화 |
-| `No parameter named "model"` | 41 | `test_e2e_scripted_model.py` 단일 파일 — 생성자 kwargs가 타입에 없음 | 해당 팩토리 시그니처에 파라미터 명시(1곳) |
-| `Cannot access attribute "coroutine" for BaseTool` | 24 | 빌더가 `BaseTool` 반환인데 테스트가 구현 세부 속성에 접근 | `BaseTool.ainvoke`로 전환 |
-| TypedDict/`metadata` 키 접근 계열 | ~30 | LangChain 메시지 TypedDict 좁히기 실패 | `cast` 또는 `.get()` 전환 |
-| 나머지 개별 | ~130 | 산발 | 파일별 기계 수정 |
+| `"__getitem__" not defined on int/float/bool` + `No overloads for __getitem__` | ~218 | skill_evaluation 测试直接对宽泛递归 JSON 结果做嵌套索引 | 为结果添加 dict-compatible 类型和边界窄化以保留结构。不使用 blanket `Any` |
+| `Object of type "None" is not subscriptable` | 59 | 直接索引返回 Optional 的 helper | 在 helper 中 `assert x is not None` 后返回 or 将返回类型改为非 Optional |
+| `No parameter named "model"` | 41 | 单个文件 `test_e2e_scripted_model.py` — 构造函数 kwargs 中的类型没有该参数 | 在相应 factory 签名中明确参数（1 处） |
+| `Cannot access attribute "coroutine" for BaseTool` | 24 | builder 返回 `BaseTool`，但测试访问了实现细节属性 | 改用 `BaseTool.ainvoke` |
+| TypedDict/`metadata` 键访问类 | ~30 | LangChain 消息 TypedDict 窄化失败 | 改用 `cast` 或 `.get()` |
+| 其余单项 | ~130 | 零散 | 按文件机械修改 |
 
-- **원칙: 룰 완화(executionEnvironments로 tests만 끄기)는 최후 수단** — 위 패턴 수정은 대부분 헬퍼 시그니처 몇 줄이라 완화보다 싸고, `reportIndexIssue`류는 테스트에서도 실버그를 잡는다.
+- **原则：放宽规则（用 executionEnvironments 只关闭 tests）是最后手段** — 上述模式大多只需改几行 helper 签名，比放宽规则成本更低，而且 `reportIndexIssue` 等在测试中也能捕获真实 bug。
 
-## Phase D — 게이트 승격 ✅ 완료
+## Phase D — 门禁升级 ✅ 完成
 
-1. `.github/workflows/ci.yml`의 `backend-typecheck` 스텝에서 `|| true` 제거 완료.
-2. `docs/refactoring-plan-2026-07.md`의 타입 게이트 상태 갱신 완료.
-3. `typeCheckingMode = "standard"` 상향은 선택 사항으로 분리했다.
+1. 已从 `.github/workflows/ci.yml` 的 `backend-typecheck` step 中移除 `|| true`。
+2. 已更新 `docs/refactoring-plan-2026-07.md` 中的类型门禁状态。
+3. 将 `typeCheckingMode = "standard"` 的升级拆分为可选事项。
 
-## 진행 추적
+## 进度跟踪
 
-| Phase | 목표 잔여 | 상태 |
+| Phase | 目标剩余 | 状态 |
 |-------|----------:|------|
-| A. data 제외 | 627 | ✅ 2026-07-08 (PR #279) |
-| B. app 실코드 | tests만 잔여 | ✅ 2026-09-07 |
-| C. tests 패턴 | 0 | ✅ 2026-09-07 |
-| D. 하드 게이트 | 0 유지 | ✅ 2026-09-07 |
+| A. 排除 data | 627 | ✅ 2026-07-08 (PR #279) |
+| B. app 实际代码 | 仅剩 tests | ✅ 2026-09-07 |
+| C. tests 模式 | 0 | ✅ 2026-09-07 |
+| D. 硬门禁 | 保持 0 | ✅ 2026-09-07 |
 
-검증 커맨드: `cd backend && uv run pyright` (전체), `uv run pyright <파일>` (수정 묶음).
+验证命令：`cd backend && uv run pyright`（全部），`uv run pyright <文件>`（修改分组）。

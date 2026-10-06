@@ -54,7 +54,7 @@ function TeamChip({
         'hover:bg-accent hover:text-foreground',
       )}
     >
-      {/* SDK depth는 root=0, 직접 위임=1 — 서브의 서브(≥2)만 중첩 마커. */}
+      {/* SDK depth 中 root=0，直接委派=1 — 仅 sub 的 sub(≥2)显示嵌套标记。 */}
       {snapshot.depth > 1 ? (
         <span aria-hidden className="shrink-0 text-muted-foreground">
           ↳

@@ -452,8 +452,8 @@ async def test_adapter_uses_snapshot_and_scrubs_resolved_secret(
 
 @pytest.mark.asyncio
 async def test_project_examinee_missing_binding_does_not_switch_to_another_model(db, monkeypatch):
-    from app.services import agent_project_llm
     from app.agent_runtime.credential_resolution import LLMCredentialRequiredError
+    from app.services import agent_project_llm
 
     _, _, agent = await seed_agent(db)
     await db.commit()

@@ -331,32 +331,6 @@ async def test_get_agent_required_secrets(db: AsyncSession, patch_read_session):
     assert data["required"] == []
 
 
-@pytest.mark.asyncio
-async def test_get_agent_required_secrets_with_naver_tool(db: AsyncSession, patch_read_session):
-    """Naver tool should require NAVER_CLIENT_ID and NAVER_CLIENT_SECRET."""
-    agent_id, _ = await _seed_full(db)
-
-    # Add naver tool
-    naver_tool = Tool(
-        name="Naver Search",
-        definition_key="naver_search_blog",
-        description="Naver search",
-    )
-    db.add(naver_tool)
-    await db.flush()
-    link = AgentToolLink(agent_id=agent_id, tool_id=naver_tool.id)
-    db.add(link)
-    await db.commit()
-
-    tools = _build_tools(db, agent_id)
-    tool = _find_tool(tools, "get_agent_required_secrets")
-
-    result = await tool.ainvoke({})
-    data = json.loads(result)
-    assert "NAVER_CLIENT_ID" in data["required"]
-    assert "NAVER_CLIENT_SECRET" in data["required"]
-
-
 # ---------------------------------------------------------------------------
 # get_user_secrets
 # ---------------------------------------------------------------------------

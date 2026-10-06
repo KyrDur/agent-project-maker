@@ -2,19 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** LLM/skill 실행 중 생성된 파일을 최종 답변의 Markdown 링크에만 의존하지 않고, SSE 파일 이벤트와 우측 Artifact Panel로 즉시 발견, 목록화, preview, 다운로드할 수 있게 만든다.
+**Goal:** 让 LLM/skill 执行过程中生成的文件不再只依赖最终回答中的 Markdown 链接，而是通过 SSE 文件事件和右侧 Artifact Panel 即时发现、列出、preview、下载。
 
-**Architecture:** Moldy의 기존 Deep Agents runtime, `execute_in_skill`, `message_events` SSE persistence, conversation ownership 모델을 유지한다. 파일은 DB artifact manifest와 storage backend가 관리하고, UI는 event-driven right rail과 preview provider registry로 확장한다.
+**Architecture:** 保持 Moldy 现有的 Deep Agents runtime、`execute_in_skill`、`message_events` SSE persistence、conversation ownership 模型。文件由 DB artifact manifest 和 storage backend 管理，UI 扩展为 event-driven right rail 和 preview provider registry。
 
 **Tech Stack:** FastAPI, SQLAlchemy async, Alembic, Deep Agents `create_deep_agent`, LangGraph checkpointer, Next.js 16, React 19, Jotai, TanStack Query, EventSource SSE, existing `react-markdown`, `mermaid`, `react-syntax-highlighter`.
 
 ---
 
-## 1. 배경과 핵심 판단
+## 1. 背景与核心判断
 
-현재 Moldy는 스킬 실행 결과 파일을 `OUTPUT_FILES` 텍스트와 `/api/conversations/{conversation_id}/files/{file_path}` 링크 중심으로 노출한다. 이 방식은 구현이 단순하지만 사용자는 최종 답변을 받기 전까지 어떤 파일이 생성되었는지 알기 어렵고, 여러 후보 이미지, 리포트 초안, 차트, CSV, PDF 같은 산출물을 채팅 옆에서 지속적으로 탐색하기 어렵다.
+当前 Moldy 主要通过 `OUTPUT_FILES` 文本和 `/api/conversations/{conversation_id}/files/{file_path}` 链接暴露 skill 执行结果文件。这种方式实现简单，但用户在收到最终回答前很难知道生成了哪些文件，也难以在聊天旁持续浏览多个候选图片、报告草稿、图表、CSV、PDF 等产物。
 
-이번 기능의 핵심은 "LLM이 파일을 만들었다"를 답변 텍스트 안 링크로만 보여주는 것이 아니라, 파일 생성/수정 자체를 런타임 이벤트로 승격시키는 것이다.
+本次功能的核心，是将“LLM 创建了文件”从仅在回答文本中显示链接，提升为把文件创建/修改本身作为 runtime 事件。
 
 ```text
 execute_in_skill writes files
@@ -25,92 +25,92 @@ execute_in_skill writes files
 -> right rail ArtifactPanel renders tree + preview
 ```
 
-LangChain/Deep Agents 관점에서는 새 LangGraph runtime을 따로 만들 필요가 없다. `framework-selection` 기준으로 이 기능은 장기 실행 agent, tool call, skill, filesystem, persistence가 결합된 기능이므로 기존 Deep Agents 기반 top-level runtime을 유지하는 것이 맞다. `deep-agents-core` 기준으로도 file management, skills, checkpointer는 deepagents 설정과 주변 서비스를 통해 확장해야 하며, 별도 agent runtime을 재작성하면 Moldy의 `message_events`, checkpointer, credential, permission 흐름과 중복된다.
+从 LangChain/Deep Agents 角度看，没有必要单独创建新的 LangGraph runtime。按 `framework-selection` 标准，此功能结合了长时运行 agent、tool call、skill、filesystem、persistence，因此应继续使用现有基于 Deep Agents 的 top-level runtime。按 `deep-agents-core` 标准，file management、skills、checkpointer 也应通过 deepagents 设置和周边服务扩展；如果重写独立 agent runtime，会与 Moldy 的 `message_events`、checkpointer、credential、permission 流程重复。
 
-## 2. 실제 코드 감사 요약
+## 2. 实际代码审计摘要
 
 ### Backend
 
-- [backend/app/config.py](/Users/chester/dev/ref/natural-mold/backend/app/config.py): `conversation_output_dir = "./data/conversations"`, `upload_dir = "./data/uploads"`가 있다. artifact storage 설정은 아직 없다.
-- [backend/app/marketplace/skill_runtime.py](/Users/chester/dev/ref/natural-mold/backend/app/marketplace/skill_runtime.py): `output_dir = data/conversations/{thread_id}`로 스킬 산출물 위치를 정한다.
-- [backend/app/agent_runtime/executor.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/executor.py): `execute_in_skill`이 Python/curl 실행을 제한적으로 허용하고, 실행 후 output dir 파일 목록을 `OUTPUT_FILES`로 붙인다. 가장 현실적인 1차 artifact 감지 지점이다.
-- [backend/app/agent_runtime/streaming.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/streaming.py): `emit()`이 SSE 전송, `EventBroker` publish, trace sink, DB persistence flush를 한 번에 처리한다. `file_event`도 이 경로를 타야 resume과 message event 저장이 자연스럽다.
-- [backend/app/agent_runtime/event_names.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/event_names.py): SSE event name 상수 파일이다. `FILE_EVENT = "file_event"`를 추가해야 한다.
-- [backend/app/models/message_event.py](/Users/chester/dev/ref/natural-mold/backend/app/models/message_event.py): assistant turn의 event stream을 append-only로 저장한다. 파일 이벤트 replay에 적합하다.
-- [backend/app/models/message_attachment.py](/Users/chester/dev/ref/natural-mold/backend/app/models/message_attachment.py): 사용자 업로드 input file 모델이다. artifact는 LLM/runtime output file이므로 별도 모델로 분리하는 것이 안전하다.
-- [backend/app/routers/uploads.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/uploads.py): 업로드 파일은 UUID 기반 local disk에 저장한다. S3 전환 시 storage backend만 바꾸겠다는 주석이 있어 artifact도 같은 방향을 따를 수 있다.
-- [backend/app/routers/conversations.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/conversations.py): 기존 파일 다운로드 endpoint가 `data/conversations/{conversation_id}`에서 파일을 서빙하고 image preview를 만든다. artifact API를 추가하면서 이 endpoint의 ownership guard도 함께 점검해야 한다.
-- [backend/app/routers/shares.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/shares.py), [backend/app/services/share_service.py](/Users/chester/dev/ref/natural-mold/backend/app/services/share_service.py): 공유 링크는 conversation snapshot 중심이다. artifact는 share token에서 접근 가능한 별도 public read endpoint가 필요하다.
+- [backend/app/config.py](/Users/chester/dev/ref/natural-mold/backend/app/config.py): 存在 `conversation_output_dir = "./data/conversations"`, `upload_dir = "./data/uploads"`。目前还没有 artifact storage 设置。
+- [backend/app/marketplace/skill_runtime.py](/Users/chester/dev/ref/natural-mold/backend/app/marketplace/skill_runtime.py): 通过 `output_dir = data/conversations/{thread_id}` 确定 skill 产物位置。
+- [backend/app/agent_runtime/executor.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/executor.py): `execute_in_skill` 有限度地允许执行 Python/curl，并在执行后把 output dir 文件列表附加为 `OUTPUT_FILES`。这是最现实的第 1 阶段 artifact 检测点。
+- [backend/app/agent_runtime/streaming.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/streaming.py): `emit()` 一次性处理 SSE 发送、`EventBroker` publish、trace sink、DB persistence flush。`file_event` 也应走这条路径，这样 resume 和 message event 保存才自然。
+- [backend/app/agent_runtime/event_names.py](/Users/chester/dev/ref/natural-mold/backend/app/agent_runtime/event_names.py): SSE event name 常量文件。需要添加 `FILE_EVENT = "file_event"`。
+- [backend/app/models/message_event.py](/Users/chester/dev/ref/natural-mold/backend/app/models/message_event.py): 将 assistant turn 的 event stream 以 append-only 方式保存。适合文件事件 replay。
+- [backend/app/models/message_attachment.py](/Users/chester/dev/ref/natural-mold/backend/app/models/message_attachment.py): 用户上传 input file 的模型。artifact 是 LLM/runtime output file，因此单独建模更安全。
+- [backend/app/routers/uploads.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/uploads.py): 上传文件以 UUID 为基础保存在 local disk。注释中说明切换 S3 时只替换 storage backend，因此 artifact 也可沿用同一方向。
+- [backend/app/routers/conversations.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/conversations.py): 现有文件下载 endpoint 从 `data/conversations/{conversation_id}` 提供文件并生成 image preview。新增 artifact API 时，也要一并检查该 endpoint 的 ownership guard。
+- [backend/app/routers/shares.py](/Users/chester/dev/ref/natural-mold/backend/app/routers/shares.py), [backend/app/services/share_service.py](/Users/chester/dev/ref/natural-mold/backend/app/services/share_service.py): 分享链接以 conversation snapshot 为中心。artifact 需要可通过 share token 访问的独立 public read endpoint。
 
 ### Frontend
 
-- [frontend/package.json](/Users/chester/dev/ref/natural-mold/frontend/package.json): 이미 `mermaid`, `react-markdown`, `react-syntax-highlighter`가 있다. Markdown, Mermaid, code preview의 1차 구현은 추가 라이브러리 없이 가능하다.
-- [frontend/src/lib/types/index.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/types/index.ts): `SSEEventType`, `SSEEvent` union에 `file_event` 타입이 없다.
-- [frontend/src/lib/sse/parse-sse.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/sse/parse-sse.ts): SSE parser는 generic하게 event를 파싱하므로 새 event type 추가가 작다.
-- [frontend/src/lib/chat/use-chat-runtime.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/chat/use-chat-runtime.ts): SSE event switch에 `file_event` 처리를 추가해야 한다.
-- [frontend/src/lib/stores/chat-right-rail.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/stores/chat-right-rail.ts): right rail mode가 `none | subagent | tool-result | outline`이다. `artifacts`를 추가한다.
-- [frontend/src/components/chat/right-rail/chat-right-rail.tsx](/Users/chester/dev/ref/natural-mold/frontend/src/components/chat/right-rail/chat-right-rail.tsx): 우측 패널 shell이 이미 있다. `ArtifactPanelContent`를 추가하기 좋은 위치다.
-- [frontend/src/components/chat/markdown-content.tsx](/Users/chester/dev/ref/natural-mold/frontend/src/components/chat/markdown-content.tsx): inline Markdown, image, Mermaid 렌더링이 이미 있다. 이 기능은 유지하고, side artifact panel은 "파일로 생성된 durable artifact"에 한정한다.
-- [frontend/src/lib/chat/tool-ui-registry.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/chat/tool-ui-registry.ts): tool result UI registry가 있다. Artifact preview registry는 tool UI와 분리하되 패턴을 참고할 수 있다.
+- [frontend/package.json](/Users/chester/dev/ref/natural-mold/frontend/package.json): 已有 `mermaid`, `react-markdown`, `react-syntax-highlighter`。Markdown、Mermaid、code preview 的第 1 阶段实现无需新增库即可完成。
+- [frontend/src/lib/types/index.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/types/index.ts): `SSEEventType`, `SSEEvent` union 中没有 `file_event` 类型。
+- [frontend/src/lib/sse/parse-sse.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/sse/parse-sse.ts): SSE parser 以 generic 方式解析 event，因此新增 event type 的改动很小。
+- [frontend/src/lib/chat/use-chat-runtime.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/chat/use-chat-runtime.ts): 需要在 SSE event switch 中增加 `file_event` 处理。
+- [frontend/src/lib/stores/chat-right-rail.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/stores/chat-right-rail.ts): right rail mode 为 `none | subagent | tool-result | outline`。增加 `artifacts`。
+- [frontend/src/components/chat/right-rail/chat-right-rail.tsx](/Users/chester/dev/ref/natural-mold/frontend/src/components/chat/right-rail/chat-right-rail.tsx): 右侧 panel shell 已存在。这里很适合添加 `ArtifactPanelContent`。
+- [frontend/src/components/chat/markdown-content.tsx](/Users/chester/dev/ref/natural-mold/frontend/src/components/chat/markdown-content.tsx): inline Markdown、image、Mermaid rendering 已存在。保留该功能，side artifact panel 仅用于“以文件形式生成的 durable artifact”。
+- [frontend/src/lib/chat/tool-ui-registry.ts](/Users/chester/dev/ref/natural-mold/frontend/src/lib/chat/tool-ui-registry.ts): 有 tool result UI registry。Artifact preview registry 与 tool UI 分离，但可以参考其模式。
 
-## 3. 차용할 패턴
+## 3. 可借鉴的模式
 
-### LambChat류 파일/문서 preview 패턴
+### LambChat 类文件/文档 preview 模式
 
-차용할 점은 "생성 파일을 별도 파일 라이브러리처럼 보여주는 UX"다. 다만 PDF, 문서, CAD, 프로젝트 preview가 모두 단일 라이브러리로 해결되는 구조는 아니다. 일반적으로 파일 타입별 provider가 다르고, 고급 문서 preview는 서버 변환 또는 전용 viewer가 필요하다.
+可借鉴的是“把生成文件像独立文件库一样展示的 UX”。但 PDF、文档、CAD、项目 preview 并不能全部由单一库解决。通常不同文件类型需要不同 provider，高级文档 preview 需要服务端转换或专用 viewer。
 
-Moldy에 바로 가져올 수 있는 것은 다음이다.
+可直接引入 Moldy 的内容如下。
 
-- 채팅 본문 inline preview와 우측 durable artifact preview를 분리한다.
-- 파일 확장자/MIME 기반 provider registry를 둔다.
-- preview 불가 파일도 metadata, download, open original을 안정적으로 제공한다.
-- 장기적으로 PDF, Office, CAD, project preview를 provider plugin으로 붙일 수 있게 한다.
+- 将聊天正文 inline preview 与右侧 durable artifact preview 分离。
+- 建立基于文件扩展名/MIME 的 provider registry。
+- 对无法 preview 的文件，也稳定提供 metadata、download、open original。
+- 长期可将 PDF、Office、CAD、project preview 作为 provider plugin 接入。
 
-### JoySafeter류 file event 패턴
+### JoySafeter 类 file event 模式
 
-차용할 점은 backend가 파일 write/update/delete를 UI event로 승격시키는 흐름이다.
+可借鉴的是 backend 将文件 write/update/delete 提升为 UI event 的流程。
 
-Moldy에서는 WebSocket/run model을 그대로 복사하지 않는다. 이미 SSE, `message_events`, `EventBroker`, broker resume이 있으므로 `file_event`를 기존 stream에 넣는 것이 최적이다.
+Moldy 不直接复制 WebSocket/run model。既然已有 SSE、`message_events`、`EventBroker`、broker resume，最优做法是把 `file_event` 放入现有 stream。
 
-1차 구현은 sandbox write proxy 없이도 가능하다. `execute_in_skill` 실행 전후 output dir snapshot을 비교해 새 파일/수정 파일을 artifact로 ingest하고, tool result 직후 `file_event`를 emit한다. 이후 필요하면 output dir polling, 최종적으로 sandbox/file backend write proxy로 실시간성을 높인다.
+第 1 阶段实现即使没有 sandbox write proxy 也可以完成。比较 `execute_in_skill` 执行前后的 output dir snapshot，将新文件/修改文件 ingest 为 artifact，并在 tool result 后立即 emit `file_event`。之后如有需要，可以增加 output dir polling，最终再用 sandbox/file backend write proxy 提升实时性。
 
-## 4. 설계 원칙
+## 4. 设计原则
 
-1. **MessageAttachment와 Artifact를 분리한다.**  
-   `MessageAttachment`는 사용자 입력 파일이다. `ConversationArtifact`는 agent/runtime 출력 파일이다. 권한, lifecycle, share, versioning 요구가 다르다.
+1. **将 MessageAttachment 与 Artifact 分离。**<br>
+   `MessageAttachment` 是用户输入文件。`ConversationArtifact` 是 agent/runtime 输出文件。权限、lifecycle、share、versioning 要求不同。
 
-2. **Event log는 source of truth가 아니다.**  
-   `message_events`는 replay와 UI stream용이다. artifact 목록의 source of truth는 DB manifest와 storage object다.
+2. **Event log 不是 source of truth。**<br>
+   `message_events` 用于 replay 和 UI stream。artifact 列表的 source of truth 是 DB manifest 和 storage object。
 
-3. **LLM이 제안한 path를 storage path로 신뢰하지 않는다.**  
-   UI 표시용 `logical_path`와 실제 저장 위치 `object_key`를 분리한다. 실제 storage key는 UUID artifact id/version id 기반이다.
+3. **不将 LLM 建议的 path 信任为 storage path。**<br>
+   将用于 UI 显示的 `logical_path` 与实际存储位置 `object_key` 分离。实际 storage key 基于 UUID artifact id/version id。
 
-4. **local-first, S3/MinIO-ready로 간다.**  
-   1차 구현은 local disk로 충분하다. 단 storage interface를 먼저 만들고 API는 storage backend에 의존하지 않게 설계한다.
+4. **采用 local-first，并为 S3/MinIO-ready 做准备。**<br>
+   第 1 阶段实现使用 local disk 就足够。但先建立 storage interface，并设计 API 不依赖具体 storage backend。
 
-5. **우측 패널은 durable file artifact 전용이다.**
-   기존 inline Markdown image, Mermaid, code rendering은 유지한다. 답변 본문에 포함된 inline content까지 모두 artifact panel로 옮기지 않는다.
+5. **右侧面板专用于 durable file artifact。**
+   保留现有 inline Markdown image、Mermaid、code rendering。不要把回答正文中的所有 inline content 都移到 artifact panel。
 
-6. **preview는 addon/provider registry로 확장한다.**
-   PDF, Office, CAD, Excalidraw, Mermaid, code는 각각 다른 provider가 맡는다. 단일 viewer 라이브러리에 묶지 않는다.
+6. **preview 通过 addon/provider registry 扩展。**
+   PDF、Office、CAD、Excalidraw、Mermaid、code 分别由不同 provider 负责。不要绑定到单一 viewer 库。
 
-7. **Generated File Library를 1차 범위에 포함한다.**
-   Artifact Panel만 먼저 만들고 전역 파일 라이브러리를 뒤로 미루면 DB/API/UI를 다시 뜯게 된다. `conversation_artifacts`를 처음부터 대화별 패널과 전역 Generated Files Library가 함께 쓰는 단일 인덱스로 설계한다.
+7. **将 Generated File Library 纳入第 1 阶段范围。**
+   如果只先做 Artifact Panel，把全局文件库推迟，之后就要重新拆改 DB/API/UI。从一开始就把 `conversation_artifacts` 设计为对话面板与全局 Generated Files Library 共用的单一索引。
 
-## 5. Backend 설계
+## 5. Backend 设计
 
-### 5.1 데이터 모델
+### 5.1 数据模型
 
-새 테이블을 추가한다.
+新增表。
 
 ```text
 conversation_artifacts
 - id UUID PK
 - user_id UUID FK users.id NOT NULL
-- agent_id UUID FK agents.id NOT NULL  # library 필터/통계용 denormalized key
+- agent_id UUID FK agents.id NOT NULL  # 用于 library 过滤/统计的 denormalized key
 - conversation_id UUID FK conversations.id NOT NULL
-- assistant_msg_id TEXT NOT NULL  # stream_agent_response run_id, message_events.assistant_msg_id와 동일
-- run_id TEXT NOT NULL            # assistant_msg_id alias; API/event에서는 run_id로 노출
+- assistant_msg_id TEXT NOT NULL  # stream_agent_response run_id，与 message_events.assistant_msg_id 相同
+- run_id TEXT NOT NULL            # assistant_msg_id alias；API/event 中以 run_id 暴露
 - tool_call_id TEXT NULL
 - source_tool_name TEXT NULL
 - logical_path TEXT NOT NULL
@@ -127,7 +127,7 @@ conversation_artifacts
 - preview_count INTEGER NOT NULL DEFAULT 0
 - download_count INTEGER NOT NULL DEFAULT 0
 - branch_checkpoint_id TEXT NULL
-- linked_message_ids JSONB NULL   # message_events.linked_message_ids snapshot, UI message 매칭용
+- linked_message_ids JSONB NULL   # message_events.linked_message_ids snapshot，用于 UI message 匹配
 - metadata_json JSONB NOT NULL DEFAULT '{}'
 - created_at TIMESTAMPTZ NOT NULL
 - updated_at TIMESTAMPTZ NOT NULL
@@ -148,7 +148,7 @@ artifact_versions
 - created_at TIMESTAMPTZ NOT NULL
 ```
 
-권장 constraint/index:
+推荐的 constraint/index：
 
 - `conversation_artifacts(conversation_id, assistant_msg_id, logical_path)` unique
 - `conversation_artifacts(user_id, conversation_id, created_at)`
@@ -159,15 +159,15 @@ artifact_versions
 - partial index: `conversation_artifacts(user_id, created_at) WHERE is_favorite = true`
 - `artifact_versions(artifact_id, version_number)` unique
 
-`run_id`별 path unique를 1차 기준으로 잡는다. 같은 `report/final.md`가 다른 실행에서 다시 생성되는 경우 별도 artifact로 보여주고, UI에서 실행 단위로 그룹화한다. 추후 "같은 logical path를 conversation-level 문서로 version merge"하는 정책은 별도 UX 결정 후 확장한다.
+以每个 `run_id` 下的 path unique 作为首要判据。同一个 `report/final.md` 在不同执行中再次生成时，显示为独立 artifact，并在 UI 中按执行分组。后续“把相同 logical path 作为 conversation-level 文档进行 version merge”的策略，在另行做 UX 决策后再扩展。
 
-`agent_id`는 `conversation -> agent` join으로도 얻을 수 있지만 Generated Files Library의 agent filter와 통계를 위해 denormalize한다. artifact ingest 시 router가 이미 `_resolve_agent_context()`로 `cfg.agent_id`를 알고 있으므로 recorder context에 함께 넣는다.
+`agent_id` 也可以通过 `conversation -> agent` join 获得，但为了 Generated Files Library 的 agent filter 和统计而 denormalize。artifact ingest 时 router 已经通过 `_resolve_agent_context()` 知道 `cfg.agent_id`，因此一并放入 recorder context。
 
-`is_favorite`, `last_opened_at`, `preview_count`, `download_count`는 "라이브러리 기능을 나중에 붙일 때"가 아니라 1차부터 넣는다. 패널과 라이브러리 모두 같은 artifact row를 보므로 즐겨찾기와 최근 열람 상태가 일관된다.
+`is_favorite`, `last_opened_at`, `preview_count`, `download_count` 不要等到“以后增加文件库功能时”再加，而是从第 1 阶段就加入。panel 与 library 都查看同一个 artifact row，因此收藏和最近打开状态保持一致。
 
-### 5.2 Storage 모델
+### 5.2 Storage 模型
 
-1차 local storage:
+第 1 阶段 local storage：
 
 ```text
 data/artifacts/conversations/{conversation_id}/{artifact_id}/v{version_number}/{safe_filename}
@@ -180,9 +180,9 @@ bucket: moldy-artifacts
 key: conversations/{conversation_id}/{artifact_id}/v{version_number}/{safe_filename}
 ```
 
-기존 `data/conversations/{conversation_id}`는 skill runtime의 staging/output directory로 유지한다. artifact service가 새/수정 파일을 발견하면 canonical artifact storage로 복사하고 DB manifest를 쓴다.
+保留现有 `data/conversations/{conversation_id}` 作为 skill runtime 的 staging/output directory。artifact service 发现新文件/修改文件后，将其复制到 canonical artifact storage 并写入 DB manifest。
 
-추가 settings:
+新增 settings：
 
 ```text
 ARTIFACT_STORAGE_BACKEND=local
@@ -195,25 +195,25 @@ ARTIFACT_S3_ACCESS_KEY_ID=
 ARTIFACT_S3_SECRET_ACCESS_KEY=
 ```
 
-처음에는 S3 설정을 실제 구현하지 않아도 `StorageBackend` interface와 config shape를 맞춰두면 MinIO 전환 비용이 낮다.
+即使一开始不实际实现 S3 设置，只要先对齐 `StorageBackend` interface 和 config shape，后续切换 MinIO 的成本就较低。
 
-### 5.3 Path와 filename 규칙
+### 5.3 Path 与 filename 规则
 
-`logical_path`는 skill output dir 기준 상대 경로다. 다음을 강제한다.
+`logical_path` 是相对于 skill output dir 的路径。强制以下规则。
 
-- absolute path 금지
-- `..` segment 금지
-- null byte, control character 금지
-- segment 길이 제한
-- 전체 path 길이 제한
-- 숨김/시스템 파일 제외 옵션: `.DS_Store`, `__pycache__`, preview cache
-- symlink는 follow하지 않음
+- 禁止 absolute path
+- 禁止 `..` segment
+- 禁止 null byte、control character
+- 限制 segment 长度
+- 限制完整 path 长度
+- 隐藏/系统文件排除选项：`.DS_Store`, `__pycache__`, preview cache
+- symlink 不 follow
 
-실제 storage key는 artifact UUID와 version number로 만든다. LLM이 만든 파일명은 `display_name`, `original_filename`, `logical_path`로만 보존한다.
+实际 storage key 使用 artifact UUID 和 version number 构造。LLM 创建的文件名只保存在 `display_name`, `original_filename`, `logical_path` 中。
 
 ### 5.4 Event schema
 
-`event_names.py`에 `FILE_EVENT = "file_event"`를 추가한다.
+在 `event_names.py` 中添加 `FILE_EVENT = "file_event"`。
 
 ```json
 {
@@ -250,16 +250,16 @@ ARTIFACT_S3_SECRET_ACCESS_KEY=
 }
 ```
 
-`op` 값:
+`op` 值：
 
-- `created`: 새 logical path 생성
-- `updated`: 같은 run/logical path의 새 version 생성
-- `deleted`: artifact 삭제 또는 더 이상 접근 불가
-- `failed`: ingest 또는 preview 준비 실패
+- `created`：创建新的 logical path
+- `updated`：为同一 run/logical path 创建新 version
+- `deleted`：artifact 被删除或不再可访问
+- `failed`：ingest 或 preview 准备失败
 
 ### 5.5 Artifact service
 
-새 서비스 파일:
+新增 service 文件：
 
 - `backend/app/models/conversation_artifact.py`
 - `backend/app/schemas/artifact.py`
@@ -267,7 +267,7 @@ ARTIFACT_S3_SECRET_ACCESS_KEY=
 - `backend/app/services/artifact_service.py`
 - `backend/app/routers/artifacts.py`
 
-핵심 함수:
+核心函数：
 
 ```text
 snapshot_output_dir(base_dir) -> ArtifactSnapshot
@@ -278,26 +278,26 @@ read_artifact_content(artifact_id, user_id, max_bytes) -> ArtifactContent
 open_artifact_stream(artifact_id, user_id) -> StreamingResponse
 ```
 
-`snapshot_output_dir`는 path, size, mtime_ns, sha256을 기록한다. 작은 파일은 sha256까지 즉시 계산하고, 큰 파일은 size/mtime으로 1차 감지 후 ingest 시 streaming hash를 계산한다.
+`snapshot_output_dir` 记录 path、size、mtime_ns、sha256。小文件立即计算到 sha256，大文件先用 size/mtime 做第 1 轮检测，ingest 时再计算 streaming hash。
 
-### 5.6 Stream 통합
+### 5.6 Stream 集成
 
-1차 구현의 최적 경로는 `streaming.py`의 기존 `emit()`를 그대로 쓰는 것이다. `execute_in_skill` tool result 직후 artifact delta를 ingest하고 `file_event`를 emit하면 broker resume, trace persistence, `message_events` 저장이 자동으로 따라온다.
+第 1 阶段实现的最佳路径，是直接复用 `streaming.py` 现有的 `emit()`。在 `execute_in_skill` tool result 后立即 ingest artifact delta 并 emit `file_event`，broker resume、trace persistence、`message_events` 保存就会自动跟进。
 
-구현 방향:
+实现方向：
 
-- `AgentConfig` 또는 stream context에 `run_id`, `user_id`, `conversation_id`, `artifact_output_dir`를 명시적으로 포함한다.
-- `stream_agent_response` 시작 시 output dir snapshot을 만든다.
-- `tool_call_result` event에서 tool name이 `execute_in_skill`이면 현재 output dir을 다시 snapshot한다.
-- 이전 snapshot과 비교해 artifact service가 DB/storage ingest를 수행한다.
-- 생성된 event payload를 `emit(FILE_EVENT, payload)`로 흘린다.
-- snapshot 기준점을 갱신한다.
+- 在 `AgentConfig` 或 stream context 中明确包含 `run_id`, `user_id`, `conversation_id`, `artifact_output_dir`。
+- `stream_agent_response` 开始时创建 output dir snapshot。
+- 在 `tool_call_result` event 中，如果 tool name 是 `execute_in_skill`，则重新 snapshot 当前 output dir。
+- 与之前的 snapshot 比较，由 artifact service 执行 DB/storage ingest。
+- 将生成的 event payload 通过 `emit(FILE_EVENT, payload)` 发送。
+- 更新 snapshot 基准点。
 
-이 방식은 `execute_in_skill` 내부에서 SSE를 직접 emit하려고 하지 않으므로 현재 구조에 덜 침투적이다. near-real-time이 필요해지면 tool 실행 중 polling task나 file backend proxy를 붙이는 2차 작업으로 확장한다.
+这种方式不尝试在 `execute_in_skill` 内部直接 emit SSE，因此对当前结构侵入更小。如果后续需要 near-real-time，可作为第 2 阶段工作增加 tool 执行中的 polling task 或 file backend proxy。
 
-### 5.7 API 설계
+### 5.7 API 设计
 
-인증된 conversation API:
+已认证的 conversation API：
 
 ```text
 GET /api/conversations/{conversation_id}/artifacts
@@ -307,7 +307,7 @@ GET /api/conversations/{conversation_id}/artifacts/{artifact_id}/download?versio
 DELETE /api/conversations/{conversation_id}/artifacts/{artifact_id}
 ```
 
-인증된 generated file library API:
+已认证的 generated file library API：
 
 ```text
 GET /api/artifacts?q=&agent_id=&conversation_id=&kind=&favorite=&limit=&cursor=
@@ -319,13 +319,13 @@ GET /api/artifacts/{artifact_id}/content?version=current
 GET /api/artifacts/{artifact_id}/download?version=current
 ```
 
-`GET /api/artifacts`는 현재 사용자 소유 artifact 전체를 대상으로 검색한다. `q`는 `display_name`, `logical_path`를 대상으로 하고, `agent_id`, `conversation_id`, `kind`, `favorite`는 AND 필터로 적용한다. `limit/cursor`는 conversation list와 같은 cursor pagination 스타일을 사용한다.
+`GET /api/artifacts` 搜索当前用户拥有的全部 artifact。`q` 针对 `display_name`, `logical_path`，`agent_id`, `conversation_id`, `kind`, `favorite` 作为 AND filter 应用。`limit/cursor` 使用与 conversation list 相同的 cursor pagination 风格。
 
-`PATCH /api/artifacts/{artifact_id}`는 1차에서 `{"is_favorite": true|false}`만 허용한다. 이름 변경, 이동, 태그 편집은 별도 제품 결정 후 확장한다.
+`PATCH /api/artifacts/{artifact_id}` 在第 1 阶段只允许 `{"is_favorite": true|false}`。重命名、移动、编辑标签在另行产品决策后扩展。
 
-`POST /api/artifacts/{artifact_id}/opened`는 preview/open action에서 호출하고 `last_opened_at`, `preview_count`를 갱신한다. `download` endpoint는 파일을 반환하기 전에 `download_count`를 증가시킨다.
+`POST /api/artifacts/{artifact_id}/opened` 在 preview/open action 时调用，并更新 `last_opened_at`, `preview_count`。`download` endpoint 在返回文件前增加 `download_count`。
 
-`GET /api/artifacts/stats`는 최소한 다음을 반환한다.
+`GET /api/artifacts/stats` 至少返回以下内容。
 
 ```json
 {
@@ -339,7 +339,7 @@ GET /api/artifacts/{artifact_id}/download?version=current
 }
 ```
 
-공유 링크 API:
+分享链接 API：
 
 ```text
 GET /api/shares/{token}/artifacts
@@ -348,62 +348,62 @@ GET /api/shares/{token}/artifacts/{artifact_id}/content
 GET /api/shares/{token}/artifacts/{artifact_id}/download
 ```
 
-모든 authenticated endpoint는 conversation owner를 확인한다. 기존 `/api/conversations/{conversation_id}/files/{file_path}`는 backward compatibility로 유지할 수 있지만, 첫 milestone에서 owner guard를 강화하거나 artifact API로 대체하는 방향을 명확히 한다.
+所有 authenticated endpoint 都检查 conversation owner。现有 `/api/conversations/{conversation_id}/files/{file_path}` 可以为 backward compatibility 保留，但在首个 milestone 中要明确是强化 owner guard，还是改为 artifact API。
 
-### 5.8 Security와 권한
+### 5.8 Security 与权限
 
-- artifact API는 반드시 `get_owned_conversation_with_agent` 또는 동등한 owner guard를 사용한다.
-- public share endpoint는 share token과 snapshot에 포함된 artifact만 허용한다.
-- storage object path와 local absolute path는 API 응답에 노출하지 않는다.
-- HTML preview는 sandboxed iframe으로만 제공한다.
-- SVG는 script/event handler 위험이 있으므로 image preview로 inline하지 않거나 sanitize한다.
-- Markdown preview는 raw HTML을 비활성화한다.
-- text preview는 byte limit와 line limit를 둔다.
-- artifact ingest는 max file size, max files per run, max total bytes per conversation quota를 적용한다.
-- 삭제는 DB status `deleted` 후 storage garbage collection으로 처리하는 soft-delete 우선이 안전하다.
+- artifact API 必须使用 `get_owned_conversation_with_agent` 或等效的 owner guard。
+- public share endpoint 只允许 share token 与 snapshot 中包含的 artifact。
+- API 响应中不暴露 storage object path 和 local absolute path。
+- HTML preview 仅通过 sandboxed iframe 提供。
+- SVG 存在 script/event handler 风险，因此不要作为 image preview inline，或需 sanitize。
+- Markdown preview 禁用 raw HTML。
+- text preview 设置 byte limit 和 line limit。
+- artifact ingest 应用 max file size、max files per run、max total bytes per conversation quota。
+- 删除优先采用 soft-delete：先将 DB status 设为 `deleted`，再通过 storage garbage collection 处理，更安全。
 
-## 6. Frontend 설계
+## 6. Frontend 设计
 
-### 6.1 State와 SSE
+### 6.1 State 与 SSE
 
-추가 타입:
+新增类型：
 
 - `ArtifactSummary`
 - `ArtifactVersion`
 - `FileEventPayload`
 - `ArtifactPreviewKind`
 
-수정 지점:
+修改点：
 
-- `frontend/src/lib/types/index.ts`: `SSEEventType`에 `file_event` 추가
-- `frontend/src/lib/chat/use-chat-runtime.ts`: `file_event` 수신 시 artifact store update
-- `frontend/src/lib/stores/chat-artifacts.ts`: conversation/run별 artifact 목록 상태
-- `frontend/src/lib/hooks/use-conversation-artifacts.ts`: 새로고침/진입 시 artifact list fetch
+- `frontend/src/lib/types/index.ts`：在 `SSEEventType` 中添加 `file_event`
+- `frontend/src/lib/chat/use-chat-runtime.ts`：收到 `file_event` 时 update artifact store
+- `frontend/src/lib/stores/chat-artifacts.ts`：按 conversation/run 管理 artifact 列表状态
+- `frontend/src/lib/hooks/use-conversation-artifacts.ts`：刷新/进入时 fetch artifact list
 
-SSE로 들어온 event는 optimistic state update처럼 반영하고, conversation 진입 시 API list로 authoritative sync를 맞춘다.
+通过 SSE 进入的 event 按 optimistic state update 方式反映；进入 conversation 时用 API list 做 authoritative sync。
 
 ### 6.2 Right rail
 
-수정 지점:
+修改点：
 
-- `frontend/src/lib/stores/chat-right-rail.ts`: `RightRailMode`에 `artifacts` 추가
-- `frontend/src/components/chat/right-rail/chat-right-rail.tsx`: `ArtifactPanelContent` 렌더링
-- `frontend/src/components/chat/right-rail/artifact-panel-content.tsx`: 신규
-- `frontend/src/components/chat/right-rail/artifact-preview.tsx`: 신규
+- `frontend/src/lib/stores/chat-right-rail.ts`：在 `RightRailMode` 中添加 `artifacts`
+- `frontend/src/components/chat/right-rail/chat-right-rail.tsx`：render `ArtifactPanelContent`
+- `frontend/src/components/chat/right-rail/artifact-panel-content.tsx`：新增
+- `frontend/src/components/chat/right-rail/artifact-preview.tsx`：新增
 
-패널 UX:
+panel UX：
 
-- 실행/run별 그룹
-- 파일 트리 또는 compact list
-- 생성/수정 상태 표시
-- MIME 아이콘
-- preview 영역
+- 按执行/run 分组
+- 文件树或 compact list
+- 显示创建/修改状态
+- MIME 图标
+- preview 区域
 - download/open controls
 - unsupported preview fallback
 
 ### 6.3 Preview provider registry
 
-초기 구조:
+初始结构：
 
 ```ts
 type ArtifactPreviewProvider = {
@@ -415,7 +415,7 @@ type ArtifactPreviewProvider = {
 }
 ```
 
-권장 파일:
+推荐文件：
 
 - `frontend/src/components/chat/artifacts/preview-registry.ts`
 - `frontend/src/components/chat/artifacts/providers/image-preview.tsx`
@@ -426,53 +426,53 @@ type ArtifactPreviewProvider = {
 - `frontend/src/components/chat/artifacts/providers/text-preview.tsx`
 - `frontend/src/components/chat/artifacts/providers/fallback-preview.tsx`
 
-1차 provider:
+第 1 阶段 provider：
 
 - Image: browser native `<img>`
 - Video/audio: browser native controls
-- Markdown: existing `MarkdownContent` 재사용
-- Mermaid: existing `mermaid` dependency 재사용
-- Code/text/json/csv: existing syntax highlighter 또는 lightweight text viewer
-- HTML: sandboxed iframe, default disabled 또는 explicit open
-- PDF: first pass는 browser iframe/open original, later `react-pdf` or pdf.js
+- Markdown：复用 existing `MarkdownContent`
+- Mermaid：复用 existing `mermaid` dependency
+- Code/text/json/csv：existing syntax highlighter 或 lightweight text viewer
+- HTML：sandboxed iframe，default disabled 或 explicit open
+- PDF：first pass 使用 browser iframe/open original，later `react-pdf` or pdf.js
 - Excalidraw: later `@excalidraw/excalidraw`
 - Office/CAD: later server conversion or specialized provider
 
-중요한 기준은 "기존 inline preview 기능을 제거하지 않는다"이다. Markdown 답변 안의 Mermaid/code/image는 계속 inline이고, 우측 panel provider는 artifact file에만 적용한다.
+重要标准是“不要移除现有 inline preview 功能”。Markdown 回答中的 Mermaid/code/image 继续 inline，右侧 panel provider 仅应用于 artifact file。
 
-### 6.4 Addon 확장성
+### 6.4 Addon 扩展性
 
-외부 preview provider를 쉽게 추가하려면 core registry API를 작게 유지한다.
+为了便于添加外部 preview provider，保持 core registry API 小而精。
 
-- provider는 `mime_type`, `extension`, `metadata_json`을 기준으로 match한다.
-- provider priority로 충돌을 해결한다.
-- provider는 lazy import를 허용한다.
-- heavy dependency는 provider 단위 chunk로 분리한다.
-- untrusted file rendering은 provider가 직접 iframe sandbox 또는 sanitize 정책을 선언하게 한다.
+- provider 根据 `mime_type`, `extension`, `metadata_json` 进行 match。
+- 通过 provider priority 解决冲突。
+- provider 允许 lazy import。
+- heavy dependency 按 provider 拆成独立 chunk。
+- untrusted file rendering 由 provider 自行声明 iframe sandbox 或 sanitize 策略。
 
-처음부터 외부 npm plugin loading까지 열 필요는 없다. 1차는 코드 레벨 addon registry로 충분하다. 런타임 외부 플러그인 로딩은 보안 모델, dependency isolation, CSP까지 필요하므로 별도 threat model 이후가 맞다.
+没必要从一开始就开放外部 npm plugin loading。第 1 阶段使用代码级 addon registry 足够。runtime 外部插件加载还需要安全模型、dependency isolation、CSP，因此应放在单独 threat model 之后。
 
-## 7. 구현 단계
+## 7. 实现阶段
 
 ### Milestone 1: Backend artifact foundation
 
-- [ ] Alembic migration으로 `conversation_artifacts`, `artifact_versions` 추가
-- [ ] SQLAlchemy model 추가
-- [ ] Pydantic schema 추가
-- [ ] `ArtifactStorageBackend` interface 추가
-- [ ] `LocalArtifactStorageBackend` 구현
-- [ ] path sanitization utility 구현
-- [ ] artifact service의 snapshot/diff/ingest 구현
-- [ ] quota와 max bytes 설정 추가
+- [ ] 通过 Alembic migration 添加 `conversation_artifacts`, `artifact_versions`
+- [ ] 添加 SQLAlchemy model
+- [ ] 添加 Pydantic schema
+- [ ] 添加 `ArtifactStorageBackend` interface
+- [ ] 实现 `LocalArtifactStorageBackend`
+- [ ] 实现 path sanitization utility
+- [ ] 实现 artifact service 的 snapshot/diff/ingest
+- [ ] 添加 quota 和 max bytes 设置
 
 ### Milestone 2: SSE file_event
 
-- [ ] `event_names.py`에 `FILE_EVENT` 추가
-- [ ] stream context에 `run_id`, `conversation_id`, `user_id`, `artifact_output_dir` 명시
-- [ ] `execute_in_skill` tool result 후 output dir delta ingest
-- [ ] ingest 결과를 `emit(FILE_EVENT, payload)`로 전송
-- [ ] `message_events` persistence/replay에서 `file_event`가 보존되는지 검증
-- [ ] 기존 `OUTPUT_FILES` 텍스트는 compatibility로 유지
+- [ ] 在 `event_names.py` 中添加 `FILE_EVENT`
+- [ ] 在 stream context 中明确 `run_id`, `conversation_id`, `user_id`, `artifact_output_dir`
+- [ ] `execute_in_skill` tool result 后 ingest output dir delta
+- [ ] 通过 `emit(FILE_EVENT, payload)` 发送 ingest 结果
+- [ ] 验证 `message_events` persistence/replay 中会保留 `file_event`
+- [ ] 现有 `OUTPUT_FILES` 文本继续保留以兼容
 
 ### Milestone 3: Artifact API
 
@@ -480,162 +480,162 @@ type ArtifactPreviewProvider = {
 - [ ] `GET /api/conversations/{id}/artifacts/{artifact_id}`
 - [ ] `GET /api/conversations/{id}/artifacts/{artifact_id}/content`
 - [ ] `GET /api/conversations/{id}/artifacts/{artifact_id}/download`
-- [ ] `GET /api/artifacts` 전역 generated file library 목록/검색
-- [ ] `GET /api/artifacts/stats` 파일 통계
-- [ ] `GET /api/artifacts/recent` 최근 열람/생성 파일
-- [ ] `PATCH /api/artifacts/{artifact_id}` favorite 토글
-- [ ] `POST /api/artifacts/{artifact_id}/opened` 최근 열람/preview count 기록
+- [ ] `GET /api/artifacts` 全局 generated file library 列表/搜索
+- [ ] `GET /api/artifacts/stats` 文件统计
+- [ ] `GET /api/artifacts/recent` 最近打开/生成文件
+- [ ] `PATCH /api/artifacts/{artifact_id}` favorite toggle
+- [ ] `POST /api/artifacts/{artifact_id}/opened` 记录最近打开/preview count
 - [ ] share token artifact read API
-- [ ] 기존 conversation file endpoint owner guard 점검/수정
-- [ ] content disposition, MIME, cache headers 정리
+- [ ] 检查/修改现有 conversation file endpoint owner guard
+- [ ] 整理 content disposition, MIME, cache headers
 
 ### Milestone 4: Frontend event/store/right rail
 
-- [ ] TS SSE type에 `file_event` 추가
-- [ ] `chat-artifacts` Jotai store 추가
-- [ ] `useConversationArtifacts` query 추가
-- [ ] `use-chat-runtime`에서 `file_event` 처리
-- [ ] right rail mode에 `artifacts` 추가
-- [ ] `ArtifactPanelContent` 추가
-- [ ] tool result나 toolbar에서 artifact panel 열기 affordance 추가
+- [ ] 在 TS SSE type 中添加 `file_event`
+- [ ] 添加 `chat-artifacts` Jotai store
+- [ ] 添加 `useConversationArtifacts` query
+- [ ] 在 `use-chat-runtime` 中处理 `file_event`
+- [ ] 在 right rail mode 中添加 `artifacts`
+- [ ] 添加 `ArtifactPanelContent`
+- [ ] 在 tool result 或 toolbar 中添加打开 artifact panel 的 affordance
 
 ### Milestone 5: Preview providers
 
-- [ ] preview registry 구현
+- [ ] 实现 preview registry
 - [ ] image/video/audio provider
 - [ ] markdown provider
 - [ ] mermaid provider
 - [ ] code/text/json/csv provider
 - [ ] fallback/download provider
-- [ ] HTML sandbox preview 정책 결정 후 구현
-- [ ] PDF first-pass preview 구현
+- [ ] 决定 HTML sandbox preview 策略后实现
+- [ ] 实现 PDF first-pass preview
 
 ### Milestone 6: Generated File Library UI
 
-- [ ] `/artifacts` route 추가
-- [ ] sidebar navigation에 Files/Artifacts 항목 추가
-- [ ] 파일 검색, agent filter, conversation filter, kind filter, favorite filter
-- [ ] 파일 목록/그리드, preview rail 또는 detail pane
+- [ ] 添加 `/artifacts` route
+- [ ] 在 sidebar navigation 中添加 Files/Artifacts 项
+- [ ] 文件搜索、agent filter、conversation filter、kind filter、favorite filter
+- [ ] 文件列表/网格、preview rail 或 detail pane
 - [ ] favorite toggle
-- [ ] 최근 열람/생성 섹션
-- [ ] total size, kind breakdown, favorite count 통계 표시
-- [ ] ArtifactPanel과 같은 preview provider registry 재사용
+- [ ] 最近打开/生成区块
+- [ ] 显示 total size、kind breakdown、favorite count 统计
+- [ ] 复用与 ArtifactPanel 相同的 preview provider registry
 
 ### Milestone 7: Hardening and share
 
-- [ ] share snapshot과 artifact visibility 연결
-- [ ] share artifact public read endpoint 테스트
-- [ ] artifact 삭제/retention 정책 구현
-- [ ] storage cleanup job 추가
-- [ ] preview cache가 필요하면 별도 cache namespace 도입
+- [ ] 连接 share snapshot 与 artifact visibility
+- [ ] 测试 share artifact public read endpoint
+- [ ] 实现 artifact 删除/retention 策略
+- [ ] 添加 storage cleanup job
+- [ ] 如果需要 preview cache，引入独立 cache namespace
 
 ### Milestone 8: Optional near-real-time
 
-- [ ] skill subprocess 실행 중 output dir polling
+- [ ] skill subprocess 执行期间 polling output dir
 - [ ] file update debounce
-- [ ] writing/ready 상태 전환 event
-- [ ] 대용량 파일 partial write 감지
+- [ ] writing/ready 状态转换 event
+- [ ] 检测大文件 partial write
 
 ### Milestone 9: Optional MinIO/S3
 
-- [ ] S3 artifact storage backend 구현
+- [ ] 实现 S3 artifact storage backend
 - [ ] local/S3 storage integration test
-- [ ] signed URL을 직접 노출할지 backend proxy를 유지할지 결정
-- [ ] lifecycle policy와 bucket prefix cleanup 문서화
+- [ ] 决定直接暴露 signed URL，还是继续使用 backend proxy
+- [ ] 文档化 lifecycle policy 与 bucket prefix cleanup
 
-## 8. 테스트 계획
+## 8. 测试计划
 
 ### Backend tests
 
-- [ ] path traversal: `../`, absolute path, null byte, symlink 거부
+- [ ] path traversal：拒绝 `../`、absolute path、null byte、symlink
 - [ ] artifact ingest: created/updated/no-change delta
-- [ ] same run + same logical path version 증가
-- [ ] different run + same logical path는 별도 artifact 생성
-- [ ] local storage object key가 LLM filename을 신뢰하지 않는지 확인
-- [ ] router ownership: 타 사용자 conversation artifact 접근 거부
-- [ ] library API: `q`, `agent_id`, `conversation_id`, `kind`, `favorite` 필터
-- [ ] favorite toggle: 같은 사용자 artifact만 변경 가능
+- [ ] same run + same logical path 时 version 增加
+- [ ] different run + same logical path 时创建独立 artifact
+- [ ] 确认 local storage object key 不信任 LLM filename
+- [ ] router ownership：拒绝访问其他用户 conversation artifact
+- [ ] library API：`q`, `agent_id`, `conversation_id`, `kind`, `favorite` filter
+- [ ] favorite toggle：只能修改同一用户的 artifact
 - [ ] stats API: total count/bytes, kind breakdown, favorite count
-- [ ] opened/download tracking: `last_opened_at`, `preview_count`, `download_count` 증가
-- [ ] share token: 공유된 conversation artifact만 접근 가능
-- [ ] stream: `execute_in_skill` 결과 후 `file_event` emit
-- [ ] stream resume: `message_events`에서 `file_event` replay
-- [ ] quota: max bytes/max files 초과 시 failed event 또는 ingest skip
+- [ ] opened/download tracking：增加 `last_opened_at`, `preview_count`, `download_count`
+- [ ] share token：只能访问已分享 conversation 的 artifact
+- [ ] stream：`execute_in_skill` 结果后 emit `file_event`
+- [ ] stream resume：从 `message_events` replay `file_event`
+- [ ] quota：超过 max bytes/max files 时发送 failed event 或跳过 ingest
 
 ### Frontend tests
 
-- [ ] SSE `file_event`가 artifact store를 갱신
-- [ ] conversation 진입 시 artifact list fetch와 SSE state merge
-- [ ] right rail `artifacts` mode 전환
-- [ ] provider registry priority와 fallback
+- [ ] SSE `file_event` 更新 artifact store
+- [ ] 进入 conversation 时合并 artifact list fetch 与 SSE state
+- [ ] 切换 right rail `artifacts` mode
+- [ ] provider registry priority 与 fallback
 - [ ] Markdown/Mermaid/code artifact preview
 - [ ] unsupported file download fallback
 - [ ] `/artifacts` library search/filter/favorite/stat UI
-- [ ] ArtifactPanel과 Generated File Library가 같은 preview provider를 재사용
-- [ ] 기존 inline Markdown/Mermaid/image rendering 유지
+- [ ] ArtifactPanel 与 Generated File Library 复用同一个 preview provider
+- [ ] 保留现有 inline Markdown/Mermaid/image rendering
 
-## 9. 주요 리스크와 완화
+## 9. 主要风险与缓解
 
-### 기존 file endpoint 권한
+### 现有 file endpoint 权限
 
-기존 `/api/conversations/{conversation_id}/files/{file_path}`가 artifact API와 병존하면 권한 모델이 갈라질 수 있다. 1차 작업에서 owner guard를 점검하고, 신규 UI는 artifact id 기반 API만 사용한다.
+如果现有 `/api/conversations/{conversation_id}/files/{file_path}` 与 artifact API 并存，权限模型可能分裂。在第 1 阶段工作中检查 owner guard，新 UI 只使用基于 artifact id 的 API。
 
-### 부분 파일과 대용량 파일
+### 部分写入文件与大文件
 
-1차 구현은 tool 종료 후 delta 감지이므로 partial write 문제가 적다. near-real-time polling 단계에서는 size/mtime이 안정화된 뒤 `ready`로 전환하는 debounce가 필요하다.
+第 1 阶段实现是在 tool 结束后检测 delta，因此 partial write 问题较少。进入 near-real-time polling 阶段后，需要在 size/mtime 稳定后才转为 `ready` 的 debounce。
 
 ### HTML/SVG preview
 
-HTML과 SVG는 preview UX는 좋지만 XSS 리스크가 높다. HTML은 sandbox iframe으로 제한하고, SVG는 image inline을 기본 비활성화하거나 sanitize된 preview만 제공한다.
+HTML 和 SVG 的 preview UX 很好，但 XSS 风险高。HTML 限制为 sandbox iframe，SVG 默认禁用 image inline，或仅提供经过 sanitize 的 preview。
 
-### Office/CAD preview 기대치
+### Office/CAD preview 预期
 
-Office, PPT, CAD preview는 파일 타입별 dependency와 변환 서버가 필요하다. 1차 통합 범위에서는 provider registry와 fallback download/open을 마련하고, 고급 preview는 필요한 포맷부터 개별 provider로 붙인다.
+Office、PPT、CAD preview 需要按文件类型引入 dependency 和转换服务器。第 1 阶段集成范围先准备 provider registry 与 fallback download/open，高级 preview 再从必要格式开始逐个接入 provider。
 
 ### Storage migration
 
-처음부터 MinIO를 필수로 만들면 배포/운영 범위가 커진다. Local backend로 시작하되 DB manifest와 storage interface를 분리해 S3 전환이 API 변경 없이 가능하게 한다.
+如果一开始就强制 MinIO，会扩大部署/运维范围。先从 Local backend 开始，但将 DB manifest 与 storage interface 分离，使切换 S3 时无需修改 API。
 
-## 10. 통합 1차 범위
+## 10. 集成第 1 阶段范围
 
-1차 PR의 목표는 "생성된 파일이 우측 패널에 뜨고, 동시에 전역 Generated File Library에서 검색/필터/즐겨찾기/통계로 재사용 가능하다"까지로 잡는다. 이 기능은 MVP와 P2로 나누지 않는다. 파일 인덱스, 패널, 라이브러리 화면이 같은 `conversation_artifacts` source of truth를 공유해야 API와 DB를 두 번 갈아엎지 않는다.
+第 1 阶段 PR 的目标定为：“生成文件出现在右侧 panel，同时可在全局 Generated File Library 中搜索/过滤/收藏/统计复用”。该功能不拆成 MVP 和 P2。文件索引、panel、library 页面必须共享同一个 `conversation_artifacts` source of truth，避免 API 和 DB 被重做两次。
 
 包括：
 
 - local artifact storage
 - DB manifest/version
 - library metadata: `agent_id`, `artifact_kind`, `is_favorite`, `last_opened_at`, `preview_count`, `download_count`
-- `execute_in_skill` 종료 후 delta ingest
+- `execute_in_skill` 结束后 ingest delta
 - SSE `file_event`
 - conversation artifact list/content/download API
 - global generated file library API: search/filter/favorite/recent/stats
 - right rail ArtifactPanel
-- `/artifacts` Generated File Library 화면
+- `/artifacts` Generated File Library 页面
 - Markdown, Mermaid, code/text, image preview
 - fallback download
 
-제외:
+排除：
 
-- MinIO/S3 실제 구현
+- MinIO/S3 实际实现
 - sandbox write proxy
-- Office/CAD 고급 preview
-- 외부 npm plugin runtime loading
-- 파일 공동 편집
+- Office/CAD 高级 preview
+- 外部 npm plugin runtime loading
+- 文件协同编辑
 
-이 범위가 가장 Moldy답다. 현재 제한된 `execute_in_skill` 모델을 유지하면서도 사용자가 체감하는 artifact 경험을 패널과 라이브러리 양쪽에서 크게 개선하고, 나중에 sandbox나 MinIO가 필요해졌을 때 갈아엎지 않고 확장할 수 있다.
+这个范围最符合 Moldy 当前路线。保留现有限制版 `execute_in_skill` 模型，同时显著改善用户在 panel 和 library 两侧感知到的 artifact 体验；将来需要 sandbox 或 MinIO 时，也可以继续扩展而无需推倒重来。
 
-## 11. 소스 코드 기준 상세 구현 계약
+## 11. 基于源代码的详细实现契约
 
-이 섹션은 앞선 대화 맥락 없이 이 문서만 보고 구현할 수 있도록 실제 Moldy 소스 구조에 맞춘 변경 계약이다. 아래 경로와 함수명은 2026-06-05 기준 코드에서 확인한 현재 구조다.
+本节旨在让实现者无需前置对话上下文，仅凭本文档就能按实际 Moldy 源码结构实施。以下路径和函数名是在 2026-06-05 的代码中确认的当前结构。
 
-### 11.1 현재 런타임 불변식
+### 11.1 当前 runtime 不变量
 
-- `backend/app/routers/conversations.py`의 `_prepare_stream_context(conversation_id)`가 매 assistant turn마다 `run_id`, `EventBroker`, `persist_callback`, `trace_sink`, `msg_id_sink`, `error_sink`를 만든다.
-- `run_id`는 `stream_agent_response()`에 전달되고, 내부에서 `msg_id = run_id`가 된다. SSE id는 `"{msg_id}-{seq}"` 형식이다.
-- 같은 `run_id`는 `message_events.assistant_msg_id`로 저장된다. 따라서 artifact는 별도 `messages` FK가 아니라 `assistant_msg_id/run_id`를 안정적인 turn key로 삼는다.
-- `stream_agent_response()`의 `emit(event, data)`는 한 번 호출되면 SSE, broker publish, trace sink append, partial DB persistence buffer append를 모두 처리한다. `file_event`는 반드시 이 `emit()`을 통해 발행한다.
-- `execute_in_skill`은 `backend/app/agent_runtime/executor.py`의 `_create_skill_execute_tool(ctx)` 내부 closure다. 스킬 출력 디렉토리는 `SkillToolContext.output_dir`이고, `build_skill_runtime_context()`가 `data/conversations/{thread_id}`로 잡는다.
-- `frontend/src/lib/chat/use-chat-runtime.ts`는 SSE event switch에서 `content_delta`, `tool_call_start`, `tool_call_result`, memory events, `interrupt`, `error`, `message_end`를 처리한다. `file_event`는 여기서 artifact store만 갱신해야 하며 assistant message content를 수정하지 않는다.
+- `backend/app/routers/conversations.py` 的 `_prepare_stream_context(conversation_id)` 在每个 assistant turn 创建 `run_id`, `EventBroker`, `persist_callback`, `trace_sink`, `msg_id_sink`, `error_sink`。
+- `run_id` 传给 `stream_agent_response()`，内部成为 `msg_id = run_id`。SSE id 格式为 `"{msg_id}-{seq}"`。
+- 相同的 `run_id` 保存为 `message_events.assistant_msg_id`。因此 artifact 不使用独立 `messages` FK，而以 `assistant_msg_id/run_id` 作为稳定的 turn key。
+- `stream_agent_response()` 的 `emit(event, data)` 每调用一次，就同时处理 SSE、broker publish、trace sink append、partial DB persistence buffer append。`file_event` 必须通过这个 `emit()` 发布。
+- `execute_in_skill` 是 `backend/app/agent_runtime/executor.py` 中 `_create_skill_execute_tool(ctx)` 内部的 closure。skill 输出目录是 `SkillToolContext.output_dir`，`build_skill_runtime_context()` 将其设为 `data/conversations/{thread_id}`。
+- `frontend/src/lib/chat/use-chat-runtime.ts` 在 SSE event switch 中处理 `content_delta`, `tool_call_start`, `tool_call_result`, memory events, `interrupt`, `error`, `message_end`。`file_event` 在这里应只更新 artifact store，不修改 assistant message content。
 
 ### 11.2 Backend file map
 
@@ -1220,7 +1220,7 @@ Add a parameter to `stream_agent_response()`:
     artifact_recorder: ArtifactDeltaRecorderProtocol | None = None,
 ```
 
-After `yield emit(event_names.MESSAGE_START, start_data)` and before `agent.astream(...)`, prepare the recorder. If prepare fails, emit an `error` only if the stream cannot proceed. Recommended 1차 behavior is fail-open with a log, because artifact panel/library failure must not block chat.
+After `yield emit(event_names.MESSAGE_START, start_data)` and before `agent.astream(...)`, prepare the recorder. If prepare fails, emit an `error` only if the stream cannot proceed. Recommended 第 1 阶段 behavior is fail-open with a log, because artifact panel/library failure must not block chat.
 
 ```python
     yield emit(event_names.MESSAGE_START, start_data)
@@ -2388,12 +2388,12 @@ Apply section 11.15. Add i18n keys:
 {
   "chat": {
     "rightRail": {
-      "artifacts": "파일"
+      "artifacts": "文件"
     },
     "artifacts": {
-      "empty": "아직 생성된 파일이 없습니다.",
-      "download": "다운로드",
-      "previewUnavailable": "미리보기를 지원하지 않는 파일입니다."
+      "empty": "尚未生成文件。",
+      "download": "下载",
+      "previewUnavailable": "该文件不支持预览。"
     }
   }
 }

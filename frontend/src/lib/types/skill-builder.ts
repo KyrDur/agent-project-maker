@@ -6,7 +6,7 @@ export type SkillBuilderStatus =
   // v2 state machine（builder chat）：active → confirming → completed（+abandoned = GC 对象）
   | 'active'
   | 'abandoned'
-  // 구 one-pass 플로우 레거시 값 — 기존 row 호환용
+  // 旧 one-pass flow 的 legacy 值 — 用于兼容现有 row
   | 'collecting'
   | 'drafting'
   | 'review'

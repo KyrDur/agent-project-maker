@@ -119,7 +119,7 @@ export function ChatNavigatorSessionRow({
               }
             >
               <AgentAvatar imageUrl={agent.image_url} name={agent.name} size="xs" />
-              {/* 툴팁은 hover 전용이라 스크린리더용 이름을 DOM에 남긴다 */}
+              {/* tooltip 仅用于 hover，因此在 DOM 中保留供 screen reader 使用的名称 */}
               <span className="sr-only">{agent.name}</span>
             </TooltipTrigger>
             <TooltipContent side="top">{agent.name}</TooltipContent>

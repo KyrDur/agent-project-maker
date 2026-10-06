@@ -26,8 +26,6 @@ class TestBootstrap:
             "ANTHROPIC_API_KEY",
             "GOOGLE_API_KEY",
             "GOOGLE_CSE_ID",
-            "NAVER_CLIENT_ID",
-            "NAVER_CLIENT_SECRET",
             "GOOGLE_OAUTH_CLIENT_ID",
             "GOOGLE_OAUTH_CLIENT_SECRET",
             "GOOGLE_OAUTH_REFRESH_TOKEN",
@@ -49,16 +47,12 @@ class TestBootstrap:
         assert decrypted == {"api_key": "sk-test-openai"}
 
     @pytest.mark.asyncio
-    async def test_idempotent(
-        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_idempotent(self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "ant-test")
         for var in (
             "OPENAI_API_KEY",
             "GOOGLE_API_KEY",
             "GOOGLE_CSE_ID",
-            "NAVER_CLIENT_ID",
-            "NAVER_CLIENT_SECRET",
             "GOOGLE_OAUTH_CLIENT_ID",
             "GOOGLE_OAUTH_CLIENT_SECRET",
             "GOOGLE_OAUTH_REFRESH_TOKEN",
@@ -73,9 +67,7 @@ class TestBootstrap:
 
         assert len(first) == 1
         assert len(second) == 0
-        rows = await db.execute(
-            select(Credential).where(Credential.is_system.is_(True))
-        )
+        rows = await db.execute(select(Credential).where(Credential.is_system.is_(True)))
         assert len(rows.scalars().all()) == 1
 
     @pytest.mark.asyncio
@@ -89,8 +81,6 @@ class TestBootstrap:
         for var in (
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "NAVER_CLIENT_ID",
-            "NAVER_CLIENT_SECRET",
             "GOOGLE_OAUTH_CLIENT_ID",
             "GOOGLE_OAUTH_CLIENT_SECRET",
             "GOOGLE_OAUTH_REFRESH_TOKEN",
@@ -104,16 +94,14 @@ class TestBootstrap:
         assert created == []
 
     @pytest.mark.asyncio
-    async def test_multi_field_naver(
+    async def test_multi_field_google_search(
         self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv("NAVER_CLIENT_ID", "n-id")
-        monkeypatch.setenv("NAVER_CLIENT_SECRET", "n-secret")
+        monkeypatch.setenv("GOOGLE_API_KEY", "n-id")
+        monkeypatch.setenv("GOOGLE_CSE_ID", "n-secret")
         for var in (
             "OPENAI_API_KEY",
             "ANTHROPIC_API_KEY",
-            "GOOGLE_API_KEY",
-            "GOOGLE_CSE_ID",
             "GOOGLE_OAUTH_CLIENT_ID",
             "GOOGLE_OAUTH_CLIENT_SECRET",
             "GOOGLE_OAUTH_REFRESH_TOKEN",
@@ -125,8 +113,8 @@ class TestBootstrap:
         await db.commit()
 
         assert len(created) == 1
-        assert created[0].definition_key == "naver_search"
+        assert created[0].definition_key == "google_search"
         decrypted = credential_service.decrypt_data(created[0].data_encrypted)
         assert json.dumps(decrypted, sort_keys=True) == json.dumps(
-            {"client_id": "n-id", "client_secret": "n-secret"}, sort_keys=True
+            {"api_key": "n-id", "cse_id": "n-secret"}, sort_keys=True
         )

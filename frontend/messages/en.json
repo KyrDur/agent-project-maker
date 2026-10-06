@@ -1951,7 +1951,8 @@
       "count": "{position}/{total}",
       "previous": "Previous match",
       "next": "Next match",
-      "close": "Close search"
+      "close": "Close search",
+      "price": "Price: {price}"
     },
     "commands": {
       "ariaLabel": "Chat commands",
@@ -2039,11 +2040,6 @@
       "sourceCount": "{count} sources",
       "labels": {
         "webSearch": "Web search",
-        "naverBlog": "Naver blog",
-        "naverNews": "Naver news",
-        "naverImage": "Naver images",
-        "naverShop": "Naver shopping",
-        "naverLocal": "Naver local",
         "googleSearch": "Google search",
         "googleNews": "Google news",
         "googleImage": "Google images",
@@ -2408,7 +2404,7 @@
         "running": "Running",
         "count": "{count} results",
         "answer": "Answer",
-        "price": "From ₩{price}",
+        "price": "Price: {price}",
         "thumbnailAlt": "Search result thumbnail"
       },
       "skillExecution": {
@@ -2828,7 +2824,6 @@
       "title": "Auth Dialog",
       "description": "Select the credential this tool should use.",
       "provider": {
-        "naver": "Naver",
         "googleSearch": "Google Search",
         "googleChat": "Google Chat",
         "googleWorkspace": "Google Workspace"
@@ -3833,7 +3828,6 @@
       "origin": {
         "created_by_me": "Created by me",
         "imported_by_me": "Imported by me",
-        "built_in_k_skill": "Built-in · k-skill",
         "shared_with_me": "Shared with me",
         "sharedBy": "Shared by {name}",
         "community": "Community",
@@ -3868,7 +3862,6 @@
       "back": "Back to marketplace",
       "loading": "Loading…",
       "queueTitle": "Pending items",
-      "syncTitle": "k-skill sync status",
       "denied": {
         "title": "Operators only",
         "description": "You do not have permission to access moderation."
@@ -3881,12 +3874,6 @@
         "review": "Review",
         "approve": "Approve",
         "disable": "Disable"
-      },
-      "sync": {
-        "count": "Item count:",
-        "lastUpdated": "Last updated:",
-        "command": "uv run python -m app.scripts.sync_k_skill --ref main",
-        "cliOnly": "Sync can only be run from the CLI."
       },
       "toast": {
         "disabled": "Item disabled",
@@ -4013,7 +4000,6 @@
       },
       "source": {
         "user": "User",
-        "kSkill": "k-skill",
         "import": "Import",
         "systemSeed": "System"
       },
@@ -5011,7 +4997,6 @@
       "providerAll": "All"
     },
     "providerName": {
-      "naver": "Naver",
       "googleSearch": "Google Search",
       "googleChat": "Google Chat",
       "googleWorkspace": "Google Workspace"
@@ -5139,24 +5124,16 @@
       "providerLabels": {
         "anthropic": "Anthropic",
         "azure_openai": "Azure OpenAI",
-        "coupang_partners": "Coupang Partners",
-        "dart_api": "DART Open API",
-        "foresttrip_account": "Forest Trip Account",
         "google_genai": "Google Generative AI",
         "google_search": "Google Custom Search",
         "google_workspace_oauth2": "Google Workspace OAuth2",
         "http_api_key": "HTTP API Key",
         "http_basic": "HTTP Basic Auth",
         "http_bearer": "HTTP Bearer Token",
-        "kipris_plus_api": "KIPRIS Plus API",
-        "ktx_account": "KTX Account",
         "mcp_oauth2": "MCP OAuth2 Client",
-        "naver_search": "Naver Search",
-        "odsay_api": "ODsay API",
         "openai": "OpenAI",
         "openai_compatible": "OpenAI Compatible Endpoint",
-        "openrouter": "OpenRouter",
-        "srt_account": "SRT Account"
+        "openrouter": "OpenRouter"
       },
       "categories": {
         "account": "Account",

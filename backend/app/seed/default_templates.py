@@ -62,38 +62,6 @@ DEFAULT_TEMPLATES = [
         "usage_example": "帮我收集竞争对手的价格信息",
     },
     {
-        "name": "Naver 新闻监控",
-        "description": "在 Naver 搜索与特定关键词相关的最新新闻并总结",
-        "category": "数据",
-        "system_prompt": (
-            "你是一名新闻监控专家。\n"
-            "使用用户请求的关键词搜索 Naver 新闻，"
-            "整理核心内容，并以简报形式提供。\n"
-            "- 总结 3-5 条主要新闻\n"
-            "- 每条新闻的核心要点\n"
-            "- 包含来源链接\n"
-            "- 必要时额外搜索相关博客文章"
-        ),
-        "recommended_tools": ["Naver News Search", "Web Scraper"],
-        "usage_example": "整理今天与 AI 相关的新闻",
-    },
-    {
-        "name": "购物价格比较",
-        "description": "在 Naver Shopping 搜索产品并比较价格",
-        "category": "生产力",
-        "system_prompt": (
-            "你是一名购物比较专家。\n"
-            "在 Naver Shopping 搜索用户请求的产品，"
-            "比较价格和销售商并整理。\n"
-            "- 按最低价排序\n"
-            "- 包含销售商（商城）信息\n"
-            "- 汇总价格范围\n"
-            "- 提供购买链接"
-        ),
-        "recommended_tools": ["Naver Shopping Search"],
-        "usage_example": "帮我比较 iPhone 16 的价格",
-    },
-    {
         "name": "OpenWiki 文档 Agent",
         "description": "分析 git 仓库并生成·更新 openwiki/ Markdown wiki",
         "category": "开发",
@@ -120,21 +88,5 @@ DEFAULT_TEMPLATES = [
         "recommended_tools": [],
         "recommended_skill_slugs": ["openwiki"],
         "usage_example": "为 https://github.com/langchain-ai/openwiki 仓库制作 wiki",
-    },
-    {
-        "name": "餐厅探索器",
-        "description": "通过 Naver 本地搜索查找周边餐厅和商家并整理",
-        "category": "生活",
-        "system_prompt": (
-            "你是一名本地餐厅/商家推荐专家。\n"
-            "根据用户请求的地区和条件搜索商家，"
-            "并整理推荐列表。\n"
-            "- 商家名称、类别、地址\n"
-            "- 电话号码（如有）\n"
-            "- 简短说明\n"
-            "- 必要时额外搜索博客评论"
-        ),
-        "recommended_tools": ["Naver Local Search", "Naver Blog Search"],
-        "usage_example": "推荐江南站附近的餐厅",
     },
 ]

@@ -346,7 +346,7 @@ Non-negotiable principles:
 - **Own one stream in Moldy.** The primary frontend path should call `@langchain/react useStream` once in a Moldy provider and share that stream with assistant-ui and DeepAgents panels. Do not mount `@assistant-ui/react-langchain useStreamRuntime` as-is if it hides the stream object needed by scoped selectors.
 - **Reuse official assistant-ui source patterns, not package internals.** Borrow/import stable converters and mirror the small `react-langchain` `useExternalStoreRuntime` bridge where useful. Use `react-langgraph` as the reference for message accumulation, metadata, UI messages, cancellation, and checkpoint behavior. Avoid forking either package unless a package-level bug blocks the local wrapper.
 - **Keep BFF adaptation narrow.** The backend may adapt auth, ownership, run lifecycle, credential resolution, artifact persistence, memory persistence, usage accounting, and replay to Moldy's data model, but it should not invent a second chat protocol for the primary path. The primary stream must be as close as possible to Agent Streaming Protocol events.
-- **Do not reconstruct planning from text.** Planning must come from `updates`/`values` state such as `todos`, DeepAgents planning tools, or explicit custom events. UI labels like "계획을 세우는 중" should be derived from state/tool lifecycle, not guessed from model text.
+- **Do not reconstruct planning from text.** Planning must come from `updates`/`values` state such as `todos`, DeepAgents planning tools, or explicit custom events. UI labels like "正在制定计划" should be derived from state/tool lifecycle, not guessed from model text.
 - **Treat DeepAgents `todos` as a state surface and files as artifact-first.** `todos` belongs in planning/progress UI from LangGraph `values.todos`. Files belong in Moldy's artifact/file panel primarily from `file_event`, `conversation_artifacts`, and `artifact_versions`; reconcile `values.files` only when the actual runtime state provides it.
 - **Do not flatten subagents into tools in the primary runtime.** A `task` tool can still render for compatibility, but the v3 path should preserve namespace/subagent identity so nested activity and subagent messages can be rendered.
 - **Use `stream.subagents` for user-facing subagent identity.** `stream.subgraphs` can remain useful for debugging, but the Moldy UI should display Deep Agents task delegations: subagent name, path, status, tool-call cause, messages, tool calls, output, and errors.
@@ -724,7 +724,7 @@ Never expose hidden chain-of-thought. Only render:
 
 - model-provided reasoning summaries that the provider marks displayable,
 - DeepAgents/v3 reasoning blocks intended for UI projection,
-- synthetic activity labels derived from lifecycle events, such as "응답을 정리하는 중".
+- synthetic activity labels derived from lifecycle events, such as "正在整理回答".
 
 If a model or provider returns private reasoning content, it must be redacted or summarized server-side before entering frontend stream state.
 
@@ -2468,18 +2468,18 @@ Add keys under `chat.activity`:
 
 ```json
 {
-  "thinking": "생각을 정리하는 중",
-  "planning": "계획을 세우는 중",
-  "tool": "{name} 실행 중",
-  "subagent": "{name} 작업 중",
-  "artifact": "파일을 준비하는 중",
-  "memory": "기억을 업데이트하는 중",
-  "interrupt": "승인을 기다리는 중",
-  "checkpoint": "작업 지점을 저장하는 중",
-  "responding": "응답을 작성하는 중",
-  "reconnecting": "스트림을 다시 연결하는 중",
-  "done": "완료됨",
-  "error": "문제가 발생했습니다"
+  "thinking": "正在整理思路",
+  "planning": "正在制定计划",
+  "tool": "正在执行 {name}",
+  "subagent": "{name} 正在处理",
+  "artifact": "正在准备文件",
+  "memory": "正在更新记忆",
+  "interrupt": "正在等待批准",
+  "checkpoint": "正在保存工作节点",
+  "responding": "正在撰写回答",
+  "reconnecting": "正在重新连接流",
+  "done": "已完成",
+  "error": "出现了问题"
 }
 ```
 
@@ -3310,10 +3310,10 @@ The migration is complete when all criteria are true:
 - Tool calls show running, args, result, completion/error.
 - Tool calls still show lifecycle states when Python v3 emits tool calls/results only through `values.messages`, via backend synthesis that does not duplicate raw `tools` events.
 - Token usage UI still renders final prompt/completion/cache/cost fields where available, and backend spend aggregation still flows through `SpendHook` / `spend_queue`.
-- Planning/todo updates produce a visible "계획을 세우는 중" activity.
+- Planning/todo updates produce a visible "正在制定计划" activity.
 - `values.todos` renders a DeepAgents task state panel grouped by pending, in-progress, and completed.
 - Moldy artifacts hydrate a file/artifact panel with preview, copy/download, and edit/save where supported; optional `values.files` reconciles into that panel without becoming the required source.
-- Thinking/reasoning summaries produce a visible "생각을 정리하는 중" activity without private chain-of-thought.
+- Thinking/reasoning summaries produce a visible "正在整理思路" activity without private chain-of-thought.
 - Subagents show as nested live activities, not only as a flat `task` pill.
 - Subagent discovery uses `stream.subagents` semantics, including name, path, status, spawning tool-call id, scoped tool calls, output, and error metadata.
 - Current LangGraph SDK `subgraphs` alias and raw `tasks`/`lifecycle` wire events are accepted as discovery input for the same inline subagent activity model.

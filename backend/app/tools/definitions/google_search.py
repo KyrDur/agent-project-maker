@@ -56,6 +56,7 @@ def _params() -> list[FieldDef]:
             display_name="Search Query",
             kind=FieldKind.STRING,
             required=True,
+            runtime_only=True,
         ),
         FieldDef(
             name="num",

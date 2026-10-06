@@ -15,7 +15,6 @@ Gate map:
 | 2. Secret safety           | secret_scan + redaction      | test_secret_scan.py + test_redaction.py   |
 | 3. Runtime isolation       | skill_runtime + executor     | test_runtime_isolation.py                 |
 | 4. Credential runtime      | credential_requirements      | test_credential_injection.py              |
-| 5. k-skill sync            | k_skill_importer (CLI)       | test_k_skill_importer.py (詹森轨道)        |
 | 6. Backward compatibility  | skills/agent_skills ORM      | test_skills_api_regression.py             |
 | 7. Listing 审批            | catalog query                | test_marketplace_listing.py + this file   |
 | 8. ADR-016 一致性          | router auth + CSRF           | this file                                 |
@@ -27,7 +26,6 @@ naturally live elsewhere.
 
 from __future__ import annotations
 
-import importlib
 import inspect
 import uuid
 from pathlib import Path
@@ -253,64 +251,18 @@ class TestGate4CredentialRuntime:
 
         from app.error_codes import marketplace_credential_required
 
-        err = marketplace_credential_required("missing srt_account")
+        err = marketplace_credential_required("missing http_basic")
         assert err.code == "MARKETPLACE_CREDENTIAL_REQUIRED"
         assert err.status == 409
 
-    def test_all_k_skill_definitions_registered(self) -> None:
         from app.credentials.registry import registry
 
         keys = {d.key for d in registry.all()}
-        for required in (
-            "srt_account",
-            "ktx_account",
-            "foresttrip_account",
-            "kipris_plus_api",
-            "dart_api",
-            "odsay_api",
-            "coupang_partners",
-            "k_skill_proxy",
-        ):
-            assert required in keys, (
-                f"k-skill credential definition {required!r} missing — Spec §6 regression"
-            )
+        for required in ("http_basic", "http_bearer", "google_search"):
+            assert required in keys, f"Missing supported credential: {required}"
 
 
 # ===========================================================================
-# Gate 5 — k-skill sync (CLI behaviour)
-# ===========================================================================
-
-
-class TestGate5KSkillSync:
-    """PRD §13 #5 — k-skill importer CLI.单元测试由 jensen 在
-    ``test_k_skill_importer.py`` 中处理（若存在）。此门槛仅守卫
-    sync 路由器/CLI 入口是否存在。"""
-
-    def test_admin_k_skill_sync_endpoint_mounted(self) -> None:
-        """``POST /api/marketplace/admin/k-skill/sync`` (super_user only)
-        is the read-side status endpoint per Spec §10.4."""
-
-        from app.routers import marketplace as router_mod
-
-        src = inspect.getsource(router_mod)
-        assert "/admin/k-skill/sync" in src, (
-            "admin k-skill sync route removed — Spec §10.4 violation"
-        )
-
-    def test_sync_script_module_importable(self) -> None:
-        """The CLI lives at ``app.scripts.sync_k_skill`` — import is the
-        cheapest smoke that the entry point still exists."""
-
-        try:
-            mod = importlib.import_module("app.scripts.sync_k_skill")
-        except ImportError:
-            pytest.skip("k-skill importer CLI not present (M7 未完成)")
-        else:
-            assert hasattr(mod, "main") or hasattr(mod, "__name__")
-
-
-# ===========================================================================
-# Gate 6 — Backward compatibility (skills API + agent_skills)
 # ===========================================================================
 
 
@@ -451,8 +403,7 @@ class TestGate8AuthCsrf:
 
     @pytest.mark.asyncio
     async def test_admin_endpoint_requires_super_user(self, db: AsyncSession) -> None:
-        """Phase 1 admin endpoint (k-skill sync status) must reject a
-        non-super-user. Exercises the dependency wiring end-to-end."""
+        """Reject a non-super-user through the dependency wiring."""
 
         from httpx import ASGITransport, AsyncClient
 
@@ -485,7 +436,9 @@ class TestGate8AuthCsrf:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            r = await client.post("/api/marketplace/admin/k-skill/sync")
+            r = await client.post(
+                f"/api/marketplace/admin/items/{uuid.uuid4()}/listed", json={"is_listed": True}
+            )
         assert r.status_code == 403, (
             f"non-super-user admin call must 403, got {r.status_code} ({r.text[:120]})"
         )
@@ -497,10 +450,10 @@ class TestGate8AuthCsrf:
 
 
 def test_phase1_gate_classes_present() -> None:
-    """Pin the gate class count — 8 PRD §13 gates → 8 test classes."""
+    """Pin the gate class count — 7 supported release gates → 7 test classes."""
 
     import sys
 
     mod = sys.modules[__name__]
     gate_classes = [name for name in dir(mod) if name.startswith("TestGate")]
-    assert len(gate_classes) == 8, f"缺少 Phase 1 发布门槛类 — found {gate_classes}"
+    assert len(gate_classes) == 7, f"缺少 Phase 1 发布门槛类 — found {gate_classes}"

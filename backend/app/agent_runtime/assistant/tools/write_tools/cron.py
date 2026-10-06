@@ -107,7 +107,7 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
             cron_expression: 重复计划的 cron 表达式（recurring/cron 时必填）
             interval_minutes: 间隔分钟数（interval 时必填）
             scheduled_at: 单次执行时间 ISO 8601（one_time 时必填）
-            timezone: IANA timezone（默认 Asia/Seoul）
+            timezone: IANA timezone（默认 Asia/Shanghai）
             conversation_policy: 结果保存策略（默认 schedule_thread）
             target_conversation_id: selected_conversation 策略使用的对话 ID
             max_runs: 最大成功执行次数
@@ -147,7 +147,7 @@ def build_cron_tools(ctx: WriteToolContext) -> list[StructuredTool]:
                             "trigger_type": trigger_type,
                             "schedule_config": schedule_config,
                             "input_message": message,
-                            "timezone": timezone or "Asia/Seoul",
+                            "timezone": timezone or "Asia/Shanghai",
                             "conversation_policy": conversation_policy or "schedule_thread",
                             "target_conversation_id": target_conversation_id,
                             "max_runs": max_runs,

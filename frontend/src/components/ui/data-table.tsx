@@ -224,9 +224,9 @@ export function DataTable<T>({
     if (pageIndex > 0 && pageIndex >= pageCount) {
       table.setPageIndex(Math.max(0, pageCount - 1))
     }
-    // filtered·columnFilters가 pagination 입력의 전부 — table 인스턴스는
-    // 안정적이다. columnFilters 누락 시 FilterDef 셀렉트로 줄어든 표가
-    // 범위 밖 페이지에 좌초한다(빈 바디 + 페이지네이션 숨김, R5).
+    // filtered·columnFilters 是 pagination 输入的全部 — table 实例
+    // 稳定。若缺少 columnFilters，因 FilterDef select 缩小后的表会
+    // 卡在越界页面（空 body + 隐藏 pagination，R5）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, pageSize, columnFilters, loading])
 
@@ -270,7 +270,7 @@ export function DataTable<T>({
       for (const key of staleKeys) delete next[key]
       return next
     })
-    // rowSelection/data/loading이 유효성 입력의 전부 — setter·rowIdOf는 렌더 클로저.
+    // rowSelection/data/loading 是有效性输入的全部 — setter·rowIdOf 为 render closure。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, data, loading, enableRowSelection])
 
@@ -296,7 +296,7 @@ export function DataTable<T>({
     if (signature === lastSelectionSignature.current) return
     lastSelectionSignature.current = signature
     onRowSelectionChange(selectedRows)
-    // rowSelection/data/loading이 payload 입력의 전부 — rowIdOf는 렌더 클로저.
+    // rowSelection/data/loading 是 payload 输入的全部 — rowIdOf 为 render closure。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, data, loading, enableRowSelection])
 

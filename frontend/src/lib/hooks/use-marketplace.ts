@@ -86,15 +86,6 @@ export function useModerationQueue(enabled = true) {
   })
 }
 
-export function useKSkillSyncStatus(enabled = true) {
-  return useQuery({
-    queryKey: marketplaceQueryKeys.kSkillAdmin,
-    queryFn: () => marketplaceApi.kSkillSyncStatus(),
-    enabled,
-    staleTime: 30_000,
-  })
-}
-
 // ---------- Mutations ----------
 
 function invalidateAllItems(qc: ReturnType<typeof useQueryClient>) {

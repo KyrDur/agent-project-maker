@@ -21,7 +21,6 @@ const SKILL_SLUGS = [
   'docx-document',
   'xlsx-spreadsheet',
   'pptx-presentation',
-  'patent-hwpx-generator',
 ] as const
 
 interface MarketplaceItem {
@@ -436,32 +435,6 @@ test.describe('Document artifact viewers', () => {
               intervals: [500, 1000, 2000],
             })
             .toBeGreaterThan(100)
-        },
-      },
-      {
-        marker: 'E2E_HWPX',
-        filename: 'moldy-patent-demo.hwpx',
-        extension: 'hwpx',
-        verify: async (viewerPage) => {
-          const image = artifactViewerPanel(viewerPage, 'moldy-patent-demo.hwpx').getByRole('img', {
-            name: 'moldy-patent-demo.hwpx',
-          })
-          await expect(image).toBeVisible({ timeout: 30_000 })
-          await expect
-            .poll(
-              () =>
-                image.evaluate((element) => {
-                  const img = element as HTMLImageElement
-                  return { width: img.naturalWidth, height: img.naturalHeight }
-                }),
-              { timeout: 30_000, intervals: [500, 1000, 2000] },
-            )
-            .toEqual(expect.objectContaining({ width: expect.any(Number) }))
-          const size = await image.evaluate((element) => {
-            const img = element as HTMLImageElement
-            return img.naturalWidth * img.naturalHeight
-          })
-          expect(size).toBeGreaterThan(10_000)
         },
       },
     ]

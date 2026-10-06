@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToggleFavorite } from '@/lib/hooks/use-agents'
 import { AgentAvatar } from '@/components/agent/agent-avatar'
 import { cn } from '@/lib/utils'
-import { formatRelativeKo } from '@/lib/utils/format-relative-time'
+import { formatRelativeTime } from '@/lib/utils/format-relative-time'
 import type { Agent, AgentSummary } from '@/lib/types'
 
 interface AgentCardProps {
@@ -120,7 +120,7 @@ export function AgentCard({ agent, onPublish }: AgentCardProps) {
         <div className="mx-5 mt-1 flex items-center justify-between border-t border-dashed border-border pt-3">
           <span className="text-xs text-muted-foreground">
             {agent.last_used_at
-              ? t('lastUsed', { time: formatRelativeKo(agent.last_used_at) })
+              ? t('lastUsed', { time: formatRelativeTime(agent.last_used_at) })
               : t('neverUsed')}
           </span>
           <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">

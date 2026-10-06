@@ -203,15 +203,15 @@ function SkillSwitcher({
       >
         <span className="truncate">{skill.name}</span>
         <Badge variant="secondary" className="moldy-ui-micro shrink-0">
-          {/* raw enum('package'/'text')이 한국어 카피 옆에 노출되지 않게 목록
-              표와 같은 typeFilter 키로 번역한다 (R5). */}
+          {/* 避免 raw enum('package'/'text') 暴露在中文界面文案旁，列表
+              使用与表格相同的 typeFilter key 进行翻译（R5）。 */}
           {skillT(`typeFilter.${skill.kind}`)}
         </Badge>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
-        {/* useSkills는 팝업이 열려 content가 마운트될 때만 구독 — 셸이 모든
-            스킬 라우트에서 전체 목록(+enrichment)을 상시 fetch하지 않게 한다. */}
+        {/* useSkills 仅在 popup 打开、content mount 时订阅 — 避免 shell 在所有
+            skill route 中持续 fetch 完整列表(+enrichment)。 */}
         <SkillSwitcherItems currentSkillId={skill.id} onSwitchSkill={onSwitchSkill} />
       </DropdownMenuContent>
     </DropdownMenu>

@@ -576,6 +576,6 @@ describe('AgentSettingsPage', () => {
     expect(mockUpdateAgent).not.toHaveBeenCalled()
   })
 
-  // FormMode 내부 동작(모델 셀렉트, 도구 체크박스 토글, 트리거 CRUD 등)은
-  // form-mode 컴포넌트 단위 테스트와 e2e/smoke로 분리된다 (페이지 단위에서 제외).
+  // FormMode 内部行为（model select、工具 checkbox toggle、trigger CRUD 等）
+  // 拆分到 form-mode component unit test 和 e2e/smoke（从 page unit 中排除）。
 })

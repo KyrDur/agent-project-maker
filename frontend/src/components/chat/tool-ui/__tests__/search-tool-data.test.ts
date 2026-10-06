@@ -47,7 +47,7 @@ describe('parseSearchResults', () => {
     ])
   })
 
-  it('parses Naver items shape (link/description → url/snippet accessor 目标字段)', () => {
+  it('parses Google items shape (link/description → url/snippet accessor 目标字段)', () => {
     expect(
       parseSearchResults({
         http_status: 200,
@@ -55,7 +55,7 @@ describe('parseSearchResults', () => {
         items: [
           {
             title: '博客文章',
-            link: 'https://blog.naver.example/1',
+            link: 'https://blog.example/1',
             description: '正文摘要',
             bloggername: '作者',
           },
@@ -64,32 +64,32 @@ describe('parseSearchResults', () => {
     ).toEqual([
       {
         title: '博客文章',
-        link: 'https://blog.naver.example/1',
+        link: 'https://blog.example/1',
         description: '正文摘要',
       },
     ])
   })
 
-  it('parses Naver 购物 items (lprice/mallName/image 缩略图)', () => {
+  it('parses 模拟商品 items (price/merchant/thumbnail 缩略图)', () => {
     expect(
       parseSearchResults({
         items: [
           {
             title: '机械键盘',
-            link: 'https://shopping.naver.example/1',
-            image: 'https://shopping-phinf.example/img.jpg',
-            lprice: '12900',
-            mallName: '商城名称',
+            link: 'https://shopping.example/1',
+            thumbnail: 'https://shopping-phinf.example/img.jpg',
+            price: 12900,
+            merchant: '商城名称',
           },
         ],
       }),
     ).toEqual([
       {
         title: '机械键盘',
-        link: 'https://shopping.naver.example/1',
+        link: 'https://shopping.example/1',
         thumbnail: 'https://shopping-phinf.example/img.jpg',
         price: 12900,
-        mall_name: '商城名称',
+        merchant: '商城名称',
       },
     ])
   })

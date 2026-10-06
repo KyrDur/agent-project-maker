@@ -183,7 +183,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 # ===========================================================================
-# Scenario 10.1 — built-in skill (k-skill) install + agent attach
+# Scenario 10.1 — built-in skill (system_seed) install + agent attach
 # ===========================================================================
 
 
@@ -193,12 +193,12 @@ class TestScenario_10_1_BuiltInSkillInstall:
     选择。"""
 
     @pytest.mark.asyncio
-    async def test_built_in_kskill_install_to_user_owned_skill(
+    async def test_built_in_system_seed_install_to_user_owned_skill(
         self, db_session: AsyncSession, tmp_path: Path
     ) -> None:
         user_id = uuid.uuid4()
         await _seed_user(db_session, user_id)
-        # System k-skill — built-in, no credential requirements.
+        # System system_seed — built-in, no credential requirements.
         snap = _seed_snapshot_dir(tmp_path, "korean-spell-check")
         item, _v = await _seed_published_item(
             db_session,
@@ -207,7 +207,7 @@ class TestScenario_10_1_BuiltInSkillInstall:
             visibility="system",
             is_listed=True,
             is_system=True,
-            source_kind="k-skill",
+            source_kind="system_seed",
             name="korean-spell-check",
         )
 
@@ -238,8 +238,8 @@ class TestScenario_10_1_BuiltInSkillInstall:
             "installed skill must belong to the installer, not the system"
         )
         assert skill.source_marketplace_item_id == item.id
-        assert skill.origin_kind == "built_in_k_skill", (
-            "Spec §6 — k-skill installs must carry built_in_k_skill origin"
+        assert skill.origin_kind == "system_seed", (
+            "Spec §6 — system seed installs must carry system_seed origin"
         )
 
 
@@ -266,21 +266,21 @@ class TestScenario_10_2_CredentialRequiredFlow:
             storage_path=snap,
             visibility="system",
             is_system=True,
-            source_kind="k-skill",
+            source_kind="system_seed",
         )
         # Attach a required SRT credential requirement.
         version.credential_requirements = [
             {
-                "key": "srt_account",
-                "definition_key": "srt_account",
+                "key": "http_basic",
+                "definition_key": "http_basic",
                 "required": True,
                 "label": "SRT login",
                 "fields": ["username", "password"],
                 "injection": "env",
                 "scope": "user",
                 "env_map": {
-                    "username": "KSKILL_SRT_ID",
-                    "password": "KSKILL_SRT_PASSWORD",
+                    "username": "HTTP_BASIC_USERNAME",
+                    "password": "HTTP_BASIC_PASSWORD",
                 },
             }
         ]
@@ -363,7 +363,7 @@ class TestScenario_10_3_PublishThenInstallByPeer:
         assert new_skill is not None
         assert new_skill.user_id == user_b
         assert new_skill.source_marketplace_item_id == uuid.UUID(item_id)
-        # Origin reflects "I imported it" (not k-skill, not created_by_me).
+        # Origin reflects "I imported it" (not system_seed, not created_by_me).
         assert new_skill.origin_kind in ("community", "imported_by_me")
 
 

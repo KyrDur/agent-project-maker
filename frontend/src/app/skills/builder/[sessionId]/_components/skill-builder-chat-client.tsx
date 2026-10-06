@@ -117,7 +117,7 @@ export function SkillBuilderChatClient({
           <Badge variant="outline" className="shrink-0">
             {session.mode === 'improve' ? t('modeImprove') : t('modeCreate')}
           </Badge>
-          {/* 목업 헤더 헬퍼 — 모드별 안내 문구 */}
+          {/* mock header helper — 各 mode 的提示文案 */}
           <span className="hidden min-w-0 truncate text-xs text-muted-foreground lg:inline">
             {session.mode === 'improve' ? t('helperImprove') : t('helperCreate')}
           </span>

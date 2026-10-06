@@ -20,7 +20,7 @@ import { capture, DESKTOP_VIEWPORT, settle, warmUpChatRoute } from './_capture-h
  *
  *  第 1 幕 memory：植入 2 条 long-term memory → run 开始时 memory recall chip(moldy.memory_recalled)
  *  第 2 幕 search：E2E_SEARCH_RICH — answer 摘要 box + rich result card，
- *               E2E_SEARCH_SHOP — Naver items shape thumbnail + 最低价 card
+ *               E2E_SEARCH_SHOP — Simulated shopping data thumbnail + 最低价 card
  *  第 3 幕 team：E2E_LANGGRAPH_V3 mission run — subagent team strip（live/完成），
  *               execute_in_skill approval → terminal ui_data card（genui 首个真实工具 producer）
  *  第 4 幕 reload：skill 执行 pill（command+file chip）+ team strip 恢复
@@ -143,7 +143,7 @@ test.describe('Wave 2 scenario captures', () => {
     await capture(page, WAVE, '01-memory-recall-expanded.png')
     await memoryChip.getByText('记忆回忆').click()
 
-    // shopping search — Naver items shape: thumbnail + 最低价 + seller。
+    // shopping search — Simulated shopping data: thumbnail + 最低价 + seller。
     await sendMessage(page, '告诉我无线键盘最低价 E2E_SEARCH_SHOP')
     await expect(page.getByText(SHOP_FINAL).first()).toBeVisible({ timeout: 120_000 })
     const priceRow = page.locator('[data-moldy-search-price]').first()

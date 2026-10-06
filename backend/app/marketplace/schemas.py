@@ -25,7 +25,6 @@ class ResourceOriginSummaryOut(BaseModel):
     kind: Literal[
         "created_by_me",
         "imported_by_me",
-        "built_in_k_skill",
         "shared_with_me",
         "community",
         "system_seed",
@@ -191,7 +190,7 @@ class CredentialRequirementOut(BaseModel):
 
 
 class CredentialRequirementIn(CredentialRequirementOut):
-    """Publish/k-skill import input. Adds env_map projection."""
+    """Publish input with env_map projection."""
 
     env_map: dict[str, str] | None = None
 

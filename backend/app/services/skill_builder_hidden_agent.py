@@ -5,7 +5,7 @@
 'standard'`` 过滤隐藏该 row，PUT/DELETE 返回 enumeration-safe 404。
 
 ``model_id`` 只是 seed 时用于满足 FK 的引用值 — 运行时分支始终
-通过 ``resolve_system_model(db, 'text_primary')`` 重新解析（ADR-019, M3）。
+通过 ``resolve_system_model(db, 'builder', user_id)`` 解析个人生成模型。
 """
 
 from __future__ import annotations

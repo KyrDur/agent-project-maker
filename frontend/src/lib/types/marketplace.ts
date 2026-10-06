@@ -12,7 +12,6 @@ export type MarketplaceStatus = 'draft' | 'published' | 'deprecated' | 'disabled
 export type OriginKind =
   | 'created_by_me'
   | 'imported_by_me'
-  | 'built_in_k_skill'
   | 'shared_with_me'
   | 'community'
   | 'system_seed'
@@ -326,24 +325,4 @@ export interface MarketplaceListFilters {
   is_listed?: boolean
   limit?: number
   offset?: number
-}
-
-// ---------------------------------------------------------------------------
-// k-skill sync status (admin)
-// ---------------------------------------------------------------------------
-
-export interface KSkillSyncStatusItem {
-  id: string
-  name: string
-  slug: string
-  status: MarketplaceStatus
-  source_external_id?: string | null
-  latest_version_id?: string | null
-  updated_at: string
-}
-
-export interface KSkillSyncStatus {
-  count: number
-  last_updated_at: string | null
-  items: KSkillSyncStatusItem[]
 }

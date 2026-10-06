@@ -33,16 +33,16 @@ from tests.conftest import TEST_USER_ID
 # ---------------------------------------------------------------------------
 
 
-_SRT_REQUIREMENT = {
+_HTTP_BASIC_REQUIREMENT = {
     "key": "srt_login",
-    "definition_key": "srt_account",
+    "definition_key": "http_basic",
     "required": True,
-    "label": "SRT账户",
-    "description": "用于预订的 SRT 会员信息",
+    "label": "HTTP Basic账户",
+    "description": "用于预订的 HTTP Basic 会员信息",
     "fields": ["username", "password"],
     "injection": "env",
     "scope": "user",
-    "env_map": {"SRT_USERNAME": "username", "SRT_PASSWORD": "password"},
+    "env_map": {"HTTP Basic_USERNAME": "username", "HTTP Basic_PASSWORD": "password"},
 }
 
 
@@ -148,7 +148,7 @@ async def test_requirements_empty_when_skill_has_none(
 @pytest.mark.asyncio
 async def test_requirements_lists_skill_entries(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
     await db.commit()
 
     r = await client.get(f"/api/skills/{skill.id}/credential-requirements")
@@ -156,7 +156,7 @@ async def test_requirements_lists_skill_entries(client: AsyncClient, db: AsyncSe
     body = r.json()
     assert len(body) == 1
     assert body[0]["key"] == "srt_login"
-    assert body[0]["definition_key"] == "srt_account"
+    assert body[0]["definition_key"] == "http_basic"
     assert body[0]["required"] is True
     # ``env_map`` is NOT exposed on the OUT schema — it's a publish-time
     # detail. Confirm the public projection stays minimal.
@@ -171,7 +171,7 @@ async def test_requirements_lists_skill_entries(client: AsyncClient, db: AsyncSe
 @pytest.mark.asyncio
 async def test_bindings_empty_for_new_skill(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
     await db.commit()
 
     r = await client.get(f"/api/skills/{skill.id}/credential-bindings")
@@ -187,12 +187,12 @@ async def test_bindings_empty_for_new_skill(client: AsyncClient, db: AsyncSessio
 @pytest.mark.asyncio
 async def test_binding_create_and_update_idempotent(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
-    cred1 = await _make_credential(db, user_id=TEST_USER_ID, definition_key="srt_account")
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
+    cred1 = await _make_credential(db, user_id=TEST_USER_ID, definition_key="http_basic")
     cred2 = await _make_credential(
         db,
         user_id=TEST_USER_ID,
-        definition_key="srt_account",
+        definition_key="http_basic",
         name="cred2",
     )
     await db.commit()
@@ -233,8 +233,8 @@ async def test_binding_create_and_update_idempotent(client: AsyncClient, db: Asy
 async def test_binding_rejects_other_user_credential(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
     other = await _make_user(db, email="other@test.com")
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
-    other_cred = await _make_credential(db, user_id=other, definition_key="srt_account")
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
+    other_cred = await _make_credential(db, user_id=other, definition_key="http_basic")
     await db.commit()
 
     r = await client.put(
@@ -252,7 +252,7 @@ async def test_binding_rejects_definition_key_mismatch(
     client: AsyncClient, db: AsyncSession
 ) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
     wrong = await _make_credential(db, user_id=TEST_USER_ID, definition_key="anthropic")
     await db.commit()
 
@@ -268,11 +268,11 @@ async def test_binding_rejects_definition_key_mismatch(
 @pytest.mark.asyncio
 async def test_binding_rejects_system_credential(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
     sys_cred = await _make_credential(
         db,
         user_id=None,
-        definition_key="srt_account",
+        definition_key="http_basic",
         is_system=True,
         name="sys-srt",
     )
@@ -291,8 +291,8 @@ async def test_binding_unknown_requirement_key_returns_400(
     client: AsyncClient, db: AsyncSession
 ) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
-    cred = await _make_credential(db, user_id=TEST_USER_ID, definition_key="srt_account")
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
+    cred = await _make_credential(db, user_id=TEST_USER_ID, definition_key="http_basic")
     await db.commit()
 
     r = await client.put(
@@ -313,8 +313,8 @@ async def test_binding_unknown_requirement_key_returns_400(
 @pytest.mark.asyncio
 async def test_delete_binding_idempotent(client: AsyncClient, db: AsyncSession) -> None:
     await _make_test_user(db)
-    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_SRT_REQUIREMENT])
-    cred = await _make_credential(db, user_id=TEST_USER_ID, definition_key="srt_account")
+    skill = await _make_skill(db, user_id=TEST_USER_ID, requirements=[_HTTP_BASIC_REQUIREMENT])
+    cred = await _make_credential(db, user_id=TEST_USER_ID, definition_key="http_basic")
     await db.commit()
 
     # Create binding.

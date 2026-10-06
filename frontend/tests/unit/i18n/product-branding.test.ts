@@ -3,7 +3,7 @@ import { createTranslator } from 'next-intl'
 import en from '../../../messages/en.json'
 import zh from '../../../messages/zh-CN.json'
 import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME } from '@/i18n/locales'
-import { formatLongDate, formatRelativeKo } from '@/lib/utils/format-relative-time'
+import { formatLongDate, formatRelativeTime } from '@/lib/utils/format-relative-time'
 import { formatDisplayDateTime } from '@/lib/utils/display-format'
 
 const state = vi.hoisted(() => ({ locale: undefined as string | undefined }))
@@ -81,7 +81,7 @@ describe('product branding and locale defaults', () => {
   it('formats default date and relative-time UI in Chinese', () => {
     const date = '2026-06-17T00:00:00Z'
     expect(formatLongDate(date)).toBe('2026年6月17日')
-    expect(formatRelativeKo(date, new Date('2026-06-17T00:05:00Z'))).toBe('5分钟前')
+    expect(formatRelativeTime(date, new Date('2026-06-17T00:05:00Z'))).toBe('5分钟前')
     expect(formatDisplayDateTime(date)).toContain('2026年')
   })
 })

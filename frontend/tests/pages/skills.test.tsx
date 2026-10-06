@@ -163,7 +163,7 @@ describe('SkillsPage', () => {
     const dialog = screen.getByRole('alertdialog')
     expect(dialog).toHaveTextContent('Korea Weather')
     expect(dialog).toHaveTextContent('2 个关联智能体')
-    // AD-4.1 — 영향받는 智能体 이름 역도출 표시.
+    // AD-4.1 — 反向推导显示受影响的 智能体 名称。
     expect(dialog).toHaveTextContent('受影响的智能体：会议助手')
 
     await user.click(within(dialog).getByRole('button', { name: '删除' }))

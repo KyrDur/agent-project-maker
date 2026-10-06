@@ -472,7 +472,7 @@ with zipfile.ZipFile(p) as z:
     for name in z.namelist():
         if name.endswith(".xml"):
             text = z.read(name).decode("utf-8", errors="ignore")
-            for needle in ["유 수 화", "Ranian", "ranian", "개인", "전화", "이메일"]:
+            for needle in ["刘秀华", "Ranian", "ranian", "个人", "电话", "邮箱"]:
                 if needle in text:
                     raise SystemExit(f"private marker found: {needle} in {name}")
 print("template scan passed")
@@ -494,7 +494,7 @@ python scripts/generate_hwpx.py --input examples/e2e-patent.json --output moldy-
   - update only the XML parts required for visible content
   - print the generated file name
 - [ ] `examples/e2e-patent.json` must contain a harmless sample invention:
-  - title: `AI 에이전트 문서 생성 결과 검증 방법`
+  - title: `AI Agent 文档生成结果验证方法`
   - abstract
   - background
   - claims
@@ -741,16 +741,16 @@ Korean:
 
 ```json
 {
-  "loading": "문서를 불러오는 중입니다",
-  "errorTitle": "미리보기를 열 수 없습니다",
-  "downloadInstead": "다운로드",
+  "loading": "正在加载文档",
+  "errorTitle": "无法打开预览",
+  "downloadInstead": "下载",
   "page": "{current} / {total}",
-  "zoomIn": "확대",
-  "zoomOut": "축소",
-  "previousPage": "이전 페이지",
-  "nextPage": "다음 페이지",
-  "sheet": "시트",
-  "slide": "슬라이드"
+  "zoomIn": "放大",
+  "zoomOut": "缩小",
+  "previousPage": "上一页",
+  "nextPage": "下一页",
+  "sheet": "工作表",
+  "slide": "幻灯片"
 }
 ```
 
@@ -893,7 +893,7 @@ Korean:
 
 ```json
 {
-  "truncatedGrid": "큰 시트라 처음 {rows}행과 {columns}열만 표시합니다"
+  "truncatedGrid": "工作表较大，仅显示前 {rows} 行和 {columns} 列"
 }
 ```
 
@@ -1109,18 +1109,18 @@ Add this guard in app startup or the scripted model module import path.
 
 ```typescript
 const cases = [
-  { marker: 'E2E_DOCX', file: 'moldy-docx-demo.docx', providerText: /DOCX|문서/ },
-  { marker: 'E2E_XLSX', file: 'moldy-xlsx-demo.xlsx', providerText: /시트|Sheet/ },
-  { marker: 'E2E_PPTX', file: 'moldy-pptx-demo.pptx', providerText: /슬라이드|Slide/ },
-  { marker: 'E2E_HWPX', file: 'moldy-patent-demo.hwpx', providerText: /페이지|Page|청구항/ },
+  { marker: 'E2E_DOCX', file: 'moldy-docx-demo.docx', providerText: /DOCX|文档/ },
+  { marker: 'E2E_XLSX', file: 'moldy-xlsx-demo.xlsx', providerText: /工作表|Sheet/ },
+  { marker: 'E2E_PPTX', file: 'moldy-pptx-demo.pptx', providerText: /幻灯片|Slide/ },
+  { marker: 'E2E_HWPX', file: 'moldy-patent-demo.hwpx', providerText: /页面|Page|权利要求/ },
 ]
 ```
 
 - [ ] For each case:
   - fill `textarea[data-moldy-composer-input="true"]`
   - click send button by role/name from messages
-  - wait for approval card text `승인이 필요합니다` or `Approval Required`
-  - click `승인` or `Approve`
+  - wait for approval card text `需要批准` or `Approval Required`
+  - click `批准` or `Approve`
   - wait for generated file name in the artifact rail or message artifact chip
   - open the artifact preview
   - wait for viewer-specific visible content

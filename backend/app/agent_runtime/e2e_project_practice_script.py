@@ -40,7 +40,8 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
             "## Tool Guidelines\n当前没有业务工具，不调用真实服务。\n"
             "## Workflow\n理解任务，检查输入，整理回答，说明缺少的信息。\n"
             "## Error Handling\n缺少输入时请求补充，不伪造执行成功。\n"
-            "## Constraints\n仅使用用户给定的事实；未知业务条件明确说明，保持模拟操作与真实效果的区别。\n"
+            "## Constraints\n仅使用用户给定的事实；未知业务条件明确说明，"
+            "保持模拟操作与真实效果的区别。\n"
             "## Output Format\n按任务给出清晰的答复，列出依据与尚未验证的边界。\n"
         )
         return AIMessage(content=prompt)

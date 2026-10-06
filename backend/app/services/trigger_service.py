@@ -19,7 +19,7 @@ from app.services.conversation_runtime_policy import (
     ensure_conversation_runtime_policy as _ensure_conversation_runtime_policy,
 )
 
-DEFAULT_TIMEZONE = "Asia/Seoul"
+DEFAULT_TIMEZONE = "Asia/Shanghai"
 DEFAULT_CONVERSATION_POLICY = "schedule_thread"
 VALID_TRIGGER_TYPES = {"interval", "cron", "one_time"}
 VALID_STATUSES = {"active", "paused", "completed", "error"}

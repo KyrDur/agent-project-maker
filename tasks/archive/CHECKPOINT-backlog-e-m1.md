@@ -23,7 +23,7 @@
 - [ ] `tasks/deletion-analysis-e-m1.md` 보고서 작성
 - 검증: 보고서 존재 + 결론이 "제거 X건, 단순화 Y건, 보류 Z건" 형식으로 명시
 - done-when: 사티아 승인
-- 상태: pending
+- 状态: pending
 - 담당: 베조스
 
 ## S2: Connection 모델 + 스키마 + Validator (피차이)
@@ -35,7 +35,7 @@
 - [ ] `backend/app/models/__init__.py`에 Connection export
 - 검증: `cd backend && uv run ruff check app/models/connection.py app/schemas/connection.py && uv run python -c "from app.models import Connection; from app.schemas.connection import ConnectionCreate"`
 - done-when: ruff PASS + import 순환 없음
-- 상태: pending
+- 状态: pending
 - 담당: 피차이
 - blockedBy: S0
 
@@ -47,7 +47,7 @@
 - [ ] `backend/app/main.py` — router 등록
 - 검증: `cd backend && uv run ruff check . && uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`
 - done-when: 왕복 PASS, ruff PASS
-- 상태: pending
+- 状态: pending
 - 담당: 젠슨
 - blockedBy: S2
 
@@ -65,7 +65,7 @@
 - [ ] 전체 회귀 pytest PASS (545+ 유지)
 - 검증: `cd backend && uv run pytest tests/test_connections.py -v && uv run pytest`
 - done-when: 신규 8 시나리오 통과 + 기존 회귀 0
-- 상태: pending
+- 状态: pending
 - 담당: 베조스
 - blockedBy: S3
 
@@ -76,6 +76,6 @@
 - [ ] 단일 커밋
 - 검증: `git log --oneline feature/connections-table ^main`
 - done-when: 커밋 존재, verify PASS
-- 상태: pending
+- 状态: pending
 - 담당: 사티아
 - blockedBy: S4

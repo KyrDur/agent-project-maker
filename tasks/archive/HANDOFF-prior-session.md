@@ -48,7 +48,7 @@
 
 ---
 
-## 주의사항
+## 注意事项
 
 - **`top_p < 1.0` + Anthropic 사용자 명시 케이스**: top_p가 자동 제거됨 (temperature 우선). 사용자가 의도한 top_p 값이 무시되는 점 인지 필요
 - **AgentAvatar `xl` Image `unoptimized`**: 모바일에서도 px=208 다운로드 → 다운스케일 비용 미미하지만 그리드 적용 시 재검토
@@ -128,7 +128,7 @@
 
 ---
 
-## 주의사항
+## 注意事项
 
 - **dirty-aware sync 회귀 위험**: 11개 필드별 `form === prev` 비교가 손으로 작성. 새 필드 추가 시 비교 누락하면 silent revert 회귀 — 단위 테스트 추가 권장
 - **agent_subagent.py `lazy="joined"`**: 회귀 위험으로 유지 결정. SQL 비대 → 후속 PR에서 별도 검증 후 정리
@@ -225,7 +225,7 @@
 
 ---
 
-## 주의사항
+## 注意事项
 
 - **Plan mode 활성** — 새 세션 시작 시 plan 갱신 또는 ExitPlanMode 필요
 - **AgentAvatar.publicAsset**: `/`로 시작하는 정적 자산은 반드시 명시. 누락 시 API_BASE prepend로 404
@@ -245,7 +245,7 @@
 - `backend/app/agent_runtime/assistant/tools/write_tools.py` — add_subagent_to_agent stub
 - `backend/app/models/agent.py` — sub-agent 저장 컬럼 추가 시
 
-## 마지막 상태
+## 最后状态
 
 - 브랜치: `main` (clean) — 이번 세션 변경분이 워킹 트리에 있다면 `git status`로 확인 후 feature 브랜치로 분리
 - 검증: 세션 7 변경분 일부는 lint/build 미실행 — 새 세션 시작 시 `pnpm lint && pnpm build` 권장
@@ -345,7 +345,7 @@
 - `backend/app/{models,schemas,services}/agent.py` — opener_questions 필드/validator/service
 - `backend/app/routers/agents.py` — `_agent_to_response`에 필드 추가
 
-## 마지막 상태
+## 最后状态
 
 - 브랜치: `feature/agent-edit-workbench` (uncommitted, 25 파일)
 - backend dev / frontend dev: 미기동 (필요 시 사용자 기동)

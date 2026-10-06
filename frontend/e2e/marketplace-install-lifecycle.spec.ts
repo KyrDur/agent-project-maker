@@ -54,7 +54,7 @@ function skillDraft(name: string, slug: string) {
     credential_requirements: [
       {
         key: 'srt_login',
-        definition_key: 'srt_account',
+        definition_key: 'http_basic',
         required: true,
         label: 'SRT账户',
         description: '这是安装后运行时使用的测试账号。',
@@ -129,7 +129,7 @@ test('configures a needs-setup install and safely overwrites a dirty update', as
     memberCsrf = { 'X-CSRF-Token': member.csrf_token }
     const credential = idSchema.parse(
       await apiPostJson(page.request, `${API_BASE}/api/credentials`, memberCsrf, {
-        definition_key: 'srt_account',
+        definition_key: 'http_basic',
         name: credentialName,
         data: { username: 'e2e-member', password: 'not-a-real-secret' },
       }),

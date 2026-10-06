@@ -49,7 +49,7 @@ describe('MemoryRecallChip', () => {
   it('reload(redacted) brief 会通过 Memory API join 恢复内容', async () => {
     const user = userEvent.setup()
     memoriesQueryMock.current = {
-      data: [{ id: 'm1', scope: 'user', content: '偏好使用韩语回答' }],
+      data: [{ id: 'm1', scope: 'user', content: '偏好使用中文回答' }],
     }
     const store = createStore()
     store.set(chatMemoryRecallAtom, {
@@ -61,7 +61,7 @@ describe('MemoryRecallChip', () => {
     renderChip(store)
     await user.click(screen.getByText('title'))
     // join 成功 → 恢复原文。已删除的记忆 fallback 到 hiddenContent。
-    expect(screen.getByText('偏好使用韩语回答')).toBeInTheDocument()
+    expect(screen.getByText('偏好使用中文回答')).toBeInTheDocument()
     expect(screen.getByText('hiddenContent')).toBeInTheDocument()
     expect(screen.queryByText('<redacted>')).not.toBeInTheDocument()
   })
@@ -71,16 +71,16 @@ describe('MemoryRecallChip', () => {
     const store = createStore()
     store.set(chatMemoryRecallAtom, {
       'conv-1': [
-        { id: 'm1', scope: 'user', content: '偏好使用韩语回答' },
+        { id: 'm1', scope: 'user', content: '偏好使用中文回答' },
         { id: 'm2', scope: 'agent', content: '报告整理成表格' },
       ],
     })
     renderChip(store)
     expect(screen.getByText('count(2)')).toBeInTheDocument()
     // 默认折叠状态。
-    expect(screen.queryByText('偏好使用韩语回答')).not.toBeInTheDocument()
+    expect(screen.queryByText('偏好使用中文回答')).not.toBeInTheDocument()
     await user.click(screen.getByText('title'))
-    expect(screen.getByText('偏好使用韩语回答')).toBeInTheDocument()
+    expect(screen.getByText('偏好使用中文回答')).toBeInTheDocument()
     expect(screen.getByText('scopeUser')).toBeInTheDocument()
     expect(screen.getByText('scopeAgent')).toBeInTheDocument()
   })

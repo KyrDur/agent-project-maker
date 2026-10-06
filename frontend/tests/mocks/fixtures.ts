@@ -313,7 +313,7 @@ export const mockTrigger: AgentTrigger = {
   trigger_type: 'interval',
   schedule_config: { interval_minutes: 60 },
   input_message: 'Check for updates',
-  timezone: 'Asia/Seoul',
+  timezone: 'Asia/Shanghai',
   conversation_policy: 'schedule_thread',
   schedule_conversation_id: null,
   target_conversation_id: null,

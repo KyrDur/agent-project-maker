@@ -331,7 +331,7 @@ class TestExecuteInSkillPathValidation:
 
     @pytest.mark.asyncio
     async def test_execute_in_skill_allows_curl_with_base_assignment(self, tmp_path: Path) -> None:
-        """k-skill docs often show a BASE=... + curl snippet. The runtime
+        """Skill docs often show a BASE=... + curl snippet. The runtime
         should execute that shape without opening arbitrary shell execution."""
 
         src = _seed_skill_on_disk(tmp_path, slug="curl")
@@ -348,7 +348,9 @@ class TestExecuteInSkillPathValidation:
 
         result = await execute(
             skill_directory="/runtime/thread-curl/skills/curl/",
-            command=(f'BASE="${{KSKILL_PROXY_BASE_URL:-{payload_url}}}"\ncurl -fsS "${{BASE}}"'),
+            command=(
+                f'BASE="${{SIMULATION_PROXY_BASE_URL:-{payload_url}}}"\ncurl -fsS "${{BASE}}"'
+            ),
         )
 
         assert "curl-ok" in result

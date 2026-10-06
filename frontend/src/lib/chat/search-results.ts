@@ -7,12 +7,12 @@ export interface SearchResultItem {
   description?: string
   score?: number
   published_date?: string
-  /** 图片/购物结果的缩略图 URL（Naver thumbnail/image, Google image.thumbnailLink）。 */
+  /** 图片/购物结果的缩略图 URL（thumbnail 或 Google image.thumbnailLink）。 */
   thumbnail?: string
-  /** 购物结果的最低价（KRW）——Naver lprice。 */
+  /** 模拟商品价格；不推断币种。 */
   price?: number
-  /** 购物结果的商家——Naver mallName。 */
-  mall_name?: string
+  /** 模拟商品的商家。 */
+  merchant?: string
 }
 
 export interface SearchSourceSummary {
@@ -35,8 +35,6 @@ function parseJsonString(value: string): unknown {
 
 function thumbnailFrom(value: Record<string, unknown>): string | undefined {
   if (typeof value.thumbnail === 'string' && value.thumbnail) return value.thumbnail
-  // Naver 购物中，`image` 是缩略图 URL 字符串。
-  if (typeof value.image === 'string' && value.image.startsWith('http')) return value.image
   // Google 图片搜索中，`image: { thumbnailLink }` 是对象。
   if (isRecord(value.image) && typeof value.image.thumbnailLink === 'string') {
     return value.image.thumbnailLink
@@ -45,10 +43,9 @@ function thumbnailFrom(value: Record<string, unknown>): string | undefined {
 }
 
 function priceFrom(value: Record<string, unknown>): number | undefined {
-  // Naver 购物 lprice 以数字字符串（"12900"）返回。
-  const raw = value.lprice
+  // 模拟数据以 price 字段提供价格。
+  const raw = value.price
   if (typeof raw === 'number' && Number.isFinite(raw)) return raw
-  if (typeof raw === 'string' && /^\d+$/.test(raw)) return Number(raw)
   return undefined
 }
 
@@ -67,7 +64,7 @@ function normalizeSearchItem(value: unknown): SearchResultItem | null {
   if (thumbnail) item.thumbnail = thumbnail
   const price = priceFrom(value)
   if (price !== undefined) item.price = price
-  if (typeof value.mallName === 'string' && value.mallName) item.mall_name = value.mallName
+  if (typeof value.merchant === 'string' && value.merchant) item.merchant = value.merchant
   return Object.keys(item).length > 0 ? item : (value as SearchResultItem)
 }
 
@@ -89,7 +86,7 @@ function unwrapMcpTextContent(raw: readonly unknown[]): unknown {
   return parseJsonString(textBlock.text as string)
 }
 
-/** 提取搜索结果数组——Tavily/scripted 工具用 `results`，Naver/Google 用 `items`。 */
+/** 提取搜索结果数组——Tavily/scripted 工具用 `results`，Google 用 `items`。 */
 function itemsArrayFrom(raw: Record<string, unknown>): unknown[] | null {
   if (Array.isArray(raw.results)) return raw.results
   if (Array.isArray(raw.items)) return raw.items

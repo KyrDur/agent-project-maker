@@ -438,7 +438,7 @@ function MemoryRecordItem({
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    timeZone: 'Asia/Seoul',
+    timeZone: 'Asia/Shanghai',
   })
 
   async function handleSave() {

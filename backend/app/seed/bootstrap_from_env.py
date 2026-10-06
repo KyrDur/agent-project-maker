@@ -65,14 +65,6 @@ _ENV_SPECS: tuple[_EnvSpec, ...] = (
         },
     ),
     _EnvSpec(
-        definition_key="naver_search",
-        name=f"{SEED_NAME_PREFIX} Naver Search",
-        env_to_field={
-            "NAVER_CLIENT_ID": "client_id",
-            "NAVER_CLIENT_SECRET": "client_secret",
-        },
-    ),
-    _EnvSpec(
         definition_key="google_workspace_oauth2",
         name=f"{SEED_NAME_PREFIX} Google Workspace",
         env_to_field={
@@ -118,9 +110,7 @@ async def bootstrap_system_credentials(db: AsyncSession) -> list[Credential]:
         return []
 
     existing_rows = await db.execute(
-        select(Credential.definition_key, Credential.name).where(
-            Credential.is_system.is_(True)
-        )
+        select(Credential.definition_key, Credential.name).where(Credential.is_system.is_(True))
     )
     existing = {(row[0], row[1]) for row in existing_rows.all()}
 

@@ -152,7 +152,7 @@ describe('ChatEmptyState command discovery', () => {
     expect(screen.getByRole('listbox', { name: 'Commands' })).toBeVisible()
   })
 
-  it('keeps real Korean IME completion selection while the slash trigger rerenders', async () => {
+  it('keeps real Chinese IME completion selection while the slash trigger rerenders', async () => {
     render(<CommandDiscoveryHarness />)
     const input = screen.getByRole('textbox', { name: 'Message' })
 

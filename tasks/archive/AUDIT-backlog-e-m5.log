@@ -1,33 +1,33 @@
-[2026-04-19T00:00] satya PROJECT_START "백로그 E M5 — UI 통합 + F 흡수 (프론트 전용)"
-[2026-04-19T00:01] satya SCOPE_DECIDED "프론트 전용, agent_tools.override는 M5.5 분리, /connections Connection 중심 전면 재편"
+[2026-04-19T00:00] satya PROJECT_START "Backlog E M5 — UI integration + absorb F（frontend only）"
+[2026-04-19T00:01] satya SCOPE_DECIDED "仅 frontend，agent_tools.override 拆分为 M5.5，/connections 全面重构为 Connection-centric"
 [2026-04-19T00:02] satya MILESTONE_CREATED S0,S1,S2,S3,S4,S5,S6
-[2026-04-19T00:10] bezos MILESTONE_START S1 삭제 분석
-[2026-04-19T07:17] tim-cook MILESTONE_START S2 UX 스펙 2종 작성 시작
-[2026-04-19T00:45] bezos MILESTONE_DONE S1 삭제 분석 완료 — tasks/deletion-analysis-e-m5.md 작성, 백엔드 0건 확인, M5.5/M6 경계 명시
-[2026-04-19T00:30] 베조스 MILESTONE_DONE S1 삭제 분석 — 위험 신호 5건
-[2026-04-19T00:31] satya COURSE_CORRECTION S2 — 위험 신호 5건 팀쿡 spec 반영 지시
-[2026-04-19T07:22] tim-cook MILESTONE_DONE S2 UX 스펙 2종 완료 (binding-dialog + connections-page-redesign)
-[2026-04-19T07:30] zuckerberg MILESTONE_START S3 ConnectionBindingDialog type union 확장 + 3 dialog 호출부 교체
-[2026-04-19T07:28] tim-cook SPEC_V2 베조스 S1 5개 항목 반영 (MCP 스코프 축소, bridge 보존, credential N:1 삭제, 회귀 주의)
-[2026-04-19T08:10] zuckerberg MILESTONE_DONE S3 — ConnectionBindingDialog type union 확장 (prebuilt/custom/mcp), 호출부 2건 교체 (tools/page.tsx, mcp-server-group-card.tsx), i18n custom/mcp 키 추가, lint(기존 경고 1건 외 0), build PASS, 외부 호출처 grep 0건
-[2026-04-19T08:15] zuckerberg MILESTONE_START S4 /connections 페이지 Connection 중심 재편
-[2026-04-19T08:50] zuckerberg MILESTONE_DONE S4 — connections/page.tsx 전면 재작성 (3섹션: PREBUILT/CUSTOM/MCP), ConnectionCard + ConnectionDetailSheet 신규, useToolsByConnection selector 추가(use-tools.ts), Credential 카드/검색/type 필터 제거, MCP "연결 추가"는 AddToolDialog 재사용, i18n connections.sections/card/detail/emptyPage/statusToast 키 추가, lint PASS, build PASS, CredentialCard/filteredCredentials grep 0건
-[2026-04-19T04:00] bezos MILESTONE_START S5 회귀 검증 + 수동 E2E
-[2026-04-19T04:30] bezos VERIFICATION_PASS M5 pytest 646 / ruff / lint / build 전수 PASS
-[2026-04-19T04:30] bezos MILESTONE_DONE S5 회귀 검증 + 수동 E2E 완료 — tasks/manual-e2e-e-m5.md, 베조스 S1 위험 5건 해소
-[2026-04-19T09:00] satya REVIEW_FIX M1+M2 — toast 메시지 connections.statusToast.deleted/deleteFailed 신규 + SheetContent showCloseButton=false (X 중복 제거)
-[2026-04-19T09:05] satya VERIFICATION_PASS lint(기존 1건만) + build(14 routes) PASS
+[2026-04-19T00:10] bezos MILESTONE_START S1 deletion analysis
+[2026-04-19T07:17] tim-cook MILESTONE_START S2 开始编写 2 类 UX spec
+[2026-04-19T00:45] bezos MILESTONE_DONE S1 deletion analysis 完成 — 编写 tasks/deletion-analysis-e-m5.md，确认 backend 0 项，明确 M5.5/M6 边界
+[2026-04-19T00:30] Bezos MILESTONE_DONE S1 deletion analysis — 5 个风险信号
+[2026-04-19T00:31] satya COURSE_CORRECTION S2 — 指示 Tim Cook 将 5 个风险信号反映到 spec
+[2026-04-19T07:22] tim-cook MILESTONE_DONE S2 完成 2 类 UX spec（binding-dialog + connections-page-redesign）
+[2026-04-19T07:30] zuckerberg MILESTONE_START S3 扩展 ConnectionBindingDialog type union + 替换 3 个 dialog 调用点
+[2026-04-19T07:28] tim-cook SPEC_V2 反映 Bezos S1 5 项（缩小 MCP scope，保留 bridge，删除 credential N:1，回归注意）
+[2026-04-19T08:10] zuckerberg MILESTONE_DONE S3 — 扩展 ConnectionBindingDialog type union (prebuilt/custom/mcp)，替换 2 个调用点（tools/page.tsx, mcp-server-group-card.tsx），新增 i18n custom/mcp key，lint（除 1 个现有 warning 外 0），build PASS，外部调用点 grep 0
+[2026-04-19T08:15] zuckerberg MILESTONE_START S4 /connections 页面 Connection-centric 重构
+[2026-04-19T08:50] zuckerberg MILESTONE_DONE S4 — 全面重写 connections/page.tsx（3 section: PREBUILT/CUSTOM/MCP），新增 ConnectionCard + ConnectionDetailSheet，新增 useToolsByConnection selector(use-tools.ts)，移除 Credential card/搜索/type filter，MCP "连接添加" 复用 AddToolDialog，新增 i18n connections.sections/card/detail/emptyPage/statusToast key，lint PASS，build PASS，CredentialCard/filteredCredentials grep 0
+[2026-04-19T04:00] bezos MILESTONE_START S5 回归验证 + 手动 E2E
+[2026-04-19T04:30] bezos VERIFICATION_PASS M5 pytest 646 / ruff / lint / build 全量 PASS
+[2026-04-19T04:30] bezos MILESTONE_DONE S5 回归验证 + 手动 E2E 完成 — tasks/manual-e2e-e-m5.md，解决 Bezos S1 的 5 个风险项
+[2026-04-19T09:00] satya REVIEW_FIX M1+M2 — 新增 toast 消息 connections.statusToast.deleted/deleteFailed + SheetContent showCloseButton=false（去除重复 X）
+[2026-04-19T09:05] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（14 routes）PASS
 [2026-04-19T09:06] satya TEAM_DISBAND_REQUEST backlog-e-m5
-[2026-04-19T09:10] satya TEAM_DISBANDED backlog-e-m5 — 3명(팀쿡/베조스/저커버그) shutdown 완료, TeamDelete 정리 완료
-[2026-04-19T09:30] satya CODEX_REVIEW_FIX P1+P2 — tools/page.tsx: (P2) provider_name 누락/unknown prebuilt → type='custom' fallback 부활. (P1) custom onBound에서 useUpdateToolAuthConfig로 tool.credential_id 동기화 (legacy first-bind + bridge override 해소). 백엔드 변경 0건
-[2026-04-19T09:32] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
-[2026-04-19T09:50] satya CODEX_REVIEW2_FIX P1A+P1B+P2 — (P1A) McpBody가 server PATCH + linkedConnections.credential_id 동기 갱신 (chat_service SOT 일치). (P1B) useToolsByConnection PREBUILT는 provider_name 매칭으로 변경. (P2) detail-sheet MCP 분기에서 changeCredential 버튼 숨김 + mcpRebindHint 안내. i18n connections.detail.mcpRebindHint 신규
-[2026-04-19T09:51] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
-[2026-04-19T10:10] satya CODEX_REVIEW3_FIX P1+P2x3 — (P1) custom auth clear가 tool.credential_id에도 전파(`!== tool.credential_id` 조건). (P2A) /connections isEmpty 분기 제거 — 항상 3섹션 노출 (first-time user 진입점 보존). (P2B) PrebuiltBody triggerContext='standalone' + default 있음 → 신규 connection 생성 (덮어쓰기 방지). (P2C) useToolsByConnection PREBUILT는 is_default일 때만 매칭 (non-default 사용량 inflation 방지)
-[2026-04-19T10:11] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
-[2026-04-20T00:30] satya ADVERSARIAL_FIX high#1+#2 — (옵션 C) PrebuiltProps에 connectionId prop 신규, drawer rebind는 connectionId={connection.id} + triggerContext='tool-edit'로 selected row 직접 update (default 여부 무관). PrebuiltBody에 explicitTarget 분기 추가. (옵션 F) McpBody는 단일 connection만 안전 sync, N:1 공유 시 server PATCH만 + sharedCredentialWarning inline alert + savedSharedCredential toast. 옵션 D(새 connection find-or-create + tool.connection_id PATCH)는 M6 cleanup으로 명시 (mcp_servers drop과 통합). 백엔드 변경 0건
-[2026-04-20T00:31] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
-[2026-04-20T01:30] satya SIMPLIFY_FIX 6건 — (1) types.ts에 CUSTOM_CONNECTION_PROVIDER_NAME + PREBUILT_PROVIDER_I18N_KEY + PREBUILT_PROVIDER_NAMES export → 3 파일 중복 제거 (binding-dialog, add-tool-dialog, connections/page). (2) tools/page.tsx handleCustomBound mutate→mutateAsync + onError toolSyncFailed → silent partial failure 차단. (3) McpBody handleSave 두 mutation Promise.all 병렬 (perceived latency 1/2). (4) detail-sheet AlertDialog inline → DeleteConfirmDialog shared (8 import 정리). (5) connections.emptyPage dead i18n key 제거. (6) tool.customAuth.toolSyncFailed 신규 키
-[2026-04-20T01:31] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
-[2026-04-20T02:00] satya SIMPLIFY_FIX2 3건 — (1) dead 3 dialog 파일(prebuilt-auth/custom-auth/mcp-server-auth-dialog.tsx) 삭제. 외부 호출 0 확인 후. (2) connections.providerName.{naver,googleSearch,googleChat,googleWorkspace} short label i18n 신규 + page.tsx providerLabel hack(description split) 제거 → fragile string parsing 차단. (3) useCredential(id) selector hook + ConnectionStatusBadge 컴포넌트 신규 → connection-card / connection-detail-sheet 두 곳 중복(credential lookup + status badge 마크업) 제거
-[2026-04-20T02:01] satya VERIFICATION_PASS lint(기존 1건만) + build(15 routes) PASS
+[2026-04-19T09:10] satya TEAM_DISBANDED backlog-e-m5 — 3 人（Tim Cook/Bezos/Zuckerberg）shutdown 完成，TeamDelete 清理完成
+[2026-04-19T09:30] satya CODEX_REVIEW_FIX P1+P2 — tools/page.tsx: (P2) provider_name 缺失/unknown prebuilt → 恢复 type='custom' fallback。(P1) custom onBound 中通过 useUpdateToolAuthConfig 同步 tool.credential_id（解决 legacy first-bind + bridge override）。backend 变更 0
+[2026-04-19T09:32] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS
+[2026-04-19T09:50] satya CODEX_REVIEW2_FIX P1A+P1B+P2 — (P1A) McpBody 同步更新 server PATCH + linkedConnections.credential_id（符合 chat_service SOT）。(P1B) useToolsByConnection PREBUILT 改为按 provider_name 匹配。(P2) detail-sheet MCP 分支隐藏 changeCredential 按钮 + mcpRebindHint 提示。新增 i18n connections.detail.mcpRebindHint
+[2026-04-19T09:51] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS
+[2026-04-19T10:10] satya CODEX_REVIEW3_FIX P1+P2x3 — (P1) custom auth clear 也传播到 tool.credential_id（`!== tool.credential_id` 条件）。(P2A) 移除 /connections isEmpty 分支 — 始终显示 3 section（保留 first-time user 入口）。(P2B) PrebuiltBody triggerContext='standalone' + 存在 default → 创建新 connection（防止覆盖）。(P2C) useToolsByConnection PREBUILT 仅在 is_default 时匹配（防止 non-default usage inflation）
+[2026-04-19T10:11] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS
+[2026-04-20T00:30] satya ADVERSARIAL_FIX high#1+#2 — (Option C) PrebuiltProps 新增 connectionId prop，drawer rebind 使用 connectionId={connection.id} + triggerContext='tool-edit' 直接 update selected row（不论是否 default）。PrebuiltBody 新增 explicitTarget 分支。(Option F) McpBody 仅在单 connection 时安全 sync，N:1 共享时仅 server PATCH + sharedCredentialWarning inline alert + savedSharedCredential toast。Option D（新 connection find-or-create + tool.connection_id PATCH）明确放到 M6 cleanup（与 mcp_servers drop 集成）。backend 变更 0
+[2026-04-20T00:31] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS
+[2026-04-20T01:30] satya SIMPLIFY_FIX 6 项 — (1) types.ts export CUSTOM_CONNECTION_PROVIDER_NAME + PREBUILT_PROVIDER_I18N_KEY + PREBUILT_PROVIDER_NAMES → 去除 3 文件重复（binding-dialog, add-tool-dialog, connections/page）。(2) tools/page.tsx handleCustomBound mutate→mutateAsync + onError toolSyncFailed → 防止 silent partial failure。(3) McpBody handleSave 两个 mutation 以 Promise.all 并行（perceived latency 1/2）。(4) detail-sheet AlertDialog inline → DeleteConfirmDialog shared（清理 8 import）。(5) 移除 connections.emptyPage dead i18n key。(6) 新增 tool.customAuth.toolSyncFailed key
+[2026-04-20T01:31] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS
+[2026-04-20T02:00] satya SIMPLIFY_FIX2 3 项 — (1) 删除 3 个 dead dialog 文件(prebuilt-auth/custom-auth/mcp-server-auth-dialog.tsx)。确认外部调用 0 后执行。(2) 新增 connections.providerName.{naver,googleSearch,googleChat,googleWorkspace} short label i18n + 移除 page.tsx providerLabel hack(description split) → 防止 fragile string parsing。(3) 新增 useCredential(id) selector hook + ConnectionStatusBadge component → 移除 connection-card / connection-detail-sheet 两处重复（credential lookup + status badge markup）
+[2026-04-20T02:01] satya VERIFICATION_PASS lint（仅现有 1 项）+ build（15 routes）PASS

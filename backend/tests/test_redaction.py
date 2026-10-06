@@ -54,9 +54,9 @@ class TestRedactCredentialValues:
         credential surfaced in the log."""
 
         text = "User logged in with srt_id=supersecret-id-12345 OK"
-        out = redact_credential_values(text, {"KSKILL_SRT_ID": "supersecret-id-12345"})
+        out = redact_credential_values(text, {"HTTP_BASIC_USERNAME": "supersecret-id-12345"})
         assert "supersecret-id-12345" not in out
-        assert "<redacted:KSKILL_SRT_ID>" in out
+        assert "<redacted:HTTP_BASIC_USERNAME>" in out
         # Surrounding text preserved.
         assert "User logged in with srt_id=" in out
         assert "OK" in out
@@ -274,7 +274,7 @@ class TestSubprocessRedaction:
         src = _seed_skill(tmp_path, slug)
         (src / "scripts").mkdir(exist_ok=True)
         (src / "scripts" / "echo.py").write_text(
-            "import os\nprint('debug:', os.environ.get('KSKILL_SRT_PASSWORD'))\n"
+            "import os\nprint('debug:', os.environ.get('HTTP_BASIC_PASSWORD'))\n"
         )
 
         cfg = _make_cfg(
@@ -297,10 +297,10 @@ class TestSubprocessRedaction:
         descriptor = ctx.descriptors[slug]
         secret_value = "super-secret-password-9999"
         descriptor.credential_bindings = {
-            "srt_account": ResolvedCredential(
+            "http_basic": ResolvedCredential(
                 credential_id=uuid.uuid4(),
-                definition_key="srt_account",
-                env_map={"password": "KSKILL_SRT_PASSWORD"},
+                definition_key="http_basic",
+                env_map={"password": "HTTP_BASIC_PASSWORD"},
                 decrypted={"password": secret_value},
             )
         }
@@ -312,7 +312,7 @@ class TestSubprocessRedaction:
         )
 
         assert secret_value not in result, f"raw credential leaked into tool result: {result!r}"
-        assert "<redacted:KSKILL_SRT_PASSWORD>" in result, (
+        assert "<redacted:HTTP_BASIC_PASSWORD>" in result, (
             f"redaction marker missing from tool result: {result!r}"
         )
 
@@ -331,7 +331,7 @@ class TestSubprocessRedaction:
         (src / "scripts").mkdir(exist_ok=True)
         (src / "scripts" / "fail.py").write_text(
             "import os, sys\n"
-            "sys.stderr.write('boom: ' + os.environ['KSKILL_SRT_PASSWORD'] "
+            "sys.stderr.write('boom: ' + os.environ['HTTP_BASIC_PASSWORD'] "
             "+ '\\n')\n"
             "sys.exit(1)\n"
         )
@@ -353,10 +353,10 @@ class TestSubprocessRedaction:
         descriptor = ctx.descriptors[slug]
         secret = "another-secret-pw-aaaaaa"
         descriptor.credential_bindings = {
-            "srt_account": ResolvedCredential(
+            "http_basic": ResolvedCredential(
                 credential_id=uuid.uuid4(),
-                definition_key="srt_account",
-                env_map={"password": "KSKILL_SRT_PASSWORD"},
+                definition_key="http_basic",
+                env_map={"password": "HTTP_BASIC_PASSWORD"},
                 decrypted={"password": secret},
             )
         }
@@ -369,7 +369,7 @@ class TestSubprocessRedaction:
         # STDERR routed into the result on non-zero exit.
         assert "STDERR" in result
         assert secret not in result
-        assert "<redacted:KSKILL_SRT_PASSWORD>" in result
+        assert "<redacted:HTTP_BASIC_PASSWORD>" in result
 
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ from app.tools.domain import ToolDefinition, ToolRunContext
 from app.tools.parameters import FieldDef, FieldKind
 from app.tools.risk import ToolRiskLevel
 
-_TIMEZONE = "Asia/Seoul"
+_TIMEZONE = "Asia/Shanghai"
 
 
 def _events_url(calendar_id: str) -> str:

@@ -103,9 +103,6 @@ vi.mock('@/lib/hooks/use-system-llm-settings', () => ({
 vi.mock('@/lib/hooks/use-marketplace', () => ({
   useAdminSetListed: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDisableItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useKSkillSyncStatus: () => ({
-    data: { count: 0, last_updated_at: null },
-  }),
   useModerationQueue: () => ({ data: [], isLoading: false }),
 }))
 
@@ -205,6 +202,5 @@ describe('admin settings pages', () => {
 
     expect(screen.getByRole('heading', { name: '市场审核' })).toBeInTheDocument()
     expect(screen.getByText('没有等待审核的项目')).toBeInTheDocument()
-    expect(screen.getByText('k-技能同步状态')).toBeInTheDocument()
   })
 })

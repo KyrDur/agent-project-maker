@@ -99,7 +99,7 @@ describe('ToolGroupContainer', () => {
     it('URL 重复项会 dedup，来源数量准确', () => {
       setParts([
         { result: tavilyResult(['https://a.com/1', 'https://b.com/2']) },
-        { result: tavilyResult(['https://a.com/1', 'https://b.com/2']) }, // 동일 URL 2회
+        { result: tavilyResult(['https://a.com/1', 'https://b.com/2']) }, // 同一 URL 2 次
       ])
       render(
         <ToolGroupContainer toolName="web_search" count={2} running={false} indices={[0, 1]}>

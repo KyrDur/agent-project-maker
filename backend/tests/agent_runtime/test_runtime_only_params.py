@@ -1,6 +1,6 @@
 """Verify that ``runtime_only`` tool params are exposed to the LLM.
 
-Regression for the case where the Naver News tool was created with a fixed
+Regression for the case where the Google News tool was created with a fixed
 ``query`` string at registration time, so the agent kept calling the API with
 that literal value instead of the user's search keyword. The fix exposes
 ``runtime_only=True`` fields on the StructuredTool ``args_schema`` so the
@@ -31,20 +31,20 @@ def _reset_tool_http_client() -> Iterator[None]:
     tool_factory.reset_tool_http_client_for_tests()
 
 
-def _naver_news_config(
+def _google_news_config(
     stored_params: dict[str, Any] | None = None,
     *,
-    name: str = "naver news search",
+    name: str = "google news search",
 ) -> dict[str, Any]:
     return {
         "tool_id": None,
-        "definition_key": "naver_search_news",
+        "definition_key": "google_search_news",
         "name": name,
-        "description": "Search Korean news.",
+        "description": "Search news.",
         "parameters": stored_params or {},
         "credentials": {
-            "client_id": "fake-client-id",
-            "client_secret": "fake-client-secret",
+            "api_key": "fake-client-id",
+            "cse_id": "fake-client-secret",
         },
         "credential_id": None,
         "user_id": None,
@@ -53,9 +53,9 @@ def _naver_news_config(
 
 
 def test_runtime_only_query_is_exposed_on_args_schema() -> None:
-    """The Naver news ``query`` field is ``runtime_only`` → schema must have it."""
+    """The Google news ``query`` field is ``runtime_only`` → schema must have it."""
 
-    definition = tool_registry.require("naver_search_news")
+    definition = tool_registry.require("google_search_news")
     model_cls = _build_runtime_args_schema(definition, stored_params={})
 
     assert model_cls is not None
@@ -67,7 +67,7 @@ def test_runtime_only_query_is_exposed_on_args_schema() -> None:
 def test_stored_query_becomes_schema_default_and_is_overridable() -> None:
     """When the operator pins a stored value, the LLM still sees an override."""
 
-    definition = tool_registry.require("naver_search_news")
+    definition = tool_registry.require("google_search_news")
     model_cls = _build_runtime_args_schema(definition, stored_params={"query": "pinned"})
 
     assert model_cls is not None
@@ -81,7 +81,7 @@ def test_stored_query_becomes_schema_default_and_is_overridable() -> None:
 def test_create_tool_for_runtime_attaches_args_schema() -> None:
     """LangChain StructuredTool must declare the args schema so the LLM sees it."""
 
-    tool = create_tool_for_runtime(_naver_news_config())
+    tool = create_tool_for_runtime(_google_news_config())
     assert tool is not None
     schema = tool.args_schema
     assert schema is not None
@@ -93,14 +93,14 @@ def test_create_tool_for_runtime_attaches_args_schema() -> None:
 def test_create_tool_for_runtime_uses_vertex_safe_name_for_non_ascii_tool_name() -> None:
     """Provider tool schemas require ASCII-ish function names."""
 
-    tool = create_tool_for_runtime(_naver_news_config(name="新闻搜索"))
+    tool = create_tool_for_runtime(_google_news_config(name="新闻搜索"))
 
     assert tool is not None
-    assert tool.name == "naver_search_news"
+    assert tool.name == "google_search_news"
 
 
 def test_create_tool_for_runtime_prefixes_digit_starting_tool_name() -> None:
-    tool = create_tool_for_runtime(_naver_news_config(name="123 news search"))
+    tool = create_tool_for_runtime(_google_news_config(name="123 news search"))
 
     assert tool is not None
     assert tool.name == "_123_news_search"
@@ -116,18 +116,18 @@ async def test_runtime_arg_overrides_stored_query_at_invocation() -> None:
         captured["params"] = dict(ctx.parameters)
         return {"items": []}
 
-    definition = tool_registry.require("naver_search_news")
+    definition = tool_registry.require("google_search_news")
     with patch.object(definition, "runner", fake_runner):
-        tool = create_tool_for_runtime(_naver_news_config(stored_params={"query": "pinned"}))
+        tool = create_tool_for_runtime(_google_news_config(stored_params={"query": "pinned"}))
         assert tool is not None
         # AsyncClient creation is not mocked but our fake runner never uses it.
         with patch("app.agent_runtime.tool_factory.httpx.AsyncClient") as client_cls:
             client_cls.return_value.__aenter__ = AsyncMock(return_value=object())
             client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-            await tool_coroutine(tool)(query="Hancom 最新新闻")
+            await tool_coroutine(tool)(query="人工智能最新新闻")
 
     assert "verify" in client_cls.call_args.kwargs
-    assert captured["params"]["query"] == "Hancom 最新新闻"
+    assert captured["params"]["query"] == "人工智能最新新闻"
 
 
 @pytest.mark.asyncio
@@ -138,9 +138,9 @@ async def test_registry_tool_reuses_shared_http_client_across_invocations() -> N
         captured_clients.append(ctx.http_client)
         return {"items": []}
 
-    definition = tool_registry.require("naver_search_news")
+    definition = tool_registry.require("google_search_news")
     with patch.object(definition, "runner", fake_runner):
-        tool = create_tool_for_runtime(_naver_news_config(stored_params={"query": "pinned"}))
+        tool = create_tool_for_runtime(_google_news_config(stored_params={"query": "pinned"}))
         assert tool is not None
         with patch("app.agent_runtime.tool_factory.httpx.AsyncClient") as client_cls:
             client_cls.return_value.__aenter__ = AsyncMock(return_value=object())

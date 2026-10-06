@@ -46,7 +46,7 @@
 - [ ] `_components/dialogs/{model-dialog,sub-agents-dialog,add-tool-modal,add-middleware-modal}.tsx`
 - [ ] 도구함/미들웨어 2칸 그리드, 행 레이아웃 (`name [⚙][🗑]`)
 - [ ] 폐기: `basic-info-tab.tsx`, `model-tab.tsx`, `tools-skills-tab.tsx`
-- 검증: `cd frontend && pnpm build && pnpm lint`
+- 验证: `cd frontend && pnpm build && pnpm lint`
 - done-when: 빌드/린트 PASS, 모달 4종 동작
 
 ## M5 — 프론트엔드: 좌측 비주얼 inline + 우측 패널 (저커버그 DRI)
@@ -66,7 +66,7 @@
 - [ ] `lib/types/agent.ts` 타입 보강
 - [ ] `lib/hooks/use-agents.ts` update payload에 `opener_questions`
 - [ ] i18n 키 추가 (`messages/ko.json` 외)
-- 검증: `cd frontend && pnpm build && pnpm lint`
+- 验证: `cd frontend && pnpm build && pnpm lint`
 - done-when: 새 대화 진입 시 오프너 버튼 표시 + 클릭 동작
 
 ## M7 — 통합 검증 (베조스 DRI)

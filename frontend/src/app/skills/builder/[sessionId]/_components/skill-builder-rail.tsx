@@ -166,7 +166,7 @@ function StatusPane({
           </div>
         ))}
 
-        {/* 런타임 호환 — 목업 rt-chips (실데이터: compatibility_result.targets) */}
+        {/* runtime 兼容 — mock rt-chips（真实数据: compatibility_result.targets） */}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-xs">
           <span className="shrink-0 break-keep text-foreground/80">
             {t('statusRow.runtimeCompat')}

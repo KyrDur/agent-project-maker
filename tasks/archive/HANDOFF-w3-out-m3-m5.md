@@ -4,7 +4,7 @@
 > 설계: `docs/design-docs/adr-011-sse-stream-resume.md`.
 > ⚠️ 첫 작업: 브랜치 머지 여부 확인 → main 이면 `/sync` 후 M5.
 
-## 마지막 상태
+## 最后状态
 
 - 브랜치: **`feature/w3-out-m3-get-stream`** (HEAD `358b2ab`, **PR 미생성**)
 - main HEAD: `568cfd4` (PR #116 머지 시점), alembic head **m34** (변경 없음)

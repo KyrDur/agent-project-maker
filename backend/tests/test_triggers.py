@@ -76,7 +76,7 @@ async def test_trigger_crud(client: AsyncClient):
         json={
             "trigger_type": "interval",
             "schedule_config": {"interval_minutes": 10},
-            "input_message": "帮我搜索韩文与计算机最新新闻",
+            "input_message": "帮我搜索人工智能与计算机最新新闻",
         },
     )
     assert resp.status_code == 201

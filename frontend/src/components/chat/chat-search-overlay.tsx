@@ -82,7 +82,7 @@ export function ChatSearchOverlay({
       event.preventDefault()
       onClose()
     } else if (event.key === 'Enter') {
-      // IME 组合输入确认 Enter（韩文/CJK）不会触发移动。
+      // IME 组合输入确认 Enter（中文/CJK）不会触发移动。
       if (event.nativeEvent.isComposing) return
       event.preventDefault()
       go(event.shiftKey ? -1 : 1)

@@ -4,7 +4,7 @@ Covers:
 - Catalog endpoint surfaces every registered :class:`ToolDefinition`.
 - CRUD round-trips, parameter validation, per-user isolation.
 - ``http_request`` runner via :class:`httpx.MockTransport`.
-- Naver search runner uses a credential's GenericAuth recipe.
+- Supported search runners use credential authentication recipes.
 """
 
 from __future__ import annotations
@@ -51,11 +51,6 @@ async def test_tool_types_catalog(client: AsyncClient) -> None:
     assert {
         "http_request",
         "tavily_search",
-        "naver_search_blog",
-        "naver_search_news",
-        "naver_search_image",
-        "naver_search_shop",
-        "naver_search_local",
         "google_search_web",
         "google_search_image",
         "google_search_news",
@@ -66,23 +61,18 @@ async def test_tool_types_catalog(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_display_names_fit_korean_ui(client: AsyncClient) -> None:
+async def test_tool_display_names_fit_chinese_ui(client: AsyncClient) -> None:
     response = await client.get("/api/tool-types")
     assert response.status_code == 200
     names = {item["key"]: item["display_name"] for item in response.json()}
     assert all("—" not in name for name in names.values())
     expected = {
         "http_request": "HTTP 请求",
-        "gmail_send": "发送 Gmail",
+        "gmail_send": "Gmail 发送",
         "google_calendar_event": "Google 日历",
         "google_search_web": "Google 网页搜索",
         "google_search_image": "Google 图片搜索",
         "google_search_news": "Google 新闻搜索",
-        "naver_search_blog": "纳维尔博客搜索",
-        "naver_search_news": "Naver 新闻搜索",
-        "naver_search_image": "纳维尔图片搜索",
-        "naver_search_shop": "纳维尔购物搜索",
-        "naver_search_local": "纳维尔本地搜索",
     }
     for key, display_name in expected.items():
         assert names[key] == display_name
@@ -115,7 +105,7 @@ async def test_runtime_only_flag_survives_catalog_serialization(
     or the frontend silently renders every parameter as user-editable.
     """
 
-    response = await client.get("/api/tool-types/naver_search_news")
+    response = await client.get("/api/tool-types/google_search_news")
     assert response.status_code == 200
     body = response.json()
     query_field = next(p for p in body["parameters"] if p["name"] == "query")
@@ -187,8 +177,8 @@ async def test_create_tool_skips_runtime_only_required_check(
     response = await client.post(
         "/api/tools",
         json={
-            "definition_key": "naver_search_news",
-            "name": "naver news",
+            "name": "Google news",
+            "definition_key": "google_search_news",
             "parameters": {},  # no query — the agent supplies it at call time
         },
     )
@@ -485,52 +475,7 @@ async def test_run_http_request_with_credential(db: AsyncSession) -> None:
     assert captured["auth"] == "Bearer supersecret"
 
 
-# -- Runner: Naver via GenericAuth -------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_run_naver_search_uses_credential_headers(db: AsyncSession) -> None:
-    cred = await credential_service.create(
-        db,
-        user_id=TEST_USER_ID,
-        definition_key="naver_search",
-        name="naver",
-        data={"client_id": "id-1", "client_secret": "sec-2"},
-    )
-    await db.commit()
-
-    captured: dict = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured["url"] = str(request.url)
-        captured["client_id"] = request.headers.get("X-Naver-Client-Id")
-        captured["client_secret"] = request.headers.get("X-Naver-Client-Secret")
-        return httpx.Response(
-            200,
-            json={"total": 0, "items": []},
-        )
-
-    tool = Tool(
-        user_id=TEST_USER_ID,
-        definition_key="naver_search_blog",
-        name="Blog",
-        parameters={"query": "fastapi"},
-        credential_id=cred.id,
-    )
-    db.add(tool)
-    await db.commit()
-    await db.refresh(tool)
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await run_tool(db=db, tool=tool, registry=tool_registry, http_client=client)
-
-    assert result.success, result.error
-    assert "openapi.naver.com/v1/search/blog.json" in captured["url"]
-    assert captured["client_id"] == "id-1"
-    assert captured["client_secret"] == "sec-2"
-
-
-# -- Runner: Tavily hosted search -------------------------------------------
+# -- Runner: Generic authenticated search -------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -626,8 +571,8 @@ async def test_run_tool_returns_error_envelope_on_missing_credential(
 ) -> None:
     tool = Tool(
         user_id=TEST_USER_ID,
-        definition_key="naver_search_blog",
         name="No Cred",
+        definition_key="google_search_news",
         parameters={"query": "x"},
         credential_id=None,
     )

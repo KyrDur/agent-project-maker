@@ -47,7 +47,7 @@ export default function SettingsPage() {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      timeZone: 'Asia/Seoul',
+      timeZone: 'Asia/Shanghai',
     })
   }
 

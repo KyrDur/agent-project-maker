@@ -63,7 +63,7 @@ export function ChatNavigatorMenu({
         <MoreHorizontalIcon className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="w-56">
-        {/* Base UI GroupLabel은 Menu.Group 내부에서만 렌더 가능하다 */}
+        {/* Base UI GroupLabel 只能在 Menu.Group 内部渲染 */}
         <DropdownMenuGroup>
           <DropdownMenuLabel>{t('menu.label')}</DropdownMenuLabel>
           <DropdownMenuSub>

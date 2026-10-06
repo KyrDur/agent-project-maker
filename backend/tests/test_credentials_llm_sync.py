@@ -11,7 +11,7 @@ Priority decisions enforced here:
    ``/api/system-credentials`` mirror) refresh the dict in-place so the
    ``PROVIDER_API_KEY_MAP`` alias used by builder/assistant helpers stays
    consistent without a server restart.
-4. Non-LLM definitions (``naver_search``, ``http_bearer``, …) skip the hook.
+4. Non-LLM definitions (``google_search``, ``http_bearer``, …) skip the hook.
 """
 
 from __future__ import annotations
@@ -148,7 +148,7 @@ async def test_is_llm_definition_membership() -> None:
     assert credential_service.is_llm_definition("google_genai")
     assert credential_service.is_llm_definition("openrouter")
     assert not credential_service.is_llm_definition("openai_compatible")
-    assert not credential_service.is_llm_definition("naver_search")
+    assert not credential_service.is_llm_definition("google_search")
     assert not credential_service.is_llm_definition("http_bearer")
 
 
@@ -314,7 +314,7 @@ async def test_credential_delete_invalidates_env_fallback(
 async def test_non_llm_credential_does_not_touch_env_fallback(
     client: AsyncClient,
 ) -> None:
-    """Non-LLM definitions (e.g. ``naver_search``) must skip the hook so we
+    """Non-LLM definitions (e.g. ``google_search``) must skip the hook so we
     don't pay the decrypt cost on every unrelated CRUD call."""
 
     model_factory._ENV_FALLBACK["anthropic"] = "preserve-me"
@@ -322,9 +322,9 @@ async def test_non_llm_credential_does_not_touch_env_fallback(
     resp = await client.post(
         "/api/credentials",
         json={
-            "definition_key": "naver_search",
-            "name": "naver",
-            "data": {"client_id": "id", "client_secret": "secret"},
+            "definition_key": "google_search",
+            "name": "Google Search",
+            "data": {"api_key": "id", "cse_id": "secret"},
         },
     )
     assert resp.status_code == 201

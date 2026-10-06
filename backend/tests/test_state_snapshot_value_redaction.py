@@ -359,9 +359,9 @@ async def _seed_conversation_with_secret_sources(db: AsyncSession) -> _SeededSec
     tool_cred = await credential_service.create(
         db,
         user_id=TEST_USER_ID,
-        definition_key="naver_search",
-        name=f"collect-naver-{unique}",
-        data={"client_id": "nv-client-id", "client_secret": tool_credential_secret},
+        definition_key="google_search",
+        name=f"collect-google-{unique}",
+        data={"api_key": "nv-client-id", "cse_id": tool_credential_secret},
     )
 
     model = Model(
@@ -385,8 +385,8 @@ async def _seed_conversation_with_secret_sources(db: AsyncSession) -> _SeededSec
 
     tool = Tool(
         user_id=TEST_USER_ID,
-        name=f"Collect Naver Blog {unique}",
-        definition_key="naver_search_blog",
+        name=f"Collect Google Web {unique}",
+        definition_key="google_search_web",
         parameters={},
         credential_id=tool_cred.id,
     )
@@ -508,7 +508,7 @@ async def test_thread_state_read_path_masks_collected_secret_end_to_end(
                 content="calling the tool now",
                 tool_calls=[
                     {
-                        "name": "naver_search_blog",
+                        "name": "google_search_web",
                         "args": {"note": f"looked up {sentinel} for you"},
                         "id": "call-1",
                     }
@@ -564,7 +564,7 @@ async def test_get_thread_state_route_masks_collected_secret(
                 content="calling the tool now",
                 tool_calls=[
                     {
-                        "name": "naver_search_blog",
+                        "name": "google_search_web",
                         "args": {"note": f"looked up {sentinel} for you"},
                         "id": "call-1",
                     }

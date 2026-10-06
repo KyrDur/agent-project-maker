@@ -1,256 +1,256 @@
-# progress.txt — TTH 팀 공유 메모리
+# progress.txt — TTH 团队共享 memory
 
-## 프로젝트
-Credential/Tools/Skills 그린필드 리라이트
-- 참조: `PLAN.md` (루트), `/Users/chester/.claude/plans/plan-md-poc-lexical-bumblebee.md`, `CHECKPOINT.md`
-- PoC 단계 → dev DB 폐기 OK
-- 단일 PR, 마일스톤별 별도 커밋
-- 시작: 2026-04-29
+## 项目
+Credential/Tools/Skills greenfield rewrite
+- 参考: `PLAN.md` (根目录), `/Users/chester/.claude/plans/plan-md-poc-lexical-bumblebee.md`, `CHECKPOINT.md`
+- PoC 阶段 → 可丢弃 dev DB
+- 单一 PR，各 milestone 单独 commit
+- 开始: 2026-04-29
 
-## 결정 사항 (불변)
-1. Cipher: HKDF-SHA256(info=`b'moldy-encryption-v1'`), 단일 블롭 Base64(`[version 1B][salt 32B][authTag 16B][ciphertext]`), key_id별도 컬럼
-2. LLM 모델: `models` 유지 + api_key_encrypted 제거, `agents.llm_credential_id` 추가, `llm_providers` 폐기
-3. 단일 PR
-4. Vault provider 실구현 (HVAC SDK, feature flag)
+## 决策事项 (不可变)
+1. Cipher: HKDF-SHA256(info=`b'moldy-encryption-v1'`), 单一 blob Base64(`[version 1B][salt 32B][authTag 16B][ciphertext]`), key_id 单独列
+2. LLM model: 保留 `models` + 移除 api_key_encrypted，添加 `agents.llm_credential_id`，废弃 `llm_providers`
+3. 单一 PR
+4. 实现 Vault provider (HVAC SDK, feature flag)
 
-## Codebase Patterns (확인 완료)
+## Codebase Patterns (确认完成)
 - backend: FastAPI + SQLAlchemy async + Alembic. uv. ruff line-length=100 py312
-- frontend: Next.js 16 + React 19 + Tailwind v4 + shadcn/ui. pnpm. TanStack Query (서버) + Jotai (클라)
-- 테스트: backend pytest + aiosqlite in-memory (DB 불필요). frontend playwright e2e
-- 마이그레이션 번호: m12_drop_legacy_columns가 이미 존재 → 신규는 m13_greenfield_credentials
-- mock_user 패턴: 인증 없음, get_current_user가 mock 반환
-- agent_runtime은 chat_service.build_tools_config()를 통해 인증 해석
-- 현 trigger_executor.py L44-46 prefetch 누락 버그 (M5에서 동시 수정)
+- frontend: Next.js 16 + React 19 + Tailwind v4 + shadcn/ui。pnpm。TanStack Query (服务器) + Jotai (客户端)
+- 测试: backend pytest + aiosqlite in-memory (无需 DB)。frontend playwright e2e
+- migration 编号: m12_drop_legacy_columns 已存在 → 新增使用 m13_greenfield_credentials
+- mock_user 模式: 无认证，get_current_user 返回 mock
+- agent_runtime 通过 chat_service.build_tools_config() 进行认证解析
+- 当前 trigger_executor.py L44-46 prefetch 缺失 bug (M5 同时修复)
 
-## 브랜딩 가드 (필수)
-- 설정된 금지 식별자, 패키지 prefix, 자산 SHA-256 블랙리스트를 CI 게이트로 검사.
+## branding guard (必需)
+- 在 CI gate 中检查已配置的禁止 identifier、package prefix、asset SHA-256 blacklist。
 - HKDF info: `'moldy-encryption-v1'`
-- frontend 아이콘/로고: Lucide + 자체 SVG.
+- frontend icon/logo: Lucide + 自有 SVG。
 
-## 파일 경계 (DRI별)
-- 피차이: docs/, app/security/cipher.py + key_provider.py, app/models/* (도메인 모델), alembic/versions/m13
-- 젠슨: app/{credentials,tools,mcp,skills}/ (도메인 로직), app/routers/, app/services/chat_service.py, app/agent_runtime/, scheduler.py, app/seed/, backend/tests/
-- 팀쿡: frontend/src/components/ui/, frontend/src/components/shared/{status-chip,icon,empty-state,dynamic-fields-form}, 디자인 토큰
-- 저커버그: frontend/src/app/{credentials,tools,mcp-servers,skills}/, components/{credential,tool,mcp,skill}/, lib/{api,hooks,types}/, frontend/e2e/, sidebar.tsx
-- 베조스: scripts/check_branding.py, NOTICES.md, tasks/deletion-analysis.md, 마일스톤 검증, docs/QUALITY_SCORE.md, 회귀 테스트 감독
+## 文件边界 (按 DRI)
+- Pichai: docs/, app/security/cipher.py + key_provider.py, app/models/* (domain model), alembic/versions/m13
+- Jensen: app/{credentials,tools,mcp,skills}/ (domain logic), app/routers/, app/services/chat_service.py, app/agent_runtime/, scheduler.py, app/seed/, backend/tests/
+- Tim Cook: frontend/src/components/ui/, frontend/src/components/shared/{status-chip,icon,empty-state,dynamic-fields-form}, design token
+- Zuckerberg: frontend/src/app/{credentials,tools,mcp-servers,skills}/, components/{credential,tool,mcp,skill}/, lib/{api,hooks,types}/, frontend/e2e/, sidebar.tsx
+- Bezos: scripts/check_branding.py, NOTICES.md, tasks/deletion-analysis.md, milestone 验证, docs/QUALITY_SCORE.md, 回归测试监督
 
-## 핵심 코드 경로 (재배선 대상)
-- chat_service.py:231-259 get_agent_with_tools() — selectinload chain 재작성
-- chat_service.py:369-462 build_tools_config() — PREBUILT/CUSTOM 분기 → 단일 경로(definition + credential_id)
-- chat_service.py:317-336 _resolve_prebuilt_auth() — 폐기
-- chat_service.py:339-366 _resolve_custom_auth() — 폐기 (단일 경로로 흡수)
-- trigger_executor.py:44-46 — prefetch 누락 버그 동시 수정
-- mcp_client.py — env_vars 템플릿 해석을 app/credentials/interpolation.py로 위임
-- model_factory.py — agent.llm_credential 복호화 경로 추가
+## 核心代码路径 (重接目标)
+- chat_service.py:231-259 get_agent_with_tools() — 重写 selectinload chain
+- chat_service.py:369-462 build_tools_config() — PREBUILT/CUSTOM 分支 → 单一路径(definition + credential_id)
+- chat_service.py:317-336 _resolve_prebuilt_auth() — 废弃
+- chat_service.py:339-366 _resolve_custom_auth() — 废弃 (并入单一路径)
+- trigger_executor.py:44-46 — 同时修复 prefetch 缺失 bug
+- mcp_client.py — 将 env_vars template 解析委托给 app/credentials/interpolation.py
+- model_factory.py — 添加 agent.llm_credential decrypt 路径
 
-## 실패 교훈 (누적)
+## 失败教训 (累计)
 
 ### M3 (Tools + MCP)
-- 옛 `services/tool_service.py` (M5에서 삭제)와 `assistant`/`builder` 경로가 `from app.schemas.tool import ToolType, ToolCustomCreate, ToolResponse, ToolUpdate`를 import — 신규 스키마는 별칭 (`ToolInstanceResponse`, `ToolPatch`) 사용하고 schemas/tool.py 하단에 레거시 클래스 + `ToolResponse = LegacyToolResponse` 별칭으로 import-time 안정성 유지. 둘 다 M5에서 폐기.
-- 새 Tool ORM은 옛 컬럼 (type/provider_name/connection_id/parameters_schema/api_url/http_method/auth_type/is_system/tags) 모두 제거 — `extend_existing=True`로 메타데이터 재정의 충돌 회피. tests는 `Base.metadata.create_all`로 신규 모델만 빌드.
-- main.py lifespan의 `existing_tools_result.where(Tool.is_system.is_(True))` 시드 호출은 신규 컬럼 없음 → 프로덕션 startup이 깨짐. M4(m13 마이그레이션) + M5(seed 재작성)에서 정리. 테스트는 ASGITransport이 lifespan 우회.
-- MCP 도메인: stdio transport는 probe 미지원으로 명시(`transport not supported by the probe yet`). 디스커버리는 streamable_http/sse만. langchain-mcp-adapters 미사용 — 직접 mcp SDK + 모듈 단위 monkeypatch로 테스트.
-- env_vars/headers 템플릿 해석은 `app.credentials.interpolation.resolve_deep` 단일 진입점 위임 (옛 `agent_runtime/env_var_resolver.py` 미터치, M5에서 삭제).
+- 旧 `services/tool_service.py` (M5 删除) 和 `assistant`/`builder` 路径会 import `from app.schemas.tool import ToolType, ToolCustomCreate, ToolResponse, ToolUpdate` — 新 schema 使用 alias (`ToolInstanceResponse`, `ToolPatch`)，并在 schemas/tool.py 底部保留 legacy class + `ToolResponse = LegacyToolResponse` alias，维持 import-time 稳定性。两者都在 M5 废弃。
+- 新 Tool ORM 移除所有旧列 (type/provider_name/connection_id/parameters_schema/api_url/http_method/auth_type/is_system/tags) — 通过 `extend_existing=True` 避免 metadata redefine 冲突。tests 通过 `Base.metadata.create_all` 只构建新 model。
+- main.py lifespan 的 `existing_tools_result.where(Tool.is_system.is_(True))` seed 调用因新列不存在 → production startup 会失败。M4(m13 migration) + M5(seed rewrite) 中整理。测试使用 ASGITransport 绕过 lifespan。
+- MCP domain: stdio transport 明确不支持 probe(`transport not supported by the probe yet`)。discovery 仅支持 streamable_http/sse。不使用 langchain-mcp-adapters — 直接 mcp SDK + 模块级 monkeypatch 测试。
+- env_vars/headers template 解析统一委托给 `app.credentials.interpolation.resolve_deep` 单一入口 (旧 `agent_runtime/env_var_resolver.py` 不动，M5 删除)。
 
-### M4 (Skills + m18 + 시드)
-- 마이그레이션 번호: 기존 체인에 이미 `m13_drop_mcp_legacy.py`가 있어 `m18_greenfield_credentials`로 명명. down_revision=`m17_add_agent_subagents`. PLAN.md 본문은 m13 가정이므로 후속 마일스톤 문서에서 m18로 통일 필요.
-- `LLMProvider` 모델은 폐기 대상이지만 `services/{model_service,model_discovery,provider_service}.py`가 임포트 — M5에서 일괄 삭제. 그 전까지는 `back_populates` 관계만 제거하고 metadata 등록은 유지(임포트 호환성).
-- `Model` ORM에서 `api_key_encrypted` + `provider_id` 제거. 기존 `default_models.py` dict는 두 키를 안 가지므로 lifespan 시드는 추가 처리 없이 그대로 동작 (방어적으로 lifespan에서 그래도 strip 처리).
-- 옛 `tests/test_skill_package.py`는 chat_service의 `build_effective_prompt`/`build_tools_config` 시그니처에 의존 → 신규 Skill 도메인 테스트로 대체 (`test_skills.py` 재작성).
-- alembic 마이그레이션 모듈은 `alembic/versions/`에 `__init__.py`가 없어 `importlib.import_module`로 로드 불가 — 테스트는 `importlib.util.spec_from_file_location`로 직접 로드.
-- 옛 `services/skill_service.py`는 미터치 (M5 정리). 옛 라우터 의존이 있던 import는 신규 `app/skills/service.py`로 완전 교체.
-- 데이터 분실 액션 (alembic upgrade head against postgres)은 사용자 확인 필요 — 본 마일스톤에서는 dry-run/모듈 검증만 수행.
+### M4 (Skills + m18 + seed)
+- migration 编号: 现有 chain 已有 `m13_drop_mcp_legacy.py`，因此命名为 `m18_greenfield_credentials`。down_revision=`m17_add_agent_subagents`。PLAN.md 正文假定 m13，因此后续 milestone 文档需统一为 m18。
+- `LLMProvider` model 虽为废弃对象，但 `services/{model_service,model_discovery,provider_service}.py` 仍 import — M5 一并删除。在此之前只移除 `back_populates` 关系，保留 metadata 注册(import compatibility)。
+- `Model` ORM 移除 `api_key_encrypted` + `provider_id`。现有 `default_models.py` dict 不含这两个 key，因此 lifespan seed 无需额外处理即可工作 (防御性地仍在 lifespan 中 strip)。
+- 旧 `tests/test_skill_package.py` 依赖 chat_service 的 `build_effective_prompt`/`build_tools_config` 签名 → 以新的 Skill domain test 替代 (`test_skills.py` 重写)。
+- alembic migration module 因 `alembic/versions/` 无 `__init__.py`，无法通过 `importlib.import_module` 加载 — 测试使用 `importlib.util.spec_from_file_location` 直接加载。
+- 旧 `services/skill_service.py` 不动 (M5 整理)。旧 router 依赖的 import 已完全替换为新 `app/skills/service.py`。
+- 数据丢失 action (alembic upgrade head against postgres) 需要用户确认 — 本 milestone 仅执行 dry-run/module 验证。
 
-### M7 (모델 카탈로그 + 디스커버리, backend)
-- `model_metadata.py`는 옛 코드 그대로 복원 (LiteLLM enrich, anthropic 정적 카탈로그) — 헤더 주석에 LiteLLM 출처 + NOTICES.md 명기.
-- `model_filtering.py` 신규 — `should_include_model(provider, model_id, is_custom_api)` + `is_custom_openai_endpoint(base_url)`. OpenAI는 babbage/davinci/computer-use/dall-e/text-embedding/tts/whisper/omni-moderation/sora/-realtime/gpt-*-instruct 블록.
-- `model_discovery.py` 재작성 — `discover_from_credential(db, credential)` 단일 진입점. 옛 LLMProvider 기반에서 Credential 기반으로 재배선. 복호화는 `credential_service.decrypt_with_external` 위임. dispatch table 키 = `credential.definition_key`. OpenRouter pricing 우선(source='openrouter'), LiteLLM fallback(source='litellm'), 무 데이터(source='manual').
-- `DiscoveredModel` dataclass에 `already_registered: bool` — IN 쿼리 한 번으로 N+1 회피.
-- `models` ORM에 `max_output_tokens, supports_vision, supports_function_calling, supports_reasoning, source` 컬럼 추가. 마이그레이션은 `m19_add_models_source.py` (m18 다음, ADD COLUMN nullable + drop downgrade).
-- 라우터 보강: `POST /api/credentials/{id}/discover-models` (audit log `discover` action), `POST/PATCH/DELETE /api/models` (409 unique violation, 409 used by agent).
-- Credential 정의 신규: `openrouter` (api_key + base_url default `https://openrouter.ai/api/v1`, test=GET /auth/key), `openai_compatible` (base_url required + api_key optional, test=GET `={{ $credentials.base_url }}/models` with rules [200, 401, 403]).
-- 테스트: `test_model_metadata.py`(5), `test_model_filtering.py`(36), `test_model_discovery.py`(9 — httpx.MockTransport via __init__ patch), `test_models_router.py`(13). 합계 63 신규 + 480 회귀 = 543 PASS.
-- httpx mock 패턴: `httpx.MockTransport(handler) → patch.object(httpx.AsyncClient, "__init__", ...)` 가 가장 확실. 모듈 단위 patch보다 안정적.
-- Decimal pricing → JSON으로 `to_dict()`에서 `str(Decimal)`. Pydantic Decimal 필드가 자동 파싱. FastAPI 응답은 scientific notation 가능 — 테스트는 Decimal로 비교.
-- branding 가드: 설정된 금지 식별자/패키지/자산을 CI에서 검사.
-- frontend는 다른 작업자가 진행 — `frontend/src/lib/api/models.ts`, `frontend/src/components/model/model-select.tsx` 주석 정리.
-- `docs/QUALITY_SCORE.md`도 표현 정정.
-- 마이그레이션 검증: PG 5433 컨테이너에 upgrade head → 5개 컬럼 추가 확인 → downgrade -1 → upgrade head 라운드트립 모두 PASS.
+### M7 (model catalog + discovery, backend)
+- `model_metadata.py` 原样恢复旧代码 (LiteLLM enrich, anthropic 静态 catalog) — header 注释标明 LiteLLM 来源 + NOTICES.md 记录。
+- 新增 `model_filtering.py` — `should_include_model(provider, model_id, is_custom_api)` + `is_custom_openai_endpoint(base_url)`。OpenAI block babbage/davinci/computer-use/dall-e/text-embedding/tts/whisper/omni-moderation/sora/-realtime/gpt-*-instruct。
+- 重写 `model_discovery.py` — 单一入口 `discover_from_credential(db, credential)`。从旧 LLMProvider-based 重接为 Credential-based。decrypt 委托 `credential_service.decrypt_with_external`。dispatch table key = `credential.definition_key`。OpenRouter pricing 优先(source='openrouter')，LiteLLM fallback(source='litellm')，无数据(source='manual')。
+- `DiscoveredModel` dataclass 添加 `already_registered: bool` — 通过单次 IN query 避免 N+1。
+- `models` ORM 添加 `max_output_tokens, supports_vision, supports_function_calling, supports_reasoning, source` 列。migration 为 `m19_add_models_source.py` (m18 之后，ADD COLUMN nullable + drop downgrade)。
+- router 增强: `POST /api/credentials/{id}/discover-models` (audit log `discover` action), `POST/PATCH/DELETE /api/models` (409 unique violation, 409 used by agent)。
+- 新增 Credential definition: `openrouter` (api_key + base_url default `https://openrouter.ai/api/v1`, test=GET /auth/key), `openai_compatible` (base_url required + api_key optional, test=GET `={{ $credentials.base_url }}/models` with rules [200, 401, 403])。
+- 测试: `test_model_metadata.py`(5), `test_model_filtering.py`(36), `test_model_discovery.py`(9 — httpx.MockTransport via __init__ patch), `test_models_router.py`(13)。合计 63 新增 + 480 回归 = 543 PASS。
+- httpx mock 模式: `httpx.MockTransport(handler) → patch.object(httpx.AsyncClient, "__init__", ...)` 最可靠。比模块级 patch 更稳定。
+- Decimal pricing → 在 JSON 的 `to_dict()` 中使用 `str(Decimal)`。Pydantic Decimal 字段自动解析。FastAPI 响应可能为 scientific notation — 测试按 Decimal 比较。
+- branding guard: 在 CI 中检查已配置的禁止 identifier/package/asset。
+- frontend 由其他工作者推进 — 整理 `frontend/src/lib/api/models.ts`, `frontend/src/components/model/model-select.tsx` 注释。
+- `docs/QUALITY_SCORE.md` 也更正表达。
+- migration 验证: PG 5433 容器 upgrade head → 确认新增 5 列 → downgrade -1 → upgrade head 往返全部 PASS。
 
 ### M10 (Daily Spend Queue + Aggregate API + Model Fallback, backend)
-- `models/{daily_spend_user,daily_spend_agent,daily_spend_model}.py` 신규 — 동일 shape, FK target만 다름. Numeric(20,8) cost (Anthropic Haiku 가격까지 정확). unique (date, target_id), CASCADE on FK → user/agent/model row 삭제 시 aggregate row도 함께 사라짐 (raw token_usages는 유지).
-- `m21_add_daily_spend_aggregates` (down=m20) + `m22_add_agent_model_fallback` (down=m21). 둘 다 dialect-aware UUID/timestamp helpers + `_has_table`/`_has_column`/`_has_index` 가드(idempotent upgrade) + reversible downgrade. PG 5433 round-trip(upgrade→downgrade→upgrade) OK.
-- `services/spend_writer.py` — `SpendEntry` dataclass + `DailySpendUpdateQueue` (asyncio.Queue + 백그라운드 drain task). 핵심 결정:
-  - 단일 큐로 3개 axis 모두 처리 (분리하면 producer가 3번 enqueue 해야 함)
-  - flush 트리거: `flush_interval_sec=5.0` 또는 `batch_size=100` 도달 시
+- 新增 `models/{daily_spend_user,daily_spend_agent,daily_spend_model}.py` — shape 相同，仅 FK target 不同。Numeric(20,8) cost (连 Anthropic Haiku 价格也能准确表示)。unique (date, target_id)，FK 上 CASCADE → 删除 user/agent/model row 时 aggregate row 也一并消失 (raw token_usages 保留)。
+- `m21_add_daily_spend_aggregates` (down=m20) + `m22_add_agent_model_fallback` (down=m21)。两者都有 dialect-aware UUID/timestamp helpers + `_has_table`/`_has_column`/`_has_index` guard(idempotent upgrade) + reversible downgrade。PG 5433 round-trip(upgrade→downgrade→upgrade) OK。
+- `services/spend_writer.py` — `SpendEntry` dataclass + `DailySpendUpdateQueue` (asyncio.Queue + 后台 drain task)。核心决策:
+  - 用单一队列处理 3 个 axis (若拆分，producer 必须 enqueue 3 次)
+  - flush trigger: 达到 `flush_interval_sec=5.0` 或 `batch_size=100` 时
   - drain: `wait_for(queue.get(), timeout=interval)` → greedy `get_nowait` until batch_size → `_flush_batch`
-  - `_flush_batch`: entries를 axis별 `(date, target_id)`로 group → 각 테이블에 dialect-aware `INSERT ... ON CONFLICT (date, target_id) DO UPDATE SET total_X = X + EXCLUDED.X` (PG/SQLite). 그 외 dialect는 application-level upsert fallback.
-  - producer (`add()`) 비차단: `put_nowait` (QueueFull / RuntimeError 시 warning + drop, agent 실행 막지 않음).
-  - `stop()` graceful: 큐 잔여 flush → task cancel → await (with `contextlib.suppress`).
-  - 모듈 전역 `spend_queue` 싱글턴.
-- `hooks/builtin/spend_hook.py` — `agent_invoke` post hook에서 `spend_queue.add(SpendEntry(...))`. 0 token / 0 cost row는 skip (interrupt 등 비정상 종료 가드). failure isolation은 HookRegistry + 자체 try/except 이중 가드.
-- `register_default_hooks()`에 SpendHook 추가 → 이제 `["logging_hook", "audit_hook", "spend_hook"]` (`test_hooks.py` 함께 갱신).
-- `main.py` lifespan — `spend_queue.start()` (시드+체크포인터 직후, 스케줄러 직전) + `spend_queue.stop()` (스케줄러 shutdown 직후, 체크포인터 shutdown 직전).
-- `agent_runtime/streaming.py` — `stream_agent_response`에 `usage_sink: dict | None` 추가. 스트림 종료 시 captured `prompt_tokens/completion_tokens/estimated_cost`를 sink dict에 in-place update.
+  - `_flush_batch`: 按 axis 将 entries 以 `(date, target_id)` group → 对各表执行 dialect-aware `INSERT ... ON CONFLICT (date, target_id) DO UPDATE SET total_X = X + EXCLUDED.X` (PG/SQLite)。其他 dialect 使用 application-level upsert fallback。
+  - producer (`add()`) 非阻塞: `put_nowait` (QueueFull / RuntimeError 时 warning + drop，不阻止 agent 执行)。
+  - `stop()` graceful: flush 队列剩余项 → task cancel → await (with `contextlib.suppress`)。
+  - 模块全局 `spend_queue` singleton。
+- `hooks/builtin/spend_hook.py` — 在 `agent_invoke` post hook 中执行 `spend_queue.add(SpendEntry(...))`。0 token / 0 cost row 会 skip (interrupt 等异常结束 guard)。failure isolation 由 HookRegistry + 自身 try/except 双重 guard。
+- 在 `register_default_hooks()` 中添加 SpendHook → 现在为 `["logging_hook", "audit_hook", "spend_hook"]` (`test_hooks.py` 同步更新)。
+- `main.py` lifespan — `spend_queue.start()` (seed+checkpointer 之后、scheduler 之前) + `spend_queue.stop()` (scheduler shutdown 之后、checkpointer shutdown 之前)。
+- `agent_runtime/streaming.py` — 给 `stream_agent_response` 添加 `usage_sink: dict | None`。stream 结束时将 captured `prompt_tokens/completion_tokens/estimated_cost` in-place update 到 sink dict。
 - `agent_runtime/executor.py`:
-  - `AgentConfig.model_fallback_chain: list[dict] | None` 신규 — `[{provider, model_name, base_url, model_id}]` 사전 해석된 형태 (executor는 DB-free).
-  - `_build_model_with_fallback(cfg)` — primary → fallback walk + `_is_fallback_recoverable` 분기. 마지막 시도까지 실패하면 마지막 에러 re-raise.
-  - `_hook_result_from_usage(duration_ms, usage_sink)` — streaming usage → `HookResult.tokens_in/out/cost_usd` 매핑 (None-safe).
-  - `execute_agent_stream/resume_agent_stream`이 `usage_sink={}`를 stream에 전달 → 종료 후 hook post에 매핑된 HookResult 전달 → SpendHook이 큐에 enqueue.
+  - 新增 `AgentConfig.model_fallback_chain: list[dict] | None` — 预解析形态 `[{provider, model_name, base_url, model_id}]` (executor 为 DB-free)。
+  - `_build_model_with_fallback(cfg)` — primary → fallback walk + `_is_fallback_recoverable` 分支。直到最后一次尝试仍失败则 re-raise 最后一个 error。
+  - `_hook_result_from_usage(duration_ms, usage_sink)` — streaming usage → `HookResult.tokens_in/out/cost_usd` 映射 (None-safe)。
+  - `execute_agent_stream/resume_agent_stream` 将 `usage_sink={}` 传给 stream → 结束后向 hook post 传递映射后的 HookResult → SpendHook enqueue 到队列。
 - `agent_runtime/model_factory.py`:
-  - `create_chat_model_with_fallback(agent, db, *, api_key, base_url, **extra)` 신규 — primary attempt → recoverable error 시 `agent.model_fallback_list` walk + audit log. ORM-backed 경로 (executor와 별개). 실제로 executor는 `_build_model_with_fallback`를 사용하고, 이 ORM 헬퍼는 외부 호출자가 직접 사용 가능 (assistant/builder 등 후속).
-  - `_is_fallback_recoverable(exc)` — `status_code` 우선 (401/403/404/408/409/429/500/502/503/504), 타입 fallback (TimeoutError/HTTPError/HTTPStatusError/ConnectionError). string heuristic은 의도적으로 제외 (불안정).
-  - `_audit_fallback_attempt` — `credential_audit_log`에 `action='fallback'` row 기록 (`success: bool`, `provider`, `model_name`, `model_id`, `error`, `phase: 'attempt'`). agent.llm_credential_id 없으면 skip. audit 실패는 warning + 진행 (runtime 절대 안 막음).
-- `routers/conversations.py` + `agent_runtime/trigger_executor.py` — `_resolve_fallback_chain(db, fallback_list)` 헬퍼: `agent.model_fallback_list` (UUID strings) → `Model` row 조회 → `[{provider, model_name, base_url, model_id}]` 사전 해석. 누락된 row는 silent drop. `AgentConfig.model_fallback_chain`에 주입.
-- `models/agent.py` — `model_fallback_list: Mapped[list[str] | None]` (JSON, nullable). UUID 직렬화는 service 레이어에서 (Postgres 호환).
-- `schemas/agent.py` — `AgentCreate/Update/Response`에 `model_fallback_ids: list[uuid.UUID] | None` 추가. Response는 default factory `[]` (None은 안 보냄).
-- `services/agent_service.py` — `_validate_model_fallback_ids()` (existence check 한 번 — catalog는 user-shared). Create/Update에서 검증 + str(UUID) 직렬화.
-- `routers/agents.py` — `_agent_to_response()`에서 `model_fallback_list` (str list) → `model_fallback_ids` (UUID list) 변환. 잘못된 entry는 silent skip.
-- `services/usage_aggregate.py` 신규 — `get_daily_spend()` single entry-point. Tenancy:
-  - user 축: `DailySpendUser.user_id == current_user`
-  - agent 축: `DailySpendAgent → Agent` join + `Agent.user_id == current_user`
-  - model 축: per-model 테이블은 cross-user이므로 (per-agent 테이블) → Agent join → user 필터로 *현 사용자 contribution*만 집계. `group_by=target` 시 `Agent.model_id`로 추가 group_by.
-  - `_label_map(target_kind, ids)` — user/agent/model 각각의 라벨 (name / display_name / email).
+  - 新增 `create_chat_model_with_fallback(agent, db, *, api_key, base_url, **extra)` — primary attempt → recoverable error 时 walk `agent.model_fallback_list` + audit log。ORM-backed 路径 (与 executor 分开)。实际 executor 使用 `_build_model_with_fallback`，此 ORM helper 可由外部 caller 直接使用 (assistant/builder 等后续)。
+  - `_is_fallback_recoverable(exc)` — 优先 `status_code` (401/403/404/408/409/429/500/502/503/504)，type fallback (TimeoutError/HTTPError/HTTPStatusError/ConnectionError)。有意排除 string heuristic (不稳定)。
+  - `_audit_fallback_attempt` — 在 `credential_audit_log` 记录 `action='fallback'` row (`success: bool`, `provider`, `model_name`, `model_id`, `error`, `phase: 'attempt'`)。无 agent.llm_credential_id 时 skip。audit 失败则 warning + 继续 (绝不阻止 runtime)。
+- `routers/conversations.py` + `agent_runtime/trigger_executor.py` — `_resolve_fallback_chain(db, fallback_list)` helper: `agent.model_fallback_list` (UUID strings) → 查询 `Model` row → 预解析为 `[{provider, model_name, base_url, model_id}]`。缺失 row silent drop。注入 `AgentConfig.model_fallback_chain`。
+- `models/agent.py` — `model_fallback_list: Mapped[list[str] | None]` (JSON, nullable)。UUID serialization 在 service layer (Postgres 兼容)。
+- `schemas/agent.py` — 在 `AgentCreate/Update/Response` 添加 `model_fallback_ids: list[uuid.UUID] | None`。Response default factory 为 `[]` (不发送 None)。
+- `services/agent_service.py` — `_validate_model_fallback_ids()` (一次 existence check — catalog 为 user-shared)。Create/Update 中验证 + str(UUID) serialization。
+- `routers/agents.py` — `_agent_to_response()` 中将 `model_fallback_list` (str list) → `model_fallback_ids` (UUID list)。错误 entry silent skip。
+- 新增 `services/usage_aggregate.py` — `get_daily_spend()` single entry-point。Tenancy:
+  - user axis: `DailySpendUser.user_id == current_user`
+  - agent axis: `DailySpendAgent → Agent` join + `Agent.user_id == current_user`
+  - model axis: per-model 表为 cross-user，因此从 (per-agent 表) → Agent join → user filter，仅聚合*当前用户 contribution*。`group_by=target` 时再按 `Agent.model_id` group_by。
+  - `_label_map(target_kind, ids)` — 分别提供 user/agent/model label (name / display_name / email)。
   - `_resolve_window(from, to)` — default = (today-30d, today), max lookback 365d clamp.
-- `routers/usage.py` 보강 — `GET /api/usage/daily?target_kind=user|agent|model&target_id?&from?&to?&group_by=date|target`. mock_user 격리.
-- 테스트:
-  - `test_spend_writer.py`(8 — flush_batch/ON CONFLICT 누적/axis skip/loop interval/stop drain/queue full/distinct dates/Decimal precision)
-  - `test_usage_aggregate.py`(6 — user 시계열/agent label/model agent-scope/window/target_id/cross-tenant isolation)
-  - `test_model_fallback.py`(9 — classifier 3종/executor chain 4종/with_fallback audit 2종)
+- 增强 `routers/usage.py` — `GET /api/usage/daily?target_kind=user|agent|model&target_id?&from?&to?&group_by=date|target`。mock_user 隔离。
+- 测试:
+  - `test_spend_writer.py`(8 — flush_batch/ON CONFLICT 累加/axis skip/loop interval/stop drain/queue full/distinct dates/Decimal precision)
+  - `test_usage_aggregate.py`(6 — user time series/agent label/model agent-scope/window/target_id/cross-tenant isolation)
+  - `test_model_fallback.py`(9 — classifier 3 类/executor chain 4 类/with_fallback audit 2 类)
   - `test_migration_m21.py`(4) + `test_migration_m22.py`(4) — module imports/metadata/round-trip/idempotent
-- 합계 31 신규 + 603 회귀 = 634 PASS, ruff clean, branding 0건. PG 5433에서 m20 → m21 → m22 → downgrade -2 → upgrade head 라운드트립 성공.
-- 발견 이슈 / 학습:
-  - `from app.agent_runtime.model_factory import create_chat_model`는 executor 모듈의 로컬 namespace에 reference 복사 → `patch.object(model_factory, ...)`로는 안 잡힘. test에서 `patch("app.agent_runtime.executor.create_chat_model", ...)`로 사용 위치를 패치해야 함.
-  - `app.credentials.cipher`는 존재하지 않음 (실제 위치는 `app.security.cipher`). credential 암호화는 `app.credentials.service.encrypt_data()`를 통해 호출.
-  - SQLite의 ON CONFLICT는 3.24+에서 지원되며 `from sqlalchemy.dialects.sqlite import insert`의 `excluded.<col>` 표현식이 PG와 동일하게 동작. application-level fallback은 다른 dialect에 대비한 안전망.
-  - executor의 fallback walk를 ORM 의존 없이 만들기 위해 `AgentConfig.model_fallback_chain`을 caller(라우터/트리거)가 사전 해석. ORM-backed `create_chat_model_with_fallback`은 별도 외부 호출자용으로 보존 (audit log 포함).
+- 合计 31 新增 + 603 回归 = 634 PASS, ruff clean, branding 0 项。PG 5433 上 m20 → m21 → m22 → downgrade -2 → upgrade head round-trip 成功。
+- 发现问题 / 学习:
+  - `from app.agent_runtime.model_factory import create_chat_model` 会把 reference 复制到 executor 模块的本地 namespace → `patch.object(model_factory, ...)` 抓不到。test 中必须在使用位置 patch `patch("app.agent_runtime.executor.create_chat_model", ...)`。
+  - `app.credentials.cipher` 不存在 (实际位置为 `app.security.cipher`)。credential 加密通过 `app.credentials.service.encrypt_data()` 调用。
+  - SQLite 的 ON CONFLICT 在 3.24+ 支持，`from sqlalchemy.dialects.sqlite import insert` 的 `excluded.<col>` 表达式与 PG 同样工作。application-level fallback 是为其他 dialect 准备的安全网。
+  - 为使 executor 的 fallback walk 不依赖 ORM，由 caller(router/trigger) 预解析 `AgentConfig.model_fallback_chain`。ORM-backed `create_chat_model_with_fallback` 作为单独的外部 caller 用途保留 (含 audit log)。
 
 ### M10 (Spend Dashboard + Model Fallback UI, frontend)
-- `lib/types/usage.ts` 신규: `UsageDailyEntry|UsageDailyParams|UsageTargetKind|UsageGroupBy|UsageMetric`. 백엔드 `/api/usage/daily` shape을 그대로 미러. `index.ts`에서 `export *`.
-- `Agent` 타입에 `model_fallback_ids?: string[] | null` 추가. `AgentCreate/UpdateRequest`에도 동일. 백엔드 컬럼명은 `agents.model_fallback_list` (Postgres ARRAY UUID), 프론트는 `model_fallback_ids` 명명을 사용 → backend sub-agent가 schema 변환 필요(우리는 frontend payload를 명세대로 보냄).
-- `useDailyAggregate(params)` cache key는 params 객체 그대로 사용 → TanStack Query가 deep-equal로 invalidation 인식.
-- 차트는 `M9 health-history-chart` 패턴 그대로 차용 — `viewBox` 기반 SVG, 자체 path/rect/area, native `<title>` 툴팁, accent 색은 emerald-500/blue-500/purple-500. 의존성 추가 0건 (Recharts/Tremor/Chart.js 모두 미사용).
-- cost 표시: `formatCostUsd` 매그니튜드 적응형 — `>=1` → 2 decimals, `>=0.01` → 4, 그 외 → 6. 토큰은 `>=1M` `M`, `>=10K` `K` 줄임.
-- `details/summary` 네이티브 disclosure로 fallback 섹션 접기/펴기. shadcn에 popover/switch/collapsible이 없는 상태라 native HTML 요소 활용으로 추가 의존 회피.
-- 순서 변경은 위/아래 화살표 버튼 (dnd-kit 미도입). 5개 cap. 중복 fallback (Primary와 또는 다른 fallback과 같음)은 amber 경고만 표시 — 저장은 허용 (백엔드가 필터링).
-- ModelDialog의 `t={tu}` prop typing은 `useTranslations<'usage.fallback'>` 반환 타입으로 typing — 일반 함수 시그니처는 next-intl의 `Translator` 제네릭과 호환 안 됨 (variants/values param이 unknown vs 정확한 union).
-- settings page의 dirty-aware sync 패턴: agent 새로 도착 시 `setFallbackIds(agent.model_fallback_ids ?? [])`. 같은 agent refetch 시 `arraysEqual(fallbackIds, prev.model_fallback_ids ?? [])` true이면만 새 server값 반영. PATCH body에는 `fallbackIds.length > 0 ? fallbackIds : null`로 변환 (백엔드 nullable column).
-- `playwright.config.ts`에 `PW_SKIP_BACKEND=1` env로 backend webServer 스킵 토글 추가. 모든 spec이 `page.route` mock이라면 backend 불필요. 새 spec(spend-dashboard, model-fallback) + M9 health-check도 fully mocked.
-- E2E 패턴: backend route 모두 mock → Playwright `page.route('**/api/...')`. UPDATE 시 PATCH body 캡처는 `route.request().postDataJSON()`. settings 페이지는 `useAgent + useModels + useTools + useSkills + useMiddlewares + useTriggers` 6 endpoints 모두 mock 필요.
-- locator 함정: `page.getByDisplayValue` 미지원 → `page.locator('input[placeholder]').first()` + `toHaveValue()`. `page.getByText('label')` strict mode 위반 (차트 + 테이블 양쪽 렌더) → `barChart.getByText('label')`로 scope.
-- 발견 이슈: 로컬 PG가 m17에 머물러 있어 backend lifespan에서 `column models.max_output_tokens does not exist` 발생 (m19에서 추가된 컬럼). e2e는 `PW_SKIP_BACKEND=1`로 우회. backend sub-agent가 head를 m22까지 가져갔으니 `alembic upgrade head` 적용 시 정상화.
+- 新增 `lib/types/usage.ts`: `UsageDailyEntry|UsageDailyParams|UsageTargetKind|UsageGroupBy|UsageMetric`。原样 mirror backend `/api/usage/daily` shape。在 `index.ts` 中 `export *`。
+- `Agent` type 添加 `model_fallback_ids?: string[] | null`。`AgentCreate/UpdateRequest` 也相同。backend 列名为 `agents.model_fallback_list` (Postgres ARRAY UUID)，frontend 使用 `model_fallback_ids` 命名 → backend sub-agent 需要 schema 转换(我们按 spec 发送 frontend payload)。
+- `useDailyAggregate(params)` cache key 直接使用 params object → TanStack Query 通过 deep-equal 识别 invalidation。
+- chart 原样借用 `M9 health-history-chart` 模式 — 基于 `viewBox` 的 SVG，自有 path/rect/area，native `<title>` tooltip，accent color 为 emerald-500/blue-500/purple-500。新增依赖 0 项 (Recharts/Tremor/Chart.js 均未使用)。
+- cost 显示: `formatCostUsd` magnitude-adaptive — `>=1` → 2 decimals, `>=0.01` → 4, 其余 → 6。token 在 `>=1M` 时缩写为 `M`，`>=10K` 时为 `K`。
+- fallback section 通过 `details/summary` native disclosure 折叠/展开。因 shadcn 当前无 popover/switch/collapsible，使用 native HTML element 避免新增依赖。
+- 顺序变更使用上/下箭头按钮 (未引入 dnd-kit)。cap 为 5。重复 fallback (与 Primary 或其他 fallback 相同)只显示 amber warning — 允许保存 (backend 会过滤)。
+- ModelDialog 的 `t={tu}` prop typing 使用 `useTranslations<'usage.fallback'>` 返回 type — 普通函数签名与 next-intl 的 `Translator` generic 不兼容 (variants/values param 为 unknown vs 精确 union)。
+- settings page 的 dirty-aware sync 模式: agent 新到达时 `setFallbackIds(agent.model_fallback_ids ?? [])`。同一 agent refetch 时，仅当 `arraysEqual(fallbackIds, prev.model_fallback_ids ?? [])` 为 true 才反映新 server 值。PATCH body 转换为 `fallbackIds.length > 0 ? fallbackIds : null` (backend nullable column)。
+- `playwright.config.ts` 添加通过 `PW_SKIP_BACKEND=1` env 跳过 backend webServer 的 toggle。若所有 spec 都是 `page.route` mock，则 backend 不需要。新 spec(spend-dashboard, model-fallback) + M9 health-check 也 fully mocked。
+- E2E 模式: mock 所有 backend route → Playwright `page.route('**/api/...')`。UPDATE 时捕获 PATCH body 使用 `route.request().postDataJSON()`。settings 页面需要 mock `useAgent + useModels + useTools + useSkills + useMiddlewares + useTriggers` 6 个 endpoints。
+- locator 陷阱: 不支持 `page.getByDisplayValue` → 使用 `page.locator('input[placeholder]').first()` + `toHaveValue()`。`page.getByText('label')` 违反 strict mode (chart + table 两边都渲染) → 用 `barChart.getByText('label')` 限定 scope。
+- 发现问题: 本地 PG 停留在 m17，backend lifespan 中出现 `column models.max_output_tokens does not exist` (m19 添加的列)。e2e 通过 `PW_SKIP_BACKEND=1` 绕过。backend sub-agent 已把 head 带到 m22，因此应用 `alembic upgrade head` 后可恢复正常。
 
-### M9 (Hook/Middleware 프레임워크 + Health Check + History, backend)
-- `app/hooks/{base,registry}.py` 신규 — `CustomHook` 베이스 (concrete, 빈 메서드를 옵셔널 노옵으로 노출 → ABC 패턴 회피로 ruff B024/B027 우회), `HookRegistry`는 모듈 전역 싱글턴 `hooks` + `register/all/clear/run_pre/run_post/run_failure`. 등록은 `name` 기준 idempotent (중복 등록 시 마지막 인스턴스로 교체). 디스패치는 등록 순서대로 실행하며 hook 예외는 `logger.warning` + `continue` (failure isolation).
-- 빌트인 hook: `LoggingHook`(INFO 라인) + `AuditHook`(`credential_audit_log` `action='invoke'` row 생성, `source='runtime'`, `log_metadata.phase` ∈ {post, failure}). AuditHook은 `ctx.credential_id`가 있을 때만 row 생성 — pre는 row 미생성으로 audit 트래픽 절감.
-- `register_default_hooks()` → `app/main.py` lifespan에서 호출. 시드/스케줄러 시작 직전.
-- `agent_runtime/executor.py`: `AgentConfig`에 `user_id`/`model_id`/`llm_credential_id` 추가. `_hook_ctx_for_agent`가 cfg에 user_id가 있을 때만 ctx 생성. `execute_agent_stream`/`resume_agent_stream`/`execute_agent_invoke` 셋 다 try/except로 wrap → 성공 시 `run_post(duration_ms)`, 실패 시 `run_failure` + re-raise.
-- `agent_runtime/tool_factory.py`: `tools_config` 항목당 user_id/agent_id/tool_id/credential_id를 `_safe_uuid`로 보강한 ctx 생성. `_invoke` 내부에서 pre/post/failure dispatch. `output`은 200자 cap.
-- `mcp/client.py`: `connect_and_list`에 `user_id`/`mcp_server_id`/`credential_id` keyword 추가. 모든 early-return 경로(transport unsupported / url missing / SDK import 실패) + 성공/실패 모두 hook dispatch. 기존 호출자(`test_chat_integration`)는 user_id 없이 호출 → ctx None → no-op (회귀 X).
-- `services/chat_service.py`: `build_tools_config`가 `user_id`/`agent_id`를 tools_config 항목에 추가. `routers/conversations.py` + `agent_runtime/trigger_executor.py`가 AgentConfig에 user_id/model_id/llm_credential_id 채움.
-- `models/health_check_history.py` 신규 — `id, target_kind ('model'|'mcp_server'), target_id, status ('healthy'|'unhealthy'|'degraded'), latency_ms, error_kind, error_message, raw_result, checked_at`. 인덱스 `(target_kind, target_id, checked_at)`. FK 안 검 (단순화).
-- `services/health_check.py` 신규 — `check_model`(M8 `model_test.run_model_test` 재사용 → 결과 분류 → history row), `check_mcp_server`(`mcp.client.connect_and_list` 호출 → `_classify_mcp_error`로 auth/timeout/etc 분류 → history + McpServer 상태 업데이트), `check_all_active`(모든 model + active MCP 순회). degraded는 MCP `auth_needed` 전용.
-- `routers/health.py` 신규 — `/api/health/models`, `/api/health/mcp-servers`(latest only, in-process reduce로 N+1 회피), `/api/health/history?target_kind&target_id&limit≤200`, `POST /api/health/check`(즉시 실행 + history 반환). MCP는 user 격리, model은 글로벌(공유 카탈로그).
-- `scheduler.py`: `register_health_check_job()` + `health_check_all_active()` 비동기 헬퍼. `HEALTH_CHECK_JOB_ID = "health_check_sweep"`, `coalesce=True, max_instances=1`, default cron `"0 4 * * *"`.
-- `config.py`: `health_check_cron`, `health_check_history_retention_days=90`(정리 cron은 후속).
-- `alembic/versions/m20_add_health_check_history.py`: dialect-aware UUID/timestamp helper + `_has_table`/`_has_index` 가드(idempotent upgrade). Reversible downgrade(테이블+인덱스 drop). PG 5433 라운드트립(upgrade→downgrade→upgrade) OK 확인.
-- 테스트: `test_hooks.py`(8 — registry 순서/idempotent register/failure isolation/disabled hook/LoggingHook smoke/AuditHook credential gate + failure recording), `test_health_check.py`(10 — model success/failure 분기, MCP success/auth/unreachable + 서버 상태 업데이트, sweep counters, 라우터 history/summary/check-now/404), `test_migration_m20.py`(4 — module imports/metadata/round-trip/idempotent upgrade). 합계 22 신규 + 581 회귀 = 603 PASS.
-- AuditHook은 `app.hooks.builtin.audit_hook.async_session`을 호출하므로 테스트에서 `monkeypatch.setattr(...)`로 `TestSession` 주입 필요. mock_user 패턴 답습.
-- ruff B024/B027(ABC 빈 메서드) 우회: `CustomHook`을 `ABC` 상속 안 함 — concrete base + 빈 default = 노옵. 의미적으로는 abstract 의도이나 ruff는 ABC 상속 시 명시적 `@abstractmethod` 강제.
-- NOTICES.md에 LiteLLM 차용 영역 추가 (CustomLogger 인터페이스 패턴 + `/health/history` 응답 형태).
+### M9 (Hook/Middleware framework + Health Check + History, backend)
+- 新增 `app/hooks/{base,registry}.py` — `CustomHook` base (concrete，将空 method 作为 optional no-op 暴露 → 避免 ABC 模式以绕过 ruff B024/B027)，`HookRegistry` 为 module-global singleton `hooks` + `register/all/clear/run_pre/run_post/run_failure`。注册按 `name` idempotent (重复注册时用最后一个 instance 替换)。dispatch 按注册顺序执行，hook exception 使用 `logger.warning` + `continue` (failure isolation)。
+- built-in hook: `LoggingHook`(INFO line) + `AuditHook`(创建 `credential_audit_log` `action='invoke'` row，`source='runtime'`, `log_metadata.phase` ∈ {post, failure})。AuditHook 仅在 `ctx.credential_id` 存在时创建 row — pre 不创建 row 以减少 audit traffic。
+- `register_default_hooks()` → 在 `app/main.py` lifespan 调用。紧挨 seed/scheduler 启动之前。
+- `agent_runtime/executor.py`: `AgentConfig` 添加 `user_id`/`model_id`/`llm_credential_id`。`_hook_ctx_for_agent` 仅在 cfg 有 user_id 时创建 ctx。`execute_agent_stream`/`resume_agent_stream`/`execute_agent_invoke` 三者都用 try/except wrap → 成功时 `run_post(duration_ms)`，失败时 `run_failure` + re-raise。
+- `agent_runtime/tool_factory.py`: 每个 `tools_config` item 以 `_safe_uuid` 补全 user_id/agent_id/tool_id/credential_id 的 ctx。在 `_invoke` 内 dispatch pre/post/failure。`output` cap 为 200 字符。
+- `mcp/client.py`: `connect_and_list` 添加 `user_id`/`mcp_server_id`/`credential_id` keyword。所有 early-return 路径(transport unsupported / url missing / SDK import 失败)以及成功/失败都 dispatch hook。现有 caller(`test_chat_integration`)不传 user_id → ctx None → no-op (回归 X)。
+- `services/chat_service.py`: `build_tools_config` 在 tools_config item 中添加 `user_id`/`agent_id`。`routers/conversations.py` + `agent_runtime/trigger_executor.py` 给 AgentConfig 填 user_id/model_id/llm_credential_id。
+- 新增 `models/health_check_history.py` — `id, target_kind ('model'|'mcp_server'), target_id, status ('healthy'|'unhealthy'|'degraded'), latency_ms, error_kind, error_message, raw_result, checked_at`。index `(target_kind, target_id, checked_at)`。无 FK (简化)。
+- 新增 `services/health_check.py` — `check_model`(复用 M8 `model_test.run_model_test` → 分类结果 → history row)，`check_mcp_server`(调用 `mcp.client.connect_and_list` → 用 `_classify_mcp_error` 分类 auth/timeout/etc → history + 更新 McpServer 状态)，`check_all_active`(遍历所有 model + active MCP)。degraded 专用于 MCP `auth_needed`。
+- 新增 `routers/health.py` — `/api/health/models`, `/api/health/mcp-servers`(latest only，通过 in-process reduce 避免 N+1), `/api/health/history?target_kind&target_id&limit≤200`, `POST /api/health/check`(立即执行 + 返回 history)。MCP 按 user 隔离，model 为 global(共享 catalog)。
+- `scheduler.py`: `register_health_check_job()` + `health_check_all_active()` async helper。`HEALTH_CHECK_JOB_ID = "health_check_sweep"`, `coalesce=True, max_instances=1`, default cron `"0 4 * * *"`。
+- `config.py`: `health_check_cron`, `health_check_history_retention_days=90`(cleanup cron 后续)。
+- `alembic/versions/m20_add_health_check_history.py`: dialect-aware UUID/timestamp helper + `_has_table`/`_has_index` guard(idempotent upgrade)。Reversible downgrade(drop table+index)。PG 5433 round-trip(upgrade→downgrade→upgrade) 已确认 OK。
+- 测试: `test_hooks.py`(8 — registry 顺序/idempotent register/failure isolation/disabled hook/LoggingHook smoke/AuditHook credential gate + failure recording), `test_health_check.py`(10 — model success/failure 分支, MCP success/auth/unreachable + server 状态更新, sweep counters, router history/summary/check-now/404), `test_migration_m20.py`(4 — module imports/metadata/round-trip/idempotent upgrade)。合计 22 新增 + 581 回归 = 603 PASS。
+- AuditHook 调用 `app.hooks.builtin.audit_hook.async_session`，因此测试中需用 `monkeypatch.setattr(...)` 注入 `TestSession`。沿用 mock_user 模式。
+- 绕过 ruff B024/B027(ABC 空 method): `CustomHook` 不继承 `ABC` — concrete base + 空 default = no-op。语义上有 abstract 意图，但 ruff 在继承 ABC 时强制显式 `@abstractmethod`。
+- NOTICES.md 添加 LiteLLM 借鉴区域 (CustomLogger interface 模式 + `/health/history` 响应形态)。
 
-### M8 (모델 Test + Curl 생성 + MCP Registry, backend)
-- `app/agent_runtime/model_factory.py`에 `create_chat_model_for_test(provider, model_name, *, api_key, base_url)` 추가 — `max_tokens=10`, `temperature=0` 강제 (결정론·저비용). `_ssl_ctx`는 기존 경로 재사용.
-- `app/services/model_test.py` 신규 — `run_model_test()` + `ModelTestResult`/`ModelTestError`. `asyncio.wait_for(timeout=30)` 강제, prompt = `"Reply with just the word 'pong'."`. clean error 정규식: `litellm|openai|anthropic|google|httpx`prefix 제거 + `Error code: NNN -` 제거 + 300자 cap. classify는 status_code(401/403/404/429) 우선, message hint fallback. raw_request는 SDK 미노출이라 provider별로 reconstruct (Authorization → `Bearer ***`, x-api-key → `***`, Google `?key=***`). curl은 `${API_KEY}` placeholder로 다시 치환 — 어떤 surface에도 평문 키 미노출.
-- 응답 스키마(`app/schemas/model.py`): `ModelTestPreviewRequest`, `ModelTestErrorSchema`, `ModelTestResponse`. `model_config = ConfigDict(protected_namespaces=())`로 `model_*` 필드 경고 회피.
-- 라우터(`app/routers/models.py`): `POST /api/models/{model_id}/test?credential_id=...` (등록된 모델 + cost lookup), `POST /api/models/test-preview` (Custom ID flow, body로 provider/model/credential_id 받음). 둘 다 `credential_audit_log` `action='test'`에 metadata.success/model_id/preview 기록.
-- `app/data/mcp_server_registry.json` 신규 (5개 entry: github, linear, jira, slack, notion). 순수 JSON, 주석 미포함. stdio entry는 `${credential.<field>}` env_var 템플릿 사용.
-- `app/services/mcp_registry.py` 신규 — `_load_registry()` lazy + cached, `list_registry()` 알파벳 정렬, `get_registry_entry(key)`, `reset_cache()` (테스트용).
-- `app/schemas/mcp.py`: `McpRegistryEntry`, `McpServerCreateFromRegistry` 추가.
-- `app/routers/mcp.py`: `catalog_router = APIRouter(prefix="/api/mcp-server-types")` + `GET /` `GET /{key}` 2건. `POST /api/mcp-servers/from-registry`는 기존 router에 추가 — registry entry로 transport/url/command/args/env_vars pre-fill. unknown key는 400.
-- `app/main.py`: `app.include_router(mcp.catalog_router)` 추가 (mcp.router와 별도 mount).
-- `NOTICES.md`: LiteLLM 섹션에 `model_test.py` 추가 (probe + clean error + curl 패턴), 신규 "MCP Server Catalog" 섹션 추가 (자체 작성).
-- 테스트: `test_model_test.py`(27건 — clean error/classify/curl/timeout/auth/not_found/rate_limit/router 성공·404·credential required·preview·audit log·leak detector), `test_mcp_registry.py`(11건 — service 4 + catalog router 3 + from-registry 4). 합계 38 신규 + 543 회귀 = 581 PASS, ruff clean, branding 0건.
-- mock 패턴: LangChain 레이어에서 stub. `patch.object(ChatOpenAI, "ainvoke", _stub)`. usage_metadata 인스턴스 속성으로 set (`AIMessage.usage_metadata = {...}`). PROVIDER_MAP 모두 ChatOpenAI fallback이라 한 곳만 패치하면 충분.
-- 보안 가드: `_REDACTED = "***"`, `_CURL_PLACEHOLDER = "${API_KEY}"`. raw_request 헤더에는 마스킹된 값이 들어가고 curl은 placeholder로 한 번 더 치환. test에서 `sk-LEAK-DETECTOR` 키로 응답 전체를 스캔해 평문 누출 검증.
+### M8 (model Test + Curl 生成 + MCP Registry, backend)
+- 在 `app/agent_runtime/model_factory.py` 添加 `create_chat_model_for_test(provider, model_name, *, api_key, base_url)` — 强制 `max_tokens=10`, `temperature=0` (deterministic·low-cost)。`_ssl_ctx` 复用现有路径。
+- 新增 `app/services/model_test.py` — `run_model_test()` + `ModelTestResult`/`ModelTestError`。强制 `asyncio.wait_for(timeout=30)`，prompt = `"Reply with just the word 'pong'."`。clean error regex: 移除 `litellm|openai|anthropic|google|httpx` prefix + 移除 `Error code: NNN -` + 300 字符 cap。classify 优先 status_code(401/403/404/429)，message hint fallback。raw_request 因 SDK 不暴露而按 provider reconstruct (Authorization → `Bearer ***`, x-api-key → `***`, Google `?key=***`)。curl 再替换为 `${API_KEY}` placeholder — 任何 surface 都不暴露明文 key。
+- 响应 schema(`app/schemas/model.py`): `ModelTestPreviewRequest`, `ModelTestErrorSchema`, `ModelTestResponse`。用 `model_config = ConfigDict(protected_namespaces=())` 避免 `model_*` field warning。
+- router(`app/routers/models.py`): `POST /api/models/{model_id}/test?credential_id=...` (已注册 model + cost lookup), `POST /api/models/test-preview` (Custom ID flow，body 接收 provider/model/credential_id)。两者都在 `credential_audit_log` `action='test'` 记录 metadata.success/model_id/preview。
+- 新增 `app/data/mcp_server_registry.json` (5 个 entry: github, linear, jira, slack, notion)。纯 JSON，无注释。stdio entry 使用 `${credential.<field>}` env_var template。
+- 新增 `app/services/mcp_registry.py` — `_load_registry()` lazy + cached, `list_registry()` alphabetically sort, `get_registry_entry(key)`, `reset_cache()` (测试用)。
+- `app/schemas/mcp.py`: 添加 `McpRegistryEntry`, `McpServerCreateFromRegistry`。
+- `app/routers/mcp.py`: `catalog_router = APIRouter(prefix="/api/mcp-server-types")` + `GET /` `GET /{key}` 2 个。`POST /api/mcp-servers/from-registry` 添加到现有 router — 用 registry entry pre-fill transport/url/command/args/env_vars。unknown key 返回 400。
+- `app/main.py`: 添加 `app.include_router(mcp.catalog_router)` (与 mcp.router 分开 mount)。
+- `NOTICES.md`: LiteLLM 章节添加 `model_test.py` (probe + clean error + curl 模式)，新增 "MCP Server Catalog" 章节 (自行编写)。
+- 测试: `test_model_test.py`(27 个 — clean error/classify/curl/timeout/auth/not_found/rate_limit/router 成功·404·credential required·preview·audit log·leak detector), `test_mcp_registry.py`(11 个 — service 4 + catalog router 3 + from-registry 4)。合计 38 新增 + 543 回归 = 581 PASS, ruff clean, branding 0 项。
+- mock 模式: 在 LangChain layer stub。`patch.object(ChatOpenAI, "ainvoke", _stub)`。usage_metadata 作为 instance attribute set (`AIMessage.usage_metadata = {...}`)。PROVIDER_MAP 全部 fallback 到 ChatOpenAI，因此 patch 一处即可。
+- 安全 guard: `_REDACTED = "***"`, `_CURL_PLACEHOLDER = "${API_KEY}"`。raw_request header 中放 masked 值，curl 再替换一次为 placeholder。test 中用 `sk-LEAK-DETECTOR` key 扫描整个响应，验证无明文泄漏。
 
-### M5 (agent_runtime 재배선 + 키 로테이션)
-- chat_service.build_tools_config 시그니처가 async로 변경됨 — caller(`conversations.py`, `trigger_executor.py`)에서 `await` 필요. 기존 sync caller 검색 시 주의.
-- `Tool` ORM에 `credential` 관계 추가 (lazy="select"), `Agent`에 `llm_credential` 관계 추가. selectinload 체인은 두 관계를 명시적으로 로드.
-- agent_runtime/mcp_client.py는 thin compat wrapper로 변환됨 — 진짜 로직은 `app.mcp.client.connect_and_list`. 신규 코드는 후자를 직접 import.
-- model_factory.PROVIDER_API_KEY_MAP은 backwards-compat alias로만 유지 (Builder/Assistant sub-agent helpers가 사용). 새 chat runtime은 Agent.llm_credential 복호화 경로 사용.
-- 키 로테이션 cron: APScheduler 잡 ID `credential_rotation`, default `0 3 * * 0`. `rotate_credentials_to_active_key`는 100건 배치 페이지네이션, 실패 row는 log 후 다음 회차 재시도. `re_encrypt_with_active_key` 헬퍼는 `app.credentials.service`에 거주.
-- `tool_service.py` / `model_service.py`는 read-only 슬림화 (Builder/Assistant catalog 한정). CRUD/Provider/Discovery 경로는 모두 폐기.
-- 옛 `m13` 마이그레이션 번호는 M4가 `m18`로 받음. M5는 마이그레이션 미터치.
-- 회귀 시나리오: tests/test_chat_integration.py 3종(get_agent_with_tools 단일 경로 / trigger prefetch 일치 / MCP 인터폴레이션) + tests/test_rotation.py 2종.
-- 옛 `provider_id` / `api_key_encrypted` Model 컬럼은 M4 ORM에서 이미 사라졌고 `default_models.py`는 lifespan에서 strip 처리. tests/`test_models.py`/`test_providers.py`/`test_model_*` 등은 모두 삭제.
+### M5 (agent_runtime 重接 + key rotation)
+- chat_service.build_tools_config 签名改为 async — caller(`conversations.py`, `trigger_executor.py`) 需要 `await`。搜索现有 sync caller 时注意。
+- `Tool` ORM 添加 `credential` relationship (lazy="select")，`Agent` 添加 `llm_credential` relationship。selectinload chain 显式加载两者。
+- agent_runtime/mcp_client.py 转换为 thin compat wrapper — 真正逻辑在 `app.mcp.client.connect_and_list`。新代码直接 import 后者。
+- model_factory.PROVIDER_API_KEY_MAP 仅作为 backwards-compat alias 保留 (Builder/Assistant sub-agent helpers 使用)。新 chat runtime 使用 Agent.llm_credential decrypt 路径。
+- key rotation cron: APScheduler job ID `credential_rotation`, default `0 3 * * 0`。`rotate_credentials_to_active_key` 以 100 条 batch pagination，失败 row 记录 log 后下轮重试。`re_encrypt_with_active_key` helper 位于 `app.credentials.service`。
+- `tool_service.py` / `model_service.py` 简化为 read-only (仅 Builder/Assistant catalog)。CRUD/Provider/Discovery 路径全部废弃。
+- 旧 `m13` migration 编号在 M4 改为 `m18`。M5 不触碰 migration。
+- 回归场景: tests/test_chat_integration.py 3 类(get_agent_with_tools 单一路径 / trigger prefetch 一致 / MCP 插值) + tests/test_rotation.py 2 类。
+- 旧 `provider_id` / `api_key_encrypted` Model 列已在 M4 ORM 消失，`default_models.py` 在 lifespan 中做 strip。tests/`test_models.py`/`test_providers.py`/`test_model_*` 等全部删除。
 
-### M2 (Credential 도메인)
-- TestRequestSpec 이름이 pytest collection 경고 발생 — 후속 cleanup으로 CredentialTestSpec 등으로 rename 권장
-- aiosqlite는 FK CASCADE 자동 enforce 안 함 — PRAGMA 또는 PostgreSQL 환경에서만 검증. 테스트는 credential row 삭제만 assert
-- OAuth2 callback state는 in-process map (PoC 한정). 멀티프로세스 배포 시 Redis/DB 백킹 필요
-- 옛 `services/credential_service.py`, `connection_service.py`는 미터치 — M5에서 일괄 삭제 (기존 ~46 tests fail은 의도된 상태)
-- `app/main.py` lifespan에 레거시 `seed_mock_user_prebuilt_connections` 호출 잔존 — M5에서 정리
+### M2 (Credential domain)
+- TestRequestSpec 名称触发 pytest collection warning — 后续 cleanup 推荐 rename 为 CredentialTestSpec 等
+- aiosqlite 不自动 enforce FK CASCADE — 仅能在 PRAGMA 或 PostgreSQL 环境验证。测试只 assert credential row 删除
+- OAuth2 callback state 为 in-process map (仅 PoC)。多进程部署时需要 Redis/DB backing
+- 旧 `services/credential_service.py`, `connection_service.py` 不动 — 在 M5 一并删除 (现有 ~46 tests fail 属预期状态)
+- `app/main.py` lifespan 仍残留 legacy `seed_mock_user_prebuilt_connections` 调用 — 在 M5 整理
 
-## 후속 cleanup 항목 (PR 머지 전)
+## 后续 cleanup 项目 (PR 合并前)
 - TestRequestSpec → CredentialTestSpec rename
-- OAuth2 state Redis/DB 백킹 (별도 티켓)
-- aiosqlite FK PRAGMA conftest 추가 검토
+- OAuth2 state Redis/DB backing (单独 ticket)
+- 评估添加 aiosqlite FK PRAGMA conftest
 
-## 작업 순서
-M0(거버넌스+docs+삭제분석) → M1(브랜딩+Cipher) → M2(Credential+Vault+라우터) → M3(Tools+MCP) → M4(Skills+m13) → M5(agent_runtime 재배선+cron) → M6(프론트엔드)
+## 工作顺序
+M0(治理+docs+删除分析) → M1(branding+Cipher) → M2(Credential+Vault+router) → M3(Tools+MCP) → M4(Skills+m13) → M5(agent_runtime 重接+cron) → M6(frontend)
 
-각 마일스톤 PASS 후 다음 진입. 단일 PR이지만 마일스톤별 커밋.
+每个 milestone PASS 后进入下一项。单一 PR，但按 milestone 分 commit。
 
-## ── 2026-05-01 새 프로젝트: UI Refactor (Sprint 1~4) ──
+## ── 2026-05-01 新项目: UI Refactor (Sprint 1~4) ──
 
-### 컨텍스트
+### 上下文
 - Plan: ~/.claude/plans/buzzing-prancing-cloud.md
-- Scope: frontend/만. 백엔드/DB 변경 없음.
-- 핵심 동기:
-  1) 다이얼로그 크기·디자인 일관성 부재 (27곳 산재, 8곳은 콘텐츠에 따라 늘어남)
-  2) Sheet 4종(credential/skill/tool/mcp) → Dialog로 전면 전환 요구
-  3) 강조색이 emerald raw로 58곳 박힘 → `--primary`로 토큰화. 채팅 사용자 메시지(`bg-emerald-100/dark:bg-emerald-900`)가 새 primary가 됨
-  4) 포커스 링 진한 테두리 거슬림 → `border-ring` 제거 + ring-3→ring-2 + ring/50 알파 토큰화
-  5) 다이얼로그 비주얼 정비 (헤더 아이콘 슬롯, 푸터 subtle bg, rounded-2xl, X 버튼 통일)
-  6) 부수: PageShell, BaseDetailDialog, agents settings RHF+Zod, bundle splitting, 임의값 350+개 정리
+- Scope: 仅 frontend/。无 backend/DB 变更。
+- 核心动机:
+  1) dialog 尺寸·设计缺乏一致性 (分散在 27 处，其中 8 处会随 content 增长)
+  2) 要求将 4 类 Sheet(credential/skill/tool/mcp) → 全面转换为 Dialog
+  3) accent color 以 raw emerald 写死在 58 处 → token 化为 `--primary`。聊天用户消息(`bg-emerald-100/dark:bg-emerald-900`)成为新的 primary
+  4) focus ring 深色边框碍眼 → 移除 `border-ring` + ring-3→ring-2 + ring/50 alpha token 化
+  5) dialog 视觉整理 (header icon slot, footer subtle bg, rounded-2xl, 统一 X button)
+  6) 附带: PageShell, BaseDetailDialog, agents settings RHF+Zod, bundle splitting, 整理 350+ 个任意值
 
-### 사일로 구성 (사티아 결정)
-- 팀쿡: DialogShell 비주얼 스펙 + 디자인 토큰 oklch 픽스 (Sprint 1-1, 1-3, 1-4 디자인 부분)
-- 저커버그: 모든 코드 구현 (Sprint 1~4)
-- 베조스: Sheet 사용처 검증 + 삭제 분석 + 마일스톤 게이트 검증
+### silo 构成 (Satya 决定)
+- Tim Cook: DialogShell visual spec + design token oklch fix (Sprint 1-1, 1-3, 1-4 design 部分)
+- Zuckerberg: 实现全部代码 (Sprint 1~4)
+- Bezos: 验证 Sheet 使用点 + 删除分析 + milestone gate 验证
 
-### 결정 사항 (불변)
-- Sheet은 모바일 사이드바(`ui/sidebar.tsx:178`)와 대화목록(`conversations/[conversationId]/page.tsx:118`) 2곳만 유지. 나머지 4 detail은 Dialog로 변환.
-- 새 `--primary`는 채팅 사용자 메시지 박스 색을 그대로 사용 (라이트 emerald-100 / 다크 emerald-900). `--primary-strong`는 텍스트/링크/탭 인디케이터용 (emerald-600/400).
-- 포커스 링: `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50` → `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0` + `--ring` 자체에 알파.
-- DialogShell이 모든 다이얼로그의 비주얼 일관성 강제. 27개 DialogContent 사용처는 모두 마이그레이션 대상.
-- DIALOG_SIZE: sm(400) / md(560) / lg(720) / xl(920) / console(1080). DIALOG_HEIGHT: auto(480) / fixed(640) / tall(760). 콘텐츠 무관 고정.
+### 决策事项 (不可变)
+- Sheet 仅保留移动端侧边栏(`ui/sidebar.tsx:178`)和对话列表(`conversations/[conversationId]/page.tsx:118`) 2 处。其余 4 个 detail 转为 Dialog。
+- 新 `--primary` 原样使用聊天用户消息框颜色 (light emerald-100 / dark emerald-900)。`--primary-strong` 用于文本/链接/tab indicator (emerald-600/400)。
+- focus ring: `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50` → `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0` + `--ring` 自身包含 alpha。
+- DialogShell 强制所有 dialog 的视觉一致性。27 个 DialogContent 使用点全部为 migration 对象。
+- DIALOG_SIZE: sm(400) / md(560) / lg(720) / xl(920) / console(1080)。DIALOG_HEIGHT: auto(480) / fixed(640) / tall(760)。不受 content 影响，固定。
 
-### S1 베조스 발견 (2026-05-01)
-- Sheet 사용처: 6곳 (4 detail + sidebar mobile + conversation list) + ui/sheet.tsx 정의. 추가 없음.
-- 4 detail-sheet prop 시그니처 동일 패턴 `{<entity>Id, open, onOpenChange}`. mcp만 `serverId`로 도메인 명명 유지.
-- ⚠ **[정정]** `components/shared/page-header.tsx` 9개 페이지에서 사용 중(settings, settings/system-credentials, tools, agents/new/template, usage, models, skills, mcp-servers, credentials). 절대 삭제 금지. (이전 분석의 grep "PageHeader" 결과 오류였음 — 실사용 9건)
-- ⚠ skill-detail-sheet 이중 SheetContent 구조: 외부 wrapper(L42) + 내부 SkillDetailBody(L108) `key={skillId}` 리셋 패턴. Dialog 변환 시 단일 BaseDetailDialog로 통합 + key 패턴은 컴포넌트 내부에서 maintain.
-- 4개 detail의 삭제 인라인 UI 클래스 100% 동일 → DeleteConfirmInline 공용화 안전.
-- 보고서: tasks/sheet-deletion-analysis.md
+### S1 Bezos 发现 (2026-05-01)
+- Sheet 使用点: 6 处 (4 detail + sidebar mobile + conversation list) + ui/sheet.tsx 定义。无其他。
+- 4 个 detail-sheet prop 签名为相同模式 `{<entity>Id, open, onOpenChange}`。只有 mcp 保持 domain 命名 `serverId`。
+- ⚠ **[更正]** `components/shared/page-header.tsx` 正在 9 个页面使用(settings, settings/system-credentials, tools, agents/new/template, usage, models, skills, mcp-servers, credentials)。绝对禁止删除。(此前分析的 grep "PageHeader" 结果有误 — 实际使用 9 处)
+- ⚠ skill-detail-sheet 双重 SheetContent 结构: 外部 wrapper(L42) + 内部 SkillDetailBody(L108) `key={skillId}` reset 模式。转换为 Dialog 时整合为单一 BaseDetailDialog + key 模式在组件内部 maintain。
+- 4 个 detail 的删除 inline UI class 100% 相同 → 可安全共用 DeleteConfirmInline。
+- 报告: tasks/sheet-deletion-analysis.md
 
-### S2 팀쿡 결정 (2026-05-01) — ADR-010
-- oklch 정확값 (Tailwind v4 emerald palette 그대로):
-  - 라이트: --primary=oklch(0.95 0.052 163.051), --primary-foreground=oklch(0.262 0.051 172.552), --primary-strong=oklch(0.596 0.145 163.225), --ring=oklch(0.596 0.145 163.225 / 0.4)
-  - 다크: --primary=oklch(0.378 0.077 168.94), --primary-foreground=oklch(0.95 0.052 163.051), --primary-strong=oklch(0.765 0.177 163.223), --ring=oklch(0.765 0.177 163.223 / 0.45)
-- 상태색: success=primary-strong, info=sky-500/400, warn=amber-500/400, danger=red-500/400, accent=violet-500/400
-- 포커스 링: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring` (border-ring 제거, ring/50 알파 토큰 내장)
-- 트레이드오프: 사용자 메시지를 `--user-bubble` 별도로 분리하지 않고 `--primary`로 승격. `bg-primary text-white` 가정 코드 발견 시 `text-primary-foreground`로 교정.
-- 상세 스펙: docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md
+### S2 Tim Cook 决定 (2026-05-01) — ADR-010
+- oklch 精确值 (原样使用 Tailwind v4 emerald palette):
+  - light: --primary=oklch(0.95 0.052 163.051), --primary-foreground=oklch(0.262 0.051 172.552), --primary-strong=oklch(0.596 0.145 163.225), --ring=oklch(0.596 0.145 163.225 / 0.4)
+  - dark: --primary=oklch(0.378 0.077 168.94), --primary-foreground=oklch(0.95 0.052 163.051), --primary-strong=oklch(0.765 0.177 163.223), --ring=oklch(0.765 0.177 163.223 / 0.45)
+- status color: success=primary-strong, info=sky-500/400, warn=amber-500/400, danger=red-500/400, accent=violet-500/400
+- focus ring: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring` (移除 border-ring，ring/50 alpha 内置于 token)
+- trade-off: 不将用户消息单独拆为 `--user-bubble`，而是提升为 `--primary`。若发现假定 `bg-primary text-white` 的代码，则更正为 `text-primary-foreground`。
+- 详细 spec: docs/design-docs/ADR-010-ui-tokens-and-dialog-shell.md
 
-### S3 저커버그(직접 구현) 완료 (2026-05-01)
-- globals.css에 emerald primary + primary-strong + status-* 토큰 추가. @theme inline 매핑 완료. pnpm build 1차 PASS.
-- focus 링 완화 5개 파일 (input/textarea/select/button/checkbox): `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50` → `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`. border 변경 X.
-- ui/dialog: rounded-xl→rounded-2xl, ring-foreground/10→ring-border/60, shadow-2xl 추가, backdrop bg-black/40 + backdrop-blur-sm. DialogFooter도 muted/50→muted/30.
-- ui/sheet: 백드롭만 통일 (bg-black/40 + backdrop-blur-sm). 변환 후 사이드 모서리는 사용처에서 적용.
-- shared/ 신규 6개: error-state, dialog-shell, delete-confirm-inline, form-footer, page-shell, base-detail-dialog. 모두 build PASS.
-- DialogShell은 Object.assign으로 namespace 패턴 (Header/Body/Footer/Sidebar/Split). 사용 시 `<DialogShell.Header />` 식.
+### S3 Zuckerberg(直接实现) 完成 (2026-05-01)
+- globals.css 添加 emerald primary + primary-strong + status-* token。@theme inline 映射完成。pnpm build 第 1 次 PASS。
+- 缓和 focus ring 的 5 个文件 (input/textarea/select/button/checkbox): `focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50` → `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`。border 变更 X。
+- ui/dialog: rounded-xl→rounded-2xl, ring-foreground/10→ring-border/60, 添加 shadow-2xl, backdrop bg-black/40 + backdrop-blur-sm。DialogFooter 也从 muted/50→muted/30。
+- ui/sheet: 仅统一 backdrop (bg-black/40 + backdrop-blur-sm)。转换后侧边圆角在使用点应用。
+- shared/ 新增 6 个: error-state, dialog-shell, delete-confirm-inline, form-footer, page-shell, base-detail-dialog。全部 build PASS。
+- DialogShell 通过 Object.assign 使用 namespace pattern (Header/Body/Footer/Sidebar/Split)。使用方式如 `<DialogShell.Header />`。
 - BaseDetailDialog: id 변경 시 useEffect로 confirming false 자동 리셋 (베조스 ⚠ skill-detail key={skillId} 패턴 흡수).
 - 핵심 발견: shadcn이 아니라 base-ui (`@base-ui/react/dialog`). API 호환되지만 클래스 패턴이 `data-open:` `data-closed:` 식.
 - Button에 이미 `emerald`/`emeraldStrong` variant 존재 → Sprint 2에서 `default`로 흡수 후 제거.
@@ -297,12 +297,12 @@ M0(거버넌스+docs+삭제분석) → M1(브랜딩+Cipher) → M2(Credential+Va
 
 ## ── 2026-05-01 후반(2) — MCP/Skill 잔여 작업 (/tth 풀스택) ──
 
-### 사일로 구성 (사티아 결정)
+### silo 构成 (Satya 决定)
 - 젠슨(백엔드 DRI): #17 stdio + discovery stale + import/export + health polling + agent_runtime enabled 필터 + skill prompt 주입
 - 저커버그(프론트 DRI): #18 skill 멀티파일 에디터 + #19 mcp wizard 재설계 + mcp import dialog
 - 베조스(QA DRI): #20 최종 검증 (pytest + lint + build + 시각 회귀)
 
-### 결정 사항 (불변)
+### 决策事项 (不可变)
 - 브랜치: feature/dialog-shell-and-mcp-skill-base 위에 추가 커밋
 - DialogShell + 디자인 토큰 인프라(Sprint 1 완료)를 본격 사용
 - 백엔드 m26 마이그레이션 + skill file-level CRUD는 ed6ba50에서 이미 완료 → 이번엔 위에 빌드
@@ -344,14 +344,14 @@ M0(거버넌스+docs+삭제분석) → M1(브랜딩+Cipher) → M2(Credential+Va
 
 ## ── 2026-05-01 야간 — M-CHAT1 채팅 UI 고도화 ──
 
-### 결정 사항 (불변)
+### 决策事项 (不可变)
 - Sheet 사용 금지(이전에 모두 Dialog로 전환). 대신 **ChatRightRail** 도입 — inline split layout (portal 아님). 모드: subagent | tool-result | outline | none.
 - 채팅 페이지 grid 재구성: [좌 사이드바 | 메시지+composer | 우 right rail (collapsible)]
 - 한 번에 한 right rail 모드만 활성. 닫기 시 width 0 transition.
 - HITL approval은 right rail 아니라 메시지 영역 내부 (banner 또는 하단)
 - 9번 (Share) 제외. 별도 PR.
 
-### 작업 순서
+### 任务顺序
 1. P0-4 (Right Rail 인프라 + Sub-agent) ← 다른 작업의 토대
 2. P0-1, P0-2, P0-3 병렬
 3. P1-5, P1-6, P1-7 병렬

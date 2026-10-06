@@ -16,7 +16,7 @@ interface BuilderFeedbackTextareaProps {
  * Builder approval/edit 卡共用 textarea。
  *
  * - mint focus ring（`primaryDim` border + 3px box-shadow）
- * - 韩文 IME composition guard（composition 中阻止 Enter 传播）
+ * - 中文 IME composition guard（composition 中阻止 Enter 传播）
  * - disabled 时不做灰色处理，仅禁用 —— 视觉上通常在 frozen 状态时 unmount
  */
 export function BuilderFeedbackTextarea({

@@ -129,7 +129,7 @@ export default function SchedulesPage() {
     return format.dateTime(new Date(value), {
       dateStyle: 'medium',
       timeStyle: 'short',
-      timeZone: 'Asia/Seoul',
+      timeZone: 'Asia/Shanghai',
     })
   }
 

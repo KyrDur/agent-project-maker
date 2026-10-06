@@ -55,7 +55,6 @@ if TYPE_CHECKING:
 _ORIGIN_LABELS: dict[str, str] = {
     "created_by_me": "自行创建的资源",
     "imported_by_me": "我导入的资源",
-    "built_in_k_skill": "默认提供 (k-skill)",
     "shared_with_me": "他人共享给我的资源",
     "community": "社区",
     "system_seed": "默认提供",
@@ -72,8 +71,7 @@ def derive_origin_summary_for_skill(skill: Skill, user: CurrentUser) -> Resource
 
     Priority order (Spec §7.5 + module-contracts.md §3.2):
 
-    1. ``is_system + source_kind='k-skill'``     → ``built_in_k_skill``
-    2. ``is_system + source_kind='system_seed'`` → ``system_seed``
+    1. ``is_system`` → ``system_seed``
     3. ``origin_user_id != current_user`` *and* the source item is restricted
         → ``shared_with_me``
     4. ``origin_user_id != current_user`` *and* the source item is public
@@ -87,9 +85,7 @@ def derive_origin_summary_for_skill(skill: Skill, user: CurrentUser) -> Resource
     """
 
     kind: str
-    if skill.is_system and skill.source_kind == "k-skill":
-        kind = "built_in_k_skill"
-    elif skill.is_system and skill.source_kind == "system_seed":
+    if skill.is_system:
         kind = "system_seed"
     elif (
         skill.origin_user_id is not None

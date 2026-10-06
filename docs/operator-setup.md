@@ -1,33 +1,33 @@
-# Operator Setup — 운영 환경 셋업 체크리스트
+# Operator Setup — 生产环境设置检查清单
 
-운영 배포 전 반드시 통과해야 하는 환경 변수 셋업입니다. `APP_ENV=production`
-으로 부팅하면 서버가 직접 검증하여 문제가 하나라도 있으면 **부팅을 거부**합니다
-(`app/security/production_check.py` 참조).
+这是生产部署前必须通过的环境变量设置。以 `APP_ENV=production`
+启动时，服务器会直接校验；若存在任何问题将**拒绝启动**
+（参见 `app/security/production_check.py`）。
 
 ADR-016 §8.4 / HANDOFF #2.
 
 ---
 
-## 1. 필수 환경 변수
+## 1. 必需环境变量
 
-| 변수 | 운영 값 | 생성 명령 |
+| 变量 | 生产值 | 生成命令 |
 |------|---------|-----------|
 | `APP_ENV` | `production` | — |
-| `JWT_SECRET` | 32+ 자 랜덤 문자열 | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
-| `COOKIE_SECURE` | `true` | — (HTTPS 필수) |
-| `ALLOW_FIRST_USER_AS_ADMIN` | `false` | 운영자 계정 생성 후 즉시 |
-| `CORS_ALLOWED_ORIGINS` | 실제 프론트 origin 콤마 구분 | 예: `https://moldy.example.com,https://staging.moldy.example.com` |
-| `ENCRYPTION_KEYS` | 64자 hex 키 (콤마 구분) | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `JWT_SECRET` | 32+ 字符随机字符串 | `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `COOKIE_SECURE` | `true` | —（必须 HTTPS） |
+| `ALLOW_FIRST_USER_AS_ADMIN` | `false` | 创建管理员账户后立即设置 |
+| `CORS_ALLOWED_ORIGINS` | 实际前端 origin，以逗号分隔 | 示例: `https://moldy.example.com,https://staging.moldy.example.com` |
+| `ENCRYPTION_KEYS` | 64 字符 hex key（逗号分隔） | `python -c "import secrets; print(secrets.token_hex(32))"` |
 
-선택:
-- `COOKIE_DOMAIN` — 서브도메인 공유 시 (`.moldy.example.com`)
-- `COOKIE_SAMESITE` — cross-site fetch 필요 시 `none` (단 `COOKIE_SECURE=true` 강제)
+可选:
+- `COOKIE_DOMAIN` — 需要 subdomain 共享时（`.moldy.example.com`）
+- `COOKIE_SAMESITE` — 需要 cross-site fetch 时设为 `none`（但强制 `COOKIE_SECURE=true`）
 
 ---
 
-## 2. 운영 검증
+## 2. 生产校验
 
-배포 직전에 동일 검증을 수동 실행하려면:
+若要在部署前手动执行相同校验:
 
 ```bash
 APP_ENV=production python -c "
@@ -38,13 +38,13 @@ print('OK — production settings clean')
 "
 ```
 
-문제가 있으면 어떤 변수가 왜 잘못됐는지 액션 가능한 메시지로 출력합니다.
+如有问题，会以可操作的消息输出哪个变量为何错误。
 
 ---
 
-## 3. 부팅 거부 예시
+## 3. 拒绝启动示例
 
-`APP_ENV=production` 인데 `COOKIE_SECURE=false`로 부팅 시도:
+`APP_ENV=production` 但以 `COOKIE_SECURE=false` 尝试启动:
 
 ```
 RuntimeError: Refusing to start with insecure production settings:
@@ -56,31 +56,31 @@ Fix the above and restart, or set APP_ENV=dev to bypass
 
 ---
 
-## 4. 첫 운영자 계정 부트스트랩
+## 4. 首个管理员账户 bootstrap
 
-`ALLOW_FIRST_USER_AS_ADMIN=true`가 켜진 상태로만 자동 승격이 동작합니다.
-운영자 계정 생성 절차:
+仅在启用 `ALLOW_FIRST_USER_AS_ADMIN=true` 时自动提权有效。
+管理员账户创建流程:
 
-1. 일시적으로 `ALLOW_FIRST_USER_AS_ADMIN=true` + `APP_ENV=dev`로 부팅
-2. `/api/auth/register`로 운영자 계정 1건 생성 — 자동으로 `is_super_user=true`
-3. 즉시 `ALLOW_FIRST_USER_AS_ADMIN=false` + `APP_ENV=production`으로 재부팅
-4. 이후 등록되는 모든 user는 평민. super_user 부여는 운영자가 DB / 어드민 API로 수동
+1. 临时以 `ALLOW_FIRST_USER_AS_ADMIN=true` + `APP_ENV=dev` 启动
+2. 通过 `/api/auth/register` 创建 1 个管理员账户 — 自动设为 `is_super_user=true`
+3. 立即以 `ALLOW_FIRST_USER_AS_ADMIN=false` + `APP_ENV=production` 重启
+4. 此后注册的所有 user 均为普通用户。授予 super_user 由管理员通过 DB / admin API 手动操作
 
 ---
 
-## 5. 마이그레이션
+## 5. Migration
 
 ```bash
 cd backend
 uv run alembic upgrade head
 ```
 
-(스키마 변경이 있는 PR을 머지한 직후 항상 실행)
+（merge 含 schema 变更的 PR 后始终执行）
 
 ---
 
-## 6. 관련 문서
+## 6. 相关文档
 
-- `docs/design-docs/adr-016-multiuser-auth.md` — 인증/세션 전체 설계
-- `backend/.env.example` — 전체 변수 목록 + 인라인 주석
-- `backend/app/security/production_check.py` — 검증 로직 (단일 소스)
+- `docs/design-docs/adr-016-multiuser-auth.md` — 认证/session 整体设计
+- `backend/.env.example` — 完整变量列表 + inline 注释
+- `backend/app/security/production_check.py` — 校验逻辑（single source）

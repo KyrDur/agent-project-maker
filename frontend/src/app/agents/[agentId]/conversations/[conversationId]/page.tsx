@@ -408,7 +408,7 @@ export default function ChatPage({
       title={currentTitle ?? agent?.name ?? ''}
     >
       <div className="moldy-app-surface flex min-h-0 flex-1 gap-3 overflow-hidden p-3">
-        {/* 메인 채팅 카드 */}
+        {/* 主 chat card */}
         <section className="moldy-panel flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <ChatPageHeader
             agent={agent}
@@ -485,7 +485,7 @@ export default function ChatPage({
           )}
         </section>
 
-        {/* 우측 RightRail — sub-agent / tool-result / outline 패널 슬롯 */}
+        {/* 右侧 RightRail — sub-agent / tool-result / outline panel slot */}
         <ConversationDetailRail conversationId={activeConversationId} />
         <SideChatPanel agent={agent} user={user} />
         {activeConversationId ? (

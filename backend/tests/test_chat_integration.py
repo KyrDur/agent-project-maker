@@ -66,9 +66,9 @@ async def test_build_tools_config_includes_decrypted_credentials(
     tool_cred = await credential_service.create(
         db,
         user_id=TEST_USER_ID,
-        definition_key="naver_search",
-        name="naver creds",
-        data={"client_id": "nv-id", "client_secret": "nv-secret"},
+        definition_key="google_search",
+        name="google creds",
+        data={"api_key": "nv-id", "cse_id": "nv-secret"},
     )
 
     agent = Agent(
@@ -83,8 +83,8 @@ async def test_build_tools_config_includes_decrypted_credentials(
 
     tool = Tool(
         user_id=TEST_USER_ID,
-        name="Naver Blog",
-        definition_key="naver_search_blog",
+        name="Google Web",
+        definition_key="google_search_web",
         parameters={"query": "moldy"},
         credential_id=tool_cred.id,
     )
@@ -103,8 +103,8 @@ async def test_build_tools_config_includes_decrypted_credentials(
     configs = await chat_service.build_tools_config(fetched, db=db)
     assert len(configs) == 1
     entry = configs[0]
-    assert entry["definition_key"] == "naver_search_blog"
-    assert entry["credentials"] == {"client_id": "nv-id", "client_secret": "nv-secret"}
+    assert entry["definition_key"] == "google_search_web"
+    assert entry["credentials"] == {"api_key": "nv-id", "cse_id": "nv-secret"}
     assert entry["credential_id"] == str(tool_cred.id)
     assert entry["parameters"] == {"query": "moldy"}
 
@@ -118,9 +118,9 @@ async def test_build_tools_config_decrypts_shared_credential_once(
     tool_cred = await credential_service.create(
         db,
         user_id=TEST_USER_ID,
-        definition_key="naver_search",
-        name="naver creds",
-        data={"client_id": "nv-id", "client_secret": "nv-secret"},
+        definition_key="google_search",
+        name="google creds",
+        data={"api_key": "nv-id", "cse_id": "nv-secret"},
     )
 
     agent = Agent(
@@ -133,8 +133,8 @@ async def test_build_tools_config_decrypts_shared_credential_once(
     await db.flush()
 
     for name, definition_key in [
-        ("Naver Blog", "naver_search_blog"),
-        ("Naver News", "naver_search_news"),
+        ("Google Web", "google_search_web"),
+        ("Google News", "google_search_news"),
     ]:
         tool = Tool(
             user_id=TEST_USER_ID,
@@ -153,7 +153,7 @@ async def test_build_tools_config_decrypts_shared_credential_once(
     async def fake_decrypt(_encrypted: str) -> dict[str, str]:
         nonlocal decrypt_calls
         decrypt_calls += 1
-        return {"client_id": "nv-id", "client_secret": "nv-secret"}
+        return {"api_key": "nv-id", "cse_id": "nv-secret"}
 
     monkeypatch.setattr(credential_service, "decrypt_with_external", fake_decrypt)
 

@@ -34,10 +34,6 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     google_api_key: str = ""
 
-    # Naver Open API
-    naver_client_id: str = ""
-    naver_client_secret: str = ""
-
     # Google Custom Search
     google_cse_id: str = ""
 
@@ -146,17 +142,6 @@ class Settings(BaseSettings):
     skill_evaluation_run_timeout_seconds: int = 180
     skill_evaluation_run_timeout_max_seconds: int = 1800
     skill_evaluation_case_timeout_seconds: int = 60
-
-    # ADR-017 Slice F — k-skill upstream import (super_user CLI only).
-    # ``k_skill_sync_dir`` is the local git working tree the importer
-    # ``git clone`` / ``git fetch`` mirrors into; ``k_skill_builtin_storage_dir``
-    # is where successfully imported package directories land (used as
-    # ``MarketplaceVersion.storage_path`` for ``is_system=True`` items).
-    # Both paths are local-only — no remote write back to upstream.
-    k_skill_upstream_url: str = "https://github.com/NomaDamas/k-skill.git"
-    k_skill_upstream_ref: str = "main"
-    k_skill_sync_dir: str = "./data/upstreams/k-skill"
-    k_skill_builtin_storage_dir: str = "./data/marketplace/k-skill"
 
     # Conversation outputs
     conversation_output_dir: str = "./data/conversations"
@@ -292,8 +277,6 @@ class Settings(BaseSettings):
 _LANE_PATH_DEFAULTS: Final[dict[str, str]] = {
     "data_root": "backend/data",
     "skill_storage_dir": "backend/data/skills",
-    "k_skill_sync_dir": "backend/data/upstreams/k-skill",
-    "k_skill_builtin_storage_dir": "backend/data/marketplace/k-skill",
     "conversation_output_dir": "backend/data/conversations",
     "upload_dir": "backend/data/uploads",
     "artifact_storage_dir": "backend/data/artifacts",

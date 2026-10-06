@@ -1,7 +1,7 @@
 """Tool definition dataclass — the per-key schema + runner bundle.
 
 A :class:`ToolDefinition` is registered once per logical tool family
-(``http_request``, ``naver_search_blog``, ...). It declares the parameter
+(``http_request``, ``google_search_web``, ...). It declares the parameter
 fields the user fills in, the credential definition keys it accepts, and the
 async runner that executes a single invocation.
 """

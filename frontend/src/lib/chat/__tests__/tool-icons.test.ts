@@ -9,8 +9,8 @@ describe('toolIcon', () => {
     expect(toolIcon('web_search')).toBe(SearchIcon)
   })
 
-  it('前缀映射（naver_/google_）', () => {
-    expect(toolIcon('naver_blog_search')).toBe(SearchIcon)
+  it('前缀映射（google_）', () => {
+    expect(toolIcon('google_search_web')).toBe(SearchIcon)
     expect(toolIcon('google_news_search')).toBe(SearchIcon)
   })
 
@@ -43,9 +43,9 @@ describe('toolCallChildLabel', () => {
   })
 
   it('JSON 结果不显示 raw，而只显示代表性标量值', () => {
-    expect(toolCallChildLabel({}, '{"now_iso": "2026-06-27T06:41:51+09:00", "tz": "KST"}')).toBe(
-      '2026-06-27T06:41:51+09:00',
-    )
+    expect(
+      toolCallChildLabel({}, '{"now_iso": "2026-06-27T06:41:51+08:00", "tz": "Asia/Shanghai"}'),
+    ).toBe('2026-06-27T06:41:51+08:00')
     expect(toolCallChildLabel({}, '{"results":[{"title":"hello","url":"x"}]}')).toBe('hello')
   })
 

@@ -4,13 +4,13 @@ import type { ToolDefinition } from '@/lib/types/tool'
 
 const definitions: ToolDefinition[] = [
   {
-    key: 'naver_news',
-    display_name: 'Naver 新闻搜索',
+    key: 'google_search_news',
+    display_name: 'Google 新闻搜索',
     description: '搜索新闻。',
     icon_id: 'search',
     category: 'search',
     parameters: [],
-    credential_definition_keys: ['naver_search'],
+    credential_definition_keys: ['google_search'],
     requires_credential: true,
   },
 ]
@@ -42,7 +42,7 @@ describe('ToolCatalog', () => {
       />,
     )
 
-    const card = screen.getByRole('button', { name: /Naver 新闻搜索/ })
+    const card = screen.getByRole('button', { name: /Google 新闻搜索/ })
 
     expect(card).toHaveClass('moldy-resource-card')
     expect(card.className).toMatch(/\bmoldy-tone-card-sky\b/)

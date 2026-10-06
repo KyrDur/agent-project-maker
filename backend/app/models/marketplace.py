@@ -108,9 +108,7 @@ class MarketplaceItem(Base):
 
     visibility: Mapped[str] = mapped_column(String(20), nullable=False, default="private")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")
-    moderation_status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="approved"
-    )
+    moderation_status: Mapped[str] = mapped_column(String(20), nullable=False, default="approved")
 
     source_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -142,14 +140,10 @@ class MarketplaceItem(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_now, onupdate=_now
     )
-    published_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships -----------------------------------------------------
-    owner: Mapped[User | None] = relationship(
-        "User", foreign_keys=[owner_user_id]
-    )
+    owner: Mapped[User | None] = relationship("User", foreign_keys=[owner_user_id])
     versions: Mapped[list[MarketplaceVersion]] = relationship(
         "MarketplaceVersion",
         back_populates="item",
@@ -208,9 +202,7 @@ class MarketplaceItemACL(Base):
         DateTime(timezone=True), nullable=False, default=_now
     )
 
-    item: Mapped[MarketplaceItem] = relationship(
-        "MarketplaceItem", back_populates="acl_entries"
-    )
+    item: Mapped[MarketplaceItem] = relationship("MarketplaceItem", back_populates="acl_entries")
     user: Mapped[User] = relationship("User")
 
 
@@ -237,9 +229,7 @@ class MarketplaceVersion(Base):
             "payload_kind IN ('skill_package','agent_spec','mcp_template')",
             name="ck_marketplace_payload_kind",
         ),
-        UniqueConstraint(
-            "item_id", "version_number", name="uq_marketplace_versions_item_number"
-        ),
+        UniqueConstraint("item_id", "version_number", name="uq_marketplace_versions_item_number"),
         Index("ix_marketplace_versions_content_hash", "content_hash"),
         {"extend_existing": True},
     )
@@ -254,8 +244,7 @@ class MarketplaceVersion(Base):
     payload_kind: Mapped[str] = mapped_column(String(40), nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
-    # ADR-018 — relative to ``settings.data_root``. k-skill imports land at
-    # ``marketplace/k-skill/<vid>``; user publishes land at
+    # ADR-018 — relative to ``settings.data_root``. published packages land at
     # ``skills/_marketplace_versions/<vid>``. Read sites must resolve via
     # ``app.storage.paths.resolve_data_path``.
     storage_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -289,9 +278,7 @@ class MarketplaceVersion(Base):
         back_populates="version",
         foreign_keys="MarketplaceInstallation.version_id",
     )
-    created_by_user: Mapped[User | None] = relationship(
-        "User", foreign_keys=[created_by]
-    )
+    created_by_user: Mapped[User | None] = relationship("User", foreign_keys=[created_by])
 
 
 # ---------------------------------------------------------------------------
@@ -329,9 +316,7 @@ class MarketplaceInstallation(Base):
             name="ck_marketplace_install_status",
         ),
         Index("ix_marketplace_install_user_item", "user_id", "item_id"),
-        Index(
-            "ix_marketplace_install_user_resource", "user_id", "resource_type"
-        ),
+        Index("ix_marketplace_install_user_resource", "user_id", "resource_type"),
         {"extend_existing": True},
     )
 
@@ -358,9 +343,7 @@ class MarketplaceInstallation(Base):
     installed_skill_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("skills.id", ondelete="CASCADE"), nullable=True
     )
-    install_status: Mapped[str] = mapped_column(
-        String(30), nullable=False, default="active"
-    )
+    install_status: Mapped[str] = mapped_column(String(30), nullable=False, default="active")
     is_dirty: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     installed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_now
@@ -379,12 +362,8 @@ class MarketplaceInstallation(Base):
         foreign_keys=[version_id],
     )
     user: Mapped[User] = relationship("User", foreign_keys=[user_id])
-    installed_skill: Mapped[Skill | None] = relationship(
-        "Skill", foreign_keys=[installed_skill_id]
-    )
-    installed_agent: Mapped[Agent | None] = relationship(
-        "Agent", foreign_keys=[installed_agent_id]
-    )
+    installed_skill: Mapped[Skill | None] = relationship("Skill", foreign_keys=[installed_skill_id])
+    installed_agent: Mapped[Agent | None] = relationship("Agent", foreign_keys=[installed_agent_id])
     installed_agent_blueprint: Mapped[AgentBlueprint | None] = relationship(
         "AgentBlueprint", foreign_keys=[installed_agent_blueprint_id]
     )
@@ -503,9 +482,7 @@ class SkillCredentialBinding(Base):
     )
 
     skill: Mapped[Skill] = relationship("Skill", foreign_keys=[skill_id])
-    credential: Mapped[Credential] = relationship(
-        "Credential", foreign_keys=[credential_id]
-    )
+    credential: Mapped[Credential] = relationship("Credential", foreign_keys=[credential_id])
     user: Mapped[User] = relationship("User", foreign_keys=[user_id])
 
 

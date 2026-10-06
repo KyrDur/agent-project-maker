@@ -18,7 +18,7 @@
 - `use-chat-runtime.ts:74` streamError unused warning은 M5 알려진 부채. M6에서 건드리지 말 것
 - `credentials.ts` / `use-credentials.ts`는 UI 분리되었지만 Connection 내부 API로 살아있음. 지우지 말 것
 
-## 실패 교훈
+## 失败教训
 
 - 2026-04-21 [젠슨 S3]: `credential_service.get_usage_count`가 `Tool.credential_id`를 SELECT하고 있었음 — M6 drop 스코프와 간접 충돌. 해결: `tools JOIN connections ON tools.connection_id = connections.id WHERE connections.credential_id = X`로 재작성 (stale UI 호출이 `{credential_id}/usage` 엔드포인트 끊기면 안 되기 때문). `mcp_server_count`는 MCPServer 유지 스코프이므로 그대로.
 - 2026-04-21 [젠슨 S3]: `_resolve_legacy_tool_auth`가 모듈 외부(`__all__` + test imports)에 노출되어 있어 함수 삭제 시 두 테스트 파일(`test_connection_custom_resolve.py` / `test_connection_prebuilt_resolve.py`)이 ImportError로 전체 collection 실패. 해결: import 제거 + legacy 전용 testcase 삭제 + M6 fail-closed 시나리오로 교체.

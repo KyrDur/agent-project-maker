@@ -36,7 +36,7 @@ _SKILL_MD = (
     "Use when summarizing meeting notes.\n"
 )
 
-_MOLDY_YAML = "credential_requirements:\n  - key: naver_search\n    kind: api_key\n"
+_MOLDY_YAML = "credential_requirements:\n  - key: google_search\n    kind: api_key\n"
 
 
 async def _make_session(

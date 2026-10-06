@@ -11,7 +11,7 @@ describe('protocolMemoryRecall', () => {
           name: 'moldy.memory_recalled',
           payload: {
             memories: [
-              { id: 'm1', scope: 'user', content: '偏好韩语' },
+              { id: 'm1', scope: 'user', content: '偏好中文' },
               { id: 'm2', scope: 'agent', content: '整理成表格' },
             ],
           },
@@ -19,7 +19,7 @@ describe('protocolMemoryRecall', () => {
       },
     })
     expect(parsed).toEqual([
-      { id: 'm1', scope: 'user', content: '偏好韩语' },
+      { id: 'm1', scope: 'user', content: '偏好中文' },
       { id: 'm2', scope: 'agent', content: '整理成表格' },
     ])
   })

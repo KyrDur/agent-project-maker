@@ -37,16 +37,16 @@ async def test_credential_types_catalog(client: AsyncClient) -> None:
     assert response.status_code == 200
     body = response.json()
     keys = {item["key"] for item in body}
-    assert {"naver_search", "openai", "anthropic", "http_bearer", "mcp_secret"} <= keys
+    assert {"google_search", "openai", "anthropic", "http_bearer", "mcp_secret"} <= keys
 
 
 @pytest.mark.asyncio
 async def test_credential_type_detail(client: AsyncClient) -> None:
-    response = await client.get("/api/credential-types/naver_search")
+    response = await client.get("/api/credential-types/google_search")
     assert response.status_code == 200
     body = response.json()
     field_names = [p["name"] for p in body["properties"]]
-    assert field_names == ["client_id", "client_secret"]
+    assert field_names == ["api_key", "cse_id"]
     assert body["has_test"] is True
 
 
@@ -64,24 +64,24 @@ async def test_create_credential_round_trip(client: AsyncClient, db: AsyncSessio
     response = await client.post(
         "/api/credentials",
         json={
-            "definition_key": "naver_search",
-            "name": "Naver Test",
-            "data": {"client_id": "id-123", "client_secret": "secret-xyz"},
+            "definition_key": "google_search",
+            "name": "Google Search Test",
+            "data": {"api_key": "id-123", "cse_id": "secret-xyz"},
         },
     )
     assert response.status_code == 201, response.text
     body = response.json()
     cred_id = uuid.UUID(body["id"])
 
-    assert body["definition_key"] == "naver_search"
-    assert sorted(body["field_keys"]) == ["client_id", "client_secret"]
+    assert body["definition_key"] == "google_search"
+    assert sorted(body["field_keys"]) == ["api_key", "cse_id"]
     assert body["key_id"] == get_active_key_id()
     assert body["status"] == "active"
 
     # Decrypt and verify the original payload survives the round-trip.
     row = (await db.execute(select(Credential).where(Credential.id == cred_id))).scalar_one()
     decrypted = credential_service.decrypt_data(row.data_encrypted)
-    assert decrypted == {"client_id": "id-123", "client_secret": "secret-xyz"}
+    assert decrypted == {"api_key": "id-123", "cse_id": "secret-xyz"}
     assert row.key_id == get_active_key_id()
 
 
@@ -290,7 +290,7 @@ async def test_reserved_marker_rejected(client: AsyncClient) -> None:
 
 
 def test_registry_lookup() -> None:
-    naver = registry.get("naver_search")
-    assert naver is not None
-    assert naver.test is not None
-    assert naver.authenticate is not None
+    google = registry.get("google_search")
+    assert google is not None
+    assert google.test is not None
+    assert google.authenticate is not None

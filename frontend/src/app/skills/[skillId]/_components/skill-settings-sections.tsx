@@ -58,7 +58,7 @@ export function SkillSettingsSections({ skill }: { readonly skill: Skill }) {
 
       <SettingsSection title={t('actionsTitle')}>
         <div className="flex flex-wrap items-center gap-2">
-          {/* 구 SkillCard의 canPublish 가드 이관 — 이미 게시된 스킬은 상태 배지만. */}
+          {/* 迁移旧 SkillCard 的 canPublish guard — 已发布 skill 只显示 status badge。 */}
           {!skill.publication_summary?.state ||
           skill.publication_summary.state === 'not_published' ? (
             <Button type="button" variant="outline" onClick={() => setPublishOpen(true)}>
