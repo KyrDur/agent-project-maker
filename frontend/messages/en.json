@@ -617,7 +617,8 @@
         "cases": "Generate 20 Eval Cases",
         "baseline": "Run baseline evaluation",
         "results": "View results",
-        "validation": "Validate test set"
+        "validation": "Validate test set",
+        "evaluation": "Run baseline evaluation"
       },
       "blocked": "This step could not finish. Check your personal model credentials and model availability, then retry. Existing versions and test cases are preserved.",
       "reason": "Blocking reason code: {code}",
@@ -694,7 +695,15 @@
       "running": "Running simulation…",
       "scenarioExample": "Example for this scenario: {input}",
       "scenarioScope": "Available simulations: {tools}. Uncovered capabilities report environment errors.",
-      "noTools": "No tools; conversation only"
+      "noTools": "No tools; conversation only",
+      "preparing": "Preparing simulation scenarios: {stage}. The trial input appears automatically when ready.",
+      "prepareError": "Scenario preparation failed; the trial cannot continue. {reason}",
+      "prepareHelp": "Check your personal model settings and retry. Existing content and failure records are preserved; retrying calls your personal models.",
+      "useExample": "Use this scenario’s example",
+      "rubricHelp": "Retrying asks the model to revise the saved plan using its review. Preparation continues only after validation. Requirements and failure records are preserved.",
+      "planReady": "The revised evaluation plan passed review. Continue to prepare scenarios and the baseline using your personal models. The previous failure is preserved.",
+      "continuePreparation": "Continue scenario and baseline preparation",
+      "previousFailure": "View the preserved previous failure"
     },
     "analysisEvidence": "Model C analysis source and evidence",
     "qualityScore": "Evaluation set review score: {value}% (does not represent agent quality)",
@@ -1713,7 +1722,7 @@
       "openerCounter": "{count}/{max}",
       "openerAdd": "Add",
       "openerAddDialogTitle": "Opener Add Dialog Title",
-      "openerPlaceholder": "Opener Placeholder",
+      "openerPlaceholder": "Example: Organize my weekly work notes",
       "openerEmpty": "Opener Empty",
       "openerMaxReached": "You can add up to {max} openers.",
       "openerEdit": "Edit",
@@ -1761,7 +1770,7 @@
         "deleteConfirm": "Delete Confirm",
         "intervalLabel": "Interval Label",
         "messageLabel": "Message Label",
-        "messagePlaceholder": "Message Placeholder",
+        "messagePlaceholder": "Example: Summarize today’s task progress",
         "addButton": "Add Button",
         "addNew": "Add New"
       },
@@ -1876,7 +1885,7 @@
       "addToolsDialog": {
         "title": "Add Tools Dialog",
         "description": "Choose tools this agent can use.",
-        "searchPlaceholder": "Search Placeholder",
+        "searchPlaceholder": "Example: order lookup",
         "noResults": "No Results",
         "manageTools": "Manage Tools",
         "selectToPreview": "Select To Preview",
@@ -1887,7 +1896,7 @@
       "addSkillsDialog": {
         "title": "Add Skills Dialog",
         "description": "Choose skills this agent can use.",
-        "searchPlaceholder": "Search Placeholder",
+        "searchPlaceholder": "Example: weekly report",
         "noResults": "No Results",
         "manageSkills": "Skill Management",
         "selectToPreview": "Select To Preview",
@@ -1898,7 +1907,7 @@
       "addMiddlewaresDialog": {
         "title": "Add middleware",
         "description": "Choose middleware for this agent.",
-        "searchPlaceholder": "Search Placeholder",
+        "searchPlaceholder": "Example: approval",
         "noResults": "No Results",
         "selectedEmpty": "Selected Empty",
         "current": "Current ({count})",
@@ -1991,12 +2000,12 @@
       "triggerButton": "Trigger Button",
       "title": "Fix Agent",
       "description": "Ask the fix agent to inspect and improve this agent.",
-      "emptyState": "Empty State",
+      "emptyState": "Describe the problem to start a repair",
       "badge": {
         "preview": "Preview",
         "applied": "Applied"
       },
-      "inputPlaceholder": "Input Placeholder",
+      "inputPlaceholder": "Example: Responses omit next week’s plan; check the instructions",
       "toast": {
         "applied": "Changes applied",
         "failed": "Operation failed."
@@ -2008,11 +2017,11 @@
     "assistant": {
       "title": "AI Assistant",
       "description": "Use chat to modify this agent configuration.",
-      "emptyState": "Empty State",
+      "emptyState": "Describe how you want to improve this agent",
       "fixHeroTitle": "Fix {agentName}",
       "fixHeroTitleNew": "Fix Hero Title New",
       "fixHeroSubtitle": "Fix Hero Subtitle",
-      "inputPlaceholder": "Input Placeholder",
+      "inputPlaceholder": "Example: Keep answers concise and ask when information is missing",
       "send": "Send",
       "toast": {
         "applied": "Changes applied",
@@ -2105,7 +2114,7 @@
     "title": "Schedules",
     "description": "View and manage scheduled agent runs across your workspace.",
     "listTitle": "List Title",
-    "searchPlaceholder": "Search Placeholder",
+    "searchPlaceholder": "Example: daily summary",
     "agentFallback": "Agent Fallback",
     "none": "None",
     "notYet": "Not Yet",
@@ -2215,7 +2224,10 @@
     "emptyState": {
       "canDo": "What this agent can do",
       "commandDiscovery": "Browse commands",
-      "moreCapabilities": "+{count} more"
+      "moreCapabilities": "+{count} more",
+      "exampleLabel": "Try an example (fictional input; edit before sending)",
+      "genericExample": "Explain what you can help me with and give an input I can try.",
+      "weeklyExample": "Turn these fictional notes into a weekly report: drafted a user guide; proofreading is ongoing; colleague feedback has not arrived; plan to finish proofreading next week. The audience is my manager. Use only these facts and ask for missing information."
     },
     "search": {
       "placeholder": "Search in conversation",
@@ -2377,8 +2389,8 @@
       "rejected": "Rejected",
       "editApproved": "Edit Approved",
       "rejectReasonLabel": "Rejection reason",
-      "rejectReasonPlaceholder": "Reject Reason Placeholder",
-      "editArgsPlaceholder": "Edit Args Placeholder",
+      "rejectReasonPlaceholder": "Example: The date is incorrect; correct it before running",
+      "editArgsPlaceholder": "Example: Set limit to 5; keep valid JSON",
       "approve": "Approve",
       "reject": "Reject",
       "editAndApprove": "Edit And Approve",
@@ -2399,7 +2411,7 @@
       "autoRejected": "Auto Rejected",
       "expired": "Expired",
       "respond": "Respond",
-      "respondPlaceholder": "Respond Placeholder",
+      "respondPlaceholder": "Example: Check the order status before continuing",
       "allActionsCompleted": "All Actions Completed",
       "confirmAll": "Confirm All",
       "actionN": "Action {index} of {total}",
@@ -2437,7 +2449,8 @@
       "requirementsReview": "Review the requirements and simulation rules you confirmed",
       "requirementsReasonExampleLabel": "Example: ecommerce support (use your own reasoning)",
       "requirementsReasonExample": "I want to first verify that the Agent understands customer questions and correctly queries and handles simulated orders, so I agree with these requirements and will validate the workflow using simulated data.",
-      "requirementsReasonPlaceholder": "For example: I want to validate …, so I agree with these requirements and the … simulation rules."
+      "requirementsReasonPlaceholder": "For example: I want to validate …, so I agree with these requirements and the … simulation rules.",
+      "reasonExample": "Example: These requirements fit my task. I want to verify the workflow with simulated data, so I agree to these rules. Use your own judgment; the example is never submitted automatically."
     },
     "clarifying": {
       "directInput": "Direct Input",
@@ -2447,7 +2460,7 @@
     "page": {
       "settings": "Settings",
       "newConversation": "New Conversation",
-      "emptyState": "Empty State",
+      "emptyState": "Choose an example below to get started",
       "error": "Error",
       "canceling": "Canceling",
       "canceled": "Canceled",
@@ -2459,7 +2472,7 @@
       "menu": "Menu"
     },
     "input": {
-      "placeholder": "Placeholder",
+      "placeholder": "Example: Explain what you can help with and give an example input",
       "sendButton": "Send Button",
       "scrollToBottom": "Scroll to bottom",
       "attachComingSoon": "Attach Coming Soon",
@@ -2575,9 +2588,9 @@
       }
     },
     "builderApproval": {
-      "placeholder": "Placeholder",
-      "shortPlaceholder": "Short Placeholder",
-      "placeholderWithExample": "Placeholder With Example",
+      "placeholder": "Example: Add a step to ask for missing information",
+      "shortPlaceholder": "Example: Keep the four-section structure",
+      "placeholderWithExample": "Example: Use concise language and preserve the user’s facts",
       "approvedStatus": "Approved Status",
       "revisionStatus": "Revision Status",
       "requestRevision": "Request Revision",
@@ -2589,7 +2602,7 @@
       "reviewRequired": "Review Required",
       "promptRevisionFallback": "Prompt Revision Fallback",
       "systemPrompt": "System Prompt",
-      "promptFeedbackPlaceholder": "Prompt Feedback Placeholder",
+      "promptFeedbackPlaceholder": "Example: Ask for missing information and never invent achievements",
       "approveAndContinue": "Approve And Continue",
       "draftTools": "{count} draft tools",
       "draftMiddlewares": "{count} draft middleware",
@@ -2656,7 +2669,7 @@
         "model_call_limit": "Caps model calls per run or conversation to prevent repeated calls and endless loops. Reaching the limit ends the run or raises an error, depending on configuration.",
         "pii": "Detects a configured type of personal information and redacts, masks, hashes, or blocks it. Email detection is the default; names, customer names, and all sensitive information are not automatically detected."
       },
-      "feedbackPlaceholder": "Feedback Placeholder",
+      "feedbackPlaceholder": "Example: This capability does not fit; suggest an alternative",
       "approved": "Approved",
       "approve": "Approve",
       "approveAndContinue": "Approve And Continue",
@@ -2668,7 +2681,9 @@
       "empty": "No items yet.",
       "confirmationReason": "Reason for confirming the capability plan (required)",
       "skillPreview": "Text skill guide (editable)",
-      "retry": "Retry this stage"
+      "retry": "Retry this stage",
+      "confirmationReasonHelp": "Explain how these capabilities support your needs and whether any are unnecessary. Your reason is saved verbatim as your contribution, not a grade. Adapt the example to your own judgment.",
+      "confirmationReasonExample": "Example (weekly report assistant): The writing guide helps organize notes and preserve factual boundaries. I only need text processing, so this capability plan fits."
     },
     "toolCall": {
       "calling": "Calling",
@@ -2940,7 +2955,7 @@
       "newConversation": "New Conversation",
       "fallbackTitle": "Fallback Title",
       "empty": "No items yet.",
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: weekly report",
       "searchEmpty": "Search Empty",
       "loadMore": "Load more",
       "loadingMore": "Loading...",
@@ -2957,7 +2972,7 @@
       },
       "renameDialog": {
         "title": "Rename Dialog",
-        "placeholder": "Placeholder",
+        "placeholder": "Example: This week’s work report",
         "save": "Save"
       },
       "deleteDialog": {
@@ -3017,7 +3032,7 @@
         "setKey": "Set Key",
         "changeKey": "Change Key"
       },
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: search",
       "tagLabel": "Tag Label",
       "resetFilter": "Reset Filter",
       "agentCount": "Used by {count} agents",
@@ -3062,7 +3077,7 @@
         "authNoticeV1": "Auth Notice V1",
         "headerName": "Header Name",
         "credentialField": "Credential Field",
-        "credentialFieldPlaceholder": "Credential Field Placeholder",
+        "credentialFieldPlaceholder": "Example: API_KEY",
         "authHint": "Auth Hint",
         "submit": "Submit",
         "connectionFailed": "Connection failed: {detail}",
@@ -3081,9 +3096,9 @@
       },
       "custom": {
         "name": "Name",
-        "namePlaceholder": "Name Placeholder",
+        "namePlaceholder": "Example: Look up a simulated order",
         "description": "Description",
-        "descriptionPlaceholder": "Description Placeholder",
+        "descriptionPlaceholder": "Example: Return an order’s status using its ID",
         "apiUrl": "API URL",
         "apiUrlPlaceholder": "https://api.example.com/weather",
         "httpMethod": "Http Method",
@@ -3126,7 +3141,7 @@
         "communication": "Communication",
         "automation": "Automation"
       },
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: orders",
       "count": "{count} tools",
       "empty": {
         "title": "Empty",
@@ -3598,11 +3613,11 @@
     "dialogDescription": "Dialog Description",
     "form": {
       "name": "Name",
-      "namePlaceholder": "Name Placeholder",
+      "namePlaceholder": "Example: Weekly report writing guide",
       "description": "Description",
-      "descriptionPlaceholder": "Description Placeholder",
+      "descriptionPlaceholder": "Example: Organize work notes without inventing facts",
       "content": "Content",
-      "contentPlaceholder": "Content Placeholder"
+      "contentPlaceholder": "Example: Verify supplied facts, organize the report, and ask for missing information."
     },
     "firstSkill": "Build first skill by chat",
     "modified": "Modified {date}",
@@ -3644,7 +3659,7 @@
       "text": {
         "name": "Name",
         "slug": "Slug",
-        "slugPlaceholder": "Slug Placeholder",
+        "slugPlaceholder": "Example: weekly-report-guide",
         "description": "Description",
         "content": "Content",
         "required": "Required",
@@ -3662,7 +3677,7 @@
         "name": "Name",
         "namePlaceholder": "my-helpful-skill",
         "descriptionLabel": "Description",
-        "descriptionPlaceholder": "Description Placeholder",
+        "descriptionPlaceholder": "Example: Organize work notes into a four-section report",
         "zipFailed": "Zip Failed",
         "created": "Created",
         "failed": "Failed",
@@ -4514,7 +4529,7 @@
       "edit": "Edit"
     },
     "provider": "Provider",
-    "providerPlaceholder": "Provider Placeholder",
+    "providerPlaceholder": "Example: DeepSeek",
     "sourceBadge": {
       "manual": "Manual",
       "catalog": "Catalog",
@@ -4590,7 +4605,7 @@
       "description": "Discover models from connected providers and register them.",
       "new": "New",
       "hiddenBadge": "Hidden Badge",
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: deepseek",
       "columns": {
         "model": "Models",
         "price": "Price",
@@ -4727,7 +4742,7 @@
       "discover": "Discover",
       "emptyCredential": "Empty Credential",
       "emptyResults": "Empty Results",
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: deepseek",
       "toggleAll": "Toggle All",
       "selectModel": "Select {name}",
       "testModel": "Test {name}",
@@ -5342,9 +5357,9 @@
     "addNew": "Add New",
     "editTitle": "Edit Title",
     "provider": "Provider",
-    "providerPlaceholder": "Provider Placeholder",
+    "providerPlaceholder": "Example: DeepSeek",
     "name": "Name",
-    "namePlaceholder": "Name Placeholder",
+    "namePlaceholder": "Example: My personal model connection",
     "type": "Type",
     "typeApiKey": "API Key",
     "typeOauth2": "OAuth2",
@@ -5373,7 +5388,7 @@
     },
     "credentialSelect": {
       "label": "Label",
-      "placeholder": "Placeholder",
+      "placeholder": "Select a saved personal credential",
       "directInput": "Direct Input",
       "none": "None",
       "createNew": "Create New",
@@ -5462,11 +5477,11 @@
         "form": "Form",
         "catalog": "Catalog"
       },
-      "searchPlaceholder": "Search Placeholder",
+      "searchPlaceholder": "Example: DeepSeek",
       "emptyDefinitions": "Empty Definitions",
       "back": "Back",
       "name": "Name",
-      "namePlaceholder": "Name Placeholder",
+      "namePlaceholder": "Example: Personal DeepSeek key",
       "save": "Save"
     },
     "detail": {

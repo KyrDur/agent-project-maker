@@ -122,10 +122,22 @@ function TextInput({
   onFocus: () => void
   placeholder: string
 }) {
+  const t = useTranslations('chat.userInput')
+  const inputId = useId()
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">{question.question}</p>
+      <label htmlFor={inputId} className="text-sm font-medium">
+        {question.question}
+      </label>
+      {question.id === 'requirements_reason' && (
+        <p id={`${inputId}-help`} className="text-sm text-muted-foreground">
+          {t('reasonExample')}
+        </p>
+      )}
       <textarea
+        id={inputId}
+        aria-label={question.question}
+        aria-describedby={question.id === 'requirements_reason' ? `${inputId}-help` : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={onFocus}

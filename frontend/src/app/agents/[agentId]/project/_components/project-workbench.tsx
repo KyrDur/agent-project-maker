@@ -58,7 +58,12 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
               <div className="p-4 sm:p-5">
                 {activeTab === 'overview' ? (
                   <div className="space-y-5">
-                    <ProjectSimulation agentId={agentId} versions={versions.data ?? []} />
+                    <ProjectSimulation
+                      agentId={agentId}
+                      versions={versions.data ?? []}
+                      bootstrap={project.data.requirements_json?.bootstrap}
+                      planReady={Boolean(project.data.eval_spec_json)}
+                    />
                     <details>
                       <summary>{t('qualityRevision.confirmedDetails')}</summary>
                       <ProjectPractice

@@ -43,6 +43,7 @@ export function useAgentProject(agentId: string) {
   const resumed = useRef(new Set<string>())
   const builderSessionId = project.data?.builder_session_id
   const bootstrapStage = project.data?.requirements_json?.bootstrap?.stage
+  const bootstrapError = project.data?.requirements_json?.bootstrap?.error
   const bootstrap = useMutation({
     mutationFn: () => agentProjectApi.bootstrap(agentId),
     onSuccess: () =>
@@ -53,13 +54,14 @@ export function useAgentProject(agentId: string) {
     if (
       builderSessionId &&
       bootstrapStage &&
+      !bootstrapError &&
       !resumed.current.has(agentId) &&
       bootstrapStage !== 'results'
     ) {
       resumed.current.add(agentId)
       resumeBootstrap()
     }
-  }, [agentId, builderSessionId, bootstrapStage, resumeBootstrap])
+  }, [agentId, builderSessionId, bootstrapStage, bootstrapError, resumeBootstrap])
   useEffect(() => {
     if (bootstrapStage) {
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.evaluationReports(agentId) })

@@ -87,3 +87,41 @@ it('restores version, scenario and its saved conversation after remount and omit
   render(<ProjectSimulation agentId="agent-id" versions={versions} />)
   expect(await screen.findByText('已保存答复')).toBeInTheDocument()
 })
+
+it('disables duplicate preparation while displaying the actual generation stage', async () => {
+  server.use(http.get(`${path}/eval-sets`, () => HttpResponse.json([])))
+  render(
+    <ProjectSimulation
+      agentId="agent-id"
+      versions={versions}
+      bootstrap={{ stage: 'plan', error: null, run_id: null }}
+    />,
+  )
+  expect(await screen.findByRole('status')).toHaveTextContent('当前步骤：生成评估计划')
+  expect(screen.getByRole('button', { name: '重试准备场景' })).toBeDisabled()
+})
+
+it('uses the frozen scenario as an editable example without sending or overwriting input', async () => {
+  const { userEvent } = await import('../../../../../../tests/test-utils')
+  render(<ProjectSimulation agentId="agent-id" versions={versions} />)
+  const button = await screen.findByRole('button', { name: '填入当前场景示例' })
+  await userEvent.click(button)
+  expect(screen.getByRole('textbox', { name: '发送消息' })).toHaveValue('查询订单')
+  expect(button).toBeDisabled()
+})
+
+it('distinguishes a recovered plan from its preserved previous preparation failure', async () => {
+  server.use(http.get(`${path}/eval-sets`, () => HttpResponse.json([])))
+  render(
+    <ProjectSimulation
+      agentId="agent-id"
+      versions={versions}
+      planReady
+      bootstrap={{ stage: 'plan', error: 'evaluation_rubric_unsupported', run_id: null }}
+    />,
+  )
+  expect(await screen.findByRole('status')).toHaveTextContent('评测方案已修正并通过审核')
+  expect(screen.getByRole('button', { name: '继续准备场景与评测' })).toBeEnabled()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.getByText('查看上次失败记录（已保留）')).toBeInTheDocument()
+})

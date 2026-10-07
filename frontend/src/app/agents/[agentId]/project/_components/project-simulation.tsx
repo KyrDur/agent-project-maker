@@ -1,6 +1,7 @@
 'use client'
 
 import ReactMarkdown from 'react-markdown'
+import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
@@ -15,18 +16,27 @@ import {
 } from '@/lib/project-simulation/session-storage'
 import { agentProjectApi } from '../_lib/agent-project-api'
 import { agentProjectKeys } from '../_hooks/use-agent-project'
-import type { AgentProjectVersionSummary, SimulationSession } from '../_lib/agent-project-types'
+import type {
+  AgentProject,
+  AgentProjectVersionSummary,
+  SimulationSession,
+} from '../_lib/agent-project-types'
 import { ProjectSelect } from './project-select'
 import { ProjectExecutionLog, ProjectEvidenceValue } from './project-execution-log'
 
 export function ProjectSimulation({
   agentId,
   versions,
+  bootstrap,
+  planReady = false,
 }: {
   agentId: string
   versions: AgentProjectVersionSummary[]
+  bootstrap?: NonNullable<AgentProject['requirements_json']>['bootstrap']
+  planReady?: boolean
 }) {
   const t = useTranslations('agentProject.simulation')
+  const projectT = useTranslations('agentProject')
   const [versionId, setVersion] = useState(
     () => readSimulationSession(`project-simulation-version:${agentId}`) || versions[0]?.id || '',
   )
@@ -62,6 +72,10 @@ export function ProjectSimulation({
     mutationFn: () => agentProjectApi.bootstrap(agentId),
     onSuccess: () => sets.refetch(),
   })
+  const preparing = Boolean(bootstrap?.stage && bootstrap.stage !== 'results' && !bootstrap.error)
+  const preparationError = bootstrap?.error
+  const planRecovered =
+    planReady && bootstrap?.stage === 'plan' && preparationError === 'evaluation_rubric_unsupported'
   return (
     <SettingsSectionCard title={t('title')}>
       <p>{t('description')}</p>
@@ -94,9 +108,51 @@ export function ProjectSimulation({
       )}
       {!scenarios.length ? (
         <div className="space-y-2">
-          <p role="status">{t('notReady')}</p>
-          <Button variant="outline" disabled={retry.isPending} onClick={() => retry.mutate()}>
-            {t('retry')}
+          {planRecovered ? (
+            <div className="space-y-2">
+              <p role="status">{t('planReady')}</p>
+              <details>
+                <summary>{t('previousFailure')}</summary>
+                <p>{projectT('executionErrors.evaluation_rubric_unsupported')}</p>
+              </details>
+            </div>
+          ) : preparationError ? (
+            <div role="alert" className="space-y-2">
+              <p>
+                {t('prepareError', {
+                  reason: projectT.has(`executionErrors.${preparationError}`)
+                    ? projectT(`executionErrors.${preparationError}`)
+                    : projectT('executionErrors.evaluation_execution_failed'),
+                })}
+              </p>
+              <p>
+                {t(
+                  preparationError === 'evaluation_rubric_unsupported'
+                    ? 'rubricHelp'
+                    : 'prepareHelp',
+                )}
+              </p>
+              <Link href="/models" className="underline">
+                {projectT('bootstrap.models')}
+              </Link>
+            </div>
+          ) : (
+            <p role="status">
+              {preparing
+                ? t('preparing', {
+                    stage: projectT.has(`bootstrap.stages.${bootstrap?.stage}`)
+                      ? projectT(`bootstrap.stages.${bootstrap?.stage}`)
+                      : projectT('bootstrap.title'),
+                  })
+                : t('notReady')}
+            </p>
+          )}
+          <Button
+            variant="outline"
+            disabled={retry.isPending || preparing}
+            onClick={() => retry.mutate()}
+          >
+            {t(planRecovered ? 'continuePreparation' : 'retry')}
           </Button>
           {(sets.isError || retry.isError) && <ErrorState />}
         </div>
@@ -106,6 +162,7 @@ export function ProjectSimulation({
           agentId={agentId}
           versionId={activeVersionId}
           scenarioId={activeScenarioId === 'default' ? '' : activeScenarioId}
+          scenarioInput={scenario?.input ?? ''}
         />
       )}
     </SettingsSectionCard>
@@ -116,10 +173,12 @@ function SimulationConversation({
   agentId,
   versionId,
   scenarioId,
+  scenarioInput,
 }: {
   agentId: string
   versionId: string
   scenarioId: string
+  scenarioInput: string
 }) {
   const t = useTranslations('agentProject.simulation')
   const cache = useQueryClient()
@@ -215,6 +274,14 @@ function SimulationConversation({
             disabled={busy || send.isError}
             onChange={(event) => setContent(event.target.value)}
           />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || send.isError || Boolean(content.trim())}
+            onClick={() => setContent(scenarioInput)}
+          >
+            {t('useExample')}
+          </Button>
         </FormFieldShell>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={busy || !content.trim() || !versionId || session.isError}>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useAui } from '@assistant-ui/react'
-import { BookOpenIcon, PlugIcon, SparklesIcon, TerminalIcon, WrenchIcon } from 'lucide-react'
+import { BookOpenIcon, PlugIcon, TerminalIcon, WrenchIcon } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { AgentAvatar } from '@/components/agent/agent-avatar'
 import { requestThreadComposerFocus } from '@/components/chat/composer-focus'
@@ -49,8 +49,15 @@ export function ChatEmptyState({ agent, fallback }: ChatEmptyStateProps) {
     ? (templates?.find((tpl) => tpl.id === agent?.template_id)?.usage_example ?? null)
     : null
 
+  const isWeeklyReport = /周报|weekly.report/i.test(
+    [agent?.name, ...(agent?.skills ?? []).map((skill) => skill.name)].join(' '),
+  )
   const starters =
-    openerQuestions.length > 0 ? openerQuestions : templateStarter ? [templateStarter] : []
+    openerQuestions.length > 0
+      ? openerQuestions
+      : templateStarter
+        ? [templateStarter]
+        : [t(isWeeklyReport ? 'emptyState.weeklyExample' : 'emptyState.genericExample')]
   const capabilities = capabilityChips(agent)
   const visibleCapabilities = capabilities.slice(0, MAX_CAPABILITY_CHIPS)
   const extraCapabilities = capabilities.length - visibleCapabilities.length
@@ -68,10 +75,6 @@ export function ChatEmptyState({ agent, fallback }: ChatEmptyStateProps) {
       {agent?.description && (
         <p className="mb-4 max-w-md text-sm text-muted-foreground">{agent.description}</p>
       )}
-      <div className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground ring-1 ring-primary-strong/15">
-        <SparklesIcon className="size-3.5" />
-        <span>{fallback}</span>
-      </div>
       <button
         type="button"
         className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-primary-strong/20 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -108,20 +111,26 @@ export function ChatEmptyState({ agent, fallback }: ChatEmptyStateProps) {
         </div>
       )}
       {starters.length > 0 && (
-        <div
-          className="mt-6 flex max-w-2xl flex-wrap justify-center gap-2"
-          data-moldy-empty-starters="true"
-        >
-          {starters.map((question) => (
-            <button
-              key={question}
-              type="button"
-              onClick={() => composer?.setText(question)}
-              className="rounded-full border border-primary-strong/20 bg-background/80 px-3 py-1.5 text-xs transition-colors hover:bg-primary hover:text-primary-foreground"
-            >
-              {question}
-            </button>
-          ))}
+        <div className="mt-6 max-w-2xl space-y-2">
+          <p className="text-sm text-muted-foreground">{t('emptyState.exampleLabel')}</p>
+          <div
+            className="mt-6 flex max-w-2xl flex-wrap justify-center gap-2"
+            data-moldy-empty-starters="true"
+          >
+            {starters.map((question) => (
+              <button
+                key={question}
+                type="button"
+                onClick={() => {
+                  composer?.setText(question)
+                  requestThreadComposerFocus()
+                }}
+                className="rounded-full border border-primary-strong/20 bg-background/80 px-3 py-1.5 text-xs transition-colors hover:bg-primary hover:text-primary-foreground"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

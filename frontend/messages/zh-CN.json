@@ -617,7 +617,8 @@
         "cases": "生成 20 个评估用例",
         "baseline": "运行基线评估",
         "results": "查看结果",
-        "validation": "自动校验测试集"
+        "validation": "自动校验测试集",
+        "evaluation": "运行基线评估"
       },
       "blocked": "此步骤未能完成。请检查个人模型凭据及模型可用性，修复后重试；已有版本和测试集会保留。",
       "reason": "阻塞原因代码：{code}",
@@ -695,7 +696,15 @@
       "running": "正在模拟执行…",
       "scenarioExample": "本场景示例：{input}",
       "scenarioScope": "当前场景可模拟：{tools}。未覆盖的能力会明确报告环境缺项。",
-      "noTools": "无工具，仅对话"
+      "noTools": "无工具，仅对话",
+      "preparing": "正在准备模拟场景；当前步骤：{stage}。准备完成后会自动显示试用输入。",
+      "prepareError": "模拟场景准备失败，不能继续试用。{reason}",
+      "prepareHelp": "请检查个人模型配置后重试。已生成内容和失败记录会保留；重试会调用个人模型接口。",
+      "useExample": "填入当前场景示例",
+      "rubricHelp": "重试会让模型根据已保存的方案和审查意见重新生成；通过校验后才能继续。原需求和失败记录会保留。",
+      "planReady": "评测方案已修正并通过审核。下一步准备模拟场景和基线评测，继续会调用个人模型；上次失败记录保留。",
+      "continuePreparation": "继续准备场景与评测",
+      "previousFailure": "查看上次失败记录（已保留）"
     },
     "analysisEvidence": "查看模型 C 分析来源与证据",
     "executionLog": {
@@ -1713,7 +1722,7 @@
       "openerCounter": "{count}/{max}",
       "openerAdd": "添加",
       "openerAddDialogTitle": "开启器添加对话框标题",
-      "openerPlaceholder": "开场占位符",
+      "openerPlaceholder": "示例：帮我整理本周工作记录",
       "openerEmpty": "开瓶器空",
       "openerMaxReached": "您最多可以添加 {max} 开场白。",
       "openerEdit": "编辑",
@@ -1761,7 +1770,7 @@
         "deleteConfirm": "删除 确认",
         "intervalLabel": "间隔标签",
         "messageLabel": "消息标签",
-        "messagePlaceholder": "消息占位符",
+        "messagePlaceholder": "示例：汇总今天的任务进展",
         "addButton": "添加按钮",
         "addNew": "添加新内容"
       },
@@ -1876,7 +1885,7 @@
       "addToolsDialog": {
         "title": "添加工具对话框",
         "description": "选择该智能体可以使用的工具。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：订单查询",
         "noResults": "没有结果",
         "manageTools": "管理工具",
         "selectToPreview": "选择预览",
@@ -1887,7 +1896,7 @@
       "addSkillsDialog": {
         "title": "添加技能对话框",
         "description": "选择该智能体可以使用的技能。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：周报撰写",
         "noResults": "没有结果",
         "manageSkills": "技能管理",
         "selectToPreview": "选择预览",
@@ -1898,7 +1907,7 @@
       "addMiddlewaresDialog": {
         "title": "添加中间件",
         "description": "为此 智能体 选择中间件。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：审批",
         "noResults": "没有结果",
         "selectedEmpty": "选定为空",
         "current": "当前（{count}）",
@@ -1991,12 +2000,12 @@
       "triggerButton": "触发按钮",
       "title": "修复智能体",
       "description": "请求修复 智能体 检查并改进此 智能体。",
-      "emptyState": "空状态",
+      "emptyState": "描述遇到的问题，再开始修复",
       "badge": {
         "preview": "预览",
         "applied": "应用"
       },
-      "inputPlaceholder": "输入占位符",
+      "inputPlaceholder": "示例：回答遗漏了下周计划，请检查提示词",
       "toast": {
         "applied": "已应用更改",
         "failed": "操作失败。"
@@ -2008,11 +2017,11 @@
     "assistant": {
       "title": "人工智能助手",
       "description": "使用聊天来修改此 智能体 配置。",
-      "emptyState": "空状态",
+      "emptyState": "说说你希望怎样改进这个智能体",
       "fixHeroTitle": "修复{agentName}",
       "fixHeroTitleNew": "修复英雄标题新",
       "fixHeroSubtitle": "修复英雄字幕",
-      "inputPlaceholder": "输入占位符",
+      "inputPlaceholder": "示例：让回答更简洁，并在信息不足时先追问",
       "send": "发送",
       "toast": {
         "applied": "已应用更改",
@@ -2105,7 +2114,7 @@
     "title": "定时任务",
     "description": "查看和管理工作区中计划的 智能体 运行。",
     "listTitle": "列表标题",
-    "searchPlaceholder": "搜索占位符",
+    "searchPlaceholder": "示例：每日汇总",
     "agentFallback": "智能体 后备",
     "none": "无",
     "notYet": "还没有",
@@ -2215,7 +2224,10 @@
     "emptyState": {
       "canDo": "这个智能体能做什么",
       "commandDiscovery": "浏览命令",
-      "moreCapabilities": "+{count} 更多"
+      "moreCapabilities": "+{count} 更多",
+      "exampleLabel": "试用示例（虚构输入，可编辑后发送）",
+      "genericExample": "请说明你能帮我完成什么，并给出一个可以直接试用的输入示例。",
+      "weeklyExample": "请把以下模拟记录整理为周报：本周完成使用说明初稿；校对仍在进行；暂未收到同事的反馈；下周计划完成校对。汇报对象是直属主管。只使用这些事实，缺少信息时请先追问。"
     },
     "search": {
       "placeholder": "在对话中搜索",
@@ -2377,8 +2389,8 @@
       "rejected": "被拒绝",
       "editApproved": "编辑已批准",
       "rejectReasonLabel": "拒绝原因",
-      "rejectReasonPlaceholder": "拒绝原因占位符",
-      "editArgsPlaceholder": "编辑参数占位符",
+      "rejectReasonPlaceholder": "示例：参数中的日期不正确，请修改后再执行",
+      "editArgsPlaceholder": "示例：把 limit 改为 5；请保留有效 JSON",
       "approve": "批准",
       "reject": "拒绝",
       "editAndApprove": "编辑并批准",
@@ -2399,7 +2411,7 @@
       "autoRejected": "自动拒绝",
       "expired": "已过期",
       "respond": "回应",
-      "respondPlaceholder": "回复占位符",
+      "respondPlaceholder": "示例：请先核对订单状态，再继续处理",
       "allActionsCompleted": "所有行动已完成",
       "confirmAll": "全部确认",
       "actionN": "{total} 的操作 {index}",
@@ -2437,7 +2449,8 @@
       "requirementsReview": "查看前面已确认的需求和模拟规则",
       "requirementsReasonExampleLabel": "示例：电商客服（请按自己的实际想法填写）",
       "requirementsReasonExample": "我希望先验证 Agent 能否理解客户问题，并正确查询和处理模拟订单，所以认可这些需求，先用模拟数据验证流程。",
-      "requirementsReasonPlaceholder": "例如：我希望先验证……，所以认可这些需求，并同意使用……模拟规则。"
+      "requirementsReasonPlaceholder": "例如：我希望先验证……，所以认可这些需求，并同意使用……模拟规则。",
+      "reasonExample": "示例：这些需求符合我想完成的任务；我希望先用模拟数据检查流程，因此认可这套验证规则。请按自己的实际想法填写，示例不会自动提交。"
     },
     "clarifying": {
       "directInput": "直接输入",
@@ -2447,7 +2460,7 @@
     "page": {
       "settings": "设置",
       "newConversation": "新的对话",
-      "emptyState": "空状态",
+      "emptyState": "选择下面的示例开始试用",
       "error": "错误",
       "canceling": "取消",
       "canceled": "取消",
@@ -2459,7 +2472,7 @@
       "menu": "菜单"
     },
     "input": {
-      "placeholder": "占位符",
+      "placeholder": "示例：请说明你能帮我完成什么，并给出一个输入示例",
       "sendButton": "发送按钮",
       "scrollToBottom": "滚动到底部",
       "attachComingSoon": "即将附上",
@@ -2575,9 +2588,9 @@
       }
     },
     "builderApproval": {
-      "placeholder": "占位符",
-      "shortPlaceholder": "短占位符",
-      "placeholderWithExample": "带示例的占位符",
+      "placeholder": "示例：请补充信息不足时的追问步骤",
+      "shortPlaceholder": "示例：请保留四段式结构",
+      "placeholderWithExample": "示例：请用简洁的语气，并保留用户提供的事实",
       "approvedStatus": "批准状态",
       "revisionStatus": "修订状态",
       "requestRevision": "请求修改",
@@ -2589,7 +2602,7 @@
       "reviewRequired": "需要审核",
       "promptRevisionFallback": "及时修订回退",
       "systemPrompt": "系统提示",
-      "promptFeedbackPlaceholder": "及时反馈占位符",
+      "promptFeedbackPlaceholder": "示例：缺少信息时先追问，不要编造工作成果",
       "approveAndContinue": "批准并继续",
       "draftTools": "{count} 草稿工具",
       "draftMiddlewares": "{count}中间件草案",
@@ -2656,7 +2669,7 @@
         "model_call_limit": "限制单次运行或同一对话的模型调用次数，防止反复调用和无限循环。达到上限后结束运行或报错，具体取决于配置。",
         "pii": "识别指定类型的个人信息，并按配置删除、遮盖、散列或阻止处理。默认识别邮箱；不会自动识别姓名、客户名称或所有敏感信息。"
       },
-      "feedbackPlaceholder": "反馈占位符",
+      "feedbackPlaceholder": "示例：这个能力不符合需求，请说明替代方案",
       "approved": "已批准",
       "approve": "批准",
       "approveAndContinue": "批准并继续",
@@ -2668,7 +2681,9 @@
       "empty": "还没有商品。",
       "confirmationReason": "确认能力方案的理由（必填）",
       "skillPreview": "文本技能指南（可修改）",
-      "retry": "重试当前阶段"
+      "retry": "重试当前阶段",
+      "confirmationReasonHelp": "请说明这些能力怎样支持你的需求、是否有不需要的能力。理由会原样保存在贡献记录中，不用于评分；示例仅供参考，请按自己的判断填写。",
+      "confirmationReasonExample": "示例（周报助手）：这份写作规范能帮助整理工作记录并约束事实边界；当前只需文字处理，所以认可这套能力方案。"
     },
     "toolCall": {
       "calling": "呼唤",
@@ -2940,7 +2955,7 @@
       "newConversation": "新的对话",
       "fallbackTitle": "备用标题",
       "empty": "还没有商品。",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：周报",
       "searchEmpty": "搜索空",
       "loadMore": "加载更多",
       "loadingMore": "正在加载...",
@@ -2957,7 +2972,7 @@
       },
       "renameDialog": {
         "title": "重命名对话框",
-        "placeholder": "占位符",
+        "placeholder": "示例：本周工作周报",
         "save": "保存"
       },
       "deleteDialog": {
@@ -3017,7 +3032,7 @@
         "setKey": "设置密钥",
         "changeKey": "更改密钥"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：搜索",
       "tagLabel": "标签标签",
       "resetFilter": "重置过滤器",
       "agentCount": "{count} 智能体 使用",
@@ -3062,7 +3077,7 @@
         "authNoticeV1": "授权通知V1",
         "headerName": "标头名称",
         "credentialField": "凭据字段",
-        "credentialFieldPlaceholder": "凭据字段占位符",
+        "credentialFieldPlaceholder": "示例：API_KEY",
         "authHint": "授权提示",
         "submit": "提交",
         "connectionFailed": "连接失败：{detail}",
@@ -3081,9 +3096,9 @@
       },
       "custom": {
         "name": "名称",
-        "namePlaceholder": "名称占位符",
+        "namePlaceholder": "示例：查询模拟订单",
         "description": "描述",
-        "descriptionPlaceholder": "说明占位符",
+        "descriptionPlaceholder": "示例：根据订单编号返回订单状态",
         "apiUrl": "API网址",
         "apiUrlPlaceholder": "https://api.example.com/weather",
         "httpMethod": "HTTP方法",
@@ -3126,7 +3141,7 @@
         "communication": "通讯",
         "automation": "自动化"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：订单",
       "count": "{count}工具",
       "empty": {
         "title": "空",
@@ -3598,11 +3613,11 @@
     "dialogDescription": "对话框说明",
     "form": {
       "name": "名称",
-      "namePlaceholder": "名称占位符",
+      "namePlaceholder": "示例：周报撰写规范",
       "description": "描述",
-      "descriptionPlaceholder": "说明占位符",
+      "descriptionPlaceholder": "示例：指导智能体归纳工作记录，不编造事实",
       "content": "内容",
-      "contentPlaceholder": "内容占位符"
+      "contentPlaceholder": "示例：先核对用户提供的事实，再按要求整理正文；缺少信息时先追问。"
     },
     "firstSkill": "通过聊天培养第一个技能",
     "modified": "改装{date}",
@@ -3644,7 +3659,7 @@
       "text": {
         "name": "名称",
         "slug": "蛞蝓",
-        "slugPlaceholder": "蛞蝓占位符",
+        "slugPlaceholder": "示例：weekly-report-guide",
         "description": "描述",
         "content": "内容",
         "required": "必填",
@@ -3662,7 +3677,7 @@
         "name": "名称",
         "namePlaceholder": "我的有用技能",
         "descriptionLabel": "描述",
-        "descriptionPlaceholder": "说明占位符",
+        "descriptionPlaceholder": "示例：把零散的工作记录整理成四段式周报",
         "zipFailed": "压缩失败",
         "created": "已创建",
         "failed": "失败",
@@ -4514,7 +4529,7 @@
       "edit": "编辑"
     },
     "provider": "提供者",
-    "providerPlaceholder": "提供者占位符",
+    "providerPlaceholder": "示例：DeepSeek",
     "sourceBadge": {
       "manual": "手册",
       "catalog": "目录",
@@ -4590,7 +4605,7 @@
       "description": "从连接的提供商那里发现模型并注册它们。",
       "new": "新模型",
       "hiddenBadge": "隐藏徽章",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：deepseek",
       "columns": {
         "model": "模型",
         "price": "价格",
@@ -4727,7 +4742,7 @@
       "discover": "发现",
       "emptyCredential": "空凭据",
       "emptyResults": "空结果",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：deepseek",
       "toggleAll": "全部切换",
       "selectModel": "选择{name}",
       "testModel": "测试{name}",
@@ -5342,9 +5357,9 @@
     "addNew": "添加新内容",
     "editTitle": "编辑标题",
     "provider": "提供者",
-    "providerPlaceholder": "提供者占位符",
+    "providerPlaceholder": "示例：DeepSeek",
     "name": "名称",
-    "namePlaceholder": "名称占位符",
+    "namePlaceholder": "示例：我的个人模型接口",
     "type": "类型",
     "typeApiKey": "API密钥",
     "typeOauth2": "OAuth2",
@@ -5373,7 +5388,7 @@
     },
     "credentialSelect": {
       "label": "标签",
-      "placeholder": "占位符",
+      "placeholder": "选择已保存的个人凭据",
       "directInput": "直接输入",
       "none": "无",
       "createNew": "新建",
@@ -5462,11 +5477,11 @@
         "form": "形式",
         "catalog": "目录"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：DeepSeek",
       "emptyDefinitions": "空定义",
       "back": "返回",
       "name": "名称",
-      "namePlaceholder": "名称占位符",
+      "namePlaceholder": "示例：个人 DeepSeek Key",
       "save": "保存"
     },
     "detail": {

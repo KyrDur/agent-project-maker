@@ -241,7 +241,7 @@ async def generate(
                         }
                         for item in (project.report_json or {})
                         .get("generation_failure", {})
-                        .get("calls", [])[-1:]
+                        .get("calls", [])[-2:]
                     ],
                 },
             )

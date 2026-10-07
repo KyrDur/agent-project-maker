@@ -267,6 +267,11 @@ async def test_rule_review_rejection_preserves_previous_plan_and_retry(
                     for key in payload["rubric_review_rules"]
                 ]
             }
+        if approved:
+            assert payload["previous_rejection"] == [
+                {"role": "planner", "output": "rejected original anchors", "error": None},
+                {"role": "judge", "output": "unsupported inquiry alternative", "error": None},
+            ]
         return {
             **structured_plan(),
             "rubric_version": 3,
@@ -280,6 +285,17 @@ async def test_rule_review_rejection_preserves_previous_plan_and_retry(
     assert project.eval_spec_json == previous
     assert project.report_json is not None
     assert project.report_json["generation_failure"]["code"] == "evaluation_rubric_unsupported"
+    project.report_json = {
+        **project.report_json,
+        "generation_failure": {
+            **project.report_json["generation_failure"],
+            "calls": [
+                {"role": "planner", "output": "rejected original anchors"},
+                {"role": "judge", "output": "unsupported inquiry alternative"},
+            ],
+        },
+    }
+    await db.commit()
     approved = True
     result = await semantic.generate(db, agent_id, phase3.TEST_USER_ID, version_id)
     assert result["rubric_version"] == 3

@@ -211,3 +211,27 @@ it('automatically resumes a Builder project and shows Chinese lifecycle progress
   expect(t('agentProject.openProject')).toBe('打开项目')
   expect(t('agent.settings.toolsSkills.empty')).toBe('尚未添加工具或技能。')
 })
+
+it('shows the preparation failure on the overview without silently starting paid retries', async () => {
+  const bootstrap = vi.fn()
+  server.use(
+    http.get(path, () =>
+      HttpResponse.json({
+        ...project,
+        builder_session_id: 'builder-id',
+        requirements_json: {
+          bootstrap: { stage: 'plan', error: 'evaluation_rubric_unsupported', run_id: null },
+        },
+      }),
+    ),
+    http.post(`${path}/bootstrap`, () => {
+      bootstrap()
+      return HttpResponse.json({ accepted: true })
+    }),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('模拟场景准备失败')
+  expect(bootstrap).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: '重试准备场景' }))
+  expect(bootstrap).toHaveBeenCalledOnce()
+})
