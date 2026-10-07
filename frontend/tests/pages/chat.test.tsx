@@ -216,7 +216,7 @@ describe('ChatPage', () => {
         }
       />,
     )
-    expect(screen.getByPlaceholderText('占位符')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeInTheDocument()
   })
 
   it('renders loading skeletons when messages loading', () => {
@@ -298,7 +298,7 @@ describe('ChatPage', () => {
         }
       />,
     )
-    expect(screen.getAllByText('空状态').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('试用示例（虚构输入，可编辑后发送）').length).toBeGreaterThanOrEqual(1)
   })
 
   it('calls streamChat when message is sent', async () => {
@@ -335,7 +335,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    const textarea = screen.getByPlaceholderText('占位符')
+    const textarea = screen.getByPlaceholderText('示例：请说明你能帮我完成什么，并给出一个输入示例')
     await user.type(textarea, 'Test message')
     const sendButton = screen.getByRole('button', { name: /发送/ })
     await user.click(sendButton)
@@ -372,7 +372,7 @@ describe('ChatPage', () => {
     )
 
     expect(mockUseMessages).toHaveBeenCalledWith('new', false)
-    expect(screen.getByPlaceholderText('占位符')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeInTheDocument()
     expect(container.querySelectorAll("[data-slot='skeleton']")).toHaveLength(0)
   })
 
@@ -405,7 +405,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    await user.type(screen.getByPlaceholderText('占位符'), 'Draft message')
+    await user.type(screen.getByPlaceholderText('示例：请说明你能帮我完成什么，并给出一个输入示例'), 'Draft message')
     await user.click(screen.getByRole('button', { name: /发送/ }))
 
     expect(mockStreamStartConversation).toHaveBeenCalledWith(
@@ -460,7 +460,7 @@ describe('ChatPage', () => {
       />,
     )
 
-    const textarea = screen.getByPlaceholderText('占位符')
+    const textarea = screen.getByPlaceholderText('示例：请说明你能帮我完成什么，并给出一个输入示例')
     await user.type(textarea, 'Search for something')
     const sendButton = screen.getByRole('button', { name: /发送/ })
     await user.click(sendButton)

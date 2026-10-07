@@ -6,7 +6,7 @@ interface ConversationRow {
   readonly id: string
 }
 
-const EMPTY_STATE_TEXT = '空状态'
+const EMPTY_STATE_TEXT = '试用示例（虚构输入，可编辑后发送）'
 const FIRST_TURN_RESPONSE_TEXT = 'E2E scripted document model is ready.'
 
 type EmptyStateObserverWindow = Window & {
@@ -772,7 +772,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expect(page).toHaveURL(new RegExp(`/agents/${setup.parentAgentId}/conversations/new$`))
       expect(draftConversationPosts).toHaveLength(1)
       expect(startRequests).toEqual([])
-      await expect(page.getByPlaceholder('占位符')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeVisible({ timeout: 20_000 })
 
       await page.goto(`/agents/${setup.parentAgentId}/settings`)
       await expectConversationDetailStatus(request, draftConversationIds[0] ?? '', 404)
@@ -844,7 +844,7 @@ test.describe('LangGraph v3 draft conversation lifecycle', () => {
       await expect(page).toHaveURL(new RegExp(`/agents/${setup.parentAgentId}/conversations/new$`))
       expect(draftConversationPosts).toHaveLength(2)
       expect(startRequests).toEqual([])
-      await expect(page.getByPlaceholder('占位符')).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeVisible({ timeout: 20_000 })
 
       expect(errors.console).toEqual([])
       expect(errors.network).toEqual([])

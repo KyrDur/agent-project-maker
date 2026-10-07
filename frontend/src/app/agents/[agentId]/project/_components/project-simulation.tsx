@@ -57,7 +57,11 @@ export function ProjectSimulation({
   })
   const scenarios =
     sets.data
-      ?.find((set) => set.frozen && set.rubric_json?.purpose !== 'validation')
+      ?.find(
+        (set) =>
+          (set.frozen || set.quality_report_json?.status === 'approved') &&
+          set.rubric_json?.purpose !== 'validation',
+      )
       ?.cases_json.filter((c) => c.enabled) ?? []
   const scenario =
     scenarios.find((c) => c.id === scenarioId) ??

@@ -125,3 +125,16 @@ it('distinguishes a recovered plan from its preserved previous preparation failu
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   expect(screen.getByText('查看上次失败记录（已保留）')).toBeInTheDocument()
 })
+
+it('opens a reviewed scene before the formal benchmark has begun', async () => {
+  server.use(
+    http.get(`${path}/eval-sets`, () =>
+      HttpResponse.json([
+        { ...dataset, frozen: false, quality_report_json: { status: 'approved' } },
+      ]),
+    ),
+  )
+  render(<ProjectSimulation agentId="agent-id" versions={versions} />)
+  expect(await screen.findByRole('button', { name: '填入当前场景示例' })).toBeEnabled()
+  expect(screen.queryByText(/模拟场景尚未准备好/)).not.toBeInTheDocument()
+})

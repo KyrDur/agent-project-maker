@@ -471,7 +471,7 @@ test.describe('Smoke Test - Conversational Creation', () => {
     // Header
     await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
-    await expect(page.getByPlaceholder('占位符')).toBeVisible()
+    await expect(page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeVisible()
     await expect(page.getByRole('button', { name: '发送按钮' })).toBeVisible()
 
     expect(errors.console).toEqual([])

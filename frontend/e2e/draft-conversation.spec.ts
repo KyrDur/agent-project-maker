@@ -165,7 +165,7 @@ test.describe('Draft conversation lifecycle', () => {
     await page.goBack()
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
     await expect(page.getByRole('link', { name: '备用标题' }).first()).toBeVisible()
-    await expect(page.getByPlaceholder('占位符')).toBeVisible()
+    await expect(page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeVisible()
 
     const afterIds = await listConversationIds(request, agentId)
     expect(afterIds).toEqual(beforeIds)
@@ -204,7 +204,7 @@ test.describe('Draft conversation lifecycle', () => {
     await page.waitForURL(`**/agents/${agentId}/conversations/new`, { timeout: 10_000 })
 
     const firstMessage = 'Draft E2E first message'
-    await page.getByPlaceholder('占位符').fill(firstMessage)
+    await page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例').fill(firstMessage)
     await page.getByRole('button', { name: /发送/ }).click()
     await page.waitForURL(new RegExp(`/agents/${agentId}/conversations/(?!new$)[0-9a-f-]+$`), {
       timeout: 90_000,

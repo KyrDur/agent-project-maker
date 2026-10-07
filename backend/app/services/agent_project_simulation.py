@@ -72,7 +72,10 @@ async def create(
         select(AgentProjectEvalSet)
         .where(
             AgentProjectEvalSet.project_id == project.id,
-            AgentProjectEvalSet.frozen.is_(True),
+            or_(
+                AgentProjectEvalSet.frozen.is_(True),
+                AgentProjectEvalSet.quality_report_json["status"].as_string() == "approved",
+            ),
             or_(
                 AgentProjectEvalSet.rubric_json["purpose"].as_string().is_(None),
                 AgentProjectEvalSet.rubric_json["purpose"].as_string() != "validation",
@@ -95,6 +98,10 @@ async def create(
     )
     if scenario is None:
         raise error("simulation_scenario_not_found", 404)
+    # A reviewed scenario can be tried before a paid scored experiment starts.
+    # Freeze it atomically with the independent simulation snapshot so later
+    # editing cannot change either this trial or the eventual benchmark.
+    dataset.frozen = True
     run = await db.scalar(
         select(AgentProjectEvalRun)
         .where(
@@ -105,6 +112,9 @@ async def create(
         .order_by(AgentProjectEvalRun.created_at.desc())
     )
     config = deepcopy(version.snapshot_json)
+    roles = (dataset.rubric_json or {}).get("role_configurations")
+    if roles:
+        config["role_configurations"] = deepcopy(roles)
     if run:
         config["resolved_examinee"] = (run.comparison_json or {}).get("resolved_examinee")
         config["role_configurations"] = (run.comparison_json or {}).get("role_configurations")

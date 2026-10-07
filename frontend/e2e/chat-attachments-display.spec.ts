@@ -103,7 +103,7 @@ test.describe('Chat attachments display', () => {
       waitUntil: 'domcontentloaded',
     })
 
-    const composer = page.getByPlaceholder('占位符')
+    const composer = page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')
     await expect(composer).toBeVisible({ timeout: 60_000 })
 
     // Attach an image via the paperclip → native file chooser.
