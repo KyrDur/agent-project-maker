@@ -38,8 +38,8 @@ from app.models.agent_project import AgentProject, AgentProjectEvalRun, AgentPro
 from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
-from app.schemas.agent_project import EvalRunCreate
-from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
+from app.models.user_llm_setting import UserLlmSetting
+from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation, ToolRecommendation
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
 from app.services import agent_project_portfolio as portfolio
@@ -48,7 +48,8 @@ from app.services import agent_project_service as projects
 from app.services import builder_project_lifecycle as lifecycle
 from app.services import builder_service
 from tests import test_agent_projects as project_fixtures
-from tests.test_agent_project_phase3 import generated_cases, plan
+from tests.test_agent_project_phase3 import generated_cases
+from tests.test_agent_project_scoring import case_for, structured_plan
 
 TEST_USER_ID = project_fixtures.TEST_USER_ID
 db = project_fixtures.db
@@ -85,16 +86,93 @@ class ScriptedExaminee(BaseChatModel):
 
 
 async def model_json(_db, _snapshot, _user, role, _instruction, payload):
+    if "builder_consistency_sources" in payload:
+        sources = payload["builder_consistency_sources"]
+        return {
+            "reviewed_sources": [k for k in sources if not k.startswith("requirements/")],
+            "requirement_reviews": [
+                {
+                    "field": k.removeprefix("requirements/"),
+                    "supported": True,
+                    "reason": "Controlled implementation review",
+                    "evidence": [
+                        {"reference": k, "quote": value},
+                        {"reference": "system_prompt", "quote": sources["system_prompt"]},
+                    ],
+                }
+                for k, value in sources.items()
+                if k.startswith("requirements/")
+            ],
+        }
     if role == "planner":
-        return plan()
+        value = structured_plan(tools=True)
+        value["rubric_version"] = 3
+        value["pass_threshold_reason"] = "完整满足核心判据，部分满足不通过。"
+        for metric in value["metrics"]:
+            metric["requirement_refs"] = [
+                {"field": "goal", "quote": payload["requirements"]["goal"]}
+            ]
+            for criterion in metric["scoring_criteria"]:
+                criterion["requirement_refs"] = metric["requirement_refs"]
+        return value
     if role == "case_generator":
         data = generated_cases()
+        for index, case in enumerate(data["cases"]):
+            case["input"] = f"Summarize supplied project {index + 1}."
+            case["metric_applicability"] = case_for(payload["eval_spec"])["metric_applicability"]
+            case["expected"]["forbidden_tools"] = []
+            case["reference_answer"] = "Login reviewed"
+            case["reference_trace"] = [{"name": "search", "arguments": {}}]
         capabilities = payload.get("capability_profile", {}).get("capabilities", [])
         if capabilities:
             for case in data["cases"]:
                 case["tags"] = [case["tags"][0], *capabilities]
         return data
     if role == "judge":
+        if "rubric_review_rules" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Controlled source review"}
+                    for key in payload["rubric_review_rules"]
+                ]
+            }
+        if "reference_results" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Controlled reference review"}
+                    for key in payload["reference_results"]
+                ]
+            }
+        if "metric_applicability" in payload:
+            supported = payload["actual_output"] == "Login reviewed"
+            return {
+                "criterion_results": {
+                    m["name"]: [
+                        {
+                            "criterion_id": cid,
+                            "level": 1 if payload["actual_output"] == "Login reviewed" else 0,
+                            "reason": "Mock source evidence",
+                            "evidence": [
+                                {"reference": "output", "quote": payload["actual_output"]}
+                            ],
+                        }
+                        for cid in payload["metric_applicability"][m["name"]]
+                    ]
+                    for m in payload["metrics"]
+                },
+                "fact_results": [
+                    {
+                        "claim": payload["actual_output"],
+                        "kind": "fact",
+                        "verdict": "supported" if supported else "unsupported",
+                        "evidence": [
+                            {"reference": "tool_trace/0/output", "quote": "Login reviewed"}
+                        ]
+                        if supported
+                        else [],
+                    }
+                ],
+            }
         passed = payload["actual_output"] == "Login reviewed"
         return {
             "metric_scores": {
@@ -177,6 +255,15 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
         default_credential_id=credential.id,
     )
     db.add(model)
+    for role in ("builder", "evaluation_generator", "judge_optimizer"):
+        db.add(
+            UserLlmSetting(
+                user_id=TEST_USER_ID,
+                role=role,
+                credential_id=credential.id,
+                model_name=model.model_name,
+            )
+        )
     await db.commit()
     factory = async_sessionmaker(db.bind, expire_on_commit=False)
     for module in (evaluation, optimization, lifecycle):
@@ -188,6 +275,15 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     monkeypatch.setattr(lifecycle, "schedule", lambda *args: queued.append(args))
     monkeypatch.setattr(model_factory, "create_chat_model", lambda *a, **k: ScriptedExaminee())
     monkeypatch.setattr(semantic, "json_call", model_json)
+    from app.agent_runtime.builder_v3 import consistency_context
+    from app.services import builder_consistency
+
+    monkeypatch.setattr(builder_consistency, "json_call", model_json)
+    monkeypatch.setattr(
+        consistency_context,
+        "consistency_adapter",
+        lambda: builder_consistency.BuilderReviewService(factory),
+    )
     monkeypatch.setattr(optimization, "json_call", model_json)
     intent = AgentCreationIntent(
         agent_name="周报整理助手",
@@ -195,12 +291,37 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
         primary_task_type="report",
         use_cases=["周报"],
         required_capabilities=[],
+        project_requirements={
+            "goal": "整理周报",
+            "inputs": "给定的资料",
+            "deliverables": "周报总结",
+            "business_rules": "只使用给定资料",
+            "success_conditions": "输出清晰且有依据",
+        },
     )
     monkeypatch.setattr(phase2_intent, "analyze_intent", AsyncMock(return_value=intent))
     monkeypatch.setattr(
         phase2_intent, "_suggest_name_options", AsyncMock(return_value=["周报整理助手", "周报助手"])
     )
-    monkeypatch.setattr(phase3_tools, "recommend_tools", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        phase3_tools,
+        "recommend_tools",
+        AsyncMock(
+            return_value=[
+                ToolRecommendation(
+                    tool_name="search",
+                    description="查询给定的模拟资料",
+                    reason="核验周报的来源资料",
+                    kind="planned",
+                    input_schema={
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False,
+                    },
+                )
+            ]
+        ),
+    )
     monkeypatch.setattr(
         phase4_middlewares,
         "recommend_middlewares",
@@ -222,7 +343,13 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     graph = build_graph().compile(checkpointer=InMemorySaver())
     config: RunnableConfig = {"configurable": {"thread_id": str(session.id), "ui_locale": "zh-CN"}}
     await graph.ainvoke(
-        {"session_id": str(session.id), "user_request": "整理周报", "messages": []}, config
+        {
+            "session_id": str(session.id),
+            "user_id": str(TEST_USER_ID),
+            "user_request": "整理周报",
+            "messages": [],
+        },
+        config,
     )
     for _ in range(12):
         state = await graph.aget_state(config)
@@ -230,14 +357,16 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
             break
         response = (
             {
+                "mode": "question_flow",
                 "answers": {
                     "agent_name": ["周报整理助手"],
                     "response_tone": ["concise"],
                     "output_style": ["summary"],
-                }
+                    "requirements_reason": ["基于给定资料验证周报"],
+                },
             }
             if state.next[0] == "phase2_intent_wait"
-            else {"approved": True}
+            else {"approved": True, "reason": "确认该能力方案符合周报需求"}
         )
         await graph.ainvoke(Command(resume=response), config)
     state = await graph.aget_state(config)
@@ -255,42 +384,21 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     )
     assert await db.scalar(select(func.count()).select_from(AgentProject)) == 1
 
-    # Builder bootstrap intentionally pauses at the human evaluation-focus checkpoint.
-    # Resume the same golden path by selecting two generated focus options, then
-    # generate, quality-check, freeze and execute the formal 20-case benchmark.
+    # Confirmed requirements and capabilities launch the fixed benchmark automatically.
     project = await projects.require_project(db, agent.id, TEST_USER_ID)
     await db.refresh(project)
     assert project.eval_spec_json is not None
-    assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 0
-    focus_ids = [item["id"] for item in project.eval_spec_json["focus_options"][:2]]
-    dataset = await semantic.generate(
-        db,
-        agent.id,
-        TEST_USER_ID,
-        versions[0].id,
-        cases=True,
-        evaluation_focus=focus_ids,
-        evaluation_focus_reason="P0 golden-path checkpoint selection",
-    )
-    dataset = await evaluation.judge_set(db, agent.id, TEST_USER_ID, dataset.id)
-    assert dataset.quality_report_json is not None
-    assert dataset.quality_report_json["status"] == "approved"
-    baseline = await evaluation.create_run(
-        db,
-        agent.id,
-        TEST_USER_ID,
-        EvalRunCreate(
-            version_id=versions[0].id,
-            eval_set_id=dataset.id,
-            request_id=uuid.uuid4(),
-        ),
-    )
-    await evaluation.execute_run(baseline.id, agent.id, TEST_USER_ID)
-
+    assert project.requirements_json is not None
+    assert project.requirements_json["bootstrap"]["stage"] == "results"
+    dataset = await db.scalar(select(AgentProjectEvalSet))
+    assert dataset is not None and dataset.frozen
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalSet)) == 1
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalRun)) == 1
     await db.refresh(dataset)
     assert dataset.frozen and len(dataset.cases_json) == 20
+    assert dataset.rubric_json is not None
+    assert dataset.rubric_json["rubric_version"] == 3
+    assert len(dataset.rubric_json["reference_validation"]["program"]) == 20
     baseline = (await evaluation.list_runs(db, agent.id, TEST_USER_ID))[0]
     assert baseline.status == "completed", baseline.error
     assert baseline.results_json is not None

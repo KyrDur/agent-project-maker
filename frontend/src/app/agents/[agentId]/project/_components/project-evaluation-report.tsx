@@ -7,6 +7,8 @@ import { ErrorState } from '@/components/shared/error-state'
 import { formatDisplayDateTime, formatDisplayNumber } from '@/lib/utils/display-format'
 import { useEvaluationReports } from '../_hooks/use-project-evaluation'
 import type { AgentProjectVersionSummary, EvaluationReport } from '../_lib/agent-project-types'
+import { ProjectMetrics } from './project-evaluation'
+import { ProjectMetricScores, useMetricName } from './project-scoring'
 import { ProjectSelect } from './project-select'
 
 export function ProjectEvaluationReport({
@@ -32,12 +34,25 @@ export function ProjectEvaluationReport({
     candidates[0]
   const bestId = selected?.comparison_key && query.data?.best_run_ids[selected.comparison_key]
   const best = reports.find((r) => r.evaluation_run_id === bestId)
+  const bestCohort =
+    best && (best.eval_spec?.rubric_version ?? 1) >= 3
+      ? reports.filter(
+          (r) =>
+            r.version_id === best.version_id &&
+            r.comparison_key === best.comparison_key &&
+            r.score !== null,
+        )
+      : []
+  const bestTotal = bestCohort.reduce((sum, run) => sum + run.total, 0)
+  const bestPassed = bestCohort.reduce((sum, run) => sum + run.passed, 0)
+  const bestScore = bestTotal ? bestPassed / bestTotal : best?.score
   const comparable =
     !!selected?.comparison_key &&
     selected.comparison_key === baseline?.comparison_key &&
     selected.score !== null &&
     baseline?.score != null
-  const number = (value: number) => formatDisplayNumber(value, { locale, maximumFractionDigits: 1 })
+  const number = (value: number) =>
+    formatDisplayNumber(value, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const percent = (value: number | null | undefined) =>
     value == null ? t('unavailable') : t('percent', { value: number(value * 100) })
   const delta = (a: number, b: number) =>
@@ -49,10 +64,9 @@ export function ProjectEvaluationReport({
   const options = (items: EvaluationReport[]) =>
     items.map((r) => ({
       value: r.evaluation_run_id,
-      label: `${version(r)} · ${formatDisplayDateTime(r.created_at, { locale })} · ${percent(r.score)} · ${r.evaluation_run_id.slice(0, 8)}`,
+      label: `${version(r)} · ${projectT(`runStatuses.${r.status}`)} · ${formatDisplayDateTime(r.created_at, { locale })} · ${percent(r.score)}`,
     }))
-  const metricName = (name: string) =>
-    projectT.has(`metricNames.${name}`) ? projectT(`metricNames.${name}`) : name
+  const metricName = useMetricName()
 
   return (
     <div id="evaluation-report">
@@ -75,7 +89,9 @@ export function ProjectEvaluationReport({
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <h3 className="font-medium">{t('score')}</h3>
-                <p className="text-3xl font-semibold">{percent(selected.score)}</p>
+                <p className="text-3xl font-semibold">
+                  {percent(selected.statistics?.pass_rate ?? selected.score)}
+                </p>
               </div>
               <div>
                 <h3 className="font-medium">{t('summary')}</h3>
@@ -84,10 +100,19 @@ export function ProjectEvaluationReport({
               </div>
               <div>
                 <h3 className="font-medium">{t('best')}</h3>
-                <p>{best ? `${version(best)} · ${percent(best.score)}` : t('unavailable')}</p>
+                <p>{best ? `${version(best)} · ${percent(bestScore)}` : t('unavailable')}</p>
                 {best && (
                   <>
                     <p>{projectT('lifecycle.bestReason')}</p>
+                    {!!bestTotal && (
+                      <p>
+                        {t('bestCohort', {
+                          passed: bestPassed,
+                          total: bestTotal,
+                          runs: bestCohort.length,
+                        })}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       {formatDisplayDateTime(best.created_at, { locale })}
                     </p>
@@ -95,26 +120,31 @@ export function ProjectEvaluationReport({
                 )}
               </div>
             </div>
+            {selected.statistics && (
+              <ProjectMetrics metrics={selected.statistics} showScores={false} />
+            )}
             <p className="text-sm text-muted-foreground">{t('scoreRule')}</p>
             <p className="text-sm text-muted-foreground">{t('bestRule')}</p>
             <p className="break-all text-sm">{t('dataset', { id: selected.eval_set_id })}</p>
             <section className="space-y-2">
               <h3 className="font-medium">{t('metrics')}</h3>
               {!Object.keys(selected.metrics).length && <p>{t('noMetrics')}</p>}
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(selected.metrics).map(([name, score]) => (
-                  <div key={name}>
-                    <dt>{metricName(name)}</dt>
-                    <dd>{percent(score)}</dd>
-                  </div>
-                ))}
-              </dl>
+              <ProjectMetricScores
+                summaries={
+                  selected.statistics?.metric_scores ??
+                  Object.fromEntries(
+                    Object.entries(selected.metrics).map(([name, score]) => [name, { score }]),
+                  )
+                }
+                spec={selected.eval_spec}
+                total={selected.total}
+              />
             </section>
             <section className="space-y-2">
               <h3 className="font-medium">{t('badCases', { count: selected.bad_case_count })}</h3>
               {!selected.bad_cases.length && <p>{t('noFailures')}</p>}
               {selected.bad_cases.map((item) => (
-                <details key={item.case_id}>
+                <details key={`${item.case_id}-${item.trial ?? 1}`}>
                   <summary>{item.name}</summary>
                   <ul className="list-disc pl-5">
                     {(item.reasons.length ? item.reasons : [t('noReason')]).map((reason, i) => (
@@ -129,7 +159,13 @@ export function ProjectEvaluationReport({
               {selected.proposals?.map((proposal) => (
                 <p key={proposal.id}>
                   {projectT(`lifecycle.statuses.${proposal.status}`)} ·{' '}
-                  {proposal.affected_capabilities.join(', ')}
+                  {proposal.affected_capabilities
+                    .map((name) =>
+                      projectT.has(`capabilityNames.${name}`)
+                        ? projectT(`capabilityNames.${name}`)
+                        : projectT('lifecycle.otherCapability'),
+                    )
+                    .join('、')}
                 </p>
               ))}
               {selected.optimization_suggestions.length ? (
@@ -182,10 +218,18 @@ export function ProjectEvaluationReport({
                           .filter(([name]) => baseline.metrics[name] != null)
                           .map(([name, score]) => (
                             <div key={name}>
-                              <dt>{metricName(name)}</dt>
+                              <dt>
+                                {metricName(
+                                  name,
+                                  selected.eval_spec?.metrics.find((m) => m.name === name),
+                                )}
+                              </dt>
                               <dd>
-                                {percent(baseline.metrics[name])} → {percent(score)} ·{' '}
-                                {delta(baseline.metrics[name], score)}
+                                {projectT('scoring.metricComparison', {
+                                  before: number(baseline.metrics[name] * 100),
+                                  after: number(score * 100),
+                                  delta: `${score >= baseline.metrics[name] ? '+' : ''}${number((score - baseline.metrics[name]) * 100)}`,
+                                })}
                               </dd>
                             </div>
                           ))}

@@ -287,7 +287,7 @@ async def test_update_model_config_invalid(db: AsyncSession, patch_write_session
 
     # top_p out of range
     result = await tool.ainvoke({"top_p": 1.5})
-    assert "0.0~1.0" in result
+    assert "0.0 到 1.0" in result
 
     # max_tokens negative
     result = await tool.ainvoke({"max_tokens": -1})
@@ -521,7 +521,7 @@ async def test_add_skill_to_agent_unknown(db: AsyncSession, patch_write_session)
     tool = _find_tool(tools, "add_skill_to_agent")
 
     result = await tool.ainvoke({"skill_names": ["DoesNotExist"]})
-    assert "找不到" in result
+    assert "未找到" in result
 
 
 @pytest.mark.asyncio
@@ -658,7 +658,7 @@ async def test_create_cron_schedule_recurring(db: AsyncSession, patch_write_sess
     assert trigger.name == "每小时新闻"
     assert trigger.trigger_type == "cron"
     assert trigger.schedule_config == {"cron_expression": "0 * * * *"}
-    assert trigger.timezone == "Asia/Seoul"
+    assert trigger.timezone == "Asia/Shanghai"
     assert trigger.conversation_policy == "schedule_thread"
 
 
@@ -674,7 +674,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
             "name": "10分钟监控",
             "message": "立即查看",
             "interval_minutes": 10,
-            "timezone": "Asia/Seoul",
+            "timezone": "Asia/Shanghai",
             "conversation_policy": "schedule_thread",
             "max_runs": 3,
             "auto_pause_after_failures": 2,
@@ -687,7 +687,7 @@ async def test_create_cron_schedule_interval(db: AsyncSession, patch_write_sessi
     assert trigger.name == "10分钟监控"
     assert trigger.trigger_type == "interval"
     assert trigger.schedule_config == {"interval_minutes": 10}
-    assert trigger.timezone == "Asia/Seoul"
+    assert trigger.timezone == "Asia/Shanghai"
     assert trigger.conversation_policy == "schedule_thread"
     assert trigger.max_runs == 3
     assert trigger.auto_pause_after_failures == 2
@@ -802,7 +802,7 @@ async def test_update_cron_schedule(db: AsyncSession, patch_write_session):
             "message": "每30分钟搜索",
         }
     )
-    assert "系统提示修复完成" in result
+    assert "时间表修改完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(schedule_id))
     assert trigger is not None
@@ -841,7 +841,7 @@ async def test_update_cron_schedule_validates_uuid_and_datetime_strings(
             "end_at": "2035-01-01T00:00:00+09:00",
         }
     )
-    assert "系统提示修复完成" in result
+    assert "时间表修改完成" in result
 
     trigger = await db.get(AgentTrigger, uuid.UUID(schedule_id))
     assert trigger is not None
@@ -898,7 +898,7 @@ async def test_update_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "update_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "找不到" in result
+    assert "未找到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -943,7 +943,7 @@ async def test_delete_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "delete_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "找不到" in result
+    assert "未找到" in result
 
 
 # ---------------------------------------------------------------------------
@@ -988,7 +988,7 @@ async def test_enable_cron_schedule_not_found(db: AsyncSession, patch_write_sess
     tool = _find_tool(tools, "enable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "找不到" in result
+    assert "未找到" in result
 
 
 @pytest.mark.asyncio
@@ -1061,4 +1061,4 @@ async def test_disable_cron_schedule_not_found(db: AsyncSession, patch_write_ses
     tool = _find_tool(tools, "disable_cron_schedule")
 
     result = await tool.ainvoke({"schedule_id": str(uuid.uuid4())})
-    assert "找不到" in result
+    assert "未找到" in result

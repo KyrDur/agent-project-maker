@@ -65,8 +65,12 @@ export function useProjectEvaluation(agentId: string) {
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
   })
   const start = useMutation({
-    mutationFn: (data: { request_id: string; version_id: string; eval_set_id: string }) =>
-      agentProjectApi.createRun(agentId, data),
+    mutationFn: (data: {
+      request_id: string
+      version_id: string
+      eval_set_id: string
+      repetitions?: 1 | 3
+    }) => agentProjectApi.createRun(agentId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.project(agentId) }),
   })
   return { sets, runs, save, start, quality }
@@ -89,7 +93,12 @@ export function useProjectProposals(agentId: string, runId: string) {
       agentProjectApi.proposalRegression(agentId, runId, data.id, data.requestId),
     onSuccess: refresh,
   })
-  return { generate, decide, regression }
+  return {
+    generate,
+    decide,
+    regression,
+    errorCode: mutationErrorCode(generate.error ?? decide.error ?? regression.error),
+  }
 }
 
 export function useProjectComparison(agentId: string, left: string, right: string) {
@@ -114,12 +123,19 @@ export function useProjectGeneration(agentId: string) {
   const cases = useMutation({
     mutationFn: (data: {
       versionId: string
+      purpose?: 'regression' | 'validation'
       evaluation_focus?: string[]
       evaluation_focus_reason?: string | null
     }) => agentProjectApi.generateCases(agentId, data.versionId, data),
     onSuccess: () => cache.invalidateQueries({ queryKey: agentProjectKeys.sets(agentId) }),
   })
-  return { project, plan, cases }
+  const error = plan.error ?? cases.error
+  return {
+    project,
+    plan,
+    cases,
+    errorCode: error && 'code' in error && typeof error.code === 'string' ? error.code : '',
+  }
 }
 
 export function useProjectOptimization(agentId: string, runId: string) {
@@ -129,5 +145,11 @@ export function useProjectOptimization(agentId: string, runId: string) {
     mutationFn: () => agentProjectApi.analyze(agentId, runId),
     onSuccess: refresh,
   })
-  return { analyze }
+  return { analyze, errorCode: mutationErrorCode(analyze.error) }
+}
+
+function mutationErrorCode(error: unknown): string {
+  return error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+    ? error.code
+    : ''
 }

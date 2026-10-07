@@ -18,6 +18,7 @@ from app.marketplace.redaction import is_sensitive_key, replace_secret_values
 from app.models.agent_project import AgentProject, AgentProjectEvalRun, AgentProjectVersion
 from app.schemas.agent_project import SCENARIOS
 from app.services import agent_project_service as projects
+from app.services.agent_project_case_cards import decision_author
 
 UNAVAILABLE = "Unavailable"
 PRIVATE_KEYS = {
@@ -151,8 +152,9 @@ def run_summary(run: AgentProjectEvalRun) -> dict[str, Any]:
         run.completed_at is not None
         and run.status in {"completed", "failed"}
         and bool(run.cases_snapshot_json)
-        and len(run.results_json or []) == len(run.cases_snapshot_json or [])
-        and metrics.get("total") == len(run.cases_snapshot_json or [])
+        and len(run.results_json or [])
+        == len(run.cases_snapshot_json or []) * (run.comparison_json or {}).get("repetitions", 1)
+        and metrics.get("total") == len(run.results_json or [])
     )
     return {
         "status": run.status,
@@ -161,9 +163,35 @@ def run_summary(run: AgentProjectEvalRun) -> dict[str, Any]:
         "passed": metrics.get("passed") if complete else None,
         "failed": metrics.get("failed") if complete else None,
         "errored": metrics.get("errored") if complete else None,
+        "execution_errors": metrics.get("execution_errors") if complete else None,
+        "judge_errors": metrics.get("judge_errors") if complete else None,
+        "statistics": sanitize(
+            {
+                key: metrics.get(key)
+                for key in (
+                    "environment_errors",
+                    "valid_scored_pass_rate",
+                    "valid_scored_cases",
+                    "case_count",
+                    "repetitions",
+                    "stability",
+                    "trial_pass_rates",
+                    "trial_range",
+                    "fact_support",
+                    "operation_success",
+                    "recovery_success",
+                    "critical_violations",
+                    "model_accounting",
+                )
+            }
+        )
+        if complete
+        else {},
         "pass_rate": run.pass_rate if complete else None,
         "scoring": metrics.get("scoring"),
         "metrics": sanitize(metrics.get("metric_scores", {})) if complete else {},
+        "purpose": (run.comparison_json or {}).get("purpose", "regression"),
+        "validation_exposure": (run.comparison_json or {}).get("validation_exposure"),
     }
 
 
@@ -211,8 +239,32 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     state = (project.report_json or {}).get("optimization") or {}
     by_run = {str(r.id): r for r in runs}
     by_version = {str(v.id): v for v in versions}
-    from app.services.agent_project_report import report_for_run
+    aliases = {str(r.id): f"experiment-{i}" for i, r in enumerate(runs, 1)}
+    aliases.update({str(v.id): f"V{v.version_number}" for v in versions})
+    for run in runs:
+        for j, case in enumerate(run.cases_snapshot_json or [], 1):
+            aliases.setdefault(case["id"], f"case-{j}（{case['name']}）")
 
+    def alias(value: Any) -> Any:
+        if isinstance(value, str):
+            for identity, label in aliases.items():
+                value = value.replace(identity, label)
+            return value
+        if isinstance(value, dict):
+            return {k: alias(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [alias(v) for v in value]
+        return value
+
+    from app.services.agent_project_report import report_for_run, select_best_reports
+
+    scope_labels: dict[str, str] = {}
+    run_scopes = {}
+    for run in runs:
+        key = report_for_run(run).comparison_key
+        if key:
+            scope_labels.setdefault(key, f"scope-{len(scope_labels) + 1}")
+        run_scopes[str(run.id)] = scope_labels.get(key) if key else None
     scored = [(run, report_for_run(run)) for run in runs if run.status == "completed"]
     valid = [
         (run, report)
@@ -221,7 +273,23 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     ]
     scope = valid[-1][1].comparison_key if valid else None
     cohort = [(run, report) for run, report in valid if report.comparison_key == scope]
-    winner = max(cohort, key=lambda pair: pair[1].score or 0) if cohort else None
+    best_reports = select_best_reports(
+        [
+            report.model_copy(
+                update={"version_number": by_version[str(run.version_id)].version_number}
+            )
+            for run, report in cohort
+        ]
+    )
+    winning_report = best_reports.get(scope) if scope else None
+    winner = next(
+        (
+            pair
+            for pair in cohort
+            if winning_report and pair[1].evaluation_run_id == winning_report.evaluation_run_id
+        ),
+        None,
+    )
     best = winner[0] if winner else None
     source_id = winner[1].source_run_id if winner else None
     baseline = by_run.get(source_id) if source_id else (cohort[0][0] if cohort else None)
@@ -232,10 +300,13 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     spec = frozen.get("eval_spec")
     cases = baseline.cases_snapshot_json or [] if baseline else []
     rounds = {entry["version_id"]: entry for entry in state.get("rounds", [])}
+    cohort_ids = {str(r.id) for r, _ in cohort}
     journey = []
     for version in versions:
         entry = rounds.get(str(version.id), {})
         run = by_run.get(entry.get("run_id"))
+        if run and str(run.id) not in cohort_ids:
+            run = None
         if not run:
             run = next((r for r, _ in reversed(cohort) if r.version_id == version.id), None)
         if best and version.id == best.version_id:
@@ -248,7 +319,11 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
                 "version": version.version_number,
                 "decision": entry.get("decision", version.status),
                 "best": bool(selected and version.id == selected.id),
-                "evaluation": run_summary(run) if run else None,
+                "evaluation": cohort_summary([r for r, _ in cohort if r.version_id == version.id])
+                if spec and spec.get("rubric_version", 1) >= 3
+                else run_summary(run)
+                if run
+                else None,
                 "comparison": comparison_summary(entry.get("comparison", {})),
                 "fixes": [
                     {"target": p.get("target"), "operation": p.get("operation")}
@@ -273,32 +348,22 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
     ][:3]
     groups = (frozen.get("analysis") or {}).get("groups", [])
     limitations = [
-        "Evaluation uses frozen mock external tools; live provider behavior may differ.",
-        "No production traffic or deployment validation is stored.",
-        "Project Best Version may differ from the live Agent; "
-        "live configuration equivalence is unverified.",
-        "Raw cases, private source data, tool outputs and hidden reasoning "
-        "are omitted from portfolio artifacts.",
-        "Export is a portfolio snapshot, not a runnable deployment package.",
+        "评测使用冻结的模拟工具；未验证真实服务的行为。",
+        "未保存生产流量、客户效果或部署验收。",
+        "项目中的最佳版本可能与在线智能体不同，尚未验证配置一致性。",
+        "案例保留脱敏的输入与工具事实；个人信息、凭据和内部思考不进入材料。",
+        "导出是项目作品集快照，尚未验证可直接运行或部署。",
     ]
     if not selected:
-        limitations.append(
-            "Best Version selection is unavailable; latest version is not assumed best."
-        )
+        limitations.append("尚无可比较的有效成绩，最佳版本未确定。")
     if not baseline or not spec:
-        limitations.append("Frozen evaluation design or completed results are unavailable.")
+        limitations.append("冻结的评测设计或完整实验结果缺失。")
     if any(not s.get("historical_content_available") for s in config.get("skills", [])):
-        limitations.append(
-            "Historical Skill content is unavailable; current live Skills are not substituted."
-        )
+        limitations.append("历史文本指南正文缺失，不使用当前在线指南替代。")
     if state.get("state") in {"pending", "running", "failed"}:
-        limitations.append(
-            "Optimization is incomplete; background tasks do not recover after process restart."
-        )
+        limitations.append("优化尚未完成；进程重启后后台任务需要显式重试。")
     if any((run.metrics_json or {}).get("errored", 0) for run in runs):
-        limitations.append(
-            "Execution or judge errors occurred; they are not evidence of model quality."
-        )
+        limitations.append("存在执行或裁判错误，这些错误不能用来证明模型质量。")
     if any(
         r.get("error") == "runtime_platform_unavailable"
         or "runtime_import" in str(r.get("error", ""))
@@ -306,7 +371,7 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
         for run in runs
         for r in run.results_json or []
     ):
-        limitations.append("Stored runtime import failures may require a supported Linux runtime.")
+        limitations.append("历史运行环境加载失败，需要使用兼容的运行环境复验。")
     candidate = next(
         (
             r
@@ -322,7 +387,13 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
             or baseline
         )
     baseline_summary = run_summary(baseline) if baseline else None
-    best_summary = run_summary(best) if best else None
+    best_summary = (
+        cohort_summary([r for r, _ in cohort if best and r.version_id == best.version_id])
+        if spec and spec.get("rubric_version", 1) >= 3
+        else run_summary(best)
+        if best
+        else None
+    )
     candidate_summary = run_summary(candidate) if candidate else None
     from app.services.agent_project_optimization_rules import compare_runs
 
@@ -410,107 +481,170 @@ async def evidence(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) ->
             ):
                 deltas[name] = other["score"] - metric["score"]
     payload = sanitize(
-        {
-            "project": {
-                "name": project.title,
-                "goal": (project.requirements_json or {}).get("task", {}).get("goal")
-                or config.get("description")
-                or UNAVAILABLE,
-                "intended_use": config.get("description") or UNAVAILABLE,
-            },
-            "architecture": config,
-            "build_process": {
-                "project_v1": bool(versions),
-                "builder_linked": bool(project.builder_session_id),
-                "requirement": (project.requirements_json or {}).get("goal", UNAVAILABLE),
-                "eval_plan": bool(spec),
-                "eval_set": bool(cases),
-                "evaluation": bool(baseline),
-                "optimization": bool(rounds),
-            },
-            "eval_spec": spec,
-            "evaluation_design": {
-                "case_count": len(cases) if cases else None,
-                "scenarios": dict(
-                    Counter(tag for c in cases for tag in c.get("tags", []) if tag in SCENARIOS)
-                ),
-                "execution_mode": frozen.get("execution_mode", UNAVAILABLE),
-            },
-            "versions": journey,
-            "bad_cases": {
-                "failed_count": (baseline_summary or {}).get("failed"),
-                "errored_count": (baseline_summary or {}).get("errored"),
-                "analyzed_count": len(bad),
-                "categories": dict(Counter(b.get("category", "unavailable") for b in bad)),
-                "groups": [
-                    {
-                        "category": g.get("category"),
-                        "target": g.get("target"),
-                        "case_count": len(g.get("case_ids", [])),
-                        "root_cause": g.get("root_cause"),
-                    }
-                    for g in groups
-                ],
-                "examples": examples,
-                "basis": "Root causes are analysis of observable evidence, not hidden reasoning.",
-            },
-            "results": {
-                "best_version": selected.version_number if selected else None,
-                "latest_version": versions[-1].version_number if versions else None,
-                "current": run_summary(runs[-1]) if runs else None,
-                "current_version": by_version[str(runs[-1].version_id)].version_number
-                if runs
-                else None,
-                "baseline": baseline_summary,
-                "baseline_version": by_version[str(baseline.version_id)].version_number
-                if baseline
-                else None,
-                "comparisons": comparisons,
-                "best": best_summary,
-                "candidate": candidate_summary,
-                "candidate_version": by_version[str(candidate.version_id)].version_number
-                if candidate
-                else None,
-                "metric_deltas": deltas,
-            },
-            "authored_analysis": (project.report_json or {}).get("authored_analysis"),
-            "system_analysis": (project.report_json or {}).get("system_analysis"),
-            "requirements": (baseline.comparison_json or {}).get("requirements", {})
-            if baseline
-            else {},
-            "decisions": [
-                {"stage": d.get("stage"), "choice": d.get("choice"), "reason": d.get("reason")}
-                for d in project.decisions_json or []
-            ],
-            "experiment_references": [
-                {
-                    "reference": f"experiment-{i + 1}",
-                    "version": by_version[str(r.version_id)].version_number,
-                    "status": r.status,
-                    "summary": run_summary(r),
-                    "cases": [
+        alias(
+            {
+                "project": {
+                    "name": project.title,
+                    "goal": (project.requirements_json or {}).get("task", {}).get("goal")
+                    or config.get("description")
+                    or UNAVAILABLE,
+                    "intended_use": config.get("description") or UNAVAILABLE,
+                },
+                "architecture": config,
+                "build_process": {
+                    "project_v1": bool(versions),
+                    "builder_linked": bool(project.builder_session_id),
+                    "requirement": (project.requirements_json or {}).get("goal", UNAVAILABLE),
+                    "eval_plan": bool(spec),
+                    "eval_set": bool(cases),
+                    "evaluation": bool(baseline),
+                    "optimization": bool(rounds),
+                },
+                "eval_spec": spec,
+                "evaluation_design": {
+                    "case_count": len(cases) if cases else None,
+                    "scenarios": dict(
+                        Counter(tag for c in cases for tag in c.get("tags", []) if tag in SCENARIOS)
+                    ),
+                    "execution_mode": frozen.get("execution_mode", UNAVAILABLE),
+                },
+                "versions": journey,
+                "bad_cases": {
+                    "failed_count": (baseline_summary or {}).get("failed"),
+                    "errored_count": (baseline_summary or {}).get("errored"),
+                    "analyzed_count": len(bad),
+                    "categories": dict(Counter(b.get("category", "unavailable") for b in bad)),
+                    "groups": [
                         {
-                            "reference": f"experiment-{i + 1}/case-{j + 1}",
-                            "status": x.get("status"),
-                            "metrics": x.get("metric_scores", {}),
-                            "assertions": x.get("assertions", []),
-                            "error": x.get("error"),
-                            "termination_reason": x.get("termination_reason"),
-                            "model_names": [
-                                c.get("model", {}).get("model_name")
-                                for c in x.get("model_calls", [])
-                            ],
-                            "evidence_available": bool(x.get("model_calls")),
+                            "category": g.get("category"),
+                            "target": g.get("target"),
+                            "case_count": len(g.get("case_ids", [])),
+                            "root_cause": g.get("root_cause"),
                         }
-                        for j, x in enumerate(r.results_json or [])
+                        for g in groups
                     ],
-                }
-                for i, r in enumerate(runs)
-            ],
-            "limitations": limitations,
-        }
+                    "examples": examples,
+                    "basis": (
+                        "Root causes are analysis of observable evidence, not hidden reasoning."
+                    ),
+                },
+                "results": {
+                    "best_version": selected.version_number if selected else None,
+                    "best_run_id": str(best.id) if best else None,
+                    "latest_version": versions[-1].version_number if versions else None,
+                    "current": run_summary(runs[-1]) if runs else None,
+                    "current_version": by_version[str(runs[-1].version_id)].version_number
+                    if runs
+                    else None,
+                    "baseline": baseline_summary,
+                    "baseline_version": by_version[str(baseline.version_id)].version_number
+                    if baseline
+                    else None,
+                    "comparisons": comparisons,
+                    "best": best_summary,
+                    "candidate": candidate_summary,
+                    "candidate_version": by_version[str(candidate.version_id)].version_number
+                    if candidate
+                    else None,
+                    "metric_deltas": deltas,
+                },
+                "authored_analysis": (project.report_json or {}).get("authored_analysis"),
+                "system_analysis": (project.report_json or {}).get("system_analysis"),
+                "requirements": (baseline.comparison_json or {}).get("requirements", {})
+                if baseline
+                else {},
+                "decisions": [
+                    {
+                        "stage": d.get("stage"),
+                        "choice": d.get("choice"),
+                        "reason": d.get("reason"),
+                        "author": decision_author(d),
+                        "version": aliases.get(str(d.get("version_id"))),
+                        "source_run_id": aliases.get(str(d.get("run_id"))),
+                        "type": "confirmation",
+                    }
+                    for d in project.decisions_json or []
+                ],
+                "experiment_references": [
+                    {
+                        "reference": f"experiment-{i + 1}",
+                        "scope": run_scopes[str(r.id)],
+                        "version": by_version[str(r.version_id)].version_number,
+                        "status": r.status,
+                        "summary": run_summary(r),
+                        "eval_spec": (r.comparison_json or {}).get("eval_spec"),
+                        "cases": [
+                            {
+                                "reference": f"experiment-{i + 1}/case-{j + 1}",
+                                "status": x.get("status"),
+                                "metrics": x.get("metric_scores", {}),
+                                "assertions": x.get("assertions", []),
+                                "error": x.get("error"),
+                                "termination_reason": x.get("termination_reason"),
+                                "model_names": [
+                                    c.get("model", {}).get("model_name")
+                                    for c in x.get("model_calls", [])
+                                ],
+                                "evidence_available": bool(x.get("model_calls")),
+                            }
+                            for j, x in enumerate(r.results_json or [])
+                        ],
+                    }
+                    for i, r in enumerate(runs)
+                ],
+                "limitations": limitations,
+            }
+        )
     )
-    return remove_sources(payload, source_strings(runs))
+    from app.services.agent_project_case_cards import case_cards
+
+    payload = remove_sources(payload, source_strings(runs))
+    # Owner-visible case excerpts use value redaction. Public sharing projects them separately.
+    cards = case_cards(
+        runs,
+        by_version,
+        (project.report_json or {}).get("selected_case_ids", []),
+        (project.report_json or {}).get("historical_reviews", []),
+        project.decisions_json or [],
+    )
+    payload["case_cards"] = sanitize(alias(cards))
+    payload["material_readiness"] = "ready" if len(cards) >= 2 else "missing_actual_cases"
+    payload["reference_map"] = list(aliases.values())
+    return payload
+
+
+def cohort_summary(runs: list[AgentProjectEvalRun]) -> dict[str, Any] | None:
+    """Aggregate all complete runs for a version, retaining errors in the denominator."""
+    summaries = [run_summary(r) for r in runs if run_summary(r)["complete"]]
+    if not summaries:
+        return None
+    total = sum(s["total"] for s in summaries)
+    passed = sum(s["passed"] for s in summaries)
+    result = {
+        **summaries[-1],
+        "total": total,
+        "passed": passed,
+        "pass_rate": passed / total,
+        "run_count": len(summaries),
+        "selection": "all_valid_runs_in_scope",
+        "metrics": {},
+    }
+    for field in ("failed", "errored", "execution_errors", "judge_errors"):
+        result[field] = (
+            sum(s[field] for s in summaries)
+            if all(s[field] is not None for s in summaries)
+            else None
+        )
+    for name in {n for s in summaries for n in s["metrics"]}:
+        values = [s["metrics"][name] for s in summaries if name in s["metrics"]]
+        coverage = sum(v.get("evaluated_cases", 0) for v in values)
+        if coverage:
+            result["metrics"][name] = {
+                "score": sum(v["score"] * v.get("evaluated_cases", 0) for v in values) / coverage,
+                "evaluated_cases": coverage,
+                "passed_cases": sum(v.get("passed_cases", 0) for v in values),
+            }
+    return result
 
 
 def display(value: Any) -> str:
@@ -657,12 +791,42 @@ async def save_content(db: AsyncSession, project: AgentProject, key: str, value:
     await db.commit()
 
 
+async def select_cases(
+    db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, ids: list[uuid.UUID]
+) -> dict[str, Any]:
+    project = await projects.require_project(db, agent_id, user_id)
+    runs = (
+        await db.scalars(
+            select(AgentProjectEvalRun).where(AgentProjectEvalRun.project_id == project.id)
+        )
+    ).all()
+    recorded = {r["case_id"] for run in runs for r in run.results_json or []}
+    selected = [str(identity) for identity in ids]
+    if len(set(selected)) != len(selected) or not set(selected) <= recorded:
+        raise AppError(
+            code="project_case_evidence_not_found",
+            message="project_case_evidence_not_found",
+            status=422,
+        )
+    await save_content(db, project, "selected_case_ids", selected)
+    return await report(db, agent_id, user_id)
+
+
 async def report(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, *, save: bool = False
 ) -> dict[str, Any]:
     from app.services.agent_project_materials import render_chinese_report
 
     result = render_chinese_report(await evidence(db, agent_id, user_id))
+    project = await projects.require_project(db, agent_id, user_id)
+    result["artifact_status"] = {
+        key: "missing"
+        if not (project.report_json or {}).get(key)
+        else "current"
+        if (project.report_json or {})[key].get("evidence_hash") == result["evidence_hash"]
+        else "stale"
+        for key in ("portfolio_report", "portfolio_resume", "portfolio_interview")
+    }
     if save:
         await save_content(
             db, await projects.require_project(db, agent_id, user_id), "portfolio_report", result
@@ -701,6 +865,8 @@ async def share(
         token = secrets.token_urlsafe(32)
         path = f"/shared/projects/{project.id}/{token}"
         shared = await evidence(db, agent_id, user_id)
+        shared.pop("case_cards", None)
+        shared.pop("reference_map", None)
         # Public projection deliberately omits authored rubric prose and analysis prose.
         for metric in (shared.get("eval_spec") or {}).get("metrics", []):
             metric.pop("criteria", None)

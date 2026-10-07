@@ -5,68 +5,118 @@ import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
 import { ErrorState } from '@/components/shared/error-state'
-import { formatDisplayDateTime } from '@/lib/utils/display-format'
+import { formatDisplayDateTime, formatDisplayNumber } from '@/lib/utils/display-format'
 import { useProjectEvaluation } from '../_hooks/use-project-evaluation'
 import type {
   AgentProjectVersionSummary,
   EvaluationCase,
   EvaluationMetrics,
+  EvaluationSpec,
 } from '../_lib/agent-project-types'
+import { ProjectMetricScores, ProjectCaseScores } from './project-scoring'
 import { ProjectSelect } from './project-select'
 import { ProjectEvalPlan } from './project-eval-plan'
 import { ProjectOptimization } from './project-optimization'
 import { ProjectCaseEditor } from './project-case-editor'
+import { ProjectExecutionLog } from './project-execution-log'
 
-export function ProjectMetrics({ metrics }: { metrics: EvaluationMetrics | null }) {
+export function ProjectMetrics({
+  metrics,
+  spec,
+  showScores = true,
+}: {
+  metrics: EvaluationMetrics | null
+  spec?: EvaluationSpec | null
+  showScores?: boolean
+}) {
   const t = useTranslations('agentProject')
-  return metrics ? (
-    <div>
-      <p>
-        {t('metrics', {
-          total: metrics.total,
-          passed: metrics.passed ?? 0,
-          failed: metrics.failed ?? 0,
-          errored: metrics.errored ?? 0,
-        })}
-      </p>
+  const locale = useLocale()
+  const number = (value: number) =>
+    formatDisplayNumber(value, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  if (!metrics) return <p>{t('notRun')}</p>
+  if (metrics.passed == null)
+    return <p role="status">{t('scoring.pending', { total: metrics.total })}</p>
+  return (
+    <div className="space-y-3">
+      {metrics.complete === false && <p role="status">{t('scoring.partial')}</p>}
+      <dl className="grid gap-3 sm:grid-cols-4">
+        {(
+          ['passed', 'failed', 'execution_errors', 'environment_errors', 'judge_errors'] as const
+        ).map((key) => (
+          <div key={key}>
+            <dt>{t(`scoring.counts.${key}`)}</dt>
+            <dd>
+              {metrics[key] == null
+                ? t('scoring.unavailable')
+                : t('scoring.caseCount', { count: metrics[key], total: metrics.total })}
+            </dd>
+          </div>
+        ))}
+      </dl>
       {metrics.pass_rate != null && (
-        <p>{t('passRate', { value: Math.round(metrics.pass_rate * 100) })}</p>
-      )}
-      {metrics.execution_errors != null && (
         <p>
-          {t('practice.errorCounts', {
-            execution: metrics.execution_errors,
-            judge: metrics.judge_errors ?? 0,
+          {t('scoring.allPassRate', {
+            passed: metrics.passed,
+            total: metrics.total,
+            value: number(metrics.pass_rate * 100),
           })}
         </p>
       )}
-      {metrics.executed_pass_rate != null && (
+      {(metrics.valid_scored_pass_rate ?? metrics.scored_pass_rate) != null && (
         <p>
-          {t('practice.executedRate', {
-            passed: metrics.passed ?? 0,
-            total: metrics.executed_cases ?? 0,
-            value: Math.round(metrics.executed_pass_rate * 100),
+          {t('qualityRevision.scoredPassRate', {
+            passed: metrics.passed,
+            total: metrics.valid_scored_cases ?? metrics.total - (metrics.errored ?? 0),
+            errors: metrics.errored ?? 0,
+            value: number((metrics.valid_scored_pass_rate ?? metrics.scored_pass_rate ?? 0) * 100),
           })}
         </p>
       )}
-      {!!Object.keys(metrics.metric_scores ?? {}).length && (
+      {metrics.repetitions && (
+        <p>{t('qualityRevision.stability', { count: metrics.repetitions })}</p>
+      )}
+      {metrics.trial_pass_rates && (
+        <p>
+          {t('qualityRevision.trialRates', {
+            rates: metrics.trial_pass_rates
+              .map((v) => (v == null ? t('qualityRevision.trialIncomplete') : number(v * 100)))
+              .join(' / '),
+          })}
+        </p>
+      )}
+      {metrics.fact_support && <p>{t('scoring.factCounts', metrics.fact_support)}</p>}
+      {metrics.operation_success && metrics.operation_success.total > 0 && (
+        <p>{t('qualityRevision.operationRate', metrics.operation_success)}</p>
+      )}
+      {metrics.recovery_success && metrics.recovery_success.total > 0 && (
+        <p>{t('qualityRevision.recoveryRate', metrics.recovery_success)}</p>
+      )}
+      {metrics.critical_violations && metrics.critical_violations.total > 0 && (
+        <p>{t('qualityRevision.criticalRate', metrics.critical_violations)}</p>
+      )}
+      {metrics.model_accounting && (
+        <p>
+          {t('qualityRevision.modelAccounting', {
+            calls: metrics.model_accounting.model_invocations,
+            coverage: metrics.model_accounting.usage_covered_invocations,
+            count:
+              metrics.model_accounting.total_count == null
+                ? t('scoring.unavailable')
+                : formatDisplayNumber(metrics.model_accounting.total_count, { locale }),
+          })}
+        </p>
+      )}
+      {showScores && (
         <>
           <h4 className="font-medium">{t('metricScores')}</h4>
-          <ul>
-            {Object.entries(metrics.metric_scores ?? {}).map(([name, value]) => (
-              <li key={name}>
-                {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}:{' '}
-                {t('scorePercent', { value: Math.round(value.score * 100) })}
-                {' · '}
-                {t('scoredCases', { count: value.evaluated_cases })}
-              </li>
-            ))}
-          </ul>
+          <ProjectMetricScores
+            summaries={metrics.metric_scores}
+            spec={spec}
+            total={metrics.total}
+          />
         </>
       )}
     </div>
-  ) : (
-    <p>{t('notRun')}</p>
   )
 }
 
@@ -82,6 +132,7 @@ export function ProjectEvaluation({
   const { sets, runs, save, start, quality } = useProjectEvaluation(agentId)
   const lifecycleT = useTranslations('agentProject.lifecycle')
   const workspaceT = useTranslations('agentProject.workspace.evaluation')
+  const [repetitions, setRepetitions] = useState<1 | 3>(1)
   const [datasetId, setDatasetId] = useState('')
   const [versionId, setVersionId] = useState('')
   const [editing, setEditing] = useState<EvaluationCase | null>(null)
@@ -101,11 +152,16 @@ export function ProjectEvaluation({
     )
   const submit = () => {
     if (!dataset) return
-    const selection = `${selectedVersion}:${dataset.id}`
+    const selection = `${selectedVersion}:${dataset.id}:${repetitions}`
     if (request.current?.selection !== selection)
       request.current = { selection, id: crypto.randomUUID() }
     start.mutate(
-      { request_id: request.current.id, version_id: selectedVersion, eval_set_id: dataset.id },
+      {
+        request_id: request.current.id,
+        version_id: selectedVersion,
+        eval_set_id: dataset.id,
+        repetitions,
+      },
       {
         onSuccess: () => {
           request.current = null
@@ -341,6 +397,21 @@ export function ProjectEvaluation({
         </>
       )}
       <div className="my-5 space-y-3">
+        <ProjectSelect
+          label={t('qualityRevision.repetitions')}
+          value={String(repetitions)}
+          options={[1, 3].map((v) => ({
+            value: String(v),
+            label: t('qualityRevision.trialOption', { count: v }),
+          }))}
+          onChange={(v) => setRepetitions(Number(v) as 1 | 3)}
+        />
+        <p>
+          {t('qualityRevision.callBudget', {
+            count: cases.filter((c) => c.enabled).length * repetitions,
+            calls: cases.filter((c) => c.enabled).length * repetitions * 2,
+          })}
+        </p>
         <Button
           onClick={submit}
           disabled={
@@ -384,7 +455,10 @@ export function ProjectEvaluation({
                   </summary>
                   <div className="mt-3 space-y-3">
                     <p role="status">{t(`runStatuses.${run.status}`)}</p>
-                    <ProjectMetrics metrics={run.metrics_json} />
+                    <ProjectMetrics
+                      metrics={run.metrics_json}
+                      spec={run.comparison_json?.eval_spec}
+                    />
                     {['completed', 'failed'].includes(run.status) &&
                       run.comparison_json?.eval_spec && (
                         <ProjectOptimization
@@ -409,9 +483,11 @@ export function ProjectEvaluation({
                           (a, b) => Number(a.status === 'passed') - Number(b.status === 'passed'),
                         )
                         .map((result) => (
-                          <li key={result.case_id} className="space-y-2">
+                          <li key={`${result.case_id}:${result.trial ?? 1}`} className="space-y-2">
                             <h4 className="font-medium">
-                              {result.name} · {t(`caseStatuses.${result.status}`)}
+                              {result.name} ·{' '}
+                              {t('qualityRevision.trialOption', { count: result.trial ?? 1 })} ·{' '}
+                              {t(`caseStatuses.${result.status}`)}
                             </h4>
                             <p className="whitespace-pre-wrap">
                               {t('caseInput')}: {result.input}
@@ -421,53 +497,8 @@ export function ProjectEvaluation({
                             </p>
                             <details>
                               <summary>{t('practice.executionEvidence')}</summary>
-                              <pre className="whitespace-pre-wrap break-words text-sm">
-                                {JSON.stringify(
-                                  {
-                                    model_calls: result.model_calls ?? null,
-                                    judge_calls: result.judge_calls ?? null,
-                                    termination_reason: result.termination_reason ?? null,
-                                    final_state: result.final_state ?? null,
-                                  },
-                                  null,
-                                  2,
-                                )}
-                              </pre>
+                              <ProjectExecutionLog evidence={result} graded />
                             </details>
-                            {!!result.tool_trace?.length && (
-                              <details>
-                                <summary>{t('toolTrace')}</summary>
-                                <ul className="space-y-2 pt-2 text-sm">
-                                  {result.tool_trace.map((event, index) => (
-                                    <li
-                                      key={`${event.name}-${event.order ?? index}`}
-                                      className="rounded border border-border/70 p-2"
-                                    >
-                                      <p className="font-medium">
-                                        {t('toolOrder', { value: event.order ?? index + 1 })} ·{' '}
-                                        {event.name}
-                                        {event.latency_ms != null
-                                          ? ` · ${event.latency_ms} ms`
-                                          : ''}
-                                      </p>
-                                      <p className="whitespace-pre-wrap break-words">
-                                        {t('toolArguments')}:{' '}
-                                        {JSON.stringify(event.arguments ?? {})}
-                                      </p>
-                                      {event.error ? (
-                                        <p className="text-destructive">
-                                          {t('toolError')}: {event.error}
-                                        </p>
-                                      ) : (
-                                        <p className="whitespace-pre-wrap break-words">
-                                          {t('toolResult')}: {JSON.stringify(event.output)}
-                                        </p>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </details>
-                            )}
                             {result.expected?.answer && (
                               <p>
                                 {t('expectedBehavior')}: {result.expected.answer}
@@ -491,20 +522,10 @@ export function ProjectEvaluation({
                                 </li>
                               ))}
                             </ul>
-                            {result.metric_scores && (
-                              <ul>
-                                {Object.entries(result.metric_scores).map(([name, score]) => (
-                                  <li key={name}>
-                                    {t.has(`metricNames.${name}`) ? t(`metricNames.${name}`) : name}
-                                    : {t('scorePercent', { value: Math.round(score.score * 100) })}
-                                    {' · '}
-                                    {score.method === 'deterministic'
-                                      ? t('deterministicReason')
-                                      : score.reason}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                            <ProjectCaseScores
+                              result={result}
+                              spec={run.comparison_json?.eval_spec}
+                            />
                             {result.limitations?.map((code) => (
                               <p key={code}>{errorText(code)}</p>
                             ))}

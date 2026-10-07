@@ -36,7 +36,7 @@ const run = {
   eval_set_id: 'set1',
   status: 'completed',
   created_at: '2026-09-12T01:00:00',
-  metrics_json: { total: 1, passed: 1, failed: 0, errored: 0 },
+  metrics_json: { total: 1, passed: 1, failed: 0, errored: 0, pass_rate: 1, complete: true },
   results_json: [
     {
       case_id: 'c1',
@@ -178,7 +178,7 @@ it('submits evaluation against the chosen version and shows persisted results', 
   await userEvent.click(screen.getByRole('button', { name: '运行评测' }))
   await userEvent.click(await screen.findByText(/V1 · 已完成/))
   expect(screen.getByText('输出: Hello back')).toBeInTheDocument()
-  expect(screen.getByText('总计 1 · 通过 1 · 失败 0 · 错误 0')).toBeInTheDocument()
+  expect(screen.getByText('全部用例通过率：1/1（100.0%）')).toBeInTheDocument()
 })
 
 it.each(['pending', 'running', 'completed', 'failed'] as const)(

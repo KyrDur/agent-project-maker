@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Decision, Message, SSEEvent, StandardInterruptPayload } from '@/lib/types'
 import { useChatRuntime } from '../use-chat-runtime'
+import { StreamApiError } from '@/lib/sse/parse-sse'
 
 // ── 轻量 mocks ──────────────────────────────────────────────────────────
 const streamResumeDecisionsMock = vi.hoisted(() => vi.fn())
@@ -136,6 +137,54 @@ afterEach(() => {
 })
 
 describe('useChatRuntime — case "interrupt" 标准路径', () => {
+  it('keeps a 422 confirmation rejection retryable without logging a development error overlay', async () => {
+    let attempt = 0
+    const resume = vi.fn<ResumeSpy>(() => {
+      attempt += 1
+      const currentAttempt = attempt
+      return (async function* () {
+        if (currentAttempt === 1)
+          throw new StreamApiError(422, 'VALIDATION_ERROR', 'Request rejected')
+        yield { event: 'message_start' as const, data: { id: 'accepted-retry', role: 'assistant' } }
+        yield {
+          event: 'message_end' as const,
+          data: { content: '', status: 'completed', usage: {} },
+        }
+      })()
+    })
+    const { options } = buildHookOptions({
+      events: [{ event: 'interrupt', data: STANDARD_PAYLOAD }],
+    })
+    const { result } = renderHook(() => useChatRuntime({ ...options, resumeFn: resume }), {
+      wrapper: createWrapper(),
+    })
+    await act(async () => {
+      await result.current.sendMessage('hi')
+    })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnings = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const decision: Decision = {
+        type: 'respond',
+        message: 'My full authored requirements and reason.',
+      }
+      await act(async () => {
+        await expect(result.current.registerDecision(0, decision, 'Confirmed')).rejects.toThrow(
+          'Request rejected',
+        )
+      })
+      expect(errors).not.toHaveBeenCalled()
+      expect(warnings).toHaveBeenCalled()
+      await act(async () => {
+        await result.current.registerDecision(0, decision, 'Confirmed')
+      })
+      expect(resume).toHaveBeenCalledTimes(2)
+      expect(resume.mock.calls[1]?.[0]).toEqual([decision])
+    } finally {
+      errors.mockRestore()
+      warnings.mockRestore()
+    }
+  })
   it('标准 chunk 到达时 onStandardInterrupt 被调用 1 次', async () => {
     const { onStandardInterrupt, options } = buildHookOptions({
       events: [{ event: 'interrupt', data: STANDARD_PAYLOAD }],

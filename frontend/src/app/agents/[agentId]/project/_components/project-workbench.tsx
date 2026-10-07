@@ -58,13 +58,21 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
               <div className="p-4 sm:p-5">
                 {activeTab === 'overview' ? (
                   <div className="space-y-5">
-                    <ProjectSimulation agentId={agentId} versions={versions.data ?? []} />
-                    <ProjectPractice
-                      key={project.data.id}
+                    <ProjectSimulation
                       agentId={agentId}
-                      project={project.data}
                       versions={versions.data ?? []}
+                      bootstrap={project.data.requirements_json?.bootstrap}
+                      planReady={Boolean(project.data.eval_spec_json)}
                     />
+                    <details>
+                      <summary>{t('qualityRevision.confirmedDetails')}</summary>
+                      <ProjectPractice
+                        key={project.data.id}
+                        agentId={agentId}
+                        project={project.data}
+                        versions={versions.data ?? []}
+                      />
+                    </details>
                     <LifecycleOverview
                       agentId={agentId}
                       project={project.data}
@@ -93,13 +101,15 @@ export function ProjectWorkbench({ agentId }: { agentId: string }) {
                     {project.data.builder_session_id && (
                       <SettingsSectionCard title={t('bootstrap.title')}>
                         <p>{t('bootstrap.steps')}</p>
-                        <p role="status">
-                          {t('bootstrap.current', {
-                            stage: t(
-                              `bootstrap.stages.${project.data.requirements_json?.bootstrap?.stage ?? 'v1'}`,
-                            ),
-                          })}
-                        </p>
+                        {project.data.requirements_json?.bootstrap && (
+                          <p role="status">
+                            {t('bootstrap.current', {
+                              stage: t(
+                                `bootstrap.stages.${project.data.requirements_json.bootstrap.stage}`,
+                              ),
+                            })}
+                          </p>
+                        )}
                         <Button
                           variant="outline"
                           disabled={bootstrap.isPending}

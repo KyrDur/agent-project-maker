@@ -68,6 +68,8 @@ class BuilderState(TypedDict, total=False):
     tools: list[dict[str, Any]]  # Phase 3 (ToolRecommendation list)
     middlewares: list[dict[str, Any]]  # Phase 4
     system_prompt: str | None  # Phase 5
+    consistency_review: dict[str, Any] | None
+    consistency_reviews: list[dict[str, Any]]
     image_url: str | None  # Phase 6（None 表示无图片）
     draft_config: dict[str, Any] | None  # Phase 7
 

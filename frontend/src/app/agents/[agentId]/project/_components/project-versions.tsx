@@ -7,7 +7,11 @@ import { ErrorState } from '@/components/shared/error-state'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
 import { formatDisplayDateTime, formatDisplayNumber } from '@/lib/utils/display-format'
 import type { AgentProjectVersionSummary } from '../_lib/agent-project-types'
-import { useProjectVersions, useEvaluationReports } from '../_hooks/use-project-evaluation'
+import {
+  useProjectVersions,
+  useEvaluationReports,
+  useProjectEvaluation,
+} from '../_hooks/use-project-evaluation'
 
 export function ProjectVersions({
   agentId,
@@ -19,6 +23,7 @@ export function ProjectVersions({
   const t = useTranslations('agentProject')
   const workspaceT = useTranslations('agentProject.workspace')
   const locale = useLocale()
+  const runs = useProjectEvaluation(agentId).runs.data ?? []
   const reports = useEvaluationReports(agentId).data
   const scope = reports?.reports.find((r) => r.score !== null)?.comparison_key
   const bestRunId = scope ? reports?.best_run_ids[scope] : undefined
@@ -35,7 +40,7 @@ export function ProjectVersions({
   const percent = (value: number | null | undefined) =>
     value == null
       ? t('notRun')
-      : `${formatDisplayNumber(value * 100, { locale, maximumFractionDigits: 1 })}%`
+      : `${formatDisplayNumber(value * 100, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
   const submit = () => {
     request.current ??= crypto.randomUUID()
     create.mutate(request.current, {
@@ -59,7 +64,8 @@ export function ProjectVersions({
       <ol className="space-y-4" aria-label={workspaceT('versions.evolutionAria')}>
         {versions.map((version) => {
           const evaluation = reportForVersion(version.id)
-          const regression = regressionForVersion(version.id)
+          const regression =
+            runs.find((r) => r.version_id === version.id) ?? regressionForVersion(version.id)
           const parent = versions.find((item) => item.id === version.parent_version_id)
           return (
             <li key={version.id} className="rounded-lg border border-border/70 p-4">
@@ -87,7 +93,11 @@ export function ProjectVersions({
                   <p className="text-sm text-muted-foreground">
                     {workspaceT('versions.evaluationScore')}
                   </p>
-                  <p className="text-2xl font-semibold">{percent(evaluation?.score)}</p>
+                  <p className="text-2xl font-semibold">
+                    {regression && ['pending', 'running'].includes(regression.status)
+                      ? t(`runStatuses.${regression.status}`)
+                      : percent(evaluation?.score)}
+                  </p>
                 </div>
               </div>
               <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">

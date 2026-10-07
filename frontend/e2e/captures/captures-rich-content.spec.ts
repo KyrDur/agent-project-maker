@@ -162,7 +162,7 @@ test.describe('Wave 7 — rich content captures', () => {
       try {
         // Gate on composer hydration BEFORE touching it — the dedicated spec's key
         // step; this also absorbs the chat route's one-time cold compile.
-        const composer = page.getByPlaceholder('占位符')
+        const composer = page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')
         await composer.waitFor({ state: 'visible', timeout: 90_000 })
 
         // Attach an image in the composer → capture the staged chip.
@@ -243,7 +243,7 @@ test.describe('Wave 7 — rich content captures', () => {
     try {
       const cid = await createConversation(request, csrf, agent.id, 'Trace 对话')
       await page.goto(`/agents/${agent.id}/conversations/${cid}`, { waitUntil: 'commit', timeout: 120_000 }).catch(() => {})
-      await page.getByPlaceholder('占位符').waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
+      await page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例').waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {})
       await sendMessage(page, 'E2E_TOOL_GROUP')
       const traceRunId = await waitForActiveRun(request, cid).catch(() => '')
       await settleStream(page)

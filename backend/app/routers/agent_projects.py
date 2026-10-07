@@ -23,11 +23,12 @@ from app.schemas.agent_project import (
     ProjectCompletionRequest,
     ProjectDecision,
     ProjectRequirements,
+    ValidationUseRequest,
     VersionCreate,
     VersionCreated,
 )
 from app.schemas.agent_project_optimization import OptimizeRequest, ProposalDecision
-from app.schemas.agent_project_portfolio import ResumeRequest
+from app.schemas.agent_project_portfolio import CaseSelectionRequest, ResumeRequest
 from app.schemas.agent_project_report import EvaluationReports
 from app.schemas.agent_project_simulation import (
     SimulationCreate,
@@ -254,6 +255,7 @@ async def generate_eval_set(
         cases=True,
         evaluation_focus=body.evaluation_focus,
         evaluation_focus_reason=body.evaluation_focus_reason,
+        purpose=body.purpose,
     )
 
 
@@ -363,6 +365,16 @@ async def run_proposal_regression(
     if row.status == "pending":
         background.add_task(evaluation.execute_run, row.id, agent_id, user.id)
     return row
+
+
+@router.post("/case-selection")
+async def select_case_cards(
+    agent_id: uuid.UUID,
+    body: CaseSelectionRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await portfolio.select_cases(db, agent_id, user.id, body.case_ids)
 
 
 @router.get("/report")
@@ -555,3 +567,16 @@ async def reset_simulation(
     user: CurrentUser = Depends(get_current_user),
 ):
     return await simulation.reset(db, agent_id, user.id, session_id, body.request_id)
+
+
+@router.post("/eval-runs/{run_id}/use-validation", response_model=EvalRunResponse)
+async def use_validation_run(
+    agent_id: uuid.UUID,
+    run_id: uuid.UUID,
+    body: ValidationUseRequest,
+    db: AsyncSession = Depends(get_db),
+    user: CurrentUser = Depends(get_current_user),
+):
+    return await evaluation.use_validation_for_optimization(
+        db, agent_id, user.id, run_id, body.reason
+    )

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -35,6 +35,90 @@ type ToolUiRender = {
 const renderUserInput = UserInputUI as unknown as ToolUiRender['render']
 
 describe('UserInputUI', () => {
+  it('explains the authored requirement reason, shows a review and example, and preserves input after rejection', async () => {
+    const registerDecision = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error('rejected'))
+      .mockResolvedValue(undefined)
+    function UserInputUnderTest() {
+      return renderUserInput({
+        args: {
+          mode: 'question_flow',
+          questions: [
+            {
+              id: 'goal',
+              label: 'Goal',
+              type: 'single_select',
+              options: [{ id: 'simulate', label: 'Simulated support' }],
+            },
+            { id: 'requirements_reason', label: 'Reason', type: 'text' },
+          ],
+          hitl_action_index: 0,
+          hitl_interrupt_id: 'requirements-confirmation',
+        },
+        status: { type: 'requires-action' },
+      })
+    }
+    render(
+      <HiTLContext.Provider value={{ onResumeDecisions: vi.fn(), registerDecision }}>
+        <UserInputUnderTest />
+      </HiTLContext.Provider>,
+    )
+    fireEvent.click(screen.getByRole('option', { name: /Simulated support/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'next' }))
+    expect(screen.getByText('requirementsReasonHelp')).toBeVisible()
+    expect(screen.getByText('requirementsReasonExample')).toBeVisible()
+    fireEvent.click(screen.getByText('requirementsReview'))
+    expect(screen.getByText('Simulated support')).toBeVisible()
+    const input = screen.getByPlaceholderText('requirementsReasonPlaceholder')
+    expect(input).toHaveValue('')
+    const reason = 'I want to validate the simulated order workflow.'
+    fireEvent.change(input, { target: { value: reason } })
+    fireEvent.click(screen.getByRole('button', { name: 'complete' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('resumeFailed'))
+    expect(input).toHaveValue(reason)
+    fireEvent.click(screen.getByRole('button', { name: 'back' }))
+    expect(screen.getByRole('option', { name: /Simulated support/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'next' }))
+    expect(screen.getByPlaceholderText('requirementsReasonPlaceholder')).toHaveValue(reason)
+    fireEvent.click(screen.getByRole('button', { name: 'complete' }))
+    await waitFor(() => expect(registerDecision).toHaveBeenCalledTimes(2))
+    expect(registerDecision.mock.calls[1]).toEqual(registerDecision.mock.calls[0])
+  })
+
+  it('never auto-skips a required authored project confirmation after five minutes', async () => {
+    vi.useFakeTimers()
+    try {
+      const registerDecision = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+      function UserInputUnderTest() {
+        return renderUserInput({
+          args: {
+            mode: 'question_flow',
+            questions: [{ id: 'requirements_reason', label: 'Reason', type: 'text' }],
+            hitl_action_index: 0,
+          },
+          status: { type: 'requires-action' },
+        })
+      }
+      const view = render(
+        <HiTLContext.Provider value={{ onResumeDecisions: vi.fn(), registerDecision }}>
+          <UserInputUnderTest />
+        </HiTLContext.Provider>,
+      )
+      await act(async () => {
+        vi.advanceTimersByTime(600_000)
+      })
+      expect(registerDecision).not.toHaveBeenCalled()
+      expect(screen.getByPlaceholderText('requirementsReasonPlaceholder')).toBeEnabled()
+      expect(screen.queryByText('expiresIn')).toBeNull()
+      view.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('shows the actual question in option-list mode', () => {
     function UserInputUnderTest() {
       return renderUserInput({

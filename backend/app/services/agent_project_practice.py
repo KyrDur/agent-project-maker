@@ -78,7 +78,12 @@ async def record_decision(
     return project
 
 
-def checked_decisions(project: AgentProject, version_id: uuid.UUID, dataset: Any) -> list[dict]:
+def checked_decisions(
+    project: AgentProject,
+    version_id: uuid.UUID,
+    dataset: Any,
+    inherited: list[dict] | None = None,
+) -> list[dict]:
     ProjectRequirements.model_validate(requirements(project))
     choices = [
         d
@@ -86,6 +91,13 @@ def checked_decisions(project: AgentProject, version_id: uuid.UUID, dataset: Any
         if d.get("requirements_hash") == requirements_hash(project)
         and d.get("version_id") == str(version_id)
     ]
+    for value in inherited or []:
+        if (
+            value.get("requirements_hash") == requirements_hash(project)
+            and value.get("stage") in {"requirements", "capabilities"}
+            and value not in choices
+        ):
+            choices.append(value)
     for stage in ("requirements", "capabilities"):
         valid = [d for d in choices if d["stage"] == stage]
         if stage == "case_review":
@@ -120,7 +132,8 @@ async def completion(
         for r in runs
         if r.completed_at
         and r.status in {"completed", "failed"}
-        and len(r.results_json or []) == len(r.cases_snapshot_json or [])
+        and len(r.results_json or [])
+        == len(r.cases_snapshot_json or []) * (r.comparison_json or {}).get("repetitions", 1)
         and any(x.get("status") in {"passed", "failed"} for x in r.results_json or [])
         and (r.comparison_json or {}).get("requirements_hash") == current_hash
     ]
@@ -193,17 +206,23 @@ async def completion(
         from collections import Counter
 
         counts = Counter(r["status"] for r in latest.results_json or [])
-        total = len(latest.cases_snapshot_json or [])
+        cases = len(latest.cases_snapshot_json or [])
+        repeats = (latest.comparison_json or {}).get("repetitions", 1)
         observations = [
-            f"运行 {latest.id}：冻结用例 {total} 条，任务通过 {counts['passed']} 条，"
-            f"任务失败 {counts['failed']} 条，错误 {counts['errored']} 条。",
-            *[
-                f"用例 {r['case_id']}：{r['status']}；指标 {r.get('metric_scores', {})}"
-                for r in latest.results_json or []
-            ],
+            f"冻结场景 {cases} 条，每例重复 {repeats} 次，共 {cases * repeats} 个试验；"
+            f"任务通过 {counts['passed']}，任务失败 {counts['failed']}，错误 {counts['errored']}。",
         ]
+        for i, result in enumerate(latest.results_json or [], 1):
+            status = {"passed": "通过", "failed": "失败", "errored": "评测错误"}.get(
+                result["status"], result["status"]
+            )
+            observations.append(f"试验 {i} · {result.get('name') or '未命名场景'}：{status}。")
         if analysis_record:
-            observations.append("裁判分析：" + str(analysis_record))
+            for group in analysis_record.get("groups", []):
+                observations.append(
+                    "裁判分析："
+                    + str(group.get("root_cause") or group.get("proposed_change") or "未记录原因")
+                )
         observations.append(
             "以上结论只适用于冻结测试范围；真实客户效果、生产部署和业务收益未验证。"
         )

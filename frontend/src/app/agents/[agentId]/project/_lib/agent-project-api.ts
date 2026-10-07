@@ -26,6 +26,11 @@ import type {
 const projectPath = (agentId: string) => `/api/agents/${agentId}/project`
 
 export const agentProjectApi = {
+  useValidation: (agentId: string, runId: string, reason: string) =>
+    apiFetch<EvaluationRun>(`${projectPath(agentId)}/eval-runs/${runId}/use-validation`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
   createSimulation: (
     agentId: string,
     data: { request_id: string; version_id: string; scenario_id?: string },
@@ -61,6 +66,11 @@ export const agentProjectApi = {
       `${projectPath(agentId)}/completion`,
       analysis == null ? {} : { method: 'POST', body: JSON.stringify({ analysis }) },
     ),
+  selectCases: (agentId: string, caseIds: string[]) =>
+    apiFetch<PortfolioReport>(`${projectPath(agentId)}/case-selection`, {
+      method: 'POST',
+      body: JSON.stringify({ case_ids: caseIds }),
+    }),
   interview: (agentId: string) => apiFetch<ProjectInterview>(`${projectPath(agentId)}/interview`),
   propose: (agentId: string, runId: string, requestId: string) =>
     apiFetch<OptimizationProposal>(`${projectPath(agentId)}/eval-runs/${runId}/proposals`, {
@@ -119,12 +129,17 @@ export const agentProjectApi = {
   generateCases: (
     agentId: string,
     versionId: string,
-    data: { evaluation_focus?: string[]; evaluation_focus_reason?: string | null },
+    data: {
+      evaluation_focus?: string[]
+      evaluation_focus_reason?: string | null
+      purpose?: 'regression' | 'validation'
+    },
   ) =>
     apiFetch<EvaluationSet>(`${projectPath(agentId)}/eval-sets/generate`, {
       method: 'POST',
       body: JSON.stringify({
         version_id: versionId,
+        purpose: data.purpose,
         evaluation_focus: data.evaluation_focus,
         evaluation_focus_reason: data.evaluation_focus_reason || null,
       }),
@@ -183,7 +198,7 @@ export const agentProjectApi = {
     apiFetch<EvaluationRun>(`${projectPath(agentId)}/eval-runs/${runId}`),
   createRun: (
     agentId: string,
-    data: { request_id: string; version_id: string; eval_set_id: string },
+    data: { request_id: string; version_id: string; eval_set_id: string; repetitions?: 1 | 3 },
   ) =>
     apiFetch<EvaluationRun>(`${projectPath(agentId)}/eval-runs`, {
       method: 'POST',

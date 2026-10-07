@@ -62,7 +62,7 @@ test.describe('Message attachments', () => {
     test.setTimeout(90_000)
     await page.goto(`/agents/${agentId}/conversations/${conversationId}`)
 
-    const composer = page.getByPlaceholder('占位符')
+    const composer = page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')
     await expect(composer).toBeVisible()
 
     // 1. Attach a text file via the paperclip → native file chooser.

@@ -122,10 +122,22 @@ function TextInput({
   onFocus: () => void
   placeholder: string
 }) {
+  const t = useTranslations('chat.userInput')
+  const inputId = useId()
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">{question.question}</p>
+      <label htmlFor={inputId} className="text-sm font-medium">
+        {question.question}
+      </label>
+      {question.id === 'requirements_reason' && (
+        <p id={`${inputId}-help`} className="text-sm text-muted-foreground">
+          {t('reasonExample')}
+        </p>
+      )}
       <textarea
+        id={inputId}
+        aria-label={question.question}
+        aria-describedby={question.id === 'requirements_reason' ? `${inputId}-help` : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={onFocus}
@@ -234,6 +246,10 @@ export function UserInputUI({
   const [submitError, setSubmitError] = useState(false)
 
   const questions = useMemo(() => normalizeQuestions(args ?? {}), [args])
+  // Authored project decisions must wait for the user, never auto-skip on expiry.
+  const requiresExplicitConfirmation = questions.some(
+    (question) => question.id === 'requirements_reason',
+  )
   const optionListOptions = useMemo(() => normalizeOptions(args?.options) ?? [], [args?.options])
   const displayTitle = args?.title?.trim() === t('inputRequired') ? undefined : args?.title
   const submitDecision = useCallback(
@@ -336,7 +352,7 @@ export function UserInputUI({
     approvalId,
     initialTimeoutSeconds: args?.timeout_seconds,
     onExpire: handleExpire,
-    active: isPending,
+    active: isPending && !requiresExplicitConfirmation,
   })
 
   const updateAnswer = useCallback(
@@ -388,14 +404,16 @@ export function UserInputUI({
       <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3">
         <MessageSquareQuoteIcon className="moldy-status-icon size-4" />
         <span className="text-sm font-medium">{t('inputRequired')}</span>
-        <CountdownBadge
-          formatted={formatted}
-          isUrgent={isUrgent}
-          expired={remaining <= 0}
-          label={t('expiresIn')}
-          expiredLabel={t('expired')}
-          className="ml-auto"
-        />
+        {!requiresExplicitConfirmation && (
+          <CountdownBadge
+            formatted={formatted}
+            isUrgent={isUrgent}
+            expired={remaining <= 0}
+            label={t('expiresIn')}
+            expiredLabel={t('expired')}
+            className="ml-auto"
+          />
+        )}
       </div>
 
       <div className="p-4">

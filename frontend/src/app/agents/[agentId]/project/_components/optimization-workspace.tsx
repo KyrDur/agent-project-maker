@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatDisplayDateTime } from '@/lib/utils/display-format'
 import { useProjectEvaluation } from '../_hooks/use-project-evaluation'
 import type { AgentProjectVersionSummary, EvaluationRun } from '../_lib/agent-project-types'
 import { ProjectOptimization } from './project-optimization'
@@ -35,6 +36,8 @@ export function OptimizationWorkspace({
   readonly versions: AgentProjectVersionSummary[]
 }) {
   const workspaceT = useTranslations('agentProject.workspace.optimization')
+  const t = useTranslations('agentProject')
+  const locale = useLocale()
   const evaluation = useProjectEvaluation(agentId)
   const runs = useMemo(() => sortNewest(evaluation.runs.data ?? []), [evaluation.runs.data])
   const candidates = runs.filter(needsOptimization)
@@ -58,9 +61,16 @@ export function OptimizationWorkspace({
                 key={run.id}
                 type="button"
                 variant={selected?.id === run.id ? 'secondary' : 'outline'}
+                aria-pressed={selected?.id === run.id}
                 onClick={() => setSelectedRunId(run.id)}
               >
-                {run.id.slice(0, 8)}
+                {workspaceT('runLabel', {
+                  version:
+                    versions.find((v) => v.id === run.version_id)?.version_number ??
+                    workspaceT('unknownVersion'),
+                  date: formatDisplayDateTime(run.created_at, { locale }),
+                  status: t(`runStatuses.${run.status}`),
+                })}
               </Button>
             ))}
           </div>
@@ -70,7 +80,13 @@ export function OptimizationWorkspace({
       </SettingsSectionCard>
 
       {selected ? (
-        <ProjectOptimization agentId={agentId} run={selected} versions={versions} runs={runs} />
+        <ProjectOptimization
+          key={selected.id}
+          agentId={agentId}
+          run={selected}
+          versions={versions}
+          runs={runs}
+        />
       ) : null}
     </div>
   )

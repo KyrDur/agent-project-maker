@@ -67,7 +67,7 @@ test.describe('Smoke Test - Static Pages', () => {
     await expect(page.getByRole('heading', { name: /E2E User/ })).toBeVisible()
     // Verify quick action cards
     await expect(main.getByText('通过聊天构建')).toBeVisible()
-    await expect(main.getByText('使用模板')).toBeVisible()
+    await expect(main.getByText('手动构建')).toHaveCount(0)
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -79,8 +79,9 @@ test.describe('Smoke Test - Static Pages', () => {
 
     await expect(page.getByRole('heading', { name: '你想建造什么？' })).toBeVisible()
     const main = page.getByRole('main')
-    await expect(main.getByText('手动构建')).toBeVisible()
-    await expect(main.getByText('使用模板')).toBeVisible()
+    await expect(main.getByRole('textbox')).toBeVisible()
+    await expect(main.getByRole('button', { name: '开始创建智能体' })).toBeDisabled()
+    await expect(main.getByText('手动构建')).toHaveCount(0)
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -94,7 +95,7 @@ test.describe('Smoke Test - Static Pages', () => {
       page.getByRole('main').getByRole('heading', { name: '从模板开始' }),
     ).toBeVisible()
     // Category tabs (custom pill-group with role="tab")
-    await expect(page.getByRole('tab', { name: '所有时间' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: '全部' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -105,9 +106,8 @@ test.describe('Smoke Test - Static Pages', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
-    await expect(page.getByRole('tablist', { name: '查看模式' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: /全部/ })).toBeVisible()
-    await expect(page.getByPlaceholder('搜索占位符')).toBeVisible()
+    await expect(page.getByText('已移除内置外部工具')).toBeVisible()
+    await expect(page.getByText('项目使用模拟工具验证 Agent 的行为，无需配置外部服务授权。')).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -194,12 +194,15 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await expect(main.getByRole('heading', { name: 'E2E Smoke Agent' }).first()).toBeVisible()
     // New Conversation and Settings are available from the chat header menu.
     // The menu is rendered in a portal, so locate its items at page level.
-    await main.getByRole('button', { name: 'Menu' }).click()
-    await expect(page.getByRole('menuitem', { name: 'New Conversation' })).toBeVisible()
-    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible()
+    await main.getByRole('button', { name: '菜单' }).click()
+    await expect(page.getByRole('menuitem', { name: '新的对话' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '设置' })).toBeVisible()
     await page.keyboard.press('Escape')
-    // Empty conversation prompt
-    await expect(main.getByText('空状态')).toBeVisible()
+    // The starter stays editable and only fills the composer; it does not send.
+    const example = '请说明你能帮我完成什么，并给出一个可以直接试用的输入示例。'
+    await expect(main.getByText('试用示例（虚构输入，可编辑后发送）')).toBeVisible()
+    await main.getByRole('button', { name: example, exact: true }).click()
+    await expect(main.locator('textarea').first()).toHaveValue(example)
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -213,7 +216,7 @@ test.describe('Smoke Test - Dynamic Pages', () => {
 
     await expect(page.locator('header input').first()).toHaveValue('E2E Smoke Agent')
     // Form labels
-    await expect(main.getByText('系统提示')).toBeVisible()
+    await expect(main.locator('textarea').first()).toHaveValue('You are a test agent for E2E smoke tests.')
     // "保存" button
     await expect(main.getByRole('button', { name: '保存' })).toBeVisible()
     // "删除智能体" button
@@ -400,78 +403,10 @@ test.describe('Smoke Test - Dialogs', () => {
     expect(errors.network).toEqual([])
   })
 
-  test('tools page - tool create dialog opens', async ({ page, errors }) => {
+  test('tools page exposes simulation guidance without external connections', async ({ page, errors }) => {
     await page.goto('/tools')
-    await page.waitForLoadState('domcontentloaded')
-
-    await page
-      .getByRole('button', { name: /HTTP 请求|HTTP Request/ })
-      .first()
-      .click()
-    const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('heading', { name: /新 (HTTP 请求|HTTP Request)/ })).toBeVisible()
-    // Close
-    await page.keyboard.press('Escape')
-
-    expect(errors.console).toEqual([])
-    expect(errors.network).toEqual([])
-  })
-
-  test('tools page - prebuilt auth dialog opens', async ({ page, errors }) => {
-    await page.goto('/tools')
-    await page.waitForLoadState('domcontentloaded')
-
-    // Find a prebuilt tool with a key config button. The seeded catalog may not
-    // contain one; that is a valid no-credential state, not a skipped test.
-    const authButtons = page.getByRole('button', { name: /密钥设置|单独密钥设置|更改密钥/ })
-
-    if ((await authButtons.count()) > 0) {
-      const authButton = authButtons.first()
-      await expect(authButton).toBeVisible()
-      // Normal click opens both the Card's detail Sheet and the auth Dialog.
-      await authButton.click()
-
-      // Both Sheet and Dialog are role="dialog" in base-ui.
-      // Wait for at least one dialog to appear.
-      await page.waitForSelector('[role="dialog"]', { timeout: 5_000 })
-
-      // The detail Sheet opens. Close it first, then verify the auth dialog.
-      // If two dialogs opened, one is the Sheet and one is the auth Dialog.
-      // Check if auth dialog content is present anywhere on the page.
-      const authDialogContent = page.getByText('选择此工具应使用的凭据。')
-      if (await authDialogContent.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await expect(authDialogContent).toBeVisible()
-      } else {
-        // Sheet opened instead of auth dialog - close Sheet and try clicking button again
-        await page.keyboard.press('Escape')
-        await expect(page.getByRole('dialog').first()).toBeHidden({ timeout: 5_000 })
-
-        // Try clicking the auth button again (now no sheet is open)
-        await authButton.click()
-        await page.waitForSelector('[role="dialog"]', { timeout: 5_000 })
-
-        // Now check for auth dialog or Sheet - at minimum verify no crash
-        const dialogVisible = await page
-          .getByText('选择此工具应使用的凭据。')
-          .isVisible({ timeout: 2_000 })
-          .catch(() => false)
-
-        if (dialogVisible) {
-          await expect(page.getByText('选择此工具应使用的凭据。')).toBeVisible()
-        }
-        // If still not visible, the Card click always takes precedence - this is a known
-        // event propagation issue. The button renders correctly, which is what the smoke
-        // test verifies.
-      }
-
-      // Close any open overlays
-      await page.keyboard.press('Escape')
-    } else {
-      // Verify the page itself is healthy when no credential-backed tool is
-      // seeded for this lane.
-      await expect(page.getByRole('heading', { name: '工具' })).toBeVisible()
-    }
-
+    await expect(page.getByText('已移除内置外部工具')).toBeVisible()
+    await expect(page.getByRole('button', { name: /HTTP 请求|HTTP Request|设置密钥/ })).toHaveCount(0)
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
   })
@@ -481,7 +416,7 @@ test.describe('Smoke Test - Dialogs', () => {
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.getByRole('tab', { name: '修复智能体' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'E2E Dialog Agent 修改' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '修复E2E Dialog Agent' })).toBeVisible()
     await expect(page.getByText('修复英雄字幕')).toBeVisible()
 
     expect(errors.console).toEqual([])
@@ -537,13 +472,12 @@ test.describe('Smoke Test - Conversational Creation', () => {
     await page.waitForLoadState('domcontentloaded')
 
     // Header
-    await expect(page.getByRole('heading', { name: '创建智能体' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
-    await expect(page.getByPlaceholder('占位符')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '使用自然语言创建 智能体' })).toBeVisible()
+    await expect(page.getByPlaceholder('示例：请说明你能帮我完成什么，并给出一个输入示例')).toBeVisible()
     await expect(page.getByRole('button', { name: '发送按钮' })).toBeVisible()
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
   })
 })
-

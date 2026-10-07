@@ -319,6 +319,68 @@ def test_minimal_patch_and_missing_skill_deferral():
 
 
 @pytest.mark.asyncio
+async def test_outer_judge_timeout_retains_captured_calls(db, experiment, monkeypatch):
+    import asyncio
+
+    from app.services.agent_project_llm import captured_calls
+
+    ex = experiment
+    ex.run.status = "pending"
+    ex.run.completed_at = None
+    ex.run.results_json = []
+    ex.run.metrics_json = {}
+    ex.run.comparison_json = {
+        **ex.run.comparison_json,
+        "execution_protocol": {"judge_timeout_seconds": 0.01},
+    }
+    await db.commit()
+
+    async def blocked_judge(*_args):
+        calls = captured_calls()
+        assert calls is not None
+        call = {"role": "judge", "status": "running", "source": "controlled_timeout"}
+        calls.append(call)
+        try:
+            await asyncio.sleep(1)
+        finally:
+            call["status"] = "cancelled"
+
+    monkeypatch.setattr(semantic, "grade_case", blocked_judge)
+    await evaluation.execute_run(ex.run.id, ex.agent.id, TEST_USER_ID)
+    row = await evaluation.get_run(db, ex.agent.id, TEST_USER_ID, ex.run.id)
+    assert row.status == "failed"
+    assert row.metrics_json["judge_errors"] == 20
+    assert row.metrics_json["execution_errors"] == 0
+    assert row.results_json is not None
+    assert all(r["judge_calls"][0]["status"] == "cancelled" for r in row.results_json)
+
+
+@pytest.mark.asyncio
+async def test_analyzer_repairs_protocol_without_changing_case_evidence(
+    db, experiment, monkeypatch
+):
+    payloads = []
+
+    async def repair(_db, _snapshot, _user, _role, _instruction, payload):
+        payloads.append(deepcopy(payload))
+        response = analyzer_response(payload)
+        if len(payloads) == 1:
+            response["analyses"][0]["evidence"] = ["/hidden_chain_of_thought"]
+        return response
+
+    monkeypatch.setattr(optimization, "json_call", repair)
+    result = await optimization.analyze(db, experiment.agent.id, TEST_USER_ID, experiment.run.id)
+    assert result["groups"]
+    assert len(payloads) == 2
+    assert payloads[0]["cases"] == payloads[1]["cases"]
+    assert payloads[0]["required_case_ids"] == payloads[1]["required_case_ids"]
+    assert "/hidden_chain_of_thought" in payloads[1]["validation_error"]
+    assert payloads[1]["previous_response"]["analyses"][0]["evidence"] == [
+        "/hidden_chain_of_thought"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_analyzer_rejects_fabricated_evidence_and_foreign_scope(
     client, db, experiment, monkeypatch
 ):
@@ -492,3 +554,50 @@ def test_schema_does_not_allow_eval_spec_or_case_updates():
     for key in ("eval_spec", "eval_set", "model_params"):
         with pytest.raises(ValueError, match="Extra inputs"):
             PatchProposal.model_validate({"changes": [], key: {}})
+
+
+@pytest.mark.asyncio
+async def test_three_trials_keep_all_sixty_results(db, experiment):
+    ex = experiment
+    request = EvalRunCreate(
+        request_id=uuid.uuid4(), version_id=ex.version.id, eval_set_id=ex.dataset.id, repetitions=3
+    )
+    run = await evaluation.create_run(db, ex.agent.id, TEST_USER_ID, request)
+    await evaluation.execute_run(run.id, ex.agent.id, TEST_USER_ID)
+    await db.refresh(run)
+    assert run.results_json is not None
+    assert len(run.results_json) == 60
+    assert {r["trial"] for r in run.results_json} == {1, 2, 3}
+    assert run.metrics_json["total"] == 60
+    assert run.metrics_json["passed"] == 45
+    assert run.metrics_json["trial_pass_rates"] == [0.75, 0.75, 0.75]
+    assert run.pass_rate == 0.75
+    assert (await evaluation.create_run(db, ex.agent.id, TEST_USER_ID, request)).id == run.id
+
+
+@pytest.mark.asyncio
+async def test_validation_requires_explicit_use_and_marks_entire_set(db, experiment, monkeypatch):
+    ex = experiment
+    from app.exceptions import AppError
+
+    ex.run.comparison_json = {
+        **ex.run.comparison_json,
+        "purpose": "validation",
+        "validation_exposure": "unseen",
+    }
+    await db.commit()
+    with pytest.raises(AppError, match="validation_evidence_not_for_optimization"):
+        await optimization.analyze(db, ex.agent.id, TEST_USER_ID, ex.run.id)
+    first = await evaluation.use_validation_for_optimization(
+        db, ex.agent.id, TEST_USER_ID, ex.run.id, "根据验证证据修复，不再声称未见验证。"
+    )
+    assert first.comparison_json["validation_exposure"] == "used"
+    await db.refresh(ex.project)
+    first_record = deepcopy(ex.project.report_json["validation_usage"])
+    await evaluation.use_validation_for_optimization(
+        db, ex.agent.id, TEST_USER_ID, ex.run.id, "重复提交"
+    )
+    await db.refresh(ex.project)
+    assert ex.project.report_json["validation_usage"] == first_record
+    monkeypatch.setattr(optimization, "json_call", controlled_optimizer)
+    assert (await optimization.analyze(db, ex.agent.id, TEST_USER_ID, ex.run.id))["groups"]

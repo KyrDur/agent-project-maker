@@ -27,6 +27,7 @@ export function useAgentProject(agentId: string) {
     queryFn: () => agentProjectApi.get(agentId),
     refetchInterval: (query) =>
       (query.state.data?.builder_session_id &&
+        query.state.data?.requirements_json?.bootstrap?.stage &&
         query.state.data?.requirements_json?.bootstrap?.stage !== 'results') ||
       ['pending', 'running'].includes(query.state.data?.report_json?.optimization?.state ?? '')
         ? query.state.data?.requirements_json?.bootstrap?.error
@@ -42,6 +43,7 @@ export function useAgentProject(agentId: string) {
   const resumed = useRef(new Set<string>())
   const builderSessionId = project.data?.builder_session_id
   const bootstrapStage = project.data?.requirements_json?.bootstrap?.stage
+  const bootstrapError = project.data?.requirements_json?.bootstrap?.error
   const bootstrap = useMutation({
     mutationFn: () => agentProjectApi.bootstrap(agentId),
     onSuccess: () =>
@@ -49,11 +51,17 @@ export function useAgentProject(agentId: string) {
   })
   const resumeBootstrap = bootstrap.mutate
   useEffect(() => {
-    if (builderSessionId && !resumed.current.has(agentId) && bootstrapStage !== 'results') {
+    if (
+      builderSessionId &&
+      bootstrapStage &&
+      !bootstrapError &&
+      !resumed.current.has(agentId) &&
+      bootstrapStage !== 'results'
+    ) {
       resumed.current.add(agentId)
       resumeBootstrap()
     }
-  }, [agentId, builderSessionId, bootstrapStage, resumeBootstrap])
+  }, [agentId, builderSessionId, bootstrapStage, bootstrapError, resumeBootstrap])
   useEffect(() => {
     if (bootstrapStage) {
       void queryClient.invalidateQueries({ queryKey: agentProjectKeys.evaluationReports(agentId) })

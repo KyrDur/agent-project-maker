@@ -23,10 +23,12 @@ export function ProjectProposals({
   const t = useTranslations('agentProject.lifecycle')
   const projectT = useTranslations('agentProject')
   const locale = useLocale()
-  const { generate, decide, regression } = useProjectProposals(agentId, run.id)
+  const { generate, decide, regression, errorCode } = useProjectProposals(agentId, run.id)
   const generationId = useRef<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const items = run.comparison_json?.proposals ?? []
+  const ready =
+    (run.status === 'completed' || run.status === 'failed') && run.metrics_json?.complete !== false
   const busy = generate.isPending || decide.isPending || regression.isPending
   const version = (id: string) =>
     projectT('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
@@ -40,6 +42,7 @@ export function ProjectProposals({
       <Button
         disabled={
           busy ||
+          !ready ||
           !hasFailures ||
           items.some((p) => p.status === 'pending') ||
           (run.comparison_json?.analysis != null && !run.comparison_json.analysis.groups.length)
@@ -70,7 +73,16 @@ export function ProjectProposals({
             {item.what_changes && <p>{t('whatChanges', { value: item.what_changes })}</p>}
             {item.why_it_may_work && <p>{t('whyItMayWork', { value: item.why_it_may_work })}</p>}
             {!!item.targeted_case_ids?.length && (
-              <p>{t('targetedCases', { value: item.targeted_case_ids.join(', ') })}</p>
+              <p>
+                {t('targetedCases', {
+                  value: item.targeted_case_ids
+                    .map(
+                      (id) =>
+                        run.results_json?.find((r) => r.case_id === id)?.name || t('unnamedCase'),
+                    )
+                    .join('、'),
+                })}
+              </p>
             )}
             {!!item.benefits?.length && (
               <div>
@@ -92,21 +104,40 @@ export function ProjectProposals({
                 </ul>
               </div>
             )}
-            <p>{t('capabilities', { value: item.affected_capabilities.join(', ') })}</p>
-            {item.failure_patterns.map((pattern, i) => (
-              <div key={i} className="space-y-1">
-                <p>
-                  {projectT.has(`causeCategories.${pattern.category}`)
-                    ? projectT(`causeCategories.${pattern.category}`)
-                    : pattern.category}
-                </p>
-                <p>{t('rootCause', { value: pattern.root_cause })}</p>
-                <p>{t('suggestion', { value: pattern.proposed_change })}</p>
-              </div>
-            ))}
+            <p>
+              {t('capabilities', {
+                value: item.affected_capabilities
+                  .map((name) =>
+                    projectT.has(`capabilityNames.${name}`)
+                      ? projectT(`capabilityNames.${name}`)
+                      : t('otherCapability'),
+                  )
+                  .join('、'),
+              })}
+            </p>
+            <details>
+              <summary>{t('failureEvidence')}</summary>
+              {item.failure_patterns.map((pattern, i) => (
+                <div key={i} className="space-y-1">
+                  <p>
+                    {projectT.has(`causeCategories.${pattern.category}`)
+                      ? projectT(`causeCategories.${pattern.category}`)
+                      : pattern.category}
+                  </p>
+                  <p>{t('rootCause', { value: pattern.root_cause })}</p>
+                  <p>{t('suggestion', { value: pattern.proposed_change })}</p>
+                </div>
+              ))}
+            </details>
             {item.diffs.map((diff, i) => (
               <details key={i}>
-                <summary>{t('change', { target: diff.target })}</summary>
+                <summary>
+                  {t('change', {
+                    target: projectT.has(`changeTargets.${diff.target}`)
+                      ? projectT(`changeTargets.${diff.target}`)
+                      : t('otherChange'),
+                  })}
+                </summary>
                 <p>{diff.reason}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
@@ -194,7 +225,25 @@ export function ProjectProposals({
         )
       })}
       {(generate.isError || decide.isError || regression.isError) && (
-        <ErrorState title={t('error')} />
+        <ErrorState
+          title={
+            projectT.has(`optimizationErrors.${errorCode}`)
+              ? projectT(`optimizationErrors.${errorCode}`)
+              : t('error')
+          }
+          onRetry={
+            ready && generate.isError
+              ? () => {
+                  generationId.current ??= crypto.randomUUID()
+                  generate.mutate(generationId.current, {
+                    onSuccess: () => {
+                      generationId.current = null
+                    },
+                  })
+                }
+              : undefined
+          }
+        />
       )}
     </section>
   )

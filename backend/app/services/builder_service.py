@@ -182,7 +182,42 @@ async def confirm_build(
         return None
 
     created_skill_ids: list[uuid.UUID] = []
+    consistency_review = None
     try:
+        requirements = (session.intent or {}).get("project_requirements")
+        if requirements:
+            from app.exceptions import AppError
+            from app.services.builder_consistency import draft_tools, review_configuration
+
+            review_tools = await draft_tools(
+                db, session.user_id, config, session.tools_result or []
+            )
+            consistency_review = await review_configuration(
+                db,
+                session.user_id,
+                requirements,
+                {
+                    "system_prompt": config.get("system_prompt"),
+                    "review_tools": [t.model_dump() for t in review_tools],
+                },
+                config.get("consistency_review"),
+            )
+            history = list(config.get("consistency_reviews") or [])
+            if consistency_review is not config.get("consistency_review"):
+                history.append(consistency_review)
+            config = {
+                **config,
+                "consistency_review": consistency_review,
+                "consistency_reviews": history,
+            }
+            session.draft_config = config
+            if consistency_review["status"] != "approved":
+                code = (
+                    "builder_consistency_rejected"
+                    if consistency_review["status"] == "rejected"
+                    else "builder_consistency_unavailable"
+                )
+                raise AppError(code=code, message=tr(code), status=422)
         selected_model_id = model_id or config.get("runtime_model_id")
         runtime_source = config.get("runtime_model_source")
         binding = await _resolve_confirm_runtime_binding(
@@ -307,6 +342,12 @@ async def confirm_build(
             if await db.get(Skill, skill_id) is None:
                 shutil.rmtree(_skill_root(skill_id), ignore_errors=True)
         session.status = BuilderStatus.PREVIEW
+        if consistency_review is not None:
+            session.draft_config = {
+                **(session.draft_config or {}),
+                "consistency_review": consistency_review,
+                "consistency_reviews": config.get("consistency_reviews", []),
+            }
         await db.commit()
         raise
 
@@ -576,8 +617,12 @@ async def run_v3_message_stream(
     else:
         graph_input = [HumanMessage(content=content)]
 
-    async for chunk in stream_agent_response(graph_compiled, graph_input, config):
-        yield chunk
+    from app.agent_runtime.builder_v3.consistency_context import builder_consistency_scope
+    from app.services.builder_consistency import BuilderReviewService
+
+    with builder_consistency_scope(BuilderReviewService(async_session_factory)):
+        async for chunk in stream_agent_response(graph_compiled, graph_input, config):
+            yield chunk
 
 
 class StaleInterruptError(Exception):
@@ -635,5 +680,9 @@ async def run_v3_resume_stream(
         except Exception:  # pragma: no cover
             logger.warning("interrupt_id validation failed", exc_info=True)
 
-    async for chunk in stream_agent_response(graph_compiled, Command(resume=response), config):
-        yield chunk
+    from app.agent_runtime.builder_v3.consistency_context import builder_consistency_scope
+    from app.services.builder_consistency import BuilderReviewService
+
+    with builder_consistency_scope(BuilderReviewService(async_session_factory)):
+        async for chunk in stream_agent_response(graph_compiled, Command(resume=response), config):
+            yield chunk

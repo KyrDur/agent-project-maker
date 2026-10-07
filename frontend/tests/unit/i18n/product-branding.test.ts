@@ -8,7 +8,9 @@ import { formatDisplayDateTime } from '@/lib/utils/display-format'
 
 const state = vi.hoisted(() => ({ locale: undefined as string | undefined }))
 vi.mock('next/headers', () => ({
-  cookies: async () => ({ get: (name: string) => name === 'moldy_locale' ? { value: state.locale } : undefined }),
+  cookies: async () => ({
+    get: (name: string) => (name === 'moldy_locale' ? { value: state.locale } : undefined),
+  }),
 }))
 vi.mock('next-intl/server', () => ({ getRequestConfig: (callback: unknown) => callback }))
 import requestConfig from '@/i18n/request'
@@ -16,13 +18,17 @@ import requestConfig from '@/i18n/request'
 function leaves(value: unknown, prefix = ''): Record<string, string> {
   if (typeof value === 'string') return { [prefix]: value }
   if (!value || typeof value !== 'object') return {}
-  return Object.fromEntries(Object.entries(value).flatMap(([key, child]) =>
-    Object.entries(leaves(child, `${prefix}.${key}`)),
-  ))
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, child]) =>
+      Object.entries(leaves(child, `${prefix}.${key}`)),
+    ),
+  )
 }
 
 describe('product branding and locale defaults', () => {
-  beforeEach(() => { state.locale = undefined })
+  beforeEach(() => {
+    state.locale = undefined
+  })
 
   it('uses complete Chinese messages for new visitors and invalid locale cookies', async () => {
     expect(DEFAULT_LOCALE).toBe('zh-CN')
@@ -62,10 +68,13 @@ describe('product branding and locale defaults', () => {
 
   it('preserves dynamic arguments and rich-text tags in every Chinese message', () => {
     const chinese = leaves(zh)
-    const tokens = (text: string) => [...new Set([
-      ...Array.from(text.matchAll(/\{(\w+)(?:,|\})/g), (match) => match[1]),
-      ...Array.from(text.matchAll(/<\/?(\w+)>/g), (match) => match[1]),
-    ])].sort()
+    const tokens = (text: string) =>
+      [
+        ...new Set([
+          ...Array.from(text.matchAll(/\{(\w+)(?:,|\})/g), (match) => match[1]),
+          ...Array.from(text.matchAll(/<\/?(\w+)>/g), (match) => match[1]),
+        ]),
+      ].sort()
     for (const [key, text] of Object.entries(leaves(en))) {
       expect(tokens(chinese[key]), key).toEqual(tokens(text))
     }
@@ -74,8 +83,18 @@ describe('product branding and locale defaults', () => {
   it('renders the Chinese tool schema example as valid JSON', () => {
     const t = createTranslator({ locale: 'zh-CN', messages: zh })
     expect(JSON.parse(t('tool.addDialog.custom.paramsPlaceholder'))).toEqual({
-      type: 'object', properties: { city: { type: 'string' } },
+      type: 'object',
+      properties: { city: { type: 'string' } },
     })
+  })
+
+  it('replaces literal placeholder and empty-state labels with useful product copy', () => {
+    for (const [key, text] of Object.entries(leaves(zh))) {
+      expect(text, key).not.toMatch(/占位符|^空状态$/)
+    }
+    for (const [key, text] of Object.entries(leaves(en))) {
+      expect(text, key).not.toMatch(/^(?:\w+ )*Placeholder(?: With Example)?$|^Empty State$/i)
+    }
   })
 
   it('formats default date and relative-time UI in Chinese', () => {

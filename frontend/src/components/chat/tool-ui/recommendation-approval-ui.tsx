@@ -322,6 +322,8 @@ function RecommendationApproval({
               {needsReason && (
                 <label className="block space-y-2">
                   <span>{t('confirmationReason')}</span>
+                  <p className="text-sm text-muted-foreground">{t('confirmationReasonHelp')}</p>
+                  <p className="text-sm text-muted-foreground">{t('confirmationReasonExample')}</p>
                   <BuilderTextarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}

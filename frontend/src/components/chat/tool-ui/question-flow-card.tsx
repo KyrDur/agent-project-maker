@@ -54,6 +54,7 @@ export function QuestionFlowCard({
   const total = questions.length
   const currentQuestion = questions[currentIndex]
   const currentId = currentQuestion ? questionId(currentQuestion, currentIndex) : ''
+  const isRequirementsReason = currentId === 'requirements_reason'
   const selected = useMemo(() => new Set(answers[currentId] ?? []), [answers, currentId])
   const isLast = currentIndex === total - 1
   const currentOptions = currentQuestion ? normalizedOptions(currentQuestion) : []
@@ -165,7 +166,11 @@ export function QuestionFlowCard({
 
       <div className="space-y-3">
         <div>
-          <p className="text-sm font-semibold">{questionLabel(currentQuestion, currentIndex)}</p>
+          <p className="text-sm font-semibold">
+            {isRequirementsReason
+              ? t('requirementsReasonLabel')
+              : questionLabel(currentQuestion, currentIndex)}
+          </p>
           {currentQuestion.question &&
             currentQuestion.label &&
             currentQuestion.question !== currentQuestion.label && (
@@ -173,13 +178,57 @@ export function QuestionFlowCard({
             )}
         </div>
 
+        {isRequirementsReason && (
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">{t('requirementsReasonHelp')}</p>
+            <details className="moldy-muted-panel p-3">
+              <summary className="cursor-pointer font-medium">{t('requirementsReview')}</summary>
+              <dl className="mt-3 space-y-2">
+                {questions.slice(0, currentIndex).map((question, index) => {
+                  const key = questionId(question, index)
+                  const values = [
+                    ...(answers[key] ?? []),
+                    ...(customQuestionIds.has(key) && customAnswers[key]
+                      ? [customAnswers[key]]
+                      : []),
+                  ]
+                  return (
+                    <div key={key}>
+                      <dt className="font-medium">{questionLabel(question, index)}</dt>
+                      <dd className="whitespace-pre-wrap text-muted-foreground">
+                        {values
+                          .map(
+                            (value) =>
+                              question.options?.find((option) => optionId(option) === value)
+                                ?.label ?? value,
+                          )
+                          .join(', ')}
+                      </dd>
+                    </div>
+                  )
+                })}
+              </dl>
+            </details>
+            <div className="moldy-muted-panel space-y-1 p-3">
+              <p className="font-medium">{t('requirementsReasonExampleLabel')}</p>
+              <p className="text-muted-foreground">{t('requirementsReasonExample')}</p>
+            </div>
+          </div>
+        )}
+
         {currentType === 'text' ? (
           <textarea
-            aria-label={questionLabel(currentQuestion, currentIndex)}
+            aria-label={
+              isRequirementsReason
+                ? t('requirementsReasonLabel')
+                : questionLabel(currentQuestion, currentIndex)
+            }
             value={currentText}
             onChange={(event) => updateAnswer(currentId, [event.target.value])}
             onFocus={onInteract}
-            placeholder={t('placeholder')}
+            placeholder={
+              isRequirementsReason ? t('requirementsReasonPlaceholder') : t('placeholder')
+            }
             className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
             rows={3}
           />

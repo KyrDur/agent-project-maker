@@ -14,8 +14,6 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 LANE_FIELDS = (
     "data_root",
     "skill_storage_dir",
-    "k_skill_sync_dir",
-    "k_skill_builtin_storage_dir",
     "conversation_output_dir",
     "upload_dir",
     "artifact_storage_dir",

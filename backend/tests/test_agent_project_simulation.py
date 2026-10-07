@@ -108,6 +108,69 @@ async def test_persistent_chat_idempotence_reset_and_isolation(db, chat_fixture)
 
 
 @pytest.mark.asyncio
+async def test_reviewed_scenarios_freeze_for_trial_without_creating_a_scored_run(db, chat_fixture):
+    agent, version, dataset, calls = chat_fixture
+    dataset.frozen = False
+    dataset.quality_report_json = {"status": "approved"}
+    original = deepcopy(dataset.cases_json)
+    await db.commit()
+    chat = await simulation.create(
+        db, agent.id, TEST_USER_ID, SimulationCreate(request_id=uuid.uuid4(), version_id=version.id)
+    )
+    await db.refresh(dataset)
+    assert dataset.frozen
+    assert chat.scenario_json == original[0]
+    assert calls == []
+    assert await evaluation.list_runs(db, agent.id, TEST_USER_ID) == []
+    with pytest.raises(AppError, match="agent_project_eval_set_frozen"):
+        await evaluation.write_set(
+            db, agent.id, TEST_USER_ID, EvalSetWrite(name="edit", cases=[]), set_id=dataset.id
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [None, "rejected"])
+async def test_unreviewed_or_rejected_scenarios_cannot_be_frozen_for_trial(
+    db, chat_fixture, status
+):
+    agent, version, dataset, calls = chat_fixture
+    dataset.frozen = False
+    dataset.quality_report_json = {"status": status} if status else None
+    await db.commit()
+    with pytest.raises(AppError, match="simulation_scenarios_not_ready"):
+        await simulation.create(
+            db,
+            agent.id,
+            TEST_USER_ID,
+            SimulationCreate(request_id=uuid.uuid4(), version_id=version.id),
+        )
+    assert not dataset.frozen
+    assert calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mutation", ["validation", "requirements"])
+async def test_reviewed_but_inapplicable_scenarios_remain_unavailable(db, chat_fixture, mutation):
+    agent, version, dataset, calls = chat_fixture
+    dataset.frozen = False
+    dataset.quality_report_json = {"status": "approved"}
+    dataset.rubric_json = {
+        **dataset.rubric_json,
+        **({"purpose": "validation"} if mutation == "validation" else {"requirements_hash": "old"}),
+    }
+    await db.commit()
+    with pytest.raises(AppError, match="simulation_scenarios_not_ready"):
+        await simulation.create(
+            db,
+            agent.id,
+            TEST_USER_ID,
+            SimulationCreate(request_id=uuid.uuid4(), version_id=version.id),
+        )
+    assert not dataset.frozen
+    assert calls == []
+
+
+@pytest.mark.asyncio
 async def test_chat_failure_keeps_partial_evidence(db, chat_fixture, monkeypatch):
     agent, version, _, _ = chat_fixture
     chat = await simulation.create(

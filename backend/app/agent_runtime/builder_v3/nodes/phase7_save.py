@@ -42,6 +42,8 @@ def _build_draft(state: BuilderState) -> DraftAgentConfig:
         name=intent.agent_name,
         description=intent.agent_description,
         system_prompt=state.get("system_prompt") or "",
+        consistency_review=state.get("consistency_review"),
+        consistency_reviews=state.get("consistency_reviews") or [],
         tools=[t.tool_name for t in tools if t.kind not in {"planned", "generated_skill"}],
         planned_tools=planned_tools,
         generated_skills=[t.model_dump(mode="json") for t in tools if t.kind == "generated_skill"],

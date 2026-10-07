@@ -9,7 +9,7 @@ from datetime import timedelta
 from time import perf_counter
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
@@ -77,6 +77,13 @@ async def write_set(
     cases = []
     for case in body.cases:
         data = case.model_dump(mode="json")
+        if case.metric_applicability is None:
+            data.pop("metric_applicability")
+            data.pop("metric_applicability_reasons")
+        if not case.expected.attempted_tools:
+            data["expected"].pop("attempted_tools")
+        if case.expected.max_characters is None:
+            data["expected"].pop("max_characters")
         data.update(
             project_id=str(project.id),
             created_at=old.get(str(case.id), {}).get("created_at", now),
@@ -124,6 +131,7 @@ async def judge_set(
                     "tool_arguments",
                     "necessary_order",
                     "required_tools",
+                    "attempted_tools",
                     "forbidden_tools",
                     "format_rule",
                     "handoff",
@@ -144,6 +152,84 @@ async def judge_set(
     }
     overall = sum(scores.values()) / 4
     issues = []
+    from app.services.agent_project_rubric import validate_applicability, validate_sources
+    from app.services.agent_project_semantic import spec_value
+
+    stored = dataset.rubric_json or project.eval_spec_json or {}
+    if stored.get("rubric_version", 1) >= 2:
+        try:
+            spec = spec_value(stored)
+            from app.services.agent_project_practice import requirements
+
+            validate_sources(spec, requirements(project))
+            for case in cases:
+                validate_applicability(spec, case)
+        except (ValueError, TypeError):
+            issues.append("invalid_scoring_contract")
+    preflight = []
+    if stored.get("rubric_version", 1) >= 3:
+        from app.services.agent_project_preflight import preflight_case
+
+        try:
+            version = await projects.get_version(
+                db, agent_id, user_id, uuid.UUID(stored["version_id"])
+            )
+            preflight = [preflight_case(version.snapshot_json["agent"], case) for case in cases]
+            if not stored.get("reference_validation", {}).get("semantic"):
+                issues.append("missing_reference_review")
+            reviewed_hash = stored.get("reference_validation", {}).get("case_hash")
+            current_hash = canonical_json_hash(
+                [
+                    EvaluationCase.model_validate(
+                        {k: v for k, v in c.items() if k in EvaluationCase.model_fields}
+                    ).model_dump(mode="json")
+                    for c in cases
+                ]
+            )
+            if reviewed_hash != current_hash:
+                from app.schemas.agent_project import RubricRuleReview
+                from app.services import agent_project_semantic as semantic
+                from app.services.agent_project_llm import capture_calls
+
+                references = {c["id"]: p for c, p in zip(cases, preflight, strict=True)}
+                calls: list[dict[str, Any]] = []
+                with capture_calls(calls):
+                    review = await semantic.json_call(
+                        db,
+                        {
+                            **version.snapshot_json,
+                            "role_configurations": stored.get("role_configurations"),
+                        },
+                        user_id,
+                        "judge",
+                        "Review each reference answer and path against confirmed requirements "
+                        "and frozen rubric. Return rule_reviews [{reference,supported,reason}] "
+                        "for exactly every case ID. Reject contradictions and added assumptions.",
+                        {
+                            "requirements": requirements(project),
+                            "eval_spec": stored,
+                            "cases": cases,
+                            "reference_results": references,
+                        },
+                    )
+                reviews = [RubricRuleReview.model_validate(r) for r in review["rule_reviews"]]
+                if (
+                    len(reviews) != len(cases)
+                    or {r.reference for r in reviews} != set(references)
+                    or not all(r.supported for r in reviews)
+                ):
+                    issues.append("invalid_reference_review")
+                else:
+                    stored = deepcopy(stored)
+                    stored["reference_validation"] = {
+                        "case_hash": current_hash,
+                        "program": references,
+                        "semantic": [r.model_dump() for r in reviews],
+                        "calls": calls,
+                    }
+                    dataset.rubric_json = stored
+        except (ValueError, TypeError, KeyError, SnapshotExecutionUnavailable):
+            issues.append("invalid_simulation_environment")
     if capabilities - covered:
         issues.append("missing_capabilities")
     if diversity < 0.8:
@@ -152,7 +238,14 @@ async def judge_set(
         issues.append("missing_judgment_basis")
     status = (
         "approved"
-        if overall >= 0.75 and evaluable == 1 and not (capabilities - covered)
+        if overall >= 0.75
+        and evaluable == 1
+        and not (capabilities - covered)
+        and (
+            not issues
+            if stored.get("rubric_version", 1) >= 3
+            else "invalid_scoring_contract" not in issues
+        )
         else "rejected"
     )
     dataset.quality_report_json = {
@@ -162,6 +255,7 @@ async def judge_set(
         "issues": issues,
         "recommendation": "approve" if status == "approved" else "regenerate",
         "status": status,
+        "environment_preflight": preflight,
     }
     await db.commit()
     return dataset
@@ -197,7 +291,11 @@ async def create_run(
         )
     )
     if prior is not None:
-        if prior.version_id != body.version_id or prior.eval_set_id != body.eval_set_id:
+        if (
+            prior.version_id != body.version_id
+            or prior.eval_set_id != body.eval_set_id
+            or (prior.comparison_json or {}).get("repetitions", 1) != body.repetitions
+        ):
             raise error("evaluation_request_conflict", 409)
         await db.commit()
         return prior
@@ -210,7 +308,15 @@ async def create_run(
         except ValueError as exc:
             raise error("evaluation_dataset_invalid") from exc
         if case.enabled:
-            cases.append(projects.snapshot_value(case.model_dump(mode="json")))
+            data = case.model_dump(mode="json")
+            if case.metric_applicability is None:
+                data.pop("metric_applicability")
+                data.pop("metric_applicability_reasons")
+            if not case.expected.attempted_tools:
+                data["expected"].pop("attempted_tools")
+            if case.expected.max_characters is None:
+                data["expected"].pop("max_characters")
+            cases.append(projects.snapshot_value(data))
     if not cases or len(cases) > 20:
         raise error("evaluation_requires_enabled_cases")
     if (dataset.rubric_json or {}).get("formal_benchmark") and len(cases) != 20:
@@ -225,8 +331,23 @@ async def create_run(
         requirements_hash,
     )
 
+    confirmed_run = await db.scalar(
+        select(AgentProjectEvalRun)
+        .where(
+            AgentProjectEvalRun.project_id == project.id,
+            AgentProjectEvalRun.version_id == version.id,
+            AgentProjectEvalRun.status.in_(["completed", "failed"]),
+        )
+        .order_by(AgentProjectEvalRun.created_at.desc())
+        .limit(1)
+    )
+    inherited = []
+    if confirmed_run and (confirmed_run.comparison_json or {}).get(
+        "requirements_hash"
+    ) == requirements_hash(project):
+        inherited = (confirmed_run.comparison_json or {}).get("decisions", [])
     try:
-        decisions = checked_decisions(project, version.id, dataset)
+        decisions = checked_decisions(project, version.id, dataset, inherited)
     except ValueError as exc:
         raise error("project_requirements_required", 409) from exc
     for case in cases:
@@ -238,6 +359,7 @@ async def create_run(
             or expected.get("state")
             or expected.get("format_rule")
             or expected.get("required_tools")
+            or expected.get("attempted_tools")
             or expected.get("forbidden_tools")
             or expected.get("tool_arguments")
             or expected.get("necessary_order")
@@ -249,10 +371,28 @@ async def create_run(
     ):
         raise error("evaluation_requirements_changed", 409)
     plan = frozen_plan(project.eval_spec_json, dataset, version.snapshot_json) or {}
+    if (plan.get("eval_spec") or {}).get("rubric_version", 1) >= 2:
+        from app.services.agent_project_rubric import validate_applicability, validate_sources
+        from app.services.agent_project_semantic import spec_value
+
+        try:
+            spec = spec_value(plan["eval_spec"])
+            validate_sources(spec, requirements(project))
+            for case in cases:
+                validate_applicability(spec, case)
+        except (ValueError, TypeError) as exc:
+            raise error("evaluation_rubric_invalid", 409) from exc
     plan.update(
         requirements=requirements(project),
         requirements_hash=requirements_hash(project),
         decisions=decisions,
+        repetitions=body.repetitions,
+        trial_policy="all_trials_retained",
+        validation_exposure=(
+            "used"
+            if str(dataset.id) in (project.report_json or {}).get("validation_usage", {})
+            else plan.get("validation_exposure")
+        ),
     )
     if not plan.get("eval_spec") and any(
         c.get("expected", {}).get("answer") or c.get("judgment_basis") for c in cases
@@ -279,7 +419,26 @@ async def create_run(
     except Exception as exc:
         raise error("snapshot_credential_unavailable", 409) from exc
     plan["resolved_examinee"] = model_descriptor(examinee)
+    if rubric.get("rubric_version", 1) >= 3:
+        plan["resolved_role_models"] = {}
+        for role, selection in [
+            ("planner", "evaluation_generator"),
+            ("judge", "judge_optimizer"),
+            ("optimization_proposal", "builder"),
+        ]:
+            model, _ = await resolve_model(
+                db, {**version.snapshot_json, "role_configurations": configurations}, user_id, role
+            )
+            plan["resolved_role_models"][selection] = model_descriptor(model)
     dataset.frozen = True
+    if rubric.get("rubric_version", 1) >= 3:
+        from app.services.agent_project_preflight import preflight_case
+
+        try:
+            for case in cases:
+                preflight_case(version.snapshot_json["agent"], case)
+        except (ValueError, TypeError, KeyError, SnapshotExecutionUnavailable) as exc:
+            raise error("evaluation_environment_invalid", 409) from exc
     return await insert_frozen_run(
         db,
         project.id,
@@ -301,6 +460,10 @@ async def insert_frozen_run(
     plan: dict[str, Any] | None,
 ) -> AgentProjectEvalRun:
     """Shared insertion boundary; caller owns scope checks and project write lock."""
+    from app.services.agent_project_preflight import current_execution_protocol
+
+    if not current_execution_protocol(plan):
+        raise error("evaluation_execution_protocol_changed", 409)
     row = AgentProjectEvalRun(
         project_id=project_id,
         version_id=version_id,
@@ -309,7 +472,7 @@ async def insert_frozen_run(
         status="pending",
         cases_snapshot_json=deepcopy(cases),
         dataset_hash=canonical_json_hash(cases),
-        metrics_json={"total": len(cases)},
+        metrics_json={"total": len(cases) * (plan or {}).get("repetitions", 1)},
         results_json=[],
         comparison_json=deepcopy(plan),
     )
@@ -321,16 +484,29 @@ async def insert_frozen_run(
 async def expire_runs(db: AsyncSession, project_id: uuid.UUID) -> None:
     # Reconcile on authenticated, CSRF-protected submission, never from a GET.
     # No automatic replay after a process crash: a timed-out lease becomes failed.
-    # Maximum work is 20 cases × 30 seconds, with 5 minutes of overhead allowance.
-    await db.execute(
-        update(AgentProjectEvalRun)
-        .where(
-            AgentProjectEvalRun.project_id == project_id,
-            AgentProjectEvalRun.status.in_(["pending", "running"]),
-            AgentProjectEvalRun.created_at < utcnow() - timedelta(minutes=45),
+    repeats = AgentProjectEvalRun.comparison_json["repetitions"].as_integer()
+    judge_limit = AgentProjectEvalRun.comparison_json["execution_protocol"][
+        "judge_timeout_seconds"
+    ].as_integer()
+    single = or_(repeats.is_(None), repeats != 3)
+    short = or_(judge_limit.is_(None), judge_limit <= 95)
+    # Include both bounded judge attempts; do not expire a valid 60-trial worker early.
+    for minutes, condition in [
+        (45, and_(short, single)),
+        (135, and_(short, repeats == 3)),
+        (90, and_(judge_limit > 95, single)),
+        (270, and_(judge_limit > 95, repeats == 3)),
+    ]:
+        await db.execute(
+            update(AgentProjectEvalRun)
+            .where(
+                AgentProjectEvalRun.project_id == project_id,
+                AgentProjectEvalRun.status.in_(["pending", "running"]),
+                AgentProjectEvalRun.created_at < utcnow() - timedelta(minutes=minutes),
+                condition,
+            )
+            .values(status="failed", error="evaluation_worker_expired", completed_at=utcnow())
         )
-        .values(status="failed", error="evaluation_worker_expired", completed_at=utcnow())
-    )
 
 
 async def list_runs(
@@ -363,9 +539,14 @@ async def get_run(
     return row
 
 
-def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str, Any]]:
+def score_case(
+    case: dict[str, Any], evidence: dict[str, Any], *, strict_tools: bool = False
+) -> list[dict[str, Any]]:
     expected = case.get("expected") or {}
     names = {call["name"] for call in evidence.get("tool_calls", [])}
+    successful = {
+        event["name"] for event in evidence.get("tool_trace", []) if not event.get("error")
+    }
     checks = [
         {"kind": "execution_succeeded", "passed": True},
         {"kind": "answer_exists", "passed": bool(evidence.get("output", "").strip())},
@@ -374,8 +555,16 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
         checks.append(
             {"kind": "exact_answer", "passed": evidence.get("output") == expected["exact_answer"]}
         )
+    for name in expected.get("attempted_tools", []):
+        checks.append({"kind": "attempted_tool", "target": name, "passed": name in names})
     for name in expected.get("required_tools", []):
-        checks.append({"kind": "required_tool", "target": name, "passed": name in names})
+        checks.append(
+            {
+                "kind": "required_tool",
+                "target": name,
+                "passed": name in (successful if strict_tools else names),
+            }
+        )
     for name in expected.get("forbidden_tools", []):
         checks.append({"kind": "forbidden_tool", "target": name, "passed": name not in names})
     if expected.get("handoff"):
@@ -383,7 +572,8 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
             {
                 "kind": "handoff",
                 "target": expected["handoff"],
-                "passed": expected["handoff"] in evidence.get("handoffs", []),
+                "passed": expected["handoff"] in evidence.get("handoffs", [])
+                and (not strict_tools or expected["handoff"] in successful),
             }
         )
     trace = evidence.get("tool_trace", [])
@@ -425,6 +615,18 @@ def score_case(case: dict[str, Any], evidence: dict[str, Any]) -> list[dict[str,
         checks.append(
             {"kind": "format_compliance", "passed": format_check(case, evidence.get("output", ""))}
         )
+    if expected.get("max_characters") is not None:
+        checks.append(
+            {
+                "kind": "character_limit",
+                "target": str(expected["max_characters"]),
+                "passed": len(evidence.get("output", "")) <= expected["max_characters"],
+            }
+        )
+    if expected.get("max_tool_calls") is not None:
+        checks.append(
+            {"kind": "tool_call_limit", "passed": len(trace) <= expected["max_tool_calls"]}
+        )
     return checks
 
 
@@ -451,6 +653,14 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
         from app.services.agent_project_semantic import grade_case, metric_summary
 
         plan = deepcopy(row.comparison_json)
+        from app.services.agent_project_preflight import current_execution_protocol
+
+        if not current_execution_protocol(plan):
+            row.status = "failed"
+            row.error = "evaluation_execution_protocol_changed"
+            row.completed_at = utcnow()
+            await db.commit()
+            return
         results: list[dict[str, Any]] = []
         try:
             version = await projects.get_version(db, agent_id, user_id, row.version_id)
@@ -461,10 +671,13 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 snapshot["evaluation_roles"] = plan.get("resolved_roles", {})
                 snapshot["role_configurations"] = plan.get("role_configurations")
                 snapshot["resolved_examinee"] = plan.get("resolved_examinee")
+                snapshot["resolved_role_models"] = plan.get("resolved_role_models")
             cases = deepcopy(row.cases_snapshot_json or [])
             if not cases:
                 raise SnapshotExecutionUnavailable("evaluation_dataset_invalid")
-            for case in cases:
+            repetitions = (plan or {}).get("repetitions", 1)
+            trials = [(trial, case) for trial in range(1, repetitions + 1) for case in cases]
+            for trial, case in trials:
                 start = perf_counter()
                 result = {
                     "case_id": case["id"],
@@ -478,15 +691,26 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                     "execution_status": "failed",
                     "metric_scores": {},
                     "judge_reasons": {},
+                    "trial": trial,
                 }
+                judgments: list[dict[str, Any]] = []
                 try:
                     from app.services.agent_project_llm import capture_calls
 
                     partial: list[dict[str, Any]] = []
                     with capture_calls(partial):
-                        async with asyncio.timeout(30):
+                        async with asyncio.timeout(
+                            (row.comparison_json or {})
+                            .get("execution_protocol", {})
+                            .get("execution_timeout_seconds", 30)
+                        ):
                             evidence = await execute_snapshot(db, snapshot, case, user_id)
-                    checks = score_case(case, evidence)
+                    checks = score_case(
+                        case,
+                        evidence,
+                        strict_tools=(plan or {}).get("eval_spec", {}).get("rubric_version", 1)
+                        >= 2,
+                    )
                     result.update(
                         evidence,
                         execution_status="completed",
@@ -494,22 +718,33 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                         status="passed" if all(c["passed"] for c in checks) else "failed",
                     )
                     if plan and plan.get("eval_spec"):
-                        async with asyncio.timeout(95):
-                            result.update(
-                                await grade_case(
-                                    db, snapshot, user_id, case, evidence, checks, plan
+                        with capture_calls(judgments):
+                            async with asyncio.timeout(
+                                (row.comparison_json or {})
+                                .get("execution_protocol", {})
+                                .get("judge_timeout_seconds", 95)
+                            ):
+                                result.update(
+                                    await grade_case(
+                                        db, snapshot, user_id, case, evidence, checks, plan
+                                    )
                                 )
-                            )
                 except SnapshotExecutionUnavailable as exc:
+                    from app.services.agent_project_preflight import ENVIRONMENT_ERRORS
+
                     result.update(exc.evidence)
                     result.update(
                         status="errored",
                         error=str(exc),
-                        error_phase="judge"
+                        error_phase="environment"
+                        if str(exc) in ENVIRONMENT_ERRORS
+                        else "judge"
                         if result["execution_status"] == "completed"
                         else "execution",
                     )
                 except TimeoutError:
+                    if judgments:
+                        result["judge_calls"] = judgments
                     for item in partial:
                         result.update(item.get("partial_execution", {}))
                     result.update(
@@ -542,12 +777,13 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
             passed = sum(result["status"] == "passed" for result in results)
             errored = sum(result["status"] == "errored" for result in results)
             row.metrics_json = {
-                "total": len(results),
+                "total": len(trials),
                 "passed": passed,
                 "failed": len(results) - passed - errored,
                 "errored": errored,
                 "pass_rate": passed / len(results),
                 "execution_errors": sum(r.get("error_phase") == "execution" for r in results),
+                "environment_errors": sum(r.get("error_phase") == "environment" for r in results),
                 "judge_errors": sum(r.get("error_phase") == "judge" for r in results),
                 "executed_cases": sum(r.get("execution_status") == "completed" for r in results),
                 "executed_pass_rate": passed
@@ -557,9 +793,15 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "scored_pass_rate": passed / (len(results) - errored)
                 if len(results) > errored
                 else None,
-                "complete": len(results) == len(cases),
+                "valid_scored_cases": len(results) - errored,
+                "valid_scored_pass_rate": passed / (len(results) - errored)
+                if len(results) > errored
+                else None,
+                "complete": len(results) == len(trials),
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
+                "rubric_version": (plan or {}).get("eval_spec", {}).get("rubric_version", 1),
+                **outcome_statistics(cases, results, repetitions),
             }
             row.pass_rate = passed / len(results)
             row.status = "failed" if errored else "completed"
@@ -670,3 +912,143 @@ async def compare_versions(
             and summaries[0]["comparison_key"] == summaries[1]["comparison_key"]
         ),
     }
+
+
+def outcome_statistics(
+    cases: list[dict[str, Any]], results: list[dict[str, Any]], repetitions: int
+) -> dict[str, Any]:
+    by_case = {c["id"]: c for c in cases}
+    valid = [r for r in results if r.get("status") in {"passed", "failed"}]
+    facts = [r["fact_check"] for r in results if r.get("fact_check")]
+    operations = [r for r in results if (by_case[r["case_id"]].get("expected") or {}).get("state")]
+    recoveries = [r for r in results if by_case[r["case_id"]].get("recovery_goal")]
+    critical = [
+        r
+        for r in valid
+        if any(v.get("critical_failure") for v in r.get("metric_scores", {}).values())
+        or any(c["kind"] == "forbidden_tool" and not c["passed"] for c in r.get("assertions", []))
+        or (
+            (r.get("fact_check") or {}).get("unsupported", 0) > 0
+            and r.get("metric_scores", {}).get("groundedness", {}).get("critical_applicable")
+        )
+    ]
+    trial_rates = []
+    for trial in range(1, repetitions + 1):
+        rows = [r for r in results if r.get("trial", 1) == trial]
+        complete = len(rows) == len(cases) and {r["case_id"] for r in rows} == set(by_case)
+        trial_rates.append(
+            sum(r["status"] == "passed" for r in rows) / len(cases) if complete and cases else None
+        )
+    complete_rates = [rate for rate in trial_rates if rate is not None]
+    calls = [
+        call
+        for result in results
+        for field in ("model_calls", "judge_calls")
+        for call in result.get(field, [])
+    ]
+    usage = [
+        value
+        for call in calls
+        for value in (
+            [call["accounting"]]
+            if call.get("accounting")
+            else [r.get("accounting") for r in call.get("returns", [])]
+        )
+        if isinstance(value, dict)
+    ]
+    return {
+        "model_accounting": {
+            "model_invocations": len(calls),
+            "usage_covered_invocations": sum(
+                bool(c.get("accounting")) or any(r.get("accounting") for r in c.get("returns", []))
+                for c in calls
+            ),
+            "input_count": sum(u.get("input_count", 0) for u in usage) if usage else None,
+            "output_count": sum(u.get("output_count", 0) for u in usage) if usage else None,
+            "total_count": sum(u.get("total_count", 0) for u in usage) if usage else None,
+            "cost": None,
+            "cost_reason": "provider_prices_not_configured",
+        },
+        "case_count": len(cases),
+        "repetitions": repetitions,
+        "stability": "incomplete_trials"
+        if len(complete_rates) != repetitions
+        else "unverified_single_trial"
+        if repetitions == 1
+        else "observed_repeated_trials",
+        "trial_pass_rates": trial_rates,
+        "trial_range": max(complete_rates) - min(complete_rates) if complete_rates else None,
+        "fact_support": {
+            "supported": sum(f["supported"] for f in facts),
+            "unsupported": sum(f["unsupported"] for f in facts),
+            "unknown": sum(f["unknown"] for f in facts),
+            "total": sum(f["total"] for f in facts),
+            "covered_cases": len(facts),
+            "aggregation": "claim_counts",
+        }
+        if facts
+        else None,
+        "operation_success": {
+            "successful": sum(
+                all(c["passed"] for c in r.get("assertions", []) if c["kind"] == "final_state")
+                and any(c["kind"] == "final_state" for c in r.get("assertions", []))
+                and r.get("execution_status") == "completed"
+                for r in operations
+            ),
+            "total": sum(bool((c.get("expected") or {}).get("state")) for c in cases) * repetitions,
+        },
+        "recovery_success": {
+            "successful": sum(r["status"] == "passed" for r in recoveries),
+            "total": sum(bool(c.get("recovery_goal")) for c in cases) * repetitions,
+        },
+        "critical_violations": {
+            "violating": len(critical),
+            "total": sum(
+                any(v.get("critical_applicable") for v in r.get("metric_scores", {}).values())
+                or any(c["kind"] == "forbidden_tool" for c in r.get("assertions", []))
+                for r in valid
+            ),
+        },
+    }
+
+
+async def use_validation_for_optimization(
+    db: AsyncSession,
+    agent_id: uuid.UUID,
+    user_id: uuid.UUID,
+    run_id: uuid.UUID,
+    reason: str,
+) -> AgentProjectEvalRun:
+    run = await get_run(db, agent_id, user_id, run_id)
+    if (run.comparison_json or {}).get("purpose") != "validation":
+        raise error("validation_run_required", 409)
+    if run.status not in {"completed", "failed"}:
+        raise error("optimization_run_incomplete", 409)
+    project = await projects.require_project(db, agent_id, user_id)
+    await projects.lock_project(db, project)
+    await db.refresh(project, ["report_json"])
+    uses = dict((project.report_json or {}).get("validation_usage", {}))
+    key = str(run.eval_set_id)
+    if key not in uses:
+        safe_reason = projects.snapshot_value(reason.strip())
+        if not safe_reason or safe_reason != reason.strip():
+            raise error("validation_reason_invalid", 422)
+        uses[key] = {
+            "source_run_id": str(run_id),
+            "reason": safe_reason,
+            "author": "user_confirmed",
+            "exposure": "used",
+        }
+        project.report_json = {**(project.report_json or {}), "validation_usage": uses}
+        rows = (
+            await db.scalars(
+                select(AgentProjectEvalRun).where(
+                    AgentProjectEvalRun.project_id == project.id,
+                    AgentProjectEvalRun.eval_set_id == run.eval_set_id,
+                )
+            )
+        ).all()
+        for row in rows:
+            row.comparison_json = {**(row.comparison_json or {}), "validation_exposure": "used"}
+    await db.commit()
+    return run

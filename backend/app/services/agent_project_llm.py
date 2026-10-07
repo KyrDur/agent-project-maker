@@ -7,6 +7,7 @@ import json
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
+from time import perf_counter
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
@@ -23,6 +24,10 @@ from app.services.agent_project_service import snapshot_value
 from app.services.system_credential_resolver import resolve_system_model
 
 _calls: ContextVar[list[dict[str, Any]] | None] = ContextVar("project_calls", default=None)
+
+
+def captured_calls() -> list[dict[str, Any]] | None:
+    return _calls.get()
 
 
 @contextmanager
@@ -103,6 +108,13 @@ async def resolve_model(
         base_url=pinned.get("base_url", resolved.base_url),
         allow_env_fallback=False,
     )
+    from app.services.agent_project_call_evidence import model_descriptor
+
+    frozen_model = (snapshot.get("resolved_role_models") or {}).get(system_role)
+    if frozen_model and frozen_model != model_descriptor(llm):
+        from app.services.agent_project_executor import SnapshotExecutionUnavailable
+
+        raise SnapshotExecutionUnavailable("evaluation_judge_configuration_changed")
     return llm, resolved.api_key or ""
 
 
@@ -207,7 +219,9 @@ async def json_call(
         "Use plain language: in Chinese prose use 智能体 for agent and 大模型 for LLM. "
     )
     try:
-        async with asyncio.timeout(90):
+        async with asyncio.timeout(
+            240 if role == "case_generator" or "reference_results" in payload else 90
+        ):
             with tracing_context(enabled=False):
                 llm, key = await resolve_model(db, snapshot, user_id, role)
                 from app.services.agent_project_call_evidence import model_descriptor
@@ -225,6 +239,7 @@ async def json_call(
                     }
                     if calls is not None:
                         calls.append(call)
+                    call_start = perf_counter()
                     response = await llm.ainvoke(
                         [
                             {
@@ -238,8 +253,12 @@ async def json_call(
                         ],
                         config={"callbacks": [], "tags": [f"project:{role}"]},
                     )
+                    from app.services.agent_project_call_evidence import accounting
+
                     call.update(
                         status="completed",
+                        duration_ms=round((perf_counter() - call_start) * 1000),
+                        accounting=accounting(response),
                         output=safe_value(response.text, key),
                         response_metadata=safe_value(
                             getattr(response, "response_metadata", {}), key
@@ -259,11 +278,21 @@ async def json_call(
         raise
     except asyncio.CancelledError:
         if "call" in locals():
-            call.update(status="cancelled", error="evaluation_timeout")
+            call.update(
+                status="cancelled",
+                error="evaluation_timeout",
+                duration_ms=round((perf_counter() - call_start) * 1000),
+            )
         raise
     except Exception as exc:
         if "call" in locals():
-            call.update(status="failed", error="evaluation_model_failed")
+            call.update(
+                status="failed",
+                error="evaluation_model_failed",
+                error_type=type(exc).__name__,
+                http_status=getattr(exc, "status_code", None),
+                duration_ms=round((perf_counter() - call_start) * 1000),
+            )
         raise SnapshotExecutionUnavailable(
             "evaluation_model_failed",
             {"judge_calls": safe_value(_calls.get() or [], locals().get("key", ""))},

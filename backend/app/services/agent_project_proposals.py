@@ -145,6 +145,10 @@ async def generate(
     if existing:
         return existing
     optimization.terminal_semantic(run)
+    if (run.comparison_json or {}).get("purpose") == "validation" and (
+        run.comparison_json or {}
+    ).get("validation_exposure") != "used":
+        raise optimization.fail("validation_evidence_not_for_optimization", 409)
     analysis = await optimization.analyze(db, agent_id, user_id, run.id)
     if not analysis["groups"]:
         raise optimization.fail("optimization_no_fixable_cases", 409)
@@ -162,6 +166,7 @@ async def generate(
                     **parent.snapshot_json,
                     "evaluation_roles": (run.comparison_json or {}).get("resolved_roles", {}),
                     "role_configurations": (run.comparison_json or {}).get("role_configurations"),
+                    "resolved_role_models": (run.comparison_json or {}).get("resolved_role_models"),
                 },
                 user_id,
                 "optimization_proposal",
@@ -277,6 +282,7 @@ async def decide(
         await db.commit()
         return value
     if decision == "accepted":
+        optimization.ensure_current_protocol(run)
         existing_candidate = await db.scalar(
             select(AgentProjectVersion).where(
                 AgentProjectVersion.project_id == project.id,
@@ -441,9 +447,15 @@ async def regression(
             "decisions",
             "resolved_roles",
             "resolved_examinee",
+            "resolved_role_models",
             "role_configurations",
             "validation_source",
             "quality_report",
+            "purpose",
+            "repetitions",
+            "trial_policy",
+            "validation_exposure",
+            "execution_protocol",
         )
         if key in (source.comparison_json or {})
     }

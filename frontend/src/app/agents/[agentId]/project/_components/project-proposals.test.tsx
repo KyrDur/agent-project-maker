@@ -90,7 +90,16 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
         decision_reason: '先修复身份校验',
       }
       runs[0].comparison_json = { proposals: [result] }
-      runs = [{...baseline, id: 'r2', version_id: 'v2', status: 'completed', comparison_json: {regression: {proposal_id: 'proposal1', source_run_id: 'r1'}}}, runs[0]]
+      runs = [
+        {
+          ...baseline,
+          id: 'r2',
+          version_id: 'v2',
+          status: 'completed',
+          comparison_json: { regression: { proposal_id: 'proposal1', source_run_id: 'r1' } },
+        },
+        runs[0],
+      ]
       return HttpResponse.json(result)
     }),
     http.post(`${path}/eval-runs/r1/proposals/proposal1/regression`, async ({ request }) => {
@@ -120,16 +129,13 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
     }),
   ).toBeInTheDocument()
   expect(accepted).toBe(false)
-  await userEvent.click(screen.getByText('查看 instructions 变更'))
+  await userEvent.click(screen.getByText('查看 智能体指令 变更'))
   expect(screen.getByText('Help customers. Verify identity.')).toBeVisible()
-  await userEvent.type(
-    screen.getByPlaceholderText(/优先修复工具调用/),
-    '先修复身份校验',
-  )
+  await userEvent.type(screen.getByPlaceholderText(/优先修复工具调用/), '先修复身份校验')
   await userEvent.click(screen.getByRole('button', { name: '接受建议并创建新版本' }))
   expect(await screen.findByText('已从 V1 创建 V2，原版本保持不变。')).toBeInTheDocument()
   expect(screen.getByText('选择理由：先修复身份校验')).toBeInTheDocument()
-  expect(screen.queryByRole('button', {name: '运行同一评测集回归'})).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: '运行同一评测集回归' })).not.toBeInTheDocument()
   expect(await screen.findByRole('link', { name: '查看报告和版本比较' })).toHaveAttribute(
     'href',
     '#evaluation-report',
@@ -140,7 +146,10 @@ it('reviews a preview, accepts a version, and runs the frozen regression', async
 it('retains rejected proposals and offers a new proposal', async () => {
   server.use(
     http.post(`${path}/eval-runs/r1/proposals/proposal1/decision`, async ({ request }) => {
-      expect(await request.json()).toEqual({ decision: 'rejected', decision_reason: '选择其他方案' })
+      expect(await request.json()).toEqual({
+        decision: 'rejected',
+        decision_reason: '选择其他方案',
+      })
       const result = { ...proposal, status: 'rejected' as const }
       runs[0].comparison_json = { proposals: [result] }
       return HttpResponse.json(result)

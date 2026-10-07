@@ -45,7 +45,7 @@ describe('SchedulesPage', () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.type(screen.getByPlaceholderText('搜索占位符'), 'morning')
+    await user.type(screen.getByPlaceholderText('示例：每日汇总'), 'morning')
 
     expect(screen.queryByText('Hourly update')).not.toBeInTheDocument()
     expect(screen.getAllByText('Good morning report').length).toBeGreaterThan(0)
@@ -55,7 +55,7 @@ describe('SchedulesPage', () => {
     const user = userEvent.setup()
     render(<SchedulesPage />)
 
-    await user.type(screen.getByPlaceholderText('搜索占位符'), '不存在的日程')
+    await user.type(screen.getByPlaceholderText('示例：每日汇总'), '不存在的日程')
 
     expect(screen.getByText('已过滤')).toBeInTheDocument()
   })

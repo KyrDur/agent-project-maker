@@ -146,7 +146,7 @@ it('uses real lifecycle data for best version, latest evaluation and optimizatio
   render(<ProjectWorkbench agentId="agent-id" />)
   expect((await screen.findAllByText('最佳版本')).length).toBeGreaterThan(0)
   expect(screen.getAllByText('V2').length).toBeGreaterThan(0)
-  expect((await screen.findAllByText('90%')).length).toBeGreaterThan(0)
+  expect((await screen.findAllByText('90.0%')).length).toBeGreaterThan(0)
   expect(screen.getByText('需要先检索资料。')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: /优化\s*优化闭环/ }))
   expect(await screen.findByRole('heading', { name: '优化' })).toBeInTheDocument()
@@ -158,6 +158,23 @@ it('keeps creation available after an API failure', async () => {
   await userEvent.click(await screen.findByRole('button', { name: '创建项目' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('无法创建项目。请再试一次。')
   expect(screen.getByRole('button', { name: '创建项目' })).toBeEnabled()
+})
+
+it('keeps legacy Builder experiments readable without starting a new paid baseline', async () => {
+  const bootstrap = vi.fn()
+  server.use(
+    http.get(path, () => HttpResponse.json({ ...project, builder_session_id: 'legacy-builder' })),
+    http.post(`${path}/bootstrap`, () => {
+      bootstrap()
+      return HttpResponse.json({ accepted: true })
+    }),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  await screen.findByRole('button', { name: /设置\s*项目设置/ })
+  await userEvent.click(screen.getByRole('button', { name: /设置\s*项目设置/ }))
+  expect(await screen.findByText('构建与基线评估')).toBeInTheDocument()
+  expect(screen.queryByText('当前步骤：创建 V1 快照')).not.toBeInTheDocument()
+  expect(bootstrap).not.toHaveBeenCalled()
 })
 
 it('automatically resumes a Builder project and shows Chinese lifecycle progress', async () => {
@@ -193,4 +210,28 @@ it('automatically resumes a Builder project and shows Chinese lifecycle progress
   const t = createTranslator({ locale: 'zh-CN', messages: zhMessages })
   expect(t('agentProject.openProject')).toBe('打开项目')
   expect(t('agent.settings.toolsSkills.empty')).toBe('尚未添加工具或技能。')
+})
+
+it('shows the preparation failure on the overview without silently starting paid retries', async () => {
+  const bootstrap = vi.fn()
+  server.use(
+    http.get(path, () =>
+      HttpResponse.json({
+        ...project,
+        builder_session_id: 'builder-id',
+        requirements_json: {
+          bootstrap: { stage: 'plan', error: 'evaluation_rubric_unsupported', run_id: null },
+        },
+      }),
+    ),
+    http.post(`${path}/bootstrap`, () => {
+      bootstrap()
+      return HttpResponse.json({ accepted: true })
+    }),
+  )
+  render(<ProjectWorkbench agentId="agent-id" />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('模拟场景准备失败')
+  expect(bootstrap).not.toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: '重试准备场景' }))
+  expect(bootstrap).toHaveBeenCalledOnce()
 })

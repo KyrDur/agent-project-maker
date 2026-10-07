@@ -45,17 +45,19 @@ def test_phase2_question_flow_locale(locale, title, first):
             phase2_intent._fallback_name_options({})
         )
         assert payload["title"] == title
-        assert payload["questions"][0]["options"][0]["label"] == first
+        name_question = next(q for q in payload["questions"] if q["id"] == "agent_name")
+        assert name_question["options"][0]["label"] == first
         assert [q["id"] for q in payload["questions"]] == [
+            "requirements_reason",
             "agent_name",
             "response_tone",
             "output_style",
         ]
-        assert payload["questions"][1]["options"][0]["id"] == "friendly"
+        assert payload["questions"][2]["options"][0]["id"] == "friendly"
         assert not HANGUL.search(json.dumps(payload, ensure_ascii=False))
         if locale == "zh-CN":
-            assert payload["questions"][0]["label"] == "智能体名称"
-            assert payload["questions"][0]["question"] == "你想给这个智能体取什么名字？"
+            assert name_question["label"] == "智能体名称"
+            assert name_question["question"] == "你想给这个智能体取什么名字？"
 
 
 @pytest.mark.asyncio
@@ -66,13 +68,13 @@ async def test_naming_prompt_and_failure_fallback(monkeypatch, locale, language)
     invoke = AsyncMock(side_effect=ValueError("unavailable"))
     monkeypatch.setattr(phase2_intent, "invoke_with_json_retry", invoke)
     with locale_scope(locale):
-        names = await phase2_intent._suggest_name_options("Find useful web pages")
+        with pytest.raises(ValueError, match="builder_name_generation_invalid"):
+            await phase2_intent._suggest_name_options("Find useful web pages")
         prompt, task = invoke.call_args.args
         assert language in prompt
         assert "JSON" in prompt
         assert "Korean" not in prompt + task
-        assert not HANGUL.search(prompt + task + json.dumps(names, ensure_ascii=False))
-        assert len(names) == 3
+        assert not HANGUL.search(prompt + task + "")
 
 
 @pytest.mark.asyncio
@@ -162,6 +164,13 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
         primary_task_type="search",
         use_cases=["Search pages"],
         required_capabilities=["search"],
+        project_requirements={
+            "goal": "Search confirmed simulated pages",
+            "inputs": "A question",
+            "deliverables": "An answer with sources",
+            "business_rules": "Use simulated records only",
+            "success_conditions": "Answer according to the returned records",
+        },
     )
     monkeypatch.setattr(phase2_intent, "analyze_intent", AsyncMock(return_value=intent))
     monkeypatch.setattr(
@@ -178,11 +187,13 @@ async def test_checkpoint_resume_uses_new_locale_without_rewriting_messages(monk
     old = (await graph.aget_state(config)).values["messages"]
     config["configurable"]["ui_locale"] = "en"
     response = {
+        "mode": "question_flow",
         "answers": {
+            "requirements_reason": "Confirmed simulated search requirements",
             "agent_name": ["搜索智能体"],
             "response_tone": ["friendly"],
             "output_style": ["summary"],
-        }
+        },
     }
     await graph.ainvoke(Command(resume=response), config)
     current = (await graph.aget_state(config)).values["messages"]
@@ -301,10 +312,8 @@ async def test_generated_prompt_fallback_language(monkeypatch, locale, rule):
             use_cases=["Search pages"],
             required_capabilities=[],
         )
-        result = await prompt_generator.generate_system_prompt(intent, [], [])
-    assert rule in result
-    assert prompt_generator._has_required_sections(result)
-    assert not HANGUL.search(result)
+        with pytest.raises(ValueError, match="builder_prompt_generation_invalid"):
+            await prompt_generator.generate_system_prompt(intent, [], [])
 
 
 @pytest.mark.parametrize(

@@ -35,7 +35,7 @@
         "rejected": "已拒绝"
       },
       "qualityStatus": "评测集质量：{status}",
-      "qualityScore": "质量评分：{value}%",
+      "qualityScore": "测试集结构检查均分：{value}/100（4 项检查，不代表 Agent 质量）",
       "qualityStates": {
         "pending": "待检查",
         "approved": "已通过",
@@ -45,24 +45,32 @@
       "checking": "正在检查…",
       "qualityIssues": {
         "missing_capabilities": "缺少能力覆盖，请补充用例标签或重新生成。",
-        "low_diversity": "用例重复较多，请修改或重新生成。"
+        "low_diversity": "用例重复较多，请修改或重新生成。",
+        "invalid_scoring_contract": "评分规则缺少有效需求出处或用例适用范围。",
+        "invalid_simulation_environment": "模拟环境不能完成参考路径",
+        "missing_reference_review": "参考路径尚未经过需求一致性审查",
+        "invalid_reference_review": "参考路径与冻结要求不一致"
       },
       "bestReason": "原因：同一评测集和评分规则下的最高有效评分。",
       "createdFrom": "来源：{source} · 优化建议 {proposal}",
-      "automaticRegression": "方案确认后自动运行回归。"
+      "automaticRegression": "方案确认后自动运行回归。",
+      "failureEvidence": "展开相关失败分析",
+      "unnamedCase": "未命名用例",
+      "otherCapability": "其他能力（详见方案说明）",
+      "otherChange": "其他配置"
     },
     "evaluationReport": {
       "title": "评测报告",
       "selectReport": "选择历史评估（版本 B）",
-      "score": "总分",
+      "score": "全部用例通过率",
       "summary": "评估摘要",
       "summaryValue": "共 {total} 条用例，通过 {passed} 条",
       "best": "最佳版本",
       "unavailable": "暂无有效评分",
       "percent": "{value}%",
       "delta": "{value} 个百分点",
-      "scoreRule": "总分使用评估通过率；各指标保留已有 评判模型 分数。执行或评分出错的运行不计总分。",
-      "bestRule": "在相同冻结数据和评分口径下选取最高分版本，同分保留较早评估。标记不会自动修改线上 智能体 配置。",
+      "scoreRule": "通过率以全部用例为分母；平均得分以各项已评分用例为分母。执行或裁判出错的运行不能作为最佳版本依据。",
+      "bestRule": "相同冻结数据和评分口径下选取通过率最高的有效运行，同分保留较早结果；不会自动替换当前 Agent。",
       "dataset": "评测集：{id}",
       "metrics": "评分指标",
       "noMetrics": "暂无已保存指标。",
@@ -78,7 +86,8 @@
       "needBaseline": "评估另一个版本后，即可比较分数。",
       "notComparable": "需要相同冻结数据、评分口径且有效的评估，才能计算提升幅度。",
       "running": "评估或优化正在运行，完成后自动更新报告。",
-      "empty": "暂无评估报告，请选择版本和评测集并运行评估。"
+      "empty": "暂无评估报告，请选择版本和评测集并运行评估。",
+      "bestCohort": "同口径内全部 {runs} 次有效运行：{passed}/{total} 个试验通过。"
     },
     "workspace": {
       "navAria": "智能体生命周期工作区",
@@ -146,7 +155,12 @@
           "optimizationDecision": "优化决策",
           "v2Generation": "生成 V2",
           "regressionEvaluation": "回归评测",
-          "comparisonBestVersion": "比较与最佳版本"
+          "comparisonBestVersion": "比较与最佳版本",
+          "requirements": "确认需求与能力",
+          "simulation": "聊天试用（可选）",
+          "evaluation": "查看自动评测",
+          "optimization": "确认优化与自动回归",
+          "materials": "查看案例与成果"
         },
         "stepStates": {
           "completed": "已完成",
@@ -156,7 +170,7 @@
         "bestCard": {
           "title": "最佳版本",
           "badge": "Best",
-          "overallScore": "总分",
+          "overallScore": "全部用例通过率",
           "noPreviousComparable": "暂无可比较的上一版本。",
           "improvement": "相比上一可比版本 {value} 个百分点",
           "viewVersions": "查看版本演进",
@@ -166,7 +180,7 @@
         "latestCard": {
           "title": "最近评测",
           "version": "版本",
-          "score": "得分",
+          "score": "全部用例通过率",
           "cases": "用例数",
           "failedCases": "失败用例",
           "evaluatedWith": "使用评测集",
@@ -214,6 +228,10 @@
           "compareVersions": {
             "label": "比较版本",
             "detail": "查看最佳版本、评分变化和版本演进关系。"
+          },
+          "waitEvaluation": {
+            "label": "查看运行进度",
+            "detail": "当前实验正在执行，等待完成后再分析或比较。"
           }
         }
       },
@@ -262,7 +280,9 @@
         "title": "优化",
         "description": "从评测失败证据出发，审核 AI 优化建议，并用同一个冻结评测集做回归验证。",
         "loading": "正在加载优化证据...",
-        "empty": "暂无可优化的评测证据。请先在 Evaluation 中运行评测，产生失败案例后再生成优化建议。"
+        "empty": "暂无可优化的评测证据。请先在 Evaluation 中运行评测，产生失败案例后再生成优化建议。",
+        "runLabel": "V{version} · {status} · {date}",
+        "unknownVersion": "?"
       }
     },
     "createVersion": "创建版本",
@@ -327,7 +347,9 @@
       "required_tool": "所需工具",
       "forbidden_tool": "禁止使用的工具",
       "handoff": "预期交接",
-      "format_compliance": "格式合规性"
+      "format_compliance": "格式合规性",
+      "character_limit": "字符数上限",
+      "attempted_tool": "已尝试必要工具"
     },
     "executionErrors": {
       "snapshot_invalid": "快照不完整。",
@@ -343,11 +365,18 @@
       "evaluation_mock_missing": "所需或调用的工具没有模拟数据。",
       "evaluation_mock_definition_invalid": "模拟工具定义无效。",
       "evaluation_judge_invalid": "评审模型返回无效分数 JSON。",
+      "evaluation_judge_unassessable": "裁判无法判断事实是否成立。此用例计为裁判错误，事实证据仍保留。",
       "evaluation_model_failed": "用户配置的模型调用失败。",
       "evaluation_format_rule_missing": "确定性格式度量需要规则。",
       "historical_skill_execution_unavailable": "历史技能包执行不可用。",
       "historical_skill_content_unavailable": "该版本未保存冻结的技能文本，不会使用最新技能替代。",
-      "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。"
+      "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。",
+      "evaluation_execution_protocol_changed": "执行与评分协议已更新。请开启新实验范围；旧成绩和已保存分析保留，不继续按旧协议产生新成绩。",
+      "evaluation_rubric_invalid": "评分规则或用例适用范围校验失败。请检查需求出处并重新生成评测计划；历史实验保持不变。",
+      "evaluation_rubric_unsupported": "模型 C 发现评分条件超出已确认需求，或评分档位不明确。请检查需求和生成记录，再重试；不会用这些规则给 Agent 扣分。",
+      "evaluation_environment_invalid": "场景参考路径未通过预检，请修补模拟数据后重试。",
+      "evaluation_reference_invalid": "参考答案或路径与需求不一致，请重新生成场景。",
+      "evaluation_mock_response_missing": "实际参数没有匹配模拟响应，属于环境缺项；不是业务成功。"
     },
     "compareVersions": "比较版本",
     "needTwoVersions": "创建第二个版本来比较配置。",
@@ -446,7 +475,8 @@
       "tool_correctness": "工具正确性",
       "groundedness": "事实依据",
       "format_compliance": "格式合规性",
-      "business_quality": "业务质量"
+      "business_quality": "业务质量",
+      "compliance_escalation": "业务规则遵守与转人工处理"
     },
     "scenarios": {
       "normal": "正常",
@@ -541,9 +571,9 @@
       "revoked": "分享已撤销。",
       "publicTitle": "智能体项目案例",
       "shareUnavailable": "该项目共享不可用或已被撤销。",
-      "reportOverview": "评测总览",
+      "reportOverview": "最佳版本 · 全部用例通过率",
       "bestVersion": "最佳版本",
-      "bestEvidence": "基于最高评测分数",
+      "bestEvidence": "同一冻结范围内的最高有效通过率",
       "failedCases": "失败用例",
       "metricsTitle": "指标",
       "scoredCases": "已评分用例：{count}",
@@ -561,7 +591,22 @@
         "regressed": "退步"
       },
       "latestVersion": "最新版本：V{version}",
-      "currentResult": "本次结果（V{version}）：{passed}/{total}；全部用例通过率 {rate}"
+      "currentResult": "本次结果（V{version}）：{passed}/{total}；全部用例通过率 {rate}",
+      "missingCases": "不足两个实际场景，材料待补充；不会自动编造案例。",
+      "staleMaterials": "有新证据，已生成的简历已过期，请重新生成。",
+      "chooseCases": "改选两个实际案例",
+      "caseOne": "案例一",
+      "caseTwo": "案例二",
+      "saveCases": "保存案例选择",
+      "caseOutcome": "第 {trial} 次试验 · 状态：{status} · 终止：{termination}",
+      "caseEnvironment": "初始与最终模拟状态",
+      "caseJudgment": "程序检查、判定与模型调用记录",
+      "caseChanges": "已确认的实际改动与来源",
+      "changeAuthor": "决策作者：{author}",
+      "authorDemo": "Codex 开发演示",
+      "authorUser": "用户本人",
+      "authorSystem": "系统记录",
+      "caseNoChanges": "本场景没有保存对应的确认改动。"
     },
     "bootstrap": {
       "title": "构建与基线评估",
@@ -574,7 +619,8 @@
         "cases": "生成 20 个评估用例",
         "baseline": "运行基线评估",
         "results": "查看结果",
-        "validation": "自动校验测试集"
+        "validation": "自动校验测试集",
+        "evaluation": "运行基线评估"
       },
       "blocked": "此步骤未能完成。请检查个人模型凭据及模型可用性，修复后重试；已有版本和测试集会保留。",
       "reason": "阻塞原因代码：{code}",
@@ -617,7 +663,7 @@
       "error": "保存失败，请检查需求、关联版本、用例和必填理由",
       "errorCounts": "执行错误 {execution} 条；裁判错误 {judge} 条",
       "executedRate": "成功执行用例中的任务通过率：{passed}/{total}（{value}%）",
-      "executionEvidence": "实际模型、裁判调用与最终状态（历史缺失显示为空）",
+      "executionEvidence": "查看执行与裁判评测日志",
       "judgmentBasis": "判断依据",
       "initialState": "模拟初始状态 JSON",
       "businessAssertions": "扩展规则 JSON（state、tool_arguments、necessary_order）",
@@ -641,7 +687,7 @@
       "you": "你",
       "agent": "Agent",
       "noOutput": "本次没有最终输出，请查看调用证据和终止原因。",
-      "evidence": "查看模型调用、工具操作和终止原因",
+      "evidence": "查看本次执行日志",
       "state": "查看当前模拟状态",
       "message": "发送消息",
       "send": "发送",
@@ -649,9 +695,248 @@
       "retryMessage": "重试同一条消息",
       "error": "模拟执行请求失败；可以重试同一请求。",
       "restoreError": "无法恢复会话，请重试读取。",
-      "running": "正在模拟执行…"
+      "running": "正在模拟执行…",
+      "scenarioExample": "本场景示例：{input}",
+      "scenarioScope": "当前场景可模拟：{tools}。未覆盖的能力会明确报告环境缺项。",
+      "noTools": "无工具，仅对话",
+      "preparing": "正在准备模拟场景；当前步骤：{stage}。准备完成后会自动显示试用输入。",
+      "prepareError": "模拟场景准备失败，不能继续试用。{reason}",
+      "prepareHelp": "请检查个人模型配置后重试。已生成内容和失败记录会保留；重试会调用个人模型接口。",
+      "useExample": "填入当前场景示例",
+      "rubricHelp": "重试会让模型根据已保存的方案和审查意见重新生成；通过校验后才能继续。原需求和失败记录会保留。",
+      "planReady": "评测方案已修正并通过审核。下一步准备模拟场景和基线评测，继续会调用个人模型；上次失败记录保留。",
+      "continuePreparation": "继续准备场景与评测",
+      "previousFailure": "查看上次失败记录（已保留）"
     },
-    "analysisEvidence": "查看模型 C 分析来源与证据"
+    "analysisEvidence": "查看模型 C 分析来源与证据",
+    "executionLog": {
+      "title": "执行日志",
+      "description": "以下展示已保存的模型消息、工具请求及对应执行结果。工具结果按名称和调用次数关联；未记录的内容会明确标注，不补写模型思考过程。",
+      "missing": "未记录",
+      "emptyValue": "空值",
+      "emptyText": "没有文本内容",
+      "emptyList": "没有条目",
+      "emptyObject": "没有字段",
+      "yes": "是",
+      "no": "否",
+      "nestedData": "展开深层原始数据",
+      "modelCall": "第 {number} 次模型调用",
+      "modelInput": "发送给模型的消息（{count} 条）",
+      "parameters": "查看实际调用参数",
+      "modelReturn": "模型返回的内容",
+      "returnMissing": "未记录本次模型返回；调用可能未完成，请查看状态和终止原因。",
+      "toolCall": "调用工具",
+      "toolOrder": "工具执行记录 #{number}",
+      "arguments": "传入的信息",
+      "toolResult": "工具返回的信息",
+      "toolFailure": "工具执行失败",
+      "toolResultMissing": "模型请求了这个工具，但未记录对应执行结果。",
+      "stateChange": "查看本次模拟状态变化",
+      "before": "操作前",
+      "after": "操作后",
+      "latency": "耗时 {ms} 毫秒",
+      "modelHistoryMissing": "没有保存模型调用明细，无法还原这一部分执行过程。",
+      "otherTools": "单独保存的工具执行记录",
+      "otherToolsHelp": "这些操作有执行证据，但缺少可关联的模型请求，因此单独展示。",
+      "noToolExecution": "本次没有记录工具执行。",
+      "finalReply": "最终回复",
+      "termination": "结束原因",
+      "finalState": "查看执行结束后的模拟状态",
+      "judge": "裁判评测日志",
+      "judgeCall": "第 {number} 次裁判调用",
+      "judgeInput": "查看裁判收到的任务、输出和评分要求",
+      "judgeReturn": "裁判返回的评分与依据",
+      "judgeHistoryMissing": "未记录裁判调用明细，请以已保存的评分依据为准；不能据此补造裁判过程。",
+      "technicalDetails": "原始记录（技术详情 / JSON）",
+      "statuses": {
+        "running": "调用尚未完成",
+        "completed": "调用完成",
+        "failed": "调用失败",
+        "cancelled": "调用已中止",
+        "unknown": "调用状态未记录"
+      },
+      "roles": {
+        "system": "系统指令",
+        "human": "用户消息",
+        "user": "用户消息",
+        "ai": "Agent 消息",
+        "assistant": "Agent 消息",
+        "tool": "工具返回的消息"
+      },
+      "terminations": {
+        "completed": "正常结束",
+        "timeout": "执行超时",
+        "evaluation_timeout": "执行超时",
+        "evaluation_step_limit": "达到模型调用次数限制",
+        "evaluation_tool_call_limit": "达到工具调用次数限制",
+        "evaluation_model_failed": "模型调用失败",
+        "evaluation_requires_approval": "执行等待批准",
+        "evaluation_judge_invalid": "裁判返回内容未通过校验"
+      },
+      "fields": {
+        "order_id": "订单号",
+        "order_number": "订单号",
+        "user_id": "用户标识",
+        "account_id": "账号标识",
+        "product_id": "商品编号",
+        "tracking_number": "物流单号",
+        "query": "查询内容",
+        "status": "状态",
+        "payment_status": "支付状态",
+        "items": "商品明细",
+        "quantity": "数量",
+        "price": "价格",
+        "stock": "库存",
+        "carrier": "承运商",
+        "estimated_delivery": "预计送达时间",
+        "result": "结果",
+        "results": "结果列表",
+        "message": "消息",
+        "content": "内容",
+        "output": "实际输出",
+        "input": "输入信息",
+        "instruction": "裁判指令",
+        "scores": "逐项评分",
+        "score": "得分",
+        "reason": "判定理由",
+        "evidence": "依据引用",
+        "metric": "评测指标",
+        "criteria": "评分要求",
+        "threshold": "通过阈值",
+        "pass_threshold": "通过阈值",
+        "metrics": "评测指标",
+        "case": "测试用例",
+        "expected": "预期行为",
+        "groundedness": "事实依据",
+        "task_completion": "任务完成",
+        "tool_correctness": "工具使用正确性",
+        "customer_experience": "客户体验",
+        "temperature": "随机性（温度）",
+        "top_p": "采样范围（Top P）",
+        "max_tokens": "最大输出 Token 数",
+        "max_completion_tokens": "最大输出 Token 数",
+        "model": "模型",
+        "model_name": "模型名称",
+        "model_role": "模型角色",
+        "source": "调用来源",
+        "reference": "证据引用",
+        "references": "证据引用",
+        "evidence_refs": "证据引用",
+        "orders": "订单记录",
+        "products": "商品记录",
+        "logistics": "物流记录",
+        "refunds": "退款记录"
+      },
+      "toolRequestOnly": "模型请求调用下面的工具，本次没有返回答复文本。"
+    },
+    "scoring": {
+      "customMetric": "项目业务指标",
+      "viewRule": "查看评分规则与需求出处",
+      "programRule": "程序检查：全部适用条件通过得 1 分，否则得 0 分；没有适用检查时不评分。",
+      "legacyMethod": "历史内容评分：裁判按当时保存的文字细则给分。",
+      "criterionMethod": "内容评分：逐条件选择 0／0.5／1 档位，由程序计算平均分；关键条件得 0 时，本指标得 0。",
+      "legacyEvidence": "历史记录缺少结构化评分档位或逐条件证据，不补造；文字细则与程序检查可能存在差异。",
+      "requirementSource": "需求出处",
+      "anchor": "{level} 分：{description}",
+      "critical": "关键条件：不满足时，本指标计 0 分。",
+      "technicalIdentifier": "技术标识",
+      "averageExplanation": "下面是已评分用例的平均得分，不是任务通过率。未评分用例不进入平均值；覆盖数说明评到了多少条。",
+      "noScores": "暂无已评分指标。",
+      "average": "平均得分：{value}/100",
+      "unavailable": "不可用",
+      "coverage": "评分覆盖：{count}/{total} 条用例",
+      "coverageUnavailable": "评分覆盖数：历史记录缺失",
+      "metricPassCount": "单项达标：{count}/{total} 条已评分用例",
+      "notApplicableCount": "不适用：{count} 条",
+      "unscoredCount": "未评分：{count} 条",
+      "missingRule": "该运行没有保存此指标的规则，不能用当前计划补填历史依据。",
+      "retrievalNotMeasured": "本实验未计算 Hit@K、Recall@K 或 MRR；模拟返回不代表经过验证的检索排序效果。",
+      "level": "档位：{value}",
+      "evidenceReference": "证据位置：{reference}",
+      "noProgramChecks": "本用例没有适用的程序检查。",
+      "pending": "评测尚未完成，共 {total} 条用例；暂不显示完整成绩。",
+      "partial": "这是部分运行结果，尚不能作为完整成绩。",
+      "counts": {
+        "passed": "任务通过",
+        "failed": "任务失败",
+        "execution_errors": "执行错误",
+        "judge_errors": "裁判错误",
+        "environment_errors": "模拟环境错误"
+      },
+      "caseCount": "{count}/{total} 条",
+      "allPassRate": "全部用例通过率：{passed}/{total}（{value}%）",
+      "weightNotice": "通过要求所有适用指标和必要检查达标，不采用加权总分；权重字段仅保留历史兼容。",
+      "thresholdRule": "通过条件以本项目冻结的任务判据为准；表达偏好在新版规则中单独评分。",
+      "metricComparison": "平均得分 {before}/100 → {after}/100 · {delta} 分",
+      "sourceReview": "新评分条件需通过需求原文校验和模型 C 的规则审查；这不等于已通过行业基准校准。",
+      "caseScore": "本例得分：{value}/100",
+      "failedOrWeakCases": "失败或存在薄弱指标的用例：{count}",
+      "taskQualitySeparation": "核心任务与关键业务约束决定任务通过；表达质量单独显示。",
+      "qualityOnly": "表达质量，不决定任务通过",
+      "factCounts": "事实支持 {supported}/{total} 条；不支持 {unsupported} 条，无法判断 {unknown} 条。",
+      "calibrationLimit": "事实覆盖依赖模型抽取，尚未经过本领域专家校准；引用存在不保证语义判断正确。",
+      "factVerdicts": {
+        "supported": "有来源支持",
+        "unsupported": "无来源支持",
+        "unknown": "无法判断",
+        "not_applicable": "非事实项"
+      }
+    },
+    "optimizationProgress": "本次回归评测正在运行，已完成 {finished}/{total} 条用例。结果完整后才能分析失败或生成下一轮优化建议；页面会自动更新。",
+    "optimizationErrors": {
+      "optimization_requires_semantic_run": "当前评测尚未结束，或缺少内容评分。请等待评测完成后再优化。",
+      "optimization_run_incomplete": "这次评测结果不完整，暂时不能优化。请先完成或重跑正式评测。",
+      "optimization_analysis_failed": "模型 C 的失败分析未能通过校验。已保留调用证据，可以重试分析。",
+      "optimization_proposal_invalid": "模型 A 返回的修改方案未能通过校验。已保留证据，可以重新生成方案。",
+      "optimization_no_fixable_cases": "当前没有证据支持进一步修改，可以如实结束本轮实验。",
+      "optimization_source_not_latest": "该方案来自旧版本。请切换到最新版本已完成的评测后继续。",
+      "optimization_proposal_already_decided": "这一轮已经选择过方案。请查看新版本的回归结果后再继续。",
+      "project_decision_reason_required": "请填写选择这条方案的理由。",
+      "snapshot_credential_unavailable": "来源版本的个人模型配置当前不可用，请检查个人 AI 配置。",
+      "evaluation_role_configuration_changed": "模型配置与本轮冻结配置不一致，需要开启新的实验范围。",
+      "evaluation_execution_protocol_changed": "执行与评分协议已更新，请开启新实验范围后再优化。旧成绩和已保存分析仍可查看。"
+    },
+    "capabilityNames": {
+      "tool_calling": "模拟工具调用",
+      "knowledge_retrieval": "知识查询与依据",
+      "structured_output": "结构化输出",
+      "workflow": "任务处理流程",
+      "handoff": "转人工处理",
+      "writing": "写作",
+      "conversation": "对话",
+      "reasoning": "分析与推理"
+    },
+    "changeTargets": {
+      "instructions": "智能体指令",
+      "output_instructions": "回复规范",
+      "skill_content": "技能指南内容",
+      "tool_description": "模拟工具说明",
+      "runtime_config": "调用次数与重试设置"
+    },
+    "analyzingFailures": "模型 C 正在根据本次运行证据分析失败与薄弱指标…",
+    "qualityRevision": {
+      "setPurpose": "测试集用途",
+      "purposes": {
+        "regression": "固定回归集",
+        "validation": "独立验证集"
+      },
+      "validationBoundary": "独立验证集的内容与结果不提供给优化模型 A；若用于继续优化，需重新声明已使用范围。",
+      "repetitions": "每例试验次数",
+      "trialOption": "{count} 次试验",
+      "stability": "每例 {count} 次试验；单次结果不能证明稳定性。",
+      "trialRates": "逐次通过率（%）：{rates}；保留全部试验，不挑最好一次。",
+      "callBudget": "本次共 {count} 次用例试验，至少约 {calls} 次执行与裁判请求，工具及重试会追加调用。费用信息不可用；使用个人 Key。",
+      "operationRate": "达到最终操作状态：{successful}/{total} 个适用试验。",
+      "recoveryRate": "明确注入故障后的恢复成功：{successful}/{total} 个适用试验。",
+      "confirmedDetails": "查看已确认需求与决策记录",
+      "validationUseBoundary": "将此验证集用于优化后，全部相关运行都会标记为已使用；此后不能再声称是未见验证。",
+      "validationUseReason": "使用验证证据的理由",
+      "useValidation": "标记为已使用并允许优化",
+      "criticalRate": "关键违规：{violating}/{total} 个适用且已评分试验。",
+      "modelAccounting": "模型调用 {calls} 次；Token 记录覆盖 {coverage} 次，已记录合计 {count}。缺少价格，费用不可用。",
+      "trialIncomplete": "未完成",
+      "scoredPassRate": "有效评分任务通过率：{passed}/{total}（{value}%）；另有 {errors} 个错误，全部用例分母仍保留错误。"
+    }
   },
   "metadata": {
     "title": "Agent Project Maker",
@@ -1442,7 +1727,7 @@
       "openerCounter": "{count}/{max}",
       "openerAdd": "添加",
       "openerAddDialogTitle": "开启器添加对话框标题",
-      "openerPlaceholder": "开场占位符",
+      "openerPlaceholder": "示例：帮我整理本周工作记录",
       "openerEmpty": "开瓶器空",
       "openerMaxReached": "您最多可以添加 {max} 开场白。",
       "openerEdit": "编辑",
@@ -1490,7 +1775,7 @@
         "deleteConfirm": "删除 确认",
         "intervalLabel": "间隔标签",
         "messageLabel": "消息标签",
-        "messagePlaceholder": "消息占位符",
+        "messagePlaceholder": "示例：汇总今天的任务进展",
         "addButton": "添加按钮",
         "addNew": "添加新内容"
       },
@@ -1605,7 +1890,7 @@
       "addToolsDialog": {
         "title": "添加工具对话框",
         "description": "选择该智能体可以使用的工具。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：订单查询",
         "noResults": "没有结果",
         "manageTools": "管理工具",
         "selectToPreview": "选择预览",
@@ -1616,7 +1901,7 @@
       "addSkillsDialog": {
         "title": "添加技能对话框",
         "description": "选择该智能体可以使用的技能。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：周报撰写",
         "noResults": "没有结果",
         "manageSkills": "技能管理",
         "selectToPreview": "选择预览",
@@ -1627,7 +1912,7 @@
       "addMiddlewaresDialog": {
         "title": "添加中间件",
         "description": "为此 智能体 选择中间件。",
-        "searchPlaceholder": "搜索占位符",
+        "searchPlaceholder": "示例：审批",
         "noResults": "没有结果",
         "selectedEmpty": "选定为空",
         "current": "当前（{count}）",
@@ -1720,12 +2005,12 @@
       "triggerButton": "触发按钮",
       "title": "修复智能体",
       "description": "请求修复 智能体 检查并改进此 智能体。",
-      "emptyState": "空状态",
+      "emptyState": "描述遇到的问题，再开始修复",
       "badge": {
         "preview": "预览",
         "applied": "应用"
       },
-      "inputPlaceholder": "输入占位符",
+      "inputPlaceholder": "示例：回答遗漏了下周计划，请检查提示词",
       "toast": {
         "applied": "已应用更改",
         "failed": "操作失败。"
@@ -1737,11 +2022,11 @@
     "assistant": {
       "title": "人工智能助手",
       "description": "使用聊天来修改此 智能体 配置。",
-      "emptyState": "空状态",
+      "emptyState": "说说你希望怎样改进这个智能体",
       "fixHeroTitle": "修复{agentName}",
       "fixHeroTitleNew": "修复英雄标题新",
       "fixHeroSubtitle": "修复英雄字幕",
-      "inputPlaceholder": "输入占位符",
+      "inputPlaceholder": "示例：让回答更简洁，并在信息不足时先追问",
       "send": "发送",
       "toast": {
         "applied": "已应用更改",
@@ -1834,7 +2119,7 @@
     "title": "定时任务",
     "description": "查看和管理工作区中计划的 智能体 运行。",
     "listTitle": "列表标题",
-    "searchPlaceholder": "搜索占位符",
+    "searchPlaceholder": "示例：每日汇总",
     "agentFallback": "智能体 后备",
     "none": "无",
     "notYet": "还没有",
@@ -1944,7 +2229,10 @@
     "emptyState": {
       "canDo": "这个智能体能做什么",
       "commandDiscovery": "浏览命令",
-      "moreCapabilities": "+{count} 更多"
+      "moreCapabilities": "+{count} 更多",
+      "exampleLabel": "试用示例（虚构输入，可编辑后发送）",
+      "genericExample": "请说明你能帮我完成什么，并给出一个可以直接试用的输入示例。",
+      "weeklyExample": "请把以下模拟记录整理为周报：本周完成使用说明初稿；校对仍在进行；暂未收到同事的反馈；下周计划完成校对。汇报对象是直属主管。只使用这些事实，缺少信息时请先追问。"
     },
     "search": {
       "placeholder": "在对话中搜索",
@@ -2106,8 +2394,8 @@
       "rejected": "被拒绝",
       "editApproved": "编辑已批准",
       "rejectReasonLabel": "拒绝原因",
-      "rejectReasonPlaceholder": "拒绝原因占位符",
-      "editArgsPlaceholder": "编辑参数占位符",
+      "rejectReasonPlaceholder": "示例：参数中的日期不正确，请修改后再执行",
+      "editArgsPlaceholder": "示例：把 limit 改为 5；请保留有效 JSON",
       "approve": "批准",
       "reject": "拒绝",
       "editAndApprove": "编辑并批准",
@@ -2128,7 +2416,7 @@
       "autoRejected": "自动拒绝",
       "expired": "已过期",
       "respond": "回应",
-      "respondPlaceholder": "回复占位符",
+      "respondPlaceholder": "示例：请先核对订单状态，再继续处理",
       "allActionsCompleted": "所有行动已完成",
       "confirmAll": "全部确认",
       "actionN": "{total} 的操作 {index}",
@@ -2139,7 +2427,7 @@
       "allowForSession": "留出本次会议的剩余时间"
     },
     "userInput": {
-      "placeholder": "占位符",
+      "placeholder": "请输入你的回答…",
       "sending": "发送",
       "sent": "已发送",
       "send": "发送",
@@ -2151,7 +2439,7 @@
       "expiresIn": "到期时间",
       "expired": "已过期",
       "autoSkipped": "自动跳过",
-      "stepStatus": "{total} 的步骤 {current}",
+      "stepStatus": "第 {current} 步，共 {total} 步",
       "back": "返回",
       "next": "下一步",
       "complete": "完成",
@@ -2160,7 +2448,14 @@
       "customAnswerPlaceholder": "输入您自己的答案...",
       "selectionRange": "选择{min}至{max}",
       "confirmSelection": "确认（{count}）",
-      "resumeFailed": "无法发送响应。再试一次。"
+      "resumeFailed": "提交失败，已保留填写内容。请重试；仍有问题时可返回检查并修改。",
+      "requirementsReasonLabel": "为什么认可这些需求和模拟规则？",
+      "requirementsReasonHelp": "请用自己的话说明：这些需求是否符合你想做的 Agent，以及为什么同意先用这些模拟规则验证它。这句话会原样保存在项目报告中，不用于评分。如果需求不符合你的想法，可以返回修改。",
+      "requirementsReview": "查看前面已确认的需求和模拟规则",
+      "requirementsReasonExampleLabel": "示例：电商客服（请按自己的实际想法填写）",
+      "requirementsReasonExample": "我希望先验证 Agent 能否理解客户问题，并正确查询和处理模拟订单，所以认可这些需求，先用模拟数据验证流程。",
+      "requirementsReasonPlaceholder": "例如：我希望先验证……，所以认可这些需求，并同意使用……模拟规则。",
+      "reasonExample": "示例：这些需求符合我想完成的任务；我希望先用模拟数据检查流程，因此认可这套验证规则。请按自己的实际想法填写，示例不会自动提交。"
     },
     "clarifying": {
       "directInput": "直接输入",
@@ -2170,7 +2465,7 @@
     "page": {
       "settings": "设置",
       "newConversation": "新的对话",
-      "emptyState": "空状态",
+      "emptyState": "选择下面的示例开始试用",
       "error": "错误",
       "canceling": "取消",
       "canceled": "取消",
@@ -2182,7 +2477,7 @@
       "menu": "菜单"
     },
     "input": {
-      "placeholder": "占位符",
+      "placeholder": "示例：请说明你能帮我完成什么，并给出一个输入示例",
       "sendButton": "发送按钮",
       "scrollToBottom": "滚动到底部",
       "attachComingSoon": "即将附上",
@@ -2298,9 +2593,9 @@
       }
     },
     "builderApproval": {
-      "placeholder": "占位符",
-      "shortPlaceholder": "短占位符",
-      "placeholderWithExample": "带示例的占位符",
+      "placeholder": "示例：请补充信息不足时的追问步骤",
+      "shortPlaceholder": "示例：请保留四段式结构",
+      "placeholderWithExample": "示例：请用简洁的语气，并保留用户提供的事实",
       "approvedStatus": "批准状态",
       "revisionStatus": "修订状态",
       "requestRevision": "请求修改",
@@ -2312,13 +2607,20 @@
       "reviewRequired": "需要审核",
       "promptRevisionFallback": "及时修订回退",
       "systemPrompt": "系统提示",
-      "promptFeedbackPlaceholder": "及时反馈占位符",
+      "promptFeedbackPlaceholder": "示例：缺少信息时先追问，不要编造工作成果",
       "approveAndContinue": "批准并继续",
       "draftTools": "{count} 草稿工具",
       "draftMiddlewares": "{count}中间件草案",
       "draftPreviewTitle": "草稿预览标题",
       "finalConfirmTitle": "最终确认标题",
-      "finalApproveLabel": "最终批准标签"
+      "finalApproveLabel": "最终批准标签",
+      "consistencyReviewTitle": "需求与实现一致性审查：",
+      "consistencyReviewStatus": {
+        "approved": "已通过",
+        "rejected": "存在冲突",
+        "error": "未完成"
+      },
+      "consistencyReviewLimit": "审查覆盖当前指令与文本指南。模型判断仍可能出错，实际任务效果由后续实验验证。"
     },
     "imageGeneration": {
       "disabled": "已禁用",
@@ -2379,7 +2681,7 @@
         "model_call_limit": "限制单次运行或同一对话的模型调用次数，防止反复调用和无限循环。达到上限后结束运行或报错，具体取决于配置。",
         "pii": "识别指定类型的个人信息，并按配置删除、遮盖、散列或阻止处理。默认识别邮箱；不会自动识别姓名、客户名称或所有敏感信息。"
       },
-      "feedbackPlaceholder": "反馈占位符",
+      "feedbackPlaceholder": "示例：这个能力不符合需求，请说明替代方案",
       "approved": "已批准",
       "approve": "批准",
       "approveAndContinue": "批准并继续",
@@ -2391,7 +2693,9 @@
       "empty": "还没有商品。",
       "confirmationReason": "确认能力方案的理由（必填）",
       "skillPreview": "文本技能指南（可修改）",
-      "retry": "重试当前阶段"
+      "retry": "重试当前阶段",
+      "confirmationReasonHelp": "请说明这些能力怎样支持你的需求、是否有不需要的能力。理由会原样保存在贡献记录中，不用于评分；示例仅供参考，请按自己的判断填写。",
+      "confirmationReasonExample": "示例（周报助手）：这份写作规范能帮助整理工作记录并约束事实边界；当前只需文字处理，所以认可这套能力方案。"
     },
     "toolCall": {
       "calling": "呼唤",
@@ -2663,7 +2967,7 @@
       "newConversation": "新的对话",
       "fallbackTitle": "备用标题",
       "empty": "还没有商品。",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：周报",
       "searchEmpty": "搜索空",
       "loadMore": "加载更多",
       "loadingMore": "正在加载...",
@@ -2680,7 +2984,7 @@
       },
       "renameDialog": {
         "title": "重命名对话框",
-        "placeholder": "占位符",
+        "placeholder": "示例：本周工作周报",
         "save": "保存"
       },
       "deleteDialog": {
@@ -2740,7 +3044,7 @@
         "setKey": "设置密钥",
         "changeKey": "更改密钥"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：搜索",
       "tagLabel": "标签标签",
       "resetFilter": "重置过滤器",
       "agentCount": "{count} 智能体 使用",
@@ -2785,7 +3089,7 @@
         "authNoticeV1": "授权通知V1",
         "headerName": "标头名称",
         "credentialField": "凭据字段",
-        "credentialFieldPlaceholder": "凭据字段占位符",
+        "credentialFieldPlaceholder": "示例：API_KEY",
         "authHint": "授权提示",
         "submit": "提交",
         "connectionFailed": "连接失败：{detail}",
@@ -2804,9 +3108,9 @@
       },
       "custom": {
         "name": "名称",
-        "namePlaceholder": "名称占位符",
+        "namePlaceholder": "示例：查询模拟订单",
         "description": "描述",
-        "descriptionPlaceholder": "说明占位符",
+        "descriptionPlaceholder": "示例：根据订单编号返回订单状态",
         "apiUrl": "API网址",
         "apiUrlPlaceholder": "https://api.example.com/weather",
         "httpMethod": "HTTP方法",
@@ -2849,7 +3153,7 @@
         "communication": "通讯",
         "automation": "自动化"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：订单",
       "count": "{count}工具",
       "empty": {
         "title": "空",
@@ -3321,11 +3625,11 @@
     "dialogDescription": "对话框说明",
     "form": {
       "name": "名称",
-      "namePlaceholder": "名称占位符",
+      "namePlaceholder": "示例：周报撰写规范",
       "description": "描述",
-      "descriptionPlaceholder": "说明占位符",
+      "descriptionPlaceholder": "示例：指导智能体归纳工作记录，不编造事实",
       "content": "内容",
-      "contentPlaceholder": "内容占位符"
+      "contentPlaceholder": "示例：先核对用户提供的事实，再按要求整理正文；缺少信息时先追问。"
     },
     "firstSkill": "通过聊天培养第一个技能",
     "modified": "改装{date}",
@@ -3367,7 +3671,7 @@
       "text": {
         "name": "名称",
         "slug": "蛞蝓",
-        "slugPlaceholder": "蛞蝓占位符",
+        "slugPlaceholder": "示例：weekly-report-guide",
         "description": "描述",
         "content": "内容",
         "required": "必填",
@@ -3385,7 +3689,7 @@
         "name": "名称",
         "namePlaceholder": "我的有用技能",
         "descriptionLabel": "描述",
-        "descriptionPlaceholder": "说明占位符",
+        "descriptionPlaceholder": "示例：把零散的工作记录整理成四段式周报",
         "zipFailed": "压缩失败",
         "created": "已创建",
         "failed": "失败",
@@ -4237,7 +4541,7 @@
       "edit": "编辑"
     },
     "provider": "提供者",
-    "providerPlaceholder": "提供者占位符",
+    "providerPlaceholder": "示例：DeepSeek",
     "sourceBadge": {
       "manual": "手册",
       "catalog": "目录",
@@ -4313,7 +4617,7 @@
       "description": "从连接的提供商那里发现模型并注册它们。",
       "new": "新模型",
       "hiddenBadge": "隐藏徽章",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：deepseek",
       "columns": {
         "model": "模型",
         "price": "价格",
@@ -4450,7 +4754,7 @@
       "discover": "发现",
       "emptyCredential": "空凭据",
       "emptyResults": "空结果",
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：deepseek",
       "toggleAll": "全部切换",
       "selectModel": "选择{name}",
       "testModel": "测试{name}",
@@ -5065,9 +5369,9 @@
     "addNew": "添加新内容",
     "editTitle": "编辑标题",
     "provider": "提供者",
-    "providerPlaceholder": "提供者占位符",
+    "providerPlaceholder": "示例：DeepSeek",
     "name": "名称",
-    "namePlaceholder": "名称占位符",
+    "namePlaceholder": "示例：我的个人模型接口",
     "type": "类型",
     "typeApiKey": "API密钥",
     "typeOauth2": "OAuth2",
@@ -5096,7 +5400,7 @@
     },
     "credentialSelect": {
       "label": "标签",
-      "placeholder": "占位符",
+      "placeholder": "选择已保存的个人凭据",
       "directInput": "直接输入",
       "none": "无",
       "createNew": "新建",
@@ -5185,11 +5489,11 @@
         "form": "形式",
         "catalog": "目录"
       },
-      "searchPlaceholder": "搜索占位符",
+      "searchPlaceholder": "示例：DeepSeek",
       "emptyDefinitions": "空定义",
       "back": "返回",
       "name": "名称",
-      "namePlaceholder": "名称占位符",
+      "namePlaceholder": "示例：个人 DeepSeek Key",
       "save": "保存"
     },
     "detail": {

@@ -125,7 +125,9 @@ async def test_get_model_config(db: AsyncSession, patch_read_session):
 
 
 @pytest.mark.asyncio
-async def test_list_available_tools(db: AsyncSession, patch_read_session):
+async def test_list_available_tools_excludes_external_instances(
+    db: AsyncSession, patch_read_session
+):
     agent_id, _ = await _seed_full(db)
     tools = _build_tools(db, agent_id)
     tool = _find_tool(tools, "list_available_tools")
@@ -133,9 +135,7 @@ async def test_list_available_tools(db: AsyncSession, patch_read_session):
     result = await tool.ainvoke({})
     data = json.loads(result)
     assert isinstance(data, list)
-    assert len(data) >= 1
-    names = [item["name"] for item in data]
-    assert "Web Search" in names
+    assert data == []  # Simulated project capabilities are designed separately.
 
 
 # ---------------------------------------------------------------------------
@@ -437,7 +437,7 @@ async def test_list_cron_schedules_with_trigger(db: AsyncSession, patch_read_ses
     assert data[0]["type"] == "cron"
     assert data[0]["message"] == "测试消息"
     assert data[0]["name"] == "定时任务"
-    assert data[0]["timezone"] == "Asia/Seoul"
+    assert data[0]["timezone"] == "Asia/Shanghai"
     assert data[0]["conversation_policy"] == "schedule_thread"
     assert data[0]["max_runs"] is None
     assert data[0]["failure_count"] == 0
@@ -473,7 +473,7 @@ async def test_get_cron_schedule(db: AsyncSession, patch_read_session):
     data = json.loads(result)
     assert data["type"] == "cron"
     assert data["message"] == "详情查询测试"
-    assert data["timezone"] == "Asia/Seoul"
+    assert data["timezone"] == "Asia/Shanghai"
     assert data["conversation_policy"] == "schedule_thread"
     assert data["auto_pause_after_failures"] is None
     assert "result_conversation_id" in data

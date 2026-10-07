@@ -276,7 +276,7 @@ test.describe('Chat navigator live integration', () => {
       await openRowMenu(targetRow)
       await page.getByRole('menuitem', { name: '重命名', exact: true }).click()
       const renameDialog = page.getByRole('dialog')
-      const renameInput = renameDialog.getByPlaceholder('占位符')
+      const renameInput = renameDialog.getByPlaceholder('示例：本周工作周报')
       await expect(renameInput).toBeVisible({ timeout: 10_000 })
       await renameInput.fill(newTitle)
       await renameDialog.getByRole('button', { name: '保存', exact: true }).click()

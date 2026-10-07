@@ -16,6 +16,7 @@ export function useProjectPortfolio(agentId: string) {
   })
   const resume = useMutation({
     mutationFn: (style: ResumeStyle) => agentProjectApi.resume(agentId, style),
+    onSuccess: () => report.refetch(),
   })
   const share = useMutation({
     mutationFn: (revoke: boolean) => agentProjectApi.share(agentId, revoke),

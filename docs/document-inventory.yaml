@@ -131,6 +131,9 @@ documents:
   - path: docs/agent-project-lifecycle-mvp.md
     lifecycle: historical
     status: archived
+  - path: docs/agent-project-optimization-trial-fixes.md
+    lifecycle: generated-evidence
+    status: generated
   - path: docs/agent-project-phase2.md
     lifecycle: historical
     status: archived
@@ -146,9 +149,24 @@ documents:
   - path: docs/agent-project-practice-acceptance.md
     lifecycle: generated-evidence
     status: generated
+  - path: docs/agent-project-quality-research-2026-10-06.md
+    lifecycle: reference/spec
+    status: reference
+  - path: docs/agent-project-quality-revision-acceptance-2026-10-06.md
+    lifecycle: generated-evidence
+    status: generated
+  - path: docs/agent-project-quality-revision-handoff-2026-10-06.md
+    lifecycle: active-plan
+    status: active
+  - path: docs/agent-project-quality-revision-plan-2026-10-06.md
+    lifecycle: active-plan
+    status: active
   - path: docs/agent-project-release.md
     lifecycle: historical
     status: archived
+  - path: docs/agent-project-scoring-acceptance.md
+    lifecycle: generated-evidence
+    status: generated
   - path: docs/agent-project-setup.md
     lifecycle: canonical-current
     status: current

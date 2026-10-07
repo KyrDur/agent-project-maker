@@ -553,6 +553,37 @@ async def test_case_timeout_marks_run_failed(db, setup_project, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_repeated_repair_protocol_keeps_worker_lease_for_all_trials(db, setup_project):
+    from app.models.agent_project import utcnow
+
+    agent = setup_project
+    cases = await dataset(db, agent)
+    version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
+    row = await evaluation.create_run(
+        db,
+        agent.id,
+        TEST_USER_ID,
+        EvalRunCreate(request_id=uuid.uuid4(), version_id=version.id, eval_set_id=cases.id),
+    )
+    row.comparison_json = {
+        **(row.comparison_json or {}),
+        "repetitions": 3,
+        "execution_protocol": {"judge_timeout_seconds": 190},
+    }
+    row.created_at = utcnow() - timedelta(minutes=136)
+    await db.commit()
+    await evaluation.expire_runs(db, row.project_id)
+    await db.refresh(row)
+    assert row.status == "pending"
+    row.created_at = utcnow() - timedelta(minutes=271)
+    await db.commit()
+    await evaluation.expire_runs(db, row.project_id)
+    await db.refresh(row)
+    assert row.status == "failed"
+    assert row.error == "evaluation_worker_expired"
+
+
+@pytest.mark.asyncio
 async def test_stale_run_reconciliation_is_not_a_get_mutation(db, setup_project):
     from app.models.agent_project import utcnow
 

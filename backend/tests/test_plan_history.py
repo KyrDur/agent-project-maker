@@ -28,7 +28,7 @@ from plan_history_support import (
 )
 
 
-def test_actual_history_plus_remaining_primaries_satisfies_strict_contract() -> None:
+def test_archived_history_plus_remaining_primaries_satisfies_strict_contract() -> None:
     contract, commits, entries = _complete_history()
 
     result = validate_history(contract, commits, entries)

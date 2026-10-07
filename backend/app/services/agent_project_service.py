@@ -233,7 +233,14 @@ async def create_project(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UU
                 user_id=agent.user_id,
                 title=snapshot_value(agent.name),
                 builder_session_id=builder_id,
-                requirements_json={"task": snapshot_value(task_draft)} if task_draft else None,
+                requirements_json={
+                    **({"task": snapshot_value(task_draft)} if task_draft else {}),
+                    "bootstrap": {"stage": "v1", "error": None, "run_id": None},
+                }
+                if builder_id
+                else {"task": snapshot_value(task_draft)}
+                if task_draft
+                else None,
             )
             db.add(project)
             await db.flush()

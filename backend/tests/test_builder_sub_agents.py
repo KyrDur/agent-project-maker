@@ -34,8 +34,8 @@ def _make_intent(**overrides) -> AgentCreationIntent:
 
 
 TOOL_CATALOG = [
-    {"name": "Web Search", "type": "prebuilt", "description": "默认标题"},
-    {"name": "Web Scraper", "type": "prebuilt", "description": "网页抓取"},
+    {"name": "Web Search", "kind": "skill", "description": "默认标题"},
+    {"name": "Web Scraper", "kind": "skill", "description": "网页抓取"},
 ]
 
 MW_CATALOG = [
@@ -84,7 +84,7 @@ async def test_analyze_intent_success():
 
 @pytest.mark.asyncio
 async def test_analyze_intent_fallback():
-    """When LLM fails, fallback intent is returned."""
+    """When LLM fails, creation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.intent_analyzer.invoke_with_json_retry",
         new_callable=AsyncMock,
@@ -92,9 +92,8 @@ async def test_analyze_intent_fallback():
     ):
         from app.agent_runtime.builder.sub_agents.intent_analyzer import analyze_intent
 
-        result = await analyze_intent("测试智能体")
-        assert result.agent_name == "Custom Agent"
-        assert "测试智能体" in result.agent_description
+        with pytest.raises(ValueError, match="JSON parsing failed"):
+            await analyze_intent("测试智能体")
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +148,7 @@ async def test_recommend_tools_allows_safe_planned_interface_without_catalog():
 
 @pytest.mark.asyncio
 async def test_recommend_tools_filters_invalid():
-    """Tools not in catalog are filtered out."""
+    """Unavailable capabilities pause creation."""
     mock_data = [
         {"tool_name": "Web Search", "description": "默认标题", "reason": "必填"},
         {"tool_name": "Nonexistent Tool", "description": "不存在的工具", "reason": "会被过滤"},
@@ -163,14 +162,13 @@ async def test_recommend_tools_filters_invalid():
         from app.agent_runtime.builder.sub_agents.tool_recommender import recommend_tools
 
         intent = _make_intent()
-        result = await recommend_tools(intent, TOOL_CATALOG)
-        assert len(result) == 1
-        assert result[0].tool_name == "Web Search"
+        with pytest.raises(ValueError, match="builder_capability_generation_invalid"):
+            await recommend_tools(intent, TOOL_CATALOG)
 
 
 @pytest.mark.asyncio
 async def test_recommend_tools_failure():
-    """When LLM fails, empty list is returned."""
+    """When LLM fails, generation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.tool_recommender.invoke_with_json_retry",
         new_callable=AsyncMock,
@@ -179,13 +177,13 @@ async def test_recommend_tools_failure():
         from app.agent_runtime.builder.sub_agents.tool_recommender import recommend_tools
 
         intent = _make_intent()
-        result = await recommend_tools(intent, TOOL_CATALOG)
-        assert result == []
+        with pytest.raises(ValueError, match="builder_capability_generation_invalid"):
+            await recommend_tools(intent, TOOL_CATALOG)
 
 
 @pytest.mark.asyncio
 async def test_recommend_tools_non_list_response():
-    """When LLM returns dict instead of list, empty list is returned."""
+    """When LLM returns dict instead of list, generation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.tool_recommender.invoke_with_json_retry",
         new_callable=AsyncMock,
@@ -194,8 +192,8 @@ async def test_recommend_tools_non_list_response():
         from app.agent_runtime.builder.sub_agents.tool_recommender import recommend_tools
 
         intent = _make_intent()
-        result = await recommend_tools(intent, TOOL_CATALOG)
-        assert result == []
+        with pytest.raises(ValueError, match="builder_capability_generation_invalid"):
+            await recommend_tools(intent, TOOL_CATALOG)
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +249,7 @@ async def test_recommend_middlewares_filters_invalid():
 
 @pytest.mark.asyncio
 async def test_recommend_middlewares_failure():
-    """When LLM fails, empty list is returned."""
+    """When LLM fails, generation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.middleware_recommender.invoke_with_json_retry",
         new_callable=AsyncMock,
@@ -262,13 +260,13 @@ async def test_recommend_middlewares_failure():
         )
 
         intent = _make_intent()
-        result = await recommend_middlewares(intent, [], MW_CATALOG)
-        assert result == []
+        with pytest.raises(ValueError, match="builder_middleware_generation_invalid"):
+            await recommend_middlewares(intent, [], MW_CATALOG)
 
 
 @pytest.mark.asyncio
 async def test_recommend_middlewares_non_list_response():
-    """When LLM returns dict instead of list, empty list is returned."""
+    """When LLM returns dict instead of list, generation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.middleware_recommender.invoke_with_json_retry",
         new_callable=AsyncMock,
@@ -279,8 +277,8 @@ async def test_recommend_middlewares_non_list_response():
         )
 
         intent = _make_intent()
-        result = await recommend_middlewares(intent, [], MW_CATALOG)
-        assert result == []
+        with pytest.raises(ValueError, match="builder_middleware_generation_invalid"):
+            await recommend_middlewares(intent, [], MW_CATALOG)
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +317,7 @@ async def test_generate_system_prompt_success():
 
 @pytest.mark.asyncio
 async def test_generate_system_prompt_fallback():
-    """When LLM returns None, fallback prompt is generated."""
+    """When LLM returns None, creation fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.prompt_generator.invoke_for_text",
         new_callable=AsyncMock,
@@ -329,15 +327,13 @@ async def test_generate_system_prompt_fallback():
 
         intent = _make_intent()
         tools = [ToolRecommendation(tool_name="Web Search", description="搜索", reason="必填")]
-        result = await generate_system_prompt(intent, tools, [])
-        assert "Weather Bot" in result
-        assert "## Role" in result
-        assert "Web Search" in result
+        with pytest.raises(ValueError, match="builder_prompt_generation_invalid"):
+            await generate_system_prompt(intent, tools, [])
 
 
 @pytest.mark.asyncio
 async def test_generate_system_prompt_no_tools_fallback():
-    """Fallback prompt with no tools."""
+    """Empty generation without tools fails explicitly."""
     with patch(
         "app.agent_runtime.builder.sub_agents.prompt_generator.invoke_for_text",
         new_callable=AsyncMock,
@@ -346,9 +342,8 @@ async def test_generate_system_prompt_no_tools_fallback():
         from app.agent_runtime.builder.sub_agents.prompt_generator import generate_system_prompt
 
         intent = _make_intent()
-        result = await generate_system_prompt(intent, [], [])
-        assert "Weather Bot" in result
-        assert "## Tool Guidelines" in result
+        with pytest.raises(ValueError, match="builder_prompt_generation_invalid"):
+            await generate_system_prompt(intent, [], [])
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useMutation } from '@tanstack/react-query'
+import { ProjectSelect } from './project-select'
 import { useState } from 'react'
 import { useLocale, useTranslations } from 'next-intl'
 import { SettingsSectionCard } from '@/components/shared/settings-section-card'
@@ -10,11 +12,14 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { useProjectPortfolio } from '../_hooks/use-project-portfolio'
 import { useProjectEvaluation, useEvaluationReports } from '../_hooks/use-project-evaluation'
 import { agentProjectApi } from '../_lib/agent-project-api'
+import { ProjectEvidenceValue } from './project-execution-log'
+import { ProjectMetricScores, ProjectCaseScores, useMetricName } from './project-scoring'
 import type { ResumeStyle } from '../_lib/agent-project-types'
 
 export function ProjectResults({ agentId }: { agentId: string }) {
   const t = useTranslations('agentProject.portfolio')
   const locale = useLocale()
+  const metricName = useMetricName()
   const { report, generate, resume, share } = useProjectPortfolio(agentId)
   const evaluation = useProjectEvaluation(agentId)
   const evaluationReports = useEvaluationReports(agentId).data
@@ -23,16 +28,40 @@ export function ProjectResults({ agentId }: { agentId: string }) {
   const latestRun =
     evaluation.runs.data?.find((run) => run.comparison_json?.regression) ??
     evaluation.runs.data?.find((run) => run.id === bestRunId)
+  const [caseOne, setCaseOne] = useState('')
+  const [caseTwo, setCaseTwo] = useState('')
+  const selection = useMutation({
+    mutationFn: () => agentProjectApi.selectCases(agentId, [caseOne, caseTwo].filter(Boolean)),
+    onSuccess: () => report.refetch(),
+  })
+  const caseOptions = [
+    ...new Map(
+      (evaluation.runs.data ?? []).flatMap((run) =>
+        (run.results_json ?? []).map(
+          (r) => [r.case_id, { value: r.case_id, label: r.name }] as const,
+        ),
+      ),
+    ).values(),
+  ]
   const [style, setStyle] = useState<ResumeStyle>('ai_product')
   const [copyState, setCopyState] = useState<'copied' | 'copyFailed' | null>(null)
   const [showReport, setShowReport] = useState(false)
   const data = report.data?.evidence
   const results = data?.results
+  const versionsForBest = (id: string) =>
+    evaluation.runs.data?.find((run) => run.version_id === id)?.id === bestRunId
+  const bestSpec = evaluationReports?.reports.find((row) =>
+    versionsForBest(row.version_id),
+  )?.eval_spec
   const percent = (value: number | null | undefined) =>
     value == null
       ? t('unavailable')
       : t('percent', {
-          value: formatDisplayNumber(value * 100, { locale, maximumFractionDigits: 1 }),
+          value: formatDisplayNumber(value * 100, {
+            locale,
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }),
         })
   const copy = async (text: string) => {
     try {
@@ -50,6 +79,119 @@ export function ProjectResults({ agentId }: { agentId: string }) {
         {report.isError && <ErrorState title={t('error')} onRetry={() => void report.refetch()} />}
         {data && results && (
           <>
+            <details>
+              <summary>{t('chooseCases')}</summary>
+              <ProjectSelect
+                label={t('caseOne')}
+                value={caseOne}
+                onChange={setCaseOne}
+                options={caseOptions}
+              />
+              <ProjectSelect
+                label={t('caseTwo')}
+                value={caseTwo}
+                onChange={setCaseTwo}
+                options={caseOptions.filter((c) => c.value !== caseOne)}
+              />
+              <Button
+                disabled={!caseOne || !caseTwo || caseOne === caseTwo || selection.isPending}
+                onClick={() => selection.mutate()}
+              >
+                {t('saveCases')}
+              </Button>
+              {selection.isError && <ErrorState />}
+            </details>
+            {data.case_cards?.map((card) => (
+              <article key={card.reference} className="space-y-3 border-b pb-4">
+                <h3 className="font-medium">{card.title}</h3>
+                <p>{card.personal_task}</p>
+                <p>{card.system_task}</p>
+                <details>
+                  <summary>{t('caseChanges')}</summary>
+                  {card.changes?.length ? (
+                    card.changes.map((change, i) => (
+                      <div key={`${change.source}:${i}`} className="space-y-2">
+                        <p>
+                          {change.title} · {change.source}
+                        </p>
+                        <p>
+                          {t('changeAuthor', {
+                            author: t(
+                              change.author === 'codex_demo'
+                                ? 'authorDemo'
+                                : ['user', 'user_confirmed'].includes(change.author)
+                                  ? 'authorUser'
+                                  : 'authorSystem',
+                            ),
+                          })}
+                        </p>
+                        <p>{change.reason}</p>
+                        <ProjectEvidenceValue value={change.diffs} />
+                      </div>
+                    ))
+                  ) : (
+                    <p>{t('caseNoChanges')}</p>
+                  )}
+                </details>
+                {card.history.map((trial) => (
+                  <details key={trial.reference}>
+                    <summary>
+                      V{trial.version} · {trial.reference}
+                    </summary>
+                    <p>{trial.user_request}</p>
+                    <p>{trial.judgment_basis}</p>
+                    <p>
+                      {t('caseOutcome', {
+                        status: trial.status,
+                        trial: trial.trial,
+                        termination: trial.termination ?? t('unavailable'),
+                      })}
+                    </p>
+                    <details>
+                      <summary>{t('caseEnvironment')}</summary>
+                      <ProjectEvidenceValue value={trial.initial_state} />
+                      <ProjectEvidenceValue value={trial.final_state} />
+                    </details>
+                    <details>
+                      <summary>{t('caseJudgment')}</summary>
+                      <ProjectEvidenceValue value={trial.checks} />
+                      <ProjectEvidenceValue value={trial.judgments} />
+                      <ProjectEvidenceValue value={trial.model_calls} />
+                    </details>
+                    <p>{trial.success_conditions}</p>
+                    <p>{trial.actual_answer}</p>
+                    {trial.timeline.map((event) => (
+                      <div key={event.event}>
+                        <p>
+                          {event.event} · {event.tool} · {event.error}
+                        </p>
+                        <ProjectEvidenceValue value={event.arguments} />
+                        <ProjectEvidenceValue value={event.returned_facts} />
+                      </div>
+                    ))}
+                  </details>
+                ))}
+                {card.reviews.map((review, i) => (
+                  <p key={i}>
+                    {review.finding} · {review.source}
+                  </p>
+                ))}
+                {card.limitations.map((limit) => (
+                  <p key={limit}>{limit}</p>
+                ))}
+              </article>
+            ))}
+            {data.material_readiness === 'missing_actual_cases' && (
+              <p role="status">{t('missingCases')}</p>
+            )}
+            {Object.values(report.data?.artifact_status ?? {}).includes('stale') && (
+              <p role="status">{t('staleMaterials')}</p>
+            )}
+            {resume.data &&
+              report.data &&
+              resume.data.evidence_hash !== report.data.evidence_hash && (
+                <p role="status">{t('staleMaterials')}</p>
+              )}
             <p>{t('latestVersion', { version: results.latest_version ?? t('unavailable') })}</p>
             <p>
               {t('currentResult', {
@@ -75,22 +217,6 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 after: percent(results.candidate?.pass_rate),
               })}
             </p>
-            <dl className="grid gap-2 sm:grid-cols-2">
-              {Object.entries(results.best?.metrics ?? {}).map(([name, metric]) => (
-                <div key={name}>
-                  <dt>{name}</dt>
-                  <dd>
-                    {t('metric', {
-                      score: formatDisplayNumber(metric.score, {
-                        locale,
-                        maximumFractionDigits: 3,
-                      }),
-                      count: metric.evaluated_cases,
-                    })}
-                  </dd>
-                </div>
-              ))}
-            </dl>
             {results.comparisons?.map((comparison) => (
               <details key={`${comparison.source_run_id}:${comparison.target_run_id}`}>
                 <summary>
@@ -111,21 +237,29 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                     <dl className="space-y-2">
                       {Object.entries(comparison.changes.metrics).map(([name, metric]) => (
                         <div key={name}>
-                          <dt>{name}</dt>
+                          <dt>
+                            {metricName(
+                              name,
+                              bestSpec?.metrics?.find((m) => m.name === name),
+                            )}
+                          </dt>
                           <dd>
                             {metric.before == null
                               ? t('unavailable')
-                              : formatDisplayNumber(metric.before, {
+                              : formatDisplayNumber(metric.before * 100, {
                                   locale,
-                                  maximumFractionDigits: 3,
+                                  minimumFractionDigits: 1,
+                                  maximumFractionDigits: 1,
                                 })}{' '}
-                            →{' '}
+                            /100 →{' '}
                             {metric.after == null
                               ? t('unavailable')
-                              : formatDisplayNumber(metric.after, {
+                              : formatDisplayNumber(metric.after * 100, {
                                   locale,
-                                  maximumFractionDigits: 3,
-                                })}
+                                  minimumFractionDigits: 1,
+                                  maximumFractionDigits: 1,
+                                })}{' '}
+                            /100
                           </dd>
                         </div>
                       ))}
@@ -184,19 +318,11 @@ export function ProjectResults({ agentId }: { agentId: string }) {
             </div>
             <section className="space-y-3">
               <h3 className="font-medium">{t('metricsTitle')}</h3>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {Object.entries(results.best?.metrics ?? {}).map(([name, metric]) => (
-                  <div key={name} className="rounded-lg border p-3">
-                    <div className="flex justify-between">
-                      <span>{name}</span>
-                      <strong>{percent(metric.score)}</strong>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t('scoredCases', { count: metric.evaluated_cases })}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <ProjectMetricScores
+                summaries={results.best?.metrics}
+                spec={bestSpec}
+                total={results.best?.total ?? 0}
+              />
             </section>
             {latestRun?.results_json?.some((item) => item.status !== 'passed') && (
               <section className="space-y-3">
@@ -204,15 +330,17 @@ export function ProjectResults({ agentId }: { agentId: string }) {
                 {latestRun.results_json
                   .filter((item) => item.status !== 'passed')
                   .map((item) => (
-                    <details key={item.case_id} className="rounded-lg border p-3">
+                    <details
+                      key={`${item.case_id}:${item.trial ?? 1}`}
+                      className="rounded-lg border p-3"
+                    >
                       <summary>{item.name}</summary>
                       <p className="mt-2 text-sm">{item.input}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.error ??
-                          (item.metric_scores
-                            ? JSON.stringify(item.metric_scores)
-                            : t('failureReasonUnavailable'))}
-                      </p>
+                      {item.error && <p className="text-sm text-destructive">{item.error}</p>}
+                      <ProjectCaseScores
+                        result={item}
+                        spec={latestRun.comparison_json?.eval_spec}
+                      />
                       <p className="text-sm">
                         {t('toolCalls')}:{' '}
                         {item.tool_calls.map((call) => call.name).join(', ') || t('none')}

@@ -56,7 +56,7 @@ class TestErrorHandlers:
         assert body == {
             "error": {
                 "code": "TOOL_NOT_FOUND",
-                "message": "找不到 tool",
+                "message": "找不到工具",
             }
         }
 

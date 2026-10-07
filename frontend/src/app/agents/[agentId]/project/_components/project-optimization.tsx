@@ -1,7 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { formatDisplayNumber } from '@/lib/utils/display-format'
+import { useMutation } from '@tanstack/react-query'
+import { Textarea } from '@/components/ui/textarea'
+import { agentProjectApi } from '../_lib/agent-project-api'
+import { useProjectEvaluation } from '../_hooks/use-project-evaluation'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/shared/error-state'
 import { useProjectOptimization, useProjectVersions } from '../_hooks/use-project-evaluation'
@@ -20,8 +25,20 @@ export function ProjectOptimization({
   runs?: EvaluationRun[]
 }) {
   const t = useTranslations('agentProject')
-  const { analyze } = useProjectOptimization(agentId, run.id)
+  const locale = useLocale()
+  const percent = (value: number) =>
+    formatDisplayNumber(value * 100, { locale, minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const { analyze, errorCode } = useProjectOptimization(agentId, run.id)
   const [selected, setSelected] = useState('')
+  const [useReason, setUseReason] = useState('')
+  const evaluation = useProjectEvaluation(agentId)
+  const heldOut =
+    run.comparison_json?.purpose === 'validation' &&
+    run.comparison_json?.validation_exposure !== 'used'
+  const useValidation = useMutation({
+    mutationFn: () => agentProjectApi.useValidation(agentId, run.id, useReason),
+    onSuccess: () => evaluation.runs.refetch(),
+  })
   const { detail } = useProjectVersions(agentId, selected)
   const analysis = run.comparison_json?.analysis
   const state = run.comparison_json?.optimization
@@ -38,6 +55,8 @@ export function ProjectOptimization({
   }, {})
   const versionName = (id: string) =>
     t('version', { number: versions.find((v) => v.id === id)?.version_number ?? 0 })
+  const evaluating = run.status === 'pending' || run.status === 'running'
+  const ready = !evaluating && run.metrics_json?.complete !== false
   const busy = analyze.isPending || ['pending', 'running'].includes(state?.state ?? '')
   const meta = detail.data?.snapshot_json.optimization
   const patches =
@@ -47,9 +66,45 @@ export function ProjectOptimization({
   return (
     <div className="space-y-3 border-t border-border pt-4">
       <h4 className="font-medium">{t('badCases')}</h4>
-      <p>{t('failedCases', { count: failedCount })}</p>
-      {!analysis && (
-        <Button variant="outline" disabled={busy || !failedCount} onClick={() => analyze.mutate()}>
+      {evaluating ? (
+        <p role="status">
+          {t('optimizationProgress', {
+            finished: run.results_json?.length ?? 0,
+            total: run.metrics_json?.total ?? 0,
+          })}
+        </p>
+      ) : (
+        <p>{t('scoring.failedOrWeakCases', { count: failedCount })}</p>
+      )}
+      {!ready && !evaluating && (
+        <p role="status">{t('optimizationErrors.optimization_run_incomplete')}</p>
+      )}
+      {heldOut && (
+        <div className="space-y-2">
+          <p>{t('qualityRevision.validationUseBoundary')}</p>
+          <label htmlFor={`validation-use-${run.id}`}>
+            {t('qualityRevision.validationUseReason')}
+          </label>
+          <Textarea
+            id={`validation-use-${run.id}`}
+            value={useReason}
+            onChange={(event) => setUseReason(event.target.value)}
+          />
+          <Button
+            disabled={!ready || !useReason.trim() || useValidation.isPending}
+            onClick={() => useValidation.mutate()}
+          >
+            {t('qualityRevision.useValidation')}
+          </Button>
+          {useValidation.isError && <ErrorState />}
+        </div>
+      )}
+      {!analysis && !heldOut && (
+        <Button
+          variant="outline"
+          disabled={busy || !ready || !failedCount}
+          onClick={() => analyze.mutate()}
+        >
           {t('analyzeBadCases')}
         </Button>
       )}
@@ -76,7 +131,12 @@ export function ProjectOptimization({
       {analysis && (
         <>
           <h4 className="font-medium">{t('optimizationPlan')}</h4>
-          <details><summary>{t('analysisEvidence')}</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(analysis, null, 2)}</pre></details>
+          <details>
+            <summary>{t('analysisEvidence')}</summary>
+            <pre className="whitespace-pre-wrap break-words text-sm">
+              {JSON.stringify(analysis, null, 2)}
+            </pre>
+          </details>
           <ol className="list-decimal space-y-2 pl-5">
             {analysis.groups.map((group, i) => (
               <li key={i}>
@@ -90,8 +150,24 @@ export function ProjectOptimization({
       {!!run.comparison_json?.deferred_changes?.length && <p>{t('deferredSkillChange')}</p>}
       <p className="text-sm text-muted-foreground">{t('bestNotLive')}</p>
       <ProjectProposals agentId={agentId} run={run} versions={versions} runs={runs} />
-      {busy && <p role="status">{t('optimizing')}</p>}
-      {analyze.isError && <ErrorState title={t('optimizationFailed')} />}
+      {busy && <p role="status">{t(analyze.isPending ? 'analyzingFailures' : 'optimizing')}</p>}
+      {analyze.isError && !evaluating && (
+        <ErrorState
+          title={
+            t.has(`optimizationErrors.${errorCode}`)
+              ? t(`optimizationErrors.${errorCode}`)
+              : t('optimizationFailed')
+          }
+          onRetry={
+            ready &&
+            !['optimization_run_incomplete', 'optimization_requires_semantic_run'].includes(
+              errorCode,
+            )
+              ? () => analyze.mutate()
+              : undefined
+          }
+        />
+      )}
       {state?.stop_reason && (
         <p role="status">
           {t.has(`optimizationStops.${state.stop_reason}`)
@@ -118,8 +194,8 @@ export function ProjectOptimization({
               <summary>{t('compareVersions')}</summary>
               <p>
                 {t('regressionRates', {
-                  before: Math.round(round.comparison.pass_rate.before * 100),
-                  after: Math.round(round.comparison.pass_rate.after * 100),
+                  before: percent(round.comparison.pass_rate.before),
+                  after: percent(round.comparison.pass_rate.after),
                 })}
               </p>
               <ul>
@@ -143,8 +219,8 @@ export function ProjectOptimization({
                     {scores.before == null || scores.after == null
                       ? t('notRun')
                       : t('regressionRates', {
-                          before: Math.round(scores.before * 100),
-                          after: Math.round(scores.after * 100),
+                          before: percent(scores.before),
+                          after: percent(scores.after),
                         })}
                   </li>
                 ))}

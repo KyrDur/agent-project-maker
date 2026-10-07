@@ -101,8 +101,18 @@ describe('ChatEmptyState', () => {
     expect(setText).toHaveBeenCalledWith('帮我为 openwiki 仓库创建 wiki')
   })
 
-  it('opener 和模板都没有时，不显示 starter', () => {
+  it('opener 和模板都没有时，提供可编辑的示例而不显示空状态标签', async () => {
     render(<ChatEmptyState agent={makeAgent()} fallback="来自" />)
-    expect(document.querySelector('[data-moldy-empty-starters]')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'emptyState.genericExample' }))
+    expect(setText).toHaveBeenCalledWith('emptyState.genericExample')
+    expect(screen.queryByText('来自')).not.toBeInTheDocument()
+  })
+
+  it('周报能力提供标明为虚构输入的具体示例', async () => {
+    render(<ChatEmptyState agent={makeAgent({ name: '周报助手' })} fallback="空状态" />)
+    expect(screen.getByText('emptyState.exampleLabel')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'emptyState.weeklyExample' }))
+    expect(setText).toHaveBeenCalledWith('emptyState.weeklyExample')
+    expect(screen.queryByText('空状态')).not.toBeInTheDocument()
   })
 })

@@ -140,7 +140,12 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
         "requirements_hash",
         "resolved_roles",
         "resolved_examinee",
+        "resolved_role_models",
         "role_configurations",
+        "repetitions",
+        "purpose",
+        "execution_protocol",
+        "validation_exposure",
     )
     if (
         baseline.dataset_hash != candidate.dataset_hash
@@ -152,8 +157,8 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
         )
     ):
         raise ValueError("optimization_regression_inputs_changed")
-    left = {r["case_id"]: r for r in baseline.results_json or []}
-    right = {r["case_id"]: r for r in candidate.results_json or []}
+    left = trial_outcomes(baseline.results_json or [])
+    right = trial_outcomes(candidate.results_json or [])
     case_ids = {c["id"] for c in baseline.cases_snapshot_json or []}
     if not case_ids or set(left) != case_ids or set(right) != case_ids:
         raise ValueError("optimization_regression_incomplete")
@@ -170,8 +175,12 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
         )
         groups[key].append(case_id)
     n = len(case_ids)
-    before_rate = sum(r["status"] == "passed" for r in left.values()) / n
-    after_rate = sum(r["status"] == "passed" for r in right.values()) / n
+    before_rate = sum(r["status"] == "passed" for r in baseline.results_json) / len(
+        baseline.results_json
+    )
+    after_rate = sum(r["status"] == "passed" for r in candidate.results_json) / len(
+        candidate.results_json
+    )
     metric_specs = (baseline.comparison_json or {})["eval_spec"]["metrics"]
     deltas: dict[str, Any] = {}
     complete = True
@@ -237,6 +246,33 @@ def compare_runs(baseline: Any, candidate: Any) -> dict[str, Any]:
         or ["pass_rate_improved" if after_rate > before_rate else "semantic_metrics_improved"],
         "policy": deepcopy(POLICY),
     }
+
+
+def trial_outcomes(results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Every repeat counts; compare cases using all-pass and mean metric values."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for result in results:
+        grouped.setdefault(result["case_id"], []).append(result)
+    outcomes = {}
+    for case_id, trials in grouped.items():
+        names = {n for r in trials for n in r.get("metric_scores", {})}
+        metrics = {}
+        for name in names:
+            values = [r.get("metric_scores", {}).get(name) for r in trials]
+            if all(v is not None for v in values):
+                metrics[name] = {
+                    "score": sum(v["score"] for v in values) / len(values),
+                    "passed": all(v["passed"] for v in values),
+                }
+        outcomes[case_id] = {
+            "status": "errored"
+            if any(r["status"] == "errored" for r in trials)
+            else "passed"
+            if all(r["status"] == "passed" for r in trials)
+            else "failed",
+            "metric_scores": metrics,
+        }
+    return outcomes
 
 
 def observation(data: dict[str, Any], pointer: str) -> Any:
