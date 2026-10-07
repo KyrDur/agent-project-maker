@@ -365,6 +365,7 @@
       "evaluation_mock_missing": "A required or called tool has no mock data.",
       "evaluation_mock_definition_invalid": "Mock tool definitions are invalid.",
       "evaluation_judge_invalid": "The judge returned invalid score JSON.",
+      "evaluation_judge_unassessable": "The judge could not assess a factual claim. This case is a judge error; its factual evidence is retained.",
       "evaluation_model_failed": "The user-owned model call failed.",
       "evaluation_format_rule_missing": "The deterministic format metric requires a rule.",
       "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
@@ -930,7 +931,9 @@
       "validationUseReason": "Reason for using validation evidence",
       "useValidation": "Mark as used and allow optimization",
       "criticalRate": "Critical violations: {violating}/{total} applicable scored trials.",
-      "modelAccounting": "{calls} model invocations; token records cover {coverage}, recorded total {count}. Cost is unavailable without prices."
+      "modelAccounting": "{calls} model invocations; token records cover {coverage}, recorded total {count}. Cost is unavailable without prices.",
+      "trialIncomplete": "Incomplete",
+      "scoredPassRate": "Pass rate among valid scored trials: {passed}/{total} ({value}%); {errors} errors remain in the all-trial denominator."
     }
   },
   "metadata": {
@@ -2608,7 +2611,14 @@
       "draftMiddlewares": "{count} draft middleware",
       "draftPreviewTitle": "Draft Preview Title",
       "finalConfirmTitle": "Final Confirm Title",
-      "finalApproveLabel": "Final Approve Label"
+      "finalApproveLabel": "Final Approve Label",
+      "consistencyReviewTitle": "Requirement consistency review:",
+      "consistencyReviewStatus": {
+        "approved": "Approved",
+        "rejected": "Conflicts found",
+        "error": "Incomplete"
+      },
+      "consistencyReviewLimit": "This review covers the current prompt and Skill bodies. Model judgments can be wrong; later experiments verify task behavior."
     },
     "imageGeneration": {
       "disabled": "Disabled",

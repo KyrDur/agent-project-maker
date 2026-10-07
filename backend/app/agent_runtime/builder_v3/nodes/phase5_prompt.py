@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 
 from langgraph.types import interrupt
 
@@ -50,7 +51,40 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
         intent_obj = merged
 
     try:
+        from app.agent_runtime.builder_v3.consistency_context import consistency_adapter
+
+        review = None
+        if intent_obj.project_requirements:
+            tools_objs = await consistency_adapter().prepare_tools(
+                uuid.UUID(state.get("user_id") or ""), tools_objs
+            )
         prompt = await generate_system_prompt(intent_obj, tools_objs, mw_objs)
+        if intent_obj.project_requirements:
+            review = await consistency_adapter().review(
+                uuid.UUID(state.get("user_id") or ""),
+                intent_obj.project_requirements,
+                prompt,
+                tools_objs,
+            )
+            if review["status"] != "approved":
+                rejected = [r for r in review.get("requirement_reviews", []) if not r["supported"]]
+                skill_conflict = any(
+                    e["reference"].startswith("skills/") for r in rejected for e in r["evidence"]
+                )
+                reason = "\n".join(r["reason"] for r in rejected)
+                return {
+                    "current_phase": 3 if skill_conflict else 5,
+                    "system_prompt": prompt,
+                    "consistency_review": review,
+                    "consistency_reviews": [*(state.get("consistency_reviews") or []), review],
+                    "last_revision_message": reason or tr("builder_consistency_unavailable"),
+                    "error_message": tr(
+                        "builder_consistency_rejected"
+                        if rejected
+                        else "builder_consistency_unavailable"
+                    )
+                    + ("\n" + reason if reason else ""),
+                }
     except Exception:  # pragma: no cover
         logger.exception("Prompt generation failed")
         return {"current_phase": 5, "error_message": tr("generation_failed_retry")}
@@ -69,6 +103,11 @@ async def phase5_generate_prompt(state: BuilderState) -> dict:
     return {
         "messages": msgs,
         "system_prompt": prompt,
+        "consistency_review": review,
+        "consistency_reviews": [
+            *(state.get("consistency_reviews") or []),
+            *([review] if review else []),
+        ],
         "error_message": None,
         "last_revision_message": None,
         "current_phase": 5,

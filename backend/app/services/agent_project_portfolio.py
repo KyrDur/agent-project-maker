@@ -171,6 +171,7 @@ def run_summary(run: AgentProjectEvalRun) -> dict[str, Any]:
                 for key in (
                     "environment_errors",
                     "valid_scored_pass_rate",
+                    "valid_scored_cases",
                     "case_count",
                     "repetitions",
                     "stability",

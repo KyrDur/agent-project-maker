@@ -150,9 +150,18 @@ def validate_facts(sources: dict[str, str], raw: Any) -> dict[str, Any]:
             if ref.quote not in sources.get(ref.reference, ""):
                 raise ValueError("Fact evidence does not exist")
         if fact.verdict == "supported" and not any(
-            ref.reference != "output" and ref.quote.strip() for ref in fact.evidence
+            (
+                ref.reference == "input"
+                or ref.reference.startswith("context/")
+                or (
+                    ref.reference.startswith("tool_trace/")
+                    and ref.reference.endswith(("/output", "/error"))
+                )
+            )
+            and ref.quote.strip()
+            for ref in fact.evidence
         ):
-            raise ValueError("The answer cannot support its own factual claims")
+            raise ValueError("The answer or tool request cannot support factual claims")
         if fact.kind == "fact" and fact.verdict == "not_applicable":
             raise ValueError("Factual assertions must be evaluated")
     checked = [f for f in facts if f.kind == "fact"]

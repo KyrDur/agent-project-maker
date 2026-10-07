@@ -308,6 +308,161 @@ def test_repeats_preserve_failure_instead_of_selecting_best():
 
 def test_codex_demonstration_is_not_a_user_contribution():
     assert decision_author({"reason": "【Codex 操作演示记录，非用户本人撰写】"}) == "codex_demo"
+
+
+def test_incomplete_trials_are_unavailable_and_operation_denominators_stay_frozen():
+    cases = [
+        {
+            "id": "a",
+            "expected": {"state": [{"path": "done", "value": True}]},
+            "recovery_goal": True,
+        },
+        {"id": "b", "expected": {"state": [{"path": "done", "value": True}]}},
+    ]
+    results = [
+        {
+            "case_id": "a",
+            "trial": 1,
+            "status": "passed",
+            "execution_status": "completed",
+            "assertions": [{"kind": "final_state", "passed": True}],
+        }
+    ]
+    stats = evaluation.outcome_statistics(cases, results, 3)
+    assert stats["trial_pass_rates"] == [None, None, None]
+    assert stats["trial_range"] is None
+    assert stats["stability"] == "incomplete_trials"
+    assert stats["operation_success"] == {"successful": 1, "total": 6}
+    assert stats["recovery_success"] == {"successful": 1, "total": 3}
+
+
+def test_explicit_forbidden_operations_count_as_critical_violations():
+    stats = evaluation.outcome_statistics(
+        [{"id": "a"}],
+        [
+            {
+                "case_id": "a",
+                "status": "failed",
+                "assertions": [{"kind": "forbidden_tool", "passed": False}],
+            }
+        ],
+        1,
+    )
+    assert stats["critical_violations"] == {"violating": 1, "total": 1}
+
+
+def test_usage_does_not_double_count_invocation_and_return_metadata():
+    usage = {"total_count": 10, "input_count": 6, "output_count": 4}
+    stats = evaluation.outcome_statistics(
+        [{"id": "a"}],
+        [
+            {
+                "case_id": "a",
+                "status": "passed",
+                "model_calls": [{"accounting": usage, "returns": [{"accounting": usage}]}],
+            }
+        ],
+        1,
+    )
+    assert stats["model_accounting"]["total_count"] == 10
+
+
+@pytest.mark.parametrize("source", ["tool_trace/0/name", "tool_trace/0/arguments"])
+def test_tool_request_cannot_prove_factual_success(source):
+    with pytest.raises(ValueError, match="tool request"):
+        validate_facts(
+            {"output": "已经转接", source: "escalate"},
+            [
+                {
+                    "claim": "已经转接",
+                    "kind": "fact",
+                    "verdict": "supported",
+                    "evidence": [{"reference": source, "quote": "escalate"}],
+                }
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_unknown_fact_is_a_judge_error_with_preserved_evidence(db, monkeypatch):
+    from app.services.agent_project_executor import SnapshotExecutionUnavailable
+
+    raw = quality_plan()
+    response: dict[str, Any] = verdicts(raw)
+    response["fact_results"] = [
+        {"claim": "订单已发货", "kind": "fact", "verdict": "unknown", "evidence": []}
+    ]
+
+    async def judge(*args):
+        return response
+
+    monkeypatch.setattr(semantic, "json_call", judge)
+    with pytest.raises(
+        SnapshotExecutionUnavailable, match="evaluation_judge_unassessable"
+    ) as failure:
+        await semantic.grade_case(
+            db,
+            {},
+            TEST_USER_ID,
+            case_for(raw),
+            {"output": "订单已发货"},
+            [],
+            {"eval_spec": raw, "requirements": REQUIREMENTS},
+        )
+    assert failure.value.evidence["fact_check"]["unknown"] == 1
+    assert failure.value.evidence["fact_check"]["items"][0]["claim"] == "订单已发货"
+
+
+@pytest.mark.parametrize("arguments", [{}, {"id": 7}, {"id": "a", "status": "invented"}])
+def test_runtime_enforces_the_same_parameter_contract_before_writes(arguments):
+    import json
+
+    from app.services.agent_project_mock_tools import mock_tools
+
+    schema = {
+        "type": "object",
+        "properties": {"id": {"type": "string"}, "status": {"const": "refunded"}},
+        "required": ["id", "status"],
+        "additionalProperties": False,
+    }
+    case = {
+        "initial_state": {"orders": [{"id": "a", "status": "paid"}]},
+        "mock_tool_data": {
+            "refund": {
+                "operation": "update",
+                "collection": "orders",
+                "match_fields": ["id"],
+                "update_fields": ["status"],
+            }
+        },
+    }
+    trace = []
+    tools, missing = mock_tools(
+        {"planned_tools": [{"tool_name": "refund", "input_schema": schema}]}, case, trace=trace
+    )
+    assert json.loads(tools[0].invoke(arguments)) == {"error": "invalid_tool_arguments"}
+    assert trace[-1]["state_after"]["orders"][0]["status"] == "paid"
+    assert missing == []
+    assert json.loads(tools[0].invoke({"id": "a", "status": "refunded"}))[0]["status"] == "refunded"
+
+
+def test_null_mock_responses_are_environment_errors_in_reference_and_runtime():
+    import json
+
+    from app.services.agent_project_mock_tools import mock_tools
+
+    config = {"planned_tools": [{"tool_name": "lookup"}]}
+    case = {
+        "mock_tool_data": {"lookup": {"responses": [{"arguments": {}, "result": None}]}},
+        "reference_answer": "无法查询",
+    }
+    with pytest.raises(ValueError, match="explicit data"):
+        preflight_case(config, case)
+    trace = []
+    tools, missing = mock_tools(config, case, trace=trace)
+    assert json.loads(tools[0].invoke({}))["error"] == "evaluation_mock_response_missing"
+    assert missing == ["lookup"]
+    assert trace[0]["error"] == "evaluation_mock_response_missing"
     assert decision_author({"reason": "优先修复工具"}) == "user_confirmed"
 
 

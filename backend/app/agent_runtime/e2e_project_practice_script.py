@@ -66,7 +66,25 @@ def project_practice_response(messages: list[BaseMessage]) -> AIMessage | None:
         payload = {}
     if not isinstance(payload, dict):
         payload = {}
-    if "rubric_review_rules" in payload:
+    if "builder_consistency_sources" in payload:
+        sources = payload["builder_consistency_sources"]
+        value = {
+            "reviewed_sources": [k for k in sources if not k.startswith("requirements/")],
+            "requirement_reviews": [
+                {
+                    "field": key.removeprefix("requirements/"),
+                    "supported": True,
+                    "reason": "固定响应实现一致性检查。",
+                    "evidence": [
+                        {"reference": key, "quote": text},
+                        {"reference": "system_prompt", "quote": sources["system_prompt"]},
+                    ],
+                }
+                for key, text in sources.items()
+                if key.startswith("requirements/")
+            ],
+        }
+    elif "rubric_review_rules" in payload:
         value = {
             "rule_reviews": [
                 {"reference": key, "supported": True, "reason": "Fixed response source review"}

@@ -365,6 +365,7 @@
       "evaluation_mock_missing": "所需或调用的工具没有模拟数据。",
       "evaluation_mock_definition_invalid": "模拟工具定义无效。",
       "evaluation_judge_invalid": "评审模型返回无效分数 JSON。",
+      "evaluation_judge_unassessable": "裁判无法判断事实是否成立。此用例计为裁判错误，事实证据仍保留。",
       "evaluation_model_failed": "用户配置的模型调用失败。",
       "evaluation_format_rule_missing": "确定性格式度量需要规则。",
       "historical_skill_execution_unavailable": "历史技能包执行不可用。",
@@ -930,7 +931,9 @@
       "validationUseReason": "使用验证证据的理由",
       "useValidation": "标记为已使用并允许优化",
       "criticalRate": "关键违规：{violating}/{total} 个适用且已评分试验。",
-      "modelAccounting": "模型调用 {calls} 次；Token 记录覆盖 {coverage} 次，已记录合计 {count}。缺少价格，费用不可用。"
+      "modelAccounting": "模型调用 {calls} 次；Token 记录覆盖 {coverage} 次，已记录合计 {count}。缺少价格，费用不可用。",
+      "trialIncomplete": "未完成",
+      "scoredPassRate": "有效评分任务通过率：{passed}/{total}（{value}%）；另有 {errors} 个错误，全部用例分母仍保留错误。"
     }
   },
   "metadata": {
@@ -2608,7 +2611,14 @@
       "draftMiddlewares": "{count}中间件草案",
       "draftPreviewTitle": "草稿预览标题",
       "finalConfirmTitle": "最终确认标题",
-      "finalApproveLabel": "最终批准标签"
+      "finalApproveLabel": "最终批准标签",
+      "consistencyReviewTitle": "需求与实现一致性审查：",
+      "consistencyReviewStatus": {
+        "approved": "已通过",
+        "rejected": "存在冲突",
+        "error": "未完成"
+      },
+      "consistencyReviewLimit": "审查覆盖当前指令与文本指南。模型判断仍可能出错，实际任务效果由后续实验验证。"
     },
     "imageGeneration": {
       "disabled": "已禁用",

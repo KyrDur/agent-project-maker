@@ -190,7 +190,7 @@ export interface EvaluationMetrics {
 
   environment_errors?: number
   repetitions?: number
-  trial_pass_rates?: number[]
+  trial_pass_rates?: (number | null)[]
   fact_support?: {
     supported: number
     unsupported: number
@@ -210,6 +210,9 @@ export interface EvaluationMetrics {
   judge_errors?: number
   executed_cases?: number
   executed_pass_rate?: number | null
+  scored_pass_rate?: number | null
+  valid_scored_pass_rate?: number | null
+  valid_scored_cases?: number
   complete?: boolean
   metric_scores?: Record<string, MetricSummary>
   rubric_version?: number

@@ -12,6 +12,7 @@ from typing import Any
 from langchain_core.tools import StructuredTool
 
 from app.services.agent_project_executor import SnapshotExecutionUnavailable
+from app.services.agent_project_tool_contracts import input_validator
 
 
 def mock_tools(
@@ -43,8 +44,16 @@ def mock_tools(
     tools = []
     for name in names:
         behavior = behaviors.get(name)
+        definition = definitions.get(name, {})
+        try:
+            schema = definition.get("input_schema")
+            validator = input_validator(schema if schema is not None else {})
+        except ValueError as exc:
+            raise SnapshotExecutionUnavailable("evaluation_mock_definition_invalid") from exc
 
-        def make_invoke(tool_name: str, frozen: dict[str, Any] | None) -> Callable[..., str]:
+        def make_invoke(
+            tool_name: str, frozen: dict[str, Any] | None, parameter_validator: Any
+        ) -> Callable[..., str]:
             def invoke(**_kwargs: Any) -> str:
                 started = perf_counter()
                 counts[tool_name] = counts.get(tool_name, 0) + 1
@@ -55,6 +64,12 @@ def mock_tools(
                     "state_before": deepcopy(state),
                 }
                 try:
+                    if not parameter_validator.is_valid(_kwargs):
+                        event.update(
+                            error="invalid_tool_arguments",
+                            output={"error": "invalid_tool_arguments"},
+                        )
+                        return json.dumps(event["output"])
                     if frozen is None:
                         missing.append(tool_name)
                         event.update(
@@ -113,6 +128,9 @@ def mock_tools(
                             missing.append(tool_name)
                     else:
                         output = deepcopy(frozen.get("result"))
+                    if output is None:
+                        output = {"error": "evaluation_mock_response_missing"}
+                        missing.append(tool_name)
                     if isinstance(output, dict) and output.get("error"):
                         event["error"] = output["error"]
                     event["output"] = output
@@ -129,7 +147,6 @@ def mock_tools(
 
             return invoke
 
-        definition = definitions.get(name, {})
         tools.append(
             StructuredTool(
                 name=name,
@@ -142,7 +159,7 @@ def mock_tools(
                     "properties": {},
                     "additionalProperties": True,
                 },
-                func=make_invoke(name, behavior),
+                func=make_invoke(name, behavior, validator),
             )
         )
     return tools, missing

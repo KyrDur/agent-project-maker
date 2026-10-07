@@ -781,6 +781,10 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
                 "scored_pass_rate": passed / (len(results) - errored)
                 if len(results) > errored
                 else None,
+                "valid_scored_cases": len(results) - errored,
+                "valid_scored_pass_rate": passed / (len(results) - errored)
+                if len(results) > errored
+                else None,
                 "complete": len(results) == len(trials),
                 "scoring": "semantic_v1" if plan else "structural_v1",
                 "metric_scores": metric_summary(results),
@@ -903,22 +907,27 @@ def outcome_statistics(
 ) -> dict[str, Any]:
     by_case = {c["id"]: c for c in cases}
     valid = [r for r in results if r.get("status") in {"passed", "failed"}]
-    facts = [r["fact_check"] for r in valid if r.get("fact_check")]
+    facts = [r["fact_check"] for r in results if r.get("fact_check")]
     operations = [r for r in results if (by_case[r["case_id"]].get("expected") or {}).get("state")]
     recoveries = [r for r in results if by_case[r["case_id"]].get("recovery_goal")]
     critical = [
         r
         for r in valid
         if any(v.get("critical_failure") for v in r.get("metric_scores", {}).values())
+        or any(c["kind"] == "forbidden_tool" and not c["passed"] for c in r.get("assertions", []))
         or (
             (r.get("fact_check") or {}).get("unsupported", 0) > 0
             and r.get("metric_scores", {}).get("groundedness", {}).get("critical_applicable")
         )
     ]
-    trial_rates = [
-        sum(r["status"] == "passed" for r in results if r.get("trial", 1) == trial) / len(cases)
-        for trial in range(1, repetitions + 1)
-    ]
+    trial_rates = []
+    for trial in range(1, repetitions + 1):
+        rows = [r for r in results if r.get("trial", 1) == trial]
+        complete = len(rows) == len(cases) and {r["case_id"] for r in rows} == set(by_case)
+        trial_rates.append(
+            sum(r["status"] == "passed" for r in rows) / len(cases) if complete and cases else None
+        )
+    complete_rates = [rate for rate in trial_rates if rate is not None]
     calls = [
         call
         for result in results
@@ -929,7 +938,9 @@ def outcome_statistics(
         value
         for call in calls
         for value in (
-            [call.get("accounting")] + [r.get("accounting") for r in call.get("returns", [])]
+            [call["accounting"]]
+            if call.get("accounting")
+            else [r.get("accounting") for r in call.get("returns", [])]
         )
         if isinstance(value, dict)
     ]
@@ -948,9 +959,13 @@ def outcome_statistics(
         },
         "case_count": len(cases),
         "repetitions": repetitions,
-        "stability": "unverified_single_trial" if repetitions == 1 else "observed_repeated_trials",
+        "stability": "incomplete_trials"
+        if len(complete_rates) != repetitions
+        else "unverified_single_trial"
+        if repetitions == 1
+        else "observed_repeated_trials",
         "trial_pass_rates": trial_rates,
-        "trial_range": max(trial_rates) - min(trial_rates),
+        "trial_range": max(complete_rates) - min(complete_rates) if complete_rates else None,
         "fact_support": {
             "supported": sum(f["supported"] for f in facts),
             "unsupported": sum(f["unsupported"] for f in facts),
@@ -968,16 +983,17 @@ def outcome_statistics(
                 and r.get("execution_status") == "completed"
                 for r in operations
             ),
-            "total": len(operations),
+            "total": sum(bool((c.get("expected") or {}).get("state")) for c in cases) * repetitions,
         },
         "recovery_success": {
             "successful": sum(r["status"] == "passed" for r in recoveries),
-            "total": len(recoveries),
+            "total": sum(bool(c.get("recovery_goal")) for c in cases) * repetitions,
         },
         "critical_violations": {
             "violating": len(critical),
             "total": sum(
                 any(v.get("critical_applicable") for v in r.get("metric_scores", {}).values())
+                or any(c["kind"] == "forbidden_tool" for c in r.get("assertions", []))
                 for r in valid
             ),
         },

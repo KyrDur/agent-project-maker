@@ -146,6 +146,8 @@ class DraftAgentConfig(BaseModel):
     name: str
     description: str
     system_prompt: str
+    consistency_review: dict[str, Any] | None = None
+    consistency_reviews: list[dict[str, Any]] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list, description="工具名称列表")
     planned_tools: list[dict[str, Any]] = Field(
         default_factory=list, description="尚未连接、可在评测 mock 环境中使用的工具接口"

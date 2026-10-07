@@ -86,6 +86,24 @@ class ScriptedExaminee(BaseChatModel):
 
 
 async def model_json(_db, _snapshot, _user, role, _instruction, payload):
+    if "builder_consistency_sources" in payload:
+        sources = payload["builder_consistency_sources"]
+        return {
+            "reviewed_sources": [k for k in sources if not k.startswith("requirements/")],
+            "requirement_reviews": [
+                {
+                    "field": k.removeprefix("requirements/"),
+                    "supported": True,
+                    "reason": "Controlled implementation review",
+                    "evidence": [
+                        {"reference": k, "quote": value},
+                        {"reference": "system_prompt", "quote": sources["system_prompt"]},
+                    ],
+                }
+                for k, value in sources.items()
+                if k.startswith("requirements/")
+            ],
+        }
     if role == "planner":
         value = structured_plan(tools=True)
         value["rubric_version"] = 3
@@ -257,6 +275,15 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     monkeypatch.setattr(lifecycle, "schedule", lambda *args: queued.append(args))
     monkeypatch.setattr(model_factory, "create_chat_model", lambda *a, **k: ScriptedExaminee())
     monkeypatch.setattr(semantic, "json_call", model_json)
+    from app.agent_runtime.builder_v3 import consistency_context
+    from app.services import builder_consistency
+
+    monkeypatch.setattr(builder_consistency, "json_call", model_json)
+    monkeypatch.setattr(
+        consistency_context,
+        "consistency_adapter",
+        lambda: builder_consistency.BuilderReviewService(factory),
+    )
     monkeypatch.setattr(optimization, "json_call", model_json)
     intent = AgentCreationIntent(
         agent_name="周报整理助手",
@@ -316,7 +343,13 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     graph = build_graph().compile(checkpointer=InMemorySaver())
     config: RunnableConfig = {"configurable": {"thread_id": str(session.id), "ui_locale": "zh-CN"}}
     await graph.ainvoke(
-        {"session_id": str(session.id), "user_request": "整理周报", "messages": []}, config
+        {
+            "session_id": str(session.id),
+            "user_id": str(TEST_USER_ID),
+            "user_request": "整理周报",
+            "messages": [],
+        },
+        config,
     )
     for _ in range(12):
         state = await graph.aget_state(config)

@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from app.agent_runtime import model_factory
 from app.agent_runtime.builder.sub_agents import helpers
+from app.agent_runtime.builder_v3.consistency_context import builder_consistency_scope
 from app.agent_runtime.builder_v3.graph import compile_graph
 from app.agent_runtime.checkpointer import (
     get_checkpointer,
@@ -40,6 +41,7 @@ from app.services.agent_project_llm import role_configurations
 from app.services.agent_project_materials import interview_material, resume_material
 from app.services.agent_project_portfolio_export import export_zip
 from app.services.agent_project_preflight import EXECUTION_PROTOCOL
+from app.services.builder_consistency import BuilderReviewService
 
 DEMO = "【Codex 开发验收演示，非用户本人撰写】"
 TASKS = {
@@ -491,4 +493,5 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output", type=Path, default=Path("../output/quality-revision-20261007/live-builder")
     )
-    asyncio.run(main(parser.parse_args()))
+    with builder_consistency_scope(BuilderReviewService(async_session)):
+        asyncio.run(main(parser.parse_args()))

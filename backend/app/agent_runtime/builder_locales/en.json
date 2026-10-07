@@ -277,5 +277,7 @@
   "requirement_deliverables": "Deliverables",
   "requirement_business_rules": "Business rules and simulation assumptions",
   "requirement_success_conditions": "Success conditions",
-  "capabilities_reason": "Reason for confirming the capability plan (required)"
+  "capabilities_reason": "Reason for confirming the capability plan (required)",
+  "builder_consistency_rejected": "The prompt or Skill conflicts with confirmed requirements. Review the reason, revise and confirm again.",
+  "builder_consistency_unavailable": "Consistency review is incomplete. Retry; confirmed requirements and drafts are preserved."
 }

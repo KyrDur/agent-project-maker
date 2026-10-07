@@ -756,7 +756,12 @@ async def grade_case(
         for name, v in scores.items()
         if name in gates
     )
-    if facts and (facts["unsupported"] or facts["unknown"]):
+    if facts and facts["unknown"]:
+        raise SnapshotExecutionUnavailable(
+            "evaluation_judge_unassessable",
+            {"judge_calls": judge_calls if semantic else [], "fact_check": facts},
+        )
+    if facts and facts["unsupported"]:
         passed = False
     if spec.rubric_version >= 2 and not scores and not checks:
         raise SnapshotExecutionUnavailable("evaluation_rubric_invalid")

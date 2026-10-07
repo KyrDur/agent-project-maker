@@ -62,12 +62,13 @@ export function ProjectMetrics({
           })}
         </p>
       )}
-      {metrics.executed_pass_rate != null && (
+      {(metrics.valid_scored_pass_rate ?? metrics.scored_pass_rate) != null && (
         <p>
-          {t('practice.executedRate', {
+          {t('qualityRevision.scoredPassRate', {
             passed: metrics.passed,
-            total: metrics.executed_cases ?? 0,
-            value: number(metrics.executed_pass_rate * 100),
+            total: metrics.valid_scored_cases ?? metrics.total - (metrics.errored ?? 0),
+            errors: metrics.errored ?? 0,
+            value: number((metrics.valid_scored_pass_rate ?? metrics.scored_pass_rate ?? 0) * 100),
           })}
         </p>
       )}
@@ -77,7 +78,9 @@ export function ProjectMetrics({
       {metrics.trial_pass_rates && (
         <p>
           {t('qualityRevision.trialRates', {
-            rates: metrics.trial_pass_rates.map((v) => number(v * 100)).join(' / '),
+            rates: metrics.trial_pass_rates
+              .map((v) => (v == null ? t('qualityRevision.trialIncomplete') : number(v * 100)))
+              .join(' / '),
           })}
         </p>
       )}

@@ -690,6 +690,7 @@ export interface BuilderDraftConfig {
   name: string
   description: string
   system_prompt: string
+  consistency_review?: BuilderConsistencyReview | null
   tools: string[]
   planned_tools?: BuilderToolRecommendation[]
   generated_skills?: BuilderToolRecommendation[]
@@ -698,6 +699,16 @@ export interface BuilderDraftConfig {
   model_name: string
   primary_task_type: string
   use_cases: string[]
+}
+
+export interface BuilderConsistencyReview {
+  status: 'approved' | 'rejected' | 'error'
+  requirement_reviews?: {
+    field: string
+    supported: boolean
+    reason: string
+    evidence: { reference: string; quote: string }[]
+  }[]
 }
 
 export type BuilderSSEEventType =

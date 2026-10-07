@@ -5,15 +5,17 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from jsonschema import Draft202012Validator
-from jsonschema.exceptions import SchemaError, ValidationError
+from jsonschema.exceptions import ValidationError
 
 from app.schemas.agent_project import EvalSetWrite, EvalSpec
 from app.services.agent_project_executor import SnapshotExecutionUnavailable
 from app.services.agent_project_mock_tools import mock_tools
+from app.services.agent_project_tool_contracts import input_validator
 
 EXECUTION_PROTOCOL = {
-    "version": "mock_sandbox_v3",
+    "version": "mock_sandbox_v4",
+    "tool_contract_validation": "reference_and_runtime",
+    "fact_evidence_policy": "observed_content_not_tool_requests",
     "execution_timeout_seconds": 30,
     "judge_timeout_seconds": 190,
     "judge_validation_retry_limit": 1,
@@ -48,29 +50,18 @@ def preflight_case(config: dict[str, Any], case: dict[str, Any]) -> dict[str, An
         if schema is None:
             schema = {}
 
-        def local_references(value: Any) -> None:
-            if isinstance(value, dict):
-                if any(
-                    key in value and not str(value[key]).startswith("#")
-                    for key in ("$ref", "$dynamicRef")
-                ):
-                    raise ValueError("Tool schemas must not resolve external resources")
-                for child in value.values():
-                    local_references(child)
-            elif isinstance(value, list):
-                for child in value:
-                    local_references(child)
-
-        local_references(schema)
-        try:
-            Draft202012Validator.check_schema(schema)
-            validators[name] = Draft202012Validator(schema)
-        except SchemaError as exc:
-            raise ValueError("Invalid frozen tool parameter schema") from exc
+        validators[name] = input_validator(schema)
     mocks = case.get("mock_tool_data") or {}
     if set(definitions) != set(mocks):
         raise ValueError("Every enabled capability needs a mock; undeclared tools are forbidden")
     for behavior in mocks.values():
+        if behavior.get("error") in ENVIRONMENT_ERRORS or any(
+            r.get("error") in ENVIRONMENT_ERRORS for r in behavior.get("responses", [])
+        ):
+            raise ValueError("Environment errors cannot be declared as injected business failures")
+        for response in behavior.get("responses", []):
+            if response.get("result") is None and not response.get("error"):
+                raise ValueError("Every normal response needs explicit data")
         if (
             behavior.get("operation", "static") == "static"
             and behavior.get("result") is None

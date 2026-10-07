@@ -107,6 +107,13 @@ def scoring_lines(data: dict[str, Any]) -> list[str]:
             f"裁判错误 {count(summary.get('judge_errors'))}；历史缺失的计数不补造。"
         )
         stats = summary.get("statistics", {})
+        if stats.get("valid_scored_pass_rate") is not None:
+            lines.append(
+                f"有效评分任务通过率：{count(summary.get('passed'))}/"
+                f"{count(stats.get('valid_scored_cases'))}，"
+                f"{decimal_score(stats['valid_scored_pass_rate'] * 100)}%；"
+                f"错误 {count(summary.get('errored'))} 个，全部用例分母仍保留错误。"
+            )
         facts = stats.get("fact_support")
         if facts:
             lines.append(
@@ -132,7 +139,8 @@ def scoring_lines(data: dict[str, Any]) -> list[str]:
                     if stats["repetitions"] == 1
                     else "各轮全部用例通过率："
                     + "、".join(
-                        decimal_score(x * 100) + "%" for x in stats.get("trial_pass_rates") or []
+                        decimal_score(x * 100) + "%" if x is not None else "未完成"
+                        for x in stats.get("trial_pass_rates") or []
                     )
                 )
             )

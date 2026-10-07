@@ -13,6 +13,7 @@ import {
   XIcon,
 } from 'lucide-react'
 import { resolveImageUrl } from '@/lib/utils'
+import type { BuilderConsistencyReview } from '@/lib/types'
 import {
   BuilderActionRow,
   BuilderBody,
@@ -31,6 +32,7 @@ interface DraftConfig {
   name?: string
   description?: string
   system_prompt?: string
+  consistency_review?: BuilderConsistencyReview | null
   tools?: string[]
   middlewares?: string[]
   primary_task_type?: string
@@ -122,6 +124,25 @@ function DraftConfigSummary({
             ))}
           </div>
         </div>
+      )}
+      {draft.consistency_review && (
+        <details>
+          <summary className="cursor-pointer text-sm">
+            {t('consistencyReviewTitle')}{' '}
+            {t(`consistencyReviewStatus.${draft.consistency_review.status}`)}
+          </summary>
+          <p className="mt-2 text-sm text-muted-foreground">{t('consistencyReviewLimit')}</p>
+          {draft.consistency_review.requirement_reviews?.map((review) => (
+            <div key={review.field} className="mt-2 space-y-1 border-l-2 pl-3 text-sm">
+              <p>{review.reason}</p>
+              {review.evidence.map((ref, i) => (
+                <blockquote key={i} className="whitespace-pre-wrap">
+                  {ref.quote}
+                </blockquote>
+              ))}
+            </div>
+          ))}
+        </details>
       )}
     </BuilderBody>
   )

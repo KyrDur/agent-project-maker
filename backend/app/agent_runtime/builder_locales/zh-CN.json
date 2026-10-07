@@ -277,5 +277,7 @@
   "requirement_deliverables": "预期产物",
   "requirement_business_rules": "业务规则与模拟假设",
   "requirement_success_conditions": "成功条件",
-  "capabilities_reason": "确认能力方案的理由（必填）"
+  "capabilities_reason": "确认能力方案的理由（必填）",
+  "builder_consistency_rejected": "指令或文本指南与已确认需求冲突。请查看审查原因，修改后重新确认。",
+  "builder_consistency_unavailable": "一致性审查未完成，请重试；已确认需求和草稿仍保留。"
 }

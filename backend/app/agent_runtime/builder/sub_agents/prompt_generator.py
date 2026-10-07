@@ -36,6 +36,12 @@ def _format_tools(tools: list[ToolRecommendation]) -> str:
                 v3=f"{t.reason}",
             )
         )
+        if t.content:
+            lines.append("Frozen Skill body:\n" + t.content)
+        if t.input_schema:
+            import json
+
+            lines.append("Simulation input contract:\n" + json.dumps(t.input_schema))
     return "\n".join(lines)
 
 
