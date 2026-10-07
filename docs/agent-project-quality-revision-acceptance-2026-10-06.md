@@ -17,7 +17,7 @@
 | P1 | 个人贡献 | 需求/能力/优化理由原文、用户与系统及 Codex 演示作者、实际变更来源 | 固定来源检查通过；简历通过来源运行关联真实退步；旧 V3 演示不改写为用户主导 |
 | P1 | 材料 | 中文报告、简洁简历、案例 STAR 与有依据追问、统一证据投影、过期提示与 ZIP | 固定预览/导出一致；历史与四类实际材料已核对预览/导出一致 |
 | P2 | 四类项目 | 写作、客服、知识问答、纯对话，五阶段导航、最近会话/场景恢复、Markdown | 固定四类、无工具/无 Skill 及退步路径通过；真实四类未完整验收 |
-| P2 | 工程 | 隔离 PG 升降级、历史兼容、pytest/Vitest/Playwright、类型/构建/i18n/无障碍/设计系统、README 与 GitHub | 本地检查通过；保留原提交历史，普通 Git 推送等待本机登录恢复 |
+| P2 | 工程 | 隔离 PG 升降级、历史兼容、pytest/Vitest/Playwright、类型/构建/i18n/无障碍/设计系统、README 与 GitHub | 本地检查通过；保留原提交历史，Git 已恢复本机登录，远端 CI 单独记录 |
 
 ## 工程验证（固定响应）
 
@@ -25,6 +25,7 @@
 - 前端项目相关 Vitest：52 passed。Ruff、Pyright、TypeScript、生产构建、lint:all（含 i18n、无障碍、设计系统、架构、类型和 E2E 规则）通过；没有修改检查基线。
 - Playwright scripted-full：8 passed。四类各有 Builder 自动 V1、两轮审批和 V3 基于 V2。写作逐例重复 3 次，每版 60 个结果全部保留；另建验证集后，未标记使用时分析返回 409，明确标记后允许分析。已有冻结版本复用原确认记录，不伪造新增个人理由。
 - 过程日志及附件保存在忽略目录 `output/`：`quality-backend-tests-final.log`、`quality-frontend-tests-final.log`、`quality-e2e-final.log`、`quality-postgres.log`、`quality-build-final.log`、`quality-lint-final.log`、`quality-pyright-final.log`、`quality-typescript.log`。
+- 登录恢复后的全量推送检查首次为 4835 passed、2 failed、1 skipped：文档登记缺项、旧 P0 夹具仍使用 v2 与未声明工具。已补齐六份文档登记，P0 夹具改用声明的模拟工具、v3 参考预检与逐事实判定，保持生产校验及历史记录不变；专项复验 41 passed。全量推送检查结果另存 `quality-git-push-final.log`，不并入真实模型质量结论。
 
 ## 真实模型与校准
 
@@ -69,7 +70,7 @@
 
 本轮调用预算总上限 600，实际触发 572：原四类构建及分析 204、历史复验 296、写作修复与评测 54、两批校准 18。保留失败调用，费用不可用；超额拦截未计作实际触发调用。余量 28，少于任意一轮 20 例复验的最低 40 次调用。预算问题已更新：1600 总上限用于继续完整验收，900 仅支持分批基线；尚未收到答复，未扩大额度。
 
-待完成：190 秒协议的真实新范围复验、四类实际审批与回归、无工具/无 Skill 实际链路，以及本机 Git 登录恢复后的普通推送、草稿 PR 与 CI。原本地提交历史已保留，不通过插件另发汇总代码快照，不强推或合并。工程实现和本地材料可审阅，完整验收状态仍为未通过。
+待完成：190 秒协议的真实新范围复验、四类实际审批与回归、无工具/无 Skill 实际链路。Git 已登录 KyrDur，凭据保存于 macOS 钥匙串；远端交付继续使用普通推送、草稿 PR 与 CI 核验，结果另行记录。原本地提交历史已保留，不通过插件另发汇总代码快照，不强推或合并。工程实现和本地材料可审阅，完整验收状态仍为未通过。
 
 产物位于 `output/quality-revision-20261007/`：历史材料在 `historical-portfolio/`，客服/知识问答/纯对话在 `live-builder/<类别>/`，本轮写作在 `live-writing-repair/写作/`；原写作拒绝目录也保留。`delivery/live-material-consistency.json` 与历史 `preview-export-checks.json` 记录逐项一致性，`historical-integrity.json` 证明原四次运行未变。源码恢复 bundle 与草稿 PR 正文在 `delivery/`。
 

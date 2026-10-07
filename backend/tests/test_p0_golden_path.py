@@ -39,7 +39,7 @@ from app.models.credential import Credential
 from app.models.model import Model
 from app.models.user import User
 from app.models.user_llm_setting import UserLlmSetting
-from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation
+from app.schemas.builder import AgentCreationIntent, MiddlewareRecommendation, ToolRecommendation
 from app.services import agent_project_evaluation as evaluation
 from app.services import agent_project_optimization as optimization
 from app.services import agent_project_portfolio as portfolio
@@ -87,7 +87,9 @@ class ScriptedExaminee(BaseChatModel):
 
 async def model_json(_db, _snapshot, _user, role, _instruction, payload):
     if role == "planner":
-        value = structured_plan()
+        value = structured_plan(tools=True)
+        value["rubric_version"] = 3
+        value["pass_threshold_reason"] = "完整满足核心判据，部分满足不通过。"
         for metric in value["metrics"]:
             metric["requirement_refs"] = [
                 {"field": "goal", "quote": payload["requirements"]["goal"]}
@@ -97,8 +99,12 @@ async def model_json(_db, _snapshot, _user, role, _instruction, payload):
         return value
     if role == "case_generator":
         data = generated_cases()
-        for case in data["cases"]:
+        for index, case in enumerate(data["cases"]):
+            case["input"] = f"Summarize supplied project {index + 1}."
             case["metric_applicability"] = case_for(payload["eval_spec"])["metric_applicability"]
+            case["expected"]["forbidden_tools"] = []
+            case["reference_answer"] = "Login reviewed"
+            case["reference_trace"] = [{"name": "search", "arguments": {}}]
         capabilities = payload.get("capability_profile", {}).get("capabilities", [])
         if capabilities:
             for case in data["cases"]:
@@ -112,7 +118,15 @@ async def model_json(_db, _snapshot, _user, role, _instruction, payload):
                     for key in payload["rubric_review_rules"]
                 ]
             }
+        if "reference_results" in payload:
+            return {
+                "rule_reviews": [
+                    {"reference": key, "supported": True, "reason": "Controlled reference review"}
+                    for key in payload["reference_results"]
+                ]
+            }
         if "metric_applicability" in payload:
+            supported = payload["actual_output"] == "Login reviewed"
             return {
                 "criterion_results": {
                     m["name"]: [
@@ -127,7 +141,19 @@ async def model_json(_db, _snapshot, _user, role, _instruction, payload):
                         for cid in payload["metric_applicability"][m["name"]]
                     ]
                     for m in payload["metrics"]
-                }
+                },
+                "fact_results": [
+                    {
+                        "claim": payload["actual_output"],
+                        "kind": "fact",
+                        "verdict": "supported" if supported else "unsupported",
+                        "evidence": [
+                            {"reference": "tool_trace/0/output", "quote": "Login reviewed"}
+                        ]
+                        if supported
+                        else [],
+                    }
+                ],
             }
         passed = payload["actual_output"] == "Login reviewed"
         return {
@@ -250,7 +276,25 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     monkeypatch.setattr(
         phase2_intent, "_suggest_name_options", AsyncMock(return_value=["周报整理助手", "周报助手"])
     )
-    monkeypatch.setattr(phase3_tools, "recommend_tools", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        phase3_tools,
+        "recommend_tools",
+        AsyncMock(
+            return_value=[
+                ToolRecommendation(
+                    tool_name="search",
+                    description="查询给定的模拟资料",
+                    reason="核验周报的来源资料",
+                    kind="planned",
+                    input_schema={
+                        "type": "object",
+                        "properties": {},
+                        "additionalProperties": False,
+                    },
+                )
+            ]
+        ),
+    )
     monkeypatch.setattr(
         phase4_middlewares,
         "recommend_middlewares",
@@ -319,6 +363,9 @@ async def test_builder_through_report_release_gate(db, monkeypatch):
     assert await db.scalar(select(func.count()).select_from(AgentProjectEvalRun)) == 1
     await db.refresh(dataset)
     assert dataset.frozen and len(dataset.cases_json) == 20
+    assert dataset.rubric_json is not None
+    assert dataset.rubric_json["rubric_version"] == 3
+    assert len(dataset.rubric_json["reference_validation"]["program"]) == 20
     baseline = (await evaluation.list_runs(db, agent.id, TEST_USER_ID))[0]
     assert baseline.status == "completed", baseline.error
     assert baseline.results_json is not None
