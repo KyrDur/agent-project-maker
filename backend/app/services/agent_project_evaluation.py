@@ -460,6 +460,10 @@ async def insert_frozen_run(
     plan: dict[str, Any] | None,
 ) -> AgentProjectEvalRun:
     """Shared insertion boundary; caller owns scope checks and project write lock."""
+    from app.services.agent_project_preflight import current_execution_protocol
+
+    if not current_execution_protocol(plan):
+        raise error("evaluation_execution_protocol_changed", 409)
     row = AgentProjectEvalRun(
         project_id=project_id,
         version_id=version_id,
@@ -649,6 +653,14 @@ async def execute_run(run_id: uuid.UUID, agent_id: uuid.UUID, user_id: uuid.UUID
         from app.services.agent_project_semantic import grade_case, metric_summary
 
         plan = deepcopy(row.comparison_json)
+        from app.services.agent_project_preflight import current_execution_protocol
+
+        if not current_execution_protocol(plan):
+            row.status = "failed"
+            row.error = "evaluation_execution_protocol_changed"
+            row.completed_at = utcnow()
+            await db.commit()
+            return
         results: list[dict[str, Any]] = []
         try:
             version = await projects.get_version(db, agent_id, user_id, row.version_id)

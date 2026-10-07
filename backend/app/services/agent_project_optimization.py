@@ -23,7 +23,14 @@ def fail(code: str, status: int = 422) -> AppError:
     return AppError(code=code, message=code, status=status)
 
 
-def terminal_semantic(run: AgentProjectEvalRun) -> None:
+def ensure_current_protocol(run: AgentProjectEvalRun) -> None:
+    from app.services.agent_project_preflight import current_execution_protocol
+
+    if not current_execution_protocol(run.comparison_json):
+        raise fail("evaluation_execution_protocol_changed", 409)
+
+
+def terminal_semantic(run: AgentProjectEvalRun, *, require_current: bool = True) -> None:
     if (
         run.status not in {"completed", "failed"}
         or not run.completed_at
@@ -41,6 +48,8 @@ def terminal_semantic(run: AgentProjectEvalRun) -> None:
         or canonical_json_hash(cases) != run.dataset_hash
     ):
         raise fail("optimization_run_incomplete")
+    if require_current:
+        ensure_current_protocol(run)
 
 
 def case_evidence(case: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
@@ -165,13 +174,14 @@ async def analyze(
     db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID, run_id: uuid.UUID
 ) -> dict[str, Any]:
     run = await evaluation.get_run(db, agent_id, user_id, run_id)
-    terminal_semantic(run)
+    terminal_semantic(run, require_current=False)
     if (run.comparison_json or {}).get("purpose") == "validation" and (
         run.comparison_json or {}
     ).get("validation_exposure") != "used":
         raise fail("validation_evidence_not_for_optimization", 409)
     if "analysis" in (run.comparison_json or {}):
         return {"bad_cases": run.bad_cases_json or [], **(run.comparison_json or {})["analysis"]}
+    ensure_current_protocol(run)
     version = await projects.get_version(db, agent_id, user_id, run.version_id)
     if canonical_json_hash(version.snapshot_json) != version.config_hash:
         raise fail("snapshot_hash_mismatch")

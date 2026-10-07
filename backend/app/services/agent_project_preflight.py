@@ -23,6 +23,13 @@ EXECUTION_PROTOCOL = {
     "simulation_policy": "isolated_state_and_text_skills_only",
 }
 
+
+def current_execution_protocol(plan: dict[str, Any] | None) -> bool:
+    if (plan or {}).get("eval_spec", {}).get("rubric_version", 1) < 3:
+        return True
+    return (plan or {}).get("execution_protocol") == EXECUTION_PROTOCOL
+
+
 ENVIRONMENT_ERRORS = {
     "evaluation_mock_missing",
     "evaluation_mock_response_missing",

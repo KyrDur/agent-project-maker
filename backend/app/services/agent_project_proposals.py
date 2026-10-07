@@ -282,6 +282,7 @@ async def decide(
         await db.commit()
         return value
     if decision == "accepted":
+        optimization.ensure_current_protocol(run)
         existing_candidate = await db.scalar(
             select(AgentProjectVersion).where(
                 AgentProjectVersion.project_id == project.id,

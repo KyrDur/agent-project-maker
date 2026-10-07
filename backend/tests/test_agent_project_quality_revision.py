@@ -671,3 +671,113 @@ async def test_frozen_personal_role_parameters_cannot_drift(db, monkeypatch):
     model.temperature = 0.8
     with pytest.raises(semantic.SnapshotExecutionUnavailable, match="configuration_changed"):
         await llm.resolve_model(db, frozen, TEST_USER_ID, "judge")
+
+
+@pytest.mark.asyncio
+async def test_stale_protocol_cannot_insert_a_new_regression(db):
+    import uuid
+
+    from sqlalchemy import func, select
+
+    from app.exceptions import AppError
+    from app.models.agent_project import AgentProjectEvalRun
+    from app.services.agent_project_preflight import EXECUTION_PROTOCOL
+
+    plan = {
+        "eval_spec": {"rubric_version": 3},
+        "execution_protocol": {**EXECUTION_PROTOCOL, "version": "mock_sandbox_v3"},
+    }
+    with pytest.raises(AppError) as failure:
+        await evaluation.insert_frozen_run(
+            db, uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), [], plan
+        )
+    assert failure.value.code == "evaluation_execution_protocol_changed"
+    assert await db.scalar(select(func.count()).select_from(AgentProjectEvalRun)) == 0
+
+
+@pytest.mark.asyncio
+async def test_stale_protocol_preserves_saved_analysis_but_blocks_new_calls(db, monkeypatch):
+    from datetime import datetime
+
+    from app.exceptions import AppError
+    from app.marketplace.payloads import canonical_json_hash
+    from app.services import agent_project_optimization as optimization
+    from app.services.agent_project_preflight import EXECUTION_PROTOCOL
+
+    cases = [{"id": "old"}]
+    run = SimpleNamespace(
+        status="completed",
+        completed_at=datetime(2026, 10, 7),
+        cases_snapshot_json=cases,
+        results_json=[{"case_id": "old", "status": "passed"}],
+        dataset_hash=canonical_json_hash(cases),
+        metrics_json={"scoring": "semantic_v1"},
+        comparison_json={
+            "eval_spec": {"rubric_version": 3},
+            "execution_protocol": {**EXECUTION_PROTOCOL, "version": "mock_sandbox_v3"},
+            "analysis": {"status": "saved", "groups": []},
+        },
+        bad_cases_json=[],
+    )
+
+    async def stored(*args):
+        return run
+
+    async def forbidden(*args):
+        pytest.fail("Stale experiments must not call a model")
+
+    monkeypatch.setattr(evaluation, "get_run", stored)
+    monkeypatch.setattr(optimization, "json_call", forbidden)
+    assert (await optimization.analyze(db, TEST_USER_ID, TEST_USER_ID, TEST_USER_ID))[
+        "status"
+    ] == "saved"
+    run.comparison_json.pop("analysis")
+    original = deepcopy(run.comparison_json)
+    with pytest.raises(AppError) as failure:
+        await optimization.analyze(db, TEST_USER_ID, TEST_USER_ID, TEST_USER_ID)
+    assert failure.value.code == "evaluation_execution_protocol_changed"
+    assert run.comparison_json == original
+
+
+@pytest.mark.asyncio
+async def test_pending_stale_protocol_stops_before_execution(db, monkeypatch):
+    import uuid
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.models.agent_project import AgentProjectEvalSet
+    from app.services import agent_project_service as projects
+    from app.services.agent_project_preflight import EXECUTION_PROTOCOL
+    from tests.test_agent_projects import seed_agent
+
+    _, _, agent = await seed_agent(db)
+    await db.commit()
+    project = await projects.create_project(db, agent.id, TEST_USER_ID)
+    version = (await projects.list_versions(db, agent.id, TEST_USER_ID))[0]
+    dataset = AgentProjectEvalSet(project_id=project.id, name="Frozen", cases_json=[])
+    db.add(dataset)
+    await db.flush()
+    current = {"eval_spec": {"rubric_version": 3}, "execution_protocol": EXECUTION_PROTOCOL}
+    run = await evaluation.insert_frozen_run(
+        db, project.id, version.id, dataset.id, uuid.uuid4(), [{"id": "old"}], current
+    )
+    original = {
+        **current,
+        "execution_protocol": {**EXECUTION_PROTOCOL, "version": "mock_sandbox_v3"},
+    }
+    run.comparison_json = original
+    await db.commit()
+
+    async def forbidden(*args):
+        pytest.fail("A stale queued run must stop before execution")
+
+    monkeypatch.setattr(
+        evaluation, "async_session", async_sessionmaker(db.bind, expire_on_commit=False)
+    )
+    monkeypatch.setattr(evaluation, "execute_snapshot", forbidden)
+    await evaluation.execute_run(run.id, agent.id, TEST_USER_ID)
+    await db.refresh(run)
+    assert run.status == "failed"
+    assert run.error == "evaluation_execution_protocol_changed"
+    assert run.results_json == [] and run.pass_rate is None
+    assert run.comparison_json == original

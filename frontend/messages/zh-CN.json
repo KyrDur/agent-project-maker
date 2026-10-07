@@ -371,6 +371,7 @@
       "historical_skill_execution_unavailable": "历史技能包执行不可用。",
       "historical_skill_content_unavailable": "该版本未保存冻结的技能文本，不会使用最新技能替代。",
       "evaluation_role_configuration_changed": "个人模型配置已改变。请开启新实验范围后再运行；旧实验不能直接与新口径比较。",
+      "evaluation_execution_protocol_changed": "执行与评分协议已更新。请开启新实验范围；旧成绩和已保存分析保留，不继续按旧协议产生新成绩。",
       "evaluation_rubric_invalid": "评分规则或用例适用范围校验失败。请检查需求出处并重新生成评测计划；历史实验保持不变。",
       "evaluation_rubric_unsupported": "模型 C 发现评分条件超出已确认需求，或评分档位不明确。请检查需求和生成记录，再重试；不会用这些规则给 Agent 扣分。",
       "evaluation_environment_invalid": "场景参考路径未通过预检，请修补模拟数据后重试。",
@@ -892,7 +893,8 @@
       "optimization_proposal_already_decided": "这一轮已经选择过方案。请查看新版本的回归结果后再继续。",
       "project_decision_reason_required": "请填写选择这条方案的理由。",
       "snapshot_credential_unavailable": "来源版本的个人模型配置当前不可用，请检查个人 AI 配置。",
-      "evaluation_role_configuration_changed": "模型配置与本轮冻结配置不一致，需要开启新的实验范围。"
+      "evaluation_role_configuration_changed": "模型配置与本轮冻结配置不一致，需要开启新的实验范围。",
+      "evaluation_execution_protocol_changed": "执行与评分协议已更新，请开启新实验范围后再优化。旧成绩和已保存分析仍可查看。"
     },
     "capabilityNames": {
       "tool_calling": "模拟工具调用",

@@ -371,6 +371,7 @@
       "historical_skill_execution_unavailable": "Historical Skill package execution is unavailable.",
       "historical_skill_content_unavailable": "This version has no frozen Skill text. The latest Skill was not substituted.",
       "evaluation_role_configuration_changed": "Personal model configuration changed. Start a new experiment scope; the old and new scopes cannot be compared directly.",
+      "evaluation_execution_protocol_changed": "The execution and grading protocol has changed. Start a new experiment scope; historical grades and saved analyses remain available, and no new grades are produced under the old protocol.",
       "evaluation_rubric_invalid": "Invalid scoring contract or case applicability. Review requirement sources and generate a new plan; historical experiments are unchanged.",
       "evaluation_rubric_unsupported": "Model C found unsupported or ambiguous scoring rules. Review requirements and generation evidence, then retry; these rules will not grade the Agent.",
       "evaluation_environment_invalid": "Reference path failed environment preflight; repair simulation data and retry.",
@@ -892,7 +893,8 @@
       "optimization_proposal_already_decided": "A proposal was already selected for this round. Check its regression results before continuing.",
       "project_decision_reason_required": "Enter your reason for selecting this proposal.",
       "snapshot_credential_unavailable": "The source version personal model configuration is unavailable. Check your personal AI settings.",
-      "evaluation_role_configuration_changed": "Model settings differ from the frozen configuration. Start a new experiment scope."
+      "evaluation_role_configuration_changed": "Model settings differ from the frozen configuration. Start a new experiment scope.",
+      "evaluation_execution_protocol_changed": "The execution and grading protocol has changed. Start a new experiment scope before optimizing. Historical grades and saved analyses remain available."
     },
     "capabilityNames": {
       "tool_calling": "Simulated tool use",
