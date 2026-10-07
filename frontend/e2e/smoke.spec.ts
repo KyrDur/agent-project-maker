@@ -198,8 +198,11 @@ test.describe('Smoke Test - Dynamic Pages', () => {
     await expect(page.getByRole('menuitem', { name: '新的对话' })).toBeVisible()
     await expect(page.getByRole('menuitem', { name: '设置' })).toBeVisible()
     await page.keyboard.press('Escape')
-    // Empty conversation prompt
-    await expect(main.getByText('空状态')).toBeVisible()
+    // The starter stays editable and only fills the composer; it does not send.
+    const example = '请说明你能帮我完成什么，并给出一个可以直接试用的输入示例。'
+    await expect(main.getByText('试用示例（虚构输入，可编辑后发送）')).toBeVisible()
+    await main.getByRole('button', { name: example, exact: true }).click()
+    await expect(main.locator('textarea').first()).toHaveValue(example)
 
     expect(errors.console).toEqual([])
     expect(errors.network).toEqual([])
@@ -478,4 +481,3 @@ test.describe('Smoke Test - Conversational Creation', () => {
     expect(errors.network).toEqual([])
   })
 })
-
