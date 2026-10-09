@@ -1,5 +1,7 @@
 <!-- project-current-source: migration=m85_project_simulation; deepagents=0.7.11; ruff=0.16.5; refreshed=2026-10-06 -->
 
+> **2026-10-09 更新：** 当前 [test.softcue.xyz](https://www.test.softcue.xyz/) 上线的 **Agent Eval** 源码位于 [`agent-eval/`](agent-eval/README.md)，提供独立的 Vue / FastAPI 运行与测试说明。下文介绍的是仓库根目录原有的 Agent Project Maker 工程，两套应用分别运行。
+
 <div align="center">
 
 <img src="frontend/public/project-maker.svg" alt="Agent Project Maker" width="120">
