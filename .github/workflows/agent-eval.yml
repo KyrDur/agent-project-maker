@@ -30,6 +30,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+          package_json_file: agent-eval/EchoMindFrontend/package.json
           run_install: false
       - uses: actions/setup-node@v4
         with:
